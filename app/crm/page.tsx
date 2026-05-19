@@ -727,7 +727,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
 
 const PAGE_SIZE = 25
 
-type AllLeadsTab = 'all' | 'uncontacted' | 'hot' | 'warm' | 'cold-dead' | 'booked'
+type AllLeadsFilter = 'all' | 'uncontacted' | 'hot' | 'warm' | 'cold-dead' | 'booked'
 
 function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouched, onKeepHot, onMarkDead, onUpdateStatus, loading }: {
   leads: Lead[]
@@ -740,7 +740,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   onUpdateStatus: (id: number, status: string) => Promise<void>
   loading: boolean
 }) {
-  const [activeTab, setActiveTab] = useState<AllLeadsTab>('all')
+  const [activeFilter, setActiveFilter] = useState<AllLeadsFilter>('all')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [touchPromptId, setTouchPromptId] = useState<number | null>(null)
@@ -748,6 +748,9 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   const [deadLeadPromptId, setDeadLeadPromptId] = useState<number | null>(null)
 
   useEffect(() => { setPage(1) }, [search])
+  useEffect(() => {
+    setPage(1); setSearch(''); setTouchPromptId(null); setKeepHotPromptId(null); setDeadLeadPromptId(null)
+  }, [activeFilter])
 
   const uncontactedLeads = leads.filter(l => l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead'].includes(l.status)))
   const hotLeads = leads.filter(l => l.status === 'hot')
@@ -755,32 +758,24 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   const coldDeadLeads = leads.filter(l => l.status === 'cold' || l.status === 'dead')
   const bookedLeads = leads.filter(l => l.status === 'booked')
 
-  const tabMap: Record<AllLeadsTab, Lead[]> = {
-    all: leads, // already sorted created_at DESC from load()
+  const filterMap: Record<AllLeadsFilter, Lead[]> = {
+    all: leads,
     uncontacted: uncontactedLeads, hot: hotLeads, warm: warmLeads, 'cold-dead': coldDeadLeads, booked: bookedLeads,
   }
 
-  const didMountRef = useRef(false)
-  useEffect(() => {
-    if (!didMountRef.current) { didMountRef.current = true; return }
-    setPage(1); setSearch(''); setTouchPromptId(null); setKeepHotPromptId(null); setDeadLeadPromptId(null)
-    const first = tabMap[activeTab][0]
-    if (first) onSelect(first.id)
-  }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const tabDefs: { key: AllLeadsTab; label: string; color: string }[] = [
-    { key: 'all', label: 'All', color: 'var(--text2)' },
+  const filterDefs: { key: AllLeadsFilter; label: string; color: string }[] = [
+    { key: 'all', label: 'All', color: '#e8eaf2' },
     { key: 'uncontacted', label: 'Uncontacted', color: '#4ef0db' },
-    { key: 'hot', label: 'Hot', color: 'var(--hot)' },
-    { key: 'warm', label: 'Warm', color: 'var(--warm)' },
-    { key: 'cold-dead', label: 'Cold/Dead', color: 'var(--text3)' },
-    { key: 'booked', label: 'Booked', color: 'var(--booked)' },
+    { key: 'hot', label: 'Hot', color: '#f04e7a' },
+    { key: 'warm', label: 'Warm', color: '#f0a24e' },
+    { key: 'cold-dead', label: 'Cold/Dead', color: '#8b90a8' },
+    { key: 'booked', label: 'Booked', color: '#4ef0a2' },
   ]
 
-  const activeLeads = tabMap[activeTab]
+  const activeLeads = filterMap[activeFilter]
+  const q = search.trim().toLowerCase()
   const filtered = activeLeads.filter(l => {
-    if (!search) return true
-    const q = search.toLowerCase()
+    if (!q) return true
     return `${l.fname || ''} ${l.lname || ''} ${l.email || ''} ${l.phone || ''} ${l.company || ''} ${l.label || ''}`.toLowerCase().includes(q)
   })
 
@@ -791,28 +786,29 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
-      {/* Header: tab bar + search */}
+      {/* Header: filter pills + search */}
       <div style={{ padding: '10px 16px 0', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', gap: 0, marginBottom: 0 }}>
-          {tabDefs.map(tab => {
-            const active = activeTab === tab.key
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
+          {filterDefs.map(f => {
+            const active = activeFilter === f.key
             return (
-              <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
-                padding: '5px 11px', border: 'none', background: 'transparent', cursor: 'pointer',
-                fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase',
-                color: tab.color, opacity: active ? 1 : 0.55,
-                borderBottom: active ? `3px solid ${tab.color}` : '3px solid transparent',
-                marginBottom: -1, transition: 'opacity 0.15s', whiteSpace: 'nowrap',
+              <button key={f.key} onClick={() => setActiveFilter(f.key)} style={{
+                padding: '4px 10px', cursor: 'pointer', borderRadius: 20,
+                fontFamily: 'Syne', fontWeight: active ? 700 : 600, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase',
+                background: active ? `${f.color}33` : 'transparent',
+                border: `1px solid ${active ? f.color : `${f.color}80`}`,
+                color: active ? f.color : `${f.color}b3`,
+                transition: 'all 0.15s',
               }}>
-                {tab.label} <span style={{ fontWeight: 500 }}>({tabMap[tab.key].length})</span>
+                {f.label} ({filterMap[f.key].length})
               </button>
             )
           })}
         </div>
-        <div style={{ padding: '8px 0 6px' }}>
+        <div style={{ padding: '0 0 8px' }}>
           <input
             value={search} onChange={e => setSearch(e.target.value)}
-            placeholder={`Search ${activeLeads.length} ${activeTab === 'all' ? 'total' : tabDefs.find(t => t.key === activeTab)?.label.toLowerCase()} leads…`}
+            placeholder={`Search ${activeLeads.length} ${activeFilter === 'all' ? '' : filterDefs.find(f => f.key === activeFilter)?.label.toLowerCase() + ' '}leads…`}
             style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 10px', borderRadius: 5, fontFamily: 'DM Mono', fontSize: 11, outline: 'none' }}
           />
         </div>
@@ -824,28 +820,9 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
           <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
         ) : filtered.length === 0 ? (
           <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11 }}>
-            {search ? 'No leads match.' : activeTab === 'all' ? 'No leads yet.' : `No ${tabDefs.find(t => t.key === activeTab)?.label.toLowerCase()} leads.`}
+            {search ? 'No leads match.' : 'No leads.'}
           </div>
-        ) : (() => {
-          type Row = { type: 'lead'; lead: Lead } | { type: 'sep'; label: string; key: string }
-          const rows: Row[] = []
-          let lastKey = ''
-          for (const l of paginated) {
-            if (activeTab === 'all') {
-              const k = dateKey(l.created_at)
-              if (k !== lastKey) { rows.push({ type: 'sep', label: dateSepLabel(l.created_at), key: k }); lastKey = k }
-            }
-            rows.push({ type: 'lead', lead: l })
-          }
-          return rows.map(row => {
-            if (row.type === 'sep') return (
-              <div key={`sep-${row.key}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px 4px' }}>
-                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-                <span style={{ fontSize: 9, fontFamily: 'DM Mono', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#4a4f64', whiteSpace: 'nowrap' }}>{row.label}</span>
-                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-              </div>
-            )
-            const l = row.lead
+        ) : paginated.map((l, idx) => {
           const touch = latestTouches[l.id]
           const missing = getMissing(l)
           const isTouchPrompting = touchPromptId === l.id
@@ -855,8 +832,17 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
           const showKeepHot = l.status === 'hot' || l.status === 'warm'
           const keepLabel = l.status === 'warm' ? 'Keep Warm' : 'Keep Hot'
           const showDeadLead = missing.length > 0
+          const prevLead = idx > 0 ? paginated[idx - 1] : null
+          const showDateSep = !!l.created_at && (!prevLead || new Date(l.created_at).toDateString() !== new Date(prevLead.created_at).toDateString())
           return (
             <React.Fragment key={l.id}>
+              {showDateSep && (
+                <div style={{ display: 'flex', alignItems: 'center', margin: '16px 16px 0', color: '#4a4f64', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <span style={{ flex: 1, borderBottom: '1px solid #2a2e3d' }} />
+                  <span style={{ margin: '0 12px' }}>{dateSepLabel(l.created_at)}</span>
+                  <span style={{ flex: 1, borderBottom: '1px solid #2a2e3d' }} />
+                </div>
+              )}
               <div onClick={() => onSelect(l.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: isPrompting ? 'none' : '1px solid var(--border)', background: selectedId === l.id ? 'rgba(78,143,240,0.06)' : 'transparent', transition: 'background 0.15s' }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLORS[l.status] || 'var(--text3)', flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -906,8 +892,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
               )}
             </React.Fragment>
           )
-          })
-        })()}
+        })}
       </div>
 
       {/* Pagination */}
