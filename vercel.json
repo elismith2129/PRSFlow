@@ -2,7 +2,8 @@
   "crons": [
     {
       "path": "/api/cron/auto-demote",
-      "schedule": "0 * * * *"
+      "schedule": "0 9 * * *"
     }
   ]
 }
+
