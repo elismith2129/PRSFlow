@@ -182,21 +182,24 @@ export default function CRMPage() {
     await load()
   }
 
-  async function keepHot(id: number, initials: string, notes = '') {
+  async function keepHot(id: number, initials: string, notes = '', status?: string) {
+    const lead = leads.find(l => l.id === id)
+    const isWarm = (status || lead?.status) === 'warm'
+    const label = isWarm ? 'Kept Warm' : 'Kept Hot'
+    const days = isWarm ? 3 : 5
     const now = new Date().toISOString()
     const dateStr = new Date().toLocaleString('en-US', {
       month: 'numeric', day: 'numeric',
       hour: 'numeric', minute: '2-digit', hour12: true,
     }).replace(',', '').toLowerCase()
     const touchNote = notes.trim()
-      ? `[${dateStr}] ${initials} - Kept Hot - ${notes.trim()}`
-      : `[${dateStr}] ${initials} - Kept Hot`
-    const lead = leads.find(l => l.id === id)
+      ? `[${dateStr}] ${initials} - ${label} - ${notes.trim()}`
+      : `[${dateStr}] ${initials} - ${label}`
     const currentNotes = lead?.notes?.trim() || ''
     const newNotes = currentNotes ? `${currentNotes}\n${touchNote}` : touchNote
-    const keepHotUntil = new Date(); keepHotUntil.setDate(keepHotUntil.getDate() + 5)
+    const keepHotUntil = new Date(); keepHotUntil.setDate(keepHotUntil.getDate() + days)
     await supabase.from('leads').update({ last_contact: now, keep_hot_until: keepHotUntil.toISOString(), notes: newNotes }).eq('id', id)
-    await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: `${initials} - Kept Hot` })
+    await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: `${initials} - ${label}` })
     await load()
   }
 
@@ -448,10 +451,11 @@ function TouchPrompt({ leadId, onSubmit, onCancel, showStatusSelect }: {
 
 // ─── Keep Hot prompt ──────────────────────────────────────────────────────────
 
-function KeepHotPrompt({ leadId, onSubmit, onCancel }: {
+function KeepHotPrompt({ leadId, onSubmit, onCancel, label = 'Keep Hot' }: {
   leadId: number
   onSubmit: (id: number, initials: string, notes: string) => Promise<void>
   onCancel: () => void
+  label?: string
 }) {
   const [initials, setInitials] = useState('')
   const [notes, setNotes] = useState('')
@@ -475,7 +479,7 @@ function KeepHotPrompt({ leadId, onSubmit, onCancel }: {
           placeholder="Initials" maxLength={3}
           style={{ width: 70, background: 'var(--surface)', border: '1px solid var(--hot)', color: 'var(--text)', padding: '4px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 12, outline: 'none', textAlign: 'center', letterSpacing: '0.12em' }}
         />
-        <span style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Keep Hot</span>
+        <span style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</span>
       </div>
       <textarea
         value={notes} onChange={e => setNotes(e.target.value)}
@@ -486,7 +490,7 @@ function KeepHotPrompt({ leadId, onSubmit, onCancel }: {
       />
       <div style={{ display: 'flex', gap: 6 }}>
         <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? 'var(--hot)' : 'var(--surface)', color: canSubmit ? '#fff' : 'var(--text3)', border: `1px solid ${canSubmit ? 'var(--hot)' : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
-          {submitting ? '…' : 'Keep Hot'}
+          {submitting ? '…' : label}
         </button>
         <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}>
           Cancel
@@ -544,7 +548,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
   selectedId: number | null
   onSelect: (id: number, field?: string) => void
   onMarkTouched: (id: number, initials: string, method: TouchMethod, notes: string, statusOverride?: string) => Promise<void>
-  onKeepHot: (id: number, initials: string, notes: string) => Promise<void>
+  onKeepHot: (id: number, initials: string, notes: string, status?: string) => Promise<void>
   onMarkDead: (id: number, initials: string) => Promise<void>
   onUpdateStatus: (id: number, status: string) => Promise<void>
   loading: boolean
@@ -639,8 +643,8 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                 <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, border: '1px solid var(--border)', color: 'var(--text3)', flexShrink: 0, whiteSpace: 'nowrap' }}>
                   {BOOKING_ICONS[l.booking] || ''} {l.booking || '—'}
                 </span>
-                {/* Keep Hot — Hot tab only */}
-                {activeBucket.key === 'hot' && (
+                {/* Keep Hot / Keep Warm — Hot and Warm tabs */}
+                {(activeBucket.key === 'hot' || activeBucket.key === 'warm') && (
                   <button
                     onClick={e => {
                       e.stopPropagation()
@@ -648,7 +652,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                       setKeepHotPromptId(isKeepHotPrompting ? null : l.id)
                     }}
                     style={{ flexShrink: 0, padding: '4px 9px', background: 'transparent', border: `1px solid ${isKeepHotPrompting ? 'var(--border)' : 'var(--hot)'}`, color: isKeepHotPrompting ? 'var(--text3)' : 'var(--hot)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                    {isKeepHotPrompting ? 'Cancel' : 'Keep Hot'}
+                    {isKeepHotPrompting ? 'Cancel' : activeBucket.key === 'warm' ? 'Keep Warm' : 'Keep Hot'}
                   </button>
                 )}
                 {/* Dead Lead — Incomplete tab only */}
@@ -684,7 +688,8 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
               {isKeepHotPrompting && (
                 <KeepHotPrompt
                   leadId={l.id}
-                  onSubmit={async (id, init, notes) => { setKeepHotPromptId(null); await onKeepHot(id, init, notes) }}
+                  label={l.status === 'warm' ? 'Keep Warm' : 'Keep Hot'}
+                  onSubmit={async (id, init, notes) => { setKeepHotPromptId(null); await onKeepHot(id, init, notes, l.status) }}
                   onCancel={() => setKeepHotPromptId(null)}
                 />
               )}
@@ -715,7 +720,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   selectedId: number | null
   onSelect: (id: number) => void
   onMarkTouched: (id: number, initials: string, method: TouchMethod, notes: string, statusOverride?: string) => Promise<void>
-  onKeepHot: (id: number, initials: string, notes: string) => Promise<void>
+  onKeepHot: (id: number, initials: string, notes: string, status?: string) => Promise<void>
   onMarkDead: (id: number, initials: string) => Promise<void>
   onUpdateStatus: (id: number, status: string) => Promise<void>
   loading: boolean
@@ -811,7 +816,8 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
           const isKeepHotPrompting = keepHotPromptId === l.id
           const isDeadPrompting = deadLeadPromptId === l.id
           const isPrompting = isTouchPrompting || isKeepHotPrompting || isDeadPrompting
-          const showKeepHot = activeTab === 'hot'
+          const showKeepHot = activeTab === 'hot' || activeTab === 'warm'
+          const keepLabel = activeTab === 'warm' ? 'Keep Warm' : 'Keep Hot'
           const showDeadLead = missing.length > 0
           return (
             <React.Fragment key={l.id}>
@@ -832,7 +838,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                 {showKeepHot && (
                   <button onClick={e => { e.stopPropagation(); setTouchPromptId(null); setDeadLeadPromptId(null); setKeepHotPromptId(isKeepHotPrompting ? null : l.id) }}
                     style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: `1px solid ${isKeepHotPrompting ? 'var(--border)' : 'var(--hot)'}`, color: isKeepHotPrompting ? 'var(--text3)' : 'var(--hot)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                    {isKeepHotPrompting ? 'Cancel' : 'Keep Hot'}
+                    {isKeepHotPrompting ? 'Cancel' : keepLabel}
                   </button>
                 )}
                 {showDeadLead && (
@@ -853,7 +859,8 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
               )}
               {isKeepHotPrompting && (
                 <KeepHotPrompt leadId={l.id}
-                  onSubmit={async (id, init, notes) => { setKeepHotPromptId(null); await onKeepHot(id, init, notes) }}
+                  label={keepLabel}
+                  onSubmit={async (id, init, notes) => { setKeepHotPromptId(null); await onKeepHot(id, init, notes, l.status) }}
                   onCancel={() => setKeepHotPromptId(null)} />
               )}
               {isDeadPrompting && (
@@ -965,6 +972,25 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
     setTimeout(() => setSavedField(null), 600)
   }
 
+  async function saveStatus(newStatus: string) {
+    if (newStatus === lead.status) return
+    const updates: Partial<Lead> = { status: newStatus as LeadStatus }
+    if (newStatus === 'hot') {
+      const khu = new Date(); khu.setDate(khu.getDate() + 5)
+      updates.keep_hot_until = khu.toISOString()
+    } else if (newStatus === 'warm') {
+      const khu = new Date(); khu.setDate(khu.getDate() + 3)
+      updates.keep_hot_until = khu.toISOString()
+    } else {
+      updates.keep_hot_until = null
+    }
+    await supabase.from('leads').update(updates).eq('id', lead.id)
+    onUpdate('status', newStatus)
+    onUpdate('keep_hot_until', updates.keep_hot_until ?? null)
+    setSavedField('status')
+    setTimeout(() => setSavedField(null), 600)
+  }
+
   const lastContactDisplay = lead.last_contact
     ? `${fmtDateTime(lead.last_contact)}${latestTouch?.initials ? ' · ' + latestTouch.initials + (latestTouch.method ? ' via ' + latestTouch.method : '') : ''}`
     : '—'
@@ -1031,7 +1057,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
         <select
           value={local.status || lead.status}
-          onChange={e => { update('status', e.target.value); save('status', e.target.value) }}
+          onChange={e => { update('status', e.target.value); saveStatus(e.target.value) }}
           style={{ ...pillBase, background: `${STATUS_COLORS[local.status || lead.status]}22`, color: STATUS_COLORS[local.status || lead.status] || 'var(--text2)', border: `1px solid ${STATUS_COLORS[local.status || lead.status]}66`, appearance: 'none' as any }}>
           {['hot', 'warm', 'cold', 'uncontacted', 'booked', 'dead'].map(s => <option key={s} value={s}>{s}</option>)}
         </select>
