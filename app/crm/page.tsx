@@ -58,6 +58,21 @@ function daysUntilKhu(l: Lead): number | null {
   return Math.ceil((new Date(l.keep_hot_until).getTime() - Date.now()) / 86400000)
 }
 
+function dateKey(d: string) {
+  const dt = new Date(d)
+  return `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}`
+}
+
+function dateSepLabel(d: string) {
+  const dt = new Date(d)
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const yest = new Date(today); yest.setDate(yest.getDate() - 1)
+  const target = new Date(dt); target.setHours(0, 0, 0, 0)
+  if (target.getTime() === today.getTime()) return 'Today'
+  if (target.getTime() === yest.getTime()) return 'Yesterday'
+  return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+}
+
 function getMissing(l: Lead) {
   const m: string[] = []
   if (!l.fname) m.push('first name')
@@ -712,7 +727,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
 
 const PAGE_SIZE = 25
 
-type AllLeadsTab = 'uncontacted' | 'hot' | 'warm' | 'cold-dead' | 'booked'
+type AllLeadsTab = 'all' | 'uncontacted' | 'hot' | 'warm' | 'cold-dead' | 'booked'
 
 function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouched, onKeepHot, onMarkDead, onUpdateStatus, loading }: {
   leads: Lead[]
@@ -725,7 +740,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   onUpdateStatus: (id: number, status: string) => Promise<void>
   loading: boolean
 }) {
-  const [activeTab, setActiveTab] = useState<AllLeadsTab>('hot')
+  const [activeTab, setActiveTab] = useState<AllLeadsTab>('all')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [touchPromptId, setTouchPromptId] = useState<number | null>(null)
@@ -741,6 +756,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   const bookedLeads = leads.filter(l => l.status === 'booked')
 
   const tabMap: Record<AllLeadsTab, Lead[]> = {
+    all: leads, // already sorted created_at DESC from load()
     uncontacted: uncontactedLeads, hot: hotLeads, warm: warmLeads, 'cold-dead': coldDeadLeads, booked: bookedLeads,
   }
 
@@ -753,6 +769,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const tabDefs: { key: AllLeadsTab; label: string; color: string }[] = [
+    { key: 'all', label: 'All', color: 'var(--text2)' },
     { key: 'uncontacted', label: 'Uncontacted', color: '#4ef0db' },
     { key: 'hot', label: 'Hot', color: 'var(--hot)' },
     { key: 'warm', label: 'Warm', color: 'var(--warm)' },
@@ -795,7 +812,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
         <div style={{ padding: '8px 0 6px' }}>
           <input
             value={search} onChange={e => setSearch(e.target.value)}
-            placeholder={`Search ${activeLeads.length} ${tabDefs.find(t => t.key === activeTab)?.label.toLowerCase()} leads…`}
+            placeholder={`Search ${activeLeads.length} ${activeTab === 'all' ? 'total' : tabDefs.find(t => t.key === activeTab)?.label.toLowerCase()} leads…`}
             style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 10px', borderRadius: 5, fontFamily: 'DM Mono', fontSize: 11, outline: 'none' }}
           />
         </div>
@@ -807,17 +824,36 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
           <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
         ) : filtered.length === 0 ? (
           <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11 }}>
-            {search ? 'No leads match.' : `No ${tabDefs.find(t => t.key === activeTab)?.label.toLowerCase()} leads.`}
+            {search ? 'No leads match.' : activeTab === 'all' ? 'No leads yet.' : `No ${tabDefs.find(t => t.key === activeTab)?.label.toLowerCase()} leads.`}
           </div>
-        ) : paginated.map(l => {
+        ) : (() => {
+          type Row = { type: 'lead'; lead: Lead } | { type: 'sep'; label: string; key: string }
+          const rows: Row[] = []
+          let lastKey = ''
+          for (const l of paginated) {
+            if (activeTab === 'all') {
+              const k = dateKey(l.created_at)
+              if (k !== lastKey) { rows.push({ type: 'sep', label: dateSepLabel(l.created_at), key: k }); lastKey = k }
+            }
+            rows.push({ type: 'lead', lead: l })
+          }
+          return rows.map(row => {
+            if (row.type === 'sep') return (
+              <div key={`sep-${row.key}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px 4px' }}>
+                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                <span style={{ fontSize: 9, fontFamily: 'DM Mono', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#4a4f64', whiteSpace: 'nowrap' }}>{row.label}</span>
+                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+              </div>
+            )
+            const l = row.lead
           const touch = latestTouches[l.id]
           const missing = getMissing(l)
           const isTouchPrompting = touchPromptId === l.id
           const isKeepHotPrompting = keepHotPromptId === l.id
           const isDeadPrompting = deadLeadPromptId === l.id
           const isPrompting = isTouchPrompting || isKeepHotPrompting || isDeadPrompting
-          const showKeepHot = activeTab === 'hot' || activeTab === 'warm'
-          const keepLabel = activeTab === 'warm' ? 'Keep Warm' : 'Keep Hot'
+          const showKeepHot = l.status === 'hot' || l.status === 'warm'
+          const keepLabel = l.status === 'warm' ? 'Keep Warm' : 'Keep Hot'
           const showDeadLead = missing.length > 0
           return (
             <React.Fragment key={l.id}>
@@ -853,7 +889,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                 </button>
               </div>
               {isTouchPrompting && (
-                <TouchPrompt leadId={l.id} showStatusSelect={activeTab === 'uncontacted'}
+                <TouchPrompt leadId={l.id} showStatusSelect={l.status === 'uncontacted'}
                   onSubmit={async (id, init, meth, notes, status) => { setTouchPromptId(null); await onMarkTouched(id, init, meth, notes, status) }}
                   onCancel={() => setTouchPromptId(null)} />
               )}
@@ -870,7 +906,8 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
               )}
             </React.Fragment>
           )
-        })}
+          })
+        })()}
       </div>
 
       {/* Pagination */}
@@ -895,9 +932,9 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
 
 // ─── Section helpers ──────────────────────────────────────────────────────────
 
-function SectionHeader({ label }: { label: string }) {
+function SectionHeader({ label, mt }: { label: string; mt?: number }) {
   return (
-    <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6, marginTop: 14 }}>
+    <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6, marginTop: mt ?? 14 }}>
       {label}
     </div>
   )
@@ -1125,7 +1162,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
       </FieldPair>
 
       {/* Company with autocomplete */}
-      <div style={{ marginTop: 6, position: 'relative' }}>
+      <div style={{ marginTop: 4, position: 'relative' }}>
         <div style={fieldLabelStyle}>Company / Artist</div>
         <input
           value={local.company || ''}
@@ -1170,7 +1207,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
         )}
       </div>
 
-      <SectionHeader label="Location & Quote" />
+      <SectionHeader label="Location & Quote" mt={8} />
       <FieldPair>
         <Field label="Studio / Location">
           <input value={local.location || ''} onChange={e => update('location', e.target.value)}
@@ -1182,9 +1219,14 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
             onFocus={() => setFocusedInput('quote')} onBlur={e => { setFocusedInput(null); save('quote', e.target.value) }}
             placeholder="—" style={iStyle('quote')} />
         </Field>
+        <Field label="Session Date">
+          <input value={local.session_date || ''} onChange={e => update('session_date', e.target.value)}
+            onFocus={() => setFocusedInput('session_date')} onBlur={e => { setFocusedInput(null); save('session_date', e.target.value) }}
+            placeholder="—" style={iStyle('session_date')} />
+        </Field>
       </FieldPair>
 
-      <SectionHeader label="Session Notes & Details" />
+      <SectionHeader label="Session Notes & Details" mt={8} />
       <textarea
         value={notesVal}
         onChange={e => setNotesVal(e.target.value)}
