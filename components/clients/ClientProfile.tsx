@@ -19,6 +19,7 @@ interface Props {
   isMobile?: boolean
   onRefresh: () => void
   onBack?: () => void
+  onDelete?: () => void
 }
 
 // ─── Shared button styles ─────────────────────────────────────────────────────
@@ -248,12 +249,14 @@ function BookingHistory({ leads }: { leads: BookingLead[] }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ClientProfile({ client, contacts, bookingCount, loading, isMobile, onRefresh, onBack }: Props) {
+export function ClientProfile({ client, contacts, bookingCount, loading, isMobile, onRefresh, onBack, onDelete }: Props) {
   const [bookings, setBookings] = useState<BookingLead[]>([])
   const [showAddContact, setShowAddContact] = useState(false)
   const [newArtist, setNewArtist] = useState('')
   const [showAddress, setShowAddress] = useState(false)
   const [bookingToast, setBookingToast] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   // Load bookings for selected client
   useEffect(() => {
@@ -318,6 +321,16 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
     await supabase.from('clients').update({ artists: updated }).eq('id', client.id)
     onRefresh()
   }, [client, onRefresh])
+
+  const deleteClient = useCallback(async () => {
+    if (!client) return
+    setDeleting(true)
+    await supabase.from('leads').update({ client_id: null }).eq('client_id', client.id)
+    await supabase.from('clients').delete().eq('id', client.id)
+    setDeleting(false)
+    setShowDeleteConfirm(false)
+    onDelete?.()
+  }, [client, onDelete])
 
   // ── Loading skeleton ───────────────────────────────────────────────────────
   if (loading && !client) {
@@ -516,11 +529,34 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
         <InlineField label="" value={client.notes} onSave={v => saveClient({ notes: v })} multiline placeholder="Add notes…" />
 
         {/* Footer */}
-        <div style={{ marginTop: 16, paddingTop: 10, borderTop: '1px solid var(--border)', fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
-          {!client.registered_at ? 'Migrated · ' : ''}
-          Added {client.created_at ? new Date(client.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
+        <div style={{ marginTop: 16, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+            {!client.registered_at ? 'Migrated · ' : ''}
+            Added {client.created_at ? new Date(client.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
+          </div>
+          <button onClick={() => setShowDeleteConfirm(true)} style={{ ...dangerBtn, fontSize: 9, padding: '3px 8px' }}>
+            Delete Client
+          </button>
         </div>
       </div>
+
+      {/* Delete confirm modal */}
+      {showDeleteConfirm && (
+        <div onClick={() => setShowDeleteConfirm(false)} style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px', maxWidth: 400, width: '100%' }}>
+            <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 14, marginBottom: 8 }}>Delete {client.name}?</div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono', lineHeight: 1.7, marginBottom: 20 }}>
+              This will permanently delete this client and all associated contacts. Any linked leads will be unlinked but not deleted. This action cannot be undone.
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowDeleteConfirm(false)} style={ghostBtn}>Cancel</button>
+              <button onClick={deleteClient} disabled={deleting} style={{ ...dangerBtn, padding: '6px 16px', fontSize: 10, opacity: deleting ? 0.7 : 1, cursor: deleting ? 'default' : 'pointer' }}>
+                {deleting ? 'Deleting…' : 'Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -149,6 +149,7 @@ function ClientsPageInner() {
             isMobile={isMobile}
             onRefresh={load}
             onBack={isMobile ? () => setSelectedId(null) : undefined}
+            onDelete={() => { setSelectedId(null); load() }}
           />
         )}
       </div>
@@ -166,6 +167,11 @@ function ClientsPageInner() {
 
 // ─── Registration review modal ────────────────────────────────────────────────
 
+function isImagePath(path: string | null): boolean {
+  if (!path) return false
+  return /\.(jpg|jpeg|png|heic|webp)$/i.test(path)
+}
+
 function RegistrationReviewModal({ regs, onClose, onConfirm }: {
   regs: PendingReg[]
   onClose: () => void
@@ -173,7 +179,22 @@ function RegistrationReviewModal({ regs, onClose, onConfirm }: {
 }) {
   const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set())
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const allDone = confirmedIds.size >= regs.length
+
+  useEffect(() => {
+    async function fetchSignedUrls() {
+      const map: Record<string, string> = {}
+      for (const reg of regs) {
+        if (!reg.id_file_url) continue
+        const { data } = await supabase.storage.from('client-ids').createSignedUrl(reg.id_file_url, 3600)
+        if (data?.signedUrl) map[reg.id] = data.signedUrl
+      }
+      setSignedUrls(map)
+    }
+    fetchSignedUrls()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function confirm(id: string) {
     setConfirmingId(id)
@@ -195,77 +216,110 @@ function RegistrationReviewModal({ regs, onClose, onConfirm }: {
   }
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 520, maxHeight: '85vh', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}>
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, maxHeight: '85vh', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}>
 
-        {/* Header */}
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 1 }}>
-          <div>
-            <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15 }}>New Registrations</div>
-            <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 2 }}>
-              {allDone ? 'All confirmed — good work.' : `${regs.length - confirmedIds.size} of ${regs.length} need confirmation`}
-            </div>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
-        </div>
-
-        {/* List */}
-        <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {regs.map(reg => {
-            const isConfirmed = confirmedIds.has(reg.id)
-            const isConfirming = confirmingId === reg.id
-            const regDate = new Date(reg.registered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-            return (
-              <div key={reg.id} style={{
-                padding: '10px 12px',
-                background: isConfirmed ? 'rgba(78,240,162,0.06)' : 'var(--surface2)',
-                border: `1px solid ${isConfirmed ? 'rgba(78,240,162,0.2)' : 'var(--border)'}`,
-                borderRadius: 8, display: 'flex', alignItems: 'flex-start', gap: 12,
-                transition: 'all 0.2s',
-              }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 12, marginBottom: 3 }}>{reg.name}</div>
-                  <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono', lineHeight: 1.7 }}>
-                    {reg.email && <span>{reg.email}{reg.phone ? ' · ' : ''}</span>}
-                    {reg.phone && <span>{reg.phone} · </span>}
-                    <span>Registered {regDate}</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 5, marginTop: 5, flexWrap: 'wrap' as const }}>
-                    {reg.id_file_url && (
-                      <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--booked)', background: 'rgba(78,240,162,0.1)', border: '1px solid rgba(78,240,162,0.3)', padding: '2px 5px', borderRadius: 3 }}>
-                        ID ON FILE
-                      </span>
-                    )}
-                    {reg.terms_accepted && (
-                      <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--booked)', background: 'rgba(78,240,162,0.1)', border: '1px solid rgba(78,240,162,0.3)', padding: '2px 5px', borderRadius: 3 }}>
-                        TERMS ACCEPTED
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {isConfirmed ? (
-                  <span style={{ fontSize: 10, color: 'var(--booked)', fontFamily: 'DM Mono', flexShrink: 0, marginTop: 2 }}>✓ Confirmed</span>
-                ) : (
-                  <button
-                    onClick={() => confirm(reg.id)}
-                    disabled={isConfirming}
-                    style={{ ...accentBtn, opacity: isConfirming ? 0.7 : 1, cursor: isConfirming ? 'default' : 'pointer' }}
-                  >
-                    {isConfirming ? '…' : 'Confirm'}
-                  </button>
-                )}
+          {/* Header */}
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 1 }}>
+            <div>
+              <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15 }}>New Registrations</div>
+              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 2 }}>
+                {allDone ? 'All confirmed — good work.' : `${regs.length - confirmedIds.size} of ${regs.length} need confirmation`}
               </div>
-            )
-          })}
-        </div>
+            </div>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
+          </div>
 
-        {/* Footer */}
-        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={ghostBtn}>
-            {allDone ? 'Done' : 'Close'}
-          </button>
+          {/* List */}
+          <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {regs.map(reg => {
+              const isConfirmed = confirmedIds.has(reg.id)
+              const isConfirming = confirmingId === reg.id
+              const regDate = new Date(reg.registered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+              const signedUrl = signedUrls[reg.id]
+              const hasImage = reg.id_file_url && isImagePath(reg.id_file_url)
+              const hasPdf = reg.id_file_url && !isImagePath(reg.id_file_url)
+              return (
+                <div key={reg.id} style={{
+                  padding: '10px 12px',
+                  background: isConfirmed ? 'rgba(78,240,162,0.06)' : 'var(--surface2)',
+                  border: `1px solid ${isConfirmed ? 'rgba(78,240,162,0.2)' : 'var(--border)'}`,
+                  borderRadius: 8, display: 'flex', alignItems: 'flex-start', gap: 12,
+                  transition: 'all 0.2s',
+                }}>
+                  {/* ID thumbnail */}
+                  {reg.id_file_url && (
+                    <div style={{ flexShrink: 0 }}>
+                      {hasImage && signedUrl ? (
+                        <img
+                          src={signedUrl}
+                          onClick={() => setLightboxUrl(signedUrl)}
+                          title="Click to view full size"
+                          style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 5, cursor: 'pointer', border: '1px solid var(--border)', display: 'block' }}
+                        />
+                      ) : hasImage && !signedUrl ? (
+                        <div style={{ width: 56, height: 56, borderRadius: 5, background: 'var(--surface)', border: '1px solid var(--border)', animation: 'shimmer 1.4s ease-in-out infinite' }} />
+                      ) : hasPdf && signedUrl ? (
+                        <a href={signedUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: 56, height: 56, borderRadius: 5, background: 'var(--surface)', border: '1px solid var(--border)', textDecoration: 'none', gap: 3 }}>
+                          <span style={{ fontSize: 18 }}>📄</span>
+                          <span style={{ fontSize: 7, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text3)', letterSpacing: '0.06em' }}>PDF</span>
+                        </a>
+                      ) : (
+                        <div style={{ width: 56, height: 56, borderRadius: 5, background: 'var(--surface)', border: '1px solid var(--border)', animation: 'shimmer 1.4s ease-in-out infinite' }} />
+                      )}
+                    </div>
+                  )}
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 12, marginBottom: 3 }}>{reg.name}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono', lineHeight: 1.7 }}>
+                      {reg.email && <span>{reg.email}{reg.phone ? ' · ' : ''}</span>}
+                      {reg.phone && <span>{reg.phone} · </span>}
+                      <span>Registered {regDate}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 5, marginTop: 5, flexWrap: 'wrap' as const }}>
+                      {reg.terms_accepted && (
+                        <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--booked)', background: 'rgba(78,240,162,0.1)', border: '1px solid rgba(78,240,162,0.3)', padding: '2px 5px', borderRadius: 3 }}>
+                          TERMS ACCEPTED
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {isConfirmed ? (
+                    <span style={{ fontSize: 10, color: 'var(--booked)', fontFamily: 'DM Mono', flexShrink: 0, marginTop: 2 }}>✓ Profile Created</span>
+                  ) : (
+                    <button
+                      onClick={() => confirm(reg.id)}
+                      disabled={isConfirming}
+                      style={{ ...accentBtn, opacity: isConfirming ? 0.7 : 1, cursor: isConfirming ? 'default' : 'pointer' }}
+                    >
+                      {isConfirming ? '…' : 'Create Client Profile'}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Footer */}
+          <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
+            <button onClick={onClose} style={ghostBtn}>
+              {allDone ? 'Done' : 'Close'}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Lightbox */}
+      {lightboxUrl && (
+        <div onClick={() => setLightboxUrl(null)} style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '90vw', maxHeight: '88vh' }}>
+            <img src={lightboxUrl} alt="ID document" style={{ maxWidth: '100%', maxHeight: '88vh', objectFit: 'contain', borderRadius: 8, display: 'block' }} />
+            <button onClick={() => setLightboxUrl(null)} style={{ position: 'absolute', top: -14, right: -14, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14, fontFamily: 'DM Mono' }}>×</button>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

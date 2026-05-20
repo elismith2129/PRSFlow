@@ -407,6 +407,10 @@ export default function CRMPage() {
                     }}
                     onBookClient={() => setBookClientOpen(true)}
                     onViewClient={(id) => router.push(`/clients?id=${id}`)}
+                    onDelete={() => {
+                      setLeads(prev => prev.filter(l => l.id !== selected.id))
+                      setSelectedId(null)
+                    }}
                   />
                 </div>
               </>
@@ -970,7 +974,7 @@ function Field({ label, children }: { label: string, children: React.ReactNode }
 
 // ─── Lead detail ──────────────────────────────────────────────────────────────
 
-function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, distinctLabels, distinctCompanies, onUpdate, onBookClient, onViewClient }: {
+function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, distinctLabels, distinctCompanies, onUpdate, onBookClient, onViewClient, onDelete }: {
   lead: Lead
   missing: string[]
   latestTouch?: { initials: string, method: string, created_at: string }
@@ -981,6 +985,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   onUpdate: (f: string, v: any) => void
   onBookClient?: () => void
   onViewClient?: (id: string) => void
+  onDelete?: () => void
 }) {
   const [local, setLocal] = useState<Partial<Lead>>({ ...lead })
   const [notesVal, setNotesVal] = useState(lead.notes || '')
@@ -988,6 +993,8 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   const [focusedInput, setFocusedInput] = useState<string | null>(null)
   const [showLabelDD, setShowLabelDD] = useState(false)
   const [showCompanyDD, setShowCompanyDD] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const fnameRef = useRef<HTMLInputElement>(null)
   const lnameRef = useRef<HTMLInputElement>(null)
@@ -1275,6 +1282,48 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
           style={{ marginTop: 6, padding: '5px 14px', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
           Save Notes
         </button>
+      )}
+
+      {/* Delete lead */}
+      <div style={{ marginTop: 20, paddingTop: 12, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          style={{ background: 'rgba(240,78,122,0.12)', color: 'var(--hot)', border: '1px solid rgba(240,78,122,0.25)', borderRadius: 4, padding: '4px 10px', fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}
+        >
+          Delete Lead
+        </button>
+      </div>
+
+      {/* Delete confirm modal */}
+      {showDeleteConfirm && (
+        <div onClick={() => setShowDeleteConfirm(false)} style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px', maxWidth: 400, width: '100%' }}>
+            <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 14, marginBottom: 8 }}>
+              Delete {[lead.fname, lead.lname].filter(Boolean).join(' ') || 'this lead'}?
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono', lineHeight: 1.7, marginBottom: 20 }}>
+              This will permanently delete this lead and all contact log entries. This action cannot be undone.
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowDeleteConfirm(false)} style={{ background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 14px', fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer' }}>Cancel</button>
+              <button
+                onClick={async () => {
+                  setDeleting(true)
+                  await supabase.from('lead_activity').delete().eq('lead_id', lead.id)
+                  await supabase.from('registration_tokens').update({ lead_id: null }).eq('lead_id', lead.id)
+                  await supabase.from('leads').delete().eq('id', lead.id)
+                  setDeleting(false)
+                  setShowDeleteConfirm(false)
+                  onDelete?.()
+                }}
+                disabled={deleting}
+                style={{ background: 'rgba(240,78,122,0.15)', color: 'var(--hot)', border: '1px solid rgba(240,78,122,0.3)', borderRadius: 4, padding: '6px 16px', fontSize: 10, fontFamily: 'DM Mono', cursor: deleting ? 'default' : 'pointer', opacity: deleting ? 0.7 : 1 }}
+              >
+                {deleting ? 'Deleting…' : 'Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

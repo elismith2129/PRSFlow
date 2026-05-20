@@ -63,6 +63,17 @@
 - Storage buckets currently have blanket anon INSERT policy with size/MIME limits (25MB max, image + PDF only). When RLS is enabled in Chunk 9, replace with proper auth-based policy.
 - Once auth is enabled, route group separation can be revisited — internal pages will be login-gated regardless of layout structure. Still good UX to keep public pages chrome-free (no nav on registration, future public-facing pages, etc.).
 
+### Chunk 4.8 — Needs Action rebuild (priority: HIGH)
+- **Staff is hitting the Needs Action display bug repeatedly during testing. Slot as sub-chunk 4.8 immediately after 4.7 ships, before Chunk 6.** Priority bumped based on testing feedback.
+- Current Needs Action only shows leads whose `keep_hot_until` timer has expired — which means a freshly-touched lead disappears and won't reappear for 5–8 days. Staff loses visibility on actively-engaged leads.
+- Needs design pass on what "needs action" should actually mean vs. "is overdue."
+
+### CRM — Auto-match leads to clients at creation
+- **When a new lead is created (manually or via Squarespace webhook), check against existing clients by email/phone/name. If matched, link lead → client immediately**, pre-fill the CRM card with client data (editable), and hide all "create client account" UI. "Start Booking" becomes the single CTA regardless of new vs. returning. Eliminates the Book Client modal (new/returning/label flow).
+- Needs design pass: match criteria, fuzzy matching threshold, ambiguous-match UX (what if two clients match?).
+- **Slot as standalone sub-chunk between Chunk 4 and Chunk 6.**
+- Once auto-matching is in place, reconsider whether "Confirm Client Account & Start Booking" is still the right CTA. Likely collapses to just "Start Booking" for matched leads and "Create Client Profile → Start Booking" for unmatched.
+
 ### Book Client UX
 - **"Book Client" button currently only appears on `status = 'booked'` leads.** During 4.5 testing, the preference emerged to be able to convert directly from Hot/Warm leads without manually promoting status first. Options discussed: a separate "Book it!" button that promotes status AND opens the modal in one action, OR show Book Client everywhere and auto-promote. Both are small changes. Deferred — revisit as a small standalone sub-chunk between 4.7 and Chunk 6.
 
@@ -86,4 +97,4 @@
 
 ---
 
-*Last updated: May 19, 2026 — Chunk 4.6b verified and complete. Update at the end of each chunk/sub-chunk.*
+*Last updated: May 20, 2026 — Chunk 4.7 complete. 4.8 (Needs Action rebuild) queued next.*
