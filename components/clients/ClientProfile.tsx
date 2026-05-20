@@ -1,6 +1,6 @@
 'use client'
 import React from 'react'
-import { Client, ClientContact } from '@/lib/supabase'
+import { Client, ClientContact, CLIENT_TYPE_LABELS } from '@/lib/supabase'
 
 interface Props {
   client: Client | null
@@ -41,7 +41,7 @@ export function ClientProfile({ client, contacts, bookingCount }: Props) {
             color: isLabel ? 'var(--accent)' : 'var(--text3)',
             border: `1px solid ${isLabel ? 'rgba(200,240,78,0.3)' : 'var(--border)'}`,
           }}>
-            {isLabel ? 'LABEL' : 'INDIVIDUAL'}
+            {CLIENT_TYPE_LABELS[client.type].toUpperCase()}
           </span>
           {bookingCount > 0 && (
             <span style={{

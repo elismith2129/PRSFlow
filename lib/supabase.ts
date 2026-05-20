@@ -10,6 +10,11 @@ export type BillingType = 'COD' | 'Billing'
 export type BookingType = 'Recording Session' | 'Filming' | 'Event/Playback'
 export type ClientType = 'label' | 'individual'
 
+export const CLIENT_TYPE_LABELS: Record<ClientType, string> = {
+  label: 'Label',
+  individual: 'COD',
+}
+
 export interface Lead {
   id: number
   fname: string

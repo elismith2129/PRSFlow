@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useEffect } from 'react'
-import { Client, ClientContact } from '@/lib/supabase'
+import { Client, ClientContact, CLIENT_TYPE_LABELS } from '@/lib/supabase'
 
 type TypeFilter = 'all' | 'label' | 'individual'
 type SortOption = 'alpha' | 'recent' | 'bookings'
@@ -59,7 +59,7 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
   const filterDefs: { key: TypeFilter; label: string; count: number }[] = [
     { key: 'all', label: 'All', count: clients.length },
     { key: 'label', label: 'Labels', count: labelCount },
-    { key: 'individual', label: 'Individuals', count: indCount },
+    { key: 'individual', label: CLIENT_TYPE_LABELS.individual, count: indCount },
   ]
 
   return (
@@ -149,7 +149,7 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
                     color: isLabel ? 'var(--accent)' : 'var(--text3)',
                     border: `1px solid ${isLabel ? 'rgba(200,240,78,0.3)' : 'var(--border)'}`,
                   }}>
-                    {isLabel ? 'LABEL' : 'INDIVIDUAL'}
+                    {CLIENT_TYPE_LABELS[c.type].toUpperCase()}
                   </span>
                 </div>
                 <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
