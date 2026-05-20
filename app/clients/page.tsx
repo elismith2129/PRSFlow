@@ -1,16 +1,27 @@
 'use client'
-import React, { useEffect, useState, useCallback, useRef } from 'react'
+import React, { useEffect, useState, useCallback, useRef, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase, Client, ClientContact } from '@/lib/supabase'
 import { ClientList, BookingCountMap, ContactsMap } from '@/components/clients/ClientList'
 import { ClientProfile } from '@/components/clients/ClientProfile'
 
 export default function ClientsPage() {
+  return (
+    <Suspense>
+      <ClientsPageInner />
+    </Suspense>
+  )
+}
+
+function ClientsPageInner() {
   const [clients, setClients] = useState<Client[]>([])
   const [contactsMap, setContactsMap] = useState<ContactsMap>({})
   const [bookingCountMap, setBookingCountMap] = useState<BookingCountMap>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const hasAutoSelected = useRef(false)
+  const searchParams = useSearchParams()
+  const idParam = searchParams.get('id')
 
   const load = useCallback(async () => {
     const [
@@ -42,12 +53,16 @@ export default function ClientsPage() {
 
   useEffect(() => { load() }, [load])
 
-  // Auto-select the first client (alphabetically) on initial load
+  // Auto-select: prefer ?id= param, otherwise fall back to first client
   useEffect(() => {
     if (loading || hasAutoSelected.current || clients.length === 0) return
-    setSelectedId(clients[0].id)
+    if (idParam && clients.some(c => c.id === idParam)) {
+      setSelectedId(idParam)
+    } else {
+      setSelectedId(clients[0].id)
+    }
     hasAutoSelected.current = true
-  }, [loading, clients])
+  }, [loading, clients, idParam])
 
   const selected = clients.find(c => c.id === selectedId) || null
 
