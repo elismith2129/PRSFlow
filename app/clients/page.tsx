@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase, Client, ClientContact } from '@/lib/supabase'
 import { ClientList, BookingCountMap, ContactsMap } from '@/components/clients/ClientList'
 import { ClientProfile } from '@/components/clients/ClientProfile'
@@ -10,6 +10,7 @@ export default function ClientsPage() {
   const [bookingCountMap, setBookingCountMap] = useState<BookingCountMap>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const hasAutoSelected = useRef(false)
 
   const load = useCallback(async () => {
     const [
@@ -41,6 +42,13 @@ export default function ClientsPage() {
 
   useEffect(() => { load() }, [load])
 
+  // Auto-select the first client (alphabetically) on initial load
+  useEffect(() => {
+    if (loading || hasAutoSelected.current || clients.length === 0) return
+    setSelectedId(clients[0].id)
+    hasAutoSelected.current = true
+  }, [loading, clients])
+
   const selected = clients.find(c => c.id === selectedId) || null
 
   return (
@@ -58,6 +66,7 @@ export default function ClientsPage() {
           client={selected}
           contacts={selected ? (contactsMap[selected.id] || []) : []}
           bookingCount={selected ? (bookingCountMap[selected.id] || 0) : 0}
+          onRefresh={load}
         />
       </div>
     </div>
