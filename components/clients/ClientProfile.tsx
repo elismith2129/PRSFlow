@@ -1,5 +1,6 @@
 'use client'
 import React from 'react'
+import Link from 'next/link'
 import { Client, ClientContact, CLIENT_TYPE_LABELS } from '@/lib/supabase'
 
 interface Props {
@@ -81,9 +82,17 @@ export function ClientProfile({ client, contacts, bookingCount }: Props) {
           </>
         )}
 
-        <div style={{ marginTop: 16, paddingTop: 10, borderTop: '1px solid var(--border)', fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
-          {!client.registered_at && 'Migrated · '}
-          Added {client.created_at ? new Date(client.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
+        <div style={{ marginTop: 16, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+            {!client.registered_at && 'Migrated · '}
+            Added {client.created_at ? new Date(client.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
+          </span>
+          <Link
+            href={`/clients/${client.id}`}
+            style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--accent)', textDecoration: 'none' }}
+          >
+            View full profile →
+          </Link>
         </div>
       </div>
     </div>
