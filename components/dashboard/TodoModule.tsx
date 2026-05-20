@@ -63,7 +63,7 @@ export function TodoModule({ leads, clients, loading, onRefresh }: Props) {
     [leads])
 
   const incompleteClients = useMemo(() =>
-    clients.filter(c => !c.fname || (!c.email && !c.phone) || !c.billing),
+    clients.filter(c => !c.fname || (!c.email && !c.phone)),
     [clients])
 
   const leadTotal = hotDue.length + warmDue.length + incompleteDue.length
@@ -220,9 +220,9 @@ export function TodoModule({ leads, clients, loading, onRefresh }: Props) {
                     borderRadius: 8, borderLeft: '2px solid var(--accent2)', cursor: 'pointer'
                   }}>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 500 }}>{c.fname || 'Unnamed'} {c.lname} {c.company ? `— ${c.company}` : ''}</div>
+                    <div style={{ fontSize: 11, fontWeight: 500 }}>{c.name || 'Unnamed'}</div>
                     <div style={{ fontSize: 9, color: 'var(--accent2)', marginTop: 3 }}>
-                      ⚠ {[!c.fname && 'name', (!c.email && !c.phone) && 'contact', !c.billing && 'billing'].filter(Boolean).join(' · ')}
+                      ⚠ {[!c.fname && 'name', (!c.email && !c.phone) && 'contact'].filter(Boolean).join(' · ')}
                     </div>
                   </div>
                   <span style={{ fontSize: 11, color: 'var(--text3)' }}>edit ›</span>

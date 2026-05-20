@@ -5,11 +5,10 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseKey)
 
-// Types
 export type LeadStatus = 'hot' | 'warm' | 'cold' | 'uncontacted' | 'booked' | 'dead'
 export type BillingType = 'COD' | 'Billing'
 export type BookingType = 'Recording Session' | 'Filming' | 'Event/Playback'
-export type ClientType = 'individual' | 'label' | 'company'
+export type ClientType = 'label' | 'individual'
 
 export interface Lead {
   id: number
@@ -32,25 +31,47 @@ export interface Lead {
   last_contact: string
   keep_hot_until: string | null
   parked_until: string | null
+  client_id: string | null
   created_at: string
 }
 
 export interface Client {
-  id: number
+  id: string
   type: ClientType
-  fname: string
-  lname: string
-  company: string
-  label: string
-  email: string
-  phone: string
-  billing: BillingType
-  notes: string
-  source: string
-  booking: string
+  name: string
+  fname: string | null
+  lname: string | null
+  email: string | null
+  phone: string | null
+  instagram: string | null
+  address_street: string | null
+  address_street2: string | null
+  address_city: string | null
+  address_state: string | null
+  address_zip: string | null
   artists: string[]
-  lead_id: number | null
+  id_file_url: string | null
+  signature_url: string | null
+  terms_accepted: boolean | null
+  terms_accepted_at: string | null
+  how_heard: string | null
+  registered_at: string | null
+  source_lead_id: number | null
+  notes: string | null
   created_at: string
+  updated_at: string | null
+}
+
+export interface ClientContact {
+  id: string
+  client_id: string
+  fname: string | null
+  lname: string | null
+  email: string | null
+  phone: string | null
+  instagram: string | null
+  role: string | null
+  notes: string | null
 }
 
 export interface WorkOrder {

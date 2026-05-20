@@ -1,6 +1,6 @@
 'use client'
 import React, { useEffect, useState, useCallback, useRef } from 'react'
-import { supabase, Lead, LeadStatus, Client } from '@/lib/supabase'
+import { supabase, Lead, LeadStatus, Client, BillingType } from '@/lib/supabase'
 import { TOUCH_INTERVAL_DAYS } from '@/lib/settings'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -1237,7 +1237,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
   onClose: () => void
   onSave: (data: Partial<Lead>) => Promise<void>
 }) {
-  const emptyForm = { fname: '', lname: '', email: '', phone: '', company: '', label: '', source: '', booking: '', notes: '', billing: 'COD' as const }
+  const emptyForm = { fname: '', lname: '', email: '', phone: '', company: '', label: '', source: '', booking: '', notes: '', billing: 'COD' as BillingType }
   const [form, setForm] = useState(emptyForm)
   const [nameSuggestions, setNameSuggestions] = useState<Array<{ record: Lead | Client, type: 'lead' | 'client' }>>([])
   const [showNameDD, setShowNameDD] = useState(false)
@@ -1258,11 +1258,11 @@ function NewLeadModal({ leads, onClose, onSave }: {
         .filter(l => fuzzyMatch(query, `${l.fname} ${l.lname} ${l.company || ''}`))
         .slice(0, 6).map(l => ({ record: l as Lead | Client, type: 'lead' as const }))
       const words = query.toLowerCase().split(/\s+/).filter(Boolean)
-      let clientQuery = supabase.from('clients').select('*')
-      if (words[0]) clientQuery = clientQuery.or(`fname.ilike.%${words[0]}%,lname.ilike.%${words[0]}%,company.ilike.%${words[0]}%`)
+      let clientQuery = supabase.from('clients').select('id, type, name, fname, lname, email, phone, how_heard, created_at')
+      if (words[0]) clientQuery = clientQuery.or(`name.ilike.%${words[0]}%,fname.ilike.%${words[0]}%,lname.ilike.%${words[0]}%`)
       const { data: clientData } = await clientQuery.limit(8)
       const clientMatches = (clientData || [])
-        .filter((c: Client) => fuzzyMatch(query, `${c.fname} ${c.lname} ${c.company || ''}`))
+        .filter((c: Client) => fuzzyMatch(query, `${c.name} ${c.fname || ''} ${c.lname || ''}`))
         .map((c: Client) => ({ record: c as Lead | Client, type: 'client' as const }))
       const seen = new Set<string>()
       const combined: Array<{ record: Lead | Client, type: 'lead' | 'client' }> = []
@@ -1290,10 +1290,17 @@ function NewLeadModal({ leads, onClose, onSave }: {
 
   function applyAutofill(item: { record: Lead | Client, type: 'lead' | 'client' }) {
     const r = item.record
-    const prevNote = item.type === 'client'
-      ? `Repeat client — last booking: ${fmtDate(r.created_at)} ${(r as any).booking || ''}`
+    const isClient = item.type === 'client'
+    const prevNote = isClient
+      ? `Repeat client — last booking: ${fmtDate(r.created_at)}`
       : `Previous inquiry: ${fmtDate(r.created_at)} — ${((r as Lead).notes || '').slice(0, 120)}`
-    setForm(prev => ({ ...prev, fname: r.fname || prev.fname, lname: r.lname || prev.lname, email: r.email || prev.email, phone: r.phone || prev.phone, company: r.company || prev.company, label: r.label || prev.label, source: r.source || prev.source, booking: (r as any).booking || prev.booking, billing: (r as any).billing || prev.billing, notes: prevNote }))
+    if (isClient) {
+      const c = r as Client
+      setForm(prev => ({ ...prev, fname: c.fname || prev.fname, lname: c.lname || prev.lname, email: c.email || prev.email, phone: c.phone || prev.phone, company: c.type === 'label' ? c.name : prev.company, label: c.type === 'label' ? c.name : prev.label, source: c.how_heard || prev.source, notes: prevNote }))
+    } else {
+      const l = r as Lead
+      setForm(prev => ({ ...prev, fname: l.fname || prev.fname, lname: l.lname || prev.lname, email: l.email || prev.email, phone: l.phone || prev.phone, company: l.company || prev.company, label: l.label || prev.label, source: l.source || prev.source, booking: l.booking || prev.booking, billing: l.billing || prev.billing, notes: prevNote }))
+    }
     setShowNameDD(false); setNameHighlight(-1)
   }
 
@@ -1341,9 +1348,11 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   return (
                     <div key={`${item.type}-${r.id}`} onMouseDown={() => applyAutofill(item)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i === nameHighlight ? 'var(--surface)' : 'transparent', display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 500 }}>{r.fname} {r.lname}</div>
+                        <div style={{ fontSize: 12, fontWeight: 500 }}>
+                          {isClient ? (r as Client).name || `${r.fname || ''} ${r.lname || ''}`.trim() : `${r.fname} ${r.lname}`}
+                        </div>
                         <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 1 }}>
-                          {r.company && <span>{r.company} · </span>}{(r as any).booking && <span>{(r as any).booking} · </span>}{fmtDate(r.created_at)}
+                          {(r as any).booking && <span>{(r as any).booking} · </span>}{fmtDate(r.created_at)}
                         </div>
                       </div>
                       <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 10, background: isClient ? 'rgba(78,240,162,0.15)' : 'rgba(139,144,168,0.15)', color: isClient ? 'var(--booked)' : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>
