@@ -49,6 +49,7 @@ The database work is **complete and committed**. Do not write migrations for the
 **UI sub-chunks complete:**
 - ✅ 4.3 — Clients list page (`/clients`): two-column layout, filter chips (All/Labels/COD), search (including contact names), sort (A-Z/recent/bookings), pagination
 - ✅ 4.4 — Client detail panel (right column of `/clients`): full editable profile for both label and COD clients. Label view: contacts (A&Rs) with add/edit/delete, artist chips with add/remove, booking history, notes. COD view: contact fields, billing address, verification status, booking history, notes. Auto-selects first client on load. Mutations save to Supabase and refresh the list in real time. No separate `/clients/[id]` route — detail lives in the right panel.
+- ✅ 4.5 — "Book Client" button + modal on CRM lead detail card. Three-path flow: (A) New client — generates a `registration_tokens` row and shows a copyable/emailable link; (B) Existing client — debounced search, select, link; (C) Label booking — search labels, then `ContactPicker` + `ArtistPicker` (both required). After linking, button changes to "View Client Profile →" which navigates to `/clients?id=<uuid>`. `ContactPicker` and `ArtistPicker` live in `components/shared/` as reusable components for Chunk 6.
 
 **If you think the schema needs changing, STOP and ask the user before writing ALTER TABLE statements.**
 
