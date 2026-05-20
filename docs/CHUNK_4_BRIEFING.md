@@ -46,6 +46,10 @@ The database work is **complete and committed**. Do not write migrations for the
 - 131 A&R/rep contacts spread across labels
 - 401 booked leads NOT linked (intentionally — they had messy data, will be re-created naturally when those clients book again)
 
+**UI sub-chunks complete:**
+- ✅ 4.3 — Clients list page (`/clients`): two-column layout, filter chips (All/Labels/COD), search (including contact names), sort (A-Z/recent/bookings), pagination
+- ✅ 4.4 — Client detail panel (right column of `/clients`): full editable profile for both label and COD clients. Label view: contacts (A&Rs) with add/edit/delete, artist chips with add/remove, booking history, notes. COD view: contact fields, billing address, verification status, booking history, notes. Auto-selects first client on load. Mutations save to Supabase and refresh the list in real time. No separate `/clients/[id]` route — detail lives in the right panel.
+
 **If you think the schema needs changing, STOP and ask the user before writing ALTER TABLE statements.**
 
 ---
