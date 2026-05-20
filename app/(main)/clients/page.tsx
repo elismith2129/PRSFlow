@@ -146,6 +146,7 @@ function ClientsPageInner() {
             contacts={selected ? (contactsMap[selected.id] || []) : []}
             bookingCount={selected ? (bookingCountMap[selected.id] || 0) : 0}
             loading={loading}
+            isMobile={isMobile}
             onRefresh={load}
             onBack={isMobile ? () => setSelectedId(null) : undefined}
           />

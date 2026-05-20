@@ -16,6 +16,7 @@ interface Props {
   contacts: ClientContact[]
   bookingCount: number
   loading?: boolean
+  isMobile?: boolean
   onRefresh: () => void
   onBack?: () => void
 }
@@ -247,7 +248,7 @@ function BookingHistory({ leads }: { leads: BookingLead[] }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ClientProfile({ client, contacts, bookingCount, loading, onRefresh, onBack }: Props) {
+export function ClientProfile({ client, contacts, bookingCount, loading, isMobile, onRefresh, onBack }: Props) {
   const [bookings, setBookings] = useState<BookingLead[]>([])
   const [showAddContact, setShowAddContact] = useState(false)
   const [newArtist, setNewArtist] = useState('')
@@ -453,7 +454,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, onRefre
         {!isLabel && (
           <>
             <SectionHeader label="Contact" mt={0} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', marginBottom: 4 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px 16px', marginBottom: 4 }}>
               <InlineField label="Email" value={client.email} onSave={v => saveClient({ email: v })} />
               <InlineField label="Phone" value={client.phone} onSave={v => saveClient({ phone: v })} />
               <InlineField label="Instagram" value={client.instagram} onSave={v => saveClient({ instagram: v })} />
@@ -469,7 +470,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, onRefre
               }
             />
             {showAddress ? (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', marginBottom: 4 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px 16px', marginBottom: 4 }}>
                 <div style={{ gridColumn: '1 / -1' }}>
                   <InlineField label="Street" value={client.address_street} onSave={v => saveClient({ address_street: v })} />
                 </div>
