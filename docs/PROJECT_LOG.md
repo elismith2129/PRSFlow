@@ -80,4 +80,4 @@
 
 ---
 
-*Last updated: May 19, 2026 — Chunk 4.6 complete. Update at the end of each chunk/sub-chunk.*
+*Last updated: May 19, 2026 — Chunk 4.6b complete. Update at the end of each chunk/sub-chunk.*
