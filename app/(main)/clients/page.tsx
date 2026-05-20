@@ -1,6 +1,6 @@
 'use client'
 import React, { useEffect, useState, useCallback, useRef, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase, Client, ClientContact } from '@/lib/supabase'
 import { ClientList, BookingCountMap, ContactsMap } from '@/components/clients/ClientList'
 import { ClientProfile } from '@/components/clients/ClientProfile'
@@ -10,6 +10,13 @@ interface PendingReg {
   name: string
   email: string | null
   phone: string | null
+  instagram: string | null
+  how_heard: string | null
+  address_street: string | null
+  address_street2: string | null
+  address_city: string | null
+  address_state: string | null
+  address_zip: string | null
   registered_at: string
   id_file_url: string | null
   terms_accepted: boolean | null
@@ -33,6 +40,7 @@ function ClientsPageInner() {
   const [regModalOpen, setRegModalOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const hasAutoSelected = useRef(false)
+  const router = useRouter()
   const searchParams = useSearchParams()
   const idParam = searchParams.get('id')
 
@@ -55,7 +63,7 @@ function ClientsPageInner() {
       supabase.from('client_contacts').select('id, client_id, fname, lname, email, phone, instagram, role, notes'),
       supabase.from('leads').select('client_id').not('client_id', 'is', null),
       supabase.from('clients')
-        .select('id, name, email, phone, registered_at, id_file_url, terms_accepted')
+        .select('id, name, email, phone, instagram, how_heard, address_street, address_street2, address_city, address_state, address_zip, registered_at, id_file_url, terms_accepted')
         .not('registered_at', 'is', null)
         .is('profile_confirmed_at', null)
         .gt('registered_at', thirtyDaysAgo)
@@ -95,8 +103,11 @@ function ClientsPageInner() {
 
   const selected = clients.find(c => c.id === selectedId) || null
 
-  function handleConfirmReg(id: string) {
+  function handleNavigateToClient(id: string) {
     setPendingRegs(prev => prev.filter(r => r.id !== id))
+    setSelectedId(id)
+    setRegModalOpen(false)
+    router.replace(`/clients?id=${id}`)
   }
 
   const showList = !isMobile || !selectedId
@@ -158,7 +169,7 @@ function ClientsPageInner() {
         <RegistrationReviewModal
           regs={pendingRegs}
           onClose={() => setRegModalOpen(false)}
-          onConfirm={handleConfirmReg}
+          onNavigate={handleNavigateToClient}
         />
       )}
     </div>
@@ -172,23 +183,22 @@ function isImagePath(path: string | null): boolean {
   return /\.(jpg|jpeg|png|heic|webp)$/i.test(path)
 }
 
-function RegistrationReviewModal({ regs, onClose, onConfirm }: {
+function RegistrationReviewModal({ regs, onClose, onNavigate }: {
   regs: PendingReg[]
   onClose: () => void
-  onConfirm: (id: string) => void
+  onNavigate: (id: string) => void
 }) {
-  const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set())
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
-  const allDone = confirmedIds.size >= regs.length
 
   useEffect(() => {
     async function fetchSignedUrls() {
       const map: Record<string, string> = {}
       for (const reg of regs) {
         if (!reg.id_file_url) continue
-        const { data } = await supabase.storage.from('client-ids').createSignedUrl(reg.id_file_url, 3600)
+        const { data, error } = await supabase.storage.from('client-ids').createSignedUrl(reg.id_file_url, 3600)
+        if (error) console.error('[client-ids] signed URL failed for', reg.id_file_url, error.message)
         if (data?.signedUrl) map[reg.id] = data.signedUrl
       }
       setSignedUrls(map)
@@ -199,16 +209,10 @@ function RegistrationReviewModal({ regs, onClose, onConfirm }: {
   async function confirm(id: string) {
     setConfirmingId(id)
     await supabase.from('clients').update({ profile_confirmed_at: new Date().toISOString() }).eq('id', id)
-    setConfirmedIds(prev => { const next = new Set(Array.from(prev)); next.add(id); return next })
     setConfirmingId(null)
-    onConfirm(id)
+    onNavigate(id)
   }
 
-  const accentBtn: React.CSSProperties = {
-    background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 4,
-    padding: '6px 14px', fontFamily: 'Syne', fontWeight: 700, fontSize: 9,
-    letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', flexShrink: 0,
-  }
   const ghostBtn: React.CSSProperties = {
     background: 'none', border: '1px solid var(--border)', color: 'var(--text2)',
     borderRadius: 6, padding: '7px 16px', fontFamily: 'Syne', fontWeight: 700,
@@ -218,85 +222,122 @@ function RegistrationReviewModal({ regs, onClose, onConfirm }: {
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, maxHeight: '85vh', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}>
+        <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 580, maxHeight: '88vh', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}>
 
           {/* Header */}
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 1 }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 1 }}>
             <div>
               <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15 }}>New Registrations</div>
               <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 2 }}>
-                {allDone ? 'All confirmed — good work.' : `${regs.length - confirmedIds.size} of ${regs.length} need confirmation`}
+                {regs.length} pending — review ID and confirm to create client profile
               </div>
             </div>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
           </div>
 
-          {/* List */}
-          <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Registration cards */}
+          <div style={{ padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
             {regs.map(reg => {
-              const isConfirmed = confirmedIds.has(reg.id)
               const isConfirming = confirmingId === reg.id
               const regDate = new Date(reg.registered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
               const signedUrl = signedUrls[reg.id]
               const hasImage = reg.id_file_url && isImagePath(reg.id_file_url)
               const hasPdf = reg.id_file_url && !isImagePath(reg.id_file_url)
+
+              const addressLine = [reg.address_street, reg.address_street2].filter(Boolean).join(', ')
+              const cityLine = [reg.address_city, [reg.address_state, reg.address_zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+
               return (
-                <div key={reg.id} style={{
-                  padding: '10px 12px',
-                  background: isConfirmed ? 'rgba(78,240,162,0.06)' : 'var(--surface2)',
-                  border: `1px solid ${isConfirmed ? 'rgba(78,240,162,0.2)' : 'var(--border)'}`,
-                  borderRadius: 8, display: 'flex', alignItems: 'flex-start', gap: 12,
-                  transition: 'all 0.2s',
-                }}>
-                  {/* ID thumbnail */}
-                  {reg.id_file_url && (
+                <div key={reg.id} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+
+                  {/* Top: ID thumb + identity */}
+                  <div style={{ display: 'flex', gap: 14, padding: '14px 14px 12px' }}>
+                    {/* ID thumbnail — always shown */}
                     <div style={{ flexShrink: 0 }}>
-                      {hasImage && signedUrl ? (
+                      {!reg.id_file_url ? (
+                        <div style={{ width: 80, height: 80, borderRadius: 7, background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                          <span style={{ fontSize: 22, opacity: 0.25 }}>🪪</span>
+                          <span style={{ fontSize: 8, fontFamily: 'DM Mono', color: 'var(--text3)', textAlign: 'center' as const }}>No ID{'\n'}uploaded</span>
+                        </div>
+                      ) : hasImage && signedUrl ? (
                         <img
                           src={signedUrl}
                           onClick={() => setLightboxUrl(signedUrl)}
                           title="Click to view full size"
-                          style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 5, cursor: 'pointer', border: '1px solid var(--border)', display: 'block' }}
+                          style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 7, cursor: 'pointer', border: '1px solid var(--border)', display: 'block' }}
                         />
                       ) : hasImage && !signedUrl ? (
-                        <div style={{ width: 56, height: 56, borderRadius: 5, background: 'var(--surface)', border: '1px solid var(--border)', animation: 'shimmer 1.4s ease-in-out infinite' }} />
+                        <div style={{ width: 80, height: 80, borderRadius: 7, background: 'var(--surface)', border: '1px solid var(--border)', animation: 'shimmer 1.4s ease-in-out infinite' }} />
                       ) : hasPdf && signedUrl ? (
-                        <a href={signedUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: 56, height: 56, borderRadius: 5, background: 'var(--surface)', border: '1px solid var(--border)', textDecoration: 'none', gap: 3 }}>
-                          <span style={{ fontSize: 18 }}>📄</span>
-                          <span style={{ fontSize: 7, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text3)', letterSpacing: '0.06em' }}>PDF</span>
+                        <a href={signedUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: 80, height: 80, borderRadius: 7, background: 'var(--surface)', border: '1px solid var(--border)', textDecoration: 'none', gap: 4 }}>
+                          <span style={{ fontSize: 24 }}>📄</span>
+                          <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text3)', letterSpacing: '0.06em' }}>PDF — tap to open</span>
                         </a>
                       ) : (
-                        <div style={{ width: 56, height: 56, borderRadius: 5, background: 'var(--surface)', border: '1px solid var(--border)', animation: 'shimmer 1.4s ease-in-out infinite' }} />
+                        <div style={{ width: 80, height: 80, borderRadius: 7, background: 'var(--surface)', border: '1px solid var(--border)', animation: 'shimmer 1.4s ease-in-out infinite' }} />
+                      )}
+                      {hasImage && signedUrl && (
+                        <div style={{ textAlign: 'center' as const, marginTop: 4, fontSize: 8, color: 'var(--text3)', fontFamily: 'DM Mono' }}>tap to enlarge</div>
+                      )}
+                    </div>
+
+                    {/* Identity + contact */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: 'DM Serif Display', fontSize: 18, lineHeight: 1.2, marginBottom: 6 }}>{reg.name}</div>
+                      <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)', lineHeight: 1.8 }}>
+                        {reg.email && <div>{reg.email}</div>}
+                        {reg.phone && <div>{reg.phone}</div>}
+                        {reg.instagram && <div>@{reg.instagram.replace(/^@/, '')}</div>}
+                      </div>
+                      <div style={{ marginTop: 6, fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)' }}>
+                        Registered {regDate}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Address + how heard */}
+                  {(addressLine || cityLine || reg.how_heard) && (
+                    <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', background: 'rgba(0,0,0,0.15)' }}>
+                      {(addressLine || cityLine) && (
+                        <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)', lineHeight: 1.6, marginBottom: reg.how_heard ? 6 : 0 }}>
+                          {addressLine && <div>{addressLine}</div>}
+                          {cityLine && <div>{cityLine}</div>}
+                        </div>
+                      )}
+                      {reg.how_heard && (
+                        <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text3)' }}>
+                          How heard: <span style={{ color: 'var(--text2)' }}>{reg.how_heard}</span>
+                        </div>
                       )}
                     </div>
                   )}
 
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 12, marginBottom: 3 }}>{reg.name}</div>
-                    <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono', lineHeight: 1.7 }}>
-                      {reg.email && <span>{reg.email}{reg.phone ? ' · ' : ''}</span>}
-                      {reg.phone && <span>{reg.phone} · </span>}
-                      <span>Registered {regDate}</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 5, marginTop: 5, flexWrap: 'wrap' as const }}>
+                  {/* Footer: badges + confirm button */}
+                  <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' as const }}>
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
                       {reg.terms_accepted && (
-                        <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--booked)', background: 'rgba(78,240,162,0.1)', border: '1px solid rgba(78,240,162,0.3)', padding: '2px 5px', borderRadius: 3 }}>
+                        <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--booked)', background: 'rgba(78,240,162,0.1)', border: '1px solid rgba(78,240,162,0.3)', padding: '2px 6px', borderRadius: 3 }}>
                           TERMS ACCEPTED
                         </span>
                       )}
+                      {reg.id_file_url ? (
+                        <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--accent)', background: 'rgba(200,240,78,0.08)', border: '1px solid rgba(200,240,78,0.25)', padding: '2px 6px', borderRadius: 3 }}>
+                          ID ON FILE
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '2px 6px', borderRadius: 3 }}>
+                          NO ID
+                        </span>
+                      )}
                     </div>
-                  </div>
-                  {isConfirmed ? (
-                    <span style={{ fontSize: 10, color: 'var(--booked)', fontFamily: 'DM Mono', flexShrink: 0, marginTop: 2 }}>✓ Profile Created</span>
-                  ) : (
                     <button
                       onClick={() => confirm(reg.id)}
                       disabled={isConfirming}
-                      style={{ ...accentBtn, opacity: isConfirming ? 0.7 : 1, cursor: isConfirming ? 'default' : 'pointer' }}
+                      style={{ background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 5, padding: '7px 16px', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: isConfirming ? 'default' : 'pointer', opacity: isConfirming ? 0.7 : 1, flexShrink: 0 }}
                     >
-                      {isConfirming ? '…' : 'Create Client Profile'}
+                      {isConfirming ? 'Creating…' : 'Create Client Profile →'}
                     </button>
-                  )}
+                  </div>
                 </div>
               )
             })}
@@ -304,19 +345,17 @@ function RegistrationReviewModal({ regs, onClose, onConfirm }: {
 
           {/* Footer */}
           <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
-            <button onClick={onClose} style={ghostBtn}>
-              {allDone ? 'Done' : 'Close'}
-            </button>
+            <button onClick={onClose} style={ghostBtn}>Close</button>
           </div>
         </div>
       </div>
 
       {/* Lightbox */}
       {lightboxUrl && (
-        <div onClick={() => setLightboxUrl(null)} style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '90vw', maxHeight: '88vh' }}>
-            <img src={lightboxUrl} alt="ID document" style={{ maxWidth: '100%', maxHeight: '88vh', objectFit: 'contain', borderRadius: 8, display: 'block' }} />
-            <button onClick={() => setLightboxUrl(null)} style={{ position: 'absolute', top: -14, right: -14, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14, fontFamily: 'DM Mono' }}>×</button>
+        <div onClick={() => setLightboxUrl(null)} style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '92vw', maxHeight: '90vh' }}>
+            <img src={lightboxUrl} alt="ID document" style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: 8, display: 'block' }} />
+            <button onClick={() => setLightboxUrl(null)} style={{ position: 'absolute', top: -16, right: -16, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, fontFamily: 'DM Mono', flexShrink: 0 }}>×</button>
           </div>
         </div>
       )}

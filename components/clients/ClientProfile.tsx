@@ -257,6 +257,9 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   const [bookingToast, setBookingToast] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [regLinkUrl, setRegLinkUrl] = useState<string | null>(null)
+  const [regLinkCopied, setRegLinkCopied] = useState(false)
+  const [regLinkGenerating, setRegLinkGenerating] = useState(false)
 
   // Load bookings for selected client
   useEffect(() => {
@@ -280,6 +283,9 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   useEffect(() => {
     setShowAddContact(false)
     setNewArtist('')
+    setRegLinkUrl(null)
+    setRegLinkCopied(false)
+    setRegLinkGenerating(false)
   }, [client?.id])
 
   const saveClient = useCallback(async (fields: Partial<Client>) => {
@@ -331,6 +337,39 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
     setShowDeleteConfirm(false)
     onDelete?.()
   }, [client, onDelete])
+
+  const generateRegLink = useCallback(async () => {
+    if (!client) return
+    setRegLinkGenerating(true)
+    const token = crypto.randomUUID()
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    await supabase.from('registration_tokens').insert({
+      token,
+      client_id: client.id,
+      lead_id: null,
+      prefill_email: client.email || null,
+      prefill_name: client.name || null,
+      expires_at: expiresAt,
+    })
+    setRegLinkUrl(`${window.location.origin}/register/${token}`)
+    setRegLinkGenerating(false)
+  }, [client])
+
+  const copyRegLink = useCallback(async () => {
+    if (!regLinkUrl) return
+    try { await navigator.clipboard.writeText(regLinkUrl) } catch (_) {}
+    setRegLinkCopied(true)
+    setTimeout(() => setRegLinkCopied(false), 2000)
+  }, [regLinkUrl])
+
+  const emailRegLink = useCallback(() => {
+    if (!regLinkUrl || !client) return
+    const subject = encodeURIComponent('Your Paramount Recording Studios registration link')
+    const body = encodeURIComponent(
+      `Hi ${client.name || 'there'},\n\nPlease complete your registration for Paramount Recording Studios using the link below:\n\n${regLinkUrl}\n\nThis link expires in 7 days.\n\n— Paramount Recording Studios`
+    )
+    window.location.href = `mailto:${client.email || ''}?subject=${subject}&body=${body}`
+  }, [regLinkUrl, client])
 
   // ── Loading skeleton ───────────────────────────────────────────────────────
   if (loading && !client) {
@@ -510,11 +549,30 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                 {client.id_file_url && <span> · ID on file</span>}
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>Not yet registered</span>
-                <button disabled title="Coming in 4.6 — registration link flow" style={{ ...ghostBtn, opacity: 0.4, cursor: 'not-allowed', fontSize: 9, padding: '3px 8px' }}>
-                  Send registration link
-                </button>
+              <div style={{ marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: regLinkUrl ? 6 : 0 }}>
+                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>Not yet registered</span>
+                  <button
+                    onClick={generateRegLink}
+                    disabled={regLinkGenerating || !!regLinkUrl}
+                    style={{ ...ghostBtn, fontSize: 9, padding: '3px 8px', opacity: regLinkGenerating ? 0.6 : 1, cursor: (regLinkGenerating || !!regLinkUrl) ? 'default' : 'pointer' }}
+                  >
+                    {regLinkGenerating ? 'Generating…' : regLinkUrl ? '✓ Link created' : 'Send registration link'}
+                  </button>
+                </div>
+                {regLinkUrl && (
+                  <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 5, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                      {regLinkUrl}
+                    </span>
+                    <button onClick={copyRegLink} style={{ ...accentBtn, fontSize: 8, padding: '2px 8px', flexShrink: 0 }}>
+                      {regLinkCopied ? 'Copied!' : 'Copy'}
+                    </button>
+                    <button onClick={emailRegLink} style={{ ...ghostBtn, fontSize: 8, padding: '2px 8px', flexShrink: 0 }}>
+                      Email
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </>

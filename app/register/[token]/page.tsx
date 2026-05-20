@@ -159,7 +159,9 @@ export default function RegisterPage() {
     setPageState('submitting')
 
     try {
-      const clientId = crypto.randomUUID()
+      const isExistingClient = !!tokenRow?.client_id
+      const clientId = isExistingClient ? tokenRow!.client_id! : crypto.randomUUID()
+      const fullName = `${form.fname.trim()} ${form.lname.trim()}`.trim()
 
       // Upload ID file
       let idFileUrl: string | null = null
@@ -176,16 +178,12 @@ export default function RegisterPage() {
         idFileUrl = filePath
       }
 
-      // Create client row
-      const fullName = `${form.fname.trim()} ${form.lname.trim()}`.trim()
-      const { error: clientError } = await supabase
-        .from('clients')
-        .insert({
-          id: clientId,
-          type: 'individual',
-          name: fullName,
+      if (isExistingClient) {
+        // Update existing migrated client
+        const updateFields: Record<string, unknown> = {
           fname: form.fname.trim(),
           lname: form.lname.trim(),
+          name: fullName,
           email: form.email.trim(),
           phone: form.phone.trim(),
           instagram: form.instagram.trim(),
@@ -194,17 +192,59 @@ export default function RegisterPage() {
           address_street2: form.address_street2.trim() || null,
           address_city: form.address_city.trim(),
           address_state: form.address_state.trim().toUpperCase(),
-          address_zip: form.address_zip.trim(),
-          id_file_url: idFileUrl,
           signature_url: form.signature.trim(),
           terms_accepted: true,
           terms_accepted_at: new Date().toISOString(),
           registered_at: new Date().toISOString(),
-          source_lead_id: tokenRow?.lead_id || null,
-          artists: [],
-        })
+        }
+        if (idFileUrl) updateFields.id_file_url = idFileUrl
 
-      if (clientError) throw new Error(`Registration failed: ${clientError.message}`)
+        const { error: clientError } = await supabase
+          .from('clients')
+          .update(updateFields)
+          .eq('id', clientId)
+
+        if (clientError) throw new Error(`Registration failed: ${clientError.message}`)
+      } else {
+        // Create new client row
+        const { error: clientError } = await supabase
+          .from('clients')
+          .insert({
+            id: clientId,
+            type: 'individual',
+            name: fullName,
+            fname: form.fname.trim(),
+            lname: form.lname.trim(),
+            email: form.email.trim(),
+            phone: form.phone.trim(),
+            instagram: form.instagram.trim(),
+            how_heard: form.how_heard.trim() || null,
+            address_street: form.address_street.trim(),
+            address_street2: form.address_street2.trim() || null,
+            address_city: form.address_city.trim(),
+            address_state: form.address_state.trim().toUpperCase(),
+            address_zip: form.address_zip.trim(),
+            id_file_url: idFileUrl,
+            signature_url: form.signature.trim(),
+            terms_accepted: true,
+            terms_accepted_at: new Date().toISOString(),
+            registered_at: new Date().toISOString(),
+            source_lead_id: tokenRow?.lead_id || null,
+            artists: [],
+          })
+
+        if (clientError) throw new Error(`Registration failed: ${clientError.message}`)
+
+        // Link lead if applicable
+        if (tokenRow?.lead_id) {
+          const { error: leadError } = await supabase
+            .from('leads')
+            .update({ client_id: clientId })
+            .eq('id', tokenRow.lead_id)
+
+          if (leadError) throw new Error(`Lead link failed: ${leadError.message}`)
+        }
+      }
 
       // Mark token used
       const { error: tokenError } = await supabase
@@ -213,16 +253,6 @@ export default function RegisterPage() {
         .eq('token', tokenParam)
 
       if (tokenError) throw new Error(`Token update failed: ${tokenError.message}`)
-
-      // Link lead if applicable
-      if (tokenRow?.lead_id) {
-        const { error: leadError } = await supabase
-          .from('leads')
-          .update({ client_id: clientId })
-          .eq('id', tokenRow.lead_id)
-
-        if (leadError) throw new Error(`Lead link failed: ${leadError.message}`)
-      }
 
       setSubmittedName(form.fname.trim())
       setPageState('success')

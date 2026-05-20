@@ -99,6 +99,7 @@ export interface RegistrationToken {
   id: string
   token: string
   lead_id: number | null
+  client_id: string | null
   created_at: string
   expires_at: string
   used_at: string | null
