@@ -781,11 +781,14 @@ function TermsScroller() {
       border: '1px solid var(--border)',
       borderRadius: 6,
       background: 'var(--surface)',
-      overflow: 'hidden',
+      position: 'relative',
+      display: 'block',
     }}>
       <div style={{
+        height: 280,
         maxHeight: 280,
         overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
         padding: '14px 16px',
       }}>
         {TERMS_SECTIONS.map((section, i) => (
