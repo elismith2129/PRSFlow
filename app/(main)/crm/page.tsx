@@ -995,6 +995,9 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   const [showCompanyDD, setShowCompanyDD] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [regLinkUrl, setRegLinkUrl] = useState<string | null>(null)
+  const [regLinkCopied, setRegLinkCopied] = useState(false)
+  const [regLinkGenerating, setRegLinkGenerating] = useState(false)
 
   const fnameRef = useRef<HTMLInputElement>(null)
   const lnameRef = useRef<HTMLInputElement>(null)
@@ -1004,6 +1007,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
 
   useEffect(() => { setLocal({ ...lead }) }, [lead.id])
   useEffect(() => { setNotesVal(lead.notes || '') }, [lead.notes])
+  useEffect(() => { setRegLinkUrl(null); setRegLinkCopied(false); setRegLinkGenerating(false) }, [lead.id])
 
   useEffect(() => {
     if (!focusField) return
@@ -1056,6 +1060,37 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
     ? `${fmtDateTime(lead.last_contact)}${latestTouch?.initials ? ' · ' + latestTouch.initials + (latestTouch.method ? ' via ' + latestTouch.method : '') : ''}`
     : '—'
 
+  async function generateRegLink() {
+    setRegLinkGenerating(true)
+    const token = crypto.randomUUID()
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    await supabase.from('registration_tokens').insert({
+      token,
+      lead_id: lead.id,
+      prefill_email: lead.email || null,
+      prefill_name: `${lead.fname || ''} ${lead.lname || ''}`.trim() || null,
+      expires_at: expiresAt,
+    })
+    setRegLinkUrl(`${window.location.origin}/register/${token}`)
+    setRegLinkGenerating(false)
+  }
+
+  async function copyRegLink() {
+    if (!regLinkUrl) return
+    try { await navigator.clipboard.writeText(regLinkUrl) } catch (_) {}
+    setRegLinkCopied(true)
+    setTimeout(() => setRegLinkCopied(false), 2000)
+  }
+
+  function emailRegLink() {
+    if (!regLinkUrl) return
+    const subject = encodeURIComponent('Your Paramount Recording Studios registration link')
+    const body = encodeURIComponent(
+      `Hi ${lead.fname || 'there'},\n\nPlease complete your registration for Paramount Recording Studios using the link below:\n\n${regLinkUrl}\n\nThis link expires in 7 days.\n\n— Paramount Recording Studios`
+    )
+    window.location.href = `mailto:${lead.email || ''}?subject=${subject}&body=${body}`
+  }
+
   const pillBase: React.CSSProperties = {
     display: 'inline-flex', alignItems: 'center',
     padding: '3px 10px', borderRadius: 20,
@@ -1094,7 +1129,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   return (
     <div>
       {/* Name */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginBottom: 6 }}>
         <input
           ref={fnameRef}
           value={local.fname || ''} onChange={e => update('fname', e.target.value)}
@@ -1145,7 +1180,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
         </div>
       )}
 
-      <div style={{ marginBottom: 8, padding: '8px 10px', background: 'rgba(78,240,162,0.06)', border: '1px solid rgba(78,240,162,0.2)', borderRadius: 6 }}>
+      <div style={{ marginBottom: 8 }}>
         {lead.client_id ? (
           <button
             onClick={() => onViewClient?.(lead.client_id!)}
@@ -1154,12 +1189,36 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
             View Client Profile →
           </button>
         ) : (
-          <button
-            onClick={onBookClient}
-            style={{ background: 'var(--booked)', color: '#0d0f14', border: 'none', borderRadius: 4, padding: '5px 14px', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
-          >
-            Confirm Client Account & Start Booking
-          </button>
+          <>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const }}>
+              <button
+                onClick={onBookClient}
+                style={{ padding: '5px 14px', background: 'var(--booked)', color: '#0d0f14', border: 'none', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
+              >
+                Confirm Account & Book
+              </button>
+              <button
+                onClick={generateRegLink}
+                disabled={regLinkGenerating || !!regLinkUrl}
+                style={{ padding: '5px 14px', background: 'transparent', color: regLinkUrl ? 'var(--text3)' : 'var(--text2)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: (regLinkGenerating || !!regLinkUrl) ? 'default' : 'pointer' }}
+              >
+                {regLinkGenerating ? 'Generating…' : regLinkUrl ? '✓ Link Created' : 'Send Registration ↗'}
+              </button>
+            </div>
+            {regLinkUrl && (
+              <div style={{ marginTop: 6, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 5, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                  {regLinkUrl}
+                </span>
+                <button onClick={copyRegLink} style={{ padding: '2px 8px', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 3, fontFamily: 'Syne', fontWeight: 700, fontSize: 8, letterSpacing: '0.08em', cursor: 'pointer', flexShrink: 0 }}>
+                  {regLinkCopied ? 'Copied!' : 'Copy'}
+                </button>
+                <button onClick={emailRegLink} style={{ padding: '2px 8px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer', flexShrink: 0 }}>
+                  Email
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
