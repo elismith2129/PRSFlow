@@ -197,7 +197,11 @@ function AddContactForm({ onAdd, onCancel }: { onAdd: (data: Partial<ClientConta
 
 function BookingHistory({ leads }: { leads: BookingLead[] }) {
   if (leads.length === 0) {
-    return <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>No bookings on file.</div>
+    return (
+      <div style={{ padding: '10px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6 }}>
+        <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>No bookings linked yet.</span>
+      </div>
+    )
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -373,7 +377,10 @@ export function ClientProfile({ client, contacts, bookingCount, loading, onRefre
               <ContactRow key={ct.id} contact={ct} onSave={saveContact} onDelete={deleteContact} />
             ))}
             {contacts.length === 0 && !showAddContact && (
-              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginBottom: 4 }}>No contacts on file.</div>
+              <div style={{ padding: '10px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>No A&Rs or reps on file yet.</span>
+                <button onClick={() => setShowAddContact(true)} style={{ ...accentBtn, fontSize: 9, padding: '3px 10px' }}>Add Contact</button>
+              </div>
             )}
             {showAddContact && <AddContactForm onAdd={addContact} onCancel={() => setShowAddContact(false)} />}
 
@@ -386,7 +393,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, onRefre
                 </span>
               ))}
               {(client.artists || []).length === 0 && (
-                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>No artists listed.</span>
+                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>No artists on file yet — add one below.</span>
               )}
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
