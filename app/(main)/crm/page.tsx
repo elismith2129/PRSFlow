@@ -125,6 +125,7 @@ export default function CRMPage() {
   const [newLeadOpen, setNewLeadOpen] = useState(false)
   const [bookClientOpen, setBookClientOpen] = useState(false)
   const [focusField, setFocusField] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ clientId: string } | null>(null)
   const router = useRouter()
 
   const load = useCallback(async () => {
@@ -290,8 +291,20 @@ export default function CRMPage() {
           onBooked={(clientId) => {
             setLeads(prev => prev.map(l => l.id === selected.id ? { ...l, client_id: clientId } : l))
             setBookClientOpen(false)
+            setToast({ clientId })
+            setTimeout(() => setToast(null), 5000)
           }}
         />
+      )}
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 2000, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 4px 24px rgba(0,0,0,0.5)', maxWidth: 340, fontFamily: 'DM Mono', fontSize: 11 }}>
+          <span style={{ color: 'var(--booked)', fontSize: 14 }}>✓</span>
+          <span style={{ color: 'var(--text)', flex: 1 }}>Client linked successfully.</span>
+          <button onClick={() => router.push(`/clients?id=${toast.clientId}`)} style={{ background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 4, padding: '5px 11px', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', flexShrink: 0 }}>
+            View Profile →
+          </button>
+          <button onClick={() => setToast(null)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 16, lineHeight: 1, flexShrink: 0 }}>×</button>
+        </div>
       )}
 
       {/* Sub-nav */}
@@ -1125,25 +1138,23 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
         </div>
       )}
 
-      {lead.status === 'booked' && (
-        <div style={{ marginBottom: 8, padding: '8px 10px', background: 'rgba(78,240,162,0.06)', border: '1px solid rgba(78,240,162,0.2)', borderRadius: 6 }}>
-          {lead.client_id ? (
-            <button
-              onClick={() => onViewClient?.(lead.client_id!)}
-              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--booked)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' }}
-            >
-              View Client Profile →
-            </button>
-          ) : (
-            <button
-              onClick={onBookClient}
-              style={{ background: 'var(--booked)', color: '#0d0f14', border: 'none', borderRadius: 4, padding: '5px 14px', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
-            >
-              Book Client
-            </button>
-          )}
-        </div>
-      )}
+      <div style={{ marginBottom: 8, padding: '8px 10px', background: 'rgba(78,240,162,0.06)', border: '1px solid rgba(78,240,162,0.2)', borderRadius: 6 }}>
+        {lead.client_id ? (
+          <button
+            onClick={() => onViewClient?.(lead.client_id!)}
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--booked)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' }}
+          >
+            View Client Profile →
+          </button>
+        ) : (
+          <button
+            onClick={onBookClient}
+            style={{ background: 'var(--booked)', color: '#0d0f14', border: 'none', borderRadius: 4, padding: '5px 14px', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
+          >
+            Confirm Client Account & Start Booking
+          </button>
+        )}
+      </div>
 
       <SectionHeader label="Contact" />
       <FieldPair>

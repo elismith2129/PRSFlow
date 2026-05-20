@@ -252,6 +252,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, onRefre
   const [showAddContact, setShowAddContact] = useState(false)
   const [newArtist, setNewArtist] = useState('')
   const [showAddress, setShowAddress] = useState(false)
+  const [bookingToast, setBookingToast] = useState(false)
 
   // Load bookings for selected client
   useEffect(() => {
@@ -361,8 +362,21 @@ export function ClientProfile({ client, contacts, bookingCount, loading, onRefre
 
       {/* Header */}
       <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-        <div style={{ fontFamily: 'DM Serif Display', fontSize: 20, lineHeight: 1.2, marginBottom: 7 }}>
-          {client.name}
+        {onBack && (
+          <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontFamily: 'DM Mono', fontSize: 10, cursor: 'pointer', padding: 0, marginBottom: 8, display: 'block' }}>
+            ← Back
+          </button>
+        )}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 7 }}>
+          <div style={{ fontFamily: 'DM Serif Display', fontSize: 20, lineHeight: 1.2 }}>
+            {client.name}
+          </div>
+          <button
+            onClick={() => { setBookingToast(true); setTimeout(() => setBookingToast(false), 3500) }}
+            style={{ ...accentBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0 }}
+          >
+            Start Booking
+          </button>
         </div>
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const, alignItems: 'center' }}>
           <span style={typeBadgeStyle}>{typeLabel}</span>
@@ -378,6 +392,15 @@ export function ClientProfile({ client, contacts, bookingCount, loading, onRefre
           )}
         </div>
       </div>
+
+      {/* Start Booking toast */}
+      {bookingToast && (
+        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 2000, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 4px 24px rgba(0,0,0,0.5)', maxWidth: 320, fontFamily: 'DM Mono', fontSize: 11 }}>
+          <span style={{ color: 'var(--accent)', fontSize: 14 }}>🗓</span>
+          <span style={{ color: 'var(--text)', flex: 1 }}>Booking flow coming in Chunk 6.</span>
+          <button onClick={() => setBookingToast(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 16, lineHeight: 1, flexShrink: 0 }}>×</button>
+        </div>
+      )}
 
       {/* Scrollable body */}
       <div style={{ overflowY: 'auto', flex: 1, padding: '14px 18px 18px' }}>
