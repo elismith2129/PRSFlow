@@ -178,7 +178,7 @@ function RegistrationReviewModal({ regs, onClose, onConfirm }: {
   async function confirm(id: string) {
     setConfirmingId(id)
     await supabase.from('clients').update({ profile_confirmed_at: new Date().toISOString() }).eq('id', id)
-    setConfirmedIds(prev => new Set([...prev, id]))
+    setConfirmedIds(prev => { const next = new Set(Array.from(prev)); next.add(id); return next })
     setConfirmingId(null)
     onConfirm(id)
   }
