@@ -19,6 +19,81 @@
 
 ---
 
+## Quick Mental Model
+
+If you're not deep in the code day-to-day, here's the 30-second version of how everything connects.
+
+**The code lives in two places:**
+- **Your laptop** — where you edit files in VS Code. Nothing here affects the live site until you push.
+- **GitHub** — the cloud copy and source of truth. Every `git push` sends your local changes here.
+
+**Vercel watches GitHub.** The moment you push to the `main` branch, Vercel automatically builds and deploys the new version. The live site at `prs-flow.vercel.app` is updated in about 60 seconds — no manual deploy step needed.
+
+**The app talks to Supabase for all data.** Supabase is the database. It holds leads, clients, registration tokens — everything. The app running in the browser queries it directly. Supabase lives in the cloud independently of Vercel.
+
+**The full edit loop looks like this:**
+
+```
+Edit file in VS Code
+       ↓
+localhost:3000 updates instantly (npm run dev is running)
+       ↓
+git push origin main
+       ↓
+Vercel detects the push → builds → deploys (~60 seconds)
+       ↓
+prs-flow.vercel.app is live with your changes
+```
+
+**Preview URLs** work the same way but for non-main branches. Push a branch like `chunk-4-6b` and Vercel builds a separate preview URL — useful for testing on your phone without touching the live site.
+
+---
+
+## Local Development Setup
+
+When you sit down to work on PRSFlow, here's what should be running:
+
+**VS Code**
+Open the project folder (`~/Desktop/PRS/PRSFlow/prsflow`). All file editing happens here. The built-in terminal panel at the bottom is where you run commands — you can have multiple terminals open as tabs.
+
+**Terminal 1 — the dev server**
+```
+npm run dev
+```
+This starts a local version of the app at `http://localhost:3000`. It stays running the whole time you're working. Every time you save a file, it automatically refreshes the browser — no manual reload needed.
+
+You'll see a stream of `GET /` and `GET /crm` log lines while you use the app. That's normal — it means the server is responding to your browser. It's not stuck; it's working.
+
+**Terminal 2 — Claude Code**
+```
+claude
+```
+The AI coding assistant. Open this in a second terminal tab so it runs alongside the dev server. You can switch between terminals by clicking the tabs in VS Code's terminal panel (bottom right of the screen).
+
+**Browser**
+- `localhost:3000` — for testing your current changes locally
+- Vercel preview URLs (e.g. `prsflow-git-chunk-4-6b-....vercel.app`) — for testing on your phone or sharing with others before merging
+
+You don't need to restart `npm run dev` when you edit files — it hot-reloads automatically. You only need to restart it if you change something in `next.config.js`, install a new package, or if it crashes.
+
+---
+
+## Troubleshooting Quick Reference
+
+| Symptom | Fix |
+|---|---|
+| **White screen, no styles** | Check that `globals.css` is imported in `app/layout.tsx`. Try restarting `npm run dev`. |
+| **Data not loading / blank lists** | Open browser DevTools → Console tab. Look for red errors. Most likely: `.env.local` is missing the Supabase API keys. |
+| **Vercel deploy failed** | Open Vercel dashboard → click the failed deployment → Build Logs. Most common cause: a missing environment variable. Remember env vars must be set for **all three environments** (Production, Preview, Development) — not just Production. |
+| **`git push` rejected** | Run `git pull --rebase origin main` first to pull in any changes you don't have locally, then push again. Or ask Claude Code: "resolve this push rejection." |
+| **Merge conflict** | Don't panic. Ask Claude Code to resolve it — paste the conflict and it'll fix the file. |
+| **Claude Code hung / waiting for permission** | Press `Esc` to cancel the pending action. For routine read/write commands you trust, choose "Yes, and don't ask again for this session" to stop being prompted repeatedly. |
+| **`BEGIN`/`COMMIT` not working in Supabase SQL editor** | The SQL editor uses a separate connection per browser tab. Multi-statement transactions must be run in the same tab, in one execution. |
+| **iOS Safari looks different from desktop** | Almost certainly an overflow/height issue. Add explicit `height` (not just `max-height`) and `-webkit-overflow-scrolling: touch` to the scrollable container. See the iOS Safari entry in PROJECT_LOG.md → Decisions Log. |
+| **Phone can't reach `localhost:3000`** | `localhost` only works on the same machine. Use a Vercel preview URL to test on your phone, or configure the dev server to expose itself on your local network (`npm run dev -- --hostname 0.0.0.0` and use your laptop's local IP). |
+
+---
+
 ## Key files
 
 | Path | Purpose |
