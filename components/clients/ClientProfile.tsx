@@ -193,6 +193,27 @@ function AddContactForm({ onAdd, onCancel }: { onAdd: (data: Partial<ClientConta
   )
 }
 
+// ─── Artist chip with inline confirm ─────────────────────────────────────────
+
+function ArtistChip({ name, onRemove }: { name: string; onRemove: () => void }) {
+  const [confirming, setConfirming] = useState(false)
+  if (confirming) {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontFamily: 'DM Mono', color: 'var(--hot)', background: 'rgba(240,78,122,0.08)', border: '1px solid rgba(240,78,122,0.3)', padding: '2px 7px', borderRadius: 4 }}>
+        Remove {name}?
+        <button onClick={onRemove} style={{ background: 'none', border: 'none', color: 'var(--hot)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'DM Mono', fontWeight: 700 }}>Yes</button>
+        <button onClick={() => setConfirming(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'DM Mono' }}>Cancel</button>
+      </span>
+    )
+  }
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)', background: 'var(--surface2)', border: '1px solid var(--border)', padding: '2px 7px', borderRadius: 4 }}>
+      {name}
+      <button onClick={() => setConfirming(true)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 0, fontSize: 11, lineHeight: 1 }} title="Remove">×</button>
+    </span>
+  )
+}
+
 // ─── Booking history ──────────────────────────────────────────────────────────
 
 function BookingHistory({ leads }: { leads: BookingLead[] }) {
@@ -387,10 +408,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, onRefre
             <SectionHeader label="Artists" />
             <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 8 }}>
               {(client.artists || []).map((a, i) => (
-                <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)', background: 'var(--surface2)', border: '1px solid var(--border)', padding: '2px 7px', borderRadius: 4 }}>
-                  {a}
-                  <button onClick={() => removeArtist(a)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 0, fontSize: 11, lineHeight: 1 }} title="Remove">×</button>
-                </span>
+                <ArtistChip key={i} name={a} onRemove={() => removeArtist(a)} />
               ))}
               {(client.artists || []).length === 0 && (
                 <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>No artists on file yet — add one below.</span>
