@@ -95,6 +95,17 @@ export interface WorkOrder {
   created_at: string
 }
 
+export interface RegistrationToken {
+  id: string
+  token: string
+  lead_id: number | null
+  created_at: string
+  expires_at: string
+  used_at: string | null
+  prefill_email: string | null
+  prefill_name: string | null
+}
+
 export interface QCReport {
   id: string
   location: string
