@@ -197,7 +197,8 @@ function RegistrationReviewModal({ regs, onClose, onNavigate }: {
       const map: Record<string, string> = {}
       for (const reg of regs) {
         if (!reg.id_file_url) continue
-        const { data } = await supabase.storage.from('client-ids').createSignedUrl(reg.id_file_url, 3600)
+        const { data, error } = await supabase.storage.from('client-ids').createSignedUrl(reg.id_file_url, 3600)
+        if (error) console.error('[client-ids] signed URL failed for', reg.id_file_url, error.message)
         if (data?.signedUrl) map[reg.id] = data.signedUrl
       }
       setSignedUrls(map)
