@@ -113,7 +113,16 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
 
       <div style={{ overflowY: 'auto', flex: 1 }}>
         {loading ? (
-          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
+          <>
+            {[62, 48, 72, 55, 65, 50, 75, 58].map((w, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ height: 11, borderRadius: 3, marginBottom: 5, background: 'var(--surface2)', animation: 'shimmer 1.4s ease-in-out infinite', width: `${w}%` }} />
+                  <div style={{ height: 9, borderRadius: 3, background: 'var(--surface2)', animation: 'shimmer 1.4s ease-in-out infinite', width: `${[38, 45, 30, 52, 36, 42, 34, 48][i]}%`, opacity: 0.7 }} />
+                </div>
+              </div>
+            ))}
+          </>
         ) : filtered.length === 0 ? (
           <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11 }}>
             {q ? 'No clients match.' : 'No clients.'}

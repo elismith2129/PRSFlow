@@ -15,7 +15,9 @@ interface Props {
   client: Client | null
   contacts: ClientContact[]
   bookingCount: number
+  loading?: boolean
   onRefresh: () => void
+  onBack?: () => void
 }
 
 // ─── Shared button styles ─────────────────────────────────────────────────────
@@ -220,7 +222,7 @@ function BookingHistory({ leads }: { leads: BookingLead[] }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ClientProfile({ client, contacts, bookingCount, onRefresh }: Props) {
+export function ClientProfile({ client, contacts, bookingCount, loading, onRefresh, onBack }: Props) {
   const [bookings, setBookings] = useState<BookingLead[]>([])
   const [showAddContact, setShowAddContact] = useState(false)
   const [newArtist, setNewArtist] = useState('')
@@ -289,6 +291,26 @@ export function ClientProfile({ client, contacts, bookingCount, onRefresh }: Pro
     await supabase.from('clients').update({ artists: updated }).eq('id', client.id)
     onRefresh()
   }, [client, onRefresh])
+
+  // ── Loading skeleton ───────────────────────────────────────────────────────
+  if (loading && !client) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
+        <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ height: 18, borderRadius: 4, background: 'var(--surface2)', animation: 'shimmer 1.4s ease-in-out infinite', width: '52%', marginBottom: 10 }} />
+          <div style={{ height: 12, borderRadius: 3, background: 'var(--surface2)', animation: 'shimmer 1.4s ease-in-out infinite', width: '28%' }} />
+        </div>
+        <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {[80, 55, 70, 45].map((w, i) => (
+            <div key={i}>
+              <div style={{ height: 8, borderRadius: 3, background: 'var(--surface2)', animation: 'shimmer 1.4s ease-in-out infinite', width: '22%', marginBottom: 6 }} />
+              <div style={{ height: 11, borderRadius: 3, background: 'var(--surface2)', animation: 'shimmer 1.4s ease-in-out infinite', width: `${w}%` }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   // ── Empty state ────────────────────────────────────────────────────────────
   if (!client) {

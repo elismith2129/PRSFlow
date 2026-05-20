@@ -81,6 +81,7 @@ function ClientsPageInner() {
           client={selected}
           contacts={selected ? (contactsMap[selected.id] || []) : []}
           bookingCount={selected ? (bookingCountMap[selected.id] || 0) : 0}
+          loading={loading}
           onRefresh={load}
         />
       </div>
