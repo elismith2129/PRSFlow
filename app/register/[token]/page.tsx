@@ -798,6 +798,7 @@ function FileUpload({ file, onChange, disabled, error }: FileUploadProps) {
         <input
           type="file"
           accept=".jpg,.jpeg,.png,.heic,.webp,.pdf,image/jpeg,image/png,image/heic,image/webp,application/pdf"
+          capture="environment"
           onChange={handleChange}
           disabled={disabled}
           style={{ display: 'none' }}
