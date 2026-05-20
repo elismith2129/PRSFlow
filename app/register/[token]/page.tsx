@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { RegistrationToken } from '@/lib/supabase'
+import { TERMS_SECTIONS } from '@/lib/terms'
 
 type PageState = 'loading' | 'invalid' | 'expired' | 'used' | 'form' | 'submitting' | 'success'
 
@@ -557,12 +558,16 @@ export default function RegisterPage() {
 
         <Spacer />
 
-        {/* Terms */}
+        {/* Terms & Conditions */}
+        <SectionLabel>Terms &amp; Conditions</SectionLabel>
+        <TermsScroller />
+
         <div style={{
-          padding: '16px',
+          padding: '14px 16px',
           background: 'var(--surface2)',
           border: `1px solid ${errors.terms_accepted ? 'var(--hot)' : 'var(--border)'}`,
           borderRadius: 6,
+          marginTop: 10,
           marginBottom: 4,
         }}>
           <label style={{ display: 'flex', gap: 12, cursor: 'pointer', alignItems: 'flex-start' }}>
@@ -767,6 +772,49 @@ function Input({ value, onChange, placeholder, disabled, error, type = 'text', i
         ...style,
       }}
     />
+  )
+}
+
+function TermsScroller() {
+  return (
+    <div style={{
+      border: '1px solid var(--border)',
+      borderRadius: 6,
+      background: 'var(--surface)',
+      overflow: 'hidden',
+    }}>
+      <div style={{
+        maxHeight: 280,
+        overflowY: 'auto',
+        padding: '14px 16px',
+      }}>
+        {TERMS_SECTIONS.map((section, i) => (
+          <div key={section.heading} style={{ marginTop: i === 0 ? 0 : 12 }}>
+            <p style={{
+              fontFamily: 'DM Mono',
+              fontSize: 12,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: 'var(--text2)',
+              margin: '0 0 4px',
+            }}>
+              {section.heading}
+            </p>
+            <p style={{
+              fontFamily: 'DM Mono',
+              fontSize: 13,
+              color: 'var(--text3)',
+              lineHeight: 1.65,
+              margin: 0,
+              whiteSpace: 'pre-wrap',
+            }}>
+              {section.body}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
