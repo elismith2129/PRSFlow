@@ -240,7 +240,8 @@ export default function CRMPage() {
   }
 
   async function createLead(data: Partial<Lead>) {
-    const insertData: Partial<Lead> = { ...data, status: 'uncontacted' }
+    const insertData: Partial<Lead> = { ...data }
+    if (!insertData.status) insertData.status = 'uncontacted'
     if (insertData.status === 'hot') {
       const khu = new Date(); khu.setDate(khu.getDate() + 5)
       insertData.keep_hot_until = khu.toISOString()
@@ -1405,8 +1406,11 @@ function NewLeadModal({ leads, onClose, onSave }: {
   onClose: () => void
   onSave: (data: Partial<Lead>) => Promise<void>
 }) {
+  const router = useRouter()
   const emptyForm = { fname: '', lname: '', email: '', phone: '', company: '', label: '', source: '', booking: '', notes: '', billing: 'COD' as BillingType }
   const [form, setForm] = useState(emptyForm)
+  const [temperature, setTemperature] = useState<'hot' | 'warm' | 'booking'>('hot')
+  const [matchedClientId, setMatchedClientId] = useState<string | null>(null)
   const [nameSuggestions, setNameSuggestions] = useState<Array<{ record: Lead | Client, type: 'lead' | 'client' }>>([])
   const [showNameDD, setShowNameDD] = useState(false)
   const [nameHighlight, setNameHighlight] = useState(-1)
@@ -1464,9 +1468,11 @@ function NewLeadModal({ leads, onClose, onSave }: {
       : `Previous inquiry: ${fmtDate(r.created_at)} — ${((r as Lead).notes || '').slice(0, 120)}`
     if (isClient) {
       const c = r as Client
+      setMatchedClientId(c.id)
       setForm(prev => ({ ...prev, fname: c.fname || prev.fname, lname: c.lname || prev.lname, email: c.email || prev.email, phone: c.phone || prev.phone, company: c.type === 'label' ? c.name : prev.company, label: c.type === 'label' ? c.name : prev.label, source: c.how_heard || prev.source, notes: prevNote }))
     } else {
       const l = r as Lead
+      setMatchedClientId(null)
       setForm(prev => ({ ...prev, fname: l.fname || prev.fname, lname: l.lname || prev.lname, email: l.email || prev.email, phone: l.phone || prev.phone, company: l.company || prev.company, label: l.label || prev.label, source: l.source || prev.source, booking: l.booking || prev.booking, billing: l.billing || prev.billing, notes: prevNote }))
     }
     setShowNameDD(false); setNameHighlight(-1)
@@ -1485,8 +1491,14 @@ function NewLeadModal({ leads, onClose, onSave }: {
   async function handleSave() {
     if (!form.fname && !form.lname && !form.email && !form.phone) return
     setSaving(true)
-    await onSave({ ...form, status: 'uncontacted' as LeadStatus })
+    const status: LeadStatus = temperature === 'hot' ? 'hot' : temperature === 'warm' ? 'warm' : 'booked'
+    const data: Partial<Lead> = { ...form, status }
+    if (temperature === 'booking' && matchedClientId) data.client_id = matchedClientId
+    await onSave(data)
     setSaving(false)
+    if (temperature === 'booking') {
+      router.push(matchedClientId ? `/clients?id=${matchedClientId}` : '/clients')
+    }
   }
 
   const inputStyle: React.CSSProperties = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '7px 10px', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 12, outline: 'none' }
@@ -1536,6 +1548,44 @@ function NewLeadModal({ leads, onClose, onSave }: {
             <div><label style={labelS}>Email</label><input value={form.email} onChange={e => set('email', e.target.value)} type="email" style={inputStyle} /></div>
             <div><label style={labelS}>Phone</label><input value={form.phone} onChange={e => set('phone', e.target.value)} style={inputStyle} /></div>
           </div>
+          <div>
+            <label style={labelS}>Lead Temperature</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {([
+                { key: 'hot', label: 'Hot', color: 'var(--hot)' },
+                { key: 'warm', label: 'Warm', color: 'var(--warm)' },
+                { key: 'booking', label: 'Move to Booking', color: 'var(--booked)' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setTemperature(opt.key)}
+                  style={{
+                    flex: opt.key === 'booking' ? 2 : 1,
+                    padding: '7px 0',
+                    borderRadius: 6,
+                    border: `1px solid ${temperature === opt.key ? opt.color : 'var(--border)'}`,
+                    background: temperature === opt.key ? `${opt.color}22` : 'transparent',
+                    color: temperature === opt.key ? opt.color : 'var(--text3)',
+                    fontFamily: 'Syne',
+                    fontWeight: 700,
+                    fontSize: 10,
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {temperature === 'booking' && !matchedClientId && (
+              <div style={{ marginTop: 6, fontSize: 10, color: 'var(--warm)', fontFamily: 'DM Mono' }}>
+                Select an existing client above to link this booking.
+              </div>
+            )}
+          </div>
           <div style={{ position: 'relative' }}>
             <label style={labelS}>Company / Artist Name</label>
             <input value={form.company} onChange={e => set('company', e.target.value)} onFocus={() => setShowCompanyDD(true)} onBlur={() => setTimeout(() => setShowCompanyDD(false), 150)} style={inputStyle} />
@@ -1575,8 +1625,8 @@ function NewLeadModal({ leads, onClose, onSave }: {
           </div>
         </div>
         <div style={{ padding: '12px 20px 20px', display: 'flex', gap: 8, position: 'sticky', bottom: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
-          <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '9px 0', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: saving ? 0.6 : 1 }}>
-            {saving ? 'Saving…' : 'Create Lead'}
+          <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '9px 0', background: temperature === 'booking' ? 'var(--booked)' : 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: saving ? 0.6 : 1 }}>
+            {saving ? 'Saving…' : temperature === 'booking' ? 'Save & Go to Booking →' : 'Create Lead'}
           </button>
           <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
         </div>
