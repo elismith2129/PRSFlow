@@ -57,17 +57,15 @@ export default function PhoneInput({
   )
 
   function toggleIntl() {
-    setIntl(prev => {
-      const next = !prev
-      if (next && value && !value.startsWith('+')) {
-        onChange(`+1${value}`)
-      } else if (!next && value.startsWith('+1') && value.length === 12) {
-        onChange(value.slice(2))
-      } else if (!next) {
-        onChange('')
-      }
-      return next
-    })
+    const next = !intl
+    if (next && value && !value.startsWith('+')) {
+      onChange(`+1${value}`)
+    } else if (!next && value.startsWith('+1') && value.length === 12) {
+      onChange(value.slice(2))
+    } else if (!next) {
+      onChange('')
+    }
+    setIntl(next)
     setTimeout(() => inputRef.current?.focus(), 0)
   }
 
