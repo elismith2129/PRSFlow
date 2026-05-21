@@ -1526,21 +1526,37 @@ function NewLeadModal({ leads, onClose, onSave }: {
                 {nameSuggestions.map((item, i) => {
                   const r = item.record; const isClient = item.type === 'client'
                   return (
-                    <div key={`${item.type}-${r.id}`} onMouseDown={() => applyAutofill(item)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i === nameHighlight ? 'var(--surface)' : 'transparent', display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 500 }}>
+                    <div key={`${item.type}-${r.id}`} onMouseDown={() => applyAutofill(item)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i === nameHighlight ? 'var(--surface)' : isClient ? 'rgba(78,240,162,0.04)' : 'transparent' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: isClient ? 'var(--booked)' : 'var(--text)' }}>
                           {isClient ? (r as Client).name || `${r.fname || ''} ${r.lname || ''}`.trim() : `${r.fname} ${r.lname}`}
-                        </div>
-                        <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 1 }}>
-                          {(r as any).booking && <span>{(r as any).booking} · </span>}{fmtDate(r.created_at)}
-                        </div>
+                        </span>
+                        <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: isClient ? 'rgba(78,240,162,0.15)' : 'rgba(139,144,168,0.12)', color: isClient ? 'var(--booked)' : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                          {isClient ? '★ Client' : 'Prev. Inquiry'}
+                        </span>
                       </div>
-                      <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 10, background: isClient ? 'rgba(78,240,162,0.15)' : 'rgba(139,144,168,0.15)', color: isClient ? 'var(--booked)' : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>
-                        {isClient ? '★ Client' : 'Prev. Inquiry'}
-                      </span>
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+                        {r.email && <span>{r.email}</span>}
+                        {r.phone && <span>{r.phone}</span>}
+                        {!isClient && (r as Lead).booking && <span>{(r as Lead).booking}</span>}
+                        <span>{fmtDate(r.created_at)}</span>
+                      </div>
                     </div>
                   )
                 })}
+                <div
+                  onMouseDown={() => { setMatchedClientId(null); setShowNameDD(false); setNameHighlight(-1) }}
+                  style={{ padding: '9px 14px', cursor: 'pointer', color: 'var(--text3)', fontSize: 10, fontFamily: 'DM Mono', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> None of these — New Client
+                </div>
+              </div>
+            )}
+            {matchedClientId && (
+              <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'rgba(78,240,162,0.08)', border: '1px solid rgba(78,240,162,0.2)', borderRadius: 6 }}>
+                <span style={{ color: 'var(--booked)', fontSize: 12 }}>★</span>
+                <span style={{ fontSize: 11, color: 'var(--booked)', fontFamily: 'DM Mono', flex: 1 }}>Matched to existing client profile</span>
+                <button onMouseDown={() => setMatchedClientId(null)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
               </div>
             )}
           </div>
