@@ -5,6 +5,7 @@ import { supabase, Lead, LeadStatus, Client, BillingType } from '@/lib/supabase'
 import { TOUCH_INTERVAL_DAYS } from '@/lib/settings'
 import { ContactPicker } from '@/components/shared/ContactPicker'
 import { ArtistPicker } from '@/components/shared/ArtistPicker'
+import PhoneInput from '@/components/shared/PhoneInput'
 
 const STATUS_COLORS: Record<string, string> = {
   hot: 'var(--hot)', warm: 'var(--warm)', cold: 'var(--cold)',
@@ -1550,7 +1551,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div><label style={labelS}>Email</label><input value={form.email} onChange={e => set('email', e.target.value)} type="email" style={inputStyle} /></div>
-            <div><label style={labelS}>Phone</label><input value={form.phone} onChange={e => set('phone', e.target.value)} style={inputStyle} /></div>
+            <div><label style={labelS}>Phone</label><PhoneInput value={form.phone} onChange={v => set('phone', v)} variant="bordered" /></div>
           </div>
           <div>
             <label style={labelS}>Lead Temperature</label>

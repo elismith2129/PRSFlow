@@ -1,6 +1,7 @@
 'use client'
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase, Client, ClientContact, CLIENT_TYPE_LABELS } from '@/lib/supabase'
+import PhoneInput from '@/components/shared/PhoneInput'
 
 interface BookingLead {
   id: number
@@ -98,6 +99,23 @@ function InlineField({ label, value, onSave, multiline = false, placeholder = '�
   )
 }
 
+function PhoneInlineField({ value, onSave }: { value: string | null; onSave: (v: string) => void }) {
+  const [local, setLocal] = useState(value ?? '')
+  useEffect(() => { setLocal(value ?? '') }, [value])
+  return (
+    <div>
+      <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Phone</div>
+      <PhoneInput
+        value={local}
+        onChange={v => setLocal(v)}
+        onBlur={() => { if (local !== (value ?? '')) onSave(local) }}
+        variant="inline"
+        placeholder="—"
+      />
+    </div>
+  )
+}
+
 // ─── Contact row ──────────────────────────────────────────────────────────────
 
 function ContactRow({ contact, onSave, onDelete }: {
@@ -141,7 +159,7 @@ function ContactRow({ contact, onSave, onDelete }: {
                   style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0' }} />
               </div>
             ))}
-            {(['role', 'email', 'phone', 'instagram'] as const).map(f => (
+            {(['role', 'email', 'instagram'] as const).map(f => (
               <div key={f}>
                 <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>
                   {f}
@@ -150,6 +168,10 @@ function ContactRow({ contact, onSave, onDelete }: {
                   style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0' }} />
               </div>
             ))}
+            <div>
+              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Phone</div>
+              <PhoneInput value={draft.phone ?? ''} onChange={v => setDraft(d => ({ ...d, phone: v }))} variant="inline" placeholder="—" />
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
             {confirmDelete ? (
@@ -174,7 +196,7 @@ function ContactRow({ contact, onSave, onDelete }: {
 function AddContactForm({ onAdd, onCancel }: { onAdd: (data: Partial<ClientContact>) => void; onCancel: () => void }) {
   const [draft, setDraft] = useState({ fname: '', lname: '', role: '', email: '', phone: '', instagram: '' })
   const fields: [keyof typeof draft, string][] = [
-    ['fname', 'First'], ['lname', 'Last'], ['role', 'Role'], ['email', 'Email'], ['phone', 'Phone'], ['instagram', 'Instagram'],
+    ['fname', 'First'], ['lname', 'Last'], ['role', 'Role'], ['email', 'Email'], ['instagram', 'Instagram'],
   ]
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '10px 10px 8px', background: 'var(--surface2)', marginTop: 5 }}>
@@ -186,6 +208,10 @@ function AddContactForm({ onAdd, onCancel }: { onAdd: (data: Partial<ClientConta
               style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0' }} />
           </div>
         ))}
+        <div>
+          <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Phone</div>
+          <PhoneInput value={draft.phone} onChange={v => setDraft(d => ({ ...d, phone: v }))} variant="inline" placeholder="—" />
+        </div>
       </div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button onClick={onCancel} style={ghostBtn}>Cancel</button>
@@ -508,7 +534,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
             <SectionHeader label="Contact" mt={0} />
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px 16px', marginBottom: 4 }}>
               <InlineField label="Email" value={client.email} onSave={v => saveClient({ email: v })} />
-              <InlineField label="Phone" value={client.phone} onSave={v => saveClient({ phone: v })} />
+              <PhoneInlineField value={client.phone} onSave={v => saveClient({ phone: v })} />
               <InlineField label="Instagram" value={client.instagram} onSave={v => saveClient({ instagram: v })} />
               <InlineField label="How heard" value={client.how_heard} onSave={v => saveClient({ how_heard: v })} />
             </div>
