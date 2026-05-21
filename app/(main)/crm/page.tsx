@@ -292,7 +292,6 @@ export default function CRMPage() {
 
   async function markDidNotAnswer(id: number, initials: string) {
     await supabase.from('leads').update({ needs_contact: false }).eq('id', id)
-    await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: `${initials} - Did Not Answer` })
     await load()
   }
 
@@ -466,25 +465,21 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel, currentStatus, 
 }) {
   const [initials, setInitials] = useState('')
   const [method, setMethod] = useState<TouchMethod | null>(null)
+  const [dna, setDna] = useState(false)
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [dnaSubmitting, setDnaSubmitting] = useState(false)
-  const canSubmit = initials.trim().length >= 2 && method !== null
   const showDna = !!onDidNotAnswer && ['hot', 'warm', 'uncontacted'].includes(currentStatus || '')
-  const canDna = showDna && initials.trim().length >= 2
+  const canSubmit = initials.trim().length >= 2 && (method !== null || dna)
 
   async function handleSubmit() {
     if (!canSubmit || submitting) return
     setSubmitting(true)
-    await onSubmit(leadId, initials.trim().toUpperCase(), method!, notes)
+    if (dna) {
+      await onDidNotAnswer!(leadId, initials.trim().toUpperCase())
+    } else {
+      await onSubmit(leadId, initials.trim().toUpperCase(), method!, notes)
+    }
     setSubmitting(false)
-  }
-
-  async function handleDna() {
-    if (!canDna || dnaSubmitting) return
-    setDnaSubmitting(true)
-    await onDidNotAnswer!(leadId, initials.trim().toUpperCase())
-    setDnaSubmitting(false)
   }
 
   const methodDefs: { m: TouchMethod; color: string; actionHref?: string; actionLabel?: string }[] = [
@@ -495,7 +490,7 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel, currentStatus, 
 
   return (
     <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {/* Row 1: initials + unified method buttons with inline action links */}
+      {/* Row 1: initials + method buttons + DNA toggle */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <input
           autoFocus value={initials}
@@ -506,10 +501,10 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel, currentStatus, 
         />
         <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
           {methodDefs.map(({ m, color, actionHref, actionLabel }) => {
-            const active = method === m
+            const active = !dna && method === m
             return (
               <React.Fragment key={m}>
-                <button onClick={() => setMethod(active ? null : m)} style={{ padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.05em', textTransform: 'uppercase', border: `1px solid ${active ? color : 'var(--border)'}`, background: active ? `color-mix(in srgb, ${color} 15%, transparent)` : 'transparent', color: active ? color : 'var(--text3)', transition: 'all 0.1s' }}>
+                <button onClick={() => { setDna(false); setMethod(active ? null : m) }} style={{ padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.05em', textTransform: 'uppercase', border: `1px solid ${active ? color : 'var(--border)'}`, background: active ? `color-mix(in srgb, ${color} 15%, transparent)` : 'transparent', color: active ? color : 'var(--text3)', opacity: dna ? 0.35 : 1, transition: 'all 0.1s' }}>
                   {m}
                 </button>
                 {active && actionHref && (
@@ -520,26 +515,29 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel, currentStatus, 
               </React.Fragment>
             )
           })}
+          {showDna && (
+            <button onClick={() => { setDna(!dna); setMethod(null) }} style={{ padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.05em', textTransform: 'uppercase', border: `1px solid ${dna ? 'var(--text2)' : 'var(--border)'}`, background: dna ? 'rgba(139,144,168,0.15)' : 'transparent', color: dna ? 'var(--text2)' : 'var(--text3)', transition: 'all 0.1s' }}>
+              No Answer
+            </button>
+          )}
         </div>
       </div>
-      <textarea
-        value={notes} onChange={e => setNotes(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
-        placeholder="Optional: add context about this touch"
-        rows={2}
-        style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
-      />
+      {!dna && (
+        <textarea
+          value={notes} onChange={e => setNotes(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
+          placeholder="Optional: add context about this touch"
+          rows={2}
+          style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
+        />
+      )}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? 'var(--accent)' : 'var(--surface)', color: canSubmit ? '#0d0f14' : 'var(--text3)', border: `1px solid ${canSubmit ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
-          {submitting ? '…' : 'Log Touch'}
+          {submitting ? '…' : dna ? 'Done' : 'Log Touch'}
         </button>
         <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}>
           Cancel
         </button>
-        {showDna && (
-          <button onClick={handleDna} disabled={!canDna || dnaSubmitting} style={{ marginLeft: 'auto', padding: '4px 11px', background: 'transparent', border: `1px solid ${canDna ? 'var(--text3)' : 'var(--border)'}`, color: canDna ? 'var(--text2)' : 'var(--text3)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canDna && !dnaSubmitting ? 'pointer' : 'not-allowed', letterSpacing: '0.04em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
-            {dnaSubmitting ? '…' : 'Did Not Answer'}
-          </button>
         )}
 
       </div>
@@ -769,6 +767,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                     e.stopPropagation()
                     setKeepHotPromptId(null)
                     setTouchPromptId(isTouchPrompting ? null : l.id)
+                    if (!isTouchPrompting) onSelect(l.id)
                   }}
                   style={{ flexShrink: 0, padding: '4px 10px', background: 'transparent', border: `1px solid ${isTouchPrompting ? 'var(--border)' : 'var(--accent)'}`, color: isTouchPrompting ? 'var(--text3)' : 'var(--accent)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                   {isTouchPrompting ? 'Cancel' : 'Contact'}
@@ -946,7 +945,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                     {isKeepHotPrompting ? 'Cancel' : keepLabel}
                   </button>
                 )}
-                <button onClick={e => { e.stopPropagation(); setKeepHotPromptId(null); setTouchPromptId(isTouchPrompting ? null : l.id) }}
+                <button onClick={e => { e.stopPropagation(); setKeepHotPromptId(null); setTouchPromptId(isTouchPrompting ? null : l.id); if (!isTouchPrompting) onSelect(l.id) }}
                   style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: `1px solid ${isTouchPrompting ? 'var(--border)' : 'var(--accent)'}`, color: isTouchPrompting ? 'var(--text3)' : 'var(--accent)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                   {isTouchPrompting ? 'Cancel' : 'Contact'}
                 </button>
@@ -1096,7 +1095,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
         const all = [...items, ...synth].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
         setActivityLog(all)
       })
-  }, [lead.id, regTokenDates])
+  }, [lead.id, lead.last_contact, regTokenDates])
 
   useEffect(() => {
     if (!focusField) return
