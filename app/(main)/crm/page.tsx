@@ -999,6 +999,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   const [regLinkUrl, setRegLinkUrl] = useState<string | null>(null)
   const [regLinkCopied, setRegLinkCopied] = useState(false)
   const [regLinkGenerating, setRegLinkGenerating] = useState(false)
+  const [locked, setLocked] = useState(!!lead.client_id)
 
   const fnameRef = useRef<HTMLInputElement>(null)
   const lnameRef = useRef<HTMLInputElement>(null)
@@ -1006,7 +1007,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   const phoneRef = useRef<HTMLInputElement>(null)
   const quoteRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => { setLocal({ ...lead }) }, [lead.id])
+  useEffect(() => { setLocal({ ...lead }); setLocked(!!lead.client_id) }, [lead.id])
   useEffect(() => { setNotesVal(lead.notes || '') }, [lead.notes])
   useEffect(() => { setRegLinkUrl(null); setRegLinkCopied(false); setRegLinkGenerating(false) }, [lead.id])
 
@@ -1102,10 +1103,11 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
 
   function iStyle(key: string): React.CSSProperties {
     return {
-      background: focusedInput === key ? 'var(--surface2)' : 'transparent',
-      border: 'none', color: 'var(--text)', padding: '4px 6px',
+      background: locked ? 'transparent' : focusedInput === key ? 'var(--surface2)' : 'transparent',
+      border: 'none', color: locked ? 'var(--text2)' : 'var(--text)', padding: '4px 6px',
       fontFamily: 'DM Mono', fontSize: 12, outline: 'none',
       width: '100%', borderRadius: 4, transition: 'background 0.1s',
+      pointerEvents: locked ? 'none' : 'auto',
     }
   }
 
@@ -1193,12 +1195,29 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
 
       <div style={{ marginBottom: 8 }}>
         {lead.client_id ? (
-          <button
-            onClick={() => onViewClient?.(lead.client_id!)}
-            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--booked)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' }}
-          >
-            View Client Profile →
-          </button>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const }}>
+            <button
+              onClick={() => onViewClient?.(lead.client_id!)}
+              style={{ padding: '5px 14px', background: 'var(--booked)', color: '#0d0f14', border: 'none', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
+            >
+              Start Booking →
+            </button>
+            {locked ? (
+              <button
+                onClick={() => setLocked(false)}
+                style={{ padding: '5px 14px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
+              >
+                Edit Lead
+              </button>
+            ) : (
+              <button
+                onClick={() => setLocked(true)}
+                style={{ padding: '5px 14px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
+              >
+                Lock
+              </button>
+            )}
+          </div>
         ) : (
           <>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const }}>
