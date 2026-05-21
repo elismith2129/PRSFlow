@@ -47,6 +47,24 @@ function daysSince(d: string) {
   return Math.floor((Date.now() - n) / 86400000)
 }
 
+function fmtActivityTime(ts: string) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
+function activityColor(note: string): string {
+  const n = (note || '').toLowerCase()
+  if (n.includes('call')) return '#f04e7a'
+  if (n.includes('text')) return '#f0a24e'
+  if (n.includes('email')) return '#7BBFFF'
+  if (n.includes('kept hot') || n.includes('keep hot')) return '#f04e7a'
+  if (n.includes('kept warm') || n.includes('keep warm')) return '#f0a24e'
+  if (n.includes('registration returned') || n.includes('reg returned')) return '#4ef0a2'
+  if (n.includes('registration') || n.includes('reg link') || n.includes('reg sent')) return '#c8f04e'
+  return '#8b90a8'
+}
+
 function fmtDate(d: string) {
   return d ? new Date(d).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' }) : '—'
 }
@@ -470,8 +488,10 @@ export default function CRMPage() {
 
 // ─── Touch prompt ─────────────────────────────────────────────────────────────
 
-function TouchPrompt({ leadId, onSubmit, onCancel, showStatusSelect, currentStatus, onDidNotAnswer }: {
+function TouchPrompt({ leadId, phone, email, onSubmit, onCancel, showStatusSelect, currentStatus, onDidNotAnswer }: {
   leadId: number
+  phone?: string | null
+  email?: string | null
   onSubmit: (id: number, initials: string, method: TouchMethod, notes: string, statusOverride?: string) => Promise<void>
   onCancel: () => void
   showStatusSelect?: boolean
@@ -511,6 +531,32 @@ function TouchPrompt({ leadId, onSubmit, onCancel, showStatusSelect, currentStat
 
   return (
     <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Action links row */}
+      {(phone || email) && (
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+          {phone && (
+            <a href={`tel:${phone.replace(/\D/g, '')}`}
+              onClick={() => setMethod('Call')}
+              style={{ padding: '4px 10px', borderRadius: 4, background: 'rgba(240,78,122,0.10)', border: '1px solid rgba(240,78,122,0.3)', color: '#f04e7a', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer' }}>
+              📞 Call
+            </a>
+          )}
+          {phone && (
+            <a href={`sms:${phone.replace(/\D/g, '')}`}
+              onClick={() => setMethod('Text')}
+              style={{ padding: '4px 10px', borderRadius: 4, background: 'rgba(240,162,78,0.10)', border: '1px solid rgba(240,162,78,0.3)', color: '#f0a24e', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer' }}>
+              💬 Text
+            </a>
+          )}
+          {email && (
+            <a href={`mailto:${email}`}
+              onClick={() => setMethod('Email')}
+              style={{ padding: '4px 10px', borderRadius: 4, background: 'rgba(123,191,255,0.10)', border: '1px solid rgba(123,191,255,0.3)', color: '#7BBFFF', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer' }}>
+              ✉️ Email
+            </a>
+          )}
+        </div>
+      )}
       {/* Row 1: initials + method */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <input
@@ -789,12 +835,14 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                     setTouchPromptId(isTouchPrompting ? null : l.id)
                   }}
                   style={{ flexShrink: 0, padding: '4px 10px', background: 'transparent', border: `1px solid ${isTouchPrompting ? 'var(--border)' : 'var(--accent)'}`, color: isTouchPrompting ? 'var(--text3)' : 'var(--accent)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                  {isTouchPrompting ? 'Cancel' : 'Mark Touched'}
+                  {isTouchPrompting ? 'Cancel' : 'Contact'}
                 </button>
               </div>
               {isTouchPrompting && (
                 <TouchPrompt
                   leadId={l.id}
+                  phone={l.phone}
+                  email={l.email}
                   showStatusSelect={activeBucket.key !== 'incomplete'}
                   currentStatus={l.status}
                   onDidNotAnswer={onMarkDidNotAnswer}
@@ -965,11 +1013,13 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                 )}
                 <button onClick={e => { e.stopPropagation(); setKeepHotPromptId(null); setTouchPromptId(isTouchPrompting ? null : l.id) }}
                   style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: `1px solid ${isTouchPrompting ? 'var(--border)' : 'var(--accent)'}`, color: isTouchPrompting ? 'var(--text3)' : 'var(--accent)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                  {isTouchPrompting ? 'Cancel' : 'Mark Touched'}
+                  {isTouchPrompting ? 'Cancel' : 'Contact'}
                 </button>
               </div>
               {isTouchPrompting && (
                 <TouchPrompt leadId={l.id}
+                  phone={l.phone}
+                  email={l.email}
                   showStatusSelect={['hot', 'warm', 'uncontacted'].includes(l.status)}
                   currentStatus={l.status}
                   onSubmit={async (id, init, meth, notes, status) => { setTouchPromptId(null); await onMarkTouched(id, init, meth, notes, status) }}
@@ -1064,6 +1114,8 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   const parsedLoc0 = (() => { const idx = (lead.location || '').indexOf(' · '); return idx === -1 ? { venue: lead.location || '', studio: '' } : { venue: (lead.location || '').slice(0, idx), studio: (lead.location || '').slice(idx + 3) } })()
   const [localVenue, setLocalVenue] = useState(parsedLoc0.venue)
   const [localStudio, setLocalStudio] = useState(parsedLoc0.studio)
+  const [activityLog, setActivityLog] = useState<Array<{ ts: string; label: string; color: string }>>([])
+  const [regTokenDates, setRegTokenDates] = useState<{ created_at: string; used_at: string | null } | null>(null)
 
   const emailRef = useRef<HTMLInputElement>(null)
   const phoneRef = useRef<HTMLInputElement>(null)
@@ -1083,13 +1135,34 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   useEffect(() => { setNotesVal(lead.notes || '') }, [lead.notes])
   useEffect(() => {
     setRegLinkUrl(null); setRegLinkCopied(false); setRegLinkGenerating(false); setExistingTokenStr(null)
-    supabase.from('registration_tokens').select('token').eq('lead_id', lead.id).maybeSingle().then(({ data }) => {
+    setRegTokenDates(null)
+    supabase.from('registration_tokens').select('token, created_at, used_at').eq('lead_id', lead.id).maybeSingle().then(({ data }) => {
       if (data) {
         setExistingTokenStr(data.token)
         setRegLinkUrl(`${window.location.origin}/register/${data.token}`)
+        setRegTokenDates({ created_at: data.created_at, used_at: data.used_at })
       }
     })
   }, [lead.id])
+
+  useEffect(() => {
+    setActivityLog([])
+    supabase.from('lead_activity').select('note, created_at').eq('lead_id', lead.id)
+      .order('created_at', { ascending: false }).then(({ data }) => {
+        const items = (data || []).map(row => ({
+          ts: row.created_at,
+          label: row.note || '',
+          color: activityColor(row.note || ''),
+        }))
+        const synth: Array<{ ts: string; label: string; color: string }> = [
+          { ts: lead.created_at, label: 'Lead Created', color: '#8b90a8' },
+        ]
+        if (regTokenDates?.created_at) synth.push({ ts: regTokenDates.created_at, label: 'Reg Link Sent', color: '#c8f04e' })
+        if (regTokenDates?.used_at) synth.push({ ts: regTokenDates.used_at, label: 'Registration Returned', color: '#4ef0a2' })
+        const all = [...items, ...synth].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
+        setActivityLog(all)
+      })
+  }, [lead.id, regTokenDates])
 
   useEffect(() => {
     if (!focusField) return
@@ -1547,6 +1620,22 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
         >
           {local.engineer_needed ? '● Engineer Needed' : '○ Engineer Needed'}
         </button>
+      </div>
+
+      {/* ─── Activity Log ──────────────────────────────── */}
+      <SectionHeader label="Activity Log" mt={8} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 4 }}>
+        {activityLog.length === 0 ? (
+          <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', padding: '4px 0' }}>No activity yet</div>
+        ) : activityLog.map((entry, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: entry.color, flexShrink: 0, marginTop: 3 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>{fmtActivityTime(entry.ts)} · </span>
+              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>{entry.label}</span>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* ─── Session Notes ─────────────────────────────── */}
