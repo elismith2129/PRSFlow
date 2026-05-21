@@ -975,22 +975,19 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   const [regLinkUrl, setRegLinkUrl] = useState<string | null>(null)
   const [regLinkCopied, setRegLinkCopied] = useState(false)
   const [regLinkGenerating, setRegLinkGenerating] = useState(false)
-  const [locked, setLocked] = useState(!!lead.client_id)
+  const [nameVal, setNameVal] = useState(`${lead.fname || ''} ${lead.lname || ''}`.trim())
 
-  const fnameRef = useRef<HTMLInputElement>(null)
-  const lnameRef = useRef<HTMLInputElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
   const phoneRef = useRef<HTMLInputElement>(null)
   const quoteRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => { setLocal({ ...lead }); setLocked(!!lead.client_id) }, [lead.id])
+  useEffect(() => { setLocal({ ...lead }); setNameVal(`${lead.fname || ''} ${lead.lname || ''}`.trim()) }, [lead.id])
   useEffect(() => { setNotesVal(lead.notes || '') }, [lead.notes])
   useEffect(() => { setRegLinkUrl(null); setRegLinkCopied(false); setRegLinkGenerating(false) }, [lead.id])
 
   useEffect(() => {
     if (!focusField) return
     const refMap: Record<string, React.RefObject<HTMLInputElement>> = {
-      'first name': fnameRef, 'last name': lnameRef,
       'email/phone': emailRef, 'quote': quoteRef,
     }
     const ref = refMap[focusField]
@@ -1079,12 +1076,15 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
 
   function iStyle(key: string): React.CSSProperties {
     return {
-      background: locked ? 'transparent' : focusedInput === key ? 'var(--surface2)' : 'transparent',
-      border: 'none', color: locked ? 'var(--text2)' : 'var(--text)', padding: '4px 6px',
+      background: focusedInput === key ? 'var(--surface2)' : 'transparent',
+      border: 'none', color: 'var(--text)', padding: '4px 6px',
       fontFamily: 'DM Mono', fontSize: 12, outline: 'none',
       width: '100%', borderRadius: 4, transition: 'background 0.1s',
-      pointerEvents: locked ? 'none' : 'auto',
     }
+  }
+
+  const enterBlur = (e: React.KeyboardEvent<HTMLInputElement | HTMLSelectElement>) => {
+    if (e.key === 'Enter') (e.target as HTMLElement).blur()
   }
 
   const labelSuggestions = (local.label || '').length >= 1
@@ -1107,36 +1107,29 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
 
   return (
     <div>
-      {/* Name — inputs auto-size to content via hidden span mirror */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, minWidth: 0 }}>
-        <div style={{ display: 'inline-grid', minWidth: '2ch' }}>
-          <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
-            {local.fname || 'First name'}
-          </span>
-          <input
-            ref={fnameRef}
-            value={local.fname || ''} onChange={e => update('fname', e.target.value)}
-            onFocus={() => setFocusedInput('fname')}
-            onBlur={e => { setFocusedInput(null); save('fname', e.target.value) }}
-            placeholder="First name"
-            style={{ ...iStyle('fname'), gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, width: '100%', padding: '4px 0' }}
-          />
-        </div>
-        <div style={{ display: 'inline-grid', minWidth: '2ch' }}>
-          <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
-            {local.lname || 'Last name'}
-          </span>
-          <input
-            ref={lnameRef}
-            value={local.lname || ''} onChange={e => update('lname', e.target.value)}
-            onFocus={() => setFocusedInput('lname')}
-            onBlur={e => { setFocusedInput(null); save('lname', e.target.value) }}
-            placeholder="Last name"
-            style={{ ...iStyle('lname'), gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, width: '100%', padding: '4px 0' }}
-          />
-        </div>
-        {savedField && <span style={{ fontSize: 9, color: 'var(--booked)', fontFamily: 'DM Mono', flexShrink: 0 }}>saved</span>}
+      {/* Name — single input for "First Last", splits on save */}
+      <div style={{ display: 'inline-grid', minWidth: '4ch', marginBottom: 6, maxWidth: '100%' }}>
+        <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
+          {nameVal || 'Full name'}
+        </span>
+        <input
+          value={nameVal}
+          onChange={e => setNameVal(e.target.value)}
+          onFocus={() => setFocusedInput('name')}
+          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
+          onBlur={() => {
+            setFocusedInput(null)
+            const parts = nameVal.trim().split(/\s+/)
+            const fname = parts[0] || ''
+            const lname = parts.slice(1).join(' ')
+            if (fname !== lead.fname) save('fname', fname)
+            if (lname !== (lead.lname || '')) save('lname', lname)
+          }}
+          placeholder="Full name"
+          style={{ gridArea: '1/1', background: focusedInput === 'name' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', width: '100%', borderRadius: 4 }}
+        />
       </div>
+      {savedField && <span style={{ fontSize: 9, color: 'var(--booked)', fontFamily: 'DM Mono', display: 'block', marginBottom: 4 }}>saved</span>}
 
       {/* Pills */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
@@ -1171,29 +1164,12 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
 
       <div style={{ marginBottom: 8 }}>
         {lead.client_id ? (
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const }}>
-            <button
-              onClick={() => onViewClient?.(lead.client_id!)}
-              style={{ padding: '5px 14px', background: 'var(--booked)', color: '#0d0f14', border: 'none', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
-            >
-              Start Booking →
-            </button>
-            {locked ? (
-              <button
-                onClick={() => setLocked(false)}
-                style={{ padding: '5px 14px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
-              >
-                Edit Lead
-              </button>
-            ) : (
-              <button
-                onClick={() => setLocked(true)}
-                style={{ padding: '5px 14px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
-              >
-                Lock
-              </button>
-            )}
-          </div>
+          <button
+            onClick={() => onViewClient?.(lead.client_id!)}
+            style={{ padding: '5px 14px', background: 'var(--booked)', color: '#0d0f14', border: 'none', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
+          >
+            Start Booking →
+          </button>
         ) : (
           <>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const }}>
@@ -1227,12 +1203,12 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
         <Field label="Email">
           <input ref={emailRef} value={local.email || ''} onChange={e => update('email', e.target.value)}
             onFocus={() => setFocusedInput('email')} onBlur={e => { setFocusedInput(null); save('email', e.target.value) }}
-            placeholder="Add email" style={iStyle('email')} />
+            onKeyDown={enterBlur} placeholder="Add email" style={iStyle('email')} />
         </Field>
         <Field label="Phone">
           <input ref={phoneRef} value={local.phone || ''} onChange={e => update('phone', e.target.value)}
             onFocus={() => setFocusedInput('phone')} onBlur={e => { setFocusedInput(null); save('phone', e.target.value) }}
-            placeholder="Add phone" style={iStyle('phone')} />
+            onKeyDown={enterBlur} placeholder="Add phone" style={iStyle('phone')} />
         </Field>
 
         {/* Label with autocomplete */}
@@ -1243,6 +1219,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
             onChange={e => { update('label', e.target.value); setShowLabelDD(true) }}
             onFocus={() => { setFocusedInput('label'); setShowLabelDD(true) }}
             onBlur={e => { setFocusedInput(null); setShowLabelDD(false); save('label', e.target.value) }}
+            onKeyDown={enterBlur}
             placeholder="—"
             style={iStyle('label')}
           />
@@ -1258,7 +1235,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
         <Field label="Source">
           <input value={local.source || ''} onChange={e => update('source', e.target.value)}
             onFocus={() => setFocusedInput('source')} onBlur={e => { setFocusedInput(null); save('source', e.target.value) }}
-            placeholder="—" style={iStyle('source')} />
+            onKeyDown={enterBlur} placeholder="—" style={iStyle('source')} />
         </Field>
       </FieldPair>
 
@@ -1270,6 +1247,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
           onChange={e => { update('company', e.target.value); setShowCompanyDD(true) }}
           onFocus={() => { setFocusedInput('company'); setShowCompanyDD(true) }}
           onBlur={e => { setFocusedInput(null); setShowCompanyDD(false); save('company', e.target.value) }}
+          onKeyDown={enterBlur}
           placeholder="—"
           style={iStyle('company')}
         />
@@ -1313,17 +1291,17 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
         <Field label="Studio / Location">
           <input value={local.location || ''} onChange={e => update('location', e.target.value)}
             onFocus={() => setFocusedInput('location')} onBlur={e => { setFocusedInput(null); save('location', e.target.value) }}
-            placeholder="—" style={iStyle('location')} />
+            onKeyDown={enterBlur} placeholder="—" style={iStyle('location')} />
         </Field>
         <Field label="Quote / Rate">
           <input ref={quoteRef} value={local.quote || ''} onChange={e => update('quote', e.target.value)}
             onFocus={() => setFocusedInput('quote')} onBlur={e => { setFocusedInput(null); save('quote', e.target.value) }}
-            placeholder="—" style={iStyle('quote')} />
+            onKeyDown={enterBlur} placeholder="—" style={iStyle('quote')} />
         </Field>
         <Field label="Session Date">
           <input value={local.session_date || ''} onChange={e => update('session_date', e.target.value)}
             onFocus={() => setFocusedInput('session_date')} onBlur={e => { setFocusedInput(null); save('session_date', e.target.value) }}
-            placeholder="—" style={iStyle('session_date')} />
+            onKeyDown={enterBlur} placeholder="—" style={iStyle('session_date')} />
         </Field>
       </FieldPair>
 
