@@ -393,7 +393,6 @@ export default function CRMPage() {
               onSelect={selectAndFocus}
               onMarkTouched={markTouched}
               onKeepHot={keepHot}
-              onMarkDidNotAnswer={markDidNotAnswer}
               onUpdateStatus={updateStatus}
               loading={loading}
             />
@@ -454,31 +453,23 @@ export default function CRMPage() {
 
 // ─── Touch prompt ─────────────────────────────────────────────────────────────
 
-function TouchPrompt({ leadId, phone, email, onSubmit, onCancel, currentStatus, onDidNotAnswer }: {
+function TouchPrompt({ leadId, phone, email, onSubmit, onCancel }: {
   leadId: number
   phone?: string | null
   email?: string | null
   onSubmit: (id: number, initials: string, method: TouchMethod, notes: string) => Promise<void>
   onCancel: () => void
-  currentStatus?: string
-  onDidNotAnswer?: (id: number, initials: string) => Promise<void>
 }) {
   const [initials, setInitials] = useState('')
   const [method, setMethod] = useState<TouchMethod | null>(null)
-  const [dna, setDna] = useState(false)
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const showDna = !!onDidNotAnswer && ['hot', 'warm', 'uncontacted'].includes(currentStatus || '')
-  const canSubmit = initials.trim().length >= 2 && (method !== null || dna)
+  const canSubmit = initials.trim().length >= 2 && method !== null
 
   async function handleSubmit() {
     if (!canSubmit || submitting) return
     setSubmitting(true)
-    if (dna) {
-      await onDidNotAnswer!(leadId, initials.trim().toUpperCase())
-    } else {
-      await onSubmit(leadId, initials.trim().toUpperCase(), method!, notes)
-    }
+    await onSubmit(leadId, initials.trim().toUpperCase(), method!, notes)
     setSubmitting(false)
   }
 
@@ -490,7 +481,7 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel, currentStatus, 
 
   return (
     <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {/* Row 1: initials + method buttons + DNA toggle */}
+      {/* Row 1: initials + method buttons */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <input
           autoFocus value={initials}
@@ -501,10 +492,10 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel, currentStatus, 
         />
         <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
           {methodDefs.map(({ m, color, actionHref, actionLabel }) => {
-            const active = !dna && method === m
+            const active = method === m
             return (
               <React.Fragment key={m}>
-                <button onClick={() => { setDna(false); setMethod(active ? null : m) }} style={{ padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.05em', textTransform: 'uppercase', border: `1px solid ${active ? color : 'var(--border)'}`, background: active ? `color-mix(in srgb, ${color} 15%, transparent)` : 'transparent', color: active ? color : 'var(--text3)', opacity: dna ? 0.35 : 1, transition: 'all 0.1s' }}>
+                <button onClick={() => setMethod(active ? null : m)} style={{ padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.05em', textTransform: 'uppercase', border: `1px solid ${active ? color : 'var(--border)'}`, background: active ? `color-mix(in srgb, ${color} 15%, transparent)` : 'transparent', color: active ? color : 'var(--text3)', transition: 'all 0.1s' }}>
                   {m}
                 </button>
                 {active && actionHref && (
@@ -515,25 +506,18 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel, currentStatus, 
               </React.Fragment>
             )
           })}
-          {showDna && (
-            <button onClick={() => { setDna(!dna); setMethod(null) }} style={{ padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.05em', textTransform: 'uppercase', border: `1px solid ${dna ? 'var(--text2)' : 'var(--border)'}`, background: dna ? 'rgba(139,144,168,0.15)' : 'transparent', color: dna ? 'var(--text2)' : 'var(--text3)', transition: 'all 0.1s' }}>
-              No Answer
-            </button>
-          )}
         </div>
       </div>
-      {!dna && (
-        <textarea
-          value={notes} onChange={e => setNotes(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
-          placeholder="Optional: add context about this touch"
-          rows={2}
-          style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
-        />
-      )}
+      <textarea
+        value={notes} onChange={e => setNotes(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
+        placeholder="Optional: add context about this touch"
+        rows={2}
+        style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
+      />
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? 'var(--accent)' : 'var(--surface)', color: canSubmit ? '#0d0f14' : 'var(--text3)', border: `1px solid ${canSubmit ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
-          {submitting ? '…' : dna ? 'Done' : 'Log Touch'}
+          {submitting ? '…' : 'Log Touch'}
         </button>
         <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}>
           Cancel
@@ -639,14 +623,13 @@ function DeadLeadPrompt({ leadId, onSubmit, onCancel }: {
 
 type NeedsActionTab = 'uncontacted' | 'hot' | 'warm' | 'incomplete'
 
-function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMarkTouched, onKeepHot, onMarkDidNotAnswer, onUpdateStatus, loading }: {
+function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMarkTouched, onKeepHot, onUpdateStatus, loading }: {
   leads: Lead[]
   latestTouches: TouchMap
   selectedId: number | null
   onSelect: (id: number, field?: string) => void
   onMarkTouched: (id: number, initials: string, method: TouchMethod, notes: string, statusOverride?: string) => Promise<void>
   onKeepHot: (id: number, initials: string, notes: string, status?: string) => Promise<void>
-  onMarkDidNotAnswer: (id: number, initials: string) => Promise<void>
   onUpdateStatus: (id: number, status: string) => Promise<void>
   loading: boolean
 }) {
@@ -776,8 +759,6 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                   leadId={l.id}
                   phone={l.phone}
                   email={l.email}
-                  currentStatus={l.status}
-                  onDidNotAnswer={onMarkDidNotAnswer}
                   onSubmit={async (id, init, meth, notes) => { setTouchPromptId(null); await onMarkTouched(id, init, meth, notes) }}
                   onCancel={() => setTouchPromptId(null)}
                 />
@@ -952,7 +933,6 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                 <TouchPrompt leadId={l.id}
                   phone={l.phone}
                   email={l.email}
-                  currentStatus={l.status}
                   onSubmit={async (id, init, meth, notes) => { setTouchPromptId(null); await onMarkTouched(id, init, meth, notes) }}
                   onCancel={() => setTouchPromptId(null)} />
               )}
