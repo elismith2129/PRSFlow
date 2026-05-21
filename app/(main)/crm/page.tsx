@@ -538,8 +538,6 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel, currentStatus, 
         <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}>
           Cancel
         </button>
-        )}
-
       </div>
     </div>
   )
