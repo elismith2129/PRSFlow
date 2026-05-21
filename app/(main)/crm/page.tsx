@@ -249,17 +249,8 @@ export default function CRMPage() {
 
   async function markTouched(id: number, initials: string, method: TouchMethod, notes = '', statusOverride?: string) {
     const now = new Date().toISOString()
-    const dateStr = new Date().toLocaleString('en-US', {
-      month: 'numeric', day: 'numeric',
-      hour: 'numeric', minute: '2-digit', hour12: true,
-    }).replace(',', '').toLowerCase()
-    const touchNote = notes.trim()
-      ? `[${dateStr}] ${initials} - ${method} - ${notes.trim()}`
-      : `[${dateStr}] ${initials} - ${method}`
     const lead = leads.find(l => l.id === id)
-    const currentNotes = lead?.notes?.trim() || ''
-    const newNotes = currentNotes ? `${currentNotes}\n${touchNote}` : touchNote
-    const updateData: Partial<Lead> = { last_contact: now, notes: newNotes, needs_contact: false }
+    const updateData: Partial<Lead> = { last_contact: now, needs_contact: false }
     if (statusOverride) {
       updateData.status = statusOverride as LeadStatus
       if (statusOverride === 'hot') {
@@ -274,8 +265,9 @@ export default function CRMPage() {
       const khu = new Date(); khu.setDate(khu.getDate() + 5)
       updateData.keep_hot_until = khu.toISOString()
     }
+    const activityNote = notes.trim() ? `${initials} - ${method} - ${notes.trim()}` : `${initials} - ${method}`
     await supabase.from('leads').update(updateData).eq('id', id)
-    await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: `${initials} - ${method}` })
+    await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: activityNote })
     await load()
   }
 
@@ -285,46 +277,21 @@ export default function CRMPage() {
     const label = isWarm ? 'Kept Warm' : 'Kept Hot'
     const days = isWarm ? 3 : 5
     const now = new Date().toISOString()
-    const dateStr = new Date().toLocaleString('en-US', {
-      month: 'numeric', day: 'numeric',
-      hour: 'numeric', minute: '2-digit', hour12: true,
-    }).replace(',', '').toLowerCase()
-    const touchNote = notes.trim()
-      ? `[${dateStr}] ${initials} - ${label} - ${notes.trim()}`
-      : `[${dateStr}] ${initials} - ${label}`
-    const currentNotes = lead?.notes?.trim() || ''
-    const newNotes = currentNotes ? `${currentNotes}\n${touchNote}` : touchNote
     const keepHotUntil = new Date(); keepHotUntil.setDate(keepHotUntil.getDate() + days)
-    await supabase.from('leads').update({ last_contact: now, keep_hot_until: keepHotUntil.toISOString(), notes: newNotes }).eq('id', id)
-    await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: `${initials} - ${label}` })
+    const activityNote = notes.trim() ? `${initials} - ${label} - ${notes.trim()}` : `${initials} - ${label}`
+    await supabase.from('leads').update({ last_contact: now, keep_hot_until: keepHotUntil.toISOString() }).eq('id', id)
+    await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: activityNote })
     await load()
   }
 
   async function markDead(id: number, initials: string) {
-    const now = new Date().toISOString()
-    const dateStr = new Date().toLocaleString('en-US', {
-      month: 'numeric', day: 'numeric',
-      hour: 'numeric', minute: '2-digit', hour12: true,
-    }).replace(',', '').toLowerCase()
-    const touchNote = `[${dateStr}] ${initials} - Marked Dead`
-    const lead = leads.find(l => l.id === id)
-    const currentNotes = lead?.notes?.trim() || ''
-    const newNotes = currentNotes ? `${currentNotes}\n${touchNote}` : touchNote
-    await supabase.from('leads').update({ status: 'dead', notes: newNotes }).eq('id', id)
+    await supabase.from('leads').update({ status: 'dead' }).eq('id', id)
     await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: `${initials} - Marked Dead` })
     await load()
   }
 
   async function markDidNotAnswer(id: number, initials: string) {
-    const dateStr = new Date().toLocaleString('en-US', {
-      month: 'numeric', day: 'numeric',
-      hour: 'numeric', minute: '2-digit', hour12: true,
-    }).replace(',', '').toLowerCase()
-    const dnaNote = `[${dateStr}] ${initials} - Did Not Answer`
-    const lead = leads.find(l => l.id === id)
-    const currentNotes = lead?.notes?.trim() || ''
-    const newNotes = currentNotes ? `${currentNotes}\n${dnaNote}` : dnaNote
-    await supabase.from('leads').update({ notes: newNotes, needs_contact: false }).eq('id', id)
+    await supabase.from('leads').update({ needs_contact: false }).eq('id', id)
     await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: `${initials} - Did Not Answer` })
     await load()
   }
