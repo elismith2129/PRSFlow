@@ -1108,9 +1108,9 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   return (
     <div>
       {/* Name — inputs auto-size to content via hidden span mirror */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginBottom: 6, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, minWidth: 0 }}>
         <div style={{ display: 'inline-grid', minWidth: '2ch' }}>
-          <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 6px', whiteSpace: 'pre' }}>
+          <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
             {local.fname || 'First name'}
           </span>
           <input
@@ -1119,11 +1119,11 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
             onFocus={() => setFocusedInput('fname')}
             onBlur={e => { setFocusedInput(null); save('fname', e.target.value) }}
             placeholder="First name"
-            style={{ ...iStyle('fname'), gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, width: '100%' }}
+            style={{ ...iStyle('fname'), gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, width: '100%', padding: '4px 0' }}
           />
         </div>
         <div style={{ display: 'inline-grid', minWidth: '2ch' }}>
-          <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 6px', whiteSpace: 'pre' }}>
+          <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
             {local.lname || 'Last name'}
           </span>
           <input
@@ -1132,7 +1132,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
             onFocus={() => setFocusedInput('lname')}
             onBlur={e => { setFocusedInput(null); save('lname', e.target.value) }}
             placeholder="Last name"
-            style={{ ...iStyle('lname'), gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, width: '100%' }}
+            style={{ ...iStyle('lname'), gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, width: '100%', padding: '4px 0' }}
           />
         </div>
         {savedField && <span style={{ fontSize: 9, color: 'var(--booked)', fontFamily: 'DM Mono', flexShrink: 0 }}>saved</span>}

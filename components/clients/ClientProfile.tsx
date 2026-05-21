@@ -286,6 +286,8 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   const [regLinkUrl, setRegLinkUrl] = useState<string | null>(null)
   const [regLinkCopied, setRegLinkCopied] = useState(false)
   const [regLinkGenerating, setRegLinkGenerating] = useState(false)
+  const [nameVal, setNameVal] = useState(client?.name || '')
+  const [editingName, setEditingName] = useState(false)
 
   // Load bookings for selected client
   useEffect(() => {
@@ -312,6 +314,8 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
     setRegLinkUrl(null)
     setRegLinkCopied(false)
     setRegLinkGenerating(false)
+    setNameVal(client?.name || '')
+    setEditingName(false)
   }, [client?.id])
 
   const saveClient = useCallback(async (fields: Partial<Client>) => {
@@ -447,9 +451,27 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
           </button>
         )}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 7 }}>
-          <div style={{ fontFamily: 'DM Serif Display', fontSize: 20, lineHeight: 1.2 }}>
-            {client.name}
-          </div>
+          {editingName ? (
+            <input
+              autoFocus
+              value={nameVal}
+              onChange={e => setNameVal(e.target.value)}
+              onBlur={() => { saveClient({ name: nameVal.trim() || client.name || '' }); setEditingName(false) }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { saveClient({ name: nameVal.trim() || client.name || '' }); setEditingName(false) }
+                if (e.key === 'Escape') { setNameVal(client.name || ''); setEditingName(false) }
+              }}
+              style={{ fontFamily: 'DM Serif Display', fontSize: 20, lineHeight: 1.2, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', padding: '0 2px', width: '100%' }}
+            />
+          ) : (
+            <div
+              onClick={() => setEditingName(true)}
+              title="Click to edit name"
+              style={{ fontFamily: 'DM Serif Display', fontSize: 20, lineHeight: 1.2, cursor: 'text', borderBottom: '1px solid transparent', padding: '0 2px' }}
+            >
+              {client.name}
+            </div>
+          )}
           <button
             onClick={() => { setBookingToast(true); setTimeout(() => setBookingToast(false), 3500) }}
             style={{ ...accentBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0 }}
