@@ -3,10 +3,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import type { RegistrationToken } from '@/lib/supabase'
+import type { RegistrationToken, Client } from '@/lib/supabase'
 import { TERMS_SECTIONS } from '@/lib/terms'
+import PhoneInput from '@/components/shared/PhoneInput'
 
-type PageState = 'loading' | 'invalid' | 'expired' | 'used' | 'form' | 'submitting' | 'success'
+type PageState = 'loading' | 'invalid' | 'expired' | 'used' | 'form' | 'submitting' | 'conflict' | 'success'
 
 interface FormData {
   fname: string
@@ -42,19 +43,20 @@ const EMPTY_FORM: FormData = {
   signature: '',
 }
 
-function formatPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, '').slice(0, 10)
-  if (digits.length <= 3) return digits
-  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
-  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
-}
-
 function validateEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
 
 function validatePhone(phone: string): boolean {
-  return /^\(\d{3}\) \d{3}-\d{4}$/.test(phone)
+  if (phone.startsWith('+')) return phone.length >= 8
+  return /^\d{10}$/.test(phone)
+}
+
+function displayPhone(normalized: string): string {
+  if (normalized.startsWith('+')) return normalized
+  const d = normalized.replace(/\D/g, '')
+  if (d.length !== 10) return normalized
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`
 }
 
 const ACCEPTED_MIME = ['image/jpeg', 'image/png', 'image/heic', 'image/webp', 'application/pdf']
@@ -70,6 +72,8 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submittedName, setSubmittedName] = useState('')
+  const [matchedClient, setMatchedClient] = useState<Client | null>(null)
+  const [conflictAcknowledged, setConflictAcknowledged] = useState(false)
 
   const validateToken = useCallback(async () => {
     const { data, error } = await supabase
@@ -151,15 +155,44 @@ export default function RegisterPage() {
     return Object.keys(e).length === 0
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!validate()) return
+  async function handleUseExisting() {
+    if (!matchedClient || !tokenRow) return
+    setPageState('submitting')
+    try {
+      if (tokenRow.lead_id) {
+        await supabase.from('leads').update({ client_id: matchedClient.id }).eq('id', tokenRow.lead_id)
+      }
+      await supabase.from('registration_tokens').update({ used_at: new Date().toISOString() }).eq('token', tokenParam)
+      setSubmittedName(form.fname.trim())
+      setPageState('success')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Something went wrong.'
+      setSubmitError(message)
+      setPageState('conflict')
+    }
+  }
 
+  async function doSubmit() {
     setSubmitError(null)
     setPageState('submitting')
 
     try {
       const isExistingClient = !!tokenRow?.client_id
+
+      // Email conflict check — only for new registrations, skipped if user acknowledged
+      if (!isExistingClient && !conflictAcknowledged && form.email.trim()) {
+        const { data: existing } = await supabase
+          .from('clients')
+          .select('id, type, name, fname, lname, email, phone, registered_at')
+          .eq('email', form.email.trim().toLowerCase())
+          .maybeSingle()
+        if (existing) {
+          setMatchedClient(existing as Client)
+          setPageState('conflict')
+          return
+        }
+      }
+
       const clientId = isExistingClient ? tokenRow!.client_id! : crypto.randomUUID()
       const fullName = `${form.fname.trim()} ${form.lname.trim()}`.trim()
 
@@ -263,6 +296,58 @@ export default function RegisterPage() {
     }
   }
 
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!validate()) return
+    await doSubmit()
+  }
+
+  function handleCreateNew() {
+    setConflictAcknowledged(true)
+    setMatchedClient(null)
+    setSubmitError(null)
+    setPageState('submitting')
+    // Re-run submit bypassing the conflict check
+    setTimeout(async () => {
+      try {
+        const clientId = crypto.randomUUID()
+        const fullName = `${form.fname.trim()} ${form.lname.trim()}`.trim()
+        let idFileUrl: string | null = null
+        if (form.id_file) {
+          const timestamp = Date.now()
+          const sanitizedName = form.id_file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+          const filePath = `${clientId}/${timestamp}_${sanitizedName}`
+          const { error: uploadError } = await supabase.storage.from('client-ids').upload(filePath, form.id_file, { contentType: form.id_file.type })
+          if (uploadError) throw new Error(`ID upload failed: ${uploadError.message}`)
+          idFileUrl = filePath
+        }
+        const { error: clientError } = await supabase.from('clients').insert({
+          id: clientId, type: 'individual', name: fullName,
+          fname: form.fname.trim(), lname: form.lname.trim(),
+          email: form.email.trim(), phone: form.phone.trim(),
+          instagram: form.instagram.trim(), how_heard: form.how_heard.trim() || null,
+          address_street: form.address_street.trim(), address_street2: form.address_street2.trim() || null,
+          address_city: form.address_city.trim(), address_state: form.address_state.trim().toUpperCase(),
+          address_zip: form.address_zip.trim(), id_file_url: idFileUrl,
+          signature_url: form.signature.trim(), terms_accepted: true,
+          terms_accepted_at: new Date().toISOString(), registered_at: new Date().toISOString(),
+          source_lead_id: tokenRow?.lead_id || null, artists: [],
+        })
+        if (clientError) throw new Error(`Registration failed: ${clientError.message}`)
+        if (tokenRow?.lead_id) {
+          await supabase.from('leads').update({ client_id: clientId }).eq('id', tokenRow.lead_id)
+        }
+        await supabase.from('registration_tokens').update({ used_at: new Date().toISOString() }).eq('token', tokenParam)
+        setSubmittedName(form.fname.trim())
+        setPageState('success')
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
+        setSubmitError(message)
+        setPageState('form')
+      }
+    }, 0)
+  }
+
   // ── Layout shell (no nav — public page) ──────────────────────────────────
 
   const shell = (content: React.ReactNode) => (
@@ -329,6 +414,52 @@ export default function RegisterPage() {
           <p style={{ fontFamily: 'DM Mono', fontSize: 12, color: 'var(--text3)', marginTop: 20 }}>
             (310) 555-0000 · studio@paramountrecording.com
           </p>
+        </div>
+      </>
+    )
+  }
+
+  // ── Conflict verify ───────────────────────────────────────────────────────
+
+  if (pageState === 'conflict' && matchedClient) {
+    const cName = matchedClient.name || `${matchedClient.fname || ''} ${matchedClient.lname || ''}`.trim()
+    return shell(
+      <>
+        <Header />
+        <div style={{ marginTop: 40, padding: '28px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }}>
+          <p style={{ fontFamily: 'Syne', fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>
+            Account already exists
+          </p>
+          <p style={{ fontFamily: 'DM Mono', fontSize: 12, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 16 }}>
+            An account registered with <strong style={{ color: 'var(--text)' }}>{form.email}</strong> already exists.
+          </p>
+          <div style={{ padding: '14px 16px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, marginBottom: 20 }}>
+            <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: 'var(--text)', marginBottom: 4 }}>{cName}</div>
+            <div style={{ fontFamily: 'DM Mono', fontSize: 11, color: 'var(--text3)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {matchedClient.email && <span>{matchedClient.email}</span>}
+              {matchedClient.phone && <span>{displayPhone(matchedClient.phone)}</span>}
+              {matchedClient.registered_at && (
+                <span>Registered {new Date(matchedClient.registered_at).toLocaleDateString()}</span>
+              )}
+            </div>
+          </div>
+          {submitError && (
+            <p style={{ fontFamily: 'DM Mono', fontSize: 11, color: 'var(--hot)', marginBottom: 12 }}>{submitError}</p>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button
+              onClick={handleUseExisting}
+              style={{ width: '100%', padding: '12px 0', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
+            >
+              Use &amp; Link this Profile
+            </button>
+            <button
+              onClick={handleCreateNew}
+              style={{ width: '100%', padding: '12px 0', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 12, cursor: 'pointer' }}
+            >
+              Create new account anyway
+            </button>
+          </div>
         </div>
       </>
     )
@@ -461,14 +592,15 @@ export default function RegisterPage() {
 
         {/* Phone */}
         <SectionLabel>Phone Number</SectionLabel>
-        <Input
-          placeholder="(000) 000-0000"
-          value={form.phone}
-          onChange={v => set('phone', formatPhone(v))}
-          disabled={isSubmitting}
-          error={!!errors.phone}
-          inputMode="tel"
-        />
+        <div style={{ opacity: isSubmitting ? 0.5 : 1, pointerEvents: isSubmitting ? 'none' : 'auto' }}>
+          <PhoneInput
+            value={form.phone}
+            onChange={v => { set('phone', v); if (errors.phone) setErrors(prev => ({ ...prev, phone: '' })) }}
+            variant="bordered"
+            placeholder="(000) 000-0000"
+            style={errors.phone ? { borderColor: 'var(--hot)' } : undefined}
+          />
+        </div>
         {errors.phone && <FieldError>{errors.phone}</FieldError>}
 
         <Spacer />
