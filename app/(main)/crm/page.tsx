@@ -455,20 +455,18 @@ export default function CRMPage() {
 
 // ─── Touch prompt ─────────────────────────────────────────────────────────────
 
-function TouchPrompt({ leadId, phone, email, onSubmit, onCancel, showStatusSelect, currentStatus, onDidNotAnswer }: {
+function TouchPrompt({ leadId, phone, email, onSubmit, onCancel, currentStatus, onDidNotAnswer }: {
   leadId: number
   phone?: string | null
   email?: string | null
-  onSubmit: (id: number, initials: string, method: TouchMethod, notes: string, statusOverride?: string) => Promise<void>
+  onSubmit: (id: number, initials: string, method: TouchMethod, notes: string) => Promise<void>
   onCancel: () => void
-  showStatusSelect?: boolean
   currentStatus?: string
   onDidNotAnswer?: (id: number, initials: string) => Promise<void>
 }) {
   const [initials, setInitials] = useState('')
   const [method, setMethod] = useState<TouchMethod | null>(null)
   const [notes, setNotes] = useState('')
-  const [newStatus, setNewStatus] = useState('hot')
   const [submitting, setSubmitting] = useState(false)
   const [dnaSubmitting, setDnaSubmitting] = useState(false)
   const canSubmit = initials.trim().length >= 2 && method !== null
@@ -478,7 +476,7 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel, showStatusSelec
   async function handleSubmit() {
     if (!canSubmit || submitting) return
     setSubmitting(true)
-    await onSubmit(leadId, initials.trim().toUpperCase(), method!, notes, showStatusSelect ? newStatus : undefined)
+    await onSubmit(leadId, initials.trim().toUpperCase(), method!, notes)
     setSubmitting(false)
   }
 
@@ -489,42 +487,15 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel, showStatusSelec
     setDnaSubmitting(false)
   }
 
-  const statusOpts: { value: string; label: string; color: string }[] = [
-    { value: 'hot', label: 'Hot', color: 'var(--hot)' },
-    { value: 'warm', label: 'Warm', color: 'var(--warm)' },
-    { value: 'cold', label: 'Cold', color: 'var(--cold)' },
-    { value: 'dead', label: 'Dead', color: 'var(--text3)' },
+  const methodDefs: { m: TouchMethod; color: string; actionHref?: string; actionLabel?: string }[] = [
+    { m: 'Call',  color: '#f04e7a', actionHref: phone ? `tel:${phone.replace(/\D/g, '')}` : undefined,  actionLabel: '→ Dial' },
+    { m: 'Text',  color: '#f0a24e', actionHref: phone ? `sms:${phone.replace(/\D/g, '')}` : undefined,  actionLabel: '→ Text' },
+    { m: 'Email', color: '#7BBFFF', actionHref: email ? `mailto:${email}` : undefined, actionLabel: '→ Mail' },
   ]
 
   return (
     <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {/* Action links row */}
-      {(phone || email) && (
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-          {phone && (
-            <a href={`tel:${phone.replace(/\D/g, '')}`}
-              onClick={() => setMethod('Call')}
-              style={{ padding: '4px 10px', borderRadius: 4, background: 'rgba(240,78,122,0.10)', border: '1px solid rgba(240,78,122,0.3)', color: '#f04e7a', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer' }}>
-              📞 Call
-            </a>
-          )}
-          {phone && (
-            <a href={`sms:${phone.replace(/\D/g, '')}`}
-              onClick={() => setMethod('Text')}
-              style={{ padding: '4px 10px', borderRadius: 4, background: 'rgba(240,162,78,0.10)', border: '1px solid rgba(240,162,78,0.3)', color: '#f0a24e', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer' }}>
-              💬 Text
-            </a>
-          )}
-          {email && (
-            <a href={`mailto:${email}`}
-              onClick={() => setMethod('Email')}
-              style={{ padding: '4px 10px', borderRadius: 4, background: 'rgba(123,191,255,0.10)', border: '1px solid rgba(123,191,255,0.3)', color: '#7BBFFF', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer' }}>
-              ✉️ Email
-            </a>
-          )}
-        </div>
-      )}
-      {/* Row 1: initials + method */}
+      {/* Row 1: initials + unified method buttons with inline action links */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <input
           autoFocus value={initials}
@@ -533,32 +504,24 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel, showStatusSelec
           placeholder="Initials" maxLength={3}
           style={{ width: 70, background: 'var(--surface)', border: '1px solid var(--accent)', color: 'var(--text)', padding: '4px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 12, outline: 'none', textAlign: 'center', letterSpacing: '0.12em' }}
         />
-        <div style={{ display: 'flex', gap: 4 }}>
-          {TOUCH_METHODS.map(m => (
-            <button key={m} onClick={() => setMethod(m)} style={{ padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.05em', textTransform: 'uppercase', border: `1px solid ${method === m ? 'var(--accent)' : 'var(--border)'}`, background: method === m ? 'rgba(200,240,78,0.12)' : 'transparent', color: method === m ? 'var(--accent)' : 'var(--text3)', transition: 'all 0.1s' }}>
-              {m}
-            </button>
-          ))}
-        </div>
-      </div>
-      {/* Row 2: status buttons + DNA — only when applicable */}
-      {showStatusSelect && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          {statusOpts.map(opt => {
-            const active = newStatus === opt.value
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+          {methodDefs.map(({ m, color, actionHref, actionLabel }) => {
+            const active = method === m
             return (
-              <button key={opt.value} onClick={() => setNewStatus(opt.value)} style={{ padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.05em', textTransform: 'uppercase', border: `1px solid ${active ? opt.color : 'var(--border)'}`, background: active ? `color-mix(in srgb, ${opt.color} 15%, transparent)` : 'transparent', color: active ? opt.color : 'var(--text3)', transition: 'all 0.1s' }}>
-                → {opt.label}
-              </button>
+              <React.Fragment key={m}>
+                <button onClick={() => setMethod(active ? null : m)} style={{ padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.05em', textTransform: 'uppercase', border: `1px solid ${active ? color : 'var(--border)'}`, background: active ? `color-mix(in srgb, ${color} 15%, transparent)` : 'transparent', color: active ? color : 'var(--text3)', transition: 'all 0.1s' }}>
+                  {m}
+                </button>
+                {active && actionHref && (
+                  <a href={actionHref} style={{ padding: '3px 8px', borderRadius: 4, background: `color-mix(in srgb, ${color} 10%, transparent)`, border: `1px solid color-mix(in srgb, ${color} 35%, transparent)`, color, fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    {actionLabel}
+                  </a>
+                )}
+              </React.Fragment>
             )
           })}
-          {showDna && (
-            <button onClick={handleDna} disabled={!canDna || dnaSubmitting} style={{ marginLeft: 4, padding: '4px 11px', background: 'transparent', border: `1px solid ${canDna ? 'var(--text3)' : 'var(--border)'}`, color: canDna ? 'var(--text2)' : 'var(--text3)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canDna && !dnaSubmitting ? 'pointer' : 'not-allowed', letterSpacing: '0.04em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
-              {dnaSubmitting ? '…' : 'Did Not Answer'}
-            </button>
-          )}
         </div>
-      )}
+      </div>
       <textarea
         value={notes} onChange={e => setNotes(e.target.value)}
         onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
@@ -573,6 +536,12 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel, showStatusSelec
         <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}>
           Cancel
         </button>
+        {showDna && (
+          <button onClick={handleDna} disabled={!canDna || dnaSubmitting} style={{ marginLeft: 'auto', padding: '4px 11px', background: 'transparent', border: `1px solid ${canDna ? 'var(--text3)' : 'var(--border)'}`, color: canDna ? 'var(--text2)' : 'var(--text3)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canDna && !dnaSubmitting ? 'pointer' : 'not-allowed', letterSpacing: '0.04em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
+            {dnaSubmitting ? '…' : 'Did Not Answer'}
+          </button>
+        )}
+
       </div>
     </div>
   )
@@ -810,10 +779,9 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                   leadId={l.id}
                   phone={l.phone}
                   email={l.email}
-                  showStatusSelect={activeBucket.key !== 'incomplete'}
                   currentStatus={l.status}
                   onDidNotAnswer={onMarkDidNotAnswer}
-                  onSubmit={async (id, init, meth, notes, status) => { setTouchPromptId(null); await onMarkTouched(id, init, meth, notes, status) }}
+                  onSubmit={async (id, init, meth, notes) => { setTouchPromptId(null); await onMarkTouched(id, init, meth, notes) }}
                   onCancel={() => setTouchPromptId(null)}
                 />
               )}
@@ -987,9 +955,8 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                 <TouchPrompt leadId={l.id}
                   phone={l.phone}
                   email={l.email}
-                  showStatusSelect={['hot', 'warm', 'uncontacted'].includes(l.status)}
                   currentStatus={l.status}
-                  onSubmit={async (id, init, meth, notes, status) => { setTouchPromptId(null); await onMarkTouched(id, init, meth, notes, status) }}
+                  onSubmit={async (id, init, meth, notes) => { setTouchPromptId(null); await onMarkTouched(id, init, meth, notes) }}
                   onCancel={() => setTouchPromptId(null)} />
               )}
               {isKeepHotPrompting && (
