@@ -435,9 +435,9 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   const typeBadgeStyle: React.CSSProperties = {
     fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em',
     padding: '3px 7px', borderRadius: 3,
-    background: isLabel ? 'rgba(126,170,255,0.12)' : 'rgba(213,128,255,0.12)',
-    color: isLabel ? '#7eaaff' : '#d580ff',
-    border: `1px solid ${isLabel ? 'rgba(126,170,255,0.3)' : 'rgba(213,128,255,0.3)'}`,
+    background: isLabel ? 'rgba(150,169,255,0.12)' : 'rgba(123,191,255,0.12)',
+    color: isLabel ? '#96A9FF' : '#7BBFFF',
+    border: `1px solid ${isLabel ? 'rgba(150,169,255,0.3)' : 'rgba(123,191,255,0.3)'}`,
   }
 
   return (
@@ -467,7 +467,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
             <div
               onClick={() => setEditingName(true)}
               title="Click to edit name"
-              style={{ fontFamily: 'DM Serif Display', fontSize: 20, lineHeight: 1.2, cursor: 'text', borderBottom: '1px solid transparent', padding: '0 2px' }}
+              style={{ fontFamily: 'DM Serif Display', fontSize: 20, lineHeight: 1.2, cursor: 'text', borderBottom: '1px solid transparent', padding: '0 2px', color: isLabel ? '#96A9FF' : '#7BBFFF' }}
             >
               {client.name}
             </div>

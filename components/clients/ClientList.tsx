@@ -148,15 +148,16 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
                   <span style={{
                     fontSize: 13, fontWeight: 500,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    color: isLabel ? '#96A9FF' : '#7BBFFF',
                   }}>
                     {c.name}
                   </span>
                   <span style={{
                     fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em',
                     padding: '2px 5px', borderRadius: 3, flexShrink: 0,
-                    background: isLabel ? 'rgba(126,170,255,0.12)' : 'rgba(213,128,255,0.12)',
-                    color: isLabel ? '#7eaaff' : '#d580ff',
-                    border: `1px solid ${isLabel ? 'rgba(126,170,255,0.3)' : 'rgba(213,128,255,0.3)'}`,
+                    background: isLabel ? 'rgba(150,169,255,0.12)' : 'rgba(123,191,255,0.12)',
+                    color: isLabel ? '#96A9FF' : '#7BBFFF',
+                    border: `1px solid ${isLabel ? 'rgba(150,169,255,0.3)' : 'rgba(123,191,255,0.3)'}`,
                   }}>
                     {CLIENT_TYPE_LABELS[c.type].toUpperCase()}
                   </span>

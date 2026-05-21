@@ -13,8 +13,8 @@ const STATUS_COLORS: Record<string, string> = {
   uncontacted: 'var(--uncontacted)', booked: 'var(--booked)', dead: 'var(--text3)'
 }
 
-function leadNameColor(l: { artist_name?: string | null }): string {
-  return l.artist_name ? '#7eaaff' : '#d580ff'
+function leadNameColor(l: { billing?: string | null }): string {
+  return l.billing === 'Billing' ? '#96A9FF' : '#7BBFFF'
 }
 
 const BOOKING_ICONS: Record<string, string> = {
@@ -1342,7 +1342,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
             <button
               onClick={() => { const nb = (local.billing || lead.billing) === 'COD' ? 'Billing' : 'COD'; update('billing', nb); save('billing', nb) }}
-              style={{ ...pillBase, background: (local.billing || lead.billing) === 'COD' ? 'rgba(213,128,255,0.12)' : 'rgba(126,170,255,0.12)', color: (local.billing || lead.billing) === 'COD' ? '#d580ff' : '#7eaaff', border: `1px solid ${(local.billing || lead.billing) === 'COD' ? 'rgba(213,128,255,0.3)' : 'rgba(126,170,255,0.3)'}` }}>
+              style={{ ...pillBase, background: (local.billing || lead.billing) === 'COD' ? 'rgba(123,191,255,0.12)' : 'rgba(150,169,255,0.12)', color: (local.billing || lead.billing) === 'COD' ? '#7BBFFF' : '#96A9FF', border: `1px solid ${(local.billing || lead.billing) === 'COD' ? 'rgba(123,191,255,0.3)' : 'rgba(150,169,255,0.3)'}` }}>
               {local.billing || lead.billing || 'COD'}
             </button>
             {lead.booking && (
@@ -1416,7 +1416,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
               onFocus={() => setFocusedInput('email')} onBlur={e => { setFocusedInput(null); save('email', e.target.value) }}
               onKeyDown={enterBlur} placeholder="Add email" style={{ ...iStyle('email'), flex: 1, minWidth: 0 }} />
             {onSendEmail && local.email && (() => {
-              const bc = (local.billing || lead.billing) === 'COD' ? '#d580ff' : '#7eaaff'
+              const bc = (local.billing || lead.billing) === 'COD' ? '#7BBFFF' : '#96A9FF'
               return (
                 <button onClick={onSendEmail} style={{ flexShrink: 0, padding: '2px 7px', background: `color-mix(in srgb, ${bc} 12%, transparent)`, border: `1px solid color-mix(in srgb, ${bc} 40%, transparent)`, color: bc, borderRadius: 3, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer' }}>
                   Email
@@ -1871,7 +1871,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
     <div style={{ display: 'flex', justifyContent: 'center' }}>
       <div style={{ display: 'flex', gap: 2, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
         {(['cod', 'label'] as const).map(m => (
-          <button key={m} type="button" onClick={() => setMode(m)} style={{ padding: '7px 28px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 500, background: mode === m ? 'var(--surface2)' : 'transparent', color: mode === m ? (m === 'cod' ? '#d580ff' : '#7eaaff') : 'var(--text2)', transition: 'all 0.15s', letterSpacing: '0.04em' }}>
+          <button key={m} type="button" onClick={() => setMode(m)} style={{ padding: '7px 28px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 500, background: mode === m ? 'var(--surface2)' : 'transparent', color: mode === m ? (m === 'cod' ? '#7BBFFF' : '#96A9FF') : 'var(--text2)', transition: 'all 0.15s', letterSpacing: '0.04em' }}>
             {m === 'cod' ? 'COD' : 'Label/Billing'}
           </button>
         ))}
@@ -2135,7 +2135,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
         </div>
 
         <div style={{ padding: '12px 20px 20px', display: 'flex', gap: 8, position: 'sticky', bottom: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
-          <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '9px 0', background: temperature === 'booking' ? 'var(--booked)' : mode === 'label' ? '#7eaaff' : '#d580ff', color: '#0d0f14', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: saving ? 0.6 : 1 }}>
+          <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '9px 0', background: temperature === 'booking' ? 'var(--booked)' : mode === 'label' ? '#96A9FF' : '#7BBFFF', color: '#0d0f14', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: saving ? 0.6 : 1 }}>
             {saving ? 'Saving…' : temperature === 'booking' ? 'Save & Go to Booking →' : 'Create Lead'}
           </button>
           <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
