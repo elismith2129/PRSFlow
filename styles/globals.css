@@ -18,7 +18,7 @@
   --warm: #f0a24e;
   --cold: #4e8ff0;
   --booked: #4ef0a2;
-  --uncontacted: #9090b8;
+  --uncontacted: #a8d5ff;
   --dead: #3a3f52;
 }
 
@@ -41,4 +41,21 @@ html, body {
 @keyframes shimmer {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 0.7; }
+}
+
+input[type="date"] {
+  color-scheme: dark;
+  display: flex;
+}
+input[type="date"]::-webkit-calendar-picker-indicator {
+  order: -1;
+  margin-right: 5px;
+  margin-left: 0;
+  filter: invert(0.5);
+  cursor: pointer;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
 }

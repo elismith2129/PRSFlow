@@ -1,19 +1,30 @@
 'use client'
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase, Lead, LeadStatus, Client, BillingType } from '@/lib/supabase'
+import { supabase, Lead, LeadStatus, Client, ClientContact, BillingType } from '@/lib/supabase'
 import { TOUCH_INTERVAL_DAYS } from '@/lib/settings'
 import { ContactPicker } from '@/components/shared/ContactPicker'
 import { ArtistPicker } from '@/components/shared/ArtistPicker'
 import PhoneInput from '@/components/shared/PhoneInput'
+import TimeInput from '@/components/shared/TimeInput'
 
 const STATUS_COLORS: Record<string, string> = {
   hot: 'var(--hot)', warm: 'var(--warm)', cold: 'var(--cold)',
   uncontacted: 'var(--uncontacted)', booked: 'var(--booked)', dead: 'var(--text3)'
 }
 
+function leadNameColor(l: { artist_name?: string | null }): string {
+  return l.artist_name ? '#7eaaff' : '#d580ff'
+}
+
 const BOOKING_ICONS: Record<string, string> = {
   'Recording Session': '🎙', 'Filming': '🎬', 'Event/Playback': '🎛'
+}
+const STUDIO_OPTIONS: Record<string, string[]> = {
+  Paramount: ['Studio A', 'Studio B', 'Studio C', 'Studio E', 'Studio X'],
+  Ameraycan: ['Studio A', 'Studio B'],
+  Encore: ['Studio A', 'Studio B'],
+  Track: ['North', 'South'],
 }
 
 const TOUCH_METHODS = ['Call', 'Text', 'Email'] as const
@@ -75,6 +86,53 @@ function dateSepLabel(d: string) {
   if (target.getTime() === today.getTime()) return 'Today'
   if (target.getTime() === yest.getTime()) return 'Yesterday'
   return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+}
+
+function fmtTime12(t: string | null | undefined): string {
+  if (!t) return ''
+  if (/\s*(am|pm)$/i.test(t)) return t.trim()
+  const parts = t.split(':')
+  const h = Number(parts[0])
+  const m = Number(parts[1] ?? 0)
+  if (isNaN(h)) return ''
+  const suffix = h >= 12 ? 'pm' : 'am'
+  const h12 = ((h % 12) || 12)
+  return m === 0 ? `${h12}${suffix}` : `${h12}:${m.toString().padStart(2, '0')}${suffix}`
+}
+
+function to24h(t12: string): string {
+  const match = t12.match(/(\d+):(\d+)\s*(am|pm)/i)
+  if (!match) return '00:00'
+  let h = parseInt(match[1], 10)
+  const m = parseInt(match[2], 10)
+  if (/pm/i.test(match[3]) && h !== 12) h += 12
+  if (/am/i.test(match[3]) && h === 12) h = 0
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
+}
+
+function parseLastContact(lc: string | null): { date: string; time: string } {
+  if (!lc) return { date: '', time: '' }
+  try {
+    const d = new Date(lc)
+    const date = d.toISOString().split('T')[0]
+    const time = fmtTime12(`${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`)
+    return { date, time }
+  } catch { return { date: '', time: '' } }
+}
+
+function fmtSessionLine(l: Lead): string | null {
+  const parts: string[] = []
+  if (l.quote) parts.push(`$${l.quote}`)
+  if (l.location) parts.push(l.location)
+  if (l.session_date) {
+    const d = new Date(l.session_date + 'T12:00:00')
+    const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    const start = fmtTime12(l.session_start)
+    const end = fmtTime12(l.session_end)
+    const timeStr = start && end ? `${start}–${end}` : start || end
+    parts.push(timeStr ? `${dateStr} ${timeStr}` : dateStr)
+  }
+  return parts.length > 0 ? parts.join(' · ') : null
 }
 
 function getMissing(l: Lead) {
@@ -183,7 +241,7 @@ export default function CRMPage() {
     const lead = leads.find(l => l.id === id)
     const currentNotes = lead?.notes?.trim() || ''
     const newNotes = currentNotes ? `${currentNotes}\n${touchNote}` : touchNote
-    const updateData: Partial<Lead> = { last_contact: now, notes: newNotes }
+    const updateData: Partial<Lead> = { last_contact: now, notes: newNotes, needs_contact: false }
     if (statusOverride) {
       updateData.status = statusOverride as LeadStatus
       if (statusOverride === 'hot') {
@@ -239,6 +297,20 @@ export default function CRMPage() {
     await load()
   }
 
+  async function markDidNotAnswer(id: number, initials: string) {
+    const dateStr = new Date().toLocaleString('en-US', {
+      month: 'numeric', day: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true,
+    }).replace(',', '').toLowerCase()
+    const dnaNote = `[${dateStr}] ${initials} - Did Not Answer`
+    const lead = leads.find(l => l.id === id)
+    const currentNotes = lead?.notes?.trim() || ''
+    const newNotes = currentNotes ? `${currentNotes}\n${dnaNote}` : dnaNote
+    await supabase.from('leads').update({ notes: newNotes, needs_contact: false }).eq('id', id)
+    await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: `${initials} - Did Not Answer` })
+    await load()
+  }
+
   async function createLead(data: Partial<Lead>) {
     const insertData: Partial<Lead> = { ...data }
     if (!insertData.status) insertData.status = 'uncontacted'
@@ -269,10 +341,10 @@ export default function CRMPage() {
   const distinctCompanies = Array.from(new Set(leads.map(l => l.company).filter((v): v is string => !!v))).sort()
 
   // Badge count for Needs Action tab
-  const naUncontacted = leads.filter(l => l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead'].includes(l.status)))
-  const naHot = leads.filter(l => l.status === 'hot' && isKhuDue(l) && !isParked(l))
-  const naWarm = leads.filter(l => l.status === 'warm' && isKhuDue(l) && !isParked(l))
-  const naIncomplete = leads.filter(l => ['hot', 'warm', 'uncontacted'].includes(l.status) && getMissing(l).length > 0)
+  const naUncontacted = leads.filter(l => (l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead'].includes(l.status))) && l.needs_contact !== false)
+  const naHot = leads.filter(l => l.status === 'hot' && isKhuDue(l) && !isParked(l) && l.needs_contact !== false)
+  const naWarm = leads.filter(l => l.status === 'warm' && isKhuDue(l) && !isParked(l) && l.needs_contact !== false)
+  const naIncomplete = leads.filter(l => ['hot', 'warm', 'uncontacted'].includes(l.status) && getMissing(l).length > 0 && l.needs_contact !== false)
   const needsActionCount = naUncontacted.length + naHot.length + naWarm.length + naIncomplete.length
 
   return (
@@ -337,7 +409,7 @@ export default function CRMPage() {
               onSelect={selectAndFocus}
               onMarkTouched={markTouched}
               onKeepHot={keepHot}
-              onMarkDead={markDead}
+              onMarkDidNotAnswer={markDidNotAnswer}
               onUpdateStatus={updateStatus}
               loading={loading}
             />
@@ -349,7 +421,6 @@ export default function CRMPage() {
               onSelect={setSelectedId}
               onMarkTouched={markTouched}
               onKeepHot={keepHot}
-              onMarkDead={markDead}
               onUpdateStatus={updateStatus}
               loading={loading}
             />
@@ -362,36 +433,27 @@ export default function CRMPage() {
                 Select a lead to view details
               </div>
             ) : (
-              <>
-                <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)' }}>Lead Details</div>
-                  <button onClick={() => setEmailModal(true)} style={{
-                    padding: '5px 14px', background: 'var(--accent)', color: '#0d0f14',
-                    border: 'none', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700,
-                    fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase',
-                  }}>✉ Send Email</button>
-                </div>
-                <div style={{ overflowY: 'auto', flex: 1, padding: '14px 16px 16px' }}>
-                  <LeadDetail
-                    key={selected.id}
-                    lead={selected}
-                    missing={getMissing(selected)}
-                    latestTouch={latestTouches[selected.id]}
-                    focusField={focusField}
-                    onFocusConsumed={() => setFocusField(null)}
-                    distinctLabels={distinctLabels}
-                    distinctCompanies={distinctCompanies}
-                    onUpdate={(field, val) => {
-                      setLeads(prev => prev.map(l => l.id === selected.id ? { ...l, [field]: val } : l))
-                    }}
-                    onViewClient={(id) => router.push(`/clients?id=${id}`)}
-                    onDelete={() => {
-                      setLeads(prev => prev.filter(l => l.id !== selected.id))
-                      setSelectedId(null)
-                    }}
-                  />
-                </div>
-              </>
+              <div style={{ overflowY: 'auto', flex: 1, padding: '14px 16px 16px' }}>
+                <LeadDetail
+                  key={selected.id}
+                  lead={selected}
+                  missing={getMissing(selected)}
+                  latestTouch={latestTouches[selected.id]}
+                  focusField={focusField}
+                  onFocusConsumed={() => setFocusField(null)}
+                  distinctLabels={distinctLabels}
+                  distinctCompanies={distinctCompanies}
+                  onUpdate={(field, val) => {
+                    setLeads(prev => prev.map(l => l.id === selected.id ? { ...l, [field]: val } : l))
+                  }}
+                  onViewClient={(id) => router.push(`/clients?id=${id}`)}
+                  onSendEmail={() => setEmailModal(true)}
+                  onDelete={() => {
+                    setLeads(prev => prev.filter(l => l.id !== selected.id))
+                    setSelectedId(null)
+                  }}
+                />
+              </div>
             )}
           </div>
         </div>
@@ -408,18 +470,23 @@ export default function CRMPage() {
 
 // ─── Touch prompt ─────────────────────────────────────────────────────────────
 
-function TouchPrompt({ leadId, onSubmit, onCancel, showStatusSelect }: {
+function TouchPrompt({ leadId, onSubmit, onCancel, showStatusSelect, currentStatus, onDidNotAnswer }: {
   leadId: number
   onSubmit: (id: number, initials: string, method: TouchMethod, notes: string, statusOverride?: string) => Promise<void>
   onCancel: () => void
   showStatusSelect?: boolean
+  currentStatus?: string
+  onDidNotAnswer?: (id: number, initials: string) => Promise<void>
 }) {
   const [initials, setInitials] = useState('')
   const [method, setMethod] = useState<TouchMethod | null>(null)
   const [notes, setNotes] = useState('')
   const [newStatus, setNewStatus] = useState('hot')
   const [submitting, setSubmitting] = useState(false)
-  const canSubmit = initials.trim().length >= 2 && method !== null && (!showStatusSelect || !!newStatus)
+  const [dnaSubmitting, setDnaSubmitting] = useState(false)
+  const canSubmit = initials.trim().length >= 2 && method !== null
+  const showDna = !!onDidNotAnswer && ['hot', 'warm', 'uncontacted'].includes(currentStatus || '')
+  const canDna = showDna && initials.trim().length >= 2
 
   async function handleSubmit() {
     if (!canSubmit || submitting) return
@@ -428,8 +495,23 @@ function TouchPrompt({ leadId, onSubmit, onCancel, showStatusSelect }: {
     setSubmitting(false)
   }
 
+  async function handleDna() {
+    if (!canDna || dnaSubmitting) return
+    setDnaSubmitting(true)
+    await onDidNotAnswer!(leadId, initials.trim().toUpperCase())
+    setDnaSubmitting(false)
+  }
+
+  const statusOpts: { value: string; label: string; color: string }[] = [
+    { value: 'hot', label: 'Hot', color: 'var(--hot)' },
+    { value: 'warm', label: 'Warm', color: 'var(--warm)' },
+    { value: 'cold', label: 'Cold', color: 'var(--cold)' },
+    { value: 'dead', label: 'Dead', color: 'var(--text3)' },
+  ]
+
   return (
     <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Row 1: initials + method */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <input
           autoFocus value={initials}
@@ -445,18 +527,25 @@ function TouchPrompt({ leadId, onSubmit, onCancel, showStatusSelect }: {
             </button>
           ))}
         </div>
-        {showStatusSelect && (
-          <select
-            value={newStatus} onChange={e => setNewStatus(e.target.value)}
-            style={{ background: 'var(--surface)', border: '1px solid var(--accent)', color: 'var(--text)', padding: '4px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
-            <option value="hot">→ Hot</option>
-            <option value="warm">→ Warm</option>
-            <option value="cold">→ Cold</option>
-            <option value="booked">→ Booked</option>
-            <option value="dead">→ Dead</option>
-          </select>
-        )}
       </div>
+      {/* Row 2: status buttons + DNA — only when applicable */}
+      {showStatusSelect && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          {statusOpts.map(opt => {
+            const active = newStatus === opt.value
+            return (
+              <button key={opt.value} onClick={() => setNewStatus(opt.value)} style={{ padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.05em', textTransform: 'uppercase', border: `1px solid ${active ? opt.color : 'var(--border)'}`, background: active ? `color-mix(in srgb, ${opt.color} 15%, transparent)` : 'transparent', color: active ? opt.color : 'var(--text3)', transition: 'all 0.1s' }}>
+                → {opt.label}
+              </button>
+            )
+          })}
+          {showDna && (
+            <button onClick={handleDna} disabled={!canDna || dnaSubmitting} style={{ marginLeft: 4, padding: '4px 11px', background: 'transparent', border: `1px solid ${canDna ? 'var(--text3)' : 'var(--border)'}`, color: canDna ? 'var(--text2)' : 'var(--text3)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canDna && !dnaSubmitting ? 'pointer' : 'not-allowed', letterSpacing: '0.04em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
+              {dnaSubmitting ? '…' : 'Did Not Answer'}
+            </button>
+          )}
+        </div>
+      )}
       <textarea
         value={notes} onChange={e => setNotes(e.target.value)}
         onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
@@ -464,7 +553,7 @@ function TouchPrompt({ leadId, onSubmit, onCancel, showStatusSelect }: {
         rows={2}
         style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
       />
-      <div style={{ display: 'flex', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? 'var(--accent)' : 'var(--surface)', color: canSubmit ? '#0d0f14' : 'var(--text3)', border: `1px solid ${canSubmit ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
           {submitting ? '…' : 'Log Touch'}
         </button>
@@ -478,16 +567,19 @@ function TouchPrompt({ leadId, onSubmit, onCancel, showStatusSelect }: {
 
 // ─── Keep Hot prompt ──────────────────────────────────────────────────────────
 
-function KeepHotPrompt({ leadId, onSubmit, onCancel, label = 'Keep Hot' }: {
+function KeepHotPrompt({ leadId, onSubmit, onCancel, label = 'Keep Hot', status = 'hot' }: {
   leadId: number
   onSubmit: (id: number, initials: string, notes: string) => Promise<void>
   onCancel: () => void
   label?: string
+  status?: string
 }) {
   const [initials, setInitials] = useState('')
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const canSubmit = initials.trim().length >= 2
+  const color = status === 'warm' ? 'var(--warm)' : 'var(--hot)'
+  const bgTint = status === 'warm' ? 'rgba(240,162,78,0.07)' : 'rgba(240,78,122,0.07)'
 
   async function handleSubmit() {
     if (!canSubmit || submitting) return
@@ -497,16 +589,16 @@ function KeepHotPrompt({ leadId, onSubmit, onCancel, label = 'Keep Hot' }: {
   }
 
   return (
-    <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: 'rgba(240,78,122,0.07)', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: bgTint, borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <input
           autoFocus value={initials}
           onChange={e => setInitials(e.target.value.toUpperCase().slice(0, 3))}
           onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
           placeholder="Initials" maxLength={3}
-          style={{ width: 70, background: 'var(--surface)', border: '1px solid var(--hot)', color: 'var(--text)', padding: '4px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 12, outline: 'none', textAlign: 'center', letterSpacing: '0.12em' }}
+          style={{ width: 70, background: 'var(--surface)', border: `1px solid ${color}`, color: 'var(--text)', padding: '4px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 12, outline: 'none', textAlign: 'center', letterSpacing: '0.12em' }}
         />
-        <span style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</span>
+        <span style={{ fontSize: 10, color, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</span>
       </div>
       <textarea
         value={notes} onChange={e => setNotes(e.target.value)}
@@ -516,7 +608,7 @@ function KeepHotPrompt({ leadId, onSubmit, onCancel, label = 'Keep Hot' }: {
         style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
       />
       <div style={{ display: 'flex', gap: 6 }}>
-        <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? 'var(--hot)' : 'var(--surface)', color: canSubmit ? '#fff' : 'var(--text3)', border: `1px solid ${canSubmit ? 'var(--hot)' : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
+        <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? color : 'var(--surface)', color: canSubmit ? '#fff' : 'var(--text3)', border: `1px solid ${canSubmit ? color : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
           {submitting ? '…' : label}
         </button>
         <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}>
@@ -569,30 +661,29 @@ function DeadLeadPrompt({ leadId, onSubmit, onCancel }: {
 
 type NeedsActionTab = 'uncontacted' | 'hot' | 'warm' | 'incomplete'
 
-function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMarkTouched, onKeepHot, onMarkDead, onUpdateStatus, loading }: {
+function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMarkTouched, onKeepHot, onMarkDidNotAnswer, onUpdateStatus, loading }: {
   leads: Lead[]
   latestTouches: TouchMap
   selectedId: number | null
   onSelect: (id: number, field?: string) => void
   onMarkTouched: (id: number, initials: string, method: TouchMethod, notes: string, statusOverride?: string) => Promise<void>
   onKeepHot: (id: number, initials: string, notes: string, status?: string) => Promise<void>
-  onMarkDead: (id: number, initials: string) => Promise<void>
+  onMarkDidNotAnswer: (id: number, initials: string) => Promise<void>
   onUpdateStatus: (id: number, status: string) => Promise<void>
   loading: boolean
 }) {
   const [activeTab, setActiveTab] = useState<NeedsActionTab>('uncontacted')
   const [touchPromptId, setTouchPromptId] = useState<number | null>(null)
   const [keepHotPromptId, setKeepHotPromptId] = useState<number | null>(null)
-  const [deadLeadPromptId, setDeadLeadPromptId] = useState<number | null>(null)
 
-  const uncontacted = leads.filter(l => l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead'].includes(l.status)))
-  const hotDue = leads.filter(l => l.status === 'hot' && isKhuDue(l) && !isParked(l))
-  const warmDue = leads.filter(l => l.status === 'warm' && isKhuDue(l) && !isParked(l))
-  const incompleteLeads = leads.filter(l => ['hot', 'warm', 'uncontacted'].includes(l.status) && getMissing(l).length > 0)
+  const uncontacted = leads.filter(l => (l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead'].includes(l.status))) && l.needs_contact !== false)
+  const hotDue = leads.filter(l => l.status === 'hot' && isKhuDue(l) && !isParked(l) && l.needs_contact !== false)
+  const warmDue = leads.filter(l => l.status === 'warm' && isKhuDue(l) && !isParked(l) && l.needs_contact !== false)
+  const incompleteLeads = leads.filter(l => ['hot', 'warm', 'uncontacted'].includes(l.status) && getMissing(l).length > 0 && l.needs_contact !== false)
   const totalCount = uncontacted.length + hotDue.length + warmDue.length + incompleteLeads.length
 
   const tabs: { key: NeedsActionTab; label: string; color: string; items: Lead[]; type: 'touch' | 'incomplete'; emptyMsg: string }[] = [
-    { key: 'uncontacted', label: 'Uncontacted', color: '#4ef0db', items: uncontacted, type: 'touch', emptyMsg: 'No fresh uncontacted leads.' },
+    { key: 'uncontacted', label: 'Uncontacted', color: '#a8d5ff', items: uncontacted, type: 'touch', emptyMsg: 'No fresh uncontacted leads.' },
     { key: 'hot', label: 'Hot', color: 'var(--hot)', items: hotDue, type: 'touch', emptyMsg: 'All hot leads are up to date.' },
     { key: 'warm', label: 'Warm', color: 'var(--warm)', items: warmDue, type: 'touch', emptyMsg: 'All warm leads are up to date.' },
     { key: 'incomplete', label: 'Incomplete', color: 'var(--text2)', items: incompleteLeads, type: 'incomplete', emptyMsg: 'All leads have complete info.' },
@@ -651,14 +742,24 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
           const touch = latestTouches[l.id]
           const isTouchPrompting = touchPromptId === l.id
           const isKeepHotPrompting = keepHotPromptId === l.id
-          const isDeadPrompting = deadLeadPromptId === l.id
-          const isPrompting = isTouchPrompting || isKeepHotPrompting || isDeadPrompting
+          const isPrompting = isTouchPrompting || isKeepHotPrompting
+          const keepColor = l.status === 'warm' ? 'var(--warm)' : 'var(--hot)'
           return (
             <React.Fragment key={l.id}>
-              <div onClick={() => onSelect(l.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', cursor: 'pointer', borderBottom: isPrompting ? 'none' : '1px solid var(--border)', background: selectedId === l.id ? 'rgba(78,143,240,0.06)' : 'transparent', transition: 'background 0.15s' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLORS[l.status] || 'var(--text3)', flexShrink: 0 }} />
+              <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(78,143,240,0.06)' : 'transparent', transition: 'background 0.15s' }}>
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: STATUS_COLORS[l.status] || 'var(--text3)' }} />
+                <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, background: STATUS_COLORS[l.status] || 'var(--text3)' }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.fname} {l.lname}</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
+                    {l.label && l.artist_name
+                      ? <>{l.label} <span style={{ color: 'var(--text3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--text3)' }}>/</span> {l.artist_name}</>
+                      : <>{l.fname} {l.lname}</>}
+                  </div>
+                  {fmtSessionLine(l) && (
+                    <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {fmtSessionLine(l)}
+                    </div>
+                  )}
                   <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
                     {activeBucket.type === 'incomplete'
                       ? <span style={{ color: 'var(--accent2)' }}>missing: {missing.join(', ')}</span>
@@ -670,34 +771,21 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                 <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, border: '1px solid var(--border)', color: 'var(--text3)', flexShrink: 0, whiteSpace: 'nowrap' }}>
                   {BOOKING_ICONS[l.booking] || ''} {l.booking || '—'}
                 </span>
-                {/* Keep Hot / Keep Warm — Hot and Warm tabs */}
-                {(activeBucket.key === 'hot' || activeBucket.key === 'warm') && (
+                {(activeBucket.key === 'hot' || activeBucket.key === 'warm') && daysUntilKhu(l) !== null && (daysUntilKhu(l) as number) <= 1 && (
                   <button
                     onClick={e => {
                       e.stopPropagation()
-                      setTouchPromptId(null); setDeadLeadPromptId(null)
+                      setTouchPromptId(null)
                       setKeepHotPromptId(isKeepHotPrompting ? null : l.id)
                     }}
-                    style={{ flexShrink: 0, padding: '4px 9px', background: 'transparent', border: `1px solid ${isKeepHotPrompting ? 'var(--border)' : 'var(--hot)'}`, color: isKeepHotPrompting ? 'var(--text3)' : 'var(--hot)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                    {isKeepHotPrompting ? 'Cancel' : activeBucket.key === 'warm' ? 'Keep Warm' : 'Keep Hot'}
-                  </button>
-                )}
-                {/* Dead Lead — Incomplete tab only */}
-                {activeBucket.key === 'incomplete' && (
-                  <button
-                    onClick={e => {
-                      e.stopPropagation()
-                      setTouchPromptId(null); setKeepHotPromptId(null)
-                      setDeadLeadPromptId(isDeadPrompting ? null : l.id)
-                    }}
-                    style={{ flexShrink: 0, padding: '4px 9px', background: 'transparent', border: `1px solid ${isDeadPrompting ? 'var(--border)' : 'var(--text3)'}`, color: isDeadPrompting ? 'var(--text3)' : 'var(--text2)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                    {isDeadPrompting ? 'Cancel' : 'Dead Lead'}
+                    style={{ flexShrink: 0, padding: '4px 9px', background: 'transparent', border: `1px solid ${isKeepHotPrompting ? 'var(--border)' : keepColor}`, color: isKeepHotPrompting ? 'var(--text3)' : keepColor, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                    {isKeepHotPrompting ? 'Cancel' : activeBucket.key === 'warm' ? 'Keep Warm?' : 'Keep Hot?'}
                   </button>
                 )}
                 <button
                   onClick={e => {
                     e.stopPropagation()
-                    setKeepHotPromptId(null); setDeadLeadPromptId(null)
+                    setKeepHotPromptId(null)
                     setTouchPromptId(isTouchPrompting ? null : l.id)
                   }}
                   style={{ flexShrink: 0, padding: '4px 10px', background: 'transparent', border: `1px solid ${isTouchPrompting ? 'var(--border)' : 'var(--accent)'}`, color: isTouchPrompting ? 'var(--text3)' : 'var(--accent)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
@@ -707,7 +795,9 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
               {isTouchPrompting && (
                 <TouchPrompt
                   leadId={l.id}
-                  showStatusSelect={activeBucket.key === 'uncontacted'}
+                  showStatusSelect={activeBucket.key !== 'incomplete'}
+                  currentStatus={l.status}
+                  onDidNotAnswer={onMarkDidNotAnswer}
                   onSubmit={async (id, init, meth, notes, status) => { setTouchPromptId(null); await onMarkTouched(id, init, meth, notes, status) }}
                   onCancel={() => setTouchPromptId(null)}
                 />
@@ -716,15 +806,9 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                 <KeepHotPrompt
                   leadId={l.id}
                   label={l.status === 'warm' ? 'Keep Warm' : 'Keep Hot'}
+                  status={l.status}
                   onSubmit={async (id, init, notes) => { setKeepHotPromptId(null); await onKeepHot(id, init, notes, l.status) }}
                   onCancel={() => setKeepHotPromptId(null)}
-                />
-              )}
-              {isDeadPrompting && (
-                <DeadLeadPrompt
-                  leadId={l.id}
-                  onSubmit={async (id, init) => { setDeadLeadPromptId(null); await onMarkDead(id, init) }}
-                  onCancel={() => setDeadLeadPromptId(null)}
                 />
               )}
             </React.Fragment>
@@ -741,14 +825,13 @@ const PAGE_SIZE = 25
 
 type AllLeadsFilter = 'all' | 'uncontacted' | 'hot' | 'warm' | 'cold-dead' | 'booked'
 
-function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouched, onKeepHot, onMarkDead, onUpdateStatus, loading }: {
+function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouched, onKeepHot, onUpdateStatus, loading }: {
   leads: Lead[]
   latestTouches: TouchMap
   selectedId: number | null
   onSelect: (id: number) => void
   onMarkTouched: (id: number, initials: string, method: TouchMethod, notes: string, statusOverride?: string) => Promise<void>
   onKeepHot: (id: number, initials: string, notes: string, status?: string) => Promise<void>
-  onMarkDead: (id: number, initials: string) => Promise<void>
   onUpdateStatus: (id: number, status: string) => Promise<void>
   loading: boolean
 }) {
@@ -757,11 +840,10 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   const [page, setPage] = useState(1)
   const [touchPromptId, setTouchPromptId] = useState<number | null>(null)
   const [keepHotPromptId, setKeepHotPromptId] = useState<number | null>(null)
-  const [deadLeadPromptId, setDeadLeadPromptId] = useState<number | null>(null)
 
   useEffect(() => { setPage(1) }, [search])
   useEffect(() => {
-    setPage(1); setSearch(''); setTouchPromptId(null); setKeepHotPromptId(null); setDeadLeadPromptId(null)
+    setPage(1); setSearch(''); setTouchPromptId(null); setKeepHotPromptId(null)
   }, [activeFilter])
 
   const uncontactedLeads = leads.filter(l => l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead'].includes(l.status)))
@@ -777,7 +859,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
 
   const filterDefs: { key: AllLeadsFilter; label: string; color: string }[] = [
     { key: 'all', label: 'All', color: '#e8eaf2' },
-    { key: 'uncontacted', label: 'Uncontacted', color: '#4ef0db' },
+    { key: 'uncontacted', label: 'Uncontacted', color: '#a8d5ff' },
     { key: 'hot', label: 'Hot', color: '#f04e7a' },
     { key: 'warm', label: 'Warm', color: '#f0a24e' },
     { key: 'cold-dead', label: 'Cold/Dead', color: '#8b90a8' },
@@ -839,11 +921,10 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
           const missing = getMissing(l)
           const isTouchPrompting = touchPromptId === l.id
           const isKeepHotPrompting = keepHotPromptId === l.id
-          const isDeadPrompting = deadLeadPromptId === l.id
-          const isPrompting = isTouchPrompting || isKeepHotPrompting || isDeadPrompting
-          const showKeepHot = l.status === 'hot' || l.status === 'warm'
-          const keepLabel = l.status === 'warm' ? 'Keep Warm' : 'Keep Hot'
-          const showDeadLead = missing.length > 0
+          const isPrompting = isTouchPrompting || isKeepHotPrompting
+          const showKeepHot = (l.status === 'hot' || l.status === 'warm') && daysUntilKhu(l) !== null && (daysUntilKhu(l) as number) <= 1
+          const keepLabel = l.status === 'warm' ? 'Keep Warm?' : 'Keep Hot?'
+          const keepColor = l.status === 'warm' ? 'var(--warm)' : 'var(--hot)'
           const prevLead = idx > 0 ? paginated[idx - 1] : null
           const showDateSep = !!l.created_at && (!prevLead || new Date(l.created_at).toDateString() !== new Date(prevLead.created_at).toDateString())
           return (
@@ -855,13 +936,20 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                   <span style={{ flex: 1, borderBottom: '1px solid #2a2e3d' }} />
                 </div>
               )}
-              <div onClick={() => onSelect(l.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: isPrompting ? 'none' : '1px solid var(--border)', background: selectedId === l.id ? 'rgba(78,143,240,0.06)' : 'transparent', transition: 'background 0.15s' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLORS[l.status] || 'var(--text3)', flexShrink: 0 }} />
+              <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(78,143,240,0.06)' : 'transparent', transition: 'background 0.15s' }}>
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: STATUS_COLORS[l.status] || 'var(--text3)' }} />
+                <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, background: STATUS_COLORS[l.status] || 'var(--text3)' }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {l.fname} {l.lname}
-                    {l.company && <span style={{ color: 'var(--text3)', fontWeight: 400 }}> · {l.company}</span>}
+                  <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
+                    {l.label && l.artist_name
+                      ? <>{l.label} <span style={{ color: 'var(--text3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--text3)' }}>/</span> {l.artist_name}</>
+                      : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--text3)', fontWeight: 400 }}> · {l.company}</span>}</>}
                   </div>
+                  {fmtSessionLine(l) && (
+                    <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {fmtSessionLine(l)}
+                    </div>
+                  )}
                   <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {l.booking && <span>{BOOKING_ICONS[l.booking] || ''} {l.booking} · </span>}
                     {l.last_contact ? `${daysSince(l.last_contact)}d ago` : `added ${fmtDate(l.created_at)}`}
@@ -870,37 +958,29 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                   </div>
                 </div>
                 {showKeepHot && (
-                  <button onClick={e => { e.stopPropagation(); setTouchPromptId(null); setDeadLeadPromptId(null); setKeepHotPromptId(isKeepHotPrompting ? null : l.id) }}
-                    style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: `1px solid ${isKeepHotPrompting ? 'var(--border)' : 'var(--hot)'}`, color: isKeepHotPrompting ? 'var(--text3)' : 'var(--hot)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  <button onClick={e => { e.stopPropagation(); setTouchPromptId(null); setKeepHotPromptId(isKeepHotPrompting ? null : l.id) }}
+                    style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: `1px solid ${isKeepHotPrompting ? 'var(--border)' : keepColor}`, color: isKeepHotPrompting ? 'var(--text3)' : keepColor, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     {isKeepHotPrompting ? 'Cancel' : keepLabel}
                   </button>
                 )}
-                {showDeadLead && (
-                  <button onClick={e => { e.stopPropagation(); setTouchPromptId(null); setKeepHotPromptId(null); setDeadLeadPromptId(isDeadPrompting ? null : l.id) }}
-                    style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: `1px solid ${isDeadPrompting ? 'var(--border)' : 'var(--text3)'}`, color: isDeadPrompting ? 'var(--text3)' : 'var(--text2)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                    {isDeadPrompting ? 'Cancel' : 'Dead Lead'}
-                  </button>
-                )}
-                <button onClick={e => { e.stopPropagation(); setKeepHotPromptId(null); setDeadLeadPromptId(null); setTouchPromptId(isTouchPrompting ? null : l.id) }}
+                <button onClick={e => { e.stopPropagation(); setKeepHotPromptId(null); setTouchPromptId(isTouchPrompting ? null : l.id) }}
                   style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: `1px solid ${isTouchPrompting ? 'var(--border)' : 'var(--accent)'}`, color: isTouchPrompting ? 'var(--text3)' : 'var(--accent)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                   {isTouchPrompting ? 'Cancel' : 'Mark Touched'}
                 </button>
               </div>
               {isTouchPrompting && (
-                <TouchPrompt leadId={l.id} showStatusSelect={l.status === 'uncontacted'}
+                <TouchPrompt leadId={l.id}
+                  showStatusSelect={['hot', 'warm', 'uncontacted'].includes(l.status)}
+                  currentStatus={l.status}
                   onSubmit={async (id, init, meth, notes, status) => { setTouchPromptId(null); await onMarkTouched(id, init, meth, notes, status) }}
                   onCancel={() => setTouchPromptId(null)} />
               )}
               {isKeepHotPrompting && (
                 <KeepHotPrompt leadId={l.id}
-                  label={keepLabel}
+                  label={l.status === 'warm' ? 'Keep Warm' : 'Keep Hot'}
+                  status={l.status}
                   onSubmit={async (id, init, notes) => { setKeepHotPromptId(null); await onKeepHot(id, init, notes, l.status) }}
                   onCancel={() => setKeepHotPromptId(null)} />
-              )}
-              {isDeadPrompting && (
-                <DeadLeadPrompt leadId={l.id}
-                  onSubmit={async (id, init) => { setDeadLeadPromptId(null); await onMarkDead(id, init) }}
-                  onCancel={() => setDeadLeadPromptId(null)} />
               )}
             </React.Fragment>
           )
@@ -931,14 +1011,14 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
 
 function SectionHeader({ label, mt }: { label: string; mt?: number }) {
   return (
-    <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6, marginTop: mt ?? 14 }}>
+    <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 4, marginTop: mt ?? 8 }}>
       {label}
     </div>
   )
 }
 
 function FieldPair({ children }: { children: React.ReactNode }) {
-  return <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px' }}>{children}</div>
+  return <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>{children}</div>
 }
 
 function Field({ label, children }: { label: string, children: React.ReactNode }) {
@@ -952,7 +1032,7 @@ function Field({ label, children }: { label: string, children: React.ReactNode }
 
 // ─── Lead detail ──────────────────────────────────────────────────────────────
 
-function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, distinctLabels, distinctCompanies, onUpdate, onViewClient, onDelete }: {
+function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, distinctLabels, distinctCompanies, onUpdate, onViewClient, onSendEmail, onDelete }: {
   lead: Lead
   missing: string[]
   latestTouch?: { initials: string, method: string, created_at: string }
@@ -962,6 +1042,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   distinctCompanies: string[]
   onUpdate: (f: string, v: any) => void
   onViewClient?: (id: string) => void
+  onSendEmail?: () => void
   onDelete?: () => void
 }) {
   const [local, setLocal] = useState<Partial<Lead>>({ ...lead })
@@ -975,15 +1056,40 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   const [regLinkUrl, setRegLinkUrl] = useState<string | null>(null)
   const [regLinkCopied, setRegLinkCopied] = useState(false)
   const [regLinkGenerating, setRegLinkGenerating] = useState(false)
-  const [nameVal, setNameVal] = useState(`${lead.fname || ''} ${lead.lname || ''}`.trim())
+  const [existingTokenStr, setExistingTokenStr] = useState<string | null>(null)
+  const [fnameVal, setFnameVal] = useState(lead.fname || '')
+  const [lnameVal, setLnameVal] = useState(lead.lname || '')
+  const [lcDate, setLcDate] = useState(() => parseLastContact(lead.last_contact).date)
+  const [lcTime, setLcTime] = useState(() => parseLastContact(lead.last_contact).time)
+  const parsedLoc0 = (() => { const idx = (lead.location || '').indexOf(' · '); return idx === -1 ? { venue: lead.location || '', studio: '' } : { venue: (lead.location || '').slice(0, idx), studio: (lead.location || '').slice(idx + 3) } })()
+  const [localVenue, setLocalVenue] = useState(parsedLoc0.venue)
+  const [localStudio, setLocalStudio] = useState(parsedLoc0.studio)
 
   const emailRef = useRef<HTMLInputElement>(null)
   const phoneRef = useRef<HTMLInputElement>(null)
   const quoteRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => { setLocal({ ...lead }); setNameVal(`${lead.fname || ''} ${lead.lname || ''}`.trim()) }, [lead.id])
+  useEffect(() => {
+    setLocal({ ...lead })
+    setFnameVal(lead.fname || '')
+    setLnameVal(lead.lname || '')
+    const locIdx = (lead.location || '').indexOf(' · ')
+    setLocalVenue(locIdx === -1 ? (lead.location || '') : (lead.location || '').slice(0, locIdx))
+    setLocalStudio(locIdx === -1 ? '' : (lead.location || '').slice(locIdx + 3))
+    const lc = parseLastContact(lead.last_contact)
+    setLcDate(lc.date)
+    setLcTime(lc.time)
+  }, [lead.id])
   useEffect(() => { setNotesVal(lead.notes || '') }, [lead.notes])
-  useEffect(() => { setRegLinkUrl(null); setRegLinkCopied(false); setRegLinkGenerating(false) }, [lead.id])
+  useEffect(() => {
+    setRegLinkUrl(null); setRegLinkCopied(false); setRegLinkGenerating(false); setExistingTokenStr(null)
+    supabase.from('registration_tokens').select('token').eq('lead_id', lead.id).maybeSingle().then(({ data }) => {
+      if (data) {
+        setExistingTokenStr(data.token)
+        setRegLinkUrl(`${window.location.origin}/register/${data.token}`)
+      }
+    })
+  }, [lead.id])
 
   useEffect(() => {
     if (!focusField) return
@@ -1031,9 +1137,23 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
     setTimeout(() => setSavedField(null), 600)
   }
 
-  const lastContactDisplay = lead.last_contact
-    ? `${fmtDateTime(lead.last_contact)}${latestTouch?.initials ? ' · ' + latestTouch.initials + (latestTouch.method ? ' via ' + latestTouch.method : '') : ''}`
-    : '—'
+  function saveLastContact(date: string, time: string) {
+    if (!date) return
+    const t24 = time ? to24h(time) : '00:00'
+    const iso = `${date}T${t24}:00.000`
+    save('last_contact', iso)
+    update('last_contact', iso)
+  }
+
+  const khuDays = daysUntilKhu(lead)
+  const khuColor = khuDays === null ? 'var(--text3)' : khuDays < 1 ? 'var(--hot)' : khuDays <= 2 ? 'var(--warm)' : 'var(--booked)'
+
+  const selStyle: React.CSSProperties = {
+    background: 'var(--surface2)', border: '1px solid var(--border)',
+    color: 'var(--text)', padding: '4px 6px', fontFamily: 'DM Mono',
+    fontSize: 12, outline: 'none', borderRadius: 4, cursor: 'pointer', flex: 1, minWidth: 0,
+    appearance: 'none' as any, WebkitAppearance: 'none' as any,
+  }
 
   async function generateRegLink() {
     setRegLinkGenerating(true)
@@ -1046,6 +1166,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
       prefill_name: `${lead.fname || ''} ${lead.lname || ''}`.trim() || null,
       expires_at: expiresAt,
     })
+    setExistingTokenStr(token)
     setRegLinkUrl(`${window.location.origin}/register/${token}`)
     setRegLinkGenerating(false)
   }
@@ -1107,211 +1228,335 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
 
   return (
     <div>
-      {/* Name — single input for "First Last", splits on save */}
-      <div style={{ display: 'inline-grid', minWidth: '4ch', marginBottom: 6, maxWidth: '100%' }}>
-        <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
-          {nameVal || 'Full name'}
-        </span>
-        <input
-          value={nameVal}
-          onChange={e => setNameVal(e.target.value)}
-          onFocus={() => setFocusedInput('name')}
-          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
-          onBlur={() => {
-            setFocusedInput(null)
-            const parts = nameVal.trim().split(/\s+/)
-            const fname = parts[0] || ''
-            const lname = parts.slice(1).join(' ')
-            if (fname !== lead.fname) save('fname', fname)
-            if (lname !== (lead.lname || '')) save('lname', lname)
-          }}
-          placeholder="Full name"
-          style={{ gridArea: '1/1', background: focusedInput === 'name' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', width: '100%', borderRadius: 4 }}
-        />
+      {/* ─── Header bar ──────────────────────────────────────────────── */}
+      <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 10px', marginBottom: 8 }}>
+        {/* Row 1: left group (label + pills) | right group (action button) */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
+            <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0 }}>Lead Details</span>
+            <select
+              value={local.status || lead.status}
+              onChange={e => { update('status', e.target.value); saveStatus(e.target.value) }}
+              style={{ ...pillBase, flexShrink: 0, background: `${STATUS_COLORS[local.status || lead.status]}22`, color: STATUS_COLORS[local.status || lead.status] || 'var(--text2)', border: `1px solid ${STATUS_COLORS[local.status || lead.status]}66`, appearance: 'none' as any }}>
+              {['hot', 'warm', 'cold', 'uncontacted', 'booked', 'dead'].map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            {lead.needs_contact !== false && (
+              <button
+                onClick={() => { save('needs_contact', false); onUpdate('needs_contact', false) }}
+                style={{ ...pillBase, flexShrink: 0, background: 'rgba(168,213,255,0.12)', color: '#a8d5ff', border: '1px solid rgba(168,213,255,0.4)' }}
+              >
+                ● Needs Contact
+              </button>
+            )}
+          </div>
+          <div style={{ flexShrink: 0 }}>
+            {lead.client_id ? (
+              existingTokenStr ? (
+                <button disabled style={{ padding: '5px 10px', background: 'rgba(78,240,162,0.12)', color: 'var(--booked)', border: '1px solid rgba(78,240,162,0.35)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'default' }}>
+                  Reg Returned ✓
+                </button>
+              ) : (
+                <button onClick={() => onViewClient?.(lead.client_id!)} style={{ padding: '5px 10px', background: 'var(--booked)', color: '#0d0f14', border: 'none', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}>
+                  Start Booking →
+                </button>
+              )
+            ) : existingTokenStr ? (
+              <button disabled style={{ padding: '5px 10px', background: 'rgba(240,162,78,0.12)', color: 'var(--warm)', border: '1px solid rgba(240,162,78,0.35)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'default' }}>
+                Reg Sent
+              </button>
+            ) : (
+              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '5px 10px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
+                {regLinkGenerating ? 'Generating…' : 'Send Reg ↗'}
+              </button>
+            )}
+          </div>
+        </div>
+        {/* Row 2: Keep Hot Until — hot/warm only */}
+        {(lead.status === 'hot' || lead.status === 'warm') && lead.keep_hot_until && (
+          <div style={{ marginTop: 6, fontSize: 10, fontFamily: 'DM Mono', color: khuColor }}>
+            Keep Hot Until: {fmtDateTime(lead.keep_hot_until)}
+          </div>
+        )}
       </div>
+
+      {/* Reg link panel */}
+      {regLinkUrl && !lead.client_id && (
+        <div style={{ marginBottom: 8, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 5, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+            {regLinkUrl}
+          </span>
+          <button onClick={copyRegLink} style={{ padding: '2px 8px', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 3, fontFamily: 'Syne', fontWeight: 700, fontSize: 8, letterSpacing: '0.08em', cursor: 'pointer', flexShrink: 0 }}>
+            {regLinkCopied ? 'Copied!' : 'Copy'}
+          </button>
+          <button onClick={emailRegLink} style={{ padding: '2px 8px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer', flexShrink: 0 }}>
+            Email
+          </button>
+          <button onClick={() => setRegLinkUrl(null)} style={{ padding: '2px 6px', background: 'transparent', color: 'var(--text3)', border: 'none', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer', flexShrink: 0, lineHeight: 1 }}>
+            ✕
+          </button>
+        </div>
+      )}
+
       {savedField && <span style={{ fontSize: 9, color: 'var(--booked)', fontFamily: 'DM Mono', display: 'block', marginBottom: 4 }}>saved</span>}
 
-      {/* Pills */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
-        <select
-          value={local.status || lead.status}
-          onChange={e => { update('status', e.target.value); saveStatus(e.target.value) }}
-          style={{ ...pillBase, background: `${STATUS_COLORS[local.status || lead.status]}22`, color: STATUS_COLORS[local.status || lead.status] || 'var(--text2)', border: `1px solid ${STATUS_COLORS[local.status || lead.status]}66`, appearance: 'none' as any }}>
-          {['hot', 'warm', 'cold', 'uncontacted', 'booked', 'dead'].map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <button
-          onClick={() => { const nb = (local.billing || lead.billing) === 'COD' ? 'Billing' : 'COD'; update('billing', nb); save('billing', nb) }}
-          style={{ ...pillBase, background: (local.billing || lead.billing) === 'COD' ? 'rgba(78,240,162,0.15)' : 'rgba(78,143,240,0.15)', color: (local.billing || lead.billing) === 'COD' ? 'var(--booked)' : 'var(--accent2)', border: `1px solid ${(local.billing || lead.billing) === 'COD' ? 'rgba(78,240,162,0.4)' : 'rgba(78,143,240,0.4)'}` }}>
-          {local.billing || lead.billing || 'COD'}
-        </button>
-        {lead.booking && (
-          <span style={{ ...pillBase, background: 'rgba(139,144,168,0.12)', color: 'var(--text2)', border: '1px solid var(--border)', cursor: 'default', fontSize: 9 }}>
-            {BOOKING_ICONS[lead.booking] || ''} {lead.booking}
-          </span>
-        )}
-        {lead.first_time && (
-          <span style={{ ...pillBase, background: 'rgba(78,143,240,0.15)', color: 'var(--accent2)', border: '1px solid rgba(78,143,240,0.4)', cursor: 'default' }}>
-            ★ First Time
-          </span>
-        )}
-      </div>
-
+      {/* ─── Missing warning ─────────────────────────────── */}
       {missing.length > 0 && (
-        <div style={{ fontSize: 10, color: 'var(--accent2)', background: 'rgba(78,143,240,0.08)', padding: '6px 10px', borderRadius: 6, marginBottom: 4 }}>
+        <div style={{ fontSize: 10, color: 'var(--accent2)', background: 'rgba(78,143,240,0.08)', padding: '6px 10px', borderRadius: 6, marginBottom: 6 }}>
           ⚠ Missing: {missing.join(', ')}
         </div>
       )}
 
+      {/* ─── Name + Pills ─────────────────────────────── */}
       <div style={{ marginBottom: 8 }}>
-        {lead.client_id ? (
-          <button
-            onClick={() => onViewClient?.(lead.client_id!)}
-            style={{ padding: '5px 14px', background: 'var(--booked)', color: '#0d0f14', border: 'none', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
-          >
-            Start Booking →
-          </button>
-        ) : (
-          <>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const }}>
-              <button
-                onClick={generateRegLink}
-                disabled={regLinkGenerating || !!regLinkUrl}
-                style={{ padding: '5px 14px', background: 'transparent', color: regLinkUrl ? 'var(--text3)' : 'var(--text2)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: (regLinkGenerating || !!regLinkUrl) ? 'default' : 'pointer' }}
-              >
-                {regLinkGenerating ? 'Generating…' : regLinkUrl ? '✓ Link Created' : 'Send Registration ↗'}
-              </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, minWidth: 0 }}>
+            <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
+              <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
+                {fnameVal || 'First'}
+              </span>
+              <input
+                value={fnameVal}
+                onChange={e => setFnameVal(e.target.value)}
+                onFocus={() => setFocusedInput('fname')}
+                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
+                onBlur={() => { setFocusedInput(null); save('fname', fnameVal.trim()) }}
+                placeholder="First"
+                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: leadNameColor(lead), fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
+              />
             </div>
-            {regLinkUrl && (
-              <div style={{ marginTop: 6, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 5, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-                  {regLinkUrl}
-                </span>
-                <button onClick={copyRegLink} style={{ padding: '2px 8px', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 3, fontFamily: 'Syne', fontWeight: 700, fontSize: 8, letterSpacing: '0.08em', cursor: 'pointer', flexShrink: 0 }}>
-                  {regLinkCopied ? 'Copied!' : 'Copy'}
-                </button>
-                <button onClick={emailRegLink} style={{ padding: '2px 8px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer', flexShrink: 0 }}>
-                  Email
-                </button>
-              </div>
+            <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
+              <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
+                {lnameVal || 'Last'}
+              </span>
+              <input
+                value={lnameVal}
+                onChange={e => setLnameVal(e.target.value)}
+                onFocus={() => setFocusedInput('lname')}
+                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
+                onBlur={() => { setFocusedInput(null); save('lname', lnameVal.trim()) }}
+                placeholder="Last"
+                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'lname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: leadNameColor(lead), fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
+              />
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
+            <button
+              onClick={() => { const nb = (local.billing || lead.billing) === 'COD' ? 'Billing' : 'COD'; update('billing', nb); save('billing', nb) }}
+              style={{ ...pillBase, background: (local.billing || lead.billing) === 'COD' ? 'rgba(213,128,255,0.12)' : 'rgba(126,170,255,0.12)', color: (local.billing || lead.billing) === 'COD' ? '#d580ff' : '#7eaaff', border: `1px solid ${(local.billing || lead.billing) === 'COD' ? 'rgba(213,128,255,0.3)' : 'rgba(126,170,255,0.3)'}` }}>
+              {local.billing || lead.billing || 'COD'}
+            </button>
+            {lead.booking && (
+              <span style={{ ...pillBase, background: 'rgba(139,144,168,0.12)', color: 'var(--text2)', border: '1px solid var(--border)', cursor: 'default', fontSize: 9 }}>
+                {BOOKING_ICONS[lead.booking] || ''} {lead.booking}
+              </span>
             )}
-          </>
+            {lead.first_time && (
+              <span style={{ ...pillBase, background: 'rgba(78,143,240,0.15)', color: 'var(--accent2)', border: '1px solid rgba(78,143,240,0.4)', cursor: 'default' }}>
+                ★ First Time
+              </span>
+            )}
+            {lead.source && (
+              <span style={{ ...pillBase, background: 'rgba(139,144,168,0.12)', color: 'var(--text3)', border: '1px solid var(--border)', cursor: 'default', fontSize: 9 }}>
+                {lead.source}
+              </span>
+            )}
+          </div>
+        </div>
+        {lead.billing !== 'COD' && (
+          <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <div style={fieldLabelStyle}>Label / Company</div>
+              <input
+                value={local.label || ''}
+                onChange={e => { update('label', e.target.value); setShowLabelDD(true) }}
+                onFocus={() => { setFocusedInput('label'); setShowLabelDD(true) }}
+                onBlur={e => { setFocusedInput(null); setShowLabelDD(false); save('label', e.target.value) }}
+                onKeyDown={enterBlur}
+                placeholder="—"
+                style={iStyle('label')}
+              />
+              {showLabelDD && labelSuggestions.length > 0 && (
+                <div style={ddStyle}>
+                  {labelSuggestions.map(s => (
+                    <div key={s} onMouseDown={e => { e.preventDefault(); update('label', s); save('label', s); setShowLabelDD(false) }} style={ddItemStyle}>{s}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <div style={fieldLabelStyle}>Artist</div>
+              <input
+                value={local.company || ''}
+                onChange={e => { update('company', e.target.value); setShowCompanyDD(true) }}
+                onFocus={() => { setFocusedInput('company'); setShowCompanyDD(true) }}
+                onBlur={e => { setFocusedInput(null); setShowCompanyDD(false); save('company', e.target.value) }}
+                onKeyDown={enterBlur}
+                placeholder="—"
+                style={iStyle('company')}
+              />
+              {showCompanyDD && companySuggestions.length > 0 && (
+                <div style={ddStyle}>
+                  {companySuggestions.map(s => (
+                    <div key={s} onMouseDown={e => { e.preventDefault(); update('company', s); save('company', s); setShowCompanyDD(false) }} style={ddItemStyle}>{s}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
 
+      {/* ─── Contact — 3-col grid ─────────────────────────────── */}
       <SectionHeader label="Contact" />
-      <FieldPair>
-        <Field label="Email">
-          <input ref={emailRef} value={local.email || ''} onChange={e => update('email', e.target.value)}
-            onFocus={() => setFocusedInput('email')} onBlur={e => { setFocusedInput(null); save('email', e.target.value) }}
-            onKeyDown={enterBlur} placeholder="Add email" style={iStyle('email')} />
-        </Field>
-        <Field label="Phone">
+      <div style={{ marginTop: 4, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 48px' }}>
+        <div>
+          <div style={fieldLabelStyle}>Email</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input ref={emailRef} value={local.email || ''} onChange={e => update('email', e.target.value)}
+              onFocus={() => setFocusedInput('email')} onBlur={e => { setFocusedInput(null); save('email', e.target.value) }}
+              onKeyDown={enterBlur} placeholder="Add email" style={{ ...iStyle('email'), flex: 1, minWidth: 0 }} />
+            {onSendEmail && local.email && (() => {
+              const bc = (local.billing || lead.billing) === 'COD' ? '#d580ff' : '#7eaaff'
+              return (
+                <button onClick={onSendEmail} style={{ flexShrink: 0, padding: '2px 7px', background: `color-mix(in srgb, ${bc} 12%, transparent)`, border: `1px solid color-mix(in srgb, ${bc} 40%, transparent)`, color: bc, borderRadius: 3, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer' }}>
+                  Email
+                </button>
+              )
+            })()}
+          </div>
+        </div>
+        <div>
+          <div style={fieldLabelStyle}>Created</div>
+          <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono', padding: '4px 6px', whiteSpace: 'nowrap' }}>{fmtDate(lead.created_at)}</div>
+        </div>
+        <div>
+          <div style={fieldLabelStyle}>Phone</div>
           <input ref={phoneRef} value={local.phone || ''} onChange={e => update('phone', e.target.value)}
             onFocus={() => setFocusedInput('phone')} onBlur={e => { setFocusedInput(null); save('phone', e.target.value) }}
             onKeyDown={enterBlur} placeholder="Add phone" style={iStyle('phone')} />
-        </Field>
-
-        {/* Label with autocomplete */}
-        <div style={{ position: 'relative' }}>
-          <div style={fieldLabelStyle}>Label</div>
-          <input
-            value={local.label || ''}
-            onChange={e => { update('label', e.target.value); setShowLabelDD(true) }}
-            onFocus={() => { setFocusedInput('label'); setShowLabelDD(true) }}
-            onBlur={e => { setFocusedInput(null); setShowLabelDD(false); save('label', e.target.value) }}
-            onKeyDown={enterBlur}
-            placeholder="—"
-            style={iStyle('label')}
-          />
-          {showLabelDD && labelSuggestions.length > 0 && (
-            <div style={ddStyle}>
-              {labelSuggestions.map(s => (
-                <div key={s} onMouseDown={e => { e.preventDefault(); update('label', s); save('label', s); setShowLabelDD(false) }} style={ddItemStyle}>{s}</div>
-              ))}
-            </div>
-          )}
         </div>
-
-        <Field label="Source">
-          <input value={local.source || ''} onChange={e => update('source', e.target.value)}
-            onFocus={() => setFocusedInput('source')} onBlur={e => { setFocusedInput(null); save('source', e.target.value) }}
-            onKeyDown={enterBlur} placeholder="—" style={iStyle('source')} />
-        </Field>
-      </FieldPair>
-
-      {/* Company with autocomplete */}
-      <div style={{ marginTop: 4, position: 'relative' }}>
-        <div style={fieldLabelStyle}>Company / Artist</div>
-        <input
-          value={local.company || ''}
-          onChange={e => { update('company', e.target.value); setShowCompanyDD(true) }}
-          onFocus={() => { setFocusedInput('company'); setShowCompanyDD(true) }}
-          onBlur={e => { setFocusedInput(null); setShowCompanyDD(false); save('company', e.target.value) }}
-          onKeyDown={enterBlur}
-          placeholder="—"
-          style={iStyle('company')}
-        />
-        {showCompanyDD && companySuggestions.length > 0 && (
-          <div style={ddStyle}>
-            {companySuggestions.map(s => (
-              <div key={s} onMouseDown={e => { e.preventDefault(); update('company', s); save('company', s); setShowCompanyDD(false) }} style={ddItemStyle}>{s}</div>
-            ))}
+        <div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <div style={fieldLabelStyle}>Last Contact</div>
+              <input
+                type="date"
+                value={lcDate}
+                onChange={e => { setLcDate(e.target.value); saveLastContact(e.target.value, lcTime) }}
+                onFocus={() => setFocusedInput('lc_date')}
+                onBlur={() => setFocusedInput(null)}
+                style={{ ...iStyle('lc_date'), cursor: 'pointer', width: '100%' }}
+              />
+            </div>
+            <div>
+              <div style={fieldLabelStyle}>Time</div>
+              <TimeInput
+                value={lcTime}
+                onChange={v => { setLcTime(v); if (lcDate) saveLastContact(lcDate, v) }}
+                onBlur={() => { if (lcDate) saveLastContact(lcDate, lcTime) }}
+                placeholder="—"
+                style={{ ...iStyle('lc_time'), width: 72 }}
+              />
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
-      <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
-        <div>
-          <div style={fieldLabelStyle}>Initial Contact</div>
-          <div style={{ fontSize: 12, color: 'var(--text2)', padding: '4px 6px' }}>{fmtDate(lead.created_at)}</div>
-        </div>
-        <div>
-          <div style={fieldLabelStyle}>Last Contact</div>
-          <div style={{ fontSize: 11, color: lead.last_contact ? 'var(--text)' : 'var(--text3)', padding: '4px 6px', lineHeight: 1.5 }}>{lastContactDisplay}</div>
-        </div>
-        {(lead.status === 'hot' || lead.status === 'warm') && (
+      {/* ─── Session & Quote ─────────────────────────────── */}
+      <SectionHeader label="Session & Quote" mt={8} />
+      <div style={{ marginTop: 4, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 48px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div>
-            <div style={fieldLabelStyle}>Keep Hot Until</div>
-            <div style={{ fontSize: 11, padding: '4px 6px', color: (() => {
-              if (!lead.keep_hot_until) return 'var(--text3)'
-              const d = daysUntilKhu(lead)
-              if (d === null) return 'var(--text3)'
-              if (d < 1) return 'var(--hot)'
-              if (d <= 2) return 'var(--warm)'
-              return 'var(--booked)'
-            })() }}>
-              {lead.keep_hot_until ? fmtDateTime(lead.keep_hot_until) : '—'}
+            <div style={fieldLabelStyle}>Location · Studio</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <select
+                value={localVenue}
+                onChange={e => {
+                  const v = e.target.value
+                  setLocalVenue(v)
+                  setLocalStudio('')
+                  const combined = v
+                  save('location', combined)
+                  update('location', combined)
+                }}
+                style={selStyle}
+              >
+                <option value="">— Location</option>
+                {['Paramount', 'Ameraycan', 'Encore', 'Track'].map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
+              <select
+                value={localStudio}
+                onChange={e => {
+                  const s = e.target.value
+                  setLocalStudio(s)
+                  const combined = localVenue ? (s ? `${localVenue} · ${s}` : localVenue) : s
+                  save('location', combined)
+                  update('location', combined)
+                }}
+                disabled={!localVenue}
+                style={{ ...selStyle, opacity: localVenue ? 1 : 0.4 }}
+              >
+                <option value="">— Studio</option>
+                {(STUDIO_OPTIONS[localVenue] || []).map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
             </div>
           </div>
-        )}
+          <div>
+            <div style={fieldLabelStyle}>Session Date</div>
+            <input
+              type="date"
+              value={local.session_date || ''}
+              onChange={e => { update('session_date', e.target.value); save('session_date', e.target.value) }}
+              style={{ ...iStyle('session_date'), cursor: 'pointer' }}
+            />
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div>
+            <div style={fieldLabelStyle}>Quote / Rate</div>
+            <input ref={quoteRef} value={local.quote || ''} onChange={e => update('quote', e.target.value)}
+              onFocus={() => setFocusedInput('quote')} onBlur={e => { setFocusedInput(null); save('quote', e.target.value) }}
+              onKeyDown={enterBlur} placeholder="—" style={iStyle('quote')} />
+          </div>
+          <div>
+            <div style={fieldLabelStyle}>Start – End</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <TimeInput
+                value={local.session_start || ''}
+                onChange={v => { update('session_start', v) }}
+                onBlur={() => { setFocusedInput(null); save('session_start', local.session_start || '') }}
+                placeholder="Start"
+                style={{ ...iStyle('session_start'), flex: 1, minWidth: 0 }}
+              />
+              <span style={{ color: 'var(--text3)', fontSize: 11, flexShrink: 0 }}>–</span>
+              <TimeInput
+                value={local.session_end || ''}
+                onChange={v => { update('session_end', v) }}
+                onBlur={() => { setFocusedInput(null); save('session_end', local.session_end || '') }}
+                placeholder="End"
+                style={{ ...iStyle('session_end'), flex: 1, minWidth: 0 }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style={{ marginTop: 8 }}>
+        <button
+          onClick={() => { const v = !local.engineer_needed; update('engineer_needed', v); save('engineer_needed', v) }}
+          style={{ padding: '5px 14px', background: local.engineer_needed ? 'rgba(200,240,78,0.12)' : 'var(--surface2)', color: local.engineer_needed ? 'var(--accent)' : 'var(--text3)', border: `1px solid ${local.engineer_needed ? 'rgba(200,240,78,0.35)' : 'var(--border)'}`, borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer' }}
+        >
+          {local.engineer_needed ? '● Engineer Needed' : '○ Engineer Needed'}
+        </button>
       </div>
 
-      <SectionHeader label="Location & Quote" mt={8} />
-      <FieldPair>
-        <Field label="Studio / Location">
-          <input value={local.location || ''} onChange={e => update('location', e.target.value)}
-            onFocus={() => setFocusedInput('location')} onBlur={e => { setFocusedInput(null); save('location', e.target.value) }}
-            onKeyDown={enterBlur} placeholder="—" style={iStyle('location')} />
-        </Field>
-        <Field label="Quote / Rate">
-          <input ref={quoteRef} value={local.quote || ''} onChange={e => update('quote', e.target.value)}
-            onFocus={() => setFocusedInput('quote')} onBlur={e => { setFocusedInput(null); save('quote', e.target.value) }}
-            onKeyDown={enterBlur} placeholder="—" style={iStyle('quote')} />
-        </Field>
-        <Field label="Session Date">
-          <input value={local.session_date || ''} onChange={e => update('session_date', e.target.value)}
-            onFocus={() => setFocusedInput('session_date')} onBlur={e => { setFocusedInput(null); save('session_date', e.target.value) }}
-            onKeyDown={enterBlur} placeholder="—" style={iStyle('session_date')} />
-        </Field>
-      </FieldPair>
-
-      <SectionHeader label="Session Notes & Details" mt={8} />
+      {/* ─── Session Notes ─────────────────────────────── */}
+      <SectionHeader label="Session Notes" mt={8} />
       <textarea
         value={notesVal}
         onChange={e => setNotesVal(e.target.value)}
         onBlur={() => { if (notesDirty) save('notes', notesVal) }}
         placeholder="Add notes…"
-        style={{ width: '100%', minHeight: 90, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 10px', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, resize: 'vertical', outline: 'none', lineHeight: 1.6 }}
+        style={{ width: '100%', minHeight: 70, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '6px 10px', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, resize: 'vertical', outline: 'none', lineHeight: 1.6 }}
       />
       {notesDirty && (
         <button
@@ -1321,8 +1566,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
         </button>
       )}
 
-      {/* Delete lead */}
-      <div style={{ marginTop: 20, paddingTop: 12, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
         <button
           onClick={() => setShowDeleteConfirm(true)}
           style={{ background: 'rgba(240,78,122,0.12)', color: 'var(--hot)', border: '1px solid rgba(240,78,122,0.25)', borderRadius: 4, padding: '4px 10px', fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}
@@ -1331,7 +1575,6 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
         </button>
       </div>
 
-      {/* Delete confirm modal */}
       {showDeleteConfirm && (
         <div onClick={() => setShowDeleteConfirm(false)} style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px', maxWidth: 400, width: '100%' }}>
@@ -1374,9 +1617,13 @@ function NewLeadModal({ leads, onClose, onSave }: {
   onSave: (data: Partial<Lead>) => Promise<void>
 }) {
   const router = useRouter()
-  const emptyForm = { fname: '', lname: '', email: '', phone: '', company: '', label: '', source: '', booking: '', notes: '', billing: 'COD' as BillingType }
+  const emptyForm = { fname: '', lname: '', email: '', phone: '', company: '', label: '', source: '', booking: '', notes: '', billing: 'COD' as BillingType, quote: '', location: '', session_date: '', session_start: '', session_end: '', engineer_needed: false }
+  const [mode, setMode] = useState<'cod' | 'label'>('cod')
   const [form, setForm] = useState(emptyForm)
   const [temperature, setTemperature] = useState<'hot' | 'warm' | 'booking'>('hot')
+  const [needsContact, setNeedsContact] = useState(false)
+
+  // COD mode state
   const [matchedClientId, setMatchedClientId] = useState<string | null>(null)
   const [nameSuggestions, setNameSuggestions] = useState<Array<{ record: Lead | Client, type: 'lead' | 'client' }>>([])
   const [showNameDD, setShowNameDD] = useState(false)
@@ -1385,10 +1632,33 @@ function NewLeadModal({ leads, onClose, onSave }: {
   const [companySuggestions, setCompanySuggestions] = useState<string[]>([])
   const [showLabelDD, setShowLabelDD] = useState(false)
   const [showCompanyDD, setShowCompanyDD] = useState(false)
+
+  // Label mode state
+  const [labelClientId, setLabelClientId] = useState<string | null>(null)
+  const [labelQuery, setLabelQuery] = useState('')
+  const [labelClientSuggestions, setLabelClientSuggestions] = useState<Client[]>([])
+  const [showLabelClientDD, setShowLabelClientDD] = useState(false)
+  const [labelHighlight, setLabelHighlight] = useState(-1)
+  const [anrContacts, setAnrContacts] = useState<ClientContact[]>([])
+  const [anrContactId, setAnrContactId] = useState<string | null>(null)
+  const [selectedAnr, setSelectedAnr] = useState<ClientContact | null>(null)
+  const [anrQuery, setAnrQuery] = useState('')
+  const [showAnrDD, setShowAnrDD] = useState(false)
+  const [anrHighlight, setAnrHighlight] = useState(-1)
+  const [artistQuery, setArtistQuery] = useState('')
+  const [showArtistDD, setShowArtistDD] = useState(false)
+  const [artistHighlight, setArtistHighlight] = useState(-1)
+
   const [saving, setSaving] = useState(false)
   const nameDebounce = useRef<ReturnType<typeof setTimeout>>()
+  const labelDebounce = useRef<ReturnType<typeof setTimeout>>()
+  const skipNameSearch = useRef(false)
+  const skipLabelSearch = useRef(false)
 
+  // COD: name autocomplete
   useEffect(() => {
+    if (mode !== 'cod') return
+    if (skipNameSearch.current) { skipNameSearch.current = false; return }
     const query = `${form.fname} ${form.lname}`.trim()
     if (query.length < 2) { setNameSuggestions([]); setShowNameDD(false); return }
     clearTimeout(nameDebounce.current)
@@ -1413,7 +1683,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
       setShowNameDD(combined.length > 0)
     }, 250)
     return () => clearTimeout(nameDebounce.current)
-  }, [form.fname, form.lname, leads])
+  }, [form.fname, form.lname, leads, mode])
 
   useEffect(() => {
     if (form.label.length < 2) { setLabelSuggestions([]); return }
@@ -1427,7 +1697,58 @@ function NewLeadModal({ leads, onClose, onSave }: {
     setCompanySuggestions(Array.from(new Set(leads.map(l => l.company).filter((v): v is string => !!v && v.toLowerCase().includes(q)))).slice(0, 6))
   }, [form.company, leads])
 
+  // Label mode: label client search
+  useEffect(() => {
+    if (mode !== 'label') return
+    if (skipLabelSearch.current) { skipLabelSearch.current = false; return }
+    if (labelQuery.length < 2) { setLabelClientSuggestions([]); setShowLabelClientDD(false); return }
+    clearTimeout(labelDebounce.current)
+    labelDebounce.current = setTimeout(async () => {
+      const { data } = await supabase.from('clients').select('id, type, name, email, phone, created_at').eq('type', 'label').ilike('name', `%${labelQuery}%`).limit(8)
+      setLabelClientSuggestions((data as Client[]) || [])
+      setShowLabelClientDD(((data as Client[]) || []).length > 0)
+    }, 200)
+    return () => clearTimeout(labelDebounce.current)
+  }, [labelQuery, mode])
+
+  // Label mode: load A&R contacts when label client is selected
+  useEffect(() => {
+    if (!labelClientId) { setAnrContacts([]); return }
+    supabase.from('client_contacts').select('*').eq('client_id', labelClientId)
+      .then(({ data }) => setAnrContacts((data as ClientContact[]) || []))
+  }, [labelClientId])
+
+  function selectLabelClient(c: Client) {
+    skipLabelSearch.current = true
+    clearTimeout(labelDebounce.current)
+    setLabelClientId(c.id)
+    setLabelQuery(c.name)
+    setShowLabelClientDD(false)
+    setLabelHighlight(-1)
+    setAnrContactId(null); setSelectedAnr(null); setAnrQuery(''); setAnrHighlight(-1)
+    set('label', c.name)
+  }
+
+  function selectAnr(contact: ClientContact) {
+    setAnrContactId(contact.id)
+    setSelectedAnr(contact)
+    setAnrQuery(`${contact.fname || ''} ${contact.lname || ''}`.trim())
+    setShowAnrDD(false)
+    setAnrHighlight(-1)
+    if (contact.email) set('email', contact.email)
+    if (contact.phone) set('phone', contact.phone)
+  }
+
+  const anrFiltered = anrContacts.filter(c =>
+    `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase())
+  )
+  const artistSuggestions = selectedAnr?.artists?.filter(a =>
+    a.toLowerCase().includes(artistQuery.toLowerCase()) && a.toLowerCase() !== artistQuery.toLowerCase()
+  ) || []
+
   function applyAutofill(item: { record: Lead | Client, type: 'lead' | 'client' }) {
+    skipNameSearch.current = true
+    clearTimeout(nameDebounce.current)
     const r = item.record
     const isClient = item.type === 'client'
     const prevNote = isClient
@@ -1453,13 +1774,88 @@ function NewLeadModal({ leads, onClose, onSave }: {
     if (e.key === 'Escape') { setShowNameDD(false) }
   }
 
+  function handleLabelKeyDown(e: React.KeyboardEvent) {
+    if (!showLabelClientDD || labelClientSuggestions.length === 0) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setLabelHighlight(h => Math.min(h + 1, labelClientSuggestions.length - 1)) }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setLabelHighlight(h => Math.max(h - 1, 0)) }
+    if (e.key === 'Enter' && labelHighlight >= 0) { e.preventDefault(); selectLabelClient(labelClientSuggestions[labelHighlight]) }
+    if (e.key === 'Escape') { setShowLabelClientDD(false); setLabelHighlight(-1) }
+  }
+
+  function handleAnrKeyDown(e: React.KeyboardEvent) {
+    if (!showAnrDD) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setAnrHighlight(h => Math.min(h + 1, anrFiltered.length - 1)) }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setAnrHighlight(h => Math.max(h - 1, 0)) }
+    if (e.key === 'Enter' && anrHighlight >= 0 && anrFiltered[anrHighlight]) { e.preventDefault(); selectAnr(anrFiltered[anrHighlight]) }
+    if (e.key === 'Escape') { setShowAnrDD(false); setAnrHighlight(-1) }
+  }
+
+  function handleArtistKeyDown(e: React.KeyboardEvent) {
+    if (!showArtistDD || artistSuggestions.length === 0) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setArtistHighlight(h => Math.min(h + 1, artistSuggestions.length - 1)) }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setArtistHighlight(h => Math.max(h - 1, 0)) }
+    if (e.key === 'Enter' && artistHighlight >= 0) { e.preventDefault(); setArtistQuery(artistSuggestions[artistHighlight]); setShowArtistDD(false); setArtistHighlight(-1) }
+    if (e.key === 'Escape') { setShowArtistDD(false); setArtistHighlight(-1) }
+  }
+
   function set(key: string, val: string) { setForm(prev => ({ ...prev, [key]: val })) }
 
   async function handleSave() {
-    if (!form.fname && !form.lname && !form.email && !form.phone) return
     setSaving(true)
     const status: LeadStatus = temperature === 'hot' ? 'hot' : temperature === 'warm' ? 'warm' : 'booked'
-    const data: Partial<Lead> = { ...form, status }
+
+    if (mode === 'label') {
+      if (!labelQuery.trim()) { setSaving(false); return }
+      const parts = anrQuery.trim().split(/\s+/)
+      const fname = parts[0] || ''
+      const lname = parts.slice(1).join(' ')
+      const data: Partial<Lead> = {
+        ...form,
+        fname,
+        lname,
+        label: labelQuery.trim(),
+        artist_name: artistQuery.trim() || null,
+        client_id: labelClientId,
+        anr_contact_id: anrContactId,
+        billing: 'Billing',
+        status,
+        needs_contact: needsContact,
+      }
+      await onSave(data)
+
+      // Create new A&R contact if typed but not matched
+      let resolvedAnrId = anrContactId
+      if (!anrContactId && anrQuery.trim() && labelClientId) {
+        const { data: newContact } = await supabase.from('client_contacts').insert({
+          client_id: labelClientId,
+          fname,
+          lname: lname || null,
+          contact_type: 'anr',
+          email: form.email || null,
+          phone: form.phone || null,
+          artists: artistQuery.trim() ? [artistQuery.trim()] : [],
+        }).select().single()
+        resolvedAnrId = (newContact as ClientContact)?.id || null
+      }
+
+      // Append new artist to existing A&R's artists array
+      if (artistQuery.trim() && resolvedAnrId && selectedAnr) {
+        const current = selectedAnr.artists || []
+        if (!current.map(a => a.toLowerCase()).includes(artistQuery.trim().toLowerCase())) {
+          await supabase.from('client_contacts').update({ artists: [...current, artistQuery.trim()] }).eq('id', resolvedAnrId)
+        }
+      }
+
+      setSaving(false)
+      if (temperature === 'booking' && labelClientId) {
+        router.push(`/clients?id=${labelClientId}`)
+      }
+      return
+    }
+
+    // COD mode
+    if (!form.fname && !form.lname && !form.email && !form.phone) { setSaving(false); return }
+    const data: Partial<Lead> = { ...form, status, needs_contact: needsContact }
     if (temperature === 'booking' && matchedClientId) data.client_id = matchedClientId
     await onSave(data)
     setSaving(false)
@@ -1471,6 +1867,64 @@ function NewLeadModal({ leads, onClose, onSave }: {
   const inputStyle: React.CSSProperties = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '7px 10px', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 12, outline: 'none' }
   const labelS: React.CSSProperties = { fontSize: 9, color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4, display: 'block' }
 
+  const modeToggle = (
+    <div style={{ display: 'flex', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', gap: 2, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
+        {(['cod', 'label'] as const).map(m => (
+          <button key={m} type="button" onClick={() => setMode(m)} style={{ padding: '7px 28px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 500, background: mode === m ? 'var(--surface2)' : 'transparent', color: mode === m ? (m === 'cod' ? '#d580ff' : '#7eaaff') : 'var(--text2)', transition: 'all 0.15s', letterSpacing: '0.04em' }}>
+            {m === 'cod' ? 'COD' : 'Label/Billing'}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+
+  const temperatureRow = (
+    <div>
+      <label style={labelS}>Lead Temperature</label>
+      <div style={{ display: 'flex', gap: 8 }}>
+        {([
+          { key: 'hot', label: 'Hot', color: 'var(--hot)' },
+          { key: 'warm', label: 'Warm', color: 'var(--warm)' },
+          { key: 'booking', label: 'Move to Booking', color: 'var(--booked)' },
+        ] as const).map(opt => (
+          <button key={opt.key} type="button" onClick={() => setTemperature(opt.key)} style={{ flex: opt.key === 'booking' ? 2 : 1, padding: '7px 0', borderRadius: 6, border: `1px solid ${temperature === opt.key ? opt.color : 'var(--border)'}`, background: temperature === opt.key ? `${opt.color}22` : 'transparent', color: temperature === opt.key ? opt.color : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.15s' }}>
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+
+  const needsContactToggle = (
+    <button
+      type="button"
+      onClick={() => setNeedsContact(nc => !nc)}
+      style={{ alignSelf: 'flex-start', padding: '5px 14px', borderRadius: 20, border: `1px solid ${needsContact ? '#a8d5ff' : 'var(--border)'}`, background: needsContact ? 'rgba(168,213,255,0.12)' : 'transparent', color: needsContact ? '#a8d5ff' : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.15s' }}
+    >
+      {needsContact ? '● Needs Contact' : '○ Needs Contact'}
+    </button>
+  )
+
+  const sessionDetails = (
+    <div>
+      <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8, fontFamily: 'Syne', fontWeight: 700 }}>Session Details</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div><label style={labelS}>Quote / Rate</label><input value={form.quote} onChange={e => set('quote', e.target.value)} placeholder="e.g. 500" style={inputStyle} /></div>
+        <div><label style={labelS}>Studio / Location</label><input value={form.location} onChange={e => set('location', e.target.value)} placeholder="Studio A" style={inputStyle} /></div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 10 }}>
+        <div><label style={labelS}>Session Date</label><input type="date" value={form.session_date} onChange={e => set('session_date', e.target.value)} style={inputStyle} /></div>
+        <div><label style={labelS}>Start Time</label><TimeInput value={form.session_start} onChange={v => set('session_start', v)} placeholder="18:00" style={inputStyle} /></div>
+        <div><label style={labelS}>End Time</label><TimeInput value={form.session_end} onChange={v => set('session_end', v)} placeholder="22:00" style={inputStyle} /></div>
+      </div>
+      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <input type="checkbox" id="new_engineer_needed" checked={form.engineer_needed as boolean} onChange={e => setForm(prev => ({ ...prev, engineer_needed: e.target.checked }))} style={{ cursor: 'pointer', accentColor: 'var(--accent)', width: 13, height: 13 }} />
+        <label htmlFor="new_engineer_needed" style={{ ...labelS, marginBottom: 0, cursor: 'pointer' }}>Engineer Needed</label>
+      </div>
+    </div>
+  )
+
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div onClick={e => e.stopPropagation()} style={{ width: 540, maxHeight: '88vh', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}>
@@ -1478,137 +1932,210 @@ function NewLeadModal({ leads, onClose, onSave }: {
           <span style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15 }}>New Lead</span>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
         </div>
+
         <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, position: 'relative' }}>
-            <div>
-              <label style={labelS}>First Name</label>
-              <input autoFocus value={form.fname} onChange={e => { set('fname', e.target.value); setShowNameDD(true) }} onFocus={() => setShowNameDD(nameSuggestions.length > 0)} onBlur={() => setTimeout(() => setShowNameDD(false), 200)} onKeyDown={handleNameKeyDown} style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelS}>Last Name</label>
-              <input value={form.lname} onChange={e => { set('lname', e.target.value); setShowNameDD(true) }} onFocus={() => setShowNameDD(nameSuggestions.length > 0)} onBlur={() => setTimeout(() => setShowNameDD(false), 200)} onKeyDown={handleNameKeyDown} style={inputStyle} />
-            </div>
-            {showNameDD && nameSuggestions.length > 0 && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
-                {nameSuggestions.map((item, i) => {
-                  const r = item.record; const isClient = item.type === 'client'
-                  return (
-                    <div key={`${item.type}-${r.id}`} onMouseDown={() => applyAutofill(item)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i === nameHighlight ? 'var(--surface)' : isClient ? 'rgba(78,240,162,0.04)' : 'transparent' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: isClient ? 'var(--booked)' : 'var(--text)' }}>
-                          {isClient ? (r as Client).name || `${r.fname || ''} ${r.lname || ''}`.trim() : `${r.fname} ${r.lname}`}
-                        </span>
-                        <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: isClient ? 'rgba(78,240,162,0.15)' : 'rgba(139,144,168,0.12)', color: isClient ? 'var(--booked)' : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                          {isClient ? '★ Client' : 'Prev. Inquiry'}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
-                        {r.email && <span>{r.email}</span>}
-                        {r.phone && <span>{r.phone}</span>}
-                        {!isClient && (r as Lead).booking && <span>{(r as Lead).booking}</span>}
-                        <span>{fmtDate(r.created_at)}</span>
-                      </div>
+          {modeToggle}
+          {mode === 'cod' ? (
+            <>
+              {/* COD: name fields + autocomplete */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, position: 'relative' }}>
+                <div>
+                  <label style={labelS}>First Name</label>
+                  <input autoFocus value={form.fname} onChange={e => { set('fname', e.target.value); setShowNameDD(true) }} onFocus={() => setShowNameDD(nameSuggestions.length > 0)} onBlur={() => setTimeout(() => setShowNameDD(false), 200)} onKeyDown={handleNameKeyDown} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelS}>Last Name</label>
+                  <input value={form.lname} onChange={e => { set('lname', e.target.value); setShowNameDD(true) }} onFocus={() => setShowNameDD(nameSuggestions.length > 0)} onBlur={() => setTimeout(() => setShowNameDD(false), 200)} onKeyDown={handleNameKeyDown} style={inputStyle} />
+                </div>
+                {showNameDD && nameSuggestions.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
+                    {nameSuggestions.map((item, i) => {
+                      const r = item.record; const isClient = item.type === 'client'
+                      return (
+                        <div key={`${item.type}-${r.id}`} onMouseDown={() => applyAutofill(item)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i === nameHighlight ? 'var(--surface)' : isClient ? 'rgba(78,240,162,0.04)' : 'transparent' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: isClient ? 'var(--booked)' : 'var(--text)' }}>
+                              {isClient ? (r as Client).name || `${r.fname || ''} ${r.lname || ''}`.trim() : `${r.fname} ${r.lname}`}
+                            </span>
+                            <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: isClient ? 'rgba(78,240,162,0.15)' : 'rgba(139,144,168,0.12)', color: isClient ? 'var(--booked)' : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                              {isClient ? '★ Client' : 'Prev. Inquiry'}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+                            {r.email && <span>{r.email}</span>}
+                            {r.phone && <span>{r.phone}</span>}
+                            {!isClient && (r as Lead).booking && <span>{(r as Lead).booking}</span>}
+                            <span>{fmtDate(r.created_at)}</span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                    <div onMouseDown={() => { setMatchedClientId(null); setShowNameDD(false); setNameHighlight(-1) }} style={{ padding: '9px 14px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> None of these — New Client
                     </div>
-                  )
-                })}
-                <div
-                  onMouseDown={() => { setMatchedClientId(null); setShowNameDD(false); setNameHighlight(-1) }}
-                  style={{ padding: '9px 14px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}
-                >
-                  <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> None of these — New Client
+                  </div>
+                )}
+                {matchedClientId && (
+                  <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'rgba(78,240,162,0.08)', border: '1px solid rgba(78,240,162,0.2)', borderRadius: 6 }}>
+                    <span style={{ color: 'var(--booked)', fontSize: 12 }}>★</span>
+                    <span style={{ fontSize: 11, color: 'var(--booked)', fontFamily: 'DM Mono', flex: 1 }}>Matched to existing client profile</span>
+                    <button onMouseDown={() => setMatchedClientId(null)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                  </div>
+                )}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div><label style={labelS}>Email</label><input value={form.email} onChange={e => set('email', e.target.value)} type="email" style={inputStyle} /></div>
+                <div><label style={labelS}>Phone</label><PhoneInput value={form.phone} onChange={v => set('phone', v)} variant="bordered" /></div>
+              </div>
+              {temperatureRow}
+              {needsContactToggle}
+              {sessionDetails}
+              <div style={{ position: 'relative' }}>
+                <label style={labelS}>Company / Artist Name</label>
+                <input value={form.company} onChange={e => set('company', e.target.value)} onFocus={() => setShowCompanyDD(true)} onBlur={() => setTimeout(() => setShowCompanyDD(false), 150)} style={inputStyle} />
+                {showCompanyDD && companySuggestions.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, zIndex: 10, marginTop: 2 }}>
+                    {companySuggestions.map(s => <div key={s} onMouseDown={() => { set('company', s); setShowCompanyDD(false) }} style={{ padding: '8px 10px', cursor: 'pointer', fontSize: 12, borderBottom: '1px solid var(--border)' }}>{s}</div>)}
+                  </div>
+                )}
+              </div>
+              <div style={{ position: 'relative' }}>
+                <label style={labelS}>Label</label>
+                <input value={form.label} onChange={e => set('label', e.target.value)} onFocus={() => setShowLabelDD(true)} onBlur={() => setTimeout(() => setShowLabelDD(false), 150)} style={inputStyle} />
+                {showLabelDD && labelSuggestions.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, zIndex: 10, marginTop: 2 }}>
+                    {labelSuggestions.map(s => <div key={s} onMouseDown={() => { set('label', s); setShowLabelDD(false) }} style={{ padding: '8px 10px', cursor: 'pointer', fontSize: 12, borderBottom: '1px solid var(--border)' }}>{s}</div>)}
+                  </div>
+                )}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div><label style={labelS}>Source</label><input value={form.source} onChange={e => set('source', e.target.value)} placeholder="Instagram, referral…" style={inputStyle} /></div>
+                <div>
+                  <label style={labelS}>Booking Type</label>
+                  <select value={form.booking} onChange={e => set('booking', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                    <option value="">—</option><option>Recording Session</option><option>Filming</option><option>Event/Playback</option>
+                  </select>
                 </div>
               </div>
-            )}
-            {matchedClientId && (
-              <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'rgba(78,240,162,0.08)', border: '1px solid rgba(78,240,162,0.2)', borderRadius: 6 }}>
-                <span style={{ color: 'var(--booked)', fontSize: 12 }}>★</span>
-                <span style={{ fontSize: 11, color: 'var(--booked)', fontFamily: 'DM Mono', flex: 1 }}>Matched to existing client profile</span>
-                <button onMouseDown={() => setMatchedClientId(null)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+              <div>
+                <label style={labelS}>Billing</label>
+                <select value={form.billing} onChange={e => set('billing', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                  <option value="COD">COD</option><option value="Billing">Billing</option>
+                </select>
               </div>
-            )}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><label style={labelS}>Email</label><input value={form.email} onChange={e => set('email', e.target.value)} type="email" style={inputStyle} /></div>
-            <div><label style={labelS}>Phone</label><PhoneInput value={form.phone} onChange={v => set('phone', v)} variant="bordered" /></div>
-          </div>
-          <div>
-            <label style={labelS}>Lead Temperature</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {([
-                { key: 'hot', label: 'Hot', color: 'var(--hot)' },
-                { key: 'warm', label: 'Warm', color: 'var(--warm)' },
-                { key: 'booking', label: 'Move to Booking', color: 'var(--booked)' },
-              ] as const).map(opt => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => setTemperature(opt.key)}
-                  style={{
-                    flex: opt.key === 'booking' ? 2 : 1,
-                    padding: '7px 0',
-                    borderRadius: 6,
-                    border: `1px solid ${temperature === opt.key ? opt.color : 'var(--border)'}`,
-                    background: temperature === opt.key ? `${opt.color}22` : 'transparent',
-                    color: temperature === opt.key ? opt.color : 'var(--text3)',
-                    fontFamily: 'Syne',
-                    fontWeight: 700,
-                    fontSize: 10,
-                    letterSpacing: '0.06em',
-                    textTransform: 'uppercase',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            {temperature === 'booking' && !matchedClientId && (
-              <div style={{ marginTop: 6, fontSize: 10, color: 'var(--warm)', fontFamily: 'DM Mono' }}>
-                Select an existing client above to link this booking.
+            </>
+          ) : (
+            <>
+              {/* Label mode: Label → A&R → Artist */}
+              <div style={{ position: 'relative' }}>
+                <label style={labelS}>Label</label>
+                <input
+                  autoFocus
+                  value={labelQuery}
+                  onChange={e => { setLabelQuery(e.target.value); setLabelClientId(null); setLabelHighlight(-1); setShowLabelClientDD(true) }}
+                  onFocus={() => setShowLabelClientDD(labelClientSuggestions.length > 0)}
+                  onBlur={() => setTimeout(() => setShowLabelClientDD(false), 200)}
+                  onKeyDown={handleLabelKeyDown}
+                  placeholder="Search label clients…"
+                  style={inputStyle}
+                />
+                {showLabelClientDD && labelClientSuggestions.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
+                    {labelClientSuggestions.map((c, i) => (
+                      <div key={c.id} onMouseDown={() => selectLabelClient(c)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i === labelHighlight ? 'var(--surface)' : 'transparent' }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent2)', marginBottom: 2 }}>{c.name}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>{c.email || ''}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {labelClientId && (
+                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--accent2)', fontFamily: 'DM Mono' }}>
+                    <span>★ Linked to label client</span>
+                    <button onMouseDown={() => { setLabelClientId(null); setAnrContactId(null); setSelectedAnr(null); setAnrQuery(''); setAnrHighlight(-1) }} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 0 }}>×</button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <div style={{ position: 'relative' }}>
-            <label style={labelS}>Company / Artist Name</label>
-            <input value={form.company} onChange={e => set('company', e.target.value)} onFocus={() => setShowCompanyDD(true)} onBlur={() => setTimeout(() => setShowCompanyDD(false), 150)} style={inputStyle} />
-            {showCompanyDD && companySuggestions.length > 0 && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, zIndex: 10, marginTop: 2 }}>
-                {companySuggestions.map(s => <div key={s} onMouseDown={() => { set('company', s); setShowCompanyDD(false) }} style={{ padding: '8px 10px', cursor: 'pointer', fontSize: 12, borderBottom: '1px solid var(--border)' }}>{s}</div>)}
+
+              <div style={{ position: 'relative' }}>
+                <label style={labelS}>A&R / Rep</label>
+                <input
+                  value={anrQuery}
+                  onChange={e => { setAnrQuery(e.target.value); setAnrContactId(null); setSelectedAnr(null); setAnrHighlight(-1); setShowAnrDD(true) }}
+                  onFocus={() => setShowAnrDD(true)}
+                  onBlur={() => setTimeout(() => setShowAnrDD(false), 200)}
+                  onKeyDown={handleAnrKeyDown}
+                  placeholder={labelClientId ? 'Search or add A&R contact…' : 'Select a label first'}
+                  disabled={!labelClientId}
+                  style={{ ...inputStyle, opacity: labelClientId ? 1 : 0.4 }}
+                />
+                {showAnrDD && labelClientId && (anrFiltered.length > 0 || anrQuery.trim().length >= 2) && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
+                    {anrFiltered.map((c, i) => (
+                      <div key={c.id} onMouseDown={() => selectAnr(c)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i === anrHighlight ? 'var(--surface)' : 'transparent' }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 2 }}>{c.fname} {c.lname}</div>
+                        <div style={{ display: 'flex', gap: 10, fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+                          {c.email && <span>{c.email}</span>}
+                          {c.phone && <span>{c.phone}</span>}
+                        </div>
+                      </div>
+                    ))}
+                    {anrQuery.trim().length >= 2 && !anrFiltered.some(c => `${c.fname || ''} ${c.lname || ''}`.trim().toLowerCase() === anrQuery.trim().toLowerCase()) && (
+                      <div onMouseDown={() => setShowAnrDD(false)} style={{ padding: '9px 14px', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', cursor: 'default', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> New A&R: "{anrQuery.trim()}" — will be created on save
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <div style={{ position: 'relative' }}>
-            <label style={labelS}>Label</label>
-            <input value={form.label} onChange={e => set('label', e.target.value)} onFocus={() => setShowLabelDD(true)} onBlur={() => setTimeout(() => setShowLabelDD(false), 150)} style={inputStyle} />
-            {showLabelDD && labelSuggestions.length > 0 && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, zIndex: 10, marginTop: 2 }}>
-                {labelSuggestions.map(s => <div key={s} onMouseDown={() => { set('label', s); setShowLabelDD(false) }} style={{ padding: '8px 10px', cursor: 'pointer', fontSize: 12, borderBottom: '1px solid var(--border)' }}>{s}</div>)}
+
+              <div style={{ position: 'relative' }}>
+                <label style={labelS}>Artist</label>
+                <input
+                  value={artistQuery}
+                  onChange={e => { setArtistQuery(e.target.value); setArtistHighlight(-1); setShowArtistDD(true) }}
+                  onFocus={() => setShowArtistDD(true)}
+                  onBlur={() => setTimeout(() => setShowArtistDD(false), 200)}
+                  onKeyDown={handleArtistKeyDown}
+                  placeholder="Artist name…"
+                  style={inputStyle}
+                />
+                {showArtistDD && artistSuggestions.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
+                    {artistSuggestions.map((a, i) => (
+                      <div key={a} onMouseDown={() => { setArtistQuery(a); setShowArtistDD(false); setArtistHighlight(-1) }} style={{ padding: '9px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 12, fontFamily: 'DM Mono', background: i === artistHighlight ? 'var(--surface)' : 'transparent' }}>{a}</div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><label style={labelS}>Source</label><input value={form.source} onChange={e => set('source', e.target.value)} placeholder="Instagram, referral…" style={inputStyle} /></div>
-            <div>
-              <label style={labelS}>Booking Type</label>
-              <select value={form.booking} onChange={e => set('booking', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-                <option value="">—</option><option>Recording Session</option><option>Filming</option><option>Event/Playback</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label style={labelS}>Billing</label>
-            <select value={form.billing} onChange={e => set('billing', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-              <option value="COD">COD</option><option value="Billing">Billing</option>
-            </select>
-          </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div><label style={labelS}>Email</label><input value={form.email} onChange={e => set('email', e.target.value)} type="email" style={inputStyle} /></div>
+                <div><label style={labelS}>Phone</label><PhoneInput value={form.phone} onChange={v => set('phone', v)} variant="bordered" /></div>
+              </div>
+              {temperatureRow}
+              {needsContactToggle}
+              {sessionDetails}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div><label style={labelS}>Source</label><input value={form.source} onChange={e => set('source', e.target.value)} placeholder="Instagram, referral…" style={inputStyle} /></div>
+                <div>
+                  <label style={labelS}>Booking Type</label>
+                  <select value={form.booking} onChange={e => set('booking', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                    <option value="">—</option><option>Recording Session</option><option>Filming</option><option>Event/Playback</option>
+                  </select>
+                </div>
+              </div>
+            </>
+          )}
+
           <div>
             <label style={labelS}>Notes</label>
             <textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }} />
           </div>
         </div>
+
         <div style={{ padding: '12px 20px 20px', display: 'flex', gap: 8, position: 'sticky', bottom: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
-          <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '9px 0', background: temperature === 'booking' ? 'var(--booked)' : 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: saving ? 0.6 : 1 }}>
+          <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '9px 0', background: temperature === 'booking' ? 'var(--booked)' : mode === 'label' ? '#7eaaff' : '#d580ff', color: '#0d0f14', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: saving ? 0.6 : 1 }}>
             {saving ? 'Saving…' : temperature === 'booking' ? 'Save & Go to Booking →' : 'Create Lead'}
           </button>
           <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>Cancel</button>

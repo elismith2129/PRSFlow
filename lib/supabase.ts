@@ -11,7 +11,7 @@ export type BookingType = 'Recording Session' | 'Filming' | 'Event/Playback'
 export type ClientType = 'label' | 'individual'
 
 export const CLIENT_TYPE_LABELS: Record<ClientType, string> = {
-  label: 'Label',
+  label: 'Label/Billing',
   individual: 'COD',
 }
 
@@ -37,6 +37,13 @@ export interface Lead {
   keep_hot_until: string | null
   parked_until: string | null
   client_id: string | null
+  artist_name: string | null
+  anr_contact_id: string | null
+  needs_contact: boolean | null
+  contacted_at: string | null
+  session_start: string | null
+  session_end: string | null
+  engineer_needed: boolean | null
   created_at: string
 }
 
@@ -77,6 +84,8 @@ export interface ClientContact {
   instagram: string | null
   role: string | null
   notes: string | null
+  contact_type: string | null
+  artists: string[] | null
 }
 
 export interface WorkOrder {
@@ -105,6 +114,7 @@ export interface RegistrationToken {
   used_at: string | null
   prefill_email: string | null
   prefill_name: string | null
+  registration_reviewed: boolean | null
 }
 
 export interface QCReport {

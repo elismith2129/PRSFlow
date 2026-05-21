@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
@@ -14,6 +15,7 @@ const navItems = [
 export function Nav() {
   const pathname = usePathname()
   const [time, setTime] = useState('')
+  const [unreviewedRegs, setUnreviewedRegs] = useState(0)
 
   useEffect(() => {
     const tick = () => setTime(new Date().toLocaleTimeString('en-US', {
@@ -22,6 +24,23 @@ export function Nav() {
     }))
     tick()
     const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    async function fetchCount() {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      const { count, error } = await supabase
+        .from('clients')
+        .select('id', { count: 'exact', head: true })
+        .not('registered_at', 'is', null)
+        .is('profile_confirmed_at', null)
+        .gt('registered_at', thirtyDaysAgo)
+      console.log('[Nav] unreviewed regs count:', count, 'error:', error)
+      setUnreviewedRegs(count ?? 0)
+    }
+    fetchCount()
+    const id = setInterval(fetchCount, 60_000)
     return () => clearInterval(id)
   }, [])
 
@@ -47,8 +66,10 @@ export function Nav() {
       <div style={{ display: 'flex', gap: 2 }}>
         {navItems.map(item => {
           const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
+          const badge = item.href === '/clients' && unreviewedRegs > 0 ? unreviewedRegs : 0
           return (
             <Link key={item.href} href={item.href} style={{
+              position: 'relative', display: 'inline-block',
               padding: '6px 16px', borderRadius: 6, fontSize: 11,
               fontFamily: 'DM Mono', fontWeight: 500,
               background: active ? 'var(--surface2)' : 'transparent',
@@ -57,6 +78,18 @@ export function Nav() {
               textDecoration: 'none', transition: 'all 0.15s',
             }}>
               {item.label}
+              {badge > 0 && (
+                <span style={{
+                  position: 'absolute', top: 2, right: 2,
+                  background: 'var(--hot)', color: '#fff',
+                  borderRadius: '50%', minWidth: 16, height: 16,
+                  fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '0 3px', lineHeight: 1,
+                }}>
+                  {badge > 99 ? '99+' : badge}
+                </span>
+              )}
             </Link>
           )
         })}

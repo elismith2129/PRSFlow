@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/auto-demote",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/reset-needs-action",
+      "schedule": "0 15 * * *"
     }
   ]
 }

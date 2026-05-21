@@ -103,11 +103,16 @@ function ClientsPageInner() {
 
   const selected = clients.find(c => c.id === selectedId) || null
 
-  function handleNavigateToClient(id: string) {
+  async function handleNavigateToClient(id: string) {
     setPendingRegs(prev => prev.filter(r => r.id !== id))
     setSelectedId(id)
     setRegModalOpen(false)
     router.replace(`/clients?id=${id}`)
+    await supabase
+      .from('registration_tokens')
+      .update({ registration_reviewed: true })
+      .eq('client_id', id)
+      .eq('registration_reviewed', false)
   }
 
   const showList = !isMobile || !selectedId
