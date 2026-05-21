@@ -1535,7 +1535,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                 })}
                 <div
                   onMouseDown={() => { setMatchedClientId(null); setShowNameDD(false); setNameHighlight(-1) }}
-                  style={{ padding: '9px 14px', cursor: 'pointer', color: 'var(--text3)', fontSize: 10, fontFamily: 'DM Mono', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}
+                  style={{ padding: '9px 14px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}
                 >
                   <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> None of these — New Client
                 </div>
