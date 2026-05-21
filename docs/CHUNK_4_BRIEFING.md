@@ -1,7 +1,8 @@
 # PRSFlow — Chunk 4 Briefing
 *Clients Page implementation guide for Claude Code*
 
-**Last updated:** May 19, 2026
+**Last updated:** May 20, 2026
+**Status: ✅ CHUNK 4 COMPLETE — CRM is production-ready**
 **Purpose:** Self-contained context document. Read this first before any work on Chunk 4.
 
 ---
@@ -346,7 +347,7 @@ Build one sub-chunk at a time. Commit + push at the end of each. Get user approv
 
 ---
 
-### 4.7 — Polish + edge cases
+### 4.7 — Polish + edge cases ✅ COMPLETE
 
 - Notification badge or toast when someone completes registration
 - Handle clients without emails (some migrated individuals may have phone-only contact)
@@ -355,6 +356,18 @@ Build one sub-chunk at a time. Commit + push at the end of each. Get user approv
 - Confirm dialogs before destructive actions (delete contact, remove artist)
 - Mobile responsive (basic — phone view of list + detail)
 - Tests: at minimum, manually test all three Book Client paths end-to-end
+
+### 4.9 — Detail card redesign + CRM polish ✅ COMPLETE
+
+- Full LeadDetail card redesign: single header bar (status pill + Needs Contact + action buttons), 2-col Contact grid, 2-col Session & Quote grid, cascading Location/Studio dropdowns
+- 12-hour TimeInput component with smart parsing (8p → 8:00 PM, 830a → 8:30 AM, legacy 24h passthrough)
+- Last Contact field made editable (date picker + time input)
+- Session Date changed to native date picker (dark theme, icon left-aligned)
+- Pills (COD/Billing, booking type, first time, source) moved inline with name row
+- Needs Action daily reset cron at 8am PST (0 15 * * * UTC) — hot/warm leads reappear daily until timer expires
+- Clients nav badge: shows count of unreviewed returned registrations (queries clients.registered_at IS NOT NULL AND profile_confirmed_at IS NULL)
+- registration_reviewed column added to registration_tokens for future granular tracking
+- Registration link panel close (✕) button added
 
 ---
 

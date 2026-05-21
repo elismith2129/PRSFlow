@@ -1,6 +1,6 @@
 # PRSFlow — Tech Stack & Roadmap
 
-*Last updated: May 19, 2026*
+*Last updated: May 20, 2026*
 
 ---
 
@@ -153,24 +153,24 @@ Defined in `styles/globals.css`:
 
 ### Done
 
-| Sub-chunk | What shipped |
+| Chunk | What shipped |
 |---|---|
-| 4.1 | CRM core: Needs Action tabs (Hot/Warm/Cold/Uncontacted), All Leads with date separators + filters, touch logging, inline editing |
-| 4.2 | Park feature: "Park until [date]" removes lead from Needs Action |
-| 4.3 | Auto-cool: 7-day review prompt, auto-demotion via Vercel Cron |
-| 4.4 | Clients list page: two-column layout, filter chips, search, sort, pagination |
-| 4.5 | Client detail panel: inline editing for label + COD views, contacts (A&Rs), artist chips, booking history, notes |
-| 4.6 | Book Client modal: three-path flow (new/existing/label), registration token generation, `ContactPicker` + `ArtistPicker` reusable components |
+| **Chunks 1–4 complete ✅** | **CRM + Clients — production-ready** |
+| 1–3 | CRM core: Needs Action (Hot/Warm/Cold/Uncontacted tabs), All Leads with date separators + filters, touch logging, Keep Hot/Warm timers, Park feature, auto-demotion via Vercel Cron |
+| 4.3 | Clients list page: two-column layout, filter chips, search, sort, pagination |
+| 4.4 | Client detail panel: inline editing for label + COD views, contacts (A&Rs), artist chips, booking history, notes |
+| 4.5 | Book Client modal: three-path flow (new/existing/label), registration token generation, `ContactPicker` + `ArtistPicker` reusable components |
 | 4.6 | Public registration form at `/register/[token]`: token validation, all fields + inline validation, ID upload to Supabase Storage, client creation + lead backfill, route group isolation |
-| 4.6b | Registration form improvements: `capture="environment"` for iOS camera on ID upload; scrollable embedded T&Cs with iOS Safari overflow fix (`height` + `-webkit-overflow-scrolling: touch`) |
+| 4.6b | Registration form improvements: iOS camera capture, scrollable T&Cs with iOS Safari overflow fix |
+| 4.7 | Polish: registration QC notification banner on Clients page, empty states, confirm dialogs, mobile responsiveness |
+| 4.9 | Detail card redesign: 2-col Contact + Session grids, cascading Location/Studio dropdowns, 12h TimeInput, editable Last Contact, session date picker, pills inline with name, Clients nav badge for pending registrations, Needs Action daily reset cron |
 
 ### Next
 
 | Priority | What's next |
 |---|---|
-| High | **4.7 — Polish:** Registration QC notification on Clients page, file upload preview, empty states, confirm dialogs, basic mobile responsiveness |
-| High | **Book Client UX expansion:** Allow converting Hot/Warm leads directly without manually promoting to Booked first — small sub-chunk between 4.7 and Chunk 6 |
-| High | **Chunk 6 — Calendar:** Session scheduling, bookings table, studio room assignment, two-entry-point new session modal, reuses `ContactPicker` + `ArtistPicker` |
+| **High** | **Chunk 6 — Calendar/Booking:** Session scheduling, bookings table, studio room assignment, two-entry-point new session modal, reuses `ContactPicker` + `ArtistPicker` |
+| Medium | **4.9b — Duplicate merge flow:** UI to merge two client profiles discovered post-import |
 
 ### Deprioritized
 
