@@ -38,7 +38,9 @@ function ClientsPageInner() {
   const [loading, setLoading] = useState(true)
   const [pendingRegs, setPendingRegs] = useState<PendingReg[]>([])
   const [regModalOpen, setRegModalOpen] = useState(false)
-  const [newClientOpen, setNewClientOpen] = useState(false)
+  const [newClientOpen, setNewClientOpen] = useState(() => {
+    try { return !!sessionStorage.getItem('clients_new_draft') } catch { return false }
+  })
   const [isMobile, setIsMobile] = useState(false)
   const hasAutoSelected = useRef(false)
   const router = useRouter()
@@ -193,8 +195,8 @@ function ClientsPageInner() {
 
       {newClientOpen && (
         <NewClientModal
-          onClose={() => setNewClientOpen(false)}
-          onCreated={(id) => { setNewClientOpen(false); load().then(() => setSelectedId(id)) }}
+          onClose={() => { try { sessionStorage.removeItem('clients_new_draft') } catch {} setNewClientOpen(false) }}
+          onCreated={(id) => { try { sessionStorage.removeItem('clients_new_draft') } catch {} setNewClientOpen(false); load().then(() => setSelectedId(id)) }}
         />
       )}
     </div>
@@ -418,6 +420,35 @@ function NewClientModal({ onClose, onCreated }: {
   const searchDebounce = useRef<ReturnType<typeof setTimeout>>()
 
   const isLabel = type === 'label'
+
+  // Restore draft on mount
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('clients_new_draft')
+      if (!raw) return
+      const d = JSON.parse(raw)
+      if (d.type) setType(d.type)
+      if (d.fname) setFname(d.fname)
+      if (d.lname) setLname(d.lname)
+      if (d.email) setEmail(d.email)
+      if (d.phone) setPhone(d.phone)
+      if (d.company) setCompany(d.company)
+      if (d.artist) setArtist(d.artist)
+      if (d.instagram) setInstagram(d.instagram)
+      if (d.addrStreet) setAddrStreet(d.addrStreet)
+      if (d.addrCity) setAddrCity(d.addrCity)
+      if (d.addrState) setAddrState(d.addrState)
+      if (d.addrZip) setAddrZip(d.addrZip)
+      if (d.notes) setNotes(d.notes)
+    } catch {}
+  }, [])
+
+  // Autosave draft on any field change
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('clients_new_draft', JSON.stringify({ type, fname, lname, email, phone, company, artist, instagram, addrStreet, addrCity, addrState, addrZip, notes }))
+    } catch {}
+  }, [type, fname, lname, email, phone, company, artist, instagram, addrStreet, addrCity, addrState, addrZip, notes])
 
   // Debounced search on name/email/phone
   useEffect(() => {

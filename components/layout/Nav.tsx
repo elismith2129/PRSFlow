@@ -64,7 +64,7 @@ export function Nav() {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 32px', height: 52,
       background: 'var(--surface)', borderBottom: '1px solid var(--border)',
-      position: 'sticky', top: 0, zIndex: 100,
+      position: 'sticky', top: 0, zIndex: 9999,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 20, letterSpacing: -0.5 }}>

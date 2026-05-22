@@ -202,14 +202,25 @@ type CrmView = 'needs-action' | 'all-leads' | 'analytics'
 export default function CRMPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [latestTouches, setLatestTouches] = useState<TouchMap>({})
-  const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [view, setView] = useState<CrmView>('needs-action')
+  const [selectedId, setSelectedId] = useState<number | null>(() => {
+    try { const v = sessionStorage.getItem('crm_selected'); return v ? Number(v) : null } catch { return null }
+  })
+  const [view, setView] = useState<CrmView>(() => {
+    try { return (sessionStorage.getItem('crm_view') as CrmView) || 'needs-action' } catch { return 'needs-action' }
+  })
   const [loading, setLoading] = useState(true)
   const [emailModal, setEmailModal] = useState(false)
   const [newLeadOpen, setNewLeadOpen] = useState(false)
   const [focusField, setFocusField] = useState<string | null>(null)
   const [toast, setToast] = useState<{ clientId: string } | null>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    try { sessionStorage.setItem('crm_selected', selectedId != null ? String(selectedId) : '') } catch {}
+  }, [selectedId])
+  useEffect(() => {
+    try { sessionStorage.setItem('crm_view', view) } catch {}
+  }, [view])
 
   const load = useCallback(async () => {
     let allLeads: Lead[] = []
@@ -639,7 +650,12 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
   onUpdateStatus: (id: number, status: string) => Promise<void>
   loading: boolean
 }) {
-  const [activeTab, setActiveTab] = useState<NeedsActionTab>('uncontacted')
+  const [activeTab, setActiveTab] = useState<NeedsActionTab>(() => {
+    try { return (sessionStorage.getItem('crm_na_tab') as NeedsActionTab) || 'uncontacted' } catch { return 'uncontacted' }
+  })
+  useEffect(() => {
+    try { sessionStorage.setItem('crm_na_tab', activeTab) } catch {}
+  }, [activeTab])
   const [touchPromptId, setTouchPromptId] = useState<number | null>(null)
   const [keepHotPromptId, setKeepHotPromptId] = useState<number | null>(null)
 
@@ -802,8 +818,18 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   onUpdateStatus: (id: number, status: string) => Promise<void>
   loading: boolean
 }) {
-  const [activeFilter, setActiveFilter] = useState<AllLeadsFilter>('all')
-  const [search, setSearch] = useState('')
+  const [activeFilter, setActiveFilter] = useState<AllLeadsFilter>(() => {
+    try { return (sessionStorage.getItem('crm_al_filter') as AllLeadsFilter) || 'all' } catch { return 'all' }
+  })
+  const [search, setSearch] = useState(() => {
+    try { return sessionStorage.getItem('crm_al_search') || '' } catch { return '' }
+  })
+  useEffect(() => {
+    try { sessionStorage.setItem('crm_al_filter', activeFilter) } catch {}
+  }, [activeFilter])
+  useEffect(() => {
+    try { sessionStorage.setItem('crm_al_search', search) } catch {}
+  }, [search])
   const [page, setPage] = useState(1)
   const [touchPromptId, setTouchPromptId] = useState<number | null>(null)
   const [keepHotPromptId, setKeepHotPromptId] = useState<number | null>(null)

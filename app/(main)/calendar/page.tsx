@@ -49,8 +49,10 @@ const ENG_STATUS_LABELS: Record<string, string> = {
 
 // ─── LAYOUT CONSTANTS ────────────────────────────────────────────────────────
 
-const ROW_H = 88
 const LABEL_W = 148
+const COL_W = 120  // minimum day-column width; forces horizontal scroll when cols × days > viewport
+const ZOOM_FIXED = [44, 60, 80, 88, 110, 132] // zoom levels 1–6; level 0 = fit-all
+const BUFFER_WEEKS = 2 // weeks of buffer rendered on each side for endless horizontal scroll
 
 const fL: React.CSSProperties = {
   fontSize: 9, color: 'var(--text3)', letterSpacing: '0.08em',
@@ -207,16 +209,33 @@ function bookingToForm(b: Booking): FormData {
 
 // ─── LANE ASSIGNMENT ─────────────────────────────────────────────────────────
 
+function timeToMins(t: string | null | undefined): number {
+  if (!t) return 0
+  const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i)
+  if (!m) return 0
+  let h = parseInt(m[1])
+  const min = parseInt(m[2])
+  const ap = m[3]?.toUpperCase()
+  if (ap === 'PM' && h !== 12) h += 12
+  if (ap === 'AM' && h === 12) h = 0
+  return h * 60 + min
+}
+
 function bookingDateOverlaps(a: Booking, b: Booking): boolean {
   return a.start_date <= b.end_date && b.start_date <= a.end_date
 }
 
 function assignLanes(bookings: Booking[]): Map<number, { lane: number; numLanes: number }> {
   if (bookings.length === 0) return new Map()
-  const sorted = [...bookings].sort((a, b) =>
-    a.start_date < b.start_date ? -1 : a.start_date > b.start_date ? 1 :
-    a.end_date < b.end_date ? -1 : 1
-  )
+  const sorted = [...bookings].sort((a, b) => {
+    if (a.start_date < b.start_date) return -1
+    if (a.start_date > b.start_date) return 1
+    const dt = timeToMins(a.from_time) - timeToMins(b.from_time)
+    if (dt !== 0) return dt
+    if (a.end_date < b.end_date) return -1
+    if (a.end_date > b.end_date) return 1
+    return 0
+  })
   const lanes: number[] = new Array(sorted.length).fill(0)
   for (let i = 0; i < sorted.length; i++) {
     const used = new Set<number>()
@@ -241,10 +260,10 @@ function assignLanes(bookings: Booking[]): Map<number, { lane: number; numLanes:
 // ─── BOOKING BLOCK ───────────────────────────────────────────────────────────
 
 function BookingBlock({
-  booking, gridStart, totalDays, lane, numLanes, onClick,
+  booking, gridStart, totalDays, lane, numLanes, rowH, onClick,
 }: {
   booking: Booking; gridStart: Date; totalDays: number
-  lane: number; numLanes: number; onClick: () => void
+  lane: number; numLanes: number; rowH: number; onClick: () => void
 }) {
   const bStart = parse(booking.start_date)
   const bEnd = parse(booking.end_date)
@@ -283,11 +302,14 @@ function BookingBlock({
     : booking.assistant_status === 'hold' ? '#f0a24e'
     : 'rgba(255,255,255,0.4)'
 
-  const usableH = ROW_H - 18  // always leave 18px at bottom as click zone
+  const clickZone = Math.round(Math.min(18, rowH * 0.22))
+  const usableH = rowH - clickZone
   const slotH = usableH / numLanes
   const blockTop = lane * slotH + 2
   const blockHeight = slotH - 3
-  const compact = blockHeight < 44
+  const micro = blockHeight < 30
+  const compact = !micro && blockHeight < 60
+  const codLabel = booking.cod_method === 'Credit Card' ? 'CC' : (booking.cod_method ?? '').toUpperCase()
 
   return (
     <div
@@ -295,25 +317,49 @@ function BookingBlock({
       style={{
         position: 'absolute', top: blockTop, height: blockHeight,
         left: `calc(${left}% + 2px)`, width: `calc(${width}% - 4px)`,
-        background: '#0d0f14',
-        borderTop: `4px solid ${topColor}`,
+        background: '#0d0f14', boxSizing: 'border-box',
+        borderTop: `${micro ? 3 : 4}px solid ${topColor}`,
         borderLeft: sessionBorder ? '2px solid rgba(255,255,255,0.55)' : '1px solid rgba(255,255,255,0.08)',
         borderRight: sessionBorder ? '2px solid rgba(255,255,255,0.55)' : '1px solid rgba(255,255,255,0.08)',
         borderBottom: sessionBorder ? '2px solid rgba(255,255,255,0.55)' : '1px solid rgba(255,255,255,0.08)',
         borderRadius: 4,
-        padding: '4px 6px', cursor: 'pointer', overflow: 'hidden',
-        display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+        padding: micro ? '1px 4px' : compact ? '3px 5px' : '4px 6px',
+        cursor: 'pointer', overflow: 'hidden',
+        display: 'flex', flexDirection: micro ? 'row' : 'column',
+        alignItems: micro ? 'center' : undefined,
+        justifyContent: micro ? 'flex-start' : 'space-between',
+        gap: micro ? 4 : undefined,
         zIndex: 2, minWidth: 0,
       }}
     >
-      {compact ? (
+      {micro ? (
         <>
-          {/* Row 1: name */}
-          <div style={{
-            color: nameColor, fontSize: 10, fontFamily: 'DM Serif Display', lineHeight: 1.2,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>
+          <div style={{ color: nameColor, fontSize: 8, fontFamily: 'DM Serif Display', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 1 auto', minWidth: 0 }}>
             {primaryName}
+          </div>
+          {timeStr && (
+            <div style={{ fontSize: 7, fontFamily: 'DM Mono', color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              {timeStr}
+            </div>
+          )}
+        </>
+      ) : compact ? (
+        <>
+          {/* Row 1: name + inline COD badge + invoice# */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, minWidth: 0, overflow: 'hidden' }}>
+            <div style={{
+              color: nameColor, fontSize: blockHeight >= 48 ? 12 : 10,
+              fontFamily: 'DM Serif Display', lineHeight: 1.2,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              flex: '1 1 0', minWidth: 0,
+            }}>
+              {primaryName}
+            </div>
+            {!isBilling && codLabel && (
+              <span style={{ fontSize: 7, fontFamily: 'DM Mono', fontWeight: 700, color: '#f87171', flexShrink: 0, lineHeight: 1, letterSpacing: '0.03em' }}>
+                {codLabel}
+              </span>
+            )}
           </div>
           {/* Row 2: time + eng/asst */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', overflow: 'hidden' }}>
@@ -352,11 +398,6 @@ function BookingBlock({
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto' }}>
             <div>
-              {booking.invoice_num && (
-                <div style={{ fontSize: 8, fontFamily: 'DM Mono', lineHeight: 1.3, color: 'rgba(255,255,255,0.3)' }}>
-                  #{booking.invoice_num}
-                </div>
-              )}
               {!isBilling && booking.cod_method && (
                 <div style={{ fontSize: 8, fontFamily: 'DM Mono', fontWeight: 700, lineHeight: 1.3, color: '#f87171' }}>
                   {booking.cod_method.toUpperCase()}
@@ -434,7 +475,7 @@ function ClientProfilePopup({ clientId, onClose, onDelete }: { clientId: string;
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+      style={{ position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 2000, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
       onClick={onClose}
     >
       <div
@@ -454,13 +495,14 @@ function ClientProfilePopup({ clientId, onClose, onDelete }: { clientId: string;
 // ─── BOOKING FORM ────────────────────────────────────────────────────────────
 
 function BookingForm({
-  bookingId, initial, onSave, onDelete, onClose,
+  bookingId, initial, onSave, onDelete, onClose, onDraftChange,
 }: {
   bookingId?: number
   initial: FormData
   onSave: (data: FormData) => Promise<void>
   onDelete?: () => Promise<void>
   onClose: () => void
+  onDraftChange?: (data: FormData) => void
 }) {
   const [form, setForm] = useState<FormData>(initial)
   const [saving, setSaving] = useState(false)
@@ -476,6 +518,7 @@ function BookingForm({
   const [clientHighlight, setClientHighlight] = useState(-1)
   const [searchQuery, setSearchQuery] = useState('')
   const nameDebounce = useRef<ReturnType<typeof setTimeout>>()
+  const draftTimer = useRef<ReturnType<typeof setTimeout>>()
   const skipNameSearch = useRef(false)
   const engApplied = useRef(false)
   const asstApplied = useRef(false)
@@ -496,6 +539,14 @@ function BookingForm({
   function set<K extends keyof FormData>(k: K, v: FormData[K]) {
     setForm(f => ({ ...f, [k]: v }))
   }
+
+  // Debounced draft save — reports live form state back to parent for sessionStorage persistence
+  useEffect(() => {
+    if (!onDraftChange) return
+    clearTimeout(draftTimer.current)
+    draftTimer.current = setTimeout(() => onDraftChange(form), 400)
+    return () => clearTimeout(draftTimer.current)
+  }, [form]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (skipNameSearch.current) { skipNameSearch.current = false; return }
@@ -729,7 +780,7 @@ function BookingForm({
   return (
     <div
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', zIndex: 1000,
+        position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.72)', zIndex: 1000,
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
       }}
       onClick={onClose}
@@ -1369,7 +1420,7 @@ function BookingForm({
 
       {/* Profile update dialog — appears when user saves card edits */}
       {showProfileUpdate && (
-        <div onClick={e => { e.stopPropagation(); exitCardEditMode() }} style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div onClick={e => { e.stopPropagation(); exitCardEditMode() }} style={{ position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 3000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '20px 24px', maxWidth: 360, width: '100%' }}>
             <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Update client profile?</div>
             <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono', lineHeight: 1.6, marginBottom: 18 }}>
@@ -1422,24 +1473,182 @@ function CalendarPageInner() {
   const [formOpen, setFormOpen] = useState(false)
   const [editBooking, setEditBooking] = useState<Booking | null>(null)
   const [formInitial, setFormInitial] = useState<FormData>(() => emptyForm())
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
+  const [collapsedRooms, setCollapsedRooms] = useState<Set<string>>(() => new Set())
   const [locFilter, setLocFilter] = useState('All')
+  const [zoomLevel, setZoomLevel] = useState(0) // 0 = fit-all; 1–6 = ZOOM_FIXED steps
+  const [gridH, setGridH] = useState(700)
+  const gridRef = useRef<HTMLDivElement>(null)
+  const lastWheelStep = useRef(0)
+  const scrollCorrectionRef = useRef<number | null>(null)
+  const shiftingRef = useRef(false)
+  const snapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const totalDays = view === 'week' ? 7 : 14
-  const days = Array.from({ length: totalDays }, (_, i) => addDays(startDate, i))
+  const bufDays = (view === 'week' || view === '2wks') ? BUFFER_WEEKS * 7 : 0
+  const totalRenderDays = totalDays + bufDays * 2
+  const gridRenderStart = bufDays > 0 ? addDays(startDate, -bufDays) : startDate
+  const days = Array.from({ length: totalRenderDays }, (_, i) => addDays(gridRenderStart, i))
 
   const load = useCallback(async () => {
-    const total = view === 'week' ? 7 : 14
-    const end = addDays(startDate, total - 1)
+    const buf = (view === 'week' || view === '2wks') ? BUFFER_WEEKS * 7 : 0
+    const total = (view === 'week' ? 7 : 14) + buf * 2
+    const renderStart = buf > 0 ? addDays(startDate, -buf) : startDate
+    const end = addDays(renderStart, total - 1)
     const { data } = await supabase
       .from('bookings')
       .select('*')
       .lte('start_date', fmt(end))
-      .gte('end_date', fmt(startDate))
+      .gte('end_date', fmt(renderStart))
     setBookings(data ?? [])
   }, [startDate, view])
 
   useEffect(() => { load() }, [load])
+
+  // Restore + persist collapse state (restore on mount only, persist on change)
+  useEffect(() => {
+    try { const s = localStorage.getItem('cal_collapsed_locs'); if (s) setCollapsed(new Set(JSON.parse(s))) } catch {}
+    try { const s = localStorage.getItem('cal_collapsed_rooms'); if (s) setCollapsedRooms(new Set(JSON.parse(s))) } catch {}
+  }, [])
+  useEffect(() => {
+    try { localStorage.setItem('cal_collapsed_locs', JSON.stringify(Array.from(collapsed))) } catch {}
+  }, [collapsed])
+  useEffect(() => {
+    try { localStorage.setItem('cal_collapsed_rooms', JSON.stringify(Array.from(collapsedRooms))) } catch {}
+  }, [collapsedRooms])
+
+  // Measure grid container height for fit-all zoom
+  useEffect(() => {
+    const el = gridRef.current
+    if (!el) return
+    const ro = new ResizeObserver(([e]) => setGridH(e.contentRect.height))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // Zoom: keyboard (+/-/0) and Cmd+trackpad scroll
+  useEffect(() => {
+    const MAX = ZOOM_FIXED.length
+    function onKey(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.key === '=' || e.key === '+') { e.preventDefault(); setZoomLevel(z => Math.min(z + 1, MAX)) }
+      if (e.key === '-') { e.preventDefault(); setZoomLevel(z => Math.max(z - 1, 0)) }
+      if (e.key === '0') { e.preventDefault(); setZoomLevel(0) }
+    }
+    function onWheel(e: WheelEvent) {
+      if (!e.metaKey) return
+      e.preventDefault()
+      const now = Date.now()
+      if (now - lastWheelStep.current < 200) return
+      lastWheelStep.current = now
+      if (e.deltaY > 0) setZoomLevel(z => Math.max(z - 1, 0))
+      else if (e.deltaY < 0) setZoomLevel(z => Math.min(z + 1, MAX))
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('wheel', onWheel, { passive: false })
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('wheel', onWheel)
+    }
+  }, [])
+
+  // Helper: scroll to center a given date (or today by default) in the grid
+  function scrollToCenter(centerDate?: Date, smooth?: boolean) {
+    const el = gridRef.current
+    if (!el) return
+    const buf = (view === 'week' || view === '2wks') ? BUFFER_WEEKS * 7 : 0
+    if (buf === 0) return
+    const d = centerDate ?? new Date()
+    const renderStart = addDays(startDate, -buf)
+    const colIndex = Math.max(0, dayDiff(renderStart, d))
+    const targetX = Math.max(0, LABEL_W + colIndex * COL_W + COL_W / 2 - el.clientWidth / 2)
+    if (smooth) el.scrollTo({ left: targetX, behavior: 'smooth' })
+    else el.scrollLeft = targetX
+  }
+
+  // Center on today (or startDate) whenever startDate/view changes; apply seamless scroll correction
+  useEffect(() => {
+    shiftingRef.current = false
+    const buf = (view === 'week' || view === '2wks') ? BUFFER_WEEKS * 7 : 0
+    if (!gridRef.current || buf === 0) return
+    if (scrollCorrectionRef.current !== null) {
+      const target = scrollCorrectionRef.current
+      scrollCorrectionRef.current = null
+      gridRef.current.scrollLeft = target
+    } else {
+      requestAnimationFrame(() => {
+        if (!gridRef.current) return
+        const today = new Date()
+        const isTodayWeek = fmt(startDate) === fmt(getMonday(today))
+        scrollToCenter(isTodayWeek ? today : startDate)
+      })
+    }
+  }, [startDate, view]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleGridScroll() {
+    if (!gridRef.current) return
+    const el = gridRef.current
+
+    // Infinite extension: shift window when nearing edges
+    if (bufDays > 0 && !shiftingRef.current) {
+      const weekW = 7 * COL_W
+      if (el.scrollLeft < weekW) {
+        shiftingRef.current = true
+        scrollCorrectionRef.current = el.scrollLeft + weekW
+        setStartDate(d => addDays(d, -7))
+        return
+      } else if (el.scrollLeft > el.scrollWidth - el.clientWidth - weekW) {
+        shiftingRef.current = true
+        scrollCorrectionRef.current = el.scrollLeft - weekW
+        setStartDate(d => addDays(d, 7))
+        return
+      }
+    }
+
+    // Post-scroll snap: snap quickly to today-centered only when near the current week
+    if (snapTimerRef.current) clearTimeout(snapTimerRef.current)
+    snapTimerRef.current = setTimeout(() => {
+      if (!gridRef.current || shiftingRef.current) return
+      const buf = (view === 'week' || view === '2wks') ? BUFFER_WEEKS * 7 : 0
+      const renderStart = addDays(startDate, -buf)
+      const today = new Date()
+      const todayCol = dayDiff(renderStart, today)
+      const viewCenterCol = (el.scrollLeft + el.clientWidth / 2 - LABEL_W) / COL_W
+      if (Math.abs(viewCenterCol - todayCol) <= 7) {
+        scrollToCenter(today, true)
+      }
+    }, 80)
+  }
+
+  // Compute row height: fit-all (level 0) or fixed step
+  const filteredLocations = locFilter === 'All' ? LOCATIONS : LOCATIONS.filter(l => l.name === locFilter)
+  const DAY_HDR_H = 36
+  const LOC_HDR_H = 29
+  const COLLAPSED_ROOM_H = 22
+  const expandedRoomCount = filteredLocations.reduce((s, l) => {
+    if (collapsed.has(l.name)) return s
+    return s + l.rooms.filter(r => !collapsedRooms.has(`${l.name}|${r}`)).length
+  }, 0)
+  const indivCollapsedCount = filteredLocations.reduce((s, l) => {
+    if (collapsed.has(l.name)) return s
+    return s + l.rooms.filter(r => collapsedRooms.has(`${l.name}|${r}`)).length
+  }, 0)
+  const fitRowH = Math.max(20, Math.floor(
+    (gridH - DAY_HDR_H - filteredLocations.length * LOC_HDR_H - indivCollapsedCount * COLLAPSED_ROOM_H) / Math.max(1, expandedRoomCount)
+  ))
+  const rowH = zoomLevel === 0 ? fitRowH : ZOOM_FIXED[zoomLevel - 1]
+
+  // Restore booking form draft on mount (e.g. user navigated away mid-create)
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('cal_form_draft')
+      if (!raw) return
+      const d = JSON.parse(raw) as { editBooking: Booking | null; formData: FormData }
+      setEditBooking(d.editBooking)
+      setFormInitial(d.formData)
+      setFormOpen(true)
+    } catch {}
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-open booking form when navigated from Start Booking
   useEffect(() => {
@@ -1468,15 +1677,19 @@ function CalendarPageInner() {
   }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function openNew(location?: string, studio?: string, date?: string) {
+    const initial = emptyForm({ location, studio, start_date: date, end_date: date })
     setEditBooking(null)
-    setFormInitial(emptyForm({ location, studio, start_date: date, end_date: date }))
+    setFormInitial(initial)
     setFormOpen(true)
+    try { sessionStorage.setItem('cal_form_draft', JSON.stringify({ editBooking: null, formData: initial })) } catch {}
   }
 
   function openEdit(b: Booking) {
+    const initial = bookingToForm(b)
     setEditBooking(b)
-    setFormInitial(bookingToForm(b))
+    setFormInitial(initial)
     setFormOpen(true)
+    try { sessionStorage.setItem('cal_form_draft', JSON.stringify({ editBooking: b, formData: initial })) } catch {}
   }
 
   async function handleSave(data: FormData) {
@@ -1523,12 +1736,14 @@ function CalendarPageInner() {
       const { error } = await supabase.from('bookings').insert(payload)
       throwIfError(error)
     }
+    try { sessionStorage.removeItem('cal_form_draft') } catch {}
     await load()
   }
 
   async function handleDelete() {
     if (editBooking) {
       await supabase.from('bookings').delete().eq('id', editBooking.id)
+      try { sessionStorage.removeItem('cal_form_draft') } catch {}
       await load()
     }
   }
@@ -1541,29 +1756,46 @@ function CalendarPageInner() {
     })
   }
 
-  const filteredLocations = locFilter === 'All' ? LOCATIONS : LOCATIONS.filter(l => l.name === locFilter)
-
   // ── 2-week / week grid ─────────────────────────────────────────────────────
 
   function renderGrid() {
-    const DAYS = totalDays
+    const DAYS = totalRenderDays
     return (
-      <div style={{ flex: 1, overflow: 'auto', minHeight: 0, border: '1px solid var(--border)', borderRadius: 6 }}>
+      <div ref={gridRef} onScroll={handleGridScroll} style={{ flex: 1, overflow: 'auto', minHeight: 0, border: '1px solid var(--border)', borderRadius: 6, WebkitOverflowScrolling: 'touch' }}>
+        {/* Inner wrapper enforces min-width so columns never compress below COL_W */}
+        <div style={{ minWidth: LABEL_W + DAYS * COL_W }}>
         {/* Day header row */}
         <div style={{
           display: 'flex', position: 'sticky', top: 0, zIndex: 10,
           background: 'var(--surface)', borderBottom: '2px solid var(--border)',
         }}>
-          <div style={{ width: LABEL_W, flexShrink: 0, borderRight: '1px solid var(--border)' }} />
-          {days.map(d => {
-            const today = isToday(d)
+          <div style={{ width: LABEL_W, flexShrink: 0, borderRight: '1px solid var(--border)', position: 'sticky', left: 0, zIndex: 11, background: 'var(--surface)' }} />
+          {days.map((d, i) => {
+            const todayFlag = isToday(d)
             const wknd = isWeekend(d)
+            const isMonthStart = d.getDate() === 1
+            const isWeekStart = d.getDay() === 1 && i > 0
+            // inset box-shadow draws a left-edge stripe without affecting layout
+            const shadow = isMonthStart
+              ? 'inset 2px 0 0 var(--accent)'
+              : isWeekStart ? 'inset 2px 0 0 rgba(255,255,255,0.35)' : 'none'
             return (
               <div key={fmt(d)} style={{
-                flex: 1, textAlign: 'center', padding: '5px 2px',
+                flex: 1, minWidth: COL_W, textAlign: 'center', padding: '5px 2px',
                 background: wknd ? 'rgba(255,255,255,0.015)' : 'transparent',
                 borderRight: '1px solid var(--border)',
+                boxShadow: shadow,
+                position: 'relative',
               }}>
+                {isMonthStart && (
+                  <div style={{
+                    position: 'absolute', top: 2, left: 5,
+                    fontSize: 6, fontFamily: 'DM Mono', color: 'var(--accent)',
+                    letterSpacing: '0.1em', textTransform: 'uppercase', lineHeight: 1,
+                  }}>
+                    {d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
+                  </div>
+                )}
                 <div style={{
                   fontSize: 8, fontFamily: 'DM Mono', color: 'var(--text3)',
                   letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1.2,
@@ -1572,10 +1804,10 @@ function CalendarPageInner() {
                 </div>
                 <div style={{
                   width: 22, height: 22, borderRadius: '50%', margin: '2px auto 0',
-                  background: today ? 'var(--accent)' : 'transparent',
+                  background: todayFlag ? 'var(--accent)' : 'transparent',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontFamily: 'DM Mono', fontWeight: today ? 700 : 400,
-                  color: today ? '#0d0f14' : wknd ? 'var(--text2)' : 'var(--text)',
+                  fontSize: 11, fontFamily: 'DM Mono', fontWeight: todayFlag ? 700 : 400,
+                  color: todayFlag ? '#0d0f14' : wknd ? 'var(--text2)' : 'var(--text)',
                 }}>
                   {d.getDate()}
                 </div>
@@ -1595,6 +1827,7 @@ function CalendarPageInner() {
                 padding: '5px 10px', cursor: 'pointer',
                 background: 'var(--surface2)', borderBottom: '1px solid var(--border)',
                 userSelect: 'none',
+                position: 'sticky', left: 0, zIndex: 6,
               }}
             >
               <span style={{
@@ -1613,57 +1846,83 @@ function CalendarPageInner() {
 
             {/* Room rows */}
             {!collapsed.has(loc.name) && loc.rooms.map(room => {
+              const roomKey = `${loc.name}|${room}`
+              const isRoomCollapsed = collapsedRooms.has(roomKey)
               const roomBookings = bookings.filter(b => b.location === loc.name && b.studio === room)
               const laneMap = assignLanes(roomBookings)
               return (
                 <div key={room} style={{
-                  display: 'flex', borderBottom: '1px solid var(--border)', height: ROW_H,
+                  display: 'flex', borderBottom: '1px solid var(--border)',
+                  height: isRoomCollapsed ? COLLAPSED_ROOM_H : rowH,
                 }}>
-                  {/* Room label */}
-                  <div style={{
-                    width: LABEL_W, flexShrink: 0, display: 'flex', alignItems: 'center',
-                    padding: '0 12px', fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)',
-                    borderRight: '1px solid var(--border)',
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>
-                    {room}
-                  </div>
-
-                  {/* Booking area */}
-                  <div style={{ flex: 1, position: 'relative' }}>
-                    {/* Day cell backgrounds + dbl-click zones */}
-                    {days.map((d, i) => (
-                      <div
-                        key={i}
-                        onDoubleClick={() => openNew(loc.name, room, fmt(d))}
-                        style={{
-                          position: 'absolute', top: 0, bottom: 0,
-                          left: `${(i / DAYS) * 100}%`, width: `${(1 / DAYS) * 100}%`,
-                          background: isWeekend(d) ? 'rgba(255,255,255,0.012)' : 'transparent',
-                          borderRight: '1px solid var(--border)',
-                          cursor: 'crosshair',
-                        }}
-                      />
-                    ))}
-
-                    {/* Booking blocks */}
-                    {roomBookings.map(b => {
-                      const { lane, numLanes } = laneMap.get(b.id) ?? { lane: 0, numLanes: 1 }
-                      return (
-                        <BookingBlock
-                          key={b.id} booking={b}
-                          gridStart={startDate} totalDays={DAYS}
-                          lane={lane} numLanes={numLanes}
-                          onClick={() => openEdit(b)}
-                        />
-                      )
+                  {/* Room label — click to collapse/expand */}
+                  <div
+                    onClick={() => setCollapsedRooms(prev => {
+                      const next = new Set(prev)
+                      next.has(roomKey) ? next.delete(roomKey) : next.add(roomKey)
+                      return next
                     })}
+                    style={{
+                      width: LABEL_W, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5,
+                      padding: '0 12px', fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)',
+                      borderRight: '1px solid var(--border)', cursor: 'pointer', userSelect: 'none',
+                      whiteSpace: 'nowrap', overflow: 'hidden',
+                      position: 'sticky', left: 0, zIndex: 5, background: 'var(--surface)',
+                    }}
+                  >
+                    <span style={{
+                      fontSize: 7, color: 'var(--text3)', flexShrink: 0,
+                      display: 'inline-block', transition: 'transform 0.15s',
+                      transform: isRoomCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                    }}>▼</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{room}</span>
                   </div>
+
+                  {/* Booking area — hidden when room is collapsed */}
+                  {!isRoomCollapsed && (
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      {/* Day cell backgrounds + dbl-click zones */}
+                      {days.map((d, i) => {
+                        const cellIsMonthStart = d.getDate() === 1
+                        const cellIsWeekStart = d.getDay() === 1 && i > 0
+                        return (
+                          <div
+                            key={i}
+                            onDoubleClick={() => openNew(loc.name, room, fmt(d))}
+                            style={{
+                              position: 'absolute', top: 0, bottom: 0,
+                              left: `${(i / DAYS) * 100}%`, width: `${(1 / DAYS) * 100}%`,
+                              background: isWeekend(d) ? 'rgba(255,255,255,0.012)' : 'transparent',
+                              borderRight: '1px solid var(--border)',
+                              boxShadow: cellIsMonthStart
+                                ? 'inset 2px 0 0 rgba(200,240,78,0.3)'
+                                : cellIsWeekStart ? 'inset 2px 0 0 rgba(255,255,255,0.12)' : 'none',
+                              cursor: 'crosshair',
+                            }}
+                          />
+                        )
+                      })}
+
+                      {/* Booking blocks */}
+                      {roomBookings.map(b => {
+                        const { lane, numLanes } = laneMap.get(b.id) ?? { lane: 0, numLanes: 1 }
+                        return (
+                          <BookingBlock
+                            key={b.id} booking={b}
+                            gridStart={gridRenderStart} totalDays={DAYS}
+                            lane={lane} numLanes={numLanes} rowH={rowH}
+                            onClick={() => openEdit(b)}
+                          />
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               )
             })}
           </div>
         ))}
+        </div>{/* end inner min-width wrapper */}
       </div>
     )
   }
@@ -1689,7 +1948,15 @@ function CalendarPageInner() {
             }}
           >‹</button>
           <button
-            onClick={() => setStartDate(getMonday(new Date()))}
+            onClick={() => {
+              const todayMonday = getMonday(new Date())
+              if (fmt(startDate) === fmt(todayMonday)) {
+                // Already on today's week — just re-center smoothly
+                scrollToCenter(new Date(), true)
+              } else {
+                setStartDate(todayMonday)
+              }
+            }}
             style={{
               background: 'var(--surface2)', border: '1px solid var(--border)',
               color: 'var(--text2)', borderRadius: 4, padding: '4px 10px',
@@ -1743,6 +2010,25 @@ function CalendarPageInner() {
           ))}
         </div>
 
+        {/* Zoom controls */}
+        <div style={{ display: 'flex', alignItems: 'center', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+          <button
+            onClick={() => setZoomLevel(z => Math.max(z - 1, 0))}
+            title="Zoom out (−)"
+            style={{ padding: '4px 9px', fontSize: 14, lineHeight: 1, background: 'transparent', border: 'none', color: zoomLevel === 0 ? 'var(--text3)' : 'var(--text)', cursor: zoomLevel === 0 ? 'default' : 'pointer' }}
+          >−</button>
+          <span
+            onClick={() => setZoomLevel(0)}
+            title="Reset to fit all (0)"
+            style={{ fontSize: 9, fontFamily: 'DM Mono', color: zoomLevel === 0 ? 'var(--accent)' : 'var(--text2)', minWidth: 26, textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}
+          >{zoomLevel === 0 ? 'Fit' : `${rowH}px`}</span>
+          <button
+            onClick={() => setZoomLevel(z => Math.min(z + 1, ZOOM_FIXED.length))}
+            title="Zoom in (+)"
+            style={{ padding: '4px 9px', fontSize: 14, lineHeight: 1, background: 'transparent', border: 'none', color: zoomLevel === ZOOM_FIXED.length ? 'var(--text3)' : 'var(--text)', cursor: zoomLevel === ZOOM_FIXED.length ? 'default' : 'pointer' }}
+          >+</button>
+        </div>
+
         {/* New booking */}
         <button
           onClick={() => openNew()}
@@ -1783,7 +2069,10 @@ function CalendarPageInner() {
           initial={formInitial}
           onSave={handleSave}
           onDelete={editBooking ? handleDelete : undefined}
-          onClose={() => { setFormOpen(false); setEditBooking(null) }}
+          onClose={() => { try { sessionStorage.removeItem('cal_form_draft') } catch {} setFormOpen(false); setEditBooking(null) }}
+          onDraftChange={(data) => {
+            try { sessionStorage.setItem('cal_form_draft', JSON.stringify({ editBooking, formData: data })) } catch {}
+          }}
         />
       )}
     </div>

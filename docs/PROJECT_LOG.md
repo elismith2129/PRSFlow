@@ -50,14 +50,21 @@
 *Things to think about when we get to a specific chunk. Don't build now, but don't forget.*
 
 ### Chunk 6 — Calendar (in progress)
-- **Calendar is live at `/calendar`.** Week view with 5 locations (each a horizontal row), studio column within each row, day columns. Bookings rendered as positioned blocks with lane assignment for overlapping same-day bookings. Block always reserves 18px click zone at the bottom to add new bookings.
-- **Booking form** supports: client search (links to `clients` table), session type (Recording/Filming/Event), status (confirmed/tentative/cancelled/tour/tech/open_hours), payment type (COD/Billing with color convention), engineer + assistant (search existing or free-text), rate hourly or daily (toggle, preserves both values), notes.
-- **COD sessions get hero treatment** at top of booking panel: large DM Serif Display name in `#7BBFFF`. Label sessions show label name in `#96A9FF`.
-- **Filming and Event/Playback blocks** have a full border all the way around (vs recording which only has a top bar).
-- **Rate is either/or.** Single input with hourly/daily toggle. Toggling preserves the value in its respective field (`rate` for hourly, `rate_daily` for daily). DB column `rate_daily text` was added: `ALTER TABLE bookings ADD COLUMN rate_daily text;`
-- **Start Booking cross-page flow** uses URL params: `?newBooking=1&clientId=xxx`. Calendar detects these on mount, clears them from URL, fetches client data, and auto-opens the booking form pre-filled.
-- **Bookings can exist before registration completes.** Calendar holds get placed before COD clients finish their registration form. Bookings table needs a status like `hold | confirmed | completed | cancelled`. Held bookings without complete client profiles should show "PENDING REGISTRATION" visual treatment.
-- **Bookings link to either lead OR client.** Early-stage holds may only have a lead reference; bookings get a `client_id` set later when registration returns. Schema should allow both nullable, but enforce one of them present.
+- **Calendar is live at `/calendar`.** Week/2-week view with all 11 studio rooms visible by default. Lane assignment for overlapping same-day bookings. Block always reserves click zone at the bottom to add new bookings.
+- **Booking form** supports: client search, session type, status, payment type (COD/Billing), engineer + assistant (search or free-text), rate hourly/daily toggle, notes.
+- **COD sessions get hero treatment** at top of booking panel: large DM Serif Display name in `#7BBFFF`. Label sessions in `#96A9FF`.
+- **Filming and Event/Playback blocks** have a full border all the way around; Recording has top bar only.
+- **Rate is either/or.** `rate` for hourly, `rate_daily` for daily. DB column `rate_daily text` added manually.
+- **Start Booking cross-page flow** uses `?newBooking=1&clientId=xxx`. Calendar detects on mount, clears URL, fetches client, auto-opens pre-filled form.
+- **Vertical zoom:** Keyboard +/-/0 and Cmd+trackpad scroll. `ZOOM_FIXED = [44, 60, 80, 88, 110, 132]`, level 0 = fit-all. Fit-all computed via ResizeObserver on grid container.
+- **Individual room collapse** persisted to `localStorage` key `cal_collapsed_rooms`. Location-level collapse persisted to `cal_collapsed_locs`. Both initialized as empty Sets on server render, restored from localStorage in `useEffect([])` to avoid hydration mismatch.
+- **Endless horizontal scroll:** Grid renders `BUFFER_WEEKS=2` weeks of buffer on each side (5 weeks total for week view, 7 for 2wks). When scroll approaches edge, `startDate` shifts ±7 days and `scrollCorrectionRef` corrects scroll position seamlessly. Studio labels are `position: sticky, left: 0`.
+- **Today centering:** On mount and after `startDate` change, `useEffect` + `requestAnimationFrame` scrolls to center today in the viewport. Post-scroll snap (80ms debounce) snaps back to today only when viewport is within 7 days of today — no snap elsewhere. Today button smooth-scrolls to today centered; if already on today's week, skips `setStartDate` and re-centers directly.
+- **Visual week/month breaks:** Monday columns get `boxShadow: 'inset 2px 0 0 rgba(255,255,255,0.35)'`. Month-start columns get `boxShadow: 'inset 2px 0 0 var(--accent)'` plus a small month label (e.g. "MAY") in the top-left of that header cell. Same dividers appear in room cell backgrounds via inset box-shadow.
+- **Nav always accessible over modals:** Nav `zIndex` raised to `9999`. All modal backdrops changed from `inset: 0` to `top: 52, left: 0, right: 0, bottom: 0` so they sit below the nav.
+- **Draft/state persistence across tab navigation:** Booking form draft saved to `sessionStorage` key `cal_form_draft`, restored on mount. CRM: selected lead, view, tab, filter, search all persisted to sessionStorage. Clients: new-client modal draft persisted to `clients_new_draft`.
+- **Bookings can exist before registration completes.** Future: "PENDING REGISTRATION" visual treatment on holds without client profiles.
+- **Bookings link to either lead OR client.** Future: schema should allow both nullable but enforce one present.
 - **Reuse contact and artist pickers from 4.5.** Don't rebuild them inside the calendar modal.
 
 ### Chunk 4.7 — Polish
@@ -112,4 +119,4 @@
 
 ---
 
-*Last updated: May 21, 2026 — Calendar page shipped (Chunk 6 in progress). Booking form, lane assignment, COD hero styling, engineer/assistant, rate toggle, Start Booking cross-page flow, + New Client with duplicate detection, artists inside A&R cards, View Client removed. Next: continue Calendar polish and remaining booking form features.*
+*Last updated: May 22, 2026 — Calendar polish session. Added: vertical zoom (fit-all + 6 fixed levels), individual room collapse, endless horizontal scroll with buffer weeks, today-centering with post-scroll snap, visual week/month breaks, nav always accessible over modals, draft/state persistence across tab navigation (calendar, CRM, clients), hydration error fixed (localStorage out of useState initializer). Next: remaining calendar features — invoice/work order buttons, day/month views, pending registration treatment.*
