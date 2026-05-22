@@ -34,7 +34,8 @@
 
 ### UI patterns
 - **Clients page = unified two-column view.** List on left, full editable profile in right panel. No separate `/clients/[id]` route. URL uses query param `/clients?id=<uuid>` for shareability.
-- **"Book Client" button on lead detail card** appears only when `status = 'booked'`. Three-path modal: New client (send registration link), Returning client (search existing), Label booking (label → A&R → artist).
+- **"Start Booking" replaces "Book Client" everywhere.** Always visible green button on lead detail cards and client profiles. On leads without a client record it opens ConfirmClientModal (creates client, navigates to `/clients?id=...`); on leads or clients that already have a client record it navigates directly to `/calendar?newBooking=1&clientId=...` with form pre-filled. "View Client" button was removed as redundant.
+- **Artists live inside A&R contact cards, not as a standalone section.** On label client profiles, each A&R card has an Artists sub-section in its expanded view — add/remove chips, saves with the rest of the contact on the Save button. The top-level `clients.artists[]` field is no longer surfaced in the UI for label clients.
 - **Autofill pickers (contacts, artists) are reusable components.** Built as standalone components in `components/clients/` or `components/shared/`, will be reused in the Calendar's New Session modal.
 - **Public-facing forms use scrollable embedded legal text rather than external links or modals.** Keeps clients on the page, mobile-friendly, legally protective. T&Cs content lives in `lib/terms.ts` as a structured array (heading + body), easy to update without touching form logic.
 - **All Supabase env vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`) must be configured for ALL THREE Vercel environments (Production, Preview, Development).** Preview deploys fail with "supabaseUrl is required" if missing from the Preview environment.
@@ -48,14 +49,16 @@
 ## 2. Future Considerations
 *Things to think about when we get to a specific chunk. Don't build now, but don't forget.*
 
-### Chunk 6 — Calendar
-- **"View Client Profile →" post-booking link is underwhelming.** After completing Book Client (paths B or C), the button changes to a muted text link. It works, but the UX will likely change once Calendar lands — post-booking flow will probably navigate to a new session form rather than to the client profile. Revisit then.
+### Chunk 6 — Calendar (in progress)
+- **Calendar is live at `/calendar`.** Week view with 5 locations (each a horizontal row), studio column within each row, day columns. Bookings rendered as positioned blocks with lane assignment for overlapping same-day bookings. Block always reserves 18px click zone at the bottom to add new bookings.
+- **Booking form** supports: client search (links to `clients` table), session type (Recording/Filming/Event), status (confirmed/tentative/cancelled/tour/tech/open_hours), payment type (COD/Billing with color convention), engineer + assistant (search existing or free-text), rate hourly or daily (toggle, preserves both values), notes.
+- **COD sessions get hero treatment** at top of booking panel: large DM Serif Display name in `#7BBFFF`. Label sessions show label name in `#96A9FF`.
+- **Filming and Event/Playback blocks** have a full border all the way around (vs recording which only has a top bar).
+- **Rate is either/or.** Single input with hourly/daily toggle. Toggling preserves the value in its respective field (`rate` for hourly, `rate_daily` for daily). DB column `rate_daily text` was added: `ALTER TABLE bookings ADD COLUMN rate_daily text;`
+- **Start Booking cross-page flow** uses URL params: `?newBooking=1&clientId=xxx`. Calendar detects these on mount, clears them from URL, fetches client data, and auto-opens the booking form pre-filled.
 - **Bookings can exist before registration completes.** Calendar holds get placed before COD clients finish their registration form. Bookings table needs a status like `hold | confirmed | completed | cancelled`. Held bookings without complete client profiles should show "PENDING REGISTRATION" visual treatment.
 - **Bookings link to either lead OR client.** Early-stage holds may only have a lead reference; bookings get a `client_id` set later when registration returns. Schema should allow both nullable, but enforce one of them present.
-- **Two entry points for "New Session":** double-click open slot on calendar (date pre-filled) OR "Schedule" button from a Booked lead in CRM (client pre-filled). Same modal, different pre-fills.
 - **Reuse contact and artist pickers from 4.5.** Don't rebuild them inside the calendar modal.
-- **For labels: always available.** All 23 labels are already in the system, so the "is this a returning client?" question doesn't apply. Just pick the label.
-- **For CODs: handle pre-registration.** Calendar should support creating a hold for a COD before their profile is complete. The hold links to the lead; client_id gets backfilled when registration returns.
 
 ### Chunk 4.7 — Polish
 - **"Registration returned" notification area on Clients page.** Small panel/box showing recent registrations that need QC. Query `registration_tokens` where `used_at` is recent and the resulting client hasn't been reviewed yet.
@@ -109,4 +112,4 @@
 
 ---
 
-*Last updated: May 21, 2026 — CRM polish complete. Activity Log, Contact button, Session Notes cleanup, color convention, No Answer removal all shipped. Next: Chunk 6 (Calendar/Booking).*
+*Last updated: May 21, 2026 — Calendar page shipped (Chunk 6 in progress). Booking form, lane assignment, COD hero styling, engineer/assistant, rate toggle, Start Booking cross-page flow, + New Client with duplicate detection, artists inside A&R cards, View Client removed. Next: continue Calendar polish and remaining booking form features.*
