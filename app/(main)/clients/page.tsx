@@ -38,6 +38,7 @@ function ClientsPageInner() {
   const [loading, setLoading] = useState(true)
   const [pendingRegs, setPendingRegs] = useState<PendingReg[]>([])
   const [regModalOpen, setRegModalOpen] = useState(false)
+  const [newClientOpen, setNewClientOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const hasAutoSelected = useRef(false)
   const router = useRouter()
@@ -145,6 +146,18 @@ function ClientsPageInner() {
         </div>
       )}
 
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexShrink: 0 }}>
+        <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)' }}>
+          Clients
+        </div>
+        <button
+          onClick={() => setNewClientOpen(true)}
+          style={{ padding: '5px 12px', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
+        >
+          + New Client
+        </button>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '60fr 40fr', gap: 14, flex: 1, minHeight: 0 }}>
         {showList && (
           <ClientList
@@ -175,6 +188,13 @@ function ClientsPageInner() {
           regs={pendingRegs}
           onClose={() => setRegModalOpen(false)}
           onNavigate={handleNavigateToClient}
+        />
+      )}
+
+      {newClientOpen && (
+        <NewClientModal
+          onClose={() => setNewClientOpen(false)}
+          onCreated={(id) => { setNewClientOpen(false); load().then(() => setSelectedId(id)) }}
         />
       )}
     </div>
@@ -361,6 +381,284 @@ function RegistrationReviewModal({ regs, onClose, onNavigate }: {
           <div onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '92vw', maxHeight: '90vh' }}>
             <img src={lightboxUrl} alt="ID document" style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: 8, display: 'block' }} />
             <button onClick={() => setLightboxUrl(null)} style={{ position: 'absolute', top: -16, right: -16, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, fontFamily: 'DM Mono', flexShrink: 0 }}>×</button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+// ─── NEW CLIENT MODAL ─────────────────────────────────────────────────────────
+
+function NewClientModal({ onClose, onCreated }: {
+  onClose: () => void
+  onCreated: (clientId: string) => void
+}) {
+  const [type, setType] = useState<'individual' | 'label'>('individual')
+  const [fname, setFname] = useState('')
+  const [lname, setLname] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [company, setCompany] = useState('')
+  const [artist, setArtist] = useState('')
+  const [instagram, setInstagram] = useState('')
+  const [addrStreet, setAddrStreet] = useState('')
+  const [addrCity, setAddrCity] = useState('')
+  const [addrState, setAddrState] = useState('')
+  const [addrZip, setAddrZip] = useState('')
+  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+
+  // Duplicate detection
+  const [matches, setMatches] = useState<Client[]>([])
+  const [dupTarget, setDupTarget] = useState<Client | null>(null)
+  const [showDupModal, setShowDupModal] = useState(false)
+  const [forceCreate, setForceCreate] = useState(false)
+  const searchDebounce = useRef<ReturnType<typeof setTimeout>>()
+
+  const isLabel = type === 'label'
+
+  // Debounced search on name/email/phone
+  useEffect(() => {
+    clearTimeout(searchDebounce.current)
+    const query = `${fname} ${lname}`.trim()
+    const hasQuery = query.length >= 3 || email.length >= 3 || phone.length >= 5
+    if (!hasQuery) { setMatches([]); return }
+    searchDebounce.current = setTimeout(async () => {
+      const orParts: string[] = []
+      if (query.length >= 3) {
+        const words = query.split(' ').filter(Boolean)
+        if (words[0]) orParts.push(`name.ilike.%${words[0]}%`, `fname.ilike.%${words[0]}%`, `lname.ilike.%${words[0]}%`)
+        if (words[1]) orParts.push(`lname.ilike.%${words[1]}%`)
+      }
+      if (email.length >= 3) orParts.push(`email.ilike.%${email}%`)
+      if (phone.length >= 5) orParts.push(`phone.ilike.%${phone.replace(/\D/g,'')}%`)
+      if (!orParts.length) return
+      const { data } = await supabase.from('clients').select('id, type, name, fname, lname, email, phone, created_at').or(orParts.join(',')).limit(5)
+      setMatches((data || []) as Client[])
+    }, 300)
+    return () => clearTimeout(searchDebounce.current)
+  }, [fname, lname, email, phone])
+
+  async function handleSave() {
+    if (saving) return
+    setSaving(true)
+    setSaveError('')
+
+    // Final duplicate check on exact email/phone (unless user already chose to force-create)
+    if (!forceCreate && (email.trim() || phone.trim())) {
+      const orParts: string[] = []
+      if (email.trim()) orParts.push(`email.eq.${email.trim()}`)
+      if (phone.trim()) orParts.push(`phone.eq.${phone.trim()}`)
+      const { data: exactMatches } = await supabase.from('clients').select('id, type, name, fname, lname, email, phone').or(orParts.join(',')).limit(1)
+      if (exactMatches && exactMatches.length > 0) {
+        setDupTarget(exactMatches[0] as Client)
+        setShowDupModal(true)
+        setSaving(false)
+        return
+      }
+    }
+
+    const clientId = crypto.randomUUID()
+    const name = isLabel
+      ? (company.trim() || `${fname} ${lname}`.trim())
+      : `${fname} ${lname}`.trim() || fname.trim() || lname.trim()
+
+    const { error } = await supabase.from('clients').insert({
+      id: clientId, type,
+      name: name || 'Unknown',
+      fname: fname || null, lname: lname || null,
+      email: email || null, phone: phone || null,
+      instagram: instagram || null,
+      address_street: addrStreet || null,
+      address_city: addrCity || null,
+      address_state: addrState || null,
+      address_zip: addrZip || null,
+      artists: artist ? [artist] : [],
+      notes: notes || null,
+      created_at: new Date().toISOString(),
+    })
+    if (error) { setSaveError(error.message); setSaving(false); return }
+    onCreated(clientId)
+  }
+
+  const overlay: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }
+  const modal: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, width: '100%', maxWidth: 500, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }
+  const fL: React.CSSProperties = { fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 3, display: 'block' }
+  const inp: React.CSSProperties = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '6px 9px', outline: 'none', boxSizing: 'border-box' }
+  const valid = (fname.trim() || lname.trim() || (isLabel && company.trim())) && (email.trim() || phone.trim())
+
+  return (
+    <>
+      <div style={overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+        <div style={modal}>
+          {/* Header */}
+          <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <div style={{ fontFamily: 'DM Serif Display', fontSize: 18, color: 'var(--text)' }}>New Client</div>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
+          </div>
+
+          {/* Body */}
+          <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Type toggle */}
+            <div>
+              <label style={fL}>Account Type</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {(['individual', 'label'] as const).map(t => (
+                  <button key={t} type="button" onClick={() => setType(t)} style={{
+                    flex: 1, padding: '6px 0', borderRadius: 5, fontSize: 10,
+                    fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    background: type === t ? (t === 'label' ? 'rgba(150,169,255,0.12)' : 'rgba(123,191,255,0.12)') : 'var(--surface2)',
+                    color: type === t ? (t === 'label' ? '#96A9FF' : '#7BBFFF') : 'var(--text3)',
+                    border: `1px solid ${type === t ? (t === 'label' ? 'rgba(150,169,255,0.3)' : 'rgba(123,191,255,0.3)') : 'var(--border)'}`,
+                  }}>
+                    {t === 'label' ? 'Label / Billing' : 'COD'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Label name */}
+            {isLabel && (
+              <div>
+                <label style={fL}>Label / Company</label>
+                <input style={inp} value={company} onChange={e => setCompany(e.target.value)} placeholder="Label or company name" />
+              </div>
+            )}
+
+            {/* Name */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div>
+                <label style={fL}>{isLabel ? 'A&R First Name' : 'First Name'}</label>
+                <input style={inp} value={fname} onChange={e => setFname(e.target.value)} placeholder="First" />
+              </div>
+              <div>
+                <label style={fL}>{isLabel ? 'A&R Last Name' : 'Last Name'}</label>
+                <input style={inp} value={lname} onChange={e => setLname(e.target.value)} placeholder="Last" />
+              </div>
+            </div>
+
+            {/* Email + Phone */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div>
+                <label style={fL}>Email</label>
+                <input style={inp} value={email} onChange={e => setEmail(e.target.value)} placeholder="email@..." type="email" />
+              </div>
+              <div>
+                <label style={fL}>Phone</label>
+                <input style={inp} value={phone} onChange={e => setPhone(e.target.value)} placeholder="000-000-0000" />
+              </div>
+            </div>
+
+            {/* Instagram */}
+            <div>
+              <label style={fL}>Instagram</label>
+              <input style={inp} value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="@handle" />
+            </div>
+
+            {/* Artist — label only */}
+            {isLabel && (
+              <div>
+                <label style={fL}>Artist</label>
+                <input style={inp} value={artist} onChange={e => setArtist(e.target.value)} placeholder="Artist name" />
+              </div>
+            )}
+
+            {/* Address */}
+            <div>
+              <label style={fL}>Address</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <input style={inp} value={addrStreet} onChange={e => setAddrStreet(e.target.value)} placeholder="Street address" />
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 6 }}>
+                  <input style={inp} value={addrCity} onChange={e => setAddrCity(e.target.value)} placeholder="City" />
+                  <input style={inp} value={addrState} onChange={e => setAddrState(e.target.value)} placeholder="State" />
+                  <input style={inp} value={addrZip} onChange={e => setAddrZip(e.target.value)} placeholder="ZIP" />
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label style={fL}>Notes</label>
+              <textarea style={{ ...inp, height: 60, resize: 'vertical' as const, lineHeight: 1.5 }} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any additional notes..." />
+            </div>
+
+            {/* Duplicate suggestions */}
+            {matches.length > 0 && !forceCreate && (
+              <div style={{ background: 'rgba(240,162,78,0.06)', border: '1px solid rgba(240,162,78,0.25)', borderRadius: 6, padding: '10px 12px' }}>
+                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--warm)', marginBottom: 8 }}>
+                  Possible Duplicates
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {matches.map(m => (
+                    <div key={m.id} onClick={() => { setDupTarget(m); setShowDupModal(true) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 5, cursor: 'pointer' }}>
+                      <div>
+                        <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)' }}>{m.name || [m.fname, m.lname].filter(Boolean).join(' ')}</div>
+                        <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)', marginTop: 1 }}>{[m.email, m.phone].filter(Boolean).join(' · ')}</div>
+                      </div>
+                      <span style={{ fontSize: 9, color: 'var(--warm)', fontFamily: 'DM Mono' }}>view →</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {saveError && (
+              <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'DM Mono', padding: '6px 10px', background: 'rgba(240,78,122,0.08)', border: '1px solid rgba(240,78,122,0.2)', borderRadius: 4 }}>
+                {saveError}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {matches.length > 0 && !forceCreate ? (
+              <button onClick={() => setForceCreate(true)} style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', textDecoration: 'underline' }}>
+                Create anyway
+              </button>
+            ) : <div />}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={onClose} style={{ padding: '7px 16px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 5, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={!valid || saving}
+                style={{
+                  padding: '7px 18px', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700,
+                  fontSize: 11, letterSpacing: '0.05em', border: 'none',
+                  cursor: (valid && !saving) ? 'pointer' : 'default',
+                  background: valid ? 'var(--accent)' : 'var(--surface2)',
+                  color: valid ? '#0d0f14' : 'var(--text3)',
+                }}
+              >
+                {saving ? 'Creating…' : 'Create Client'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Duplicate exists modal */}
+      {showDupModal && dupTarget && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 4000, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, width: '100%', maxWidth: 380, padding: '20px' }}>
+            <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 12, color: 'var(--warm)', marginBottom: 6 }}>Client Already Exists</div>
+            <div style={{ fontFamily: 'DM Mono', fontSize: 11, color: 'var(--text)', marginBottom: 4 }}>{dupTarget.name || [dupTarget.fname, dupTarget.lname].filter(Boolean).join(' ')}</div>
+            <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'var(--text3)', marginBottom: 16 }}>{[dupTarget.email, dupTarget.phone].filter(Boolean).join(' · ')}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <button onClick={() => onCreated(dupTarget.id)} style={{ padding: '8px 0', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', cursor: 'pointer' }}>
+                Open Existing Profile
+              </button>
+              <button onClick={() => { setShowDupModal(false); setForceCreate(true) }} style={{ padding: '8px 0', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 5, fontFamily: 'DM Mono', fontSize: 10, cursor: 'pointer' }}>
+                Create Duplicate Anyway
+              </button>
+              <button onClick={() => setShowDupModal(false)} style={{ padding: '6px 0', background: 'none', border: 'none', color: 'var(--text3)', fontFamily: 'DM Mono', fontSize: 10, cursor: 'pointer' }}>
+                Go Back
+              </button>
+            </div>
           </div>
         </div>
       )}

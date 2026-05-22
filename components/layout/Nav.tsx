@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
+  { href: '/calendar', label: 'Calendar' },
   { href: '/crm', label: 'CRM' },
   { href: '/clients', label: 'Clients' },
   { href: '/qc', label: 'Session QC' },
@@ -16,6 +17,7 @@ export function Nav() {
   const pathname = usePathname()
   const [time, setTime] = useState('')
   const [unreviewedRegs, setUnreviewedRegs] = useState(0)
+  const [tentativeCount, setTentativeCount] = useState(0)
 
   useEffect(() => {
     const tick = () => setTime(new Date().toLocaleTimeString('en-US', {
@@ -44,6 +46,19 @@ export function Nav() {
     return () => clearInterval(id)
   }, [])
 
+  useEffect(() => {
+    async function fetchTentative() {
+      const { count, error } = await supabase
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'tentative')
+      if (!error) setTentativeCount(count ?? 0)
+    }
+    fetchTentative()
+    const id = setInterval(fetchTentative, 60_000)
+    return () => clearInterval(id)
+  }, [])
+
   return (
     <nav style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -66,7 +81,11 @@ export function Nav() {
       <div style={{ display: 'flex', gap: 2 }}>
         {navItems.map(item => {
           const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
-          const badge = item.href === '/clients' && unreviewedRegs > 0 ? unreviewedRegs : 0
+          const badge = item.href === '/clients' && unreviewedRegs > 0
+            ? unreviewedRegs
+            : item.href === '/calendar' && tentativeCount > 0
+            ? tentativeCount
+            : 0
           return (
             <Link key={item.href} href={item.href} style={{
               position: 'relative', display: 'inline-block',

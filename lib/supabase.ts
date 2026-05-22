@@ -129,3 +129,56 @@ export interface QCReport {
   manager_read: boolean
   created_at: string
 }
+
+export type EngineerRole = 'Engineer' | 'Assistant' | 'Both'
+
+export interface Engineer {
+  id: string
+  first_name: string
+  last_name: string
+  role: EngineerRole
+  initials: string | null
+  email: string | null
+  phone: string | null
+  active: boolean
+  created_at: string
+}
+
+export type BookingStatus = 'confirmed' | 'tentative' | 'cancelled' | 'tour' | 'tech' | 'open_hours'
+export type SessionType = 'recording' | 'filming' | 'event_playback'
+export type EngineerStatus = 'hold' | 'confirmed' | 'not_needed'
+
+export interface Booking {
+  id: number
+  status: BookingStatus
+  session_type: SessionType
+  payment_type: string
+  cod_method: string | null
+  location: string
+  studio: string
+  start_date: string
+  end_date: string
+  from_time: string | null
+  to_time: string | null
+  rate: string | null
+  rate_daily: string | null
+  invoice_num: string | null
+  client_id: string | null
+  client_name: string | null
+  artist: string | null
+  label: string | null
+  ordered_by: string | null
+  phone: string | null
+  email: string | null
+  po: string | null
+  producer: string | null
+  food_budget: boolean
+  food_amount: string | null
+  engineer_name: string | null
+  engineer_status: EngineerStatus
+  assistant_name: string | null
+  assistant_status: EngineerStatus
+  notes: string | null
+  created_at: string
+  updated_at: string | null
+}

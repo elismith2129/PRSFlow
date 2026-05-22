@@ -1,5 +1,6 @@
 'use client'
 import React, { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase, Client, ClientContact, CLIENT_TYPE_LABELS } from '@/lib/supabase'
 import PhoneInput from '@/components/shared/PhoneInput'
 
@@ -126,7 +127,9 @@ function ContactRow({ contact, onSave, onDelete }: {
   const [expanded, setExpanded] = useState(false)
   const [draft, setDraft] = useState({ ...contact })
   const [confirmDelete, setConfirmDelete] = useState(false)
-  useEffect(() => { setDraft({ ...contact }) }, [contact])
+  const [localArtists, setLocalArtists] = useState<string[]>(contact.artists || [])
+  const [newArtistInput, setNewArtistInput] = useState('')
+  useEffect(() => { setDraft({ ...contact }); setLocalArtists(contact.artists || []) }, [contact])
 
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', marginBottom: 5 }}>
@@ -142,6 +145,11 @@ function ContactRow({ contact, onSave, onDelete }: {
           )}
           {contact.email && (
             <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono', marginTop: 1 }}>{contact.email}</div>
+          )}
+          {localArtists.length > 0 && (
+            <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 1 }}>
+              {localArtists.slice(0, 2).join(', ')}{localArtists.length > 2 ? ` +${localArtists.length - 2}` : ''}
+            </div>
           )}
         </div>
         <span style={{ fontSize: 9, color: 'var(--text3)', flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
@@ -173,6 +181,27 @@ function ContactRow({ contact, onSave, onDelete }: {
               <PhoneInput value={draft.phone ?? ''} onChange={v => setDraft(d => ({ ...d, phone: v }))} variant="inline" placeholder="—" />
             </div>
           </div>
+          {/* Artists */}
+          <div style={{ borderTop: '1px solid var(--border)', marginTop: 4, paddingTop: 8, marginBottom: 8 }}>
+            <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>Artists</div>
+            {localArtists.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 6 }}>
+                {localArtists.map((a, i) => (
+                  <ArtistChip key={i} name={a} onRemove={() => setLocalArtists(prev => prev.filter((_, j) => j !== i))} />
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input
+                type="text" placeholder="Artist name" value={newArtistInput}
+                onChange={e => setNewArtistInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { const n = newArtistInput.trim(); if (n) { setLocalArtists(p => [...p, n]); setNewArtistInput('') } } }}
+                style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 8px', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 10, outline: 'none' }}
+              />
+              <button onClick={() => { const n = newArtistInput.trim(); if (n) { setLocalArtists(p => [...p, n]); setNewArtistInput('') } }} style={{ ...ghostBtn, fontSize: 9, padding: '3px 8px' }}>+ Add</button>
+            </div>
+          </div>
+
           <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
             {confirmDelete ? (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10, color: 'var(--hot)', fontFamily: 'DM Mono' }}>
@@ -183,7 +212,7 @@ function ContactRow({ contact, onSave, onDelete }: {
             ) : (
               <button onClick={() => setConfirmDelete(true)} style={{ ...ghostBtn, color: 'var(--hot)', fontSize: 10 }}>Remove</button>
             )}
-            <button onClick={() => { onSave(contact.id, draft); setExpanded(false) }} style={accentBtn}>Save</button>
+            <button onClick={() => { onSave(contact.id, { ...draft, artists: localArtists }); setExpanded(false) }} style={accentBtn}>Save</button>
           </div>
         </div>
       )}
@@ -276,9 +305,9 @@ function BookingHistory({ leads }: { leads: BookingLead[] }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function ClientProfile({ client, contacts, bookingCount, loading, isMobile, onRefresh, onBack, onDelete }: Props) {
+  const router = useRouter()
   const [bookings, setBookings] = useState<BookingLead[]>([])
   const [showAddContact, setShowAddContact] = useState(false)
-  const [newArtist, setNewArtist] = useState('')
   const [showAddress, setShowAddress] = useState(false)
   const [bookingToast, setBookingToast] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -310,7 +339,6 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   // Reset panel state on client change
   useEffect(() => {
     setShowAddContact(false)
-    setNewArtist('')
     setRegLinkUrl(null)
     setRegLinkCopied(false)
     setRegLinkGenerating(false)
@@ -338,23 +366,6 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
     if (!client) return
     await supabase.from('client_contacts').insert({ ...data, client_id: client.id })
     setShowAddContact(false)
-    onRefresh()
-  }, [client, onRefresh])
-
-  const addArtist = useCallback(async () => {
-    if (!client) return
-    const name = newArtist.trim()
-    if (!name) return
-    const updated = [...(client.artists || []), name]
-    await supabase.from('clients').update({ artists: updated }).eq('id', client.id)
-    setNewArtist('')
-    onRefresh()
-  }, [client, newArtist, onRefresh])
-
-  const removeArtist = useCallback(async (artist: string) => {
-    if (!client) return
-    const updated = client.artists.filter(a => a !== artist)
-    await supabase.from('clients').update({ artists: updated }).eq('id', client.id)
     onRefresh()
   }, [client, onRefresh])
 
@@ -473,8 +484,8 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
             </div>
           )}
           <button
-            onClick={() => { setBookingToast(true); setTimeout(() => setBookingToast(false), 3500) }}
-            style={{ ...accentBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0 }}
+            onClick={() => router.push(`/calendar?newBooking=1&clientId=${client.id}`)}
+            style={{ ...accentBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0, background: 'var(--booked)', color: '#0d0f14' }}
           >
             Start Booking
           </button>
@@ -528,25 +539,6 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
               </div>
             )}
             {showAddContact && <AddContactForm onAdd={addContact} onCancel={() => setShowAddContact(false)} />}
-
-            <SectionHeader label="Artists" />
-            <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 8 }}>
-              {(client.artists || []).map((a, i) => (
-                <ArtistChip key={i} name={a} onRemove={() => removeArtist(a)} />
-              ))}
-              {(client.artists || []).length === 0 && (
-                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>No artists on file yet — add one below.</span>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <input
-                type="text" placeholder="Artist name" value={newArtist}
-                onChange={e => setNewArtist(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') addArtist() }}
-                style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 8px', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 10, outline: 'none' }}
-              />
-              <button onClick={addArtist} style={{ ...accentBtn, padding: '4px 10px' }}>Add</button>
-            </div>
           </>
         )}
 
