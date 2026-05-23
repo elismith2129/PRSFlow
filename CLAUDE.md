@@ -16,255 +16,102 @@ There is no test runner configured.
 
 The Supabase client in `lib/supabase.ts` reads `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` from `.env.local` (see `.env.local.example`). The `!` non-null assertions mean the app will crash at import time if these are missing — set them before running `dev` or `build`.
 
-To (re)create the database, run `schema.sql` in the Supabase SQL editor.
+OCR receipt endpoint (`/api/ocr-receipt`) requires `ANTHROPIC_API_KEY`.
+
+To (re)create the database, run `schema.sql` in the Supabase SQL editor, then the runner hub migration SQL (see docs/PROJECT_LOG.md for the table definitions).
 
 ## Architecture
 
-PRSFlow is a single-tenant studio operations app for Paramount Recording Studios. It is a Next.js 14 App Router project (`"next": "^16.2.6"` in package.json, but `eslint-config-next` and patterns are 14-style) with **client-rendered pages that talk directly to Supabase from the browser** using the anon key. There is no Next.js API layer, no server actions, and no server-side auth — every page is `'use client'` and queries `supabase` directly.
+PRSFlow is a single-tenant studio operations app for Paramount Recording Studios. It is a Next.js 14 App Router project with **client-rendered pages that talk directly to Supabase from the browser** using the anon key. There is no Next.js API layer (except `/api/ocr-receipt` which needs the Anthropic API key server-side), no server actions, and no server-side auth — every page is `'use client'` and queries `supabase` directly.
 
-### Data model (schema.sql)
+### Route structure
 
-Five tables, all with `Public access` RLS policies (auth is explicitly deferred):
+**Internal (nav-bearing) routes under `app/(main)/`:**
+- `/` — Dashboard: `LocationStrip` (4 studio cards → drawer with Yesterday/Today sessions + daily ops), `TodoModule`, `QCHomeWidget`
+- `/crm` — Leads pipeline with Needs Action, All Leads, Analytics
+- `/clients` — Client list + editable profile panel
+- `/calendar` — Week/2-week multi-studio grid calendar with booking form + work order popup
+- `/admin` — Daily ops admin view (WO approval, staff submissions)
 
-- `leads` — sales pipeline. `status` is one of `hot | warm | cold | uncontacted | booked | dead` (see `LeadStatus` in `lib/supabase.ts`). A `booked` lead is the source for creating a `client`.
-- `clients` — booked customers. `clients.lead_id` references the originating lead. `artists` is a jsonb array.
-- `work_orders` — invoices/session paperwork. References `clients`. Many fields are jsonb arrays (`studio_rows`, `rental_rows`, `payment_rows`) because they represent variable-length line items.
-- `qc_reports` — post-session quality checks. `id` is a text primary key (not bigserial), so the app generates it client-side.
-- `contact_log` — used by the dashboard TODO module to compute cooldowns ("when was this lead last contacted?").
+**Runner routes (phone-first, no nav):**
+- `/runner` — Studio select landing
+- `/runner/[studio]` — Per-studio daily ops hub (sessions + quick-action tiles)
+- `/runner/[studio]/wo/[id]` — Work order form (condition, expenses, receipt OCR, submit)
+- `/runner/[studio]/checklist/[type]` — Opening/closing checklist (tap-to-check, real-time saves)
+- `/runner/[studio]/petty-cash` — Petty cash entry
+- `/runner/[studio]/stock` — Stock list with low/OK flags
+- `/runner/[studio]/mics` — Mic inventory with condition per mic
 
-Most date/time-ish fields (`session_date`, `last_contact`, `from_time`, etc.) are stored as `text`, not `timestamptz` — parsing/formatting happens in the components. Money fields (`total`, `deposit`, `balance`, `quote`) are also `text`.
+**Utility:**
+- `/wo/[id]/print` — Print-ready work order PDF view
+- `/api/ocr-receipt` — Anthropic claude-haiku-4-5 receipt OCR (base64 image → vendor/amount/item)
 
-### Routes and modules
+### Data model
 
-The nav (`components/layout/Nav.tsx`) defines five top-level routes, but only three are implemented:
+Tables in use (all with public RLS — auth deferred to Chunk 9):
 
-- `/` — Dashboard (`app/page.tsx`): loads leads + clients + qc_reports in parallel, renders `TodoModule` (the main work-queue widget), `LocationStrip`, and `QCHomeWidget`.
-- `/crm` — Pipeline + analytics view over `leads`, with status tabs (hot/warm/cold/uncontacted/closed).
-- `/clients` — Client list + profile + create/edit modal. Can be pre-filled from a booked lead.
-- `/qc` and `/admin` — linked in the nav but not yet built.
+**Core:**
+- `leads` — sales pipeline. Status: `hot | warm | cold | uncontacted | booked | dead`
+- `clients` — booked customers. `clients.lead_id` refs originating lead. `artists` is a jsonb array
+- `work_orders` — invoices. References `clients`. `studio_rows`, `rental_rows`, `payment_rows` are jsonb arrays
+- `qc_reports` — post-session quality checks. `id` is text (generated client-side)
+- `contact_log` — cooldown tracking for CRM touch prompts
+- `lead_activity` — touch log entries per lead
+- `bookings` — calendar sessions. `start_date`, `from_time`, `to_time`, `location`, `status`
+- `client_contacts` — A&R contacts for label clients
+- `registration_tokens` — public client registration flow
+
+**Runner Hub / Daily Ops (added via migration):**
+- `daily_ops_submissions` — one row per studio+date+category. Tracks `submitted_at`, `admin_approved_at`, `needs_attention`. UNIQUE(studio, date, category)
+- `checklists` — actual item check data. `items` is jsonb `[{item, checked}]`. One row per studio+type+date
+- `petty_cash_entries` — in/out transactions per studio+date
+- `petty_cash_balances` — opening balance per studio+date. UNIQUE(studio, date)
+- `stock_items` — per-studio stock with qty + low bool
+- `mic_inventory` — global mic list with condition (good/fair/damaged)
+- `expense_rows` — WO expense line items with receipt_url
+
+Most date/time fields stored as `text`. Money fields stored as `text`.
+
+### Key shared libraries
+
+- `lib/supabase.ts` — Supabase client + all entity types (`Lead`, `Client`, `WorkOrder`, `Booking`, etc.)
+- `lib/checklist-items.ts` — Per-studio opening/closing checklist items (shared between runner page and admin modal). `CHECKLISTS[studio][type]`, `getChecklistSections()`, `flattenSections()`
+- `lib/settings.ts` — Timer constants (COOL_DOWN_DAYS, TOUCH_INTERVAL_DAYS)
+- `lib/checklist-items.ts` — Per-studio opening/closing items used by both runner page and DailyOpsModal
 
 ### Conventions
 
-- Path alias `@/*` maps to repo root (see `tsconfig.json`). Import as `@/lib/supabase`, `@/components/...`.
-- TypeScript is `"strict": false` and `target: "es5"` — entity types live in `lib/supabase.ts` (`Lead`, `Client`, `WorkOrder`, `QCReport`, plus `LeadStatus | BillingType | BookingType | ClientType` string unions).
-- **Styling is inline `style={{ ... }}` JSX, not Tailwind classes**, despite Tailwind being installed. The design system is a set of CSS variables defined in `styles/globals.css` (`--bg`, `--surface`, `--surface2`, `--border`, `--text`/`--text2`/`--text3`, `--accent`, plus per-status colors `--hot`/`--warm`/`--cold`/`--booked`/`--uncontacted`/`--dead`). Reuse these tokens rather than hardcoding hex values. The theme is loaded via `import '@/styles/globals.css'` in `app/layout.tsx`.
-- Fonts (DM Serif Display, DM Mono, Syne) are loaded via a Google Fonts `@import` in `styles/globals.css` and referenced by name in inline styles.
-- Pages follow a consistent shape: top-level `'use client'`, `useState` for entities, a `useCallback`'d `load()` that calls `supabase.from(...).select(...)`, and a single `useEffect` to invoke it. Mutations call `supabase.from(...).update/insert/delete` directly from event handlers and then re-run `load()`.
-markdown# PRSFlow - Project Context
+- Path alias `@/*` maps to repo root. Import as `@/lib/supabase`, `@/components/...`
+- TypeScript `"strict": false` and `target: "es5"`
+- **Styling is inline `style={{ ... }}` JSX, not Tailwind.** CSS variables from `styles/globals.css`: `--bg`, `--surface`, `--surface2`, `--border`, `--text`/`--text2`/`--text3`, `--accent`, `--hot`/`--warm`/`--cold`/`--booked`/`--uncontacted`/`--dead`
+- Fonts (DM Serif Display, DM Mono, Syne) loaded via Google Fonts `@import` in `styles/globals.css`
+- **z-index ladder:** Nav = 9999. LocationStrip dialog = 10001. DailyOpsModal = 10002. All modals must sit above 9999
+- **Runner pages** use `minHeight: '100dvh'`, `paddingBottom: 120` for the fixed footer, no nav import
+- **Real-time checklist saves:** Items save on tap via `clIdRef` + `creatingRef` pattern. Notes debounce 800ms. Needs-attention upserts `daily_ops_submissions` without `submitted_at` immediately for dashboard badge
 
-## What This Is
-Studio management app for Paramount Recording Studios
-Stack: Next.js 14 + Supabase + Vercel
+## What's Built (as of May 22, 2026)
 
-## What's Built
-- CRM with Needs Action (Uncontacted/Hot/Warm/Incomplete)
-- All Leads with chronological view + date separators
-- Touch logging, Keep Hot/Warm buttons
-- Auto-demotion cron (runs daily at 9am)
-- Analytics with pie charts
-
-## Database Tables
-- leads: inquiry tracking
-- lead_activity: touch logs
-
-## Key Files
-- app/crm/page.tsx - main CRM
-- lib/supabase.ts - DB types
-- lib/settings.ts - timers
-
-## Current Status
-CRM complete. Next: Clients page (Chunk 4)
-
-## Patterns to Follow
-- Color scheme: #c8f04e (accent), #0d0f14 (bg)
-- Fonts: Syne, DM Mono, DM Serif Display
-- Always use condensed spacing in detail cards
-When starting Claude Code:
-bashclaude
-Then say: "Read CLAUDE.md for context. I want to build [feature]."
-Option B: Quick Context Drop
-Every time you start Claude Code, paste a short context block:
-Context: PRSFlow (Next.js + Supabase). CRM is done (leads, touch logging, Keep Hot/Warm, cron). Now building: Clients page. Follow existing patterns in app/crm/page.tsx.
-My Recommendation:
-Use CLAUDE.md + Memory combo:
-
-Keep CLAUDE.md updated with what's built (update it every few chunks)
-Use Memory with me (Claude chat) for planning and specs
-When you start Claude Code, just say "Read CLAUDE.md, then [task]"
-
-Want me to generate a starter CLAUDE.md for you right now based on everything we've built?You said: yup.yup.3:04 PMClaude responded: id: uuid (primary key)markdown# PRSFlow - Project Context for Claude Code
-
-## Project Overview
-Studio management app for Paramount Recording Studios
-- **Stack:** Next.js 14, Supabase (PostgreSQL + Storage), Vercel
-- **Location:** ~/Desktop/PRS/PRSFlow/prsflow
-- **Live URL:** prsflow.vercel.app
-
-## What's Built (Completed Chunks)
-
-### Chunk 1: CRM (Complete)
-**Needs Action Section:**
-- Four tabs: Uncontacted | Hot | Warm | Incomplete
-- Uncontacted: leads never touched (`last_contact IS NULL`)
-- Hot: status='hot' AND 5+ days since contact
-- Warm: status='warm' AND 8+ days since contact
-- Incomplete: missing fname/lname/email/phone/quote (only hot/warm/uncontacted)
-- Notification badge shows total task count
-
-**All Leads Section:**
-- Default view: chronological (newest first) with date separators
-- Date separators: "Today", "Yesterday", "May 17, 2026"
-- Filter buttons: All | Uncontacted | Hot | Warm | Cold/Dead | Booked
-- Color-coded filters (always visible, brighter when selected)
-- Pagination: 25 per page
-
-**Analytics Tab:**
-- Pie charts: Total Leads, Booked, Conversion Rate
-- Charts: COD vs Billing, Booking Type, Inquiry Source, Bookings by Label
-
-**Touch Logging:**
-- Format: `[5/19 2:45pm] ES - Call - optional notes`
-- Updates `last_contact` timestamp
-- Logs to `lead_activity` table
-- Appends to lead's `notes` field
-
-**Keep Hot/Warm Buttons:**
-- "Keep Hot" shows for hot leads 5+ days old
-- "Keep Warm" shows for warm leads 8+ days old
-- Resets `keep_hot_until` timer (+5 days for hot, +3 days for warm)
-- Logs activity with initials + method + notes
-
-**Detail Card:**
-- Condensed spacing (12px between sections, 8px between fields)
-- All fields editable inline (auto-save on blur)
-- Autofill: Label and Company fields show dropdown suggestions
-- Pills: Status (color-coded), COD/Billing, Booking Type
-- Missing info alert at top
-- "Keep Hot Until" field (read-only, color-coded by urgency)
-
-**New Lead Modal:**
-- Name-based autofill from leads + clients tables
-- Shows: "★ Previous client (Recording Session, 5/12/26)"
-- Autofills: name, email, phone, company, label, source, COD/billing, booking
-- Label/Company fields: autocomplete from existing values
-- Status dropdown for Uncontacted leads (Hot/Warm/Cold/Booked/Dead)
-
-**Auto-Demotion Cron:**
-- Runs daily at 9am via Vercel Cron
-- Hot → Warm after 5 days (gives 3 more days)
-- Warm → Cold after 8 days total
-- Endpoint: `/api/cron/auto-demote`
-- Uses `keep_hot_until` field (separate from `last_contact`)
-
-## Database Schema
-
-### leads table
-```sql
-id: uuid (primary key)
-fname: text
-lname: text
-email: text
-phone: text
-company: text
-label: text
-source: text
-status: text (hot/warm/cold/uncontacted/booked/dead)
-booking: text
-quote: text
-notes: text
-last_contact: timestamp
-keep_hot_until: timestamp
-parked_until: timestamp
-billing_type: text
-created_at: timestamp
-```
-
-### lead_activity table
-```sql
-id: uuid (primary key)
-lead_id: uuid (foreign key)
-type: text (e.g., "Call", "Email", "Text")
-note: text
-created_at: timestamp
-```
-
-## Design System
-
-### Colors
-- Background: `#0d0f14`
-- Accent: `#c8f04e` (yellow-green)
-- Hot: `#f04e7a` (pink)
-- Warm: `#f0a24e` (orange)
-- Cold: `#4e8ff0` (blue)
-- Booked: `#4ef0a2` (green)
-- Uncontacted: `#4ef0db` (cyan/teal)
-- Text: `#e8eaf2`
-- Secondary text: `#8b90a8`
-- Border: `#2a2e3d`
-
-### Typography
-- Headings: Syne
-- Body: DM Mono
-- Display: DM Serif Display
-
-### Spacing Patterns
-- Section margins: 12px
-- Field gaps: 8px
-- Section headers: 8px margin-bottom
-- Detail cards: condensed, no scrolling needed
-
-## Key Files & Patterns
-
-### Important Files
-- `app/crm/page.tsx` - Main CRM (refer to for patterns)
-- `app/layout.tsx` - Root layout with nav
-- `styles/globals.css` - Design tokens
-- `lib/supabase.ts` - DB client + Lead type
-- `lib/settings.ts` - COOL_DOWN_DAYS, TOUCH_INTERVAL_DAYS
-- `app/api/cron/auto-demote/route.ts` - Cron job
-
-### Code Patterns to Follow
-- Use Supabase client from `lib/supabase.ts`
-- Auto-save on blur (no save buttons)
-- Inline editing for all fields
-- Color-code status everywhere (pills, badges, filters)
-- Condensed spacing in detail views
-- Always paginate lists (25 per page)
-- Use DM Mono for dates/times
-- Show "last contact X days ago" format
-
-### Nav Structure
-- Dashboard (not built yet)
-- CRM (complete)
-- Clients (next to build)
-- Session QC (not built)
-- Admin (not built)
-
-## Environment Variables (Vercel)
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` (for cron)
-- `CRON_SECRET` (for cron auth)
-
-## Git Workflow
-```bash
-git add .
-git commit -m "descriptive message"
-git push
-```
-Vercel auto-deploys from GitHub
+| Chunk | Feature | Status |
+|-------|---------|--------|
+| 1 | CRM — Needs Action, All Leads, touch logging, Keep Hot/Warm, auto-demotion cron | ✅ Complete |
+| 4 | Clients page — list + profile + contacts + artists + registration flow | ✅ Complete |
+| 6 | Calendar — multi-studio grid, booking form, WO popup, COD hero, live WO sync | ✅ Complete |
+| 7 | Runner Hub — /runner routes, WO form, receipt OCR, daily ops checklists | ✅ Complete |
+| 7b | Dashboard daily ops — LocationStrip drawer, Yesterday/Today, DailyOpsModal | ✅ Complete |
 
 ## What's Next
-**Chunk 4: Clients Page** (current priority)
-- Client list view
-- Client detail page (contact, bookings, files, notes)
-- Upload client IDs to Supabase Storage
-- Link clients to leads (one client can have multiple inquiries)
 
-## Notes for Claude Code
-- Always read this file first for context
-- Follow existing patterns in `app/crm/page.tsx`
-- Keep spacing condensed (users hate scrolling)
-- Test after each change
-- If build breaks, revert immediately with `git reset --hard HEAD`
-- Never change files not related to current task
+- **Mic Inventory UI** — runner + admin UI for mic_inventory table (tables exist, UI not built)
+- **Needs Action rebuild (4.8)** — redesign what "needs action" means vs overdue
+- **Email/webhooks (Chunk 5)** — Squarespace → lead auto-create
+- **Auth (Chunk 9)** — office vs runner roles, RLS
+
+## Environment Variables
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (for cron endpoints)
+- `CRON_SECRET` (for cron auth)
+- `ANTHROPIC_API_KEY` (for /api/ocr-receipt)
+
+All five must be set in Vercel for Production, Preview, and Development environments.

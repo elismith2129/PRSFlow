@@ -119,4 +119,86 @@
 
 ---
 
-*Last updated: May 22, 2026 — Calendar polish session. Added: vertical zoom (fit-all + 6 fixed levels), individual room collapse, endless horizontal scroll with buffer weeks, today-centering with post-scroll snap, visual week/month breaks, nav always accessible over modals, draft/state persistence across tab navigation (calendar, CRM, clients), hydration error fixed (localStorage out of useState initializer). Next: remaining calendar features — invoice/work order buttons, day/month views, pending registration treatment.*
+*Last updated: May 22, 2026 — Runner Hub + Daily Ops session. See session notes below.*
+
+---
+
+## 4. Session Notes
+
+### May 22, 2026 — Calendar Polish
+Added: vertical zoom (fit-all + 6 fixed levels), individual room collapse, endless horizontal scroll with buffer weeks, today-centering with post-scroll snap, visual week/month breaks, nav always accessible over modals, draft/state persistence across tab navigation (calendar, CRM, clients), hydration error fixed (localStorage out of useState initializer).
+
+### May 22, 2026 — Runner Hub + Daily Ops Checklists (this session)
+
+**What was built:**
+
+Runner Hub routes (phone-first, no nav):
+- `/runner` — studio select landing with today's session count per studio
+- `/runner/[studio]` — per-studio daily ops hub: today's sessions + WO status + quick-action tiles (Opening Checklist, Closing Checklist, Petty Cash, Stock, Mics)
+- `/runner/[studio]/wo/[id]` — WO review form: equipment condition, notes, expenses + receipt OCR via Anthropic claude-haiku-4-5, submit → sets status=submitted
+- `/runner/[studio]/checklist/[opening|closing]` — tap-to-check lists, real-time saves on every tap (no gate), loads existing data on mount, Submit marks shift complete but form stays editable
+- `/runner/[studio]/petty-cash`, `/runner/[studio]/stock`, `/runner/[studio]/mics`
+- `/wo/[id]/print` — print-ready WO PDF view
+- `/api/ocr-receipt` — server-side OCR endpoint (ANTHROPIC_API_KEY required)
+
+Dashboard integration (LocationStrip + DailyOpsModal):
+- LocationStrip studio cards always clickable → centered dialog (zIndex 10001)
+- Dialog shows Yesterday section (only when unapproved items exist, orange header) + Today section
+- Session cards with Runner/Admin two-checkbox approval pattern
+- Daily ops rows: Opening Checklist, Closing Checklist, Petty Cash, Stock List, Mic Inventory — all clickable → DailyOpsModal (zIndex 10002)
+- Checklist rows show live "14/32 checked" progress counter (fetched from `checklists` table)
+- Orange ⚠ badge on rows where `needs_attention=true` (even before submission)
+- DailyOpsModal: checklists always show live progress (no "awaiting runner" gate), status badge shows Not Started / In Progress / Submitted / Approved
+- Admin approve button at bottom after runner submission
+
+Real-time checklist behavior:
+- Each tap saves immediately to `checklists` table (creates row on first tap via clIdRef + creatingRef pattern)
+- Notes debounce 800ms (only after user edits, guarded by notesUserEdited ref)
+- Needs Attention toggle: immediately upserts `daily_ops_submissions` without `submitted_at` → dashboard badge shows without waiting for Submit
+- Submit marks shift complete (sets `submitted_at`), footer changes to "✓ Shift complete · X/Y" + Back button
+- Form stays fully editable after Submit
+
+Per-studio checklist items in `lib/checklist-items.ts`:
+- Paramount (opening: Building, Control Rooms, Kitchen, Runs, Other, Before you leave; closing: Control Rooms, Building, Bathrooms, Kitchen, Paperwork, Before you leave)
+- Ameraycan, Encore, Track with their own item sets
+- Shared between runner page and DailyOpsModal admin view
+
+New DB tables required (run in Supabase SQL editor):
+```sql
+CREATE TABLE IF NOT EXISTS daily_ops_submissions (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  studio text NOT NULL, date text NOT NULL, category text NOT NULL,
+  staff_name text, submitted_at timestamptz, admin_approved_at timestamptz, admin_approved_by text,
+  needs_attention boolean DEFAULT false, attention_notes text, photo_urls jsonb,
+  UNIQUE(studio, date, category)
+);
+CREATE TABLE IF NOT EXISTS checklists (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  studio text NOT NULL, type text NOT NULL, date text NOT NULL,
+  staff_name text, items jsonb, completed_at timestamptz,
+  notes text, photo_urls jsonb, needs_attention boolean DEFAULT false
+);
+CREATE TABLE IF NOT EXISTS petty_cash_entries (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  studio text, date text, description text, amount numeric, type text, created_at timestamptz DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS petty_cash_balances (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  studio text, date text, amount numeric, UNIQUE(studio, date)
+);
+CREATE TABLE IF NOT EXISTS stock_items (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  studio text, item text, qty int, notes text, low boolean DEFAULT false
+);
+CREATE TABLE IF NOT EXISTS mic_inventory (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  studio text, name text, serial text, location text, condition text, notes text
+);
+CREATE TABLE IF NOT EXISTS expense_rows (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  work_order_id uuid, vendor text, item text, amount numeric,
+  receipt_url text, submitted_by text, created_at timestamptz DEFAULT now()
+);
+```
+
+Also requires `checklist-photos` Supabase Storage bucket (public) for photo uploads from checklist forms.

@@ -49,13 +49,14 @@ Or connect your GitHub repo to [vercel.com](https://vercel.com) for auto-deploy.
 Add your environment variables in Vercel dashboard under Settings → Environment Variables.
 
 ## Current Features
-- ✅ Dashboard with TODO module (hot/warm/incomplete leads)
-- ✅ CRM with Pipeline + Analytics
-- ✅ Client Profiles — create, edit, generate from booked leads
-- ✅ Session QC widget
+- ✅ CRM — Needs Action, All Leads, touch logging, Keep Hot/Warm, auto-demotion cron
+- ✅ Client Profiles — create, edit, contacts, artists, registration flow
+- ✅ Calendar — multi-studio grid, booking form, work order popup, live WO sync
+- ✅ Runner Hub — phone-first daily ops: WO review, opening/closing checklists, petty cash, stock, mics
+- ✅ Dashboard — LocationStrip with studio approval drawer (Yesterday/Today, WO + ops sign-off)
+- ✅ Work Order print view + receipt OCR
 
 ## Coming Next
-- 📅 Calendar with booking management
-- 📋 Work Orders
-- 👥 Staff login & roles
-- 🎓 Staff training module
+- 🎙 Mic Inventory UI (tables built, UI pending)
+- 📧 Email/webhooks — Squarespace → lead auto-create
+- 👥 Auth — office vs runner roles, RLS
