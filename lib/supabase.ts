@@ -70,6 +70,7 @@ export interface Client {
   registered_at: string | null
   source_lead_id: number | null
   notes: string | null
+  srs_client: boolean
   created_at: string
   updated_at: string | null
 }
@@ -88,7 +89,7 @@ export interface ClientContact {
   artists: string[] | null
 }
 
-export interface WorkOrder {
+export interface WorkOrderLegacy {
   id: number
   client_id: number
   invoice_num: string
@@ -149,7 +150,7 @@ export type SessionType = 'recording' | 'filming' | 'event_playback'
 export type EngineerStatus = 'hold' | 'confirmed' | 'not_needed'
 
 export interface Booking {
-  id: number
+  id: string
   status: BookingStatus
   session_type: SessionType
   payment_type: string
@@ -179,6 +180,96 @@ export interface Booking {
   assistant_name: string | null
   assistant_status: EngineerStatus
   notes: string | null
+  is_srs: boolean
+  srs_fee_amount: number | null
   created_at: string
   updated_at: string | null
+}
+
+export interface WorkOrder {
+  id: string
+  booking_id: string | null
+  invoice_number: string | null
+  session_date: string | null
+  studios: string[] | null
+  from_time: string | null
+  to_time: string | null
+  engineer: string | null
+  second_engineer: string | null
+  producer: string | null
+  payment_status: string | null
+  food_budget: boolean
+  food_amount: number | null
+  client: string | null
+  artist: string | null
+  label: string | null
+  ordered_by: string | null
+  po_number: string | null
+  phone: string | null
+  email: string | null
+  status: string
+  submitted_at: string | null
+  submitted_by: string | null
+  approved_at: string | null
+  approved_by: string | null
+  session_notes: string | null
+  legal_signature: string | null
+  legal_name: string | null
+  legal_date: string | null
+  created_at: string
+  updated_at: string | null
+}
+
+export interface StudioTimeRow {
+  id: string
+  work_order_id: string
+  studio: string | null
+  date: string | null
+  session_info: string | null
+  from_time: string | null
+  to_time: string | null
+  total_hours: number | null
+  rate: string | null
+  charge: number | null
+  sort_order: number
+}
+
+export interface EquipmentConditionRow {
+  id: string
+  work_order_id: string
+  equipment: string | null
+  date: string | null
+  condition: 'ok' | 'not_ok' | null
+}
+
+export interface RentalRow {
+  id: string
+  work_order_id: string
+  qty: number | null
+  item: string | null
+  supplier: string | null
+  dates_used: string | null
+  rate: string | null
+  charge: number | null
+  sort_order: number
+}
+
+export interface PaymentRow {
+  id: string
+  work_order_id: string
+  payment_type: string | null
+  amount: number | null
+  recorded_at: string
+}
+
+export interface ExpenseRow {
+  id: string
+  work_order_id: string
+  vendor: string | null
+  item: string | null
+  amount: number | null
+  receipt_url: string | null
+  ocr_raw: string | null
+  submitted_by: string | null
+  created_at: string
 }

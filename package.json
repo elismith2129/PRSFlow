@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.98.0",
     "@supabase/supabase-js": "^2.43.0",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",

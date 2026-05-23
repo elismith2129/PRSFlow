@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import type { Booking, Client, ClientContact, Engineer } from '@/lib/supabase'
 import TimeInput from '@/components/shared/TimeInput'
 import { ClientProfile } from '@/components/clients/ClientProfile'
+import { WorkOrderPopup, type WOFormSync } from '@/components/calendar/WorkOrderPopup'
 
 // ─── LOCATIONS ───────────────────────────────────────────────────────────────
 
@@ -166,6 +167,7 @@ type FormData = {
   assistant_name: string; assistant_status: string
   notes: string
   client_db_id: string | null
+  is_srs: boolean
 }
 
 function emptyForm(overrides: Partial<FormData> = {}): FormData {
@@ -182,6 +184,7 @@ function emptyForm(overrides: Partial<FormData> = {}): FormData {
     assistant_name: '', assistant_status: 'not_needed',
     notes: '',
     client_db_id: null,
+    is_srs: false,
     ...clean,
   }
 }
@@ -204,6 +207,7 @@ function bookingToForm(b: Booking): FormData {
     assistant_name: b.assistant_name ?? '', assistant_status: b.assistant_status ?? 'not_needed',
     notes: b.notes ?? '',
     client_db_id: b.client_id ?? null,
+    is_srs: b.is_srs ?? false,
   }
 }
 
@@ -225,7 +229,7 @@ function bookingDateOverlaps(a: Booking, b: Booking): boolean {
   return a.start_date <= b.end_date && b.start_date <= a.end_date
 }
 
-function assignLanes(bookings: Booking[]): Map<number, { lane: number; numLanes: number }> {
+function assignLanes(bookings: Booking[]): Map<string, { lane: number; numLanes: number }> {
   if (bookings.length === 0) return new Map()
   const sorted = [...bookings].sort((a, b) => {
     if (a.start_date < b.start_date) return -1
@@ -246,7 +250,7 @@ function assignLanes(bookings: Booking[]): Map<number, { lane: number; numLanes:
     while (used.has(lane)) lane++
     lanes[i] = lane
   }
-  const result = new Map<number, { lane: number; numLanes: number }>()
+  const result = new Map<string, { lane: number; numLanes: number }>()
   for (let i = 0; i < sorted.length; i++) {
     let maxLane = lanes[i]
     for (let j = 0; j < sorted.length; j++) {
@@ -495,9 +499,10 @@ function ClientProfilePopup({ clientId, onClose, onDelete }: { clientId: string;
 // ─── BOOKING FORM ────────────────────────────────────────────────────────────
 
 function BookingForm({
-  bookingId, initial, onSave, onDelete, onClose, onDraftChange,
+  bookingId, booking, initial, onSave, onDelete, onClose, onDraftChange,
 }: {
-  bookingId?: number
+  bookingId?: string
+  booking?: Booking
   initial: FormData
   onSave: (data: FormData) => Promise<void>
   onDelete?: () => Promise<void>
@@ -525,6 +530,7 @@ function BookingForm({
   const [clientArtists, setClientArtists] = useState<string[]>([])
   const [showArtistDD, setShowArtistDD] = useState(false)
   const [timeTBD, setTimeTBD] = useState(false)
+  const [multiDay, setMultiDay] = useState(initial.start_date !== initial.end_date && !!initial.end_date)
   const [engOn, setEngOn] = useState(initial.engineer_name !== '')
   const [asstOn, setAsstOn] = useState(initial.assistant_name !== '')
   const [engQuery, setEngQuery] = useState('')
@@ -535,6 +541,16 @@ function BookingForm({
   const [asstSuggestions, setAsstSuggestions] = useState<Engineer[]>([])
   const [showAsstDD, setShowAsstDD] = useState(false)
   const [asstHighlight, setAsstHighlight] = useState(-1)
+  const [showSrsModal, setShowSrsModal] = useState(false)
+  const [showWO, setShowWO] = useState(false)
+  const [woStatus, setWoStatus] = useState<string | null>(null)
+
+  // Load WO status for button color on mount
+  useEffect(() => {
+    if (!bookingId) return
+    supabase.from('work_orders').select('status').eq('booking_id', bookingId).maybeSingle()
+      .then(({ data }) => { if (data) setWoStatus(data.status) })
+  }, [bookingId])
 
   function set<K extends keyof FormData>(k: K, v: FormData[K]) {
     setForm(f => ({ ...f, [k]: v }))
@@ -558,13 +574,13 @@ function BookingForm({
       const [{ data: cd }, { data: ctd }] = await Promise.all([
         supabase
           .from('clients')
-          .select('id,type,name,fname,lname,email,phone,artists')
+          .select('id,type,name,fname,lname,email,phone,artists,srs_client')
           .or(`name.ilike.%${q}%,fname.ilike.%${q}%,lname.ilike.%${q}%`)
           .limit(30),
         // Search A&R contacts by name, join to parent client for label name
         supabase
           .from('client_contacts')
-          .select('id,client_id,fname,lname,email,phone,clients(id,name,type)')
+          .select('id,client_id,fname,lname,email,phone,clients(id,name,type,srs_client)')
           .or(`fname.ilike.%${q}%,lname.ilike.%${q}%`)
           .limit(20),
       ])
@@ -674,6 +690,7 @@ function BookingForm({
       email: email || f.email,
       payment_type: labelName ? 'billing' : f.payment_type,
       artist: (r.artists && r.artists.length > 0 ? r.artists[0] : f.artist) || f.artist,
+      is_srs: r.srs_client === true ? true : f.is_srs,
     }))
     setClientArtists(r.artists && r.artists.length > 0 ? r.artists : [])
     setSearchQuery('')
@@ -943,12 +960,21 @@ function BookingForm({
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 <div>
                   <label style={fL}>Start Date</label>
-                  <input type="date" value={form.start_date || ''} onChange={e => set('start_date', e.target.value)} style={inp} />
+                  <input type="date" value={form.start_date || ''} onChange={e => { set('start_date', e.target.value); if (!multiDay) set('end_date', e.target.value) }} style={inp} />
                 </div>
-                <div>
-                  <label style={fL}>End Date</label>
-                  <input type="date" value={form.end_date || ''} onChange={e => set('end_date', e.target.value)} style={inp} />
-                </div>
+                {multiDay ? (
+                  <div>
+                    <label style={fL}>End Date</label>
+                    <input type="date" value={form.end_date || ''} onChange={e => set('end_date', e.target.value)} style={inp} />
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 2 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
+                      <input type="checkbox" checked={false} onChange={() => setMultiDay(true)} style={{ accentColor: 'var(--accent)', cursor: 'pointer' }} />
+                      <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>Multi-day</span>
+                    </label>
+                  </div>
+                )}
               </div>
 
               {/* Times */}
@@ -1114,13 +1140,37 @@ function BookingForm({
               </div>
 
               {/* Work Order + Invoice + Invoice # */}
+              {(() => {
+                // Green = mandatory fields filled (no save needed)
+                const woCanCreate = !!form.studio && !!form.start_date &&
+                  !!(form.rate || form.rate_daily) &&
+                  !!form.payment_type && !!form.client_name &&
+                  !!(form.phone || form.email)
+                const woUnlocked = woCanCreate
+                const woColor = woStatus === 'approved' ? '#c8f04e'
+                  : woStatus === 'submitted' ? '#fb923c'
+                  : woCanCreate ? '#c8f04e'
+                  : 'var(--text3)'
+                const woBorder = woStatus === 'approved' ? 'rgba(200,240,78,0.7)'
+                  : woStatus === 'submitted' ? 'rgba(251,146,60,0.6)'
+                  : woCanCreate ? 'rgba(200,240,78,0.35)'
+                  : 'var(--border)'
+                const woBg = woStatus === 'approved' ? 'rgba(200,240,78,0.12)'
+                  : woCanCreate ? 'rgba(200,240,78,0.05)'
+                  : 'transparent'
+                return (
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginTop: 4 }}>
-                <button style={{
-                  flex: 1, padding: '8px 0', borderRadius: 5, fontSize: 12, fontFamily: 'Syne',
-                  fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase',
-                  cursor: 'pointer', background: 'transparent',
-                  border: '1px solid var(--border)', color: 'var(--text2)', whiteSpace: 'nowrap',
-                }}>Work Order</button>
+                <button
+                  onClick={() => { if (woUnlocked && booking) setShowWO(true) }}
+                  title={woUnlocked ? 'Open work order' : 'Fill in studio, date, rate, payment type, client, and phone/email first'}
+                  style={{
+                    flex: 1, padding: '8px 0', borderRadius: 5, fontSize: 12, fontFamily: 'Syne',
+                    fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase',
+                    cursor: woUnlocked ? 'pointer' : 'default',
+                    background: woBg,
+                    border: `1px solid ${woBorder}`, color: woColor, whiteSpace: 'nowrap',
+                    opacity: woUnlocked ? 1 : 0.45,
+                  }}>Work Order</button>
                 <button style={{
                   flex: 1, padding: '8px 0', borderRadius: 5, fontSize: 12, fontFamily: 'Syne',
                   fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase',
@@ -1136,6 +1186,8 @@ function BookingForm({
                   />
                 </div>
               </div>
+                )
+              })()}
             </div>
 
             {/* RIGHT — Client card */}
@@ -1156,8 +1208,30 @@ function BookingForm({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
                   <div style={sectionHead}>Client</div>
 
-                  {/* COD / Label billing toggle — exact CRM style */}
-                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  {/* SRS + COD / Label billing toggle row */}
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
+                    {/* SRS toggle */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!form.is_srs) {
+                          setShowSrsModal(true)
+                        } else {
+                          set('is_srs', false)
+                        }
+                      }}
+                      style={{
+                        padding: '7px 16px', borderRadius: 6, border: form.is_srs ? '1px solid rgba(255,59,59,0.4)' : '1px solid rgba(255,255,255,0.12)',
+                        cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700,
+                        background: form.is_srs ? 'rgba(255,59,59,0.12)' : 'transparent',
+                        color: form.is_srs ? '#ff3b3b' : '#6b7280',
+                        letterSpacing: '0.08em', transition: 'all 0.15s',
+                      }}
+                    >
+                      SRS
+                    </button>
+
+                    {/* COD / Label billing toggle */}
                     <div style={{
                       display: 'flex', gap: 2, background: 'var(--surface)',
                       border: '1px solid var(--border)', borderRadius: 8, padding: 3,
@@ -1178,6 +1252,60 @@ function BookingForm({
                       ))}
                     </div>
                   </div>
+
+                  {/* SRS referral modal */}
+                  {showSrsModal && (
+                    <div style={{
+                      position: 'fixed', inset: 0, zIndex: 200,
+                      background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <div style={{
+                        background: '#13161d', border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: 10, padding: '28px 32px', width: 380, maxWidth: '90vw',
+                        boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
+                      }}>
+                        <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: '#e8eaf0', marginBottom: 10 }}>
+                          SRS Referral
+                        </div>
+                        <div style={{ fontFamily: 'DM Mono', fontSize: 12, color: '#8b90a8', lineHeight: 1.6, marginBottom: 24 }}>
+                          Apply this to the client&apos;s profile so all future bookings are automatically flagged as SRS?
+                        </div>
+                        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              set('is_srs', true)
+                              setShowSrsModal(false)
+                            }}
+                            style={{
+                              padding: '8px 18px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)',
+                              cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11,
+                              background: 'transparent', color: '#8b90a8',
+                            }}
+                          >
+                            Just this session
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              set('is_srs', true)
+                              if (form.client_db_id) {
+                                await supabase.from('clients').update({ srs_client: true }).eq('id', form.client_db_id)
+                              }
+                              setShowSrsModal(false)
+                            }}
+                            style={{
+                              padding: '8px 18px', borderRadius: 6, border: 'none',
+                              cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700,
+                              background: '#c8f04e', color: '#0d0f14',
+                            }}
+                          >
+                            Apply to profile
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Search input — shown when no client attached */}
                   {!hasClient && (
@@ -1452,6 +1580,32 @@ function BookingForm({
       {showProfile && form.client_db_id && (
         <ClientProfilePopup clientId={form.client_db_id} onClose={() => setShowProfile(false)} />
       )}
+
+      {/* Work order popup */}
+      {showWO && (
+        <WorkOrderPopup
+          booking={booking ?? { id: '', start_date: form.start_date, end_date: form.end_date, location: form.location, studio: form.studio, from_time: form.from_time, to_time: form.to_time, payment_type: form.payment_type, client_name: form.client_name, phone: form.phone, email: form.email, artist: form.artist, label: form.label, ordered_by: form.ordered_by, po: form.po, producer: form.producer, engineer_name: form.engineer_name, assistant_name: form.assistant_name, food_budget: form.food_budget, food_amount: form.food_amount, invoice_num: form.invoice_num, rate: form.rate, rate_daily: form.rate_daily } as any}
+          liveForm={{
+            client_name: form.client_name, artist: form.artist, label: form.label,
+            ordered_by: form.ordered_by, po: form.po, phone: form.phone, email: form.email,
+            from_time: form.from_time, to_time: form.to_time, producer: form.producer,
+            engineer_name: form.engineer_name, assistant_name: form.assistant_name,
+            payment_type: form.payment_type, food_budget: form.food_budget,
+            food_amount: form.food_amount, invoice_num: form.invoice_num,
+            start_date: form.start_date, studio: form.studio, location: form.location,
+            rate: form.rate, rate_daily: form.rate_daily,
+          }}
+          onClose={() => {
+            setShowWO(false)
+            if (booking) {
+              supabase.from('work_orders').select('status').eq('booking_id', booking.id).maybeSingle()
+                .then(({ data }) => { if (data) setWoStatus(data.status) })
+            }
+          }}
+          onStatusChange={setWoStatus}
+          onFormSync={(updates) => setForm(f => ({ ...f, ...updates }))}
+        />
+      )}
     </div>
   )
 }
@@ -1723,6 +1877,9 @@ function CalendarPageInner() {
       assistant_name: data.assistant_name || null,
       assistant_status: data.assistant_status,
       notes: data.notes || null,
+      is_srs: data.is_srs,
+      // TODO: calculate srs_fee_amount from studio_time table once WO digitization is complete
+      srs_fee_amount: data.is_srs ? null : null,
     }
     const throwIfError = (error: any) => {
       if (!error) return
@@ -1732,9 +1889,20 @@ function CalendarPageInner() {
     if (editBooking) {
       const { error } = await supabase.from('bookings').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editBooking.id)
       throwIfError(error)
+      // Create srs_log entry if this booking is newly flagged as SRS (wasn't before)
+      if (data.is_srs && !editBooking.is_srs) {
+        await supabase.from('srs_log').insert({ booking_id: editBooking.id, paid: false })
+      }
+      // Remove srs_log entry if SRS was toggled off
+      if (!data.is_srs && editBooking.is_srs) {
+        await supabase.from('srs_log').delete().eq('booking_id', editBooking.id)
+      }
     } else {
-      const { error } = await supabase.from('bookings').insert(payload)
+      const { data: inserted, error } = await supabase.from('bookings').insert(payload).select('id').single()
       throwIfError(error)
+      if (data.is_srs && inserted) {
+        await supabase.from('srs_log').insert({ booking_id: inserted.id, paid: false })
+      }
     }
     try { sessionStorage.removeItem('cal_form_draft') } catch {}
     await load()
@@ -2066,6 +2234,7 @@ function CalendarPageInner() {
       {formOpen && (
         <BookingForm
           bookingId={editBooking?.id}
+          booking={editBooking ?? undefined}
           initial={formInitial}
           onSave={handleSave}
           onDelete={editBooking ? handleDelete : undefined}

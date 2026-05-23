@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { Engineer, EngineerRole } from '@/lib/supabase'
+import type { Engineer, EngineerRole, Booking } from '@/lib/supabase'
 
 const ROLE_OPTIONS: EngineerRole[] = ['Engineer', 'Assistant', 'Both']
 
@@ -63,7 +63,6 @@ function EngModal({
       ...form,
       first_name: form.first_name.trim(),
       last_name: form.last_name.trim(),
-      initials: autoInitials(form.first_name.trim(), form.last_name.trim()),
     }
     const { error: err } = eng
       ? await supabase.from('engineers').update(payload).eq('id', eng.id)
@@ -157,11 +156,27 @@ function EngModal({
   )
 }
 
-type AdminSection = 'engineers'
+type AdminSection = 'engineers' | 'srs_log'
 
 const ADMIN_NAV: { key: AdminSection; label: string }[] = [
   { key: 'engineers', label: 'Engineers' },
+  { key: 'srs_log', label: 'SRS Log' },
 ]
+
+type SrsEntry = {
+  id: string
+  booking_id: number
+  paid: boolean
+  paid_at: string | null
+  created_at: string
+  booking: {
+    id: number
+    start_date: string
+    client_name: string | null
+    client_id: string | null
+    srs_fee_amount: number | null
+  } | null
+}
 
 export default function AdminPage() {
   const [section, setSection] = useState<AdminSection>('engineers')
@@ -173,13 +188,69 @@ export default function AdminPage() {
   const [roleFilter, setRoleFilter] = useState<'All' | EngineerRole>('All')
   const [showInactive, setShowInactive] = useState(false)
 
+  // Engineer sessions drill-down
+  const [selectedEng, setSelectedEng] = useState<Engineer | null>(null)
+  const [engSessions, setEngSessions] = useState<Booking[]>([])
+  const [engSessionsLoading, setEngSessionsLoading] = useState(false)
+  const [engSessionsPage, setEngSessionsPage] = useState(0)
+  const ENG_PAGE_SIZE = 10
+
+  // SRS Log state
+  const [srsEntries, setSrsEntries] = useState<SrsEntry[]>([])
+  const [srsLoading, setSrsLoading] = useState(false)
+  const [srsMonthFilter, setSrsMonthFilter] = useState<string>('all')
+  const [confirmMarkAll, setConfirmMarkAll] = useState(false)
+
   const load = useCallback(async () => {
     const { data } = await supabase.from('engineers').select('*').order('first_name')
     setEngineers((data ?? []) as Engineer[])
     setLoading(false)
   }, [])
 
+  const loadSrs = useCallback(async () => {
+    setSrsLoading(true)
+    const { data } = await supabase
+      .from('srs_log')
+      .select('id,booking_id,paid,paid_at,created_at,bookings(id,start_date,client_name,client_id,srs_fee_amount)')
+      .order('created_at', { ascending: false })
+    setSrsEntries(((data ?? []) as any[]).map(r => ({ ...r, booking: r.bookings ?? null })))
+    setSrsLoading(false)
+  }, [])
+
   useEffect(() => { load() }, [load])
+  useEffect(() => { if (section === 'srs_log') loadSrs() }, [section, loadSrs])
+
+  async function toggleSrsPaid(entry: SrsEntry) {
+    const newPaid = !entry.paid
+    setSrsEntries(prev => prev.map(e => e.id === entry.id ? { ...e, paid: newPaid, paid_at: newPaid ? new Date().toISOString() : null } : e))
+    await supabase.from('srs_log').update({ paid: newPaid, paid_at: newPaid ? new Date().toISOString() : null }).eq('id', entry.id)
+  }
+
+  async function markAllPaid(monthKey: string) {
+    const targets = filteredSrs.filter(e => !e.paid)
+    setSrsEntries(prev => prev.map(e => {
+      const bk = e.booking
+      if (!bk) return e
+      const mk = bk.start_date.slice(0, 7)
+      return mk === monthKey && !e.paid ? { ...e, paid: true, paid_at: new Date().toISOString() } : e
+    }))
+    await Promise.all(targets.map(e => supabase.from('srs_log').update({ paid: true, paid_at: new Date().toISOString() }).eq('id', e.id)))
+    setConfirmMarkAll(false)
+  }
+
+  async function openEngSessions(eng: Engineer) {
+    setSelectedEng(eng)
+    setEngSessionsPage(0)
+    setEngSessionsLoading(true)
+    const fullName = `${eng.first_name} ${eng.last_name}`
+    const { data } = await supabase
+      .from('bookings')
+      .select('*')
+      .or(`engineer_name.eq.${fullName},assistant_name.eq.${fullName}`)
+      .order('start_date', { ascending: false })
+    setEngSessions((data ?? []) as Booking[])
+    setEngSessionsLoading(false)
+  }
 
   async function toggleActive(eng: Engineer) {
     await supabase.from('engineers').update({ active: !eng.active }).eq('id', eng.id)
@@ -195,6 +266,29 @@ export default function AdminPage() {
     if (roleFilter !== 'All' && e.role !== roleFilter && !(roleFilter === 'Engineer' && e.role === 'Both') && !(roleFilter === 'Assistant' && e.role === 'Both')) return false
     return true
   })
+
+  // SRS derived data
+  const srsMonths = Array.from(new Set(
+    srsEntries.map(e => e.booking?.start_date.slice(0, 7)).filter(Boolean) as string[]
+  )).sort((a, b) => b.localeCompare(a))
+
+  const filteredSrs = srsMonthFilter === 'all'
+    ? srsEntries
+    : srsEntries.filter(e => e.booking?.start_date.slice(0, 7) === srsMonthFilter)
+
+  const srsUnpaidCount = filteredSrs.filter(e => !e.paid).length
+  const srsTotalFee = filteredSrs.reduce((sum, e) => sum + (e.booking?.srs_fee_amount ?? 0), 0)
+
+  function fmtMonthKey(key: string): string {
+    const [y, m] = key.split('-')
+    const d = new Date(parseInt(y), parseInt(m) - 1, 1)
+    return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  }
+
+  function fmtDate(d: string): string {
+    const dt = new Date(d + 'T12:00:00')
+    return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
 
   const sectionHead: React.CSSProperties = {
     fontSize: 9, fontFamily: 'Syne', fontWeight: 700, color: '#4a4f64',
@@ -237,7 +331,7 @@ export default function AdminPage() {
       {/* ─── Main content ─────────────────────────────────────────── */}
       <div style={{ flex: 1, padding: '28px 32px', minWidth: 0 }}>
 
-      {section === 'engineers' && <div>
+      {section === 'engineers' && !selectedEng && <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 14, color: '#e8eaf2' }}>Engineers & Assistants</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -288,13 +382,18 @@ export default function AdminPage() {
               return (
                 <div
                   key={eng.id}
+                  onClick={() => openEngSessions(eng)}
                   style={{
                     display: 'grid', gridTemplateColumns: '44px 1fr 100px 140px 140px 80px 80px',
                     padding: '10px 16px', gap: 12, alignItems: 'center',
                     borderBottom: idx < filtered.length - 1 ? '1px solid #2a2e3d' : 'none',
                     background: eng.active ? 'transparent' : 'rgba(0,0,0,0.15)',
                     opacity: eng.active ? 1 : 0.5,
+                    cursor: 'pointer',
+                    transition: 'background 0.12s',
                   }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#1a1d27')}
+                  onMouseLeave={e => (e.currentTarget.style.background = eng.active ? 'transparent' : 'rgba(0,0,0,0.15)')}
                 >
                   {/* Initials avatar */}
                   <div style={{ width: 32, height: 32, borderRadius: '50%', background: roleColor + '22', border: `1px solid ${roleColor}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Syne', fontWeight: 800, fontSize: 11, color: roleColor }}>
@@ -331,7 +430,7 @@ export default function AdminPage() {
                   </div>
 
                   {/* Actions */}
-                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
                     <button onClick={() => openEdit(eng)} style={{ padding: '3px 10px', borderRadius: 3, fontSize: 10, fontFamily: 'DM Mono', background: '#1a1d27', border: '1px solid #2a2e3d', color: '#8b90a8', cursor: 'pointer' }}>
                       Edit
                     </button>
@@ -363,6 +462,258 @@ export default function AdminPage() {
           </div>
         )}
       </div>}
+
+      {/* ─── Engineer sessions drill-down ─────────────────────────── */}
+      {section === 'engineers' && selectedEng && (() => {
+        const fullName = `${selectedEng.first_name} ${selectedEng.last_name}`
+        const roleColor = ROLE_COLORS[selectedEng.role]
+        const totalPages = Math.ceil(engSessions.length / ENG_PAGE_SIZE)
+        const pageSlice = engSessions.slice(engSessionsPage * ENG_PAGE_SIZE, (engSessionsPage + 1) * ENG_PAGE_SIZE)
+
+        function fmtSessionDate(d: string) {
+          return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        }
+
+        const STATUS_COLORS: Record<string, string> = {
+          confirmed: '#4ef0a2', tentative: '#f0a24e', cancelled: '#f04e7a',
+          completed: '#7BBFFF', in_progress: '#c8f04e', tour: '#96A9FF', tech: '#a0aec0', open_hours: '#4a4f64',
+        }
+
+        return (
+          <div>
+            {/* Back + header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
+              <button
+                onClick={() => { setSelectedEng(null); setEngSessions([]) }}
+                style={{ padding: '5px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', background: 'transparent', border: '1px solid #2a2e3d', color: '#8b90a8' }}
+              >
+                ← Back
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: roleColor + '22', border: `1px solid ${roleColor}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Syne', fontWeight: 800, fontSize: 12, color: roleColor }}>
+                  {selectedEng.initials ?? autoInitials(selectedEng.first_name, selectedEng.last_name)}
+                </div>
+                <div>
+                  <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 14, color: '#e8eaf2' }}>{fullName}</div>
+                  <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#4a4f64', marginTop: 1 }}>
+                    {engSessions.length} session{engSessions.length !== 1 ? 's' : ''} total
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {engSessionsLoading ? (
+              <div style={{ fontSize: 11, color: '#4a4f64', fontFamily: 'DM Mono' }}>Loading…</div>
+            ) : engSessions.length === 0 ? (
+              <div style={{ fontSize: 11, color: '#4a4f64', fontFamily: 'DM Mono', padding: '24px 0' }}>No sessions found for {fullName}.</div>
+            ) : (
+              <>
+                <div style={{ border: '1px solid #2a2e3d', borderRadius: 6, overflow: 'hidden', marginBottom: 14 }}>
+                  {/* Table header */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '120px 90px 160px 1fr 90px 70px', background: '#1a1d27', borderBottom: '1px solid #2a2e3d', padding: '6px 16px', gap: 12 }}>
+                    {['Date', 'Time', 'Studio', 'Client / Artist', 'Status', 'Role'].map(h => (
+                      <div key={h} style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#4a4f64' }}>{h}</div>
+                    ))}
+                  </div>
+
+                  {pageSlice.map((bk, idx) => {
+                    const isEng = bk.engineer_name === fullName
+                    const statusColor = STATUS_COLORS[bk.status] ?? '#8b90a8'
+                    const timeStr = bk.from_time && bk.to_time ? `${bk.from_time}–${bk.to_time}` : bk.from_time ?? '—'
+                    return (
+                      <div
+                        key={bk.id}
+                        style={{
+                          display: 'grid', gridTemplateColumns: '120px 90px 160px 1fr 90px 70px',
+                          padding: '10px 16px', gap: 12, alignItems: 'center',
+                          borderBottom: idx < pageSlice.length - 1 ? '1px solid #2a2e3d' : 'none',
+                        }}
+                      >
+                        <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#8b90a8' }}>{fmtSessionDate(bk.start_date)}</div>
+                        <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{timeStr}</div>
+                        <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#e8eaf2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {bk.location} {bk.studio ? `· ${bk.studio}` : ''}
+                        </div>
+                        <div style={{ overflow: 'hidden' }}>
+                          <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#e8eaf2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bk.client_name || <span style={{ color: '#4a4f64' }}>—</span>}</div>
+                          {bk.artist && <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bk.artist}</div>}
+                        </div>
+                        <div>
+                          <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: statusColor, background: statusColor + '18', padding: '2px 7px', borderRadius: 3, border: `1px solid ${statusColor}33`, textTransform: 'uppercase' }}>
+                            {bk.status}
+                          </span>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: isEng ? '#f0a24e' : '#f04e7a', background: isEng ? 'rgba(240,162,78,0.12)' : 'rgba(240,78,122,0.12)', padding: '2px 7px', borderRadius: 3, border: `1px solid ${isEng ? 'rgba(240,162,78,0.3)' : 'rgba(240,78,122,0.3)'}` }}>
+                            {isEng ? '1st' : '2nd'}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button
+                      onClick={() => setEngSessionsPage(p => Math.max(0, p - 1))}
+                      disabled={engSessionsPage === 0}
+                      style={{ padding: '4px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: engSessionsPage === 0 ? 'default' : 'pointer', background: '#1a1d27', border: '1px solid #2a2e3d', color: engSessionsPage === 0 ? '#4a4f64' : '#8b90a8' }}
+                    >
+                      ← Prev
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setEngSessionsPage(i)}
+                        style={{ padding: '4px 10px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', background: engSessionsPage === i ? '#c8f04e' : '#1a1d27', border: `1px solid ${engSessionsPage === i ? '#c8f04e' : '#2a2e3d'}`, color: engSessionsPage === i ? '#0d0f14' : '#8b90a8', fontWeight: engSessionsPage === i ? 700 : 400 }}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setEngSessionsPage(p => Math.min(totalPages - 1, p + 1))}
+                      disabled={engSessionsPage === totalPages - 1}
+                      style={{ padding: '4px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: engSessionsPage === totalPages - 1 ? 'default' : 'pointer', background: '#1a1d27', border: '1px solid #2a2e3d', color: engSessionsPage === totalPages - 1 ? '#4a4f64' : '#8b90a8' }}
+                    >
+                      Next →
+                    </button>
+                    <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#4a4f64', marginLeft: 4 }}>
+                      {engSessionsPage * ENG_PAGE_SIZE + 1}–{Math.min((engSessionsPage + 1) * ENG_PAGE_SIZE, engSessions.length)} of {engSessions.length}
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )
+      })()}
+
+      {/* ─── SRS Log ──────────────────────────────────────────────── */}
+      {section === 'srs_log' && (
+        <div>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 14, color: '#e8eaf2' }}>SRS Log</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Month filter */}
+              <select
+                value={srsMonthFilter}
+                onChange={e => { setSrsMonthFilter(e.target.value); setConfirmMarkAll(false) }}
+                style={{ ...inp, width: 'auto', padding: '5px 10px' }}
+              >
+                <option value="all">All months</option>
+                {srsMonths.map(m => (
+                  <option key={m} value={m}>{fmtMonthKey(m)}</option>
+                ))}
+              </select>
+              {/* Mark all paid button */}
+              {srsMonthFilter !== 'all' && srsUnpaidCount > 0 && (
+                confirmMarkAll ? (
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8b90a8' }}>
+                      Mark {srsUnpaidCount} as paid?
+                    </span>
+                    <button
+                      onClick={() => markAllPaid(srsMonthFilter)}
+                      style={{ padding: '5px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer', background: '#c8f04e', border: 'none', color: '#0d0f14' }}
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      onClick={() => setConfirmMarkAll(false)}
+                      style={{ padding: '5px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', background: 'transparent', border: '1px solid #2a2e3d', color: '#8b90a8' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmMarkAll(true)}
+                    style={{ padding: '6px 14px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', cursor: 'pointer', background: '#1a1d27', border: '1px solid #2a2e3d', color: '#8b90a8' }}
+                  >
+                    Mark all paid
+                  </button>
+                )
+              )}
+            </div>
+          </div>
+
+          {/* Summary bar — shown when month is selected */}
+          {srsMonthFilter !== 'all' && (
+            <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+              {[
+                { label: 'Total SRS fee owed', value: srsTotalFee > 0 ? `$${srsTotalFee.toFixed(2)}` : '—' },
+                { label: 'Unpaid entries', value: String(srsUnpaidCount) },
+              ].map(card => (
+                <div key={card.label} style={{ flex: 1, background: '#1a1d27', border: '1px solid #2a2e3d', borderRadius: 6, padding: '14px 18px' }}>
+                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#4a4f64', marginBottom: 6 }}>{card.label}</div>
+                  <div style={{ fontSize: 18, fontFamily: 'DM Mono', color: '#e8eaf2', fontWeight: 700 }}>{card.value}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Table */}
+          {srsLoading ? (
+            <div style={{ fontSize: 11, color: '#4a4f64', fontFamily: 'DM Mono' }}>Loading…</div>
+          ) : filteredSrs.length === 0 ? (
+            <div style={{ fontSize: 11, color: '#4a4f64', fontFamily: 'DM Mono', padding: '24px 0' }}>No SRS bookings found.</div>
+          ) : (
+            <div style={{ border: '1px solid #2a2e3d', borderRadius: 6, overflow: 'hidden' }}>
+              {/* Table header */}
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 120px 120px 90px', background: '#1a1d27', borderBottom: '1px solid #2a2e3d', padding: '6px 16px', gap: 12 }}>
+                {['Date', 'Client', 'Room fees', 'SRS fee (10%)', 'Status'].map(h => (
+                  <div key={h} style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#4a4f64' }}>{h}</div>
+                ))}
+              </div>
+              {filteredSrs.map((entry, idx) => {
+                const bk = entry.booking
+                return (
+                  <div
+                    key={entry.id}
+                    style={{
+                      display: 'grid', gridTemplateColumns: '140px 1fr 120px 120px 90px',
+                      padding: '10px 16px', gap: 12, alignItems: 'center',
+                      borderBottom: idx < filteredSrs.length - 1 ? '1px solid #2a2e3d' : 'none',
+                    }}
+                  >
+                    {/* Date */}
+                    <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#8b90a8' }}>
+                      {bk ? fmtDate(bk.start_date) : '—'}
+                    </div>
+                    {/* Client */}
+                    <div style={{ fontSize: 12, fontFamily: 'DM Mono', color: '#e8eaf2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {bk?.client_name || <span style={{ color: '#4a4f64' }}>—</span>}
+                    </div>
+                    {/* Room fees — TODO: populate from studio_time table once WO digitization is complete */}
+                    <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#4a4f64' }}>—</div>
+                    {/* SRS fee */}
+                    <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: bk?.srs_fee_amount != null ? '#e8eaf2' : '#4a4f64' }}>
+                      {bk?.srs_fee_amount != null ? `$${Number(bk.srs_fee_amount).toFixed(2)}` : '—'}
+                    </div>
+                    {/* Status toggle */}
+                    <div>
+                      <button
+                        onClick={() => toggleSrsPaid(entry)}
+                        style={{
+                          padding: '3px 10px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                          fontFamily: 'DM Mono', fontSize: 10, fontWeight: 700,
+                          background: entry.paid ? 'rgba(78,240,162,0.12)' : 'rgba(255,59,59,0.12)',
+                          color: entry.paid ? '#4ef0a2' : '#ff3b3b',
+                        }}
+                      >
+                        {entry.paid ? 'Paid' : 'Unpaid'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Modal */}
       {modalOpen && (
