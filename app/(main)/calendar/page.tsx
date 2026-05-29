@@ -2320,7 +2320,7 @@ function CalendarPageInner() {
     router.replace('/calendar')
     const clientQ = supabase.from('clients').select('id,type,name,fname,lname,email,phone,artists').eq('id', clientId).single()
     const leadQ = leadId
-      ? supabase.from('leads').select('quote,rate_daily,location,session_date,session_start,session_end').eq('id', parseInt(leadId, 10)).single()
+      ? supabase.from('leads').select('quote,rate_daily,location,session_date,session_start,session_end,fname,lname,artist_name').eq('id', parseInt(leadId, 10)).single()
       : Promise.resolve({ data: null as any, error: null })
     Promise.all([clientQ, leadQ]).then(([{ data: c }, { data: l }]) => {
       const initial = emptyForm()
@@ -2347,6 +2347,14 @@ function CalendarPageInner() {
           initial.location = loc.venue
           initial.studio = loc.studio
         }
+        // A&R name is stored as lead.fname + lead.lname for billing leads
+        const anrName = `${l.fname || ''} ${l.lname || ''}`.trim()
+        if (anrName && initial.payment_type === 'billing') {
+          initial.ordered_by = anrName
+          initial.client_name = anrName
+        }
+        // Use the specific artist from the lead rather than the roster's first entry
+        if (l.artist_name) initial.artist = l.artist_name
       }
       setEditBooking(null)
       setFormInitial(initial)
