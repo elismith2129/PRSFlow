@@ -2230,7 +2230,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
               {needsContactToggle}
               {sessionDetails}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div><label style={labelS}>Source</label><input value={form.source} onChange={e => set('source', e.target.value)} placeholder="Instagram, referral…" style={inputStyle} /></div>
+                <div><label style={labelS}>Source</label><select value={form.source} onChange={e => set('source', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}><option value="">—</option><option>Call</option><option>Text</option><option>Email</option><option>Squarespace</option></select></div>
                 <div>
                   <label style={labelS}>Booking Type</label>
                   <select value={form.booking} onChange={e => set('booking', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
@@ -2338,7 +2338,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
               {needsContactToggle}
               {sessionDetails}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div><label style={labelS}>Source</label><input value={form.source} onChange={e => set('source', e.target.value)} placeholder="Instagram, referral…" style={inputStyle} /></div>
+                <div><label style={labelS}>Source</label><select value={form.source} onChange={e => set('source', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}><option value="">—</option><option>Call</option><option>Text</option><option>Email</option><option>Squarespace</option></select></div>
                 <div>
                   <label style={labelS}>Booking Type</label>
                   <select value={form.booking} onChange={e => set('booking', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
