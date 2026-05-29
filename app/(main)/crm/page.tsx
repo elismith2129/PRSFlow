@@ -7,6 +7,8 @@ import { ContactPicker } from '@/components/shared/ContactPicker'
 import { ArtistPicker } from '@/components/shared/ArtistPicker'
 import PhoneInput from '@/components/shared/PhoneInput'
 import TimeInput from '@/components/shared/TimeInput'
+import StudioSelect from '@/components/shared/StudioSelect'
+import { combineLocation, parseLocation } from '@/lib/studios'
 
 const STATUS_COLORS: Record<string, string> = {
   hot: 'var(--hot)', warm: 'var(--warm)', cold: 'var(--cold)',
@@ -19,12 +21,6 @@ function leadNameColor(l: { billing?: string | null }): string {
 
 const BOOKING_ICONS: Record<string, string> = {
   'Recording Session': '🎙', 'Filming': '🎬', 'Event/Playback': '🎛'
-}
-const STUDIO_OPTIONS: Record<string, string[]> = {
-  Paramount: ['Studio A', 'Studio B', 'Studio C', 'Studio E', 'Studio X'],
-  Ameraycan: ['Studio A', 'Studio B'],
-  Encore: ['Studio A', 'Studio B'],
-  Track: ['North', 'South'],
 }
 
 const TOUCH_METHODS = ['Call', 'Text', 'Email'] as const
@@ -147,7 +143,8 @@ function parseLastContact(lc: string | null): { date: string; time: string } {
 
 function fmtSessionLine(l: Lead): string | null {
   const parts: string[] = []
-  if (l.quote) parts.push(fmtMoney(l.quote))
+  if (l.rate_daily) parts.push(`${fmtMoney(l.rate_daily)}/day`)
+  else if (l.quote) parts.push(fmtMoney(l.quote))
   if (l.location) parts.push(l.location)
   if (l.session_date) {
     const d = new Date(l.session_date + 'T12:00:00')
@@ -166,7 +163,7 @@ function getMissing(l: Lead) {
   if (!l.lname) m.push('last name')
   if (!l.email) m.push('email')
   if (!l.phone) m.push('phone')
-  if (!l.quote) m.push('quote')
+  if (!l.quote && !l.rate_daily) m.push('quote')
   return m
 }
 
@@ -1056,9 +1053,10 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   const [lnameVal, setLnameVal] = useState(lead.lname || '')
   const [lcDate, setLcDate] = useState(() => parseLastContact(lead.last_contact).date)
   const [lcTime, setLcTime] = useState(() => parseLastContact(lead.last_contact).time)
-  const parsedLoc0 = (() => { const idx = (lead.location || '').indexOf(' · '); return idx === -1 ? { venue: lead.location || '', studio: '' } : { venue: (lead.location || '').slice(0, idx), studio: (lead.location || '').slice(idx + 3) } })()
+  const parsedLoc0 = parseLocation(lead.location || '')
   const [localVenue, setLocalVenue] = useState(parsedLoc0.venue)
   const [localStudio, setLocalStudio] = useState(parsedLoc0.studio)
+  const [detailRateType, setDetailRateType] = useState<'hourly' | 'daily'>(() => lead.rate_daily ? 'daily' : 'hourly')
   const [activityLog, setActivityLog] = useState<Array<{ ts: string; label: string; color: string }>>([])
   const [regTokenDates, setRegTokenDates] = useState<{ created_at: string; used_at: string | null } | null>(null)
 
@@ -1070,9 +1068,10 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
     setLocal({ ...lead })
     setFnameVal(lead.fname || '')
     setLnameVal(lead.lname || '')
-    const locIdx = (lead.location || '').indexOf(' · ')
-    setLocalVenue(locIdx === -1 ? (lead.location || '') : (lead.location || '').slice(0, locIdx))
-    setLocalStudio(locIdx === -1 ? '' : (lead.location || '').slice(locIdx + 3))
+    const loc = parseLocation(lead.location || '')
+    setLocalVenue(loc.venue)
+    setLocalStudio(loc.studio)
+    setDetailRateType(lead.rate_daily ? 'daily' : 'hourly')
     const lc = parseLastContact(lead.last_contact)
     setLcDate(lc.date)
     setLcTime(lc.time)
@@ -1380,7 +1379,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
           <button
             onClick={() => {
               if (lead.client_id) {
-                leadRouter.push(`/calendar?newBooking=1&clientId=${lead.client_id}`)
+                leadRouter.push(`/calendar?newBooking=1&clientId=${lead.client_id}&leadId=${lead.id}`)
               } else {
                 setShowConfirmModal(true)
               }
@@ -1496,38 +1495,18 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div>
             <div style={fieldLabelStyle}>Location · Studio</div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <select
-                value={localVenue}
-                onChange={e => {
-                  const v = e.target.value
-                  setLocalVenue(v)
-                  setLocalStudio('')
-                  const combined = v
-                  save('location', combined)
-                  update('location', combined)
-                }}
-                style={selStyle}
-              >
-                <option value="">— Location</option>
-                {['Paramount', 'Ameraycan', 'Encore', 'Track'].map(v => <option key={v} value={v}>{v}</option>)}
-              </select>
-              <select
-                value={localStudio}
-                onChange={e => {
-                  const s = e.target.value
-                  setLocalStudio(s)
-                  const combined = localVenue ? (s ? `${localVenue} · ${s}` : localVenue) : s
-                  save('location', combined)
-                  update('location', combined)
-                }}
-                disabled={!localVenue}
-                style={{ ...selStyle, opacity: localVenue ? 1 : 0.4 }}
-              >
-                <option value="">— Studio</option>
-                {(STUDIO_OPTIONS[localVenue] || []).map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
+            <StudioSelect
+              location={localVenue}
+              studio={localStudio}
+              onChange={(venue, studio) => {
+                setLocalVenue(venue)
+                setLocalStudio(studio)
+                const combined = combineLocation(venue, studio)
+                save('location', combined)
+                update('location', combined)
+              }}
+              selectStyle={selStyle}
+            />
           </div>
           <div>
             <div style={fieldLabelStyle}>Session Date</div>
@@ -1542,10 +1521,26 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div>
             <div style={fieldLabelStyle}>Quote / Rate</div>
-            <input ref={quoteRef} value={local.quote || ''} onChange={e => update('quote', e.target.value)}
-              onFocus={() => setFocusedInput('quote')}
-              onBlur={e => { setFocusedInput(null); const f = fmtMoney(e.target.value); if (f !== e.target.value) update('quote', f); save('quote', f || e.target.value) }}
-              onKeyDown={enterBlur} placeholder="—" style={iStyle('quote')} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+              <button type="button" onClick={() => setDetailRateType('hourly')} style={{ padding: '3px 7px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '4px 0 0 4px', border: '1px solid var(--border)', background: detailRateType === 'hourly' ? 'rgba(200,240,78,0.12)' : 'transparent', color: detailRateType === 'hourly' ? 'var(--accent)' : 'var(--text3)' }}>/ hr</button>
+              <button type="button" onClick={() => setDetailRateType('daily')} style={{ padding: '3px 7px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '0 4px 4px 0', border: '1px solid var(--border)', borderLeft: 'none', background: detailRateType === 'daily' ? 'rgba(200,240,78,0.12)' : 'transparent', color: detailRateType === 'daily' ? 'var(--accent)' : 'var(--text3)' }}>/ day</button>
+              <input
+                ref={quoteRef}
+                value={detailRateType === 'hourly' ? (local.quote || '') : (local.rate_daily || '')}
+                onChange={e => update(detailRateType === 'hourly' ? 'quote' : 'rate_daily', e.target.value)}
+                onFocus={() => setFocusedInput('quote')}
+                onBlur={e => {
+                  setFocusedInput(null)
+                  const f = fmtMoney(e.target.value)
+                  const key = detailRateType === 'hourly' ? 'quote' : 'rate_daily'
+                  if (f !== e.target.value) update(key, f)
+                  save(key, f || e.target.value)
+                }}
+                onKeyDown={enterBlur}
+                placeholder="—"
+                style={{ ...iStyle('quote'), borderRadius: '0 4px 4px 0', borderLeft: 'none', flex: 1 }}
+              />
+            </div>
           </div>
           <div>
             <div style={fieldLabelStyle}>Start – End</div>
@@ -1846,11 +1841,14 @@ function NewLeadModal({ leads, onClose, onSave }: {
   onSave: (data: Partial<Lead>) => Promise<void>
 }) {
   const router = useRouter()
-  const emptyForm = { fname: '', lname: '', email: '', phone: '', company: '', label: '', source: '', booking: '', notes: '', billing: 'COD' as BillingType, quote: '', location: '', session_date: '', session_start: '', session_end: '', engineer_needed: false }
+  const emptyForm = { fname: '', lname: '', email: '', phone: '', company: '', label: '', source: '', booking: '', notes: '', billing: 'COD' as BillingType, quote: '', rate_daily: '', location: '', session_date: '', session_start: '', session_end: '', engineer_needed: false }
   const [mode, setMode] = useState<'cod' | 'label'>('cod')
   const [form, setForm] = useState(emptyForm)
   const [temperature, setTemperature] = useState<'hot' | 'warm' | 'booking'>('hot')
   const [needsContact, setNeedsContact] = useState(false)
+  const [rateType, setRateType] = useState<'hourly' | 'daily'>('hourly')
+  const [formVenue, setFormVenue] = useState('')
+  const [formStudio, setFormStudio] = useState('')
 
   // COD mode state
   const [matchedClientId, setMatchedClientId] = useState<string | null>(null)
@@ -2139,23 +2137,38 @@ function NewLeadModal({ leads, onClose, onSave }: {
     <div>
       <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8, fontFamily: 'Syne', fontWeight: 700 }}>Session Details</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <div><label style={labelS}>Quote / Rate</label><input value={form.quote} onChange={e => set('quote', e.target.value)} onBlur={e => { const f = fmtMoney(e.target.value); if (f !== e.target.value) set('quote', f) }} placeholder="e.g. 500" style={inputStyle} /></div>
+        <div>
+          <label style={labelS}>Quote / Rate</label>
+          <div style={{ display: 'flex', gap: 0 }}>
+            <button type="button" onClick={() => setRateType('hourly')} style={{ padding: '4px 8px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '4px 0 0 4px', border: '1px solid var(--border)', background: rateType === 'hourly' ? 'rgba(200,240,78,0.12)' : 'transparent', color: rateType === 'hourly' ? 'var(--accent)' : 'var(--text3)' }}>/ hr</button>
+            <button type="button" onClick={() => setRateType('daily')} style={{ padding: '4px 8px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '0 4px 4px 0', border: '1px solid var(--border)', borderLeft: 'none', background: rateType === 'daily' ? 'rgba(200,240,78,0.12)' : 'transparent', color: rateType === 'daily' ? 'var(--accent)' : 'var(--text3)' }}>/ day</button>
+            <input
+              value={rateType === 'hourly' ? form.quote : form.rate_daily}
+              onChange={e => set(rateType === 'hourly' ? 'quote' : 'rate_daily', e.target.value)}
+              onBlur={e => { const f = fmtMoney(e.target.value); const key = rateType === 'hourly' ? 'quote' : 'rate_daily'; if (f !== e.target.value) set(key, f) }}
+              placeholder="$0"
+              style={{ ...inputStyle, borderRadius: '0 4px 4px 0', borderLeft: 'none', marginLeft: 6 }}
+            />
+          </div>
+        </div>
         <div>
           <label style={labelS}>Studio / Location</label>
-          <select value={form.location} onChange={e => set('location', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-            <option value="">Undetermined</option>
-            {Object.entries(STUDIO_OPTIONS).flatMap(([venue, rooms]) =>
-              rooms.map(room => (
-                <option key={`${venue}-${room}`} value={`${venue} · ${room}`}>{venue} · {room}</option>
-              ))
-            )}
-          </select>
+          <StudioSelect
+            location={formVenue}
+            studio={formStudio}
+            onChange={(venue, studio) => {
+              setFormVenue(venue)
+              setFormStudio(studio)
+              set('location', combineLocation(venue, studio))
+            }}
+            selectStyle={{ ...inputStyle, cursor: 'pointer', flex: 1 }}
+          />
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 10 }}>
         <div><label style={labelS}>Session Date</label><input type="date" value={form.session_date} onChange={e => set('session_date', e.target.value)} style={inputStyle} /></div>
-        <div><label style={labelS}>Start Time</label><TimeInput value={form.session_start} onChange={v => set('session_start', v)} placeholder="18:00" style={inputStyle} /></div>
-        <div><label style={labelS}>End Time</label><TimeInput value={form.session_end} onChange={v => set('session_end', v)} placeholder="22:00" style={inputStyle} /></div>
+        <div><label style={labelS}>Start Time</label><TimeInput value={form.session_start} onChange={v => set('session_start', v)} placeholder="10:00 AM" style={inputStyle} /></div>
+        <div><label style={labelS}>End Time</label><TimeInput value={form.session_end} onChange={v => set('session_end', v)} placeholder="10:00 PM" style={inputStyle} /></div>
       </div>
       <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
         <input type="checkbox" id="new_engineer_needed" checked={form.engineer_needed as boolean} onChange={e => setForm(prev => ({ ...prev, engineer_needed: e.target.checked }))} style={{ cursor: 'pointer', accentColor: 'var(--accent)', width: 13, height: 13 }} />

@@ -16,6 +16,7 @@ create table if not exists leads (
   billing text default 'COD',
   notes text,
   quote text,
+  rate_daily text,
   location text,
   session_date text,
   duration text,

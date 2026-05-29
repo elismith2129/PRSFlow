@@ -29,6 +29,7 @@ export interface Lead {
   billing: BillingType
   notes: string
   quote: string
+  rate_daily: string | null
   location: string
   session_date: string
   duration: string
