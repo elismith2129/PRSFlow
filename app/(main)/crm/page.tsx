@@ -2140,7 +2140,17 @@ function NewLeadModal({ leads, onClose, onSave }: {
       <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8, fontFamily: 'Syne', fontWeight: 700 }}>Session Details</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <div><label style={labelS}>Quote / Rate</label><input value={form.quote} onChange={e => set('quote', e.target.value)} onBlur={e => { const f = fmtMoney(e.target.value); if (f !== e.target.value) set('quote', f) }} placeholder="e.g. 500" style={inputStyle} /></div>
-        <div><label style={labelS}>Studio / Location</label><input value={form.location} onChange={e => set('location', e.target.value)} placeholder="Studio A" style={inputStyle} /></div>
+        <div>
+          <label style={labelS}>Studio / Location</label>
+          <select value={form.location} onChange={e => set('location', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+            <option value="">Undetermined</option>
+            {Object.entries(STUDIO_OPTIONS).flatMap(([venue, rooms]) =>
+              rooms.map(room => (
+                <option key={`${venue}-${room}`} value={`${venue} · ${room}`}>{venue} · {room}</option>
+              ))
+            )}
+          </select>
+        </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 10 }}>
         <div><label style={labelS}>Session Date</label><input type="date" value={form.session_date} onChange={e => set('session_date', e.target.value)} style={inputStyle} /></div>
