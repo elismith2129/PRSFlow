@@ -1414,21 +1414,14 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
             <div style={{ flex: 1, position: 'relative' }}>
               <div style={fieldLabelStyle}>Artist</div>
               <input
-                value={local.company || ''}
-                onChange={e => { update('company', e.target.value); setShowCompanyDD(true) }}
-                onFocus={() => { setFocusedInput('company'); setShowCompanyDD(true) }}
-                onBlur={e => { setFocusedInput(null); setShowCompanyDD(false); save('company', e.target.value) }}
+                value={local.artist_name || ''}
+                onChange={e => update('artist_name', e.target.value)}
+                onFocus={() => setFocusedInput('artist_name')}
+                onBlur={e => { setFocusedInput(null); save('artist_name', e.target.value) }}
                 onKeyDown={enterBlur}
                 placeholder="—"
-                style={iStyle('company')}
+                style={iStyle('artist_name')}
               />
-              {showCompanyDD && companySuggestions.length > 0 && (
-                <div style={ddStyle}>
-                  {companySuggestions.map(s => (
-                    <div key={s} onMouseDown={e => { e.preventDefault(); update('company', s); save('company', s); setShowCompanyDD(false) }} style={ddItemStyle}>{s}</div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -1842,7 +1835,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
   onSave: (data: Partial<Lead>) => Promise<void>
 }) {
   const router = useRouter()
-  const emptyForm = { fname: '', lname: '', email: '', phone: '', company: '', label: '', source: '', booking: '', notes: '', billing: 'COD' as BillingType, quote: '', rate_daily: '', location: '', session_date: '', session_start: '', session_end: '', engineer_needed: false }
+  const emptyForm = { fname: '', lname: '', email: '', phone: '', company: '', label: '', source: '', booking: '', notes: '', billing: 'COD' as BillingType, quote: '', rate_daily: '', location: '', session_date: '', session_start: '', session_end: '', engineer_needed: false, artist_name: '' }
   const [mode, setMode] = useState<'cod' | 'label'>('cod')
   const [form, setForm] = useState(emptyForm)
   const [temperature, setTemperature] = useState<'hot' | 'warm' | 'booking'>('hot')
@@ -2002,6 +1995,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
       }
     }
     setArtistQuery(trimmed)
+    set('artist_name', trimmed)
     setShowArtistDD(false)
     setArtistHighlight(-1)
   }
@@ -2062,7 +2056,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
     if (!showArtistDD || artistSuggestions.length === 0) return
     if (e.key === 'ArrowDown') { e.preventDefault(); setArtistHighlight(h => Math.min(h + 1, artistSuggestions.length - 1)) }
     if (e.key === 'ArrowUp') { e.preventDefault(); setArtistHighlight(h => Math.max(h - 1, 0)) }
-    if (e.key === 'Enter' && artistHighlight >= 0) { e.preventDefault(); setArtistQuery(artistSuggestions[artistHighlight]); setShowArtistDD(false); setArtistHighlight(-1) }
+    if (e.key === 'Enter' && artistHighlight >= 0) { e.preventDefault(); const a = artistSuggestions[artistHighlight]; setArtistQuery(a); set('artist_name', a); setShowArtistDD(false); setArtistHighlight(-1) }
     if (e.key === 'Escape') { setShowArtistDD(false); setArtistHighlight(-1) }
   }
 
@@ -2344,7 +2338,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                 <label style={labelS}>Artist</label>
                 <input
                   value={artistQuery}
-                  onChange={e => { setArtistQuery(e.target.value); setArtistHighlight(-1); setShowArtistDD(true) }}
+                  onChange={e => { setArtistQuery(e.target.value); set('artist_name', e.target.value); setArtistHighlight(-1); setShowArtistDD(true) }}
                   onFocus={() => setShowArtistDD(true)}
                   onBlur={() => setTimeout(() => setShowArtistDD(false), 200)}
                   onKeyDown={handleArtistKeyDown}
@@ -2354,7 +2348,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                 {showArtistDD && (artistSuggestions.length > 0 || (artistQuery.trim().length >= 2 && !labelArtists.some(a => a.toLowerCase() === artistQuery.trim().toLowerCase()))) && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
                     {artistSuggestions.map((a, i) => (
-                      <div key={a} onMouseDown={() => { setArtistQuery(a); setShowArtistDD(false); setArtistHighlight(-1) }} style={{ padding: '9px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 12, fontFamily: 'DM Mono', background: i === artistHighlight ? 'var(--surface)' : 'transparent' }}>{a}</div>
+                      <div key={a} onMouseDown={() => { setArtistQuery(a); set('artist_name', a); setShowArtistDD(false); setArtistHighlight(-1) }} style={{ padding: '9px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 12, fontFamily: 'DM Mono', background: i === artistHighlight ? 'var(--surface)' : 'transparent' }}>{a}</div>
                     ))}
                     {artistQuery.trim().length >= 2 && !labelArtists.some(a => a.toLowerCase() === artistQuery.trim().toLowerCase()) && (
                       <div onMouseDown={() => addArtistImmediately(artistQuery.trim())} style={{ padding: '9px 14px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: artistSuggestions.length > 0 ? '1px solid var(--border)' : undefined, display: 'flex', alignItems: 'center', gap: 6 }}>
