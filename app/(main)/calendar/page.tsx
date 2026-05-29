@@ -4,17 +4,14 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { Booking, Client, ClientContact, Engineer } from '@/lib/supabase'
 import TimeInput from '@/components/shared/TimeInput'
+import StudioSelect from '@/components/shared/StudioSelect'
 import { ClientProfile } from '@/components/clients/ClientProfile'
 import { WorkOrderPopup, type WOFormSync } from '@/components/calendar/WorkOrderPopup'
+import { STUDIO_LOCATIONS, parseLocation } from '@/lib/studios'
 
 // ─── LOCATIONS ───────────────────────────────────────────────────────────────
 
-const LOCATIONS = [
-  { name: 'Paramount', rooms: ['Studio A', 'Studio B', 'Studio C', 'Studio X', 'Studio E'] },
-  { name: 'Ameraycan', rooms: ['Studio A', 'Studio B'] },
-  { name: 'Encore', rooms: ['Studio A', 'Studio B'] },
-  { name: 'Track', rooms: ['North', 'South'] },
-]
+const LOCATIONS = STUDIO_LOCATIONS
 
 // ─── COLOR TOKENS ────────────────────────────────────────────────────────────
 
@@ -894,24 +891,12 @@ function BookingForm({
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
                 <div>
                   <label style={fL}>Studio</label>
-                  <select
-                    value={form.location && form.studio ? `${form.location}|${form.studio}` : ''}
-                    onChange={e => {
-                      if (!e.target.value) { setForm(f => ({ ...f, location: '', studio: '' })); return }
-                      const [loc, stu] = e.target.value.split('|')
-                      setForm(f => ({ ...f, location: loc, studio: stu }))
-                    }}
-                    style={{ ...inp, width: 'auto' }}
-                  >
-                    <option value="">Select studio…</option>
-                    {LOCATIONS.map(loc => (
-                      <optgroup key={loc.name} label={loc.name}>
-                        {loc.rooms.map(room => (
-                          <option key={room} value={`${loc.name}|${room}`}>{loc.name} {room}</option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
+                  <StudioSelect
+                    location={form.location}
+                    studio={form.studio}
+                    onChange={(location, studio) => setForm(f => ({ ...f, location, studio }))}
+                    selectStyle={{ ...inp, width: 'auto', flex: 'none' }}
+                  />
                 </div>
                 <div>
                   <label style={fL}>Rate</label>
@@ -2246,27 +2231,43 @@ function CalendarPageInner() {
   // Auto-open booking form when navigated from Start Booking
   useEffect(() => {
     const clientId = searchParams.get('clientId')
+    const leadId = searchParams.get('leadId')
     if (!searchParams.get('newBooking') || !clientId) return
     router.replace('/calendar')
-    supabase.from('clients').select('id,type,name,fname,lname,email,phone,artists').eq('id', clientId).single()
-      .then(({ data: c }) => {
-        const initial = emptyForm()
-        if (c) {
-          const isBilling = c.type === 'label'
-          initial.client_db_id = c.id
-          initial.payment_type = isBilling ? 'billing' : 'COD'
-          initial.client_name = isBilling
-            ? `${c.fname || ''} ${c.lname || ''}`.trim()
-            : c.name || `${c.fname || ''} ${c.lname || ''}`.trim()
-          initial.label = isBilling ? (c.name || '') : ''
-          initial.email = c.email || ''
-          initial.phone = c.phone || ''
-          initial.artist = (c.artists && c.artists.length > 0) ? c.artists[0] : ''
+    const clientQ = supabase.from('clients').select('id,type,name,fname,lname,email,phone,artists').eq('id', clientId).single()
+    const leadQ = leadId
+      ? supabase.from('leads').select('quote,rate_daily,location,session_date,session_start,session_end').eq('id', parseInt(leadId, 10)).single()
+      : Promise.resolve({ data: null as any, error: null })
+    Promise.all([clientQ, leadQ]).then(([{ data: c }, { data: l }]) => {
+      const initial = emptyForm()
+      if (c) {
+        const isBilling = c.type === 'label'
+        initial.client_db_id = c.id
+        initial.payment_type = isBilling ? 'billing' : 'COD'
+        initial.client_name = isBilling
+          ? `${c.fname || ''} ${c.lname || ''}`.trim()
+          : c.name || `${c.fname || ''} ${c.lname || ''}`.trim()
+        initial.label = isBilling ? (c.name || '') : ''
+        initial.email = c.email || ''
+        initial.phone = c.phone || ''
+        initial.artist = (c.artists && c.artists.length > 0) ? c.artists[0] : ''
+      }
+      if (l) {
+        if (l.session_date) { initial.start_date = l.session_date; initial.end_date = l.session_date }
+        if (l.session_start) initial.from_time = l.session_start
+        if (l.session_end) initial.to_time = l.session_end
+        if (l.rate_daily) { initial.rate_daily = l.rate_daily; initial.rate_type = 'daily' }
+        else if (l.quote) { initial.rate = l.quote; initial.rate_type = 'hourly' }
+        if (l.location) {
+          const loc = parseLocation(l.location)
+          initial.location = loc.venue
+          initial.studio = loc.studio
         }
-        setEditBooking(null)
-        setFormInitial(initial)
-        setFormOpen(true)
-      })
+      }
+      setEditBooking(null)
+      setFormInitial(initial)
+      setFormOpen(true)
+    })
   }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function openNew(location?: string, studio?: string, date?: string) {
