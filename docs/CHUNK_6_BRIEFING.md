@@ -211,4 +211,4 @@ Chunk 6 is complete when:
 
 ---
 
-**Last updated:** May 20, 2026 — Ready to build
+**Last updated:** May 28, 2026 — Calendar view polish complete. See PROJECT_LOG May 28 session notes for full change list. Remaining open items: drag-to-reschedule (polish, not MVP), recurring bookings (Chunk 7), mobile layout (Chunk 7).

@@ -1,6 +1,6 @@
 # PRSFlow — Tech Stack & Roadmap
 
-*Last updated: May 20, 2026*
+*Last updated: May 28, 2026*
 
 ---
 
@@ -164,6 +164,8 @@ Defined in `styles/globals.css`:
 | 4.6b | Registration form improvements: iOS camera capture, scrollable T&Cs with iOS Safari overflow fix |
 | 4.7 | Polish: registration QC notification banner on Clients page, empty states, confirm dialogs, mobile responsiveness |
 | 4.9 | Detail card redesign: 2-col Contact + Session grids, cascading Location/Studio dropdowns, 12h TimeInput, editable Last Contact, session date picker, pills inline with name, Clients nav badge for pending registrations, Needs Action daily reset cron |
+| **Chunk 6 calendar polish ✅** | **View switching, zoom, StudioView, scroll correctness** |
+| 6-polish | Dynamic colW per view (week/2wks/month show correct date ranges), view-switch snaps to current Sunday, rAF shiftingRef guard fixes scroll race on column-width change, useLayoutEffect for initial grid measurement, StudioView blocks styled to match main calendar (black bg + status top bar, never truncates), zoom floor = Fit (removed 44px level), no post-scroll snapping |
 
 ### Next
 

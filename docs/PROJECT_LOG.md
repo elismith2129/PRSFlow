@@ -56,10 +56,11 @@
 - **Filming and Event/Playback blocks** have a full border all the way around; Recording has top bar only.
 - **Rate is either/or.** `rate` for hourly, `rate_daily` for daily. DB column `rate_daily text` added manually.
 - **Start Booking cross-page flow** uses `?newBooking=1&clientId=xxx`. Calendar detects on mount, clears URL, fetches client, auto-opens pre-filled form.
-- **Vertical zoom:** Keyboard +/-/0 and Cmd+trackpad scroll. `ZOOM_FIXED = [44, 60, 80, 88, 110, 132]`, level 0 = fit-all. Fit-all computed via ResizeObserver on grid container.
+- **Vertical zoom:** Keyboard +/-/0 and Cmd+trackpad scroll. `ZOOM_FIXED = [60, 80, 88, 110, 132]`, level 0 = fit-all (floor; no level below fit). Fit-all computed via `useLayoutEffect` on grid container (synchronous, before scroll effect fires).
 - **Individual room collapse** persisted to `localStorage` key `cal_collapsed_rooms`. Location-level collapse persisted to `cal_collapsed_locs`. Both initialized as empty Sets on server render, restored from localStorage in `useEffect([])` to avoid hydration mismatch.
-- **Endless horizontal scroll:** Grid renders `BUFFER_WEEKS=2` weeks of buffer on each side (5 weeks total for week view, 7 for 2wks). When scroll approaches edge, `startDate` shifts ±7 days and `scrollCorrectionRef` corrects scroll position seamlessly. Studio labels are `position: sticky, left: 0`.
-- **Today centering:** On mount and after `startDate` change, `useEffect` + `requestAnimationFrame` scrolls to center today in the viewport. Post-scroll snap (80ms debounce) snaps back to today only when viewport is within 7 days of today — no snap elsewhere. Today button smooth-scrolls to today centered; if already on today's week, skips `setStartDate` and re-centers directly.
+- **Endless horizontal scroll:** Grid renders `BUFFER_WEEKS=2` (14 days) of buffer on each side for ALL views (week, 2wks, month). Column width is dynamic per view: `usableW/7` (week), `usableW/14` (2wks), `usableW/totalDays` (month). When scroll approaches edge, `startDate` shifts ±7 days and `scrollCorrectionRef` corrects scroll position seamlessly. Studio labels are `position: sticky, left: 0`. No post-scroll snapping.
+- **View switching always snaps to Sunday of the current real-world week.** `getSunday(new Date())` is always the anchor regardless of what was scrolled. Switching between views sets `shiftingRef.current = true` before the rAF to block transitional scroll events (DOM reflow from column-width change) from falsely triggering infinite scroll — resets to `false` after `scrollLeft` is applied.
+- **Initial grid measurement via `useLayoutEffect`** (synchronous, fires before `useEffect`) so `gridW` is correct when the `[startDate, view]` scroll effect runs on mount. Prevents scroll position being computed from the default 1200px fallback width.
 - **Visual week/month breaks:** Monday columns get `boxShadow: 'inset 2px 0 0 rgba(255,255,255,0.35)'`. Month-start columns get `boxShadow: 'inset 2px 0 0 var(--accent)'` plus a small month label (e.g. "MAY") in the top-left of that header cell. Same dividers appear in room cell backgrounds via inset box-shadow.
 - **Nav always accessible over modals:** Nav `zIndex` raised to `9999`. All modal backdrops changed from `inset: 0` to `top: 52, left: 0, right: 0, bottom: 0` so they sit below the nav.
 - **Draft/state persistence across tab navigation:** Booking form draft saved to `sessionStorage` key `cal_form_draft`, restored on mount. CRM: selected lead, view, tab, filter, search all persisted to sessionStorage. Clients: new-client modal draft persisted to `clients_new_draft`.
@@ -119,7 +120,7 @@
 
 ---
 
-*Last updated: May 22, 2026 — Runner Hub + Daily Ops session. See session notes below.*
+*Last updated: May 28, 2026 — Calendar view polish session. See session notes below.*
 
 ---
 
@@ -202,3 +203,19 @@ CREATE TABLE IF NOT EXISTS expense_rows (
 ```
 
 Also requires `checklist-photos` Supabase Storage bucket (public) for photo uploads from checklist forms.
+
+### May 28, 2026 — Calendar View Polish
+
+**What was fixed:**
+
+- **"All" location pill** now returns to `2wks` view (was incorrectly returning to `day`).
+- **StudioView booking blocks** restyled to match main calendar: black `#0d0f14` background + 3px status-color top bar (was showing full-block color). Border treatment matches (accent left border for non-recording sessions, dim border otherwise).
+- **StudioView cells never truncate.** Grid rows changed from fixed `1fr` (equal height, overflow hidden) to `minmax(80px, auto)` with `alignContent: 'start'`. All session info always fully visible regardless of how many bookings are in a cell.
+- **StudioView booking blocks show full info:** client name (color-coded COD/Billing), time range, COD method (CC/ZELLE/CASH), engineer initials (1ST-XX), assistant initials (2ND-XX). Engineer/assistant color-coded by status (confirmed=green, hold=orange, unconfirmed=dim).
+- **ResizeObserver vertical shrink glitch fixed.** Observer was firing mid-paint with a stale tiny height, causing rows to collapse. Added `requestAnimationFrame` debounce so height/width are only set from stable measurements.
+- **Week/2wks/month views all showed same ~10-day range** because `COL_W` was a fixed constant. Changed to dynamic `colW` computed per view: `usableW/7`, `usableW/14`, `usableW/totalDays`. Each view now shows the correct date range.
+- **Removed all post-scroll snapping.** The 80ms debounce snap-to-today was removed entirely from `handleGridScroll`.
+- **View switching snaps to Sunday of current real-world week.** Clicking any view button always calls `setStartDate(getSunday(new Date()))` regardless of what was scrolled. Works correctly for all views.
+- **Fixed 2wks/month not snapping after switching from week view.** Root cause: when switching from week (wide columns) to 2wks/month (narrow columns), the DOM reflow causes the grid's `scrollWidth` to shrink. This fires a `scroll` event before the `requestAnimationFrame` could set the correct position, and `handleGridScroll` saw `scrollLeft` at the old (large) position — past the right-edge threshold — and advanced `startDate` by 7 days. Fix: set `shiftingRef.current = true` before scheduling the rAF (blocking the scroll handler during the transition window), reset inside the rAF after `scrollLeft` is applied.
+- **Initial grid measurement via `useLayoutEffect`** ensures `gridW` is correct on first render. Previously the `[startDate, view]` scroll effect fired with `gridW = 1200` (default state) before the ResizeObserver updated the real width, causing `colW` to be wrong and scroll position slightly off on initial load.
+- **Zoom: removed redundant 44px level.** `ZOOM_FIXED` changed from `[44, 60, 80, 88, 110, 132]` to `[60, 80, 88, 110, 132]`. Fit-all is level 0 (the floor); `+` goes up from there. 44px was visually identical to Fit on most screens.

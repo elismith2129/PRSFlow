@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { Booking, Client, ClientContact, Engineer } from '@/lib/supabase'
@@ -52,7 +52,7 @@ const ENG_STATUS_LABELS: Record<string, string> = {
 
 const LABEL_W = 148
 const COL_W = 120  // minimum day-column width; forces horizontal scroll when cols × days > viewport
-const ZOOM_FIXED = [44, 60, 80, 88, 110, 132] // zoom levels 1–6; level 0 = fit-all
+const ZOOM_FIXED = [60, 80, 88, 110, 132] // zoom levels 1–5; level 0 = fit-all (≈44px)
 const BUFFER_WEEKS = 2 // weeks of buffer rendered on each side for endless horizontal scroll
 
 const fL: React.CSSProperties = {
@@ -72,6 +72,13 @@ function getMonday(d: Date): Date {
   r.setHours(0, 0, 0, 0)
   const day = r.getDay()
   r.setDate(r.getDate() - (day === 0 ? 6 : day - 1))
+  return r
+}
+
+function getSunday(d: Date): Date {
+  const r = new Date(d)
+  r.setHours(0, 0, 0, 0)
+  r.setDate(r.getDate() - r.getDay())
   return r
 }
 
@@ -306,9 +313,7 @@ function BookingBlock({
     : booking.assistant_status === 'hold' ? '#f0a24e'
     : 'rgba(255,255,255,0.4)'
 
-  const clickZone = Math.round(Math.min(18, rowH * 0.22))
-  const usableH = rowH - clickZone
-  const slotH = usableH / numLanes
+  const slotH = rowH / numLanes
   const blockTop = lane * slotH + 2
   const blockHeight = slotH - 3
   const micro = blockHeight < 30
@@ -323,9 +328,9 @@ function BookingBlock({
         left: `calc(${left}% + 2px)`, width: `calc(${width}% - 4px)`,
         background: '#0d0f14', boxSizing: 'border-box',
         borderTop: `${micro ? 3 : 4}px solid ${topColor}`,
-        borderLeft: sessionBorder ? '2px solid rgba(255,255,255,0.55)' : '1px solid rgba(255,255,255,0.08)',
-        borderRight: sessionBorder ? '2px solid rgba(255,255,255,0.55)' : '1px solid rgba(255,255,255,0.08)',
-        borderBottom: sessionBorder ? '2px solid rgba(255,255,255,0.55)' : '1px solid rgba(255,255,255,0.08)',
+        borderLeft: sessionBorder ? '2px solid rgba(200,240,78,0.7)' : '1px solid rgba(255,255,255,0.08)',
+        borderRight: sessionBorder ? '2px solid rgba(200,240,78,0.7)' : '1px solid rgba(255,255,255,0.08)',
+        borderBottom: sessionBorder ? '2px solid rgba(200,240,78,0.7)' : '1px solid rgba(255,255,255,0.08)',
         borderRadius: 4,
         padding: micro ? '1px 4px' : compact ? '3px 5px' : '4px 6px',
         cursor: 'pointer', overflow: 'hidden',
@@ -342,7 +347,7 @@ function BookingBlock({
             {primaryName}
           </div>
           {timeStr && (
-            <div style={{ fontSize: 7, fontFamily: 'DM Mono', color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <div style={{ fontSize: 7, fontFamily: 'DM Mono', color: 'rgba(255,255,255,0.85)', whiteSpace: 'nowrap', flexShrink: 0 }}>
               {timeStr}
             </div>
           )}
@@ -367,7 +372,7 @@ function BookingBlock({
           </div>
           {/* Row 2: time + eng/asst */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', overflow: 'hidden' }}>
-            <div style={{ fontSize: 8, fontFamily: 'DM Mono', color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 8, fontFamily: 'DM Mono', color: 'rgba(255,255,255,0.85)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
               {timeStr}
             </div>
             {(eng || asst) && (
@@ -396,7 +401,7 @@ function BookingBlock({
             </div>
           )}
           {timeStr && (
-            <div style={{ fontSize: 9, fontFamily: 'DM Mono', lineHeight: 1.2, marginTop: 2, color: 'rgba(255,255,255,0.4)' }}>
+            <div style={{ fontSize: 9, fontFamily: 'DM Mono', lineHeight: 1.2, marginTop: 2, color: 'rgba(255,255,255,0.85)' }}>
               {timeStr}
             </div>
           )}
@@ -1610,6 +1615,425 @@ function BookingForm({
   )
 }
 
+// ─── DAY VIEW ────────────────────────────────────────────────────────────────
+
+const DAY_STATUS_BG: Record<string, string> = {
+  confirmed:  '#1e40af',
+  tentative:  '#c2410c',
+  cancelled:  '#b91c1c',
+  tour:       '#6d28d9',
+  tech:       '#374151',
+  open_hours: '#111827',
+}
+
+function DayView({
+  dayViewDate,
+  setDayViewDate,
+  locFilter,
+  onOpenEdit,
+}: {
+  dayViewDate: Date
+  setDayViewDate: (d: Date) => void
+  locFilter: string
+  onOpenEdit: (b: Booking) => void
+}) {
+  const [dayBookings, setDayBookings] = useState<Booking[]>([])
+  const [miniMonthStart, setMiniMonthStart] = useState(
+    () => new Date(dayViewDate.getFullYear(), dayViewDate.getMonth(), 1)
+  )
+
+  const dateStr = fmt(dayViewDate)
+  const todayStr = fmt(new Date())
+
+  useEffect(() => {
+    supabase.from('bookings').select('*')
+      .lte('start_date', dateStr)
+      .gte('end_date', dateStr)
+      .then(({ data }) => setDayBookings(data ?? []))
+  }, [dateStr])
+
+  // Sync mini calendar month when day nav crosses a month boundary
+  const monthKey = `${dayViewDate.getFullYear()}-${dayViewDate.getMonth()}`
+  useEffect(() => {
+    setMiniMonthStart(new Date(dayViewDate.getFullYear(), dayViewDate.getMonth(), 1))
+  }, [monthKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Build mini calendar grid
+  const miniCells: (Date | null)[] = []
+  const firstWeekday = miniMonthStart.getDay()
+  const daysInMonth = new Date(miniMonthStart.getFullYear(), miniMonthStart.getMonth() + 1, 0).getDate()
+  for (let i = 0; i < firstWeekday; i++) miniCells.push(null)
+  for (let d = 1; d <= daysInMonth; d++)
+    miniCells.push(new Date(miniMonthStart.getFullYear(), miniMonthStart.getMonth(), d))
+
+  const filteredLocs = locFilter === 'All' ? LOCATIONS : LOCATIONS.filter(l => l.name === locFilter)
+  const allStudios = filteredLocs.flatMap(loc => loc.rooms.map(room => ({ loc: loc.name, room })))
+
+  return (
+    <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+
+      {/* ── LEFT: mini month calendar ──────────────────────────────────── */}
+      <div style={{
+        width: 216, flexShrink: 0, overflowY: 'auto',
+        background: 'var(--surface)',
+        borderRight: '1px solid rgba(255,255,255,0.08)',
+        padding: '16px 14px',
+      }}>
+        {/* Month nav */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <button
+            onClick={() => setMiniMonthStart(new Date(miniMonthStart.getFullYear(), miniMonthStart.getMonth() - 1, 1))}
+            style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 16, padding: '0 2px', lineHeight: 1 }}
+          >‹</button>
+          <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 12, color: 'var(--text)', letterSpacing: '0.04em' }}>
+            {miniMonthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          </span>
+          <button
+            onClick={() => setMiniMonthStart(new Date(miniMonthStart.getFullYear(), miniMonthStart.getMonth() + 1, 1))}
+            style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 16, padding: '0 2px', lineHeight: 1 }}
+          >›</button>
+        </div>
+
+        {/* Weekday labels */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 2 }}>
+          {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
+            <div key={d} style={{ textAlign: 'center', fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)', padding: '2px 0' }}>
+              {d}
+            </div>
+          ))}
+        </div>
+
+        {/* Day cells */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px 0' }}>
+          {miniCells.map((cell, i) => {
+            if (!cell) return <div key={`e-${i}`} />
+            const cellStr = fmt(cell)
+            const isSelected = cellStr === dateStr
+            const isTodayCell = cellStr === todayStr
+            return (
+              <div key={cellStr} onClick={() => setDayViewDate(cell)}
+                style={{ textAlign: 'center', cursor: 'pointer', padding: '2px 0' }}>
+                <div style={{
+                  width: 24, height: 24, borderRadius: '50%', margin: '0 auto',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontFamily: 'DM Mono',
+                  background: isSelected ? '#c8f04e' : isTodayCell ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  color: isSelected ? '#0d0f14' : 'var(--text2)',
+                  fontWeight: isSelected || isTodayCell ? 700 : 400,
+                  outline: isTodayCell && !isSelected ? '1px solid rgba(255,255,255,0.2)' : 'none',
+                }}>
+                  {cell.getDate()}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ── RIGHT: date header + studio cards ─────────────────────────── */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 16px', flexShrink: 0,
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+        }}>
+          <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
+            {dayViewDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button onClick={() => setDayViewDate(addDays(dayViewDate, -1))}
+              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}>‹</button>
+            <button onClick={() => setDayViewDate(new Date())}
+              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer' }}>Today</button>
+            <button onClick={() => setDayViewDate(addDays(dayViewDate, 1))}
+              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}>›</button>
+          </div>
+        </div>
+
+        {/* Studio cards grid */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            {allStudios.map(({ loc, room }) => {
+              const cards = dayBookings
+                .filter(b => b.location === loc && b.studio === room)
+                .sort((a, b) => timeToMins(a.from_time) - timeToMins(b.from_time))
+              return (
+                <div key={`${loc}|${room}`} style={{
+                  background: 'var(--surface)', borderRadius: 6, overflow: 'hidden',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}>
+                  {/* Card header */}
+                  <div style={{ padding: '6px 10px', background: 'var(--surface2)', borderBottom: cards.length > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
+                    <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 11, color: '#c8f04e', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      {loc} {room}
+                    </span>
+                  </div>
+
+                  {/* Booking blocks */}
+                  {cards.map(b => {
+                    const isBilling = b.payment_type === 'billing'
+                    const nameColor = isBilling ? '#96A9FF' : '#7BBFFF'
+                    const displayName = isBilling
+                      ? (b.artist && b.label ? `${b.label} / ${b.artist}` : b.artist || b.label || b.client_name || '')
+                      : (b.client_name || '')
+                    const timeStr = b.from_time && b.to_time
+                      ? `${fmtTime(b.from_time)}–${fmtTime(b.to_time)}`
+                      : b.from_time ? fmtTime(b.from_time) : ''
+                    const eng = b.engineer_name ? `1ST-${initials(b.engineer_name)}` : ''
+                    const asst = b.assistant_name ? `2ND-${initials(b.assistant_name)}` : ''
+                    const codLabel = !isBilling && b.cod_method ? `COD ${b.cod_method.toUpperCase()}` : null
+                    const hasSessionBorder = b.session_type !== 'recording'
+
+                    return (
+                      <div key={b.id} onClick={() => onOpenEdit(b)} style={{
+                        padding: '7px 10px', cursor: 'pointer',
+                        background: '#0d0f14',
+                        borderTop: `3px solid ${STATUS_TOP_COLORS[b.status] ?? STATUS_TOP_COLORS.confirmed}`,
+                        borderLeft: hasSessionBorder ? '3px solid rgba(200,240,78,0.7)' : '1px solid rgba(255,255,255,0.08)',
+                        borderRight: '1px solid rgba(255,255,255,0.08)',
+                        borderBottom: '1px solid rgba(255,255,255,0.08)',
+                      }}>
+                        {/* Name */}
+                        <div style={{ fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700, color: nameColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {displayName}
+                        </div>
+                        {/* Time */}
+                        {timeStr && (
+                          <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
+                            {timeStr}
+                          </div>
+                        )}
+                        {/* COD method */}
+                        {codLabel && (
+                          <div style={{ fontFamily: 'DM Mono', fontSize: 9, fontWeight: 700, color: '#f87171', marginTop: 2 }}>
+                            {codLabel}
+                          </div>
+                        )}
+                        {/* Notes */}
+                        {b.notes && (
+                          <div style={{ fontFamily: 'DM Mono', fontSize: 9, color: 'rgba(255,255,255,0.7)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {b.notes.toUpperCase()}
+                          </div>
+                        )}
+                        {/* Invoice + engineer */}
+                        {(b.invoice_num || eng || asst) && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5 }}>
+                            <span style={{ fontFamily: 'DM Mono', fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>
+                              {b.invoice_num ? `#${b.invoice_num}` : ''}
+                            </span>
+                            <span style={{ fontFamily: 'DM Mono', fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>
+                              {[eng, asst].filter(Boolean).join(' ')}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── STUDIO VIEW ─────────────────────────────────────────────────────────────
+
+function StudioView({
+  locFilter,
+  onOpenEdit,
+  onOpenNew,
+}: {
+  locFilter: string
+  onOpenEdit: (b: Booking) => void
+  onOpenNew: (location?: string, studio?: string, date?: string) => void
+}) {
+  const [loc, room] = locFilter.includes('|') ? locFilter.split('|') : ['', '']
+  const [monthStart, setMonthStart] = useState(() => {
+    const d = new Date()
+    return new Date(d.getFullYear(), d.getMonth(), 1)
+  })
+  const [studioBookings, setStudioBookings] = useState<Booking[]>([])
+
+  const year = monthStart.getFullYear()
+  const month = monthStart.getMonth()
+
+  useEffect(() => {
+    if (!loc || !room) return
+    const start = fmt(new Date(year, month, 1))
+    const end = fmt(new Date(year, month + 1, 0))
+    supabase.from('bookings').select('*')
+      .eq('location', loc)
+      .eq('studio', room)
+      .lte('start_date', end)
+      .gte('end_date', start)
+      .then(({ data }) => setStudioBookings(data ?? []))
+  }, [year, month, loc, room])
+
+  // Build month grid cells
+  const firstWeekday = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const cells: (Date | null)[] = []
+  for (let i = 0; i < firstWeekday; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d))
+  while (cells.length % 7 !== 0) cells.push(null)
+  const numWeeks = cells.length / 7
+  const todayStr = fmt(new Date())
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+
+      {/* Header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 16px', flexShrink: 0,
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+      }}>
+        <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
+          <span style={{ color: '#c8f04e', textTransform: 'uppercase' }}>{loc} {room}</span>
+          <span style={{ color: 'var(--text3)', margin: '0 8px' }}>—</span>
+          {monthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button
+            onClick={() => setMonthStart(new Date(year, month - 1, 1))}
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
+          >‹</button>
+          <button
+            onClick={() => { const t = new Date(); setMonthStart(new Date(t.getFullYear(), t.getMonth(), 1)) }}
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer' }}
+          >Today</button>
+          <button
+            onClick={() => setMonthStart(new Date(year, month + 1, 1))}
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
+          >›</button>
+        </div>
+      </div>
+
+      {/* Weekday labels */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+          <div key={d} style={{
+            textAlign: 'center', padding: '5px 0',
+            fontFamily: 'DM Mono', fontSize: 10, color: 'var(--text3)',
+            letterSpacing: '0.05em', textTransform: 'uppercase',
+          }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Month grid */}
+      <div style={{
+        flex: 1, display: 'grid',
+        gridTemplateRows: `repeat(${numWeeks}, minmax(80px, auto))`,
+        gridTemplateColumns: 'repeat(7, 1fr)',
+        overflow: 'auto',
+        alignContent: 'start',
+      }}>
+        {cells.map((cell, i) => {
+          if (!cell) return (
+            <div key={`empty-${i}`} style={{
+              borderRight: i % 7 < 6 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+              borderBottom: '1px solid rgba(255,255,255,0.05)',
+              background: 'rgba(0,0,0,0.15)',
+              minHeight: 80,
+            }} />
+          )
+          const cellStr = fmt(cell)
+          const isTodayCell = cellStr === todayStr
+          const cellBookings = studioBookings
+            .filter(b => b.start_date <= cellStr && b.end_date >= cellStr)
+            .sort((a, b) => timeToMins(a.from_time) - timeToMins(b.from_time))
+          return (
+            <div
+              key={cellStr}
+              onDoubleClick={() => onOpenNew(loc, room, cellStr)}
+              style={{
+                borderRight: i % 7 < 6 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                padding: '4px 5px',
+                background: isTodayCell ? 'rgba(200,240,78,0.04)' : 'transparent',
+              }}
+            >
+              {/* Date number */}
+              <div style={{
+                width: 22, height: 22, borderRadius: '50%', marginBottom: 2,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: isTodayCell ? '#c8f04e' : 'transparent',
+                color: isTodayCell ? '#0d0f14' : 'var(--text3)',
+                fontSize: 11, fontFamily: 'DM Mono', fontWeight: isTodayCell ? 700 : 400,
+              }}>
+                {cell.getDate()}
+              </div>
+              {/* Booking blocks */}
+              {cellBookings.map(b => {
+                const isBilling = b.payment_type === 'billing'
+                const nameColor = isBilling ? '#96A9FF' : '#7BBFFF'
+                const displayName = isBilling
+                  ? (b.artist && b.label ? `${b.label} / ${b.artist}` : b.artist || b.label || b.client_name || '')
+                  : (b.client_name || '')
+                const timeStr = b.from_time && b.to_time
+                  ? `${fmtTime(b.from_time)}–${fmtTime(b.to_time)}`
+                  : b.from_time ? fmtTime(b.from_time) : ''
+                const codLabel = !isBilling && b.cod_method
+                  ? (b.cod_method === 'Credit Card' ? 'CC' : b.cod_method.toUpperCase())
+                  : null
+                const eng = b.engineer_name ? `1ST-${initials(b.engineer_name)}` : ''
+                const asst = b.assistant_name ? `2ND-${initials(b.assistant_name)}` : ''
+                const engColor = b.engineer_status === 'confirmed' ? '#4ef0a2'
+                  : b.engineer_status === 'hold' ? '#f0a24e' : 'rgba(255,255,255,0.4)'
+                const asstColor = b.assistant_status === 'confirmed' ? '#4ef0a2'
+                  : b.assistant_status === 'hold' ? '#f0a24e' : 'rgba(255,255,255,0.4)'
+                return (
+                  <div
+                    key={b.id}
+                    onClick={e => { e.stopPropagation(); onOpenEdit(b) }}
+                    style={{
+                      marginBottom: 3, padding: '5px 7px', borderRadius: 3,
+                      background: '#0d0f14',
+                      cursor: 'pointer',
+                      borderTop: `3px solid ${STATUS_TOP_COLORS[b.status] ?? STATUS_TOP_COLORS.confirmed}`,
+                      borderLeft: b.session_type !== 'recording' ? '2px solid rgba(200,240,78,0.7)' : '1px solid rgba(255,255,255,0.08)',
+                      borderRight: '1px solid rgba(255,255,255,0.08)',
+                      borderBottom: '1px solid rgba(255,255,255,0.08)',
+                    }}
+                  >
+                    {/* Name */}
+                    <div style={{ fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700, color: nameColor, wordBreak: 'break-word' }}>
+                      {displayName}
+                    </div>
+                    {/* Time */}
+                    {timeStr && (
+                      <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
+                        {timeStr}
+                      </div>
+                    )}
+                    {/* COD method + engineer/assistant row */}
+                    {(codLabel || eng || asst) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                        <span style={{ fontFamily: 'DM Mono', fontSize: 9, fontWeight: 700, color: '#f87171' }}>
+                          {codLabel ?? ''}
+                        </span>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          {eng  && <span style={{ fontFamily: 'DM Mono', fontSize: 9, color: engColor }}>{eng}</span>}
+                          {asst && <span style={{ fontFamily: 'DM Mono', fontSize: 9, color: asstColor }}>{asst}</span>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ─── MAIN PAGE ───────────────────────────────────────────────────────────────
 
 type ViewType = 'day' | 'studio' | 'week' | '2wks' | 'month'
@@ -1622,7 +2046,7 @@ function CalendarPageInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [view, setView] = useState<ViewType>('2wks')
-  const [startDate, setStartDate] = useState(() => getMonday(new Date()))
+  const [startDate, setStartDate] = useState(() => getSunday(new Date()))
   const [bookings, setBookings] = useState<Booking[]>([])
   const [formOpen, setFormOpen] = useState(false)
   const [editBooking, setEditBooking] = useState<Booking | null>(null)
@@ -1630,24 +2054,36 @@ function CalendarPageInner() {
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
   const [collapsedRooms, setCollapsedRooms] = useState<Set<string>>(() => new Set())
   const [locFilter, setLocFilter] = useState('All')
+  const [dayViewDate, setDayViewDate] = useState<Date>(() => new Date())
   const [zoomLevel, setZoomLevel] = useState(0) // 0 = fit-all; 1–6 = ZOOM_FIXED steps
   const [gridH, setGridH] = useState(700)
+  const [gridW, setGridW] = useState(1200)
   const gridRef = useRef<HTMLDivElement>(null)
   const lastWheelStep = useRef(0)
   const scrollCorrectionRef = useRef<number | null>(null)
   const shiftingRef = useRef(false)
-  const snapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const totalDays = view === 'week' ? 7 : 14
-  const bufDays = (view === 'week' || view === '2wks') ? BUFFER_WEEKS * 7 : 0
+
+  const totalDays = view === 'month'
+    ? new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate()
+    : view === 'week' ? 7 : 14
+  const bufDays = BUFFER_WEEKS * 7  // same buffer for all grid views
   const totalRenderDays = totalDays + bufDays * 2
-  const gridRenderStart = bufDays > 0 ? addDays(startDate, -bufDays) : startDate
+  const gridRenderStart = addDays(startDate, -bufDays)
   const days = Array.from({ length: totalRenderDays }, (_, i) => addDays(gridRenderStart, i))
 
+  // Column width fills the viewport for the canonical window; month uses a smaller fixed size
+  const usableW = Math.max(gridW - LABEL_W, 400)
+  const colW = view === 'week'
+    ? Math.max(80, Math.floor(usableW / 7))
+    : view === '2wks'
+    ? Math.max(60, Math.floor(usableW / 14))
+    : Math.max(44, Math.floor(usableW / totalDays))
+
   const load = useCallback(async () => {
-    const buf = (view === 'week' || view === '2wks') ? BUFFER_WEEKS * 7 : 0
-    const total = (view === 'week' ? 7 : 14) + buf * 2
-    const renderStart = buf > 0 ? addDays(startDate, -buf) : startDate
+    const buf = BUFFER_WEEKS * 7
+    const total = totalDays + buf * 2
+    const renderStart = addDays(startDate, -buf)
     const end = addDays(renderStart, total - 1)
     const { data } = await supabase
       .from('bookings')
@@ -1659,25 +2095,48 @@ function CalendarPageInner() {
 
   useEffect(() => { load() }, [load])
 
-  // Restore + persist collapse state (restore on mount only, persist on change)
+  // Restore collapse state on mount (client only — must be useEffect to avoid SSR hydration mismatch)
   useEffect(() => {
     try { const s = localStorage.getItem('cal_collapsed_locs'); if (s) setCollapsed(new Set(JSON.parse(s))) } catch {}
     try { const s = localStorage.getItem('cal_collapsed_rooms'); if (s) setCollapsedRooms(new Set(JSON.parse(s))) } catch {}
   }, [])
+
+  // Persist collapse state — skip the very first render so the restore above isn't immediately overwritten
+  const skipFirstCollapsed = useRef(true)
+  const skipFirstRooms = useRef(true)
   useEffect(() => {
+    if (skipFirstCollapsed.current) { skipFirstCollapsed.current = false; return }
     try { localStorage.setItem('cal_collapsed_locs', JSON.stringify(Array.from(collapsed))) } catch {}
   }, [collapsed])
   useEffect(() => {
+    if (skipFirstRooms.current) { skipFirstRooms.current = false; return }
     try { localStorage.setItem('cal_collapsed_rooms', JSON.stringify(Array.from(collapsedRooms))) } catch {}
   }, [collapsedRooms])
 
-  // Measure grid container height for fit-all zoom
+  // Synchronous initial measurement — fires before useEffect so colW is correct when scroll effect runs
+  useLayoutEffect(() => {
+    const el = gridRef.current
+    if (!el) return
+    const { height, width } = el.getBoundingClientRect()
+    if (height > 0) setGridH(height)
+    if (width > 0) setGridW(width)
+  }, [])
+
+  // Ongoing resize tracking
   useEffect(() => {
     const el = gridRef.current
     if (!el) return
-    const ro = new ResizeObserver(([e]) => setGridH(e.contentRect.height))
+    let pendingRaf = 0
+    const ro = new ResizeObserver(([e]) => {
+      cancelAnimationFrame(pendingRaf)
+      const { height, width } = e.contentRect
+      pendingRaf = requestAnimationFrame(() => {
+        if (height > 0) setGridH(height)
+        if (width > 0) setGridW(width)
+      })
+    })
     ro.observe(el)
-    return () => ro.disconnect()
+    return () => { ro.disconnect(); cancelAnimationFrame(pendingRaf) }
   }, [])
 
   // Zoom: keyboard (+/-/0) and Cmd+trackpad scroll
@@ -1706,35 +2165,25 @@ function CalendarPageInner() {
     }
   }, [])
 
-  // Helper: scroll to center a given date (or today by default) in the grid
-  function scrollToCenter(centerDate?: Date, smooth?: boolean) {
+  // Scroll to put startDate (Sunday) at the left edge whenever startDate/view changes
+  useEffect(() => {
     const el = gridRef.current
     if (!el) return
-    const buf = (view === 'week' || view === '2wks') ? BUFFER_WEEKS * 7 : 0
-    if (buf === 0) return
-    const d = centerDate ?? new Date()
-    const renderStart = addDays(startDate, -buf)
-    const colIndex = Math.max(0, dayDiff(renderStart, d))
-    const targetX = Math.max(0, LABEL_W + colIndex * COL_W + COL_W / 2 - el.clientWidth / 2)
-    if (smooth) el.scrollTo({ left: targetX, behavior: 'smooth' })
-    else el.scrollLeft = targetX
-  }
-
-  // Center on today (or startDate) whenever startDate/view changes; apply seamless scroll correction
-  useEffect(() => {
-    shiftingRef.current = false
-    const buf = (view === 'week' || view === '2wks') ? BUFFER_WEEKS * 7 : 0
-    if (!gridRef.current || buf === 0) return
     if (scrollCorrectionRef.current !== null) {
+      // Infinite-scroll correction: consume stored target, don't block handler
+      shiftingRef.current = false
       const target = scrollCorrectionRef.current
       scrollCorrectionRef.current = null
-      gridRef.current.scrollLeft = target
+      el.scrollLeft = target
     } else {
+      // View/date switch: block scroll handler until rAF sets the correct position,
+      // preventing transitional scroll events (from content-width change) from
+      // triggering infinite scroll with a stale scrollLeft value.
+      shiftingRef.current = true
+      const target = bufDays * colW
       requestAnimationFrame(() => {
-        if (!gridRef.current) return
-        const today = new Date()
-        const isTodayWeek = fmt(startDate) === fmt(getMonday(today))
-        scrollToCenter(isTodayWeek ? today : startDate)
+        if (el) el.scrollLeft = target
+        shiftingRef.current = false
       })
     }
   }, [startDate, view]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -1745,7 +2194,7 @@ function CalendarPageInner() {
 
     // Infinite extension: shift window when nearing edges
     if (bufDays > 0 && !shiftingRef.current) {
-      const weekW = 7 * COL_W
+      const weekW = 7 * colW
       if (el.scrollLeft < weekW) {
         shiftingRef.current = true
         scrollCorrectionRef.current = el.scrollLeft + weekW
@@ -1758,25 +2207,15 @@ function CalendarPageInner() {
         return
       }
     }
-
-    // Post-scroll snap: snap quickly to today-centered only when near the current week
-    if (snapTimerRef.current) clearTimeout(snapTimerRef.current)
-    snapTimerRef.current = setTimeout(() => {
-      if (!gridRef.current || shiftingRef.current) return
-      const buf = (view === 'week' || view === '2wks') ? BUFFER_WEEKS * 7 : 0
-      const renderStart = addDays(startDate, -buf)
-      const today = new Date()
-      const todayCol = dayDiff(renderStart, today)
-      const viewCenterCol = (el.scrollLeft + el.clientWidth / 2 - LABEL_W) / COL_W
-      if (Math.abs(viewCenterCol - todayCol) <= 7) {
-        scrollToCenter(today, true)
-      }
-    }, 80)
   }
 
   // Compute row height: fit-all (level 0) or fixed step
-  const filteredLocations = locFilter === 'All' ? LOCATIONS : LOCATIONS.filter(l => l.name === locFilter)
-  const DAY_HDR_H = 36
+  const filteredLocations = locFilter === 'All'
+    ? LOCATIONS
+    : locFilter.includes('|')
+      ? LOCATIONS.filter(l => l.name === locFilter.split('|')[0])
+      : LOCATIONS.filter(l => l.name === locFilter)
+  const DAY_HDR_H = 30
   const LOC_HDR_H = 29
   const COLLAPSED_ROOM_H = 22
   const expandedRoomCount = filteredLocations.reduce((s, l) => {
@@ -1930,8 +2369,7 @@ function CalendarPageInner() {
     const DAYS = totalRenderDays
     return (
       <div ref={gridRef} onScroll={handleGridScroll} style={{ flex: 1, overflow: 'auto', minHeight: 0, border: '1px solid var(--border)', borderRadius: 6, WebkitOverflowScrolling: 'touch' }}>
-        {/* Inner wrapper enforces min-width so columns never compress below COL_W */}
-        <div style={{ minWidth: LABEL_W + DAYS * COL_W }}>
+        <div style={{ minWidth: LABEL_W + DAYS * colW }}>
         {/* Day header row */}
         <div style={{
           display: 'flex', position: 'sticky', top: 0, zIndex: 10,
@@ -1949,7 +2387,7 @@ function CalendarPageInner() {
               : isWeekStart ? 'inset 2px 0 0 rgba(255,255,255,0.35)' : 'none'
             return (
               <div key={fmt(d)} style={{
-                flex: 1, minWidth: COL_W, textAlign: 'center', padding: '5px 2px',
+                flex: 1, minWidth: colW, textAlign: 'center', padding: '2px 2px',
                 background: wknd ? 'rgba(255,255,255,0.015)' : 'transparent',
                 borderRight: '1px solid var(--border)',
                 boxShadow: shadow,
@@ -1988,28 +2426,30 @@ function CalendarPageInner() {
         {filteredLocations.map(loc => (
           <div key={loc.name}>
             {/* Location header — collapsible */}
-            <div
-              onClick={() => toggleCollapse(loc.name)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '5px 10px', cursor: 'pointer',
-                background: 'var(--surface2)', borderBottom: '1px solid var(--border)',
-                userSelect: 'none',
-                position: 'sticky', left: 0, zIndex: 6,
-              }}
-            >
-              <span style={{
-                fontSize: 8, fontFamily: 'DM Mono', color: 'var(--text3)',
-                display: 'inline-block', transition: 'transform 0.15s',
-                transform: collapsed.has(loc.name) ? 'rotate(-90deg)' : 'rotate(0deg)',
-              }}>▼</span>
-              <span style={{
-                fontSize: 10, fontFamily: 'Syne', fontWeight: 700,
-                color: 'var(--text2)', letterSpacing: '0.06em', textTransform: 'uppercase',
-              }}>{loc.name}</span>
-              <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
-                {loc.rooms.length} rooms
-              </span>
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
+              {/* Sticky label cell — always visible in the left column */}
+              <div
+                onClick={() => toggleCollapse(loc.name)}
+                style={{
+                  width: LABEL_W, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '5px 10px', cursor: 'pointer', userSelect: 'none',
+                  background: 'var(--surface2)',
+                  position: 'sticky', left: 0, zIndex: 6,
+                }}
+              >
+                <span style={{
+                  fontSize: 8, fontFamily: 'DM Mono', color: 'var(--text3)',
+                  display: 'inline-block', transition: 'transform 0.15s', flexShrink: 0,
+                  transform: collapsed.has(loc.name) ? 'rotate(-90deg)' : 'rotate(0deg)',
+                }}>▼</span>
+                <span style={{
+                  fontSize: 10, fontFamily: 'Syne', fontWeight: 700,
+                  color: 'var(--text2)', letterSpacing: '0.06em', textTransform: 'uppercase',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{loc.name}</span>
+              </div>
+              {/* Separator band fills the rest of the row */}
+              <div onClick={() => toggleCollapse(loc.name)} style={{ flex: 1, cursor: 'pointer' }} />
             </div>
 
             {/* Room rows */}
@@ -2108,36 +2548,36 @@ function CalendarPageInner() {
         {/* Prev / Today / Next */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <button
-            onClick={() => setStartDate(d => addDays(d, -7))}
-            style={{
-              background: 'var(--surface2)', border: '1px solid var(--border)',
-              color: 'var(--text)', borderRadius: 4, padding: '4px 10px',
-              fontSize: 14, lineHeight: 1, cursor: 'pointer',
+            onClick={() => {
+              if (view === 'month') setStartDate(d => addDays(d, -totalDays))
+              else setStartDate(d => addDays(d, -7))
             }}
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
           >‹</button>
           <button
             onClick={() => {
-              const todayMonday = getMonday(new Date())
-              if (fmt(startDate) === fmt(todayMonday)) {
-                // Already on today's week — just re-center smoothly
-                scrollToCenter(new Date(), true)
+              const t = new Date()
+              if (view === 'day') {
+                setDayViewDate(t)
               } else {
-                setStartDate(todayMonday)
+                const thisSunday = getSunday(t)
+                if (fmt(startDate) === fmt(thisSunday)) {
+                  // Already on this week — force scroll reset
+                  const el = gridRef.current
+                  if (el) el.scrollLeft = bufDays * colW
+                } else {
+                  setStartDate(thisSunday)
+                }
               }
             }}
-            style={{
-              background: 'var(--surface2)', border: '1px solid var(--border)',
-              color: 'var(--text2)', borderRadius: 4, padding: '4px 10px',
-              fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer',
-            }}
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer' }}
           >Today</button>
           <button
-            onClick={() => setStartDate(d => addDays(d, 7))}
-            style={{
-              background: 'var(--surface2)', border: '1px solid var(--border)',
-              color: 'var(--text)', borderRadius: 4, padding: '4px 10px',
-              fontSize: 14, lineHeight: 1, cursor: 'pointer',
+            onClick={() => {
+              if (view === 'month') setStartDate(d => addDays(d, totalDays))
+              else setStartDate(d => addDays(d, 7))
             }}
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
           >›</button>
         </div>
 
@@ -2146,18 +2586,45 @@ function CalendarPageInner() {
           {rangeLabel(startDate, totalDays)}
         </div>
 
+        {/* "All" pill — only shown when a specific studio is selected */}
+        {locFilter.includes('|') && (
+          <button
+            onClick={() => { setLocFilter('All'); setView('2wks') }}
+            style={{
+              padding: '4px 14px', borderRadius: 20, fontSize: 10, fontFamily: 'DM Mono',
+              fontWeight: 700, cursor: 'pointer', border: '1px solid var(--border)',
+              background: 'var(--surface2)', color: 'var(--text2)',
+              letterSpacing: '0.04em',
+            }}
+          >All</button>
+        )}
+
         {/* Location filter */}
         <select
           value={locFilter}
-          onChange={e => setLocFilter(e.target.value)}
+          onChange={e => {
+            const val = e.target.value
+            setLocFilter(val)
+            if (val.includes('|')) setView('studio')
+            else if (view === 'studio') setView('day')
+          }}
           style={{
-            background: 'var(--surface2)', border: '1px solid var(--border)',
-            color: 'var(--text2)', borderRadius: 4, padding: '4px 10px',
+            background: locFilter.includes('|') ? 'rgba(200,240,78,0.08)' : 'var(--surface2)',
+            border: locFilter.includes('|') ? '1px solid rgba(200,240,78,0.4)' : '1px solid var(--border)',
+            color: locFilter.includes('|') ? 'var(--accent)' : 'var(--text2)',
+            borderRadius: 4, padding: '4px 10px',
             fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', outline: 'none',
           }}
         >
           <option value="All">All Locations</option>
-          {LOCATIONS.map(l => <option key={l.name} value={l.name}>{l.name}</option>)}
+          {LOCATIONS.map(l => (
+            <optgroup key={l.name} label={l.name}>
+              <option value={l.name}>All {l.name}</option>
+              {l.rooms.map(room => (
+                <option key={room} value={`${l.name}|${room}`}>{room}</option>
+              ))}
+            </optgroup>
+          ))}
         </select>
 
         {/* View switcher */}
@@ -2165,8 +2632,20 @@ function CalendarPageInner() {
           display: 'flex', background: 'var(--surface2)',
           borderRadius: 6, border: '1px solid var(--border)', overflow: 'hidden',
         }}>
-          {(['day', 'studio', 'week', '2wks', 'month'] as ViewType[]).map(v => (
-            <button key={v} onClick={() => setView(v)} style={{
+          {(['day', 'week', '2wks', 'month'] as ViewType[]).map(v => (
+            <button key={v} onClick={() => {
+              const today = new Date()
+              const thisSunday = getSunday(today)
+              if (v === 'day') setDayViewDate(today)
+              const alreadyHere = view === v && fmt(startDate) === fmt(thisSunday)
+              setStartDate(thisSunday)
+              setView(v)
+              // If state won't change, force scroll directly (React won't re-run the effect)
+              if (alreadyHere) {
+                const el = gridRef.current
+                if (el) el.scrollLeft = bufDays * colW
+              }
+            }} style={{
               padding: '4px 12px', fontSize: 10, fontFamily: 'DM Mono',
               cursor: 'pointer', border: 'none',
               background: view === v ? 'var(--border)' : 'transparent',
@@ -2208,26 +2687,23 @@ function CalendarPageInner() {
       </div>
 
       {/* Calendar content */}
-      {(view === '2wks' || view === 'week') && renderGrid()}
+      {(view === '2wks' || view === 'week' || view === 'month') && renderGrid()}
 
-      {(view === 'day' || view === 'studio') && (
-        <div style={{
-          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'var(--text3)', fontFamily: 'DM Mono', fontSize: 12,
-          border: '1px solid var(--border)', borderRadius: 6,
-        }}>
-          Studio / Day view — coming next
-        </div>
+      {view === 'day' && (
+        <DayView
+          dayViewDate={dayViewDate}
+          setDayViewDate={setDayViewDate}
+          locFilter={locFilter}
+          onOpenEdit={openEdit}
+        />
       )}
 
-      {view === 'month' && (
-        <div style={{
-          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'var(--text3)', fontFamily: 'DM Mono', fontSize: 12,
-          border: '1px solid var(--border)', borderRadius: 6,
-        }}>
-          Month view — coming next
-        </div>
+      {view === 'studio' && (
+        <StudioView
+          locFilter={locFilter}
+          onOpenEdit={openEdit}
+          onOpenNew={openNew}
+        />
       )}
 
       {/* Booking form modal */}
