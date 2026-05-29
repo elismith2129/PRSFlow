@@ -2351,7 +2351,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
 
           <div>
             <label style={labelS}>Notes</label>
-            <textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }} />
+            <textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={3} placeholder="e.g. recording session, mixing, overdubs, artist name, any special requirements…" style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }} />
           </div>
         </div>
 
