@@ -8,6 +8,7 @@ import StudioSelect from '@/components/shared/StudioSelect'
 import { ClientProfile } from '@/components/clients/ClientProfile'
 import { WorkOrderPopup, type WOFormSync } from '@/components/calendar/WorkOrderPopup'
 import { STUDIO_LOCATIONS, parseLocation } from '@/lib/studios'
+import { addArtistToLabel } from '@/lib/roster'
 
 // ─── LOCATIONS ───────────────────────────────────────────────────────────────
 
@@ -531,6 +532,10 @@ function BookingForm({
   const asstApplied = useRef(false)
   const [clientArtists, setClientArtists] = useState<string[]>([])
   const [showArtistDD, setShowArtistDD] = useState(false)
+  const [labelContacts, setLabelContacts] = useState<ClientContact[]>([])
+  const [anrQuery, setAnrQuery] = useState(initial.ordered_by || '')
+  const [showAnrDD, setShowAnrDD] = useState(false)
+  const [anrHighlight, setAnrHighlight] = useState(-1)
   const [timeTBD, setTimeTBD] = useState(false)
   const [multiDay, setMultiDay] = useState(initial.start_date !== initial.end_date && !!initial.end_date)
   const [engOn, setEngOn] = useState(initial.engineer_name !== '')
@@ -553,6 +558,19 @@ function BookingForm({
     supabase.from('work_orders').select('status').eq('booking_id', bookingId).maybeSingle()
       .then(({ data }) => { if (data) setWoStatus(data.status) })
   }, [bookingId])
+
+  // Load label roster + A&R contacts for billing bookings
+  useEffect(() => {
+    const id = form.client_db_id
+    if (!id || form.payment_type !== 'billing') { setLabelContacts([]); setClientArtists([]); return }
+    Promise.all([
+      supabase.from('client_contacts').select('*').eq('client_id', id),
+      supabase.from('clients').select('artists').eq('id', id).single(),
+    ]).then(([{ data: contacts }, { data: client }]) => {
+      setLabelContacts((contacts as ClientContact[]) || [])
+      setClientArtists((client?.artists as string[]) || [])
+    })
+  }, [form.client_db_id, form.payment_type]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function set<K extends keyof FormData>(k: K, v: FormData[K]) {
     setForm(f => ({ ...f, [k]: v }))
@@ -694,7 +712,7 @@ function BookingForm({
       artist: (r.artists && r.artists.length > 0 ? r.artists[0] : f.artist) || f.artist,
       is_srs: r.srs_client === true ? true : f.is_srs,
     }))
-    setClientArtists(r.artists && r.artists.length > 0 ? r.artists : [])
+    setAnrQuery(labelName ? clientName : '')
     setSearchQuery('')
     setShowClientDD(false)
     setClientHighlight(-1)
@@ -706,6 +724,8 @@ function BookingForm({
   function clearClient() {
     setForm(f => ({ ...f, client_name: '', artist: '', label: '', ordered_by: '', phone: '', email: '', client_db_id: null }))
     setClientArtists([])
+    setLabelContacts([])
+    setAnrQuery('')
     setSearchQuery('')
     setClientEdits({})
     setEditingCard(false)
@@ -1397,30 +1417,94 @@ function BookingForm({
                       <div style={{ padding: '10px 14px 12px' }}>
                         {isBilling ? (
                           <>
-                            {/* Artist — always editable, autocompletes from client artists */}
+                            {/* A&R / Ordered By — autocompletes from label contacts */}
+                            <div style={{ marginBottom: 8, position: 'relative' }}>
+                              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>A&R / Ordered By</div>
+                              <input
+                                value={anrQuery}
+                                onChange={e => { setAnrQuery(e.target.value); set('ordered_by', e.target.value); setShowAnrDD(true) }}
+                                onFocus={() => setShowAnrDD(true)}
+                                onBlur={() => { setTimeout(() => setShowAnrDD(false), 150); set('ordered_by', anrQuery) }}
+                                placeholder="—"
+                                style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                              />
+                              {showAnrDD && (labelContacts.filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase())).length > 0 || anrQuery.trim().length >= 2) && (
+                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
+                                  {labelContacts
+                                    .filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase()))
+                                    .map((c, i) => {
+                                      const name = `${c.fname || ''} ${c.lname || ''}`.trim()
+                                      return (
+                                        <div key={c.id} onMouseDown={e => { e.preventDefault(); setAnrQuery(name); set('ordered_by', name); set('client_name', name); if (c.email) set('email', c.email); if (c.phone) set('phone', c.phone); setShowAnrDD(false) }}
+                                          style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent', borderBottom: i < labelContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
+                                          onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
+                                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                        >
+                                          <div>{name}</div>
+                                          {c.email && <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 1 }}>{c.email}</div>}
+                                        </div>
+                                      )
+                                    })}
+                                  {anrQuery.trim().length >= 2 && !labelContacts.some(c => `${c.fname || ''} ${c.lname || ''}`.trim().toLowerCase() === anrQuery.trim().toLowerCase()) && (() => {
+                                    const clientId = form.client_db_id
+                                    return (
+                                      <div onMouseDown={async e => {
+                                        e.preventDefault()
+                                        if (!clientId) return
+                                        const parts = anrQuery.trim().split(/\s+/)
+                                        const fname = parts[0] || ''
+                                        const lname = parts.slice(1).join(' ')
+                                        const { data } = await supabase.from('client_contacts').insert({ client_id: clientId, fname, lname: lname || null, contact_type: 'anr', artists: [] }).select().single()
+                                        if (data) {
+                                          setLabelContacts(prev => [...prev, data as ClientContact])
+                                          const name = `${fname} ${lname}`.trim()
+                                          setAnrQuery(name); set('ordered_by', name); set('client_name', name)
+                                        }
+                                        setShowAnrDD(false)
+                                      }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this A&R? Add &ldquo;{anrQuery.trim()}&rdquo;
+                                      </div>
+                                    )
+                                  })()}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Artist — autocompletes from label roster (clients.artists[]) */}
                             <div style={{ marginBottom: 8, position: 'relative' }}>
                               <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Artist</div>
                               <input
                                 value={form.artist}
                                 onChange={e => { set('artist', e.target.value); setShowArtistDD(true) }}
                                 onFocus={() => setShowArtistDD(true)}
-                                onBlur={() => setShowArtistDD(false)}
+                                onBlur={() => setTimeout(() => setShowArtistDD(false), 150)}
                                 placeholder="—"
                                 style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
                               />
-                              {showArtistDD && clientArtists.filter(a => !form.artist || a.toLowerCase().includes(form.artist.toLowerCase())).length > 0 && (
+                              {showArtistDD && (clientArtists.filter(a => !form.artist || a.toLowerCase().includes(form.artist.toLowerCase())).length > 0 || form.artist.trim().length >= 2) && (
                                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
                                   {clientArtists
                                     .filter(a => !form.artist || a.toLowerCase().includes(form.artist.toLowerCase()))
                                     .map((a, i) => (
-                                      <div
-                                        key={i}
-                                        onMouseDown={e => { e.preventDefault(); set('artist', a); setShowArtistDD(false) }}
+                                      <div key={i} onMouseDown={e => { e.preventDefault(); set('artist', a); setShowArtistDD(false) }}
                                         style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent' }}
                                         onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
                                         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                       >{a}</div>
                                     ))}
+                                  {form.artist.trim().length >= 2 && !clientArtists.some(a => a.toLowerCase() === form.artist.trim().toLowerCase()) && form.client_db_id && (() => {
+                                    const clientId = form.client_db_id
+                                    return (
+                                      <div onMouseDown={async e => {
+                                        e.preventDefault()
+                                        const updated = await addArtistToLabel(clientId, form.artist.trim(), clientArtists)
+                                        setClientArtists(updated)
+                                        setShowArtistDD(false)
+                                      }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: clientArtists.filter(a => !form.artist || a.toLowerCase().includes(form.artist.toLowerCase())).length > 0 ? '1px solid var(--border)' : undefined, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this artist? Add &ldquo;{form.artist.trim()}&rdquo;
+                                      </div>
+                                    )
+                                  })()}
                                 </div>
                               )}
                             </div>
