@@ -3,6 +3,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase, Client, ClientContact, CLIENT_TYPE_LABELS } from '@/lib/supabase'
 import PhoneInput from '@/components/shared/PhoneInput'
+import { addArtistToLabel, removeArtistFromLabel } from '@/lib/roster'
 
 interface BookingLead {
   id: number
@@ -317,6 +318,9 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   const [regLinkGenerating, setRegLinkGenerating] = useState(false)
   const [nameVal, setNameVal] = useState(client?.name || '')
   const [editingName, setEditingName] = useState(false)
+  const [rosterArtists, setRosterArtists] = useState<string[]>((client?.artists as string[]) || [])
+  const [newArtistInput, setNewArtistInput] = useState('')
+  const [removingArtist, setRemovingArtist] = useState<string | null>(null)
 
   // Load bookings for selected client
   useEffect(() => {
@@ -344,7 +348,14 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
     setRegLinkGenerating(false)
     setNameVal(client?.name || '')
     setEditingName(false)
+    setNewArtistInput('')
+    setRemovingArtist(null)
   }, [client?.id])
+
+  // Keep roster in sync when client refreshes (e.g. after addArtistToLabel updates it)
+  useEffect(() => {
+    setRosterArtists((client?.artists as string[]) || [])
+  }, [client?.artists])
 
   const saveClient = useCallback(async (fields: Partial<Client>) => {
     if (!client) return
@@ -352,10 +363,30 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
     onRefresh()
   }, [client, onRefresh])
 
+  const addRosterArtist = useCallback(async (name: string) => {
+    if (!client || !name.trim()) return
+    const updated = await addArtistToLabel(client.id, name.trim(), rosterArtists)
+    setRosterArtists(updated)
+    setNewArtistInput('')
+  }, [client, rosterArtists])
+
+  const removeRosterArtist = useCallback(async (name: string) => {
+    if (!client) return
+    const updated = await removeArtistFromLabel(client.id, name, rosterArtists)
+    setRosterArtists(updated)
+    setRemovingArtist(null)
+  }, [client, rosterArtists])
+
   const saveContact = useCallback(async (contactId: string, data: Partial<ClientContact>) => {
     await supabase.from('client_contacts').update(data).eq('id', contactId)
+    // Sync any new artists to clients.artists[] (the label-level roster)
+    if (client && data.artists && data.artists.length > 0) {
+      const current = (client.artists as string[]) || []
+      const toAdd = data.artists.filter(a => !current.some(x => x.toLowerCase() === a.toLowerCase()))
+      for (const name of toAdd) await addArtistToLabel(client.id, name, current)
+    }
     onRefresh()
-  }, [onRefresh])
+  }, [client, onRefresh])
 
   const deleteContact = useCallback(async (contactId: string) => {
     await supabase.from('client_contacts').delete().eq('id', contactId)
@@ -614,6 +645,45 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                   </div>
                 )}
               </div>
+            )}
+          </>
+        )}
+
+        {/* ── LABEL ROSTER ── */}
+        {isLabel && (
+          <>
+            <SectionHeader label="Artists" mt={16} />
+            {rosterArtists.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 8 }}>
+                {rosterArtists.map(name => (
+                  removingArtist === name ? (
+                    <span key={name} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontFamily: 'DM Mono', color: 'var(--hot)', background: 'rgba(240,78,122,0.08)', border: '1px solid rgba(240,78,122,0.3)', padding: '2px 7px', borderRadius: 4 }}>
+                      Remove {name}?
+                      <button onClick={() => removeRosterArtist(name)} style={{ background: 'none', border: 'none', color: 'var(--hot)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'DM Mono', fontWeight: 700 }}>Yes</button>
+                      <button onClick={() => setRemovingArtist(null)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'DM Mono' }}>No</button>
+                    </span>
+                  ) : (
+                    <span key={name} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)', background: 'var(--surface2)', border: '1px solid var(--border)', padding: '2px 7px', borderRadius: 4 }}>
+                      {name}
+                      <button onClick={() => setRemovingArtist(name)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 0, fontSize: 11, lineHeight: 1 }} title="Remove">×</button>
+                    </span>
+                  )
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+              <input
+                type="text"
+                placeholder="Artist name"
+                value={newArtistInput}
+                onChange={e => setNewArtistInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') addRosterArtist(newArtistInput) }}
+                style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 8px', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 10, outline: 'none' }}
+              />
+              <button onClick={() => addRosterArtist(newArtistInput)} style={{ ...ghostBtn, fontSize: 9, padding: '3px 10px' }}>+ Add</button>
+            </div>
+            {rosterArtists.length === 0 && !newArtistInput && (
+              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginBottom: 4 }}>No artists on roster yet.</div>
             )}
           </>
         )}
