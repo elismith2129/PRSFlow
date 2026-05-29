@@ -2219,24 +2219,6 @@ function NewLeadModal({ leads, onClose, onSave }: {
               {temperatureRow}
               {needsContactToggle}
               {sessionDetails}
-              <div style={{ position: 'relative' }}>
-                <label style={labelS}>Company / Artist Name</label>
-                <input value={form.company} onChange={e => set('company', e.target.value)} onFocus={() => setShowCompanyDD(true)} onBlur={() => setTimeout(() => setShowCompanyDD(false), 150)} style={inputStyle} />
-                {showCompanyDD && companySuggestions.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, zIndex: 10, marginTop: 2 }}>
-                    {companySuggestions.map(s => <div key={s} onMouseDown={() => { set('company', s); setShowCompanyDD(false) }} style={{ padding: '8px 10px', cursor: 'pointer', fontSize: 12, borderBottom: '1px solid var(--border)' }}>{s}</div>)}
-                  </div>
-                )}
-              </div>
-              <div style={{ position: 'relative' }}>
-                <label style={labelS}>Label</label>
-                <input value={form.label} onChange={e => set('label', e.target.value)} onFocus={() => setShowLabelDD(true)} onBlur={() => setTimeout(() => setShowLabelDD(false), 150)} style={inputStyle} />
-                {showLabelDD && labelSuggestions.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, zIndex: 10, marginTop: 2 }}>
-                    {labelSuggestions.map(s => <div key={s} onMouseDown={() => { set('label', s); setShowLabelDD(false) }} style={{ padding: '8px 10px', cursor: 'pointer', fontSize: 12, borderBottom: '1px solid var(--border)' }}>{s}</div>)}
-                  </div>
-                )}
-              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div><label style={labelS}>Source</label><input value={form.source} onChange={e => set('source', e.target.value)} placeholder="Instagram, referral…" style={inputStyle} /></div>
                 <div>
