@@ -9,6 +9,7 @@ import PhoneInput from '@/components/shared/PhoneInput'
 import TimeInput from '@/components/shared/TimeInput'
 import StudioSelect from '@/components/shared/StudioSelect'
 import { combineLocation, parseLocation } from '@/lib/studios'
+import { addArtistToLabel } from '@/lib/roster'
 
 const STATUS_COLORS: Record<string, string> = {
   hot: 'var(--hot)', warm: 'var(--warm)', cold: 'var(--cold)',
@@ -1849,6 +1850,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
   const [rateType, setRateType] = useState<'hourly' | 'daily'>('hourly')
   const [formVenue, setFormVenue] = useState('')
   const [formStudio, setFormStudio] = useState('')
+  const [labelArtists, setLabelArtists] = useState<string[]>([])
 
   // COD mode state
   const [matchedClientId, setMatchedClientId] = useState<string | null>(null)
@@ -1938,11 +1940,16 @@ function NewLeadModal({ leads, onClose, onSave }: {
     return () => clearTimeout(labelDebounce.current)
   }, [labelQuery, mode])
 
-  // Label mode: load A&R contacts when label client is selected
+  // Label mode: load A&R contacts + label artist roster when label client is selected
   useEffect(() => {
-    if (!labelClientId) { setAnrContacts([]); return }
-    supabase.from('client_contacts').select('*').eq('client_id', labelClientId)
-      .then(({ data }) => setAnrContacts((data as ClientContact[]) || []))
+    if (!labelClientId) { setAnrContacts([]); setLabelArtists([]); return }
+    Promise.all([
+      supabase.from('client_contacts').select('*').eq('client_id', labelClientId),
+      supabase.from('clients').select('artists').eq('id', labelClientId).single(),
+    ]).then(([{ data: contacts }, { data: client }]) => {
+      setAnrContacts((contacts as ClientContact[]) || [])
+      setLabelArtists((client?.artists as string[]) || [])
+    })
   }, [labelClientId])
 
   function selectLabelClient(c: Client) {
@@ -1966,12 +1973,46 @@ function NewLeadModal({ leads, onClose, onSave }: {
     if (contact.phone) set('phone', contact.phone)
   }
 
+  async function addNewAnrContact(name: string) {
+    if (!labelClientId) return
+    const parts = name.trim().split(/\s+/)
+    const fname = parts[0] || ''
+    const lname = parts.slice(1).join(' ')
+    const { data } = await supabase.from('client_contacts').insert({
+      client_id: labelClientId, fname, lname: lname || null, contact_type: 'anr', artists: [],
+    }).select().single()
+    if (data) {
+      const contact = data as ClientContact
+      setAnrContacts(prev => [...prev, contact])
+      selectAnr(contact)
+    }
+  }
+
+  async function addArtistImmediately(name: string) {
+    if (!labelClientId) return
+    const trimmed = name.trim()
+    const updated = await addArtistToLabel(labelClientId, trimmed, labelArtists)
+    setLabelArtists(updated)
+    if (anrContactId && selectedAnr) {
+      const current = selectedAnr.artists || []
+      if (!current.some(a => a.toLowerCase() === trimmed.toLowerCase())) {
+        const next = [...current, trimmed]
+        await supabase.from('client_contacts').update({ artists: next }).eq('id', anrContactId)
+        setSelectedAnr(prev => prev ? { ...prev, artists: next } : prev)
+      }
+    }
+    setArtistQuery(trimmed)
+    setShowArtistDD(false)
+    setArtistHighlight(-1)
+  }
+
   const anrFiltered = anrContacts.filter(c =>
     `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase())
   )
-  const artistSuggestions = selectedAnr?.artists?.filter(a =>
-    a.toLowerCase().includes(artistQuery.toLowerCase()) && a.toLowerCase() !== artistQuery.toLowerCase()
-  ) || []
+  const artistSuggestions = labelArtists.filter(a =>
+    a.toLowerCase().includes(artistQuery.toLowerCase()) &&
+    a.toLowerCase() !== artistQuery.trim().toLowerCase()
+  )
 
   function applyAutofill(item: { record: Lead | Client, type: 'lead' | 'client' }) {
     skipNameSearch.current = true
@@ -2049,30 +2090,6 @@ function NewLeadModal({ leads, onClose, onSave }: {
         needs_contact: needsContact,
       }
       await onSave(data)
-
-      // Create new A&R contact if typed but not matched
-      let resolvedAnrId = anrContactId
-      if (!anrContactId && anrQuery.trim() && labelClientId) {
-        const { data: newContact } = await supabase.from('client_contacts').insert({
-          client_id: labelClientId,
-          fname,
-          lname: lname || null,
-          contact_type: 'anr',
-          email: form.email || null,
-          phone: form.phone || null,
-          artists: artistQuery.trim() ? [artistQuery.trim()] : [],
-        }).select().single()
-        resolvedAnrId = (newContact as ClientContact)?.id || null
-      }
-
-      // Append new artist to existing A&R's artists array
-      if (artistQuery.trim() && resolvedAnrId && selectedAnr) {
-        const current = selectedAnr.artists || []
-        if (!current.map(a => a.toLowerCase()).includes(artistQuery.trim().toLowerCase())) {
-          await supabase.from('client_contacts').update({ artists: [...current, artistQuery.trim()] }).eq('id', resolvedAnrId)
-        }
-      }
-
       setSaving(false)
       if (temperature === 'booking' && labelClientId) {
         router.push(`/clients?id=${labelClientId}`)
@@ -2315,8 +2332,8 @@ function NewLeadModal({ leads, onClose, onSave }: {
                       </div>
                     ))}
                     {anrQuery.trim().length >= 2 && !anrFiltered.some(c => `${c.fname || ''} ${c.lname || ''}`.trim().toLowerCase() === anrQuery.trim().toLowerCase()) && (
-                      <div onMouseDown={() => setShowAnrDD(false)} style={{ padding: '9px 14px', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', cursor: 'default', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> New A&R: "{anrQuery.trim()}" — will be created on save
+                      <div onMouseDown={() => addNewAnrContact(anrQuery.trim())} style={{ padding: '9px 14px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: anrFiltered.length > 0 ? '1px solid var(--border)' : undefined, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this A&R? Add &ldquo;{anrQuery.trim()}&rdquo;
                       </div>
                     )}
                   </div>
@@ -2334,11 +2351,16 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   placeholder="Artist name…"
                   style={inputStyle}
                 />
-                {showArtistDD && artistSuggestions.length > 0 && (
+                {showArtistDD && (artistSuggestions.length > 0 || (artistQuery.trim().length >= 2 && !labelArtists.some(a => a.toLowerCase() === artistQuery.trim().toLowerCase()))) && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
                     {artistSuggestions.map((a, i) => (
                       <div key={a} onMouseDown={() => { setArtistQuery(a); setShowArtistDD(false); setArtistHighlight(-1) }} style={{ padding: '9px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 12, fontFamily: 'DM Mono', background: i === artistHighlight ? 'var(--surface)' : 'transparent' }}>{a}</div>
                     ))}
+                    {artistQuery.trim().length >= 2 && !labelArtists.some(a => a.toLowerCase() === artistQuery.trim().toLowerCase()) && (
+                      <div onMouseDown={() => addArtistImmediately(artistQuery.trim())} style={{ padding: '9px 14px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: artistSuggestions.length > 0 ? '1px solid var(--border)' : undefined, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this artist? Add &ldquo;{artistQuery.trim()}&rdquo;{anrContactId && selectedAnr ? ` under ${selectedAnr.fname || ''}` : ' to roster'}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
