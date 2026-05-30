@@ -173,6 +173,8 @@ type FormData = {
   notes: string
   client_db_id: string | null
   is_srs: boolean
+  anr_contact_id: string | null
+  anr_admin_contact_id: string | null
 }
 
 function emptyForm(overrides: Partial<FormData> = {}): FormData {
@@ -190,6 +192,8 @@ function emptyForm(overrides: Partial<FormData> = {}): FormData {
     notes: '',
     client_db_id: null,
     is_srs: false,
+    anr_contact_id: null,
+    anr_admin_contact_id: null,
     ...clean,
   }
 }
@@ -213,6 +217,8 @@ function bookingToForm(b: Booking): FormData {
     notes: b.notes ?? '',
     client_db_id: b.client_id ?? null,
     is_srs: b.is_srs ?? false,
+    anr_contact_id: b.anr_contact_id ?? null,
+    anr_admin_contact_id: b.anr_admin_contact_id ?? null,
   }
 }
 
