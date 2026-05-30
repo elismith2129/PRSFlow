@@ -430,6 +430,68 @@ function BookingBlock({
   )
 }
 
+// ─── CONTACT INFO POPOVER ────────────────────────────────────────────────────
+
+function ContactInfoPopover({ contact }: { contact: ClientContact }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const name = `${contact.fname || ''} ${contact.lname || ''}`.trim()
+  const phone = contact.phone?.replace(/\D/g, '') || ''
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        onMouseDown={e => { e.preventDefault(); setOpen(o => !o) }}
+        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent)', fontSize: 9, fontFamily: 'DM Mono', lineHeight: 1, opacity: 0.8 }}
+        title="Contact info"
+      >
+        ↗
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 300, marginTop: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', padding: '10px 12px', minWidth: 180, maxWidth: 240 }}>
+          <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 12, color: 'var(--text)', marginBottom: contact.role ? 2 : 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {name || '—'}
+          </div>
+          {contact.role && (
+            <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 8 }}>
+              {contact.role}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 6 }}>
+            {phone && (
+              <>
+                <a href={`tel:${phone}`} style={{ flex: 1, textAlign: 'center', padding: '4px 6px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--booked)', fontFamily: 'DM Mono', fontSize: 9, textDecoration: 'none', cursor: 'pointer' }}>
+                  Call
+                </a>
+                <a href={`sms:${phone}`} style={{ flex: 1, textAlign: 'center', padding: '4px 6px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--warm)', fontFamily: 'DM Mono', fontSize: 9, textDecoration: 'none', cursor: 'pointer' }}>
+                  Text
+                </a>
+              </>
+            )}
+            {contact.email && (
+              <a href={`mailto:${contact.email}`} style={{ flex: 1, textAlign: 'center', padding: '4px 6px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: '#7BBFFF', fontFamily: 'DM Mono', fontSize: 9, textDecoration: 'none', cursor: 'pointer' }}>
+                Email
+              </a>
+            )}
+          </div>
+          {!phone && !contact.email && (
+            <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono' }}>No contact info on file.</div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── CLIENT CARD FIELD ───────────────────────────────────────────────────────
 
 function ClientCardField({
@@ -539,9 +601,14 @@ function BookingForm({
   const [clientArtists, setClientArtists] = useState<string[]>([])
   const [showArtistDD, setShowArtistDD] = useState(false)
   const [labelContacts, setLabelContacts] = useState<ClientContact[]>([])
+  const [labelAdminContacts, setLabelAdminContacts] = useState<ClientContact[]>([])
   const [anrQuery, setAnrQuery] = useState(initial.ordered_by || '')
+  const [anrContact, setAnrContact] = useState<ClientContact | null>(null)
   const [showAnrDD, setShowAnrDD] = useState(false)
   const [anrHighlight, setAnrHighlight] = useState(-1)
+  const [adminQuery, setAdminQuery] = useState('')
+  const [adminContact, setAdminContact] = useState<ClientContact | null>(null)
+  const [showAdminDD, setShowAdminDD] = useState(false)
   const [timeTBD, setTimeTBD] = useState(false)
   const [multiDay, setMultiDay] = useState(initial.start_date !== initial.end_date && !!initial.end_date)
   const [engOn, setEngOn] = useState(initial.engineer_name !== '')
@@ -565,16 +632,51 @@ function BookingForm({
       .then(({ data }) => { if (data) setWoStatus(data.status) })
   }, [bookingId])
 
-  // Load label roster + A&R contacts for billing bookings
+  // Load label roster + contacts (A&Rs + Admins) for billing bookings
   useEffect(() => {
     const id = form.client_db_id
-    if (!id || form.payment_type !== 'billing') { setLabelContacts([]); setClientArtists([]); return }
+    if (!id || form.payment_type !== 'billing') {
+      setLabelContacts([]); setLabelAdminContacts([]); setClientArtists([]); return
+    }
     Promise.all([
       supabase.from('client_contacts').select('*').eq('client_id', id),
       supabase.from('clients').select('artists').eq('id', id).single(),
     ]).then(([{ data: contacts }, { data: client }]) => {
-      setLabelContacts((contacts as ClientContact[]) || [])
+      const all = (contacts as ClientContact[]) || []
+      const anrs = all.filter(c => c.contact_type !== 'admin')
+      const admins = all.filter(c => c.contact_type === 'admin')
+      setLabelContacts(anrs)
+      setLabelAdminContacts(admins)
       setClientArtists((client?.artists as string[]) || [])
+      // Edit mode: restore anrContact from ID
+      if (initial.anr_contact_id) {
+        const found = all.find(c => c.id === initial.anr_contact_id)
+        if (found) setAnrContact(found)
+      }
+      // Edit mode: restore adminContact + adminQuery from ID
+      if (initial.anr_admin_contact_id) {
+        const found = admins.find(c => c.id === initial.anr_admin_contact_id)
+        if (found) { setAdminContact(found); setAdminQuery(`${found.fname || ''} ${found.lname || ''}`.trim()); return }
+      }
+      // New booking: auto-populate admin from most recent booking, then fall back to single admin
+      if (!bookingId) {
+        supabase.from('bookings')
+          .select('anr_admin_contact_id')
+          .eq('client_id', id)
+          .not('anr_admin_contact_id', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .then(({ data: recent }) => {
+            const recentId = (recent as any)?.[0]?.anr_admin_contact_id
+            const fromHistory = recentId ? admins.find(c => c.id === recentId) : null
+            const autoAdmin = fromHistory || (admins.length === 1 ? admins[0] : null)
+            if (autoAdmin) {
+              setAdminContact(autoAdmin)
+              setAdminQuery(`${autoAdmin.fname || ''} ${autoAdmin.lname || ''}`.trim())
+              set('anr_admin_contact_id', autoAdmin.id)
+            }
+          })
+      }
     })
   }, [form.client_db_id, form.payment_type]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1425,10 +1527,15 @@ function BookingForm({
                           <>
                             {/* A&R / Ordered By — autocompletes from label contacts */}
                             <div style={{ marginBottom: 8, position: 'relative' }}>
-                              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>A&R / Ordered By</div>
+                              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                A&amp;R / Ordered By
+                                {anrContact && (
+                                  <ContactInfoPopover contact={anrContact} />
+                                )}
+                              </div>
                               <input
                                 value={anrQuery}
-                                onChange={e => { setAnrQuery(e.target.value); set('ordered_by', e.target.value); setShowAnrDD(true) }}
+                                onChange={e => { setAnrQuery(e.target.value); set('ordered_by', e.target.value); set('anr_contact_id', null); setAnrContact(null); setShowAnrDD(true) }}
                                 onFocus={() => setShowAnrDD(true)}
                                 onBlur={() => { setTimeout(() => setShowAnrDD(false), 150); set('ordered_by', anrQuery) }}
                                 placeholder="—"
@@ -1441,7 +1548,13 @@ function BookingForm({
                                     .map((c, i) => {
                                       const name = `${c.fname || ''} ${c.lname || ''}`.trim()
                                       return (
-                                        <div key={c.id} onMouseDown={e => { e.preventDefault(); setAnrQuery(name); set('ordered_by', name); set('client_name', name); if (c.email) set('email', c.email); if (c.phone) set('phone', c.phone); setShowAnrDD(false) }}
+                                        <div key={c.id} onMouseDown={e => {
+                                          e.preventDefault()
+                                          setAnrQuery(name); set('ordered_by', name); set('client_name', name)
+                                          set('anr_contact_id', c.id); setAnrContact(c)
+                                          if (c.email) set('email', c.email); if (c.phone) set('phone', c.phone)
+                                          setShowAnrDD(false)
+                                        }}
                                           style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent', borderBottom: i < labelContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
                                           onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
                                           onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -1462,9 +1575,11 @@ function BookingForm({
                                         const lname = parts.slice(1).join(' ')
                                         const { data } = await supabase.from('client_contacts').insert({ client_id: clientId, fname, lname: lname || null, contact_type: 'anr', artists: [] }).select().single()
                                         if (data) {
-                                          setLabelContacts(prev => [...prev, data as ClientContact])
+                                          const contact = data as ClientContact
+                                          setLabelContacts(prev => [...prev, contact])
                                           const name = `${fname} ${lname}`.trim()
                                           setAnrQuery(name); set('ordered_by', name); set('client_name', name)
+                                          set('anr_contact_id', contact.id); setAnrContact(contact)
                                         }
                                         setShowAnrDD(false)
                                       }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1514,6 +1629,67 @@ function BookingForm({
                                 </div>
                               )}
                             </div>
+                            {/* A&R Admin — autocompletes from contact_type='admin' contacts; auto-populated from booking history */}
+                            <div style={{ marginBottom: 8, position: 'relative' }}>
+                              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                A&amp;R Admin
+                                {adminContact && (
+                                  <ContactInfoPopover contact={adminContact} />
+                                )}
+                              </div>
+                              <input
+                                value={adminQuery}
+                                onChange={e => { setAdminQuery(e.target.value); set('anr_admin_contact_id', null); setAdminContact(null); setShowAdminDD(true) }}
+                                onFocus={() => setShowAdminDD(true)}
+                                onBlur={() => setTimeout(() => setShowAdminDD(false), 150)}
+                                placeholder="—"
+                                style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                              />
+                              {showAdminDD && (labelAdminContacts.filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase())).length > 0 || adminQuery.trim().length >= 2) && (
+                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
+                                  {labelAdminContacts
+                                    .filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase()))
+                                    .map((c, i) => {
+                                      const name = `${c.fname || ''} ${c.lname || ''}`.trim()
+                                      return (
+                                        <div key={c.id} onMouseDown={e => {
+                                          e.preventDefault()
+                                          setAdminQuery(name); set('anr_admin_contact_id', c.id); setAdminContact(c); setShowAdminDD(false)
+                                        }}
+                                          style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent', borderBottom: i < labelAdminContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
+                                          onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
+                                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                        >
+                                          <div>{name}</div>
+                                          {c.role && <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 1 }}>{c.role}</div>}
+                                        </div>
+                                      )
+                                    })}
+                                  {adminQuery.trim().length >= 2 && !labelAdminContacts.some(c => `${c.fname || ''} ${c.lname || ''}`.trim().toLowerCase() === adminQuery.trim().toLowerCase()) && (() => {
+                                    const clientId = form.client_db_id
+                                    return (
+                                      <div onMouseDown={async e => {
+                                        e.preventDefault()
+                                        if (!clientId) return
+                                        const parts = adminQuery.trim().split(/\s+/)
+                                        const fname = parts[0] || ''
+                                        const lname = parts.slice(1).join(' ')
+                                        const { data } = await supabase.from('client_contacts').insert({ client_id: clientId, fname, lname: lname || null, contact_type: 'admin' }).select().single()
+                                        if (data) {
+                                          const contact = data as ClientContact
+                                          setLabelAdminContacts(prev => [...prev, contact])
+                                          setAdminQuery(adminQuery.trim()); set('anr_admin_contact_id', contact.id); setAdminContact(contact)
+                                        }
+                                        setShowAdminDD(false)
+                                      }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this admin? Add &ldquo;{adminQuery.trim()}&rdquo;
+                                      </div>
+                                    )
+                                  })()}
+                                </div>
+                              )}
+                            </div>
+
                             <ClientCardField label="A&R Email" value={form.email} fieldKey="email" onEdit={handleClientFieldEdit} editing={editingCard} />
                             <ClientCardField label="A&R Phone" value={form.phone} fieldKey="phone" onEdit={handleClientFieldEdit} editing={editingCard} />
                           </>
@@ -2420,6 +2596,8 @@ function CalendarPageInner() {
       is_srs: data.is_srs,
       // TODO: calculate srs_fee_amount from studio_time table once WO digitization is complete
       srs_fee_amount: data.is_srs ? null : null,
+      anr_contact_id: data.anr_contact_id || null,
+      anr_admin_contact_id: data.anr_admin_contact_id || null,
     }
     const throwIfError = (error: any) => {
       if (!error) return
