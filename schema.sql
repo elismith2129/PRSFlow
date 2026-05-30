@@ -83,6 +83,24 @@ create table if not exists work_orders (
   created_at timestamptz default now()
 );
 
+-- BOOKINGS table (added incrementally — see migration notes)
+-- Key columns added after initial schema:
+--   anr_contact_id        text  (FK → client_contacts.id, nullable) — A&R contact for this booking
+--   anr_admin_contact_id  text  (FK → client_contacts.id, nullable) — Admin/billing contact for this booking
+-- Migration: ALTER TABLE bookings ADD COLUMN IF NOT EXISTS anr_contact_id text;
+--            ALTER TABLE bookings ADD COLUMN IF NOT EXISTS anr_admin_contact_id text;
+
+-- CLIENT_CONTACTS table (added after initial schema)
+-- create table if not exists client_contacts (
+--   id uuid default gen_random_uuid() primary key,
+--   client_id text references clients(id),
+--   fname text, lname text, email text, phone text, instagram text,
+--   role text, notes text, contact_type text,  -- 'anr' | 'admin'
+--   artists jsonb default '[]',
+--   phone_needs_review boolean default false,
+--   created_at timestamptz default now()
+-- );
+
 -- QC_REPORTS table
 create table if not exists qc_reports (
   id text primary key,

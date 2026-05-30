@@ -251,6 +251,109 @@ function AddContactForm({ onAdd, onCancel }: { onAdd: (data: Partial<ClientConta
   )
 }
 
+// ─── Admin row ────────────────────────────────────────────────────────────────
+
+function AdminRow({ contact, onSave, onDelete }: {
+  contact: ClientContact
+  onSave: (id: string, data: Partial<ClientContact>) => void
+  onDelete: (id: string) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const [draft, setDraft] = useState({ ...contact })
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  useEffect(() => { setDraft({ ...contact }) }, [contact])
+
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', marginBottom: 5 }}>
+      <div onClick={() => setExpanded(e => !e)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'var(--surface2)', cursor: 'pointer' }}>
+        <div>
+          <span style={{ fontSize: 11, fontWeight: 500 }}>
+            {[contact.fname, contact.lname].filter(Boolean).join(' ') || 'Unnamed admin'}
+          </span>
+          {contact.role && (
+            <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginLeft: 7 }}>
+              {contact.role}
+            </span>
+          )}
+          {contact.email && (
+            <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono', marginTop: 1 }}>{contact.email}</div>
+          )}
+        </div>
+        <span style={{ fontSize: 9, color: 'var(--text3)', flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
+      </div>
+
+      {expanded && (
+        <div style={{ padding: '10px 10px 8px', background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 14px', marginBottom: 8 }}>
+            {(['fname', 'lname'] as const).map(f => (
+              <div key={f}>
+                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>
+                  {f === 'fname' ? 'First' : 'Last'}
+                </div>
+                <input type="text" value={draft[f] ?? ''} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
+                  style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0' }} />
+              </div>
+            ))}
+            {(['role', 'email'] as const).map(f => (
+              <div key={f}>
+                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>{f}</div>
+                <input type="text" value={draft[f] ?? ''} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
+                  style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0' }} />
+              </div>
+            ))}
+            <div>
+              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Phone</div>
+              <PhoneInput value={draft.phone ?? ''} onChange={v => setDraft(d => ({ ...d, phone: v }))} variant="inline" placeholder="—" />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
+            {confirmDelete ? (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10, color: 'var(--hot)', fontFamily: 'DM Mono' }}>
+                Remove?
+                <button onClick={() => onDelete(contact.id)} style={dangerBtn}>Yes</button>
+                <button onClick={() => setConfirmDelete(false)} style={ghostBtn}>Cancel</button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmDelete(true)} style={{ ...ghostBtn, color: 'var(--hot)', fontSize: 10 }}>Remove</button>
+            )}
+            <button onClick={() => { onSave(contact.id, draft); setExpanded(false) }} style={accentBtn}>Save</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Add admin form ───────────────────────────────────────────────────────────
+
+function AddAdminForm({ onAdd, onCancel }: { onAdd: (data: Partial<ClientContact>) => void; onCancel: () => void }) {
+  const [draft, setDraft] = useState({ fname: '', lname: '', role: '', email: '', phone: '' })
+  const fields: [keyof typeof draft, string][] = [
+    ['fname', 'First'], ['lname', 'Last'], ['role', 'Role'], ['email', 'Email'],
+  ]
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '10px 10px 8px', background: 'var(--surface2)', marginTop: 5 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 14px', marginBottom: 8 }}>
+        {fields.map(([f, lbl]) => (
+          <div key={f}>
+            <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>{lbl}</div>
+            <input type="text" value={draft[f]} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
+              style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0' }} />
+          </div>
+        ))}
+        <div>
+          <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Phone</div>
+          <PhoneInput value={draft.phone} onChange={v => setDraft(d => ({ ...d, phone: v }))} variant="inline" placeholder="—" />
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button onClick={onCancel} style={ghostBtn}>Cancel</button>
+        <button onClick={() => { if (draft.fname || draft.lname || draft.email) onAdd(draft) }} style={accentBtn}>Add</button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Artist chip with inline confirm ─────────────────────────────────────────
 
 function ArtistChip({ name, onRemove }: { name: string; onRemove: () => void }) {
@@ -309,6 +412,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   const router = useRouter()
   const [bookings, setBookings] = useState<BookingLead[]>([])
   const [showAddContact, setShowAddContact] = useState(false)
+  const [showAddAdmin, setShowAddAdmin] = useState(false)
   const [showAddress, setShowAddress] = useState(false)
   const [bookingToast, setBookingToast] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -397,6 +501,13 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
     if (!client) return
     await supabase.from('client_contacts').insert({ ...data, client_id: client.id })
     setShowAddContact(false)
+    onRefresh()
+  }, [client, onRefresh])
+
+  const addAdmin = useCallback(async (data: Partial<ClientContact>) => {
+    if (!client) return
+    await supabase.from('client_contacts').insert({ ...data, contact_type: 'admin', client_id: client.id })
+    setShowAddAdmin(false)
     onRefresh()
   }, [client, onRefresh])
 
@@ -549,29 +660,54 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
       <div style={{ overflowY: 'auto', flex: 1, padding: '14px 18px 18px' }}>
 
         {/* ── LABEL SECTIONS ── */}
-        {isLabel && (
-          <>
-            <SectionHeader
-              label="Contacts (A&Rs)"
-              mt={0}
-              action={
-                <button onClick={() => setShowAddContact(v => !v)} style={{ ...ghostBtn, fontSize: 9, padding: '3px 8px' }}>
-                  {showAddContact ? 'Cancel' : '+ Add'}
-                </button>
-              }
-            />
-            {contacts.map(ct => (
-              <ContactRow key={ct.id} contact={ct} onSave={saveContact} onDelete={deleteContact} />
-            ))}
-            {contacts.length === 0 && !showAddContact && (
-              <div style={{ padding: '10px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>No A&Rs or reps on file yet.</span>
-                <button onClick={() => setShowAddContact(true)} style={{ ...accentBtn, fontSize: 9, padding: '3px 10px' }}>Add Contact</button>
-              </div>
-            )}
-            {showAddContact && <AddContactForm onAdd={addContact} onCancel={() => setShowAddContact(false)} />}
-          </>
-        )}
+        {isLabel && (() => {
+          const anrContacts = contacts.filter(c => c.contact_type !== 'admin')
+          const adminContacts = contacts.filter(c => c.contact_type === 'admin')
+          return (
+            <>
+              <SectionHeader
+                label="Contacts (A&Rs)"
+                mt={0}
+                action={
+                  <button onClick={() => setShowAddContact(v => !v)} style={{ ...ghostBtn, fontSize: 9, padding: '3px 8px' }}>
+                    {showAddContact ? 'Cancel' : '+ Add'}
+                  </button>
+                }
+              />
+              {anrContacts.map(ct => (
+                <ContactRow key={ct.id} contact={ct} onSave={saveContact} onDelete={deleteContact} />
+              ))}
+              {anrContacts.length === 0 && !showAddContact && (
+                <div style={{ padding: '10px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>No A&Rs or reps on file yet.</span>
+                  <button onClick={() => setShowAddContact(true)} style={{ ...accentBtn, fontSize: 9, padding: '3px 10px' }}>Add Contact</button>
+                </div>
+              )}
+              {showAddContact && <AddContactForm onAdd={addContact} onCancel={() => setShowAddContact(false)} />}
+
+              {/* Admins section — rendered inline to share anrContacts/adminContacts scope */}
+              <SectionHeader
+                label="Admins"
+                mt={16}
+                action={
+                  <button onClick={() => setShowAddAdmin(v => !v)} style={{ ...ghostBtn, fontSize: 9, padding: '3px 8px' }}>
+                    {showAddAdmin ? 'Cancel' : '+ Add'}
+                  </button>
+                }
+              />
+              {adminContacts.map(ct => (
+                <AdminRow key={ct.id} contact={ct} onSave={saveContact} onDelete={deleteContact} />
+              ))}
+              {adminContacts.length === 0 && !showAddAdmin && (
+                <div style={{ padding: '10px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>No admins on file yet.</span>
+                  <button onClick={() => setShowAddAdmin(true)} style={{ ...accentBtn, fontSize: 9, padding: '3px 10px' }}>Add Admin</button>
+                </div>
+              )}
+              {showAddAdmin && <AddAdminForm onAdd={addAdmin} onCancel={() => setShowAddAdmin(false)} />}
+            </>
+          )
+        })()}
 
         {/* ── COD SECTIONS ── */}
         {!isLabel && (
