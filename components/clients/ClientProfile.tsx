@@ -143,8 +143,12 @@ function ContactRow({ contact, onSave, onDelete }: {
             <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono', marginTop: 1 }}>{contact.email}</div>
           )}
           {localArtists.length > 0 && (
-            <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 1 }}>
-              {localArtists.slice(0, 2).join(', ')}{localArtists.length > 2 ? ` +${localArtists.length - 2}` : ''}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 4 }}>
+              {localArtists.map((a, i) => (
+                <span key={i} style={{ fontSize: 8, fontFamily: 'DM Mono', color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '1px 5px', borderRadius: 3, lineHeight: 1.6 }}>
+                  {a}
+                </span>
+              ))}
             </div>
           )}
         </div>
