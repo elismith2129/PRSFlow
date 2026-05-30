@@ -139,11 +139,6 @@ function ContactRow({ contact, onSave, onDelete }: {
           <span style={{ fontSize: 11, fontWeight: 500 }}>
             {[contact.fname, contact.lname].filter(Boolean).join(' ') || 'Unnamed contact'}
           </span>
-          {contact.role && (
-            <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginLeft: 7 }}>
-              {contact.role}
-            </span>
-          )}
           {contact.email && (
             <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono', marginTop: 1 }}>{contact.email}</div>
           )}
@@ -168,15 +163,11 @@ function ContactRow({ contact, onSave, onDelete }: {
                   style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0' }} />
               </div>
             ))}
-            {(['role', 'email', 'instagram'] as const).map(f => (
-              <div key={f}>
-                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>
-                  {f}
-                </div>
-                <input type="text" value={draft[f] ?? ''} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
-                  style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0' }} />
-              </div>
-            ))}
+            <div>
+              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Email</div>
+              <input type="text" value={draft.email ?? ''} onChange={e => setDraft(d => ({ ...d, email: e.target.value }))}
+                style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0' }} />
+            </div>
             <div>
               <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Phone</div>
               <PhoneInput value={draft.phone ?? ''} onChange={v => setDraft(d => ({ ...d, phone: v }))} variant="inline" placeholder="—" />
@@ -224,9 +215,9 @@ function ContactRow({ contact, onSave, onDelete }: {
 // ─── Add contact form ─────────────────────────────────────────────────────────
 
 function AddContactForm({ onAdd, onCancel }: { onAdd: (data: Partial<ClientContact>) => void; onCancel: () => void }) {
-  const [draft, setDraft] = useState({ fname: '', lname: '', role: '', email: '', phone: '', instagram: '' })
+  const [draft, setDraft] = useState({ fname: '', lname: '', email: '', phone: '' })
   const fields: [keyof typeof draft, string][] = [
-    ['fname', 'First'], ['lname', 'Last'], ['role', 'Role'], ['email', 'Email'], ['instagram', 'Instagram'],
+    ['fname', 'First'], ['lname', 'Last'], ['email', 'Email'],
   ]
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '10px 10px 8px', background: 'var(--surface2)', marginTop: 5 }}>
