@@ -816,12 +816,24 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   onUpdateStatus: (id: number, status: string) => Promise<void>
   loading: boolean
 }) {
-  const [activeFilter, setActiveFilter] = useState<AllLeadsFilter>(() => {
-    try { return (sessionStorage.getItem('crm_al_filter') as AllLeadsFilter) || 'all' } catch { return 'all' }
-  })
-  const [search, setSearch] = useState(() => {
-    try { return sessionStorage.getItem('crm_al_search') || '' } catch { return '' }
-  })
+  const [activeFilter, setActiveFilter] = useState<AllLeadsFilter>('all')
+  const [search, setSearch] = useState('')
+  const skipFilterReset = useRef(false)
+
+  // Restore persisted filter + search after mount — lazy initializers read sessionStorage
+  // during SSR where it doesn't exist, causing a hydration mismatch on the style-conditional
+  // filter buttons. Start with stable defaults and restore client-side only.
+  useEffect(() => {
+    try {
+      const f = sessionStorage.getItem('crm_al_filter') as AllLeadsFilter
+      const s = sessionStorage.getItem('crm_al_search')
+      if (f || s) {
+        skipFilterReset.current = true
+        if (f) setActiveFilter(f)
+        if (s) setSearch(s)
+      }
+    } catch {}
+  }, [])
   useEffect(() => {
     try { sessionStorage.setItem('crm_al_filter', activeFilter) } catch {}
   }, [activeFilter])
@@ -834,6 +846,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
 
   useEffect(() => { setPage(1) }, [search])
   useEffect(() => {
+    if (skipFilterReset.current) { skipFilterReset.current = false; return }
     setPage(1); setSearch(''); setTouchPromptId(null); setKeepHotPromptId(null)
   }, [activeFilter])
 
