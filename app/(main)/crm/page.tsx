@@ -196,6 +196,7 @@ function toSegments(groups: Record<string, number>) {
 
 type TouchMap = Record<number, { initials: string, method: string, created_at: string }>
 type CrmView = 'needs-action' | 'all-leads' | 'analytics'
+type LabelSuggestion = Client & { _anrName?: string; _anrContactId?: string; _anrEmail?: string | null; _anrPhone?: string | null }
 
 export default function CRMPage() {
   const [leads, setLeads] = useState<Lead[]>([])
@@ -1871,7 +1872,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
   // Label mode state
   const [labelClientId, setLabelClientId] = useState<string | null>(null)
   const [labelQuery, setLabelQuery] = useState('')
-  const [labelClientSuggestions, setLabelClientSuggestions] = useState<Client[]>([])
+  const [labelClientSuggestions, setLabelClientSuggestions] = useState<LabelSuggestion[]>([])
   const [showLabelClientDD, setShowLabelClientDD] = useState(false)
   const [labelHighlight, setLabelHighlight] = useState(-1)
   const [anrContacts, setAnrContacts] = useState<ClientContact[]>([])
@@ -1932,16 +1933,38 @@ function NewLeadModal({ leads, onClose, onSave }: {
     setCompanySuggestions(Array.from(new Set(leads.map(l => l.company).filter((v): v is string => !!v && v.toLowerCase().includes(q)))).slice(0, 6))
   }, [form.company, leads])
 
-  // Label mode: label client search
+  // Label mode: label client search — matches on label name AND A&R contact names
   useEffect(() => {
     if (mode !== 'label') return
     if (skipLabelSearch.current) { skipLabelSearch.current = false; return }
     if (labelQuery.length < 2) { setLabelClientSuggestions([]); setShowLabelClientDD(false); return }
     clearTimeout(labelDebounce.current)
     labelDebounce.current = setTimeout(async () => {
-      const { data } = await supabase.from('clients').select('id, type, name, email, phone, created_at').eq('type', 'label').ilike('name', `%${labelQuery}%`).limit(8)
-      setLabelClientSuggestions((data as Client[]) || [])
-      setShowLabelClientDD(((data as Client[]) || []).length > 0)
+      const q = labelQuery.trim()
+      const [nameRes, anrRes] = await Promise.all([
+        supabase.from('clients').select('id, type, name, email, phone, created_at').eq('type', 'label').ilike('name', `%${q}%`).limit(8),
+        supabase.from('client_contacts').select('id, client_id, fname, lname, email, phone, clients(id, type, name, email, phone, created_at)').eq('contact_type', 'anr').or(`fname.ilike.%${q}%,lname.ilike.%${q}%`).limit(12),
+      ])
+      const seen = new Set<string>()
+      const suggestions: LabelSuggestion[] = []
+      for (const c of (nameRes.data || []) as Client[]) {
+        if (!seen.has(c.id)) { seen.add(c.id); suggestions.push(c) }
+      }
+      for (const ct of (anrRes.data || []) as any[]) {
+        const client = ct.clients as Client
+        if (!client || client.type !== 'label') continue
+        if (seen.has(client.id)) continue
+        seen.add(client.id)
+        suggestions.push({
+          ...client,
+          _anrName: `${ct.fname || ''} ${ct.lname || ''}`.trim(),
+          _anrContactId: ct.id,
+          _anrEmail: ct.email ?? null,
+          _anrPhone: ct.phone ?? null,
+        })
+      }
+      setLabelClientSuggestions(suggestions)
+      setShowLabelClientDD(suggestions.length > 0)
     }, 200)
     return () => clearTimeout(labelDebounce.current)
   }, [labelQuery, mode])
@@ -1958,15 +1981,24 @@ function NewLeadModal({ leads, onClose, onSave }: {
     })
   }, [labelClientId])
 
-  function selectLabelClient(c: Client) {
+  function selectLabelClient(c: LabelSuggestion) {
     skipLabelSearch.current = true
     clearTimeout(labelDebounce.current)
     setLabelClientId(c.id)
     setLabelQuery(c.name)
     setShowLabelClientDD(false)
     setLabelHighlight(-1)
-    setAnrContactId(null); setSelectedAnr(null); setAnrQuery(''); setAnrHighlight(-1)
     set('label', c.name)
+    if (c._anrName && c._anrContactId) {
+      setAnrContactId(c._anrContactId)
+      setAnrQuery(c._anrName)
+      setSelectedAnr({ id: c._anrContactId, client_id: c.id, fname: c._anrName.split(' ')[0] || null, lname: c._anrName.split(' ').slice(1).join(' ') || null, email: c._anrEmail || null, phone: c._anrPhone || null, instagram: null, role: null, notes: null, contact_type: 'anr', artists: null })
+      if (c._anrEmail) set('email', c._anrEmail)
+      if (c._anrPhone) set('phone', c._anrPhone)
+      setAnrHighlight(-1)
+    } else {
+      setAnrContactId(null); setSelectedAnr(null); setAnrQuery(''); setAnrHighlight(-1)
+    }
   }
 
   function selectAnr(contact: ClientContact) {
@@ -2301,8 +2333,12 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
                     {labelClientSuggestions.map((c, i) => (
                       <div key={c.id} onMouseDown={() => selectLabelClient(c)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i === labelHighlight ? 'var(--surface)' : 'transparent' }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent2)', marginBottom: 2 }}>{c.name}</div>
-                        <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>{c.email || ''}</div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent2)', marginBottom: 2 }}>
+                          {c._anrName ? `${c._anrName} — ${c.name}` : c.name}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+                          {c._anrName ? `A&R · ${c.name}` : c.email || ''}
+                        </div>
                       </div>
                     ))}
                   </div>
