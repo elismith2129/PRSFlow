@@ -662,12 +662,12 @@ function BookingForm({
       // Edit mode: restore anrContact from ID
       if (initial.anr_contact_id) {
         const found = all.find(c => c.id === initial.anr_contact_id)
-        if (found) setAnrContact(found)
+        if (found) { setAnrContact(found); setAnrEmail(found.email || ''); setAnrPhone(found.phone || '') }
       }
       // Edit mode: restore adminContact + adminQuery from ID
       if (initial.anr_admin_contact_id) {
         const found = admins.find(c => c.id === initial.anr_admin_contact_id)
-        if (found) { setAdminContact(found); setAdminQuery(`${found.fname || ''} ${found.lname || ''}`.trim()); return }
+        if (found) { setAdminContact(found); setAdminQuery(`${found.fname || ''} ${found.lname || ''}`.trim()); setAdminEmail(found.email || ''); setAdminPhone(found.phone || ''); return }
       }
       // New booking: auto-populate admin from most recent booking, then fall back to single admin
       if (!bookingId) {
@@ -684,6 +684,8 @@ function BookingForm({
             if (autoAdmin) {
               setAdminContact(autoAdmin)
               setAdminQuery(`${autoAdmin.fname || ''} ${autoAdmin.lname || ''}`.trim())
+              setAdminEmail(autoAdmin.email || '')
+              setAdminPhone(autoAdmin.phone || '')
               set('anr_admin_contact_id', autoAdmin.id)
             }
           })
@@ -691,8 +693,6 @@ function BookingForm({
     })
   }, [form.client_db_id, form.payment_type]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { setAnrEmail(anrContact?.email || ''); setAnrPhone(anrContact?.phone || '') }, [anrContact?.id]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setAdminEmail(adminContact?.email || ''); setAdminPhone(adminContact?.phone || '') }, [adminContact?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function set<K extends keyof FormData>(k: K, v: FormData[K]) {
     setForm(f => ({ ...f, [k]: v }))
