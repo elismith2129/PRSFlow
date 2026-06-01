@@ -158,17 +158,6 @@ export default async function WOPrintPage({ params }: { params: { id: string } }
           <div>
             <h2>Session Notes</h2>
             <div style={{ border: '1px solid #ccc', minHeight: 80, padding: 8, fontSize: 10, marginBottom: 12, whiteSpace: 'pre-wrap' }}>{wo.session_notes}</div>
-            <div className="legal">
-              By signing below, I acknowledge that I am authorized to approve charges for this session. I accept responsibility for all associated costs and understand that payment is due in full at the time of service unless otherwise agreed. I also acknowledge that Paramount Recording is not responsible for any media, personal items, or equipment left behind.
-              <br /><br />
-              <em>No Tapes, CDs, DVDs, Thumb Drives, Computer Drives or other Recording Media will be released until payment in full is received.</em>
-            </div>
-            {[['Signature', wo.legal_signature], ['Print Name', wo.legal_name], ['Date', wo.legal_date]].map(([label, val]) => (
-              <div key={label as string} className="meta-row" style={{ marginBottom: 8 }}>
-                <div className="meta-label">{label}</div>
-                <div className="meta-value">{val || ''}</div>
-              </div>
-            ))}
           </div>
           <div>
             <h2>Payments</h2>
