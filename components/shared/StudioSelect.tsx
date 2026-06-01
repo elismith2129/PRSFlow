@@ -10,8 +10,6 @@ interface StudioSelectProps {
 }
 
 export default function StudioSelect({ location, studio, onChange, selectStyle }: StudioSelectProps) {
-  const rooms = STUDIO_LOCATIONS.find(l => l.name === location)?.rooms ?? []
-
   const base: React.CSSProperties = {
     background: 'var(--surface2)',
     border: '1px solid var(--border)',
@@ -22,34 +20,30 @@ export default function StudioSelect({ location, studio, onChange, selectStyle }
     outline: 'none',
     borderRadius: 4,
     cursor: 'pointer',
-    flex: 1,
-    minWidth: 0,
+    width: '100%',
     ...selectStyle,
   }
 
+  // Value is "Venue|Room"; empty string = Undetermined
+  const value = location && studio ? `${location}|${studio}` : ''
+
+  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const val = e.target.value
+    if (!val) { onChange('', ''); return }
+    const sep = val.indexOf('|')
+    onChange(val.slice(0, sep), val.slice(sep + 1))
+  }
+
   return (
-    <div style={{ display: 'flex', gap: 6 }}>
-      <select
-        value={location}
-        onChange={e => onChange(e.target.value, '')}
-        style={base}
-      >
-        <option value="">Undetermined</option>
-        {STUDIO_LOCATIONS.map(l => (
-          <option key={l.name} value={l.name}>{l.name}</option>
-        ))}
-      </select>
-      <select
-        value={studio}
-        onChange={e => onChange(location, e.target.value)}
-        disabled={!location}
-        style={{ ...base, opacity: location ? 1 : 0.4 }}
-      >
-        <option value="">— Studio</option>
-        {rooms.map(r => (
-          <option key={r} value={r}>{r}</option>
-        ))}
-      </select>
-    </div>
+    <select value={value} onChange={handleChange} style={base}>
+      <option value="">Undetermined</option>
+      {STUDIO_LOCATIONS.flatMap(l =>
+        l.rooms.map(r => (
+          <option key={`${l.name}|${r}`} value={`${l.name}|${r}`}>
+            {l.name} — {r}
+          </option>
+        ))
+      )}
+    </select>
   )
 }
