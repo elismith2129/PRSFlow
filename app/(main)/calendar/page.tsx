@@ -1265,15 +1265,18 @@ function BookingForm({
                   !!form.payment_type && !!form.client_name &&
                   !!(form.phone || form.email)
                 const woUnlocked = woCanCreate
-                const woColor = woStatus === 'approved' ? '#c8f04e'
-                  : woStatus === 'submitted' ? '#fb923c'
+                const woComplete = woStatus === 'submitted' || woStatus === 'approved'
+                const woInProgress = woStatus === 'draft'
+                const woColor = woComplete ? '#4ef0a2'
+                  : woInProgress ? '#fb923c'
                   : woCanCreate ? '#c8f04e'
                   : 'var(--text3)'
-                const woBorder = woStatus === 'approved' ? 'rgba(200,240,78,0.7)'
-                  : woStatus === 'submitted' ? 'rgba(251,146,60,0.6)'
+                const woBorder = woComplete ? 'rgba(78,240,162,0.6)'
+                  : woInProgress ? 'rgba(251,146,60,0.6)'
                   : woCanCreate ? 'rgba(200,240,78,0.35)'
                   : 'var(--border)'
-                const woBg = woStatus === 'approved' ? 'rgba(200,240,78,0.12)'
+                const woBg = woComplete ? 'rgba(78,240,162,0.1)'
+                  : woInProgress ? 'rgba(251,146,60,0.08)'
                   : woCanCreate ? 'rgba(200,240,78,0.05)'
                   : 'transparent'
                 return (
