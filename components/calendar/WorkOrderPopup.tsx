@@ -89,11 +89,13 @@ function timeToMins(t: string | null | undefined): number {
 }
 
 function calcHours(from: string, to: string): number | null {
+  if (!from || !to) return null
   const f = timeToMins(from)
   const t = timeToMins(to)
-  if (!f && !t) return null
-  const diff = t - f
-  return diff > 0 ? parseFloat((diff / 60).toFixed(2)) : null
+  let diff = t - f
+  if (diff <= 0) diff += 24 * 60  // overnight session or same time → wrap to next day
+  if (diff >= 24 * 60) return null  // exact 24h means same start/end time, skip
+  return parseFloat((diff / 60).toFixed(2))
 }
 
 function calcCharge(hours: number | null, rate: string): number | null {
