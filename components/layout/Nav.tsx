@@ -6,8 +6,8 @@ import { supabase } from '@/lib/supabase'
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
-  { href: '/calendar', label: 'Calendar' },
   { href: '/crm', label: 'CRM' },
+  { href: '/calendar', label: 'Calendar' },
   { href: '/clients', label: 'Clients' },
   { href: '/qc', label: 'Session QC' },
   { href: '/admin', label: 'Admin' },
