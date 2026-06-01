@@ -322,8 +322,9 @@ export default function CRMPage() {
       const khu = new Date(); khu.setDate(khu.getDate() + 3)
       insertData.keep_hot_until = khu.toISOString()
     }
-    await supabase.from('leads').insert(insertData)
+    const { data: rows } = await supabase.from('leads').insert(insertData).select('id').single()
     await load()
+    return (rows as { id: number } | null)?.id ?? null
   }
 
   const selected = leads.find(l => l.id === selectedId) || null
@@ -355,7 +356,7 @@ export default function CRMPage() {
         <NewLeadModal
           leads={leads}
           onClose={() => setNewLeadOpen(false)}
-          onSave={async (data) => { await createLead(data); setNewLeadOpen(false) }}
+          onSave={async (data) => { const id = await createLead(data); setNewLeadOpen(false); return id }}
         />
       )}
 
@@ -1846,13 +1847,14 @@ function ConfirmClientModal({ lead, onClose, onCreated }: {
 function NewLeadModal({ leads, onClose, onSave }: {
   leads: Lead[]
   onClose: () => void
-  onSave: (data: Partial<Lead>) => Promise<void>
+  onSave: (data: Partial<Lead>) => Promise<number | null>
 }) {
   const router = useRouter()
   const emptyForm = { fname: '', lname: '', email: '', phone: '', company: '', label: '', source: '', booking: '', notes: '', billing: 'COD' as BillingType, quote: '', rate_daily: '', location: '', session_date: '', session_start: '', session_end: '', engineer_needed: false, artist_name: '' }
   const [mode, setMode] = useState<'cod' | 'label'>('cod')
   const [form, setForm] = useState(emptyForm)
   const [temperature, setTemperature] = useState<'hot' | 'warm' | 'booking'>('hot')
+  const [bookingError, setBookingError] = useState('')
   const [needsContact, setNeedsContact] = useState(false)
   const [rateType, setRateType] = useState<'hourly' | 'daily'>('hourly')
   const [formVenue, setFormVenue] = useState('')
@@ -2109,10 +2111,16 @@ function NewLeadModal({ leads, onClose, onSave }: {
 
   async function handleSave() {
     setSaving(true)
+    setBookingError('')
     const status: LeadStatus = temperature === 'hot' ? 'hot' : temperature === 'warm' ? 'warm' : 'booked'
 
     if (mode === 'label') {
       if (!labelQuery.trim()) { setSaving(false); return }
+      if (temperature === 'booking' && !labelClientId) {
+        setBookingError('No client profile linked — use auto-match before booking.')
+        setSaving(false)
+        return
+      }
       const parts = anrQuery.trim().split(/\s+/)
       const fname = parts[0] || ''
       const lname = parts.slice(1).join(' ')
@@ -2128,22 +2136,27 @@ function NewLeadModal({ leads, onClose, onSave }: {
         status,
         needs_contact: needsContact,
       }
-      await onSave(data)
+      const leadId = await onSave(data)
       setSaving(false)
       if (temperature === 'booking' && labelClientId) {
-        router.push(`/clients?id=${labelClientId}`)
+        router.push(`/calendar?newBooking=1&clientId=${labelClientId}&leadId=${leadId}`)
       }
       return
     }
 
     // COD mode
     if (!form.fname && !form.lname && !form.email && !form.phone) { setSaving(false); return }
+    if (temperature === 'booking' && !matchedClientId) {
+      setBookingError('No client profile linked — use auto-match before booking.')
+      setSaving(false)
+      return
+    }
     const data: Partial<Lead> = { ...form, status, needs_contact: needsContact }
     if (temperature === 'booking' && matchedClientId) data.client_id = matchedClientId
-    await onSave(data)
+    const leadId = await onSave(data)
     setSaving(false)
-    if (temperature === 'booking') {
-      router.push(matchedClientId ? `/clients?id=${matchedClientId}` : '/clients')
+    if (temperature === 'booking' && matchedClientId) {
+      router.push(`/calendar?newBooking=1&clientId=${matchedClientId}&leadId=${leadId}`)
     }
   }
 
@@ -2194,6 +2207,19 @@ function NewLeadModal({ leads, onClose, onSave }: {
       <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8, fontFamily: 'Syne', fontWeight: 700 }}>Session Details</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <div>
+          <label style={labelS}>Studio / Location</label>
+          <StudioSelect
+            location={formVenue}
+            studio={formStudio}
+            onChange={(venue, studio) => {
+              setFormVenue(venue)
+              setFormStudio(studio)
+              set('location', combineLocation(venue, studio))
+            }}
+            selectStyle={{ ...inputStyle, cursor: 'pointer', flex: 1 }}
+          />
+        </div>
+        <div>
           <label style={labelS}>Quote / Rate</label>
           <div style={{ display: 'flex', gap: 0 }}>
             <button type="button" onClick={() => setRateType('hourly')} style={{ padding: '4px 8px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '4px 0 0 4px', border: '1px solid var(--border)', background: rateType === 'hourly' ? 'rgba(200,240,78,0.12)' : 'transparent', color: rateType === 'hourly' ? 'var(--accent)' : 'var(--text3)' }}>/ hr</button>
@@ -2206,19 +2232,6 @@ function NewLeadModal({ leads, onClose, onSave }: {
               style={{ ...inputStyle, borderRadius: '0 4px 4px 0', borderLeft: 'none', marginLeft: 6 }}
             />
           </div>
-        </div>
-        <div>
-          <label style={labelS}>Studio / Location</label>
-          <StudioSelect
-            location={formVenue}
-            studio={formStudio}
-            onChange={(venue, studio) => {
-              setFormVenue(venue)
-              setFormStudio(studio)
-              set('location', combineLocation(venue, studio))
-            }}
-            selectStyle={{ ...inputStyle, cursor: 'pointer', flex: 1 }}
-          />
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 10 }}>
@@ -2433,11 +2446,16 @@ function NewLeadModal({ leads, onClose, onSave }: {
           </div>
         </div>
 
-        <div style={{ padding: '12px 20px 20px', display: 'flex', gap: 8, position: 'sticky', bottom: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
-          <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '9px 0', background: temperature === 'booking' ? 'var(--booked)' : mode === 'label' ? '#96A9FF' : '#7BBFFF', color: '#0d0f14', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: saving ? 0.6 : 1 }}>
-            {saving ? 'Saving…' : temperature === 'booking' ? 'Save & Go to Booking →' : 'Create Lead'}
-          </button>
-          <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
+        <div style={{ padding: '12px 20px 20px', position: 'sticky', bottom: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
+          {bookingError && (
+            <div style={{ marginBottom: 8, fontSize: 11, color: 'var(--hot)', fontFamily: 'DM Mono' }}>{bookingError}</div>
+          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '9px 0', background: temperature === 'booking' ? 'var(--booked)' : mode === 'label' ? '#96A9FF' : '#7BBFFF', color: '#0d0f14', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: saving ? 0.6 : 1 }}>
+              {saving ? 'Saving…' : temperature === 'booking' ? 'Save & Go to Booking →' : 'Create Lead'}
+            </button>
+            <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
+          </div>
         </div>
       </div>
     </div>
