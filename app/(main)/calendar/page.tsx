@@ -1514,27 +1514,6 @@ function BookingForm({
                             background: badgeBg, color: badgeColor,
                             border: `1px solid ${badgeBorder}`,
                           }}>{badgeLabel}</span>
-                          {!editingCard && (
-                            <button
-                              onClick={startCardEdit}
-                              style={{
-                                padding: '3px 9px', borderRadius: 4, fontSize: 9, fontFamily: 'Syne',
-                                fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
-                                cursor: 'pointer', flexShrink: 0, marginTop: 1,
-                                background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)',
-                              }}
-                            >Edit</button>
-                          )}
-                          {!editingCard && (
-                            <button
-                              onClick={clearClient}
-                              title="Remove client"
-                              style={{
-                                background: 'none', border: 'none', color: 'var(--text3)',
-                                cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '1px 2px', flexShrink: 0, marginTop: 1,
-                              }}
-                            >×</button>
-                          )}
                         </div>
                       </div>
 
@@ -1737,21 +1716,13 @@ function BookingForm({
                           </>
                         ) : (
                           <>
-                            <ClientCardField label="Email" value={form.email} fieldKey="email" onEdit={handleClientFieldEdit} editing={editingCard} />
-                            <ClientCardField label="Phone" value={form.phone} fieldKey="phone" onEdit={handleClientFieldEdit} editing={editingCard} />
+                            <ClientCardField label="Email" value={form.email} fieldKey="email" onEdit={handleClientFieldEdit} editing={true} />
+                            <ClientCardField label="Phone" value={form.phone} fieldKey="phone" onEdit={handleClientFieldEdit} editing={true} />
                           </>
                         )}
 
-                        {/* Edit mode Save / Cancel */}
-                        {editingCard && (
-                          <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-                            <button onClick={cancelCardEdit} style={{ flex: 1, padding: '6px 10px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)' }}>Cancel</button>
-                            <button onClick={saveCardEdit} style={{ flex: 1, padding: '6px 10px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', background: '#1e40af', border: 'none', color: '#fff', fontWeight: 700 }}>Save</button>
-                          </div>
-                        )}
-
                         {/* View full profile */}
-                        {!editingCard && (
+                        {(
                           <button
                             onClick={() => form.client_db_id && setShowProfile(true)}
                             style={{
