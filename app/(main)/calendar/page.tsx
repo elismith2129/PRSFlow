@@ -432,7 +432,7 @@ function BookingBlock({
 
 // ─── CONTACT INFO POPOVER ────────────────────────────────────────────────────
 
-function ContactInfoPopover({ contact }: { contact: ClientContact }) {
+function ContactInfoPopover({ contact, children }: { contact: ClientContact; children?: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const name = `${contact.fname || ''} ${contact.lname || ''}`.trim()
@@ -443,18 +443,22 @@ function ContactInfoPopover({ contact }: { contact: ClientContact }) {
     function handleClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
     document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
+    document.addEventListener('keydown', handleKey)
+    return () => { document.removeEventListener('mousedown', handleClick); document.removeEventListener('keydown', handleKey) }
   }, [open])
 
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
       <button
         onMouseDown={e => { e.preventDefault(); setOpen(o => !o) }}
-        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent)', fontSize: 9, fontFamily: 'DM Mono', lineHeight: 1, opacity: 0.8 }}
+        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: children ? 'var(--text)' : 'var(--accent)', fontSize: children ? 11 : 9, fontFamily: 'DM Mono', lineHeight: 1 }}
         title="Contact info"
       >
-        ↗
+        {children ?? '↗'}
       </button>
       {open && (
         <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 300, marginTop: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', padding: '10px 12px', minWidth: 180, maxWidth: 240 }}>
@@ -1528,23 +1532,66 @@ function BookingForm({
                       <div style={{ padding: '10px 14px 12px' }}>
                         {isBilling ? (
                           <>
-                            {/* A&R / Ordered By — autocompletes from label contacts */}
+                            {/* 1. Artist — plain text, no popover */}
                             <div style={{ marginBottom: 8, position: 'relative' }}>
-                              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                A&amp;R / Ordered By
-                                {anrContact && (
-                                  <ContactInfoPopover contact={anrContact} />
-                                )}
-                              </div>
+                              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Artist</div>
                               <input
-                                value={anrQuery}
-                                onChange={e => { setAnrQuery(e.target.value); set('ordered_by', e.target.value); set('anr_contact_id', null); setAnrContact(null); setShowAnrDD(true) }}
-                                onFocus={() => setShowAnrDD(true)}
-                                onBlur={() => { setTimeout(() => setShowAnrDD(false), 150); set('ordered_by', anrQuery) }}
+                                value={form.artist}
+                                onChange={e => { set('artist', e.target.value); setShowArtistDD(true) }}
+                                onFocus={() => setShowArtistDD(true)}
+                                onBlur={() => setTimeout(() => setShowArtistDD(false), 150)}
                                 placeholder="—"
                                 style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
                               />
-                              {showAnrDD && (labelContacts.filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase())).length > 0 || anrQuery.trim().length >= 2) && (
+                              {showArtistDD && (clientArtists.filter(a => !form.artist || a.toLowerCase().includes(form.artist.toLowerCase())).length > 0 || form.artist.trim().length >= 2) && (
+                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
+                                  {clientArtists
+                                    .filter(a => !form.artist || a.toLowerCase().includes(form.artist.toLowerCase()))
+                                    .map((a, i) => (
+                                      <div key={i} onMouseDown={e => { e.preventDefault(); set('artist', a); setShowArtistDD(false) }}
+                                        style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent' }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
+                                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                      >{a}</div>
+                                    ))}
+                                  {form.artist.trim().length >= 2 && !clientArtists.some(a => a.toLowerCase() === form.artist.trim().toLowerCase()) && form.client_db_id && (() => {
+                                    const clientId = form.client_db_id
+                                    return (
+                                      <div onMouseDown={async e => {
+                                        e.preventDefault()
+                                        const updated = await addArtistToLabel(clientId, form.artist.trim(), clientArtists)
+                                        setClientArtists(updated)
+                                        setShowArtistDD(false)
+                                      }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: clientArtists.filter(a => !form.artist || a.toLowerCase().includes(form.artist.toLowerCase())).length > 0 ? '1px solid var(--border)' : undefined, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this artist? Add &ldquo;{form.artist.trim()}&rdquo;
+                                      </div>
+                                    )
+                                  })()}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* 2. A&R — name is the clickable popover trigger when resolved */}
+                            <div style={{ marginBottom: 8, position: 'relative' }}>
+                              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>A&amp;R</div>
+                              {anrContact ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 2, borderBottom: '1px solid var(--border)' }}>
+                                  <ContactInfoPopover contact={anrContact}>
+                                    {`${anrContact.fname || ''} ${anrContact.lname || ''}`.trim()}
+                                  </ContactInfoPopover>
+                                  <button onMouseDown={e => { e.preventDefault(); setAnrContact(null); setAnrQuery(''); set('anr_contact_id', null) }} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, marginLeft: 'auto' }}>×</button>
+                                </div>
+                              ) : (
+                                <input
+                                  value={anrQuery}
+                                  onChange={e => { setAnrQuery(e.target.value); set('ordered_by', e.target.value); set('anr_contact_id', null); setAnrContact(null); setShowAnrDD(true) }}
+                                  onFocus={() => setShowAnrDD(true)}
+                                  onBlur={() => { setTimeout(() => setShowAnrDD(false), 150); set('ordered_by', anrQuery) }}
+                                  placeholder="—"
+                                  style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                                />
+                              )}
+                              {showAnrDD && !anrContact && (labelContacts.filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase())).length > 0 || anrQuery.trim().length >= 2) && (
                                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
                                   {labelContacts
                                     .filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase()))
@@ -1594,61 +1641,27 @@ function BookingForm({
                               )}
                             </div>
 
-                            {/* Artist — autocompletes from label roster (clients.artists[]) */}
+                            {/* 3. Admin — same pattern as A&R */}
                             <div style={{ marginBottom: 8, position: 'relative' }}>
-                              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Artist</div>
-                              <input
-                                value={form.artist}
-                                onChange={e => { set('artist', e.target.value); setShowArtistDD(true) }}
-                                onFocus={() => setShowArtistDD(true)}
-                                onBlur={() => setTimeout(() => setShowArtistDD(false), 150)}
-                                placeholder="—"
-                                style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
-                              />
-                              {showArtistDD && (clientArtists.filter(a => !form.artist || a.toLowerCase().includes(form.artist.toLowerCase())).length > 0 || form.artist.trim().length >= 2) && (
-                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
-                                  {clientArtists
-                                    .filter(a => !form.artist || a.toLowerCase().includes(form.artist.toLowerCase()))
-                                    .map((a, i) => (
-                                      <div key={i} onMouseDown={e => { e.preventDefault(); set('artist', a); setShowArtistDD(false) }}
-                                        style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent' }}
-                                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
-                                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                                      >{a}</div>
-                                    ))}
-                                  {form.artist.trim().length >= 2 && !clientArtists.some(a => a.toLowerCase() === form.artist.trim().toLowerCase()) && form.client_db_id && (() => {
-                                    const clientId = form.client_db_id
-                                    return (
-                                      <div onMouseDown={async e => {
-                                        e.preventDefault()
-                                        const updated = await addArtistToLabel(clientId, form.artist.trim(), clientArtists)
-                                        setClientArtists(updated)
-                                        setShowArtistDD(false)
-                                      }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: clientArtists.filter(a => !form.artist || a.toLowerCase().includes(form.artist.toLowerCase())).length > 0 ? '1px solid var(--border)' : undefined, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this artist? Add &ldquo;{form.artist.trim()}&rdquo;
-                                      </div>
-                                    )
-                                  })()}
+                              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Admin</div>
+                              {adminContact ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 2, borderBottom: '1px solid var(--border)' }}>
+                                  <ContactInfoPopover contact={adminContact}>
+                                    {`${adminContact.fname || ''} ${adminContact.lname || ''}`.trim()}
+                                  </ContactInfoPopover>
+                                  <button onMouseDown={e => { e.preventDefault(); setAdminContact(null); setAdminQuery(''); set('anr_admin_contact_id', null) }} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, marginLeft: 'auto' }}>×</button>
                                 </div>
+                              ) : (
+                                <input
+                                  value={adminQuery}
+                                  onChange={e => { setAdminQuery(e.target.value); set('anr_admin_contact_id', null); setAdminContact(null); setShowAdminDD(true) }}
+                                  onFocus={() => setShowAdminDD(true)}
+                                  onBlur={() => setTimeout(() => setShowAdminDD(false), 150)}
+                                  placeholder="—"
+                                  style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                                />
                               )}
-                            </div>
-                            {/* A&R Admin — autocompletes from contact_type='admin' contacts; auto-populated from booking history */}
-                            <div style={{ marginBottom: 8, position: 'relative' }}>
-                              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                A&amp;R Admin
-                                {adminContact && (
-                                  <ContactInfoPopover contact={adminContact} />
-                                )}
-                              </div>
-                              <input
-                                value={adminQuery}
-                                onChange={e => { setAdminQuery(e.target.value); set('anr_admin_contact_id', null); setAdminContact(null); setShowAdminDD(true) }}
-                                onFocus={() => setShowAdminDD(true)}
-                                onBlur={() => setTimeout(() => setShowAdminDD(false), 150)}
-                                placeholder="—"
-                                style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
-                              />
-                              {showAdminDD && (labelAdminContacts.filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase())).length > 0 || adminQuery.trim().length >= 2) && (
+                              {showAdminDD && !adminContact && (labelAdminContacts.filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase())).length > 0 || adminQuery.trim().length >= 2) && (
                                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
                                   {labelAdminContacts
                                     .filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase()))
@@ -1692,9 +1705,6 @@ function BookingForm({
                                 </div>
                               )}
                             </div>
-
-                            <ClientCardField label="A&R Email" value={form.email} fieldKey="email" onEdit={handleClientFieldEdit} editing={editingCard} />
-                            <ClientCardField label="A&R Phone" value={form.phone} fieldKey="phone" onEdit={handleClientFieldEdit} editing={editingCard} />
                           </>
                         ) : (
                           <>
