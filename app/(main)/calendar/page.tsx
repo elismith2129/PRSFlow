@@ -628,6 +628,13 @@ function BookingForm({
   const [showSrsModal, setShowSrsModal] = useState(false)
   const [showWO, setShowWO] = useState(false)
   const [woStatus, setWoStatus] = useState<string | null>(null)
+  const [anrEmail, setAnrEmail] = useState('')
+  const [anrPhone, setAnrPhone] = useState('')
+  const [adminEmail, setAdminEmail] = useState('')
+  const [adminPhone, setAdminPhone] = useState('')
+  const [contactUpdatePrompt, setContactUpdatePrompt] = useState<{
+    contactId: string; column: 'email' | 'phone'; value: string; onUpdate: () => void
+  } | null>(null)
 
   // Load WO status for button color on mount
   useEffect(() => {
@@ -683,6 +690,9 @@ function BookingForm({
       }
     })
   }, [form.client_db_id, form.payment_type]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { setAnrEmail(anrContact?.email || ''); setAnrPhone(anrContact?.phone || '') }, [anrContact?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setAdminEmail(adminContact?.email || ''); setAdminPhone(adminContact?.phone || '') }, [adminContact?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function set<K extends keyof FormData>(k: K, v: FormData[K]) {
     setForm(f => ({ ...f, [k]: v }))
@@ -1571,148 +1581,159 @@ function BookingForm({
                               )}
                             </div>
 
-                            {/* 2. A&R — name is the clickable popover trigger when resolved */}
-                            <div style={{ marginBottom: 8, position: 'relative' }}>
-                              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>A&amp;R</div>
-                              {anrContact ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 2, borderBottom: '1px solid var(--border)' }}>
-                                  {(anrContact.email || anrContact.phone) ? (
-                                    <ContactInfoPopover contact={anrContact}>
-                                      {`${anrContact.fname || ''} ${anrContact.lname || ''}`.trim()}
-                                    </ContactInfoPopover>
-                                  ) : (
-                                    <span style={{ color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11 }}>{`${anrContact.fname || ''} ${anrContact.lname || ''}`.trim()}</span>
-                                  )}
-                                  <button onMouseDown={e => { e.preventDefault(); setAnrContact(null); setAnrQuery(''); set('anr_contact_id', null) }} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, marginLeft: 'auto' }}>×</button>
-                                </div>
-                              ) : (
-                                <input
-                                  value={anrQuery}
-                                  onChange={e => { setAnrQuery(e.target.value); set('ordered_by', e.target.value); set('anr_contact_id', null); setAnrContact(null); setShowAnrDD(true) }}
-                                  onFocus={() => setShowAnrDD(true)}
-                                  onBlur={() => { setTimeout(() => setShowAnrDD(false), 150); set('ordered_by', anrQuery) }}
-                                  placeholder="—"
-                                  style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
-                                />
-                              )}
-                              {showAnrDD && !anrContact && (labelContacts.filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase())).length > 0 || anrQuery.trim().length >= 2) && (
-                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
-                                  {labelContacts
-                                    .filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase()))
-                                    .map((c, i) => {
-                                      const name = `${c.fname || ''} ${c.lname || ''}`.trim()
-                                      return (
-                                        <div key={c.id} onMouseDown={e => {
-                                          e.preventDefault()
-                                          setAnrQuery(name); set('ordered_by', name); set('client_name', name)
-                                          set('anr_contact_id', c.id); setAnrContact(c)
-                                          if (c.email) set('email', c.email); if (c.phone) set('phone', c.phone)
-                                          setShowAnrDD(false)
-                                        }}
-                                          style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent', borderBottom: i < labelContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
-                                          onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
-                                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                                        >
-                                          <div>{name}</div>
-                                          {c.email && <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 1 }}>{c.email}</div>}
-                                        </div>
-                                      )
-                                    })}
-                                  {anrQuery.trim().length >= 2 && !labelContacts.some(c => `${c.fname || ''} ${c.lname || ''}`.trim().toLowerCase() === anrQuery.trim().toLowerCase()) && (() => {
-                                    const clientId = form.client_db_id
-                                    return (
-                                      <div onMouseDown={async e => {
-                                        e.preventDefault()
-                                        if (!clientId) return
-                                        const parts = anrQuery.trim().split(/\s+/)
-                                        const fname = parts[0] || ''
-                                        const lname = parts.slice(1).join(' ')
-                                        const { data } = await supabase.from('client_contacts').insert({ client_id: clientId, fname, lname: lname || null, contact_type: 'anr', artists: [] }).select().single()
-                                        if (data) {
-                                          const contact = data as ClientContact
-                                          setLabelContacts(prev => [...prev, contact])
-                                          const name = `${fname} ${lname}`.trim()
-                                          setAnrQuery(name); set('ordered_by', name); set('client_name', name)
-                                          set('anr_contact_id', contact.id); setAnrContact(contact)
-                                        }
-                                        setShowAnrDD(false)
-                                      }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this A&R? Add &ldquo;{anrQuery.trim()}&rdquo;
+                            {/* 2. A&R — always-visible name + inline email + phone */}
+                            {(() => {
+                              const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 10, padding: '1px 0' }
+                              const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)', background: 'transparent', color, fontFamily: 'DM Mono', fontSize: 9, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' as const })
+                              const anrPh = anrPhone.replace(/\D/g, '')
+                              return (
+                                <div style={{ marginBottom: 10 }}>
+                                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>A&amp;R</div>
+                                  <div style={{ position: 'relative' }}>
+                                    <input
+                                      value={anrQuery}
+                                      onChange={e => { setAnrQuery(e.target.value); set('ordered_by', e.target.value); set('anr_contact_id', null); setAnrContact(null); setShowAnrDD(true) }}
+                                      onFocus={() => setShowAnrDD(true)}
+                                      onBlur={() => { setTimeout(() => setShowAnrDD(false), 150); set('ordered_by', anrQuery) }}
+                                      placeholder="—"
+                                      style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                                    />
+                                    {showAnrDD && (labelContacts.filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase())).length > 0 || anrQuery.trim().length >= 2) && (
+                                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
+                                        {labelContacts.filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase())).map((c, i) => {
+                                          const name = `${c.fname || ''} ${c.lname || ''}`.trim()
+                                          return (
+                                            <div key={c.id} onMouseDown={e => {
+                                              e.preventDefault()
+                                              setAnrQuery(name); set('ordered_by', name); set('client_name', name)
+                                              set('anr_contact_id', c.id); setAnrContact(c)
+                                              setAnrEmail(c.email || ''); setAnrPhone(c.phone || '')
+                                              set('email', c.email || ''); set('phone', c.phone || '')
+                                              setShowAnrDD(false)
+                                            }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent', borderBottom: i < labelContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
+                                              onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
+                                              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                            >
+                                              <div>{name}</div>
+                                              {c.email && <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 1 }}>{c.email}</div>}
+                                            </div>
+                                          )
+                                        })}
+                                        {anrQuery.trim().length >= 2 && !labelContacts.some(c => `${c.fname || ''} ${c.lname || ''}`.trim().toLowerCase() === anrQuery.trim().toLowerCase()) && (() => {
+                                          const clientId = form.client_db_id
+                                          return (
+                                            <div onMouseDown={async e => {
+                                              e.preventDefault()
+                                              if (!clientId) return
+                                              const parts = anrQuery.trim().split(/\s+/)
+                                              const fname = parts[0] || '', lname = parts.slice(1).join(' ')
+                                              const { data } = await supabase.from('client_contacts').insert({ client_id: clientId, fname, lname: lname || null, contact_type: 'anr', artists: [] }).select().single()
+                                              if (data) { const contact = data as ClientContact; setLabelContacts(prev => [...prev, contact]); const nm = `${fname} ${lname}`.trim(); setAnrQuery(nm); set('ordered_by', nm); set('client_name', nm); set('anr_contact_id', contact.id); setAnrContact(contact); setAnrEmail(''); setAnrPhone('') }
+                                              setShowAnrDD(false)
+                                            }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this A&R? Add &ldquo;{anrQuery.trim()}&rdquo;
+                                            </div>
+                                          )
+                                        })()}
                                       </div>
-                                    )
-                                  })()}
+                                    )}
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
+                                    <input value={anrEmail} onChange={e => setAnrEmail(e.target.value)} onBlur={() => { set('email', anrEmail); if (anrContact?.id && anrEmail !== (anrContact.email || '')) { const cid = anrContact.id; setContactUpdatePrompt({ contactId: cid, column: 'email', value: anrEmail, onUpdate: () => { setAnrContact(p => p ? { ...p, email: anrEmail } : p); setLabelContacts(p => p.map(c => c.id === cid ? { ...c, email: anrEmail } : c)) } }) } }} placeholder="Email" style={cInpStyle} />
+                                    <a href={anrEmail ? `mailto:${anrEmail}` : undefined} onClick={!anrEmail ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--booked)', !!anrEmail)}>Email</a>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                                    <input value={anrPhone} onChange={e => setAnrPhone(e.target.value)} onBlur={() => { set('phone', anrPhone); if (anrContact?.id && anrPhone !== (anrContact.phone || '')) { const cid = anrContact.id; setContactUpdatePrompt({ contactId: cid, column: 'phone', value: anrPhone, onUpdate: () => { setAnrContact(p => p ? { ...p, phone: anrPhone } : p); setLabelContacts(p => p.map(c => c.id === cid ? { ...c, phone: anrPhone } : c)) } }) } }} placeholder="Phone" style={cInpStyle} />
+                                    <a href={anrPh ? `tel:${anrPh}` : undefined} onClick={!anrPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--booked)', !!anrPh)}>Call</a>
+                                    <a href={anrPh ? `sms:${anrPh}` : undefined} onClick={!anrPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--warm)', !!anrPh)}>Text</a>
+                                  </div>
                                 </div>
-                              )}
-                            </div>
+                              )
+                            })()}
 
-                            {/* 3. Admin — same pattern as A&R */}
-                            <div style={{ marginBottom: 8, position: 'relative' }}>
-                              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Admin</div>
-                              {adminContact ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 2, borderBottom: '1px solid var(--border)' }}>
-                                  {(adminContact.email || adminContact.phone) ? (
-                                    <ContactInfoPopover contact={adminContact}>
-                                      {`${adminContact.fname || ''} ${adminContact.lname || ''}`.trim()}
-                                    </ContactInfoPopover>
-                                  ) : (
-                                    <span style={{ color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11 }}>{`${adminContact.fname || ''} ${adminContact.lname || ''}`.trim()}</span>
-                                  )}
-                                  <button onMouseDown={e => { e.preventDefault(); setAdminContact(null); setAdminQuery(''); set('anr_admin_contact_id', null) }} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, marginLeft: 'auto' }}>×</button>
-                                </div>
-                              ) : (
-                                <input
-                                  value={adminQuery}
-                                  onChange={e => { setAdminQuery(e.target.value); set('anr_admin_contact_id', null); setAdminContact(null); setShowAdminDD(true) }}
-                                  onFocus={() => setShowAdminDD(true)}
-                                  onBlur={() => setTimeout(() => setShowAdminDD(false), 150)}
-                                  placeholder="—"
-                                  style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
-                                />
-                              )}
-                              {showAdminDD && !adminContact && (labelAdminContacts.filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase())).length > 0 || adminQuery.trim().length >= 2) && (
-                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
-                                  {labelAdminContacts
-                                    .filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase()))
-                                    .map((c, i) => {
-                                      const name = `${c.fname || ''} ${c.lname || ''}`.trim()
-                                      return (
-                                        <div key={c.id} onMouseDown={e => {
-                                          e.preventDefault()
-                                          setAdminQuery(name); set('anr_admin_contact_id', c.id); setAdminContact(c); setShowAdminDD(false)
-                                        }}
-                                          style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent', borderBottom: i < labelAdminContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
-                                          onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
-                                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                                        >
-                                          <div>{name}</div>
-                                          {c.role && <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 1 }}>{c.role}</div>}
-                                        </div>
-                                      )
-                                    })}
-                                  {adminQuery.trim().length >= 2 && !labelAdminContacts.some(c => `${c.fname || ''} ${c.lname || ''}`.trim().toLowerCase() === adminQuery.trim().toLowerCase()) && (() => {
-                                    const clientId = form.client_db_id
-                                    return (
-                                      <div onMouseDown={async e => {
-                                        e.preventDefault()
-                                        if (!clientId) return
-                                        const parts = adminQuery.trim().split(/\s+/)
-                                        const fname = parts[0] || ''
-                                        const lname = parts.slice(1).join(' ')
-                                        const { data } = await supabase.from('client_contacts').insert({ client_id: clientId, fname, lname: lname || null, contact_type: 'admin' }).select().single()
-                                        if (data) {
-                                          const contact = data as ClientContact
-                                          setLabelAdminContacts(prev => [...prev, contact])
-                                          setAdminQuery(adminQuery.trim()); set('anr_admin_contact_id', contact.id); setAdminContact(contact)
-                                        }
-                                        setShowAdminDD(false)
-                                      }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this admin? Add &ldquo;{adminQuery.trim()}&rdquo;
+                            {/* 3. Admin — identical layout to A&R */}
+                            {(() => {
+                              const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 10, padding: '1px 0' }
+                              const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)', background: 'transparent', color, fontFamily: 'DM Mono', fontSize: 9, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' as const })
+                              const adminPh = adminPhone.replace(/\D/g, '')
+                              return (
+                                <div style={{ marginBottom: 8 }}>
+                                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Admin</div>
+                                  <div style={{ position: 'relative' }}>
+                                    <input
+                                      value={adminQuery}
+                                      onChange={e => { setAdminQuery(e.target.value); set('anr_admin_contact_id', null); setAdminContact(null); setShowAdminDD(true) }}
+                                      onFocus={() => setShowAdminDD(true)}
+                                      onBlur={() => setTimeout(() => setShowAdminDD(false), 150)}
+                                      placeholder="—"
+                                      style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                                    />
+                                    {showAdminDD && (labelAdminContacts.filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase())).length > 0 || adminQuery.trim().length >= 2) && (
+                                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
+                                        {labelAdminContacts.filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase())).map((c, i) => {
+                                          const name = `${c.fname || ''} ${c.lname || ''}`.trim()
+                                          return (
+                                            <div key={c.id} onMouseDown={e => {
+                                              e.preventDefault()
+                                              setAdminQuery(name); set('anr_admin_contact_id', c.id); setAdminContact(c)
+                                              setAdminEmail(c.email || ''); setAdminPhone(c.phone || '')
+                                              setShowAdminDD(false)
+                                            }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent', borderBottom: i < labelAdminContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
+                                              onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
+                                              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                            >
+                                              <div>{name}</div>
+                                              {c.role && <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 1 }}>{c.role}</div>}
+                                            </div>
+                                          )
+                                        })}
+                                        {adminQuery.trim().length >= 2 && !labelAdminContacts.some(c => `${c.fname || ''} ${c.lname || ''}`.trim().toLowerCase() === adminQuery.trim().toLowerCase()) && (() => {
+                                          const clientId = form.client_db_id
+                                          return (
+                                            <div onMouseDown={async e => {
+                                              e.preventDefault()
+                                              if (!clientId) return
+                                              const parts = adminQuery.trim().split(/\s+/)
+                                              const fname = parts[0] || '', lname = parts.slice(1).join(' ')
+                                              const { data } = await supabase.from('client_contacts').insert({ client_id: clientId, fname, lname: lname || null, contact_type: 'admin' }).select().single()
+                                              if (data) { const contact = data as ClientContact; setLabelAdminContacts(prev => [...prev, contact]); setAdminQuery(adminQuery.trim()); set('anr_admin_contact_id', contact.id); setAdminContact(contact); setAdminEmail(''); setAdminPhone('') }
+                                              setShowAdminDD(false)
+                                            }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this admin? Add &ldquo;{adminQuery.trim()}&rdquo;
+                                            </div>
+                                          )
+                                        })()}
                                       </div>
-                                    )
-                                  })()}
+                                    )}
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
+                                    <input value={adminEmail} onChange={e => setAdminEmail(e.target.value)} onBlur={() => { if (adminContact?.id && adminEmail !== (adminContact.email || '')) { const cid = adminContact.id; setContactUpdatePrompt({ contactId: cid, column: 'email', value: adminEmail, onUpdate: () => { setAdminContact(p => p ? { ...p, email: adminEmail } : p); setLabelAdminContacts(p => p.map(c => c.id === cid ? { ...c, email: adminEmail } : c)) } }) } }} placeholder="Email" style={cInpStyle} />
+                                    <a href={adminEmail ? `mailto:${adminEmail}` : undefined} onClick={!adminEmail ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--booked)', !!adminEmail)}>Email</a>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                                    <input value={adminPhone} onChange={e => setAdminPhone(e.target.value)} onBlur={() => { if (adminContact?.id && adminPhone !== (adminContact.phone || '')) { const cid = adminContact.id; setContactUpdatePrompt({ contactId: cid, column: 'phone', value: adminPhone, onUpdate: () => { setAdminContact(p => p ? { ...p, phone: adminPhone } : p); setLabelAdminContacts(p => p.map(c => c.id === cid ? { ...c, phone: adminPhone } : c)) } }) } }} placeholder="Phone" style={cInpStyle} />
+                                    <a href={adminPh ? `tel:${adminPh}` : undefined} onClick={!adminPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--booked)', !!adminPh)}>Call</a>
+                                    <a href={adminPh ? `sms:${adminPh}` : undefined} onClick={!adminPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--warm)', !!adminPh)}>Text</a>
+                                  </div>
                                 </div>
-                              )}
-                            </div>
+                              )
+                            })()}
+
+                            {/* Contact update prompt — "Update profile or just this session?" */}
+                            {contactUpdatePrompt && (
+                              <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ background: '#13161d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '24px 28px', width: 340, maxWidth: '90vw', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
+                                  <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: '#e8eaf0', marginBottom: 8 }}>Update client profile or just this session?</div>
+                                  <div style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#8b90a8', lineHeight: 1.6, marginBottom: 20 }}>
+                                    Save the new {contactUpdatePrompt.column} back to the contact record, or keep it for this booking only.
+                                  </div>
+                                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                    <button type="button" onClick={() => setContactUpdatePrompt(null)} style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, background: 'transparent', color: '#8b90a8' }}>Just this session</button>
+                                    <button type="button" onClick={async () => { await supabase.from('client_contacts').update({ [contactUpdatePrompt.column]: contactUpdatePrompt.value }).eq('id', contactUpdatePrompt.contactId); contactUpdatePrompt.onUpdate(); setContactUpdatePrompt(null) }} style={{ padding: '7px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700, background: 'var(--accent)', color: '#0d0f14' }}>Update profile</button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </>
                         ) : (
                           <>
