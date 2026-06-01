@@ -509,9 +509,19 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   const deleteClient = useCallback(async () => {
     if (!client) return
     setDeleting(true)
+    // Fetch contact IDs so we can nullify FK references on leads before deleting contacts
+    const { data: contactRows } = await supabase.from('client_contacts').select('id').eq('client_id', client.id)
+    const contactIds = (contactRows ?? []).map((c: { id: string }) => c.id)
+    if (contactIds.length > 0) {
+      await supabase.from('leads').update({ anr_contact_id: null }).in('anr_contact_id', contactIds)
+      await supabase.from('leads').update({ anr_admin_contact_id: null }).in('anr_admin_contact_id', contactIds)
+    }
     await supabase.from('leads').update({ client_id: null }).eq('client_id', client.id)
-    await supabase.from('clients').delete().eq('id', client.id)
+    await supabase.from('work_orders').update({ client_id: null }).eq('client_id', client.id)
+    await supabase.from('client_contacts').delete().eq('client_id', client.id)
+    const { error } = await supabase.from('clients').delete().eq('id', client.id)
     setDeleting(false)
+    if (error) { console.error('Delete client failed:', error.message); return }
     setShowDeleteConfirm(false)
     onDelete?.()
   }, [client, onDelete])
