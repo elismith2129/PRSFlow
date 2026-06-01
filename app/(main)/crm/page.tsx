@@ -132,15 +132,6 @@ function to24h(t12: string): string {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
 }
 
-function parseLastContact(lc: string | null): { date: string; time: string } {
-  if (!lc) return { date: '', time: '' }
-  try {
-    const d = new Date(lc)
-    const date = d.toISOString().split('T')[0]
-    const time = fmtTime12(`${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`)
-    return { date, time }
-  } catch { return { date: '', time: '' } }
-}
 
 function fmtSessionLine(l: Lead): string | null {
   const parts: string[] = []
@@ -1067,9 +1058,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   const [existingTokenStr, setExistingTokenStr] = useState<string | null>(null)
   const [fnameVal, setFnameVal] = useState(lead.fname || '')
   const [lnameVal, setLnameVal] = useState(lead.lname || '')
-  const [lcDate, setLcDate] = useState(() => parseLastContact(lead.last_contact).date)
-  const [lcTime, setLcTime] = useState(() => parseLastContact(lead.last_contact).time)
-  const parsedLoc0 = parseLocation(lead.location || '')
+const parsedLoc0 = parseLocation(lead.location || '')
   const [localVenue, setLocalVenue] = useState(parsedLoc0.venue)
   const [localStudio, setLocalStudio] = useState(parsedLoc0.studio)
   const [detailRateType, setDetailRateType] = useState<'hourly' | 'daily'>(() => lead.rate_daily ? 'daily' : 'hourly')
@@ -1088,9 +1077,6 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
     setLocalVenue(loc.venue)
     setLocalStudio(loc.studio)
     setDetailRateType(lead.rate_daily ? 'daily' : 'hourly')
-    const lc = parseLastContact(lead.last_contact)
-    setLcDate(lc.date)
-    setLcTime(lc.time)
   }, [lead.id])
   useEffect(() => { setNotesVal(lead.notes || '') }, [lead.notes])
   useEffect(() => {
@@ -1170,15 +1156,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
     setTimeout(() => setSavedField(null), 600)
   }
 
-  function saveLastContact(date: string, time: string) {
-    if (!date) return
-    const t24 = time ? to24h(time) : '00:00'
-    const iso = `${date}T${t24}:00.000`
-    save('last_contact', iso)
-    update('last_contact', iso)
-  }
-
-  const khuDays = daysUntilKhu(lead)
+const khuDays = daysUntilKhu(lead)
   const khuColor = khuDays === null ? 'var(--text3)' : khuDays < 1 ? 'var(--hot)' : khuDays <= 2 ? 'var(--warm)' : 'var(--booked)'
 
   const selStyle: React.CSSProperties = {
@@ -1470,31 +1448,6 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
           <input ref={phoneRef} value={local.phone || ''} onChange={e => update('phone', e.target.value)}
             onFocus={() => setFocusedInput('phone')} onBlur={e => { setFocusedInput(null); save('phone', e.target.value) }}
             onKeyDown={enterBlur} placeholder="Add phone" style={iStyle('phone')} />
-        </div>
-        <div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{ flex: 1 }}>
-              <div style={fieldLabelStyle}>Last Contact</div>
-              <input
-                type="date"
-                value={lcDate}
-                onChange={e => { setLcDate(e.target.value); saveLastContact(e.target.value, lcTime) }}
-                onFocus={() => setFocusedInput('lc_date')}
-                onBlur={() => setFocusedInput(null)}
-                style={{ ...iStyle('lc_date'), cursor: 'pointer', width: '100%' }}
-              />
-            </div>
-            <div>
-              <div style={fieldLabelStyle}>Time</div>
-              <TimeInput
-                value={lcTime}
-                onChange={v => { setLcTime(v); if (lcDate) saveLastContact(lcDate, v) }}
-                onBlur={() => { if (lcDate) saveLastContact(lcDate, lcTime) }}
-                placeholder="—"
-                style={{ ...iStyle('lc_time'), width: 72 }}
-              />
-            </div>
-          </div>
         </div>
       </div>
 
