@@ -455,7 +455,7 @@ function ContactInfoPopover({ contact, children }: { contact: ClientContact; chi
     <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
       <button
         onMouseDown={e => { e.preventDefault(); setOpen(o => !o) }}
-        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: children ? 'var(--text)' : 'var(--accent)', fontSize: children ? 11 : 9, fontFamily: 'DM Mono', lineHeight: 1 }}
+        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: children ? 'var(--text)' : 'var(--accent)', fontSize: children ? 11 : 9, fontFamily: 'DM Mono', lineHeight: 1, textDecoration: children ? 'underline' : 'none', textDecorationColor: 'rgba(255,255,255,0.25)', textUnderlineOffset: '3px' }}
         title="Contact info"
       >
         {children ?? '↗'}
@@ -1576,9 +1576,13 @@ function BookingForm({
                               <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>A&amp;R</div>
                               {anrContact ? (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 2, borderBottom: '1px solid var(--border)' }}>
-                                  <ContactInfoPopover contact={anrContact}>
-                                    {`${anrContact.fname || ''} ${anrContact.lname || ''}`.trim()}
-                                  </ContactInfoPopover>
+                                  {(anrContact.email || anrContact.phone) ? (
+                                    <ContactInfoPopover contact={anrContact}>
+                                      {`${anrContact.fname || ''} ${anrContact.lname || ''}`.trim()}
+                                    </ContactInfoPopover>
+                                  ) : (
+                                    <span style={{ color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11 }}>{`${anrContact.fname || ''} ${anrContact.lname || ''}`.trim()}</span>
+                                  )}
                                   <button onMouseDown={e => { e.preventDefault(); setAnrContact(null); setAnrQuery(''); set('anr_contact_id', null) }} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, marginLeft: 'auto' }}>×</button>
                                 </div>
                               ) : (
@@ -1646,9 +1650,13 @@ function BookingForm({
                               <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Admin</div>
                               {adminContact ? (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 2, borderBottom: '1px solid var(--border)' }}>
-                                  <ContactInfoPopover contact={adminContact}>
-                                    {`${adminContact.fname || ''} ${adminContact.lname || ''}`.trim()}
-                                  </ContactInfoPopover>
+                                  {(adminContact.email || adminContact.phone) ? (
+                                    <ContactInfoPopover contact={adminContact}>
+                                      {`${adminContact.fname || ''} ${adminContact.lname || ''}`.trim()}
+                                    </ContactInfoPopover>
+                                  ) : (
+                                    <span style={{ color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11 }}>{`${adminContact.fname || ''} ${adminContact.lname || ''}`.trim()}</span>
+                                  )}
                                   <button onMouseDown={e => { e.preventDefault(); setAdminContact(null); setAdminQuery(''); set('anr_admin_contact_id', null) }} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, marginLeft: 'auto' }}>×</button>
                                 </div>
                               ) : (
