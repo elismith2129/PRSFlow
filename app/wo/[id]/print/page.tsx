@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
+import { SignatureBlock } from '@/components/wo/SignatureBlock'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,6 +56,7 @@ export default async function WOPrintPage({ params }: { params: { id: string } }
           @media print {
             body { padding: 12px 20px; }
             button { display: none; }
+            canvas { border: 1px solid #aaa !important; }
           }
         `}</style>
       </head>
@@ -178,6 +180,8 @@ export default async function WOPrintPage({ params }: { params: { id: string } }
             </div>
           </div>
         </div>
+
+        <SignatureBlock />
 
       </body>
     </html>
