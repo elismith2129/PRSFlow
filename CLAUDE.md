@@ -57,7 +57,7 @@ Tables in use (all with public RLS — auth deferred to Chunk 9):
 - `qc_reports` — post-session quality checks. `id` is text (generated client-side)
 - `contact_log` — cooldown tracking for CRM touch prompts
 - `lead_activity` — touch log entries per lead
-- `bookings` — calendar sessions. `start_date`, `from_time`, `to_time`, `location`, `status`
+- `bookings` — calendar sessions. `start_date`, `from_time`, `to_time`, `location`, `status`, `rate_daily`. FK fields: `anr_contact_id` (A&R who ordered), `anr_admin_contact_id` (admin contact)
 - `client_contacts` — A&R contacts for label clients
 - `registration_tokens` — public client registration flow
 
@@ -75,9 +75,10 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 ### Key shared libraries
 
 - `lib/supabase.ts` — Supabase client + all entity types (`Lead`, `Client`, `WorkOrder`, `Booking`, etc.)
+- `lib/studios.ts` — `STUDIO_LOCATIONS` array + `parseLocation()` / `combineLocation()` for the "Venue · Studio" string stored in `leads.location` / `bookings.location`
+- `lib/roster.ts` — Label artist array helpers (`addArtistToLabel`, `removeArtistFromLabel`, `getArtistsForLabel`). Always use these — never write `clients.artists` directly.
 - `lib/checklist-items.ts` — Per-studio opening/closing checklist items (shared between runner page and admin modal). `CHECKLISTS[studio][type]`, `getChecklistSections()`, `flattenSections()`
 - `lib/settings.ts` — Timer constants (COOL_DOWN_DAYS, TOUCH_INTERVAL_DAYS)
-- `lib/checklist-items.ts` — Per-studio opening/closing items used by both runner page and DailyOpsModal
 
 ### Conventions
 
@@ -89,7 +90,7 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 - **Runner pages** use `minHeight: '100dvh'`, `paddingBottom: 120` for the fixed footer, no nav import
 - **Real-time checklist saves:** Items save on tap via `clIdRef` + `creatingRef` pattern. Notes debounce 800ms. Needs-attention upserts `daily_ops_submissions` without `submitted_at` immediately for dashboard badge
 
-## What's Built (as of May 22, 2026)
+## What's Built (as of June 1, 2026)
 
 | Chunk | Feature | Status |
 |-------|---------|--------|
@@ -98,9 +99,12 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 | 6 | Calendar — multi-studio grid, booking form, WO popup, COD hero, live WO sync | ✅ Complete |
 | 7 | Runner Hub — /runner routes, WO form, receipt OCR, daily ops checklists | ✅ Complete |
 | 7b | Dashboard daily ops — LocationStrip drawer, Yesterday/Today, DailyOpsModal | ✅ Complete |
+| CRM polish | StudioSelect component, rate_daily toggle, label roster (`lib/roster.ts`), new lead form dropdowns, Move to Booking nav | ✅ Complete |
+| A&R Admin | Admins section on label profiles; `anr_contact_id`/`anr_admin_contact_id` on bookings; contact popovers + inline fields in booking card | ✅ Complete |
 
 ## What's Next
 
+- **Calendar import** — run `scripts/importCalendar.mjs` to load historical bookings; verify, then delete script
 - **Mic Inventory UI** — runner + admin UI for mic_inventory table (tables exist, UI not built)
 - **Needs Action rebuild (4.8)** — redesign what "needs action" means vs overdue
 - **Email/webhooks (Chunk 5)** — Squarespace → lead auto-create

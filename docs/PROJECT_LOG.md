@@ -13,6 +13,7 @@
 - **Label divisions are separate clients.** Sony General ≠ Sony Latin ≠ UMG General ≠ UM Latino. Don't merge them.
 - **"Individual" is the database value, "COD" is the display label.** Schema uses `type='individual'`, UI shows "COD" everywhere.
 - **23 labels is our effective max.** After 40 years, every label that will book with us is already in our system. Going forward, label *clients* don't get created — only label *contacts* and *artists* get added.
+- **Bookings track A&R and Admin as foreign keys.** `bookings.anr_contact_id` refs the A&R from `client_contacts` who ordered the session; `bookings.anr_admin_contact_id` refs the admin contact handling logistics. Both are nullable — COD bookings typically have neither. Added in chunk-anr-admin-d1 (May 2026).
 
 ### Migration approach
 - **Migrate clients/contacts only — no historical bookings.** The clients table has 615 clients migrated from 1,638 booked leads. We did NOT migrate historical bookings or create a "needs review" backlog. Original leads remain untouched in the leads table as historical reference.
@@ -43,6 +44,10 @@
 - **Session Notes is purely freeform.** Activity (touches, keep-hot, etc.) is logged only to `lead_activity` — nothing is auto-appended to the notes field. Notes are seeded from the lead's original inquiry and are staff-editable only.
 - **COD vs Label/Billing color convention:** COD = `#7BBFFF` (sky blue), Label/Billing = `#96A9FF` (periwinkle). Same brightness, distinct hues. Applied to lead names in CRM list and detail card header, client names in Clients list and profile header, billing pills everywhere, COD/Label-Billing toggle active state in New Lead form, and the Email button color. Lead name color is driven by `billing` field (`=== 'Billing'`), not `artist_name`.
 - **iOS Safari requires explicit `height` (not just `max-height`) plus `-webkit-overflow-scrolling: touch` for scrollable containers.** `max-height` alone works on desktop but renders as a full-height block on iOS. Apply this pattern to any future scrollable embeds.
+- **`StudioSelect` is the canonical studio picker across all forms.** Single flat dropdown showing "Venue · Studio" (e.g. "Paramount · Studio A"). Lives in `components/shared/StudioSelect.tsx`; room data in `lib/studios.ts` (`STUDIO_LOCATIONS`). Replaced two-cascade (venue then studio) dropdowns everywhere — CRM new lead form, lead detail card, booking form. `lib/studios.ts` also exports `parseLocation()` / `combineLocation()` for splitting/joining the "Venue · Studio" string stored in `leads.location`.
+- **`lib/roster.ts` is the only write path for label artist arrays.** `addArtistToLabel` / `removeArtistFromLabel` / `getArtistsForLabel` are the sole entry points for modifying `clients.artists[]`. Never write `clients.artists` directly. Artist adds from A&R card saves also write to that contact's own `artists[]` subset.
+- **A&R and Admin are saved as FK IDs on each booking, with contact popovers in the booking card.** `bookings.anr_contact_id` + `bookings.anr_admin_contact_id` are written on every booking save. In label booking cards, the A&R and Admin names are clickable popover triggers — an underline indicator shows when the contact has info stored. The popover shows email/phone with Call/Text/Email action links. Inline view (no Edit button) always shows email/phone with action links directly in the card.
+- **Label booking card field order: Artist → A&R → Admin.** This matches the booking chain: who's recording, who ordered it, who manages logistics.
 
 ---
 
@@ -219,3 +224,74 @@ Also requires `checklist-photos` Supabase Storage bucket (public) for photo uplo
 - **Fixed 2wks/month not snapping after switching from week view.** Root cause: when switching from week (wide columns) to 2wks/month (narrow columns), the DOM reflow causes the grid's `scrollWidth` to shrink. This fires a `scroll` event before the `requestAnimationFrame` could set the correct position, and `handleGridScroll` saw `scrollLeft` at the old (large) position — past the right-edge threshold — and advanced `startDate` by 7 days. Fix: set `shiftingRef.current = true` before scheduling the rAF (blocking the scroll handler during the transition window), reset inside the rAF after `scrollLeft` is applied.
 - **Initial grid measurement via `useLayoutEffect`** ensures `gridW` is correct on first render. Previously the `[startDate, view]` scroll effect fired with `gridW = 1200` (default state) before the ResizeObserver updated the real width, causing `colW` to be wrong and scroll position slightly off on initial load.
 - **Zoom: removed redundant 44px level.** `ZOOM_FIXED` changed from `[44, 60, 80, 88, 110, 132]` to `[60, 80, 88, 110, 132]`. Fit-all is level 0 (the floor); `+` goes up from there. 44px was visually identical to Fit on most screens.
+
+---
+
+### May 29, 2026 — CRM Polish + Label Roster + A&R Admin
+
+**CRM new lead form polish (chunk-crm-polish-1):**
+- Source field changed from free text to dropdown
+- Studio/Location replaced with `StudioSelect` component
+- Notes field: placeholder text added
+- Company + Label fields hidden automatically in COD mode
+
+**StudioSelect + rate_daily + lead pre-fill (chunk-crm-polish-2):**
+- `lib/studios.ts`: `STUDIO_LOCATIONS` constant + `parseLocation()` / `combineLocation()` helpers
+- `components/shared/StudioSelect.tsx`: single flat dropdown in "Venue · Studio" format, shared across CRM and calendar
+- `leads.rate_daily` (text) added to Lead type for hourly/daily rate toggle on both forms
+- Calendar booking form wired to `StudioSelect` and to lead pre-fill from CRM "Start Booking" flow
+
+**Label roster (chunk-crm-polish-3):**
+- `lib/roster.ts`: `getArtistsForLabel()`, `addArtistToLabel()`, `removeArtistFromLabel()` — shared write gateway for `clients.artists[]`
+- Lead form (Label mode): roster-backed A&R dropdown + artist dropdown
+- Booking form: A&R autocomplete backed by `client_contacts` + roster-backed artist dropdown
+- Client profile: Artists roster section reads `clients.artists[]`; syncs on every A&R card artist save
+- `clients.artists[]` is the authoritative label roster (see Decisions Log)
+
+**StudioSelect flat + field order (chunk-crm-polish-4):**
+- `StudioSelect` redesigned as a true flat dropdown (previous version still had two-step cascade internally)
+- Lead form field order corrected
+- "Move to Booking" button on lead detail card navigates to `/calendar`
+
+**Fixes (May 29):**
+- Artist name not persisting to lead record from lead form
+- A&R contact info not pre-filling in booking form when launched from a lead
+- Hydration error on CRM All Leads filter buttons (localStorage read during SSR)
+- Label client search now also matches A&R contact names (not only client name)
+
+**A&R Admin D1 (chunk-anr-admin-d1):**
+- Admins section added to label client profiles — separate list of admin/logistics contacts, distinct from A&Rs
+- `bookings.anr_contact_id` + `bookings.anr_admin_contact_id` columns documented in `lib/supabase.ts` `Booking` interface
+
+**A&R Admin D2 (chunk-anr-admin-d2):**
+- Booking form: admin selection dropdown added for label bookings; `anr_contact_id` + `anr_admin_contact_id` written on every save
+- `FormData` and `bookingToForm()` in the booking form updated to include both FK fields
+- Contact popovers: A&R + Admin names in booking card are clickable → popover shows email/phone with Call/Text/Email links
+
+**A&R Admin D2b (chunk-anr-admin-d2b):**
+- Label booking card field order: Artist → A&R → Admin
+- A&R and Admin names act as the popover trigger (underline indicator when info is present); no separate button
+- Artist names in A&R card headers shown as small tiles instead of a comma-separated text row
+
+---
+
+### June 1, 2026 — A&R/Admin inline fields, WO signature pad, import script
+
+**Label card inline (chunk-label-card-inline):**
+- A&R and Admin fields in label booking card now show email/phone inline with Email/Call/Text action buttons — always visible, no popover required for basic contact info
+- `hasInfo` guard: underline indicator on name only when the contact has stored email or phone
+- Edit/× buttons removed from client card header — always-visible inline layout
+
+**WO form + print view:**
+- WO review form: static signature/print-name fields replaced with interactive legal name input + canvas-based signature pad
+- WO print view: signature/print-name section removed (not needed for print-only flow)
+
+**Other June 1 changes:**
+- Lead detail card: Last Contact and Time fields removed (Activity Log already captures this)
+- Nav: CRM and Calendar order swapped — Calendar now appears before CRM
+- WO hub button: orange for draft/in-progress, green for submitted/approved
+- Fix: lead `session_notes` now pre-fills into booking form when launched from a lead
+- Fix: WO itemized row math corrected
+- Fix: client delete now clears all FK references (`work_orders`, `leads`, `registration_tokens`) before deleting the client row — prevents FK constraint errors
+- `scripts/importCalendar.mjs`: one-time historical bookings import from `paramount_import_2024.xml` (Supabase Storage). Parses XML, decodes rate codes via WALKTHEDOG cipher (`W=1 A=2 L=3 K=4 T=5 H=6 E=7 D=8 O=9 G=0`), maps studio names to DB IDs, upserts to `bookings` in batches of 100. Header comment: "Run once only. Delete after import is confirmed."
+- Calendar booking form: A&R/Admin email+phone state now set inline at contact assignment (two `useEffect` watchers removed — eliminates extra render cycle)

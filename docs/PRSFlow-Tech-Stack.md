@@ -109,7 +109,10 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 | `lib/terms.ts` | T&Cs content as structured array — update here without touching form |
 | `styles/globals.css` | CSS variable definitions + Google Fonts import |
 | `components/layout/Nav.tsx` | App nav (only renders inside `(main)` route group) |
+| `components/shared/StudioSelect.tsx` | Single flat dropdown for "Venue · Studio" selection; used across CRM and calendar |
 | `components/shared/` | Reusable pickers: `ContactPicker`, `ArtistPicker` |
+| `lib/studios.ts` | `STUDIO_LOCATIONS` array + `parseLocation()` / `combineLocation()` for the "Venue · Studio" string format |
+| `lib/roster.ts` | Label artist array helpers: `addArtistToLabel`, `removeArtistFromLabel`, `getArtistsForLabel` |
 | `schema.sql` | Full database schema — run in Supabase SQL editor to recreate |
 
 ---
@@ -166,12 +169,23 @@ Defined in `styles/globals.css`:
 | 4.9 | Detail card redesign: 2-col Contact + Session grids, cascading Location/Studio dropdowns, 12h TimeInput, editable Last Contact, session date picker, pills inline with name, Clients nav badge for pending registrations, Needs Action daily reset cron |
 | **Chunk 6 calendar polish ✅** | **View switching, zoom, StudioView, scroll correctness** |
 | 6-polish | Dynamic colW per view (week/2wks/month show correct date ranges), view-switch snaps to current Sunday, rAF shiftingRef guard fixes scroll race on column-width change, useLayoutEffect for initial grid measurement, StudioView blocks styled to match main calendar (black bg + status top bar, never truncates), zoom floor = Fit (removed 44px level), no post-scroll snapping |
+| **CRM & Booking polish ✅** | **StudioSelect, label roster, A&R Admin, booking form improvements** |
+| crm-polish-1 | New lead form: Source + Studio/Location dropdowns (replacing free text), Notes placeholder, COD mode hides Company/Label fields |
+| crm-polish-2 | `lib/studios.ts` + `StudioSelect` component (flat "Venue · Studio" dropdown); `rate_daily` toggle on CRM and booking forms; booking form wired to StudioSelect + lead pre-fill |
+| crm-polish-3 | `lib/roster.ts` — shared write gateway for `clients.artists[]`; roster-backed A&R + artist dropdowns on lead form, booking form, and client profile; Artists roster section on client profiles |
+| crm-polish-4 | StudioSelect redesigned as true flat dropdown; lead form field order; "Move to Booking" navigates to `/calendar` |
+| anr-admin-d1 | Admins section on label client profiles; `bookings.anr_contact_id` + `anr_admin_contact_id` FK columns added to schema |
+| anr-admin-d2 | Admin dropdown in booking form; FK IDs saved on every booking write; contact popovers (A&R + Admin names → email/phone + action links) |
+| anr-admin-d2b | Label booking card field order: Artist → A&R → Admin; name-as-popover-trigger; artist tiles in A&R card headers |
+| label-card-inline | Inline A&R/Admin email/phone with Email/Call/Text buttons in booking card; underline `hasInfo` indicator; remove Edit/× from card header |
 
 ### Next
 
 | Priority | What's next |
 |---|---|
-| **High** | **Chunk 6 — Calendar/Booking:** Session scheduling, bookings table, studio room assignment, two-entry-point new session modal, reuses `ContactPicker` + `ArtistPicker` |
+| **High** | **Calendar import:** Run `scripts/importCalendar.mjs` to load historical bookings; verify data, then delete script |
+| **High** | **Mic Inventory UI** — runner + admin UI for `mic_inventory` table (table exists, UI not built) |
+| Medium | **Needs Action rebuild (4.8)** — redesign what "needs action" means vs overdue |
 | Medium | **4.9b — Duplicate merge flow:** UI to merge two client profiles discovered post-import |
 
 ### Deprioritized
