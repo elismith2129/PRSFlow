@@ -275,10 +275,10 @@ function assignLanes(bookings: Booking[]): Map<string, { lane: number; numLanes:
 // ─── BOOKING BLOCK ───────────────────────────────────────────────────────────
 
 function BookingBlock({
-  booking, gridStart, totalDays, lane, numLanes, rowH, onClick, onOptionClick,
+  booking, gridStart, totalDays, lane, numLanes, rowH, onClick,
 }: {
   booking: Booking; gridStart: Date; totalDays: number
-  lane: number; numLanes: number; rowH: number; onClick: () => void; onOptionClick?: () => void
+  lane: number; numLanes: number; rowH: number; onClick: () => void
 }) {
   const bStart = parse(booking.start_date)
   const bEnd = parse(booking.end_date)
@@ -326,7 +326,7 @@ function BookingBlock({
 
   return (
     <div
-      onClick={e => { e.stopPropagation(); if (e.altKey && onOptionClick) { onOptionClick(); return } onClick() }}
+      onClick={e => { e.stopPropagation(); onClick() }}
       style={{
         position: 'absolute', top: blockTop, height: blockHeight,
         left: `calc(${left}% + 2px)`, width: `calc(${width}% - 4px)`,
@@ -1895,13 +1895,11 @@ function DayView({
   setDayViewDate,
   locFilter,
   onOpenEdit,
-  onCopyBooking,
 }: {
   dayViewDate: Date
   setDayViewDate: (d: Date) => void
   locFilter: string
   onOpenEdit: (b: Booking) => void
-  onCopyBooking: (b: Booking) => void
 }) {
   const [dayBookings, setDayBookings] = useState<Booking[]>([])
   const [miniMonthStart, setMiniMonthStart] = useState(
@@ -2053,7 +2051,7 @@ function DayView({
                     const hasSessionBorder = b.session_type !== 'recording'
 
                     return (
-                      <div key={b.id} onClick={e => { if (e.altKey) { onCopyBooking(b); return } onOpenEdit(b) }} style={{
+                      <div key={b.id} onClick={() => onOpenEdit(b)} style={{
                         padding: '7px 10px', cursor: 'pointer',
                         background: '#0d0f14',
                         borderTop: `3px solid ${STATUS_TOP_COLORS[b.status] ?? STATUS_TOP_COLORS.confirmed}`,
@@ -2113,12 +2111,10 @@ function StudioView({
   locFilter,
   onOpenEdit,
   onOpenNew,
-  onCopyBooking,
 }: {
   locFilter: string
   onOpenEdit: (b: Booking) => void
   onOpenNew: (location?: string, studio?: string, date?: string) => void
-  onCopyBooking: (b: Booking) => void
 }) {
   const [loc, room] = locFilter.includes('|') ? locFilter.split('|') : ['', '']
   const [monthStart, setMonthStart] = useState(() => {
@@ -2258,7 +2254,7 @@ function StudioView({
                 return (
                   <div
                     key={b.id}
-                    onClick={e => { e.stopPropagation(); if (e.altKey) { onCopyBooking(b); return } onOpenEdit(b) }}
+                    onClick={e => { e.stopPropagation(); onOpenEdit(b) }}
                     style={{
                       marginBottom: 3, padding: '5px 7px', borderRadius: 3,
                       background: '#0d0f14',
@@ -2580,45 +2576,6 @@ function CalendarPageInner() {
     try { sessionStorage.setItem('cal_form_draft', JSON.stringify({ editBooking: b, formData: initial })) } catch {}
   }
 
-  async function copyBooking(b: Booking) {
-    await supabase.from('bookings').insert({
-      status: b.status,
-      session_type: b.session_type,
-      payment_type: b.payment_type,
-      cod_method: b.cod_method || null,
-      location: b.location,
-      studio: b.studio,
-      start_date: b.start_date,
-      end_date: b.end_date,
-      from_time: b.from_time || null,
-      to_time: b.to_time || null,
-      rate: b.rate || null,
-      rate_daily: b.rate_daily || null,
-      invoice_num: null,
-      client_id: b.client_id || null,
-      client_name: b.client_name || null,
-      artist: b.artist || null,
-      label: b.label || null,
-      ordered_by: b.ordered_by || null,
-      phone: b.phone || null,
-      email: b.email || null,
-      po: b.po || null,
-      producer: b.producer || null,
-      food_budget: b.food_budget,
-      food_amount: b.food_amount || null,
-      engineer_name: b.engineer_name || null,
-      engineer_status: b.engineer_status,
-      assistant_name: b.assistant_name || null,
-      assistant_status: b.assistant_status,
-      notes: b.notes || null,
-      is_srs: false,
-      srs_fee_amount: null,
-      anr_contact_id: b.anr_contact_id || null,
-      anr_admin_contact_id: b.anr_admin_contact_id || null,
-    })
-    await load()
-  }
-
   async function handleSave(data: FormData) {
     const payload = {
       status: data.status,
@@ -2856,7 +2813,6 @@ function CalendarPageInner() {
                             gridStart={gridRenderStart} totalDays={DAYS}
                             lane={lane} numLanes={numLanes} rowH={rowH}
                             onClick={() => openEdit(b)}
-                            onOptionClick={() => copyBooking(b)}
                           />
                         )
                       })}
@@ -3032,7 +2988,6 @@ function CalendarPageInner() {
           setDayViewDate={setDayViewDate}
           locFilter={locFilter}
           onOpenEdit={openEdit}
-          onCopyBooking={copyBooking}
         />
       )}
 
@@ -3041,7 +2996,6 @@ function CalendarPageInner() {
           locFilter={locFilter}
           onOpenEdit={openEdit}
           onOpenNew={openNew}
-          onCopyBooking={copyBooking}
         />
       )}
 
