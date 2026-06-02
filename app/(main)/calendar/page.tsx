@@ -1895,11 +1895,13 @@ function DayView({
   setDayViewDate,
   locFilter,
   onOpenEdit,
+  onCopyBooking,
 }: {
   dayViewDate: Date
   setDayViewDate: (d: Date) => void
   locFilter: string
   onOpenEdit: (b: Booking) => void
+  onCopyBooking: (b: Booking) => void
 }) {
   const [dayBookings, setDayBookings] = useState<Booking[]>([])
   const [miniMonthStart, setMiniMonthStart] = useState(
@@ -2051,7 +2053,7 @@ function DayView({
                     const hasSessionBorder = b.session_type !== 'recording'
 
                     return (
-                      <div key={b.id} onClick={() => onOpenEdit(b)} style={{
+                      <div key={b.id} onClick={e => { if (e.altKey) { onCopyBooking(b); return } onOpenEdit(b) }} style={{
                         padding: '7px 10px', cursor: 'pointer',
                         background: '#0d0f14',
                         borderTop: `3px solid ${STATUS_TOP_COLORS[b.status] ?? STATUS_TOP_COLORS.confirmed}`,
@@ -2111,10 +2113,12 @@ function StudioView({
   locFilter,
   onOpenEdit,
   onOpenNew,
+  onCopyBooking,
 }: {
   locFilter: string
   onOpenEdit: (b: Booking) => void
   onOpenNew: (location?: string, studio?: string, date?: string) => void
+  onCopyBooking: (b: Booking) => void
 }) {
   const [loc, room] = locFilter.includes('|') ? locFilter.split('|') : ['', '']
   const [monthStart, setMonthStart] = useState(() => {
@@ -2254,7 +2258,7 @@ function StudioView({
                 return (
                   <div
                     key={b.id}
-                    onClick={e => { e.stopPropagation(); onOpenEdit(b) }}
+                    onClick={e => { e.stopPropagation(); if (e.altKey) { onCopyBooking(b); return } onOpenEdit(b) }}
                     style={{
                       marginBottom: 3, padding: '5px 7px', borderRadius: 3,
                       background: '#0d0f14',
@@ -3028,6 +3032,7 @@ function CalendarPageInner() {
           setDayViewDate={setDayViewDate}
           locFilter={locFilter}
           onOpenEdit={openEdit}
+          onCopyBooking={copyBooking}
         />
       )}
 
@@ -3036,6 +3041,7 @@ function CalendarPageInner() {
           locFilter={locFilter}
           onOpenEdit={openEdit}
           onOpenNew={openNew}
+          onCopyBooking={copyBooking}
         />
       )}
 
