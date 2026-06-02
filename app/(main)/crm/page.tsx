@@ -192,12 +192,8 @@ type LabelSuggestion = Client & { _anrName?: string; _anrContactId?: string; _an
 export default function CRMPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [latestTouches, setLatestTouches] = useState<TouchMap>({})
-  const [selectedId, setSelectedId] = useState<number | null>(() => {
-    try { const v = sessionStorage.getItem('crm_selected'); return v ? Number(v) : null } catch { return null }
-  })
-  const [view, setView] = useState<CrmView>(() => {
-    try { return (sessionStorage.getItem('crm_view') as CrmView) || 'needs-action' } catch { return 'needs-action' }
-  })
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [view, setView] = useState<CrmView>('needs-action')
   const [loading, setLoading] = useState(true)
   const [emailModal, setEmailModal] = useState(false)
   const [newLeadOpen, setNewLeadOpen] = useState(false)
@@ -205,6 +201,17 @@ export default function CRMPage() {
   const [toast, setToast] = useState<{ clientId: string } | null>(null)
   const router = useRouter()
 
+  // Restore persisted state after mount only — reading sessionStorage in a useState lazy
+  // initializer runs on the client before hydration completes, causing a server/client mismatch
+  // on style-conditional elements (view tab buttons, selected lead). Same pattern as AllLeadsSection.
+  useEffect(() => {
+    try {
+      const v = sessionStorage.getItem('crm_view') as CrmView
+      const s = sessionStorage.getItem('crm_selected')
+      if (v) setView(v)
+      if (s) setSelectedId(Number(s))
+    } catch {}
+  }, [])
   useEffect(() => {
     try { sessionStorage.setItem('crm_selected', selectedId != null ? String(selectedId) : '') } catch {}
   }, [selectedId])
