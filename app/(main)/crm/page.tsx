@@ -1202,6 +1202,24 @@ const khuDays = daysUntilKhu(lead)
     setRegPanelOpen(true)
   }
 
+  // Re-queries the DB for the current token status. Returns true if registration
+  // is now complete so the caller can skip opening the pending panel.
+  async function refreshRegStatus(): Promise<boolean> {
+    const { data } = await supabase.from('registration_tokens')
+      .select('token, created_at, used_at').eq('lead_id', lead.id).maybeSingle()
+    if (data) {
+      setRegTokenDates({ created_at: data.created_at, used_at: data.used_at })
+      if (data.used_at) return true
+    } else if (lead.client_id) {
+      const { data: c } = await supabase.from('clients').select('registered_at').eq('id', lead.client_id).maybeSingle()
+      if (c?.registered_at) {
+        setRegTokenDates({ created_at: c.registered_at, used_at: c.registered_at })
+        return true
+      }
+    }
+    return false
+  }
+
   async function copyRegLink() {
     if (!regLinkUrl) return
     try { await navigator.clipboard.writeText(regLinkUrl) } catch (_) {}
@@ -1286,7 +1304,7 @@ const khuDays = daysUntilKhu(lead)
                 ✓ Registered
               </button>
             ) : existingTokenStr ? (
-              <button onClick={() => setRegPanelOpen(v => !v)} style={{ padding: '4px 8px', background: regPanelOpen ? 'rgba(240,162,78,0.18)' : 'rgba(240,162,78,0.08)', color: 'var(--warm)', border: '1px solid rgba(240,162,78,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
+              <button onClick={async () => { const done = await refreshRegStatus(); if (!done) setRegPanelOpen(v => !v) }} style={{ padding: '4px 8px', background: regPanelOpen ? 'rgba(240,162,78,0.18)' : 'rgba(240,162,78,0.08)', color: 'var(--warm)', border: '1px solid rgba(240,162,78,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
                 Reg Sent
               </button>
             ) : (
