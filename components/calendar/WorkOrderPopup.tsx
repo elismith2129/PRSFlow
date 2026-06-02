@@ -243,12 +243,6 @@ export function WorkOrderPopup({
 
   useEffect(() => { initWO() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reactively apply booking form edits to WO state after the WO is open
-  useEffect(() => {
-    if (!liveForm || !wo) return
-    setWo(prev => prev ? applyLiveForm({ ...prev }) : prev)
-  }, [liveForm]) // eslint-disable-line react-hooks/exhaustive-deps
-
   async function initWO() {
     const { data: existing } = await supabase
       .from('work_orders')
