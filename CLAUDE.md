@@ -86,7 +86,7 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 - TypeScript `"strict": false` and `target: "es5"`
 - **Styling is inline `style={{ ... }}` JSX, not Tailwind.** CSS variables from `styles/globals.css`: `--bg`, `--surface`, `--surface2`, `--border`, `--text`/`--text2`/`--text3`, `--accent`, `--hot`/`--warm`/`--cold`/`--booked`/`--uncontacted`/`--dead`
 - Fonts (DM Serif Display, DM Mono, Syne) loaded via Google Fonts `@import` in `styles/globals.css`
-- **z-index ladder:** Nav = 9999. LocationStrip dialog = 10001. DailyOpsModal = 10002. All modals must sit above 9999
+- **z-index ladder:** Nav = 9999. LocationStrip dialog = 10001. DailyOpsModal = 10002. RegViewModal = 10003. All modals must sit above 9999
 - **Runner pages** use `minHeight: '100dvh'`, `paddingBottom: 120` for the fixed footer, no nav import
 - **Real-time checklist saves:** Items save on tap via `clIdRef` + `creatingRef` pattern. Notes debounce 800ms. Needs-attention upserts `daily_ops_submissions` without `submitted_at` immediately for dashboard badge
 
@@ -101,10 +101,13 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 | 7b | Dashboard daily ops — LocationStrip drawer, Yesterday/Today, DailyOpsModal | ✅ Complete |
 | CRM polish | StudioSelect component, rate_daily toggle, label roster (`lib/roster.ts`), new lead form dropdowns, Move to Booking nav | ✅ Complete |
 | A&R Admin | Admins section on label profiles; `anr_contact_id`/`anr_admin_contact_id` on bookings; contact popovers + inline fields in booking card | ✅ Complete |
+| Registration status | 3-state reg button (Send Reg / Reg Sent / ✓ Registered), view modal with all fields + ID photo, Export PDF print route, COD-only guard | ✅ Complete |
+| Contact actions | Call (`tel:`), Text (`sms:`), Email (`mailto:`) inline buttons on lead cards, client profiles, A&R + Admin card headers | ✅ Complete |
+| SOP tab | `/sop` route + iframe serving `public/sop.html`; update guide by replacing the file | ✅ Complete |
 
 ## What's Next
 
-- **Calendar import** — run `scripts/importCalendar.mjs` to load historical bookings; verify, then delete script
+- **Calendar drag-and-drop** — drag to move sessions; option+drag to copy to new date
 - **Mic Inventory UI** — runner + admin UI for mic_inventory table (tables exist, UI not built)
 - **Needs Action rebuild (4.8)** — redesign what "needs action" means vs overdue
 - **Email/webhooks (Chunk 5)** — Squarespace → lead auto-create

@@ -113,6 +113,10 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 | `components/shared/` | Reusable pickers: `ContactPicker`, `ArtistPicker` |
 | `lib/studios.ts` | `STUDIO_LOCATIONS` array + `parseLocation()` / `combineLocation()` for the "Venue · Studio" string format |
 | `lib/roster.ts` | Label artist array helpers: `addArtistToLabel`, `removeArtistFromLabel`, `getArtistsForLabel` |
+| `components/shared/RegViewModal.tsx` | Registration record view modal (used by CRM lead card + Clients profile). Fetches client data + signed ID photo URL on open; Export PDF button opens print route. |
+| `app/register/view/[clientId]/page.tsx` | Print route for registration PDF. Server component; generates signed ID photo URL server-side. `PrintTrigger` fires `window.print()` after 800ms. |
+| `app/(main)/sop/page.tsx` | SOP / Training tab — full-viewport iframe pointing to `/sop.html` |
+| `public/sop.html` | Self-contained interactive training guide. Replace file to update content; no code change needed. |
 | `schema.sql` | Full database schema — run in Supabase SQL editor to recreate |
 
 ---
@@ -180,12 +184,22 @@ Defined in `styles/globals.css`:
 | anr-admin-d2 | Admin dropdown in booking form; FK IDs saved on every booking write; contact popovers (A&R + Admin names → email/phone + action links) |
 | anr-admin-d2b | Label booking card field order: Artist → A&R → Admin; name-as-popover-trigger; artist tiles in A&R card headers |
 | label-card-inline | Inline A&R/Admin email/phone with Email/Call/Text buttons in booking card; underline `hasInfo` indicator; remove Edit/× from card header |
+| **Registration status + view ✅** | **3-state reg button, view modal, PDF print route, multiple bug fixes** |
+| chunk-crm-reg-view | 3-state registration button (Send Reg / Reg Sent / ✓ Registered); three-step token lookup on lead open; `generateRegLink()` stores `client_id` on token; `refreshRegStatus()` detects completion on Reg Sent click without page refresh; reg button hidden for Label/Billing leads |
+| reg-view-modal | `RegViewModal` shared component (CRM + Clients profile); full registration record display with ID photo + Export PDF; `/register/view/[clientId]` print route with Paramount header |
+| reg-fixes | 4 bug fixes: reg staying on Send Reg after completion, Use & Link not reflecting status, leads with client_id showing wrong state, re-query on click for real-time update |
+| **Contact action buttons ✅** | **Call/Text/Email `<a>` links on all contact surfaces** |
+| contact-actions | Lead detail card, COD client profile, A&R card headers, Admin card headers — all surfaces now have inline tel:/sms:/mailto: action links when field has a value |
+| **SOP / Training tab ✅** | **Static training guide in nav** |
+| sop-tab | `/sop` route + iframe; `public/sop.html` served statically; replace file to update guide with no code changes |
+| **Global select styling ✅** | **`appearance: none` on all select elements** |
+| select-styling | `styles/globals.css` global select rule strips native OS chrome so inline styles fully control appearance across all browsers and views |
 
 ### Next
 
 | Priority | What's next |
 |---|---|
-| **High** | **Calendar import:** Run `scripts/importCalendar.mjs` to load historical bookings; verify data, then delete script |
+| **High** | **Calendar drag-and-drop** — drag blocks to move sessions; option+drag to copy to new date |
 | **High** | **Mic Inventory UI** — runner + admin UI for `mic_inventory` table (table exists, UI not built) |
 | Medium | **Needs Action rebuild (4.8)** — redesign what "needs action" means vs overdue |
 | Medium | **4.9b — Duplicate merge flow:** UI to merge two client profiles discovered post-import |

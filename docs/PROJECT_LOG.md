@@ -48,6 +48,13 @@
 - **`lib/roster.ts` is the only write path for label artist arrays.** `addArtistToLabel` / `removeArtistFromLabel` / `getArtistsForLabel` are the sole entry points for modifying `clients.artists[]`. Never write `clients.artists` directly. Artist adds from A&R card saves also write to that contact's own `artists[]` subset.
 - **A&R and Admin are saved as FK IDs on each booking, with contact popovers in the booking card.** `bookings.anr_contact_id` + `bookings.anr_admin_contact_id` are written on every booking save. In label booking cards, the A&R and Admin names are clickable popover triggers — an underline indicator shows when the contact has info stored. The popover shows email/phone with Call/Text/Email action links. Inline view (no Edit button) always shows email/phone with action links directly in the card.
 - **Label booking card field order: Artist → A&R → Admin.** This matches the booking chain: who's recording, who ordered it, who manages logistics.
+- **Registration button only shows for COD leads.** Labels never receive registration links — they have a staffed booking relationship. Guard is `lead.billing !== 'Billing'` wrapping the entire reg button slot.
+- **Registration status uses a three-step lookup on lead open.** (1) Query `registration_tokens` by `lead_id` — covers the primary flow where a token was sent from this lead. (2) If not found and `lead.client_id` is set, query tokens by `client_id` — covers returning clients and tokens created after the fix where `client_id` is stored on the token. (3) Fall back to `clients.registered_at` — covers the "Use & Link this Profile" path where `used_at` is set but `clients.registered_at` may not be updated. `generateRegLink()` now also writes `client_id` on the token so step 2 finds it on future loads.
+- **`NEXT_PUBLIC_BASE_URL` must be set in Vercel for production registration links.** Falls back to `window.location.origin` if unset (produces `localhost` URLs in local dev — fine for testing, wrong for links sent to clients). Set to `https://prs-flow.vercel.app` in Vercel Production + Preview environments. Also add to `.env.local` for local dev to produce production-correct links.
+- **Call/Text/Email action buttons use `<a>` tags with `tel:`, `sms:`, `mailto:` hrefs.** Style defined as `aBtnStyle(color)` — DM Mono 9px, transparent background, `var(--border)` border, no decoration. Colors: Email = `#7BBFFF`, Call = `var(--booked)`, Text = `var(--warm)`. Buttons only render when the field has a value. Applied to: lead detail card contact section, client profile COD contact section, A&R card headers, Admin card headers. `e.stopPropagation()` on card-header links prevents accidental expand/collapse.
+- **SOP/Training tab serves a static HTML file.** `/sop.html` lives in `public/` and is served directly by Next.js static file hosting. The `/sop` route renders a full-viewport `<iframe src="/sop.html">`. No nav-gating — visible to all roles. To update the guide, replace `public/sop.html`; no code change needed.
+- **RegViewModal is a shared component.** Lives at `components/shared/RegViewModal.tsx`. Used by both the CRM lead card (✓ Registered button) and the Clients page profile (REGISTERED header badge + Verification section). Fetches the full client record and generates a 1-hour signed URL for the ID photo on open.
+- **Registration print route at `/register/view/[clientId]`.** Server component (uses anon key). Fetches client data + generates signed ID photo URL server-side. `PrintTrigger` client component fires `window.print()` after 800ms so images load before the dialog opens. Layout: Paramount header, client name in Syne display type, all fields, ID photo, confidential footer.
 
 ---
 
@@ -295,3 +302,56 @@ Also requires `checklist-photos` Supabase Storage bucket (public) for photo uplo
 - Fix: client delete now clears all FK references (`work_orders`, `leads`, `registration_tokens`) before deleting the client row — prevents FK constraint errors
 - `scripts/importCalendar.mjs`: one-time historical bookings import from `paramount_import_2024.xml` (Supabase Storage). Parses XML, decodes rate codes via WALKTHEDOG cipher (`W=1 A=2 L=3 K=4 T=5 H=6 E=7 D=8 O=9 G=0`), maps studio names to DB IDs, upserts to `bookings` in batches of 100. Header comment: "Run once only. Delete after import is confirmed."
 - Calendar booking form: A&R/Admin email+phone state now set inline at contact assignment (two `useEffect` watchers removed — eliminates extra render cycle)
+
+---
+
+### June 1, 2026 (continued) — Registration Status, Contact Actions, SOP Tab
+
+**Fixes applied earlier in the day:**
+- CRM hydration mismatch: `view` and `selectedId` state were reading sessionStorage inside `useState` lazy initializers, which run on the client before hydration and differ from the server's catch-branch defaults. Fixed to stable defaults (`'needs-action'`, `null`) with a single `useEffect` restore — same pattern already used in `AllLeadsSection`.
+- Registration links were using `localhost:3000` because `window.location.origin` was hardcoded. Fixed with `NEXT_PUBLIC_BASE_URL || window.location.origin`. Add `NEXT_PUBLIC_BASE_URL=https://prs-flow.vercel.app` to `.env.local` for local dev and to Vercel for production.
+
+**chunk-crm-reg-view — Registration status 3-state button:**
+
+Three states replace the old `lead.client_id + existingTokenStr` binary logic:
+- **Send Reg** — no token exists; generates token, auto-opens link panel with Copy / Email / Resend
+- **Reg Sent** (orange, clickable) — token exists but `used_at` is null; clicking re-queries the DB first (catches completion without page refresh), then toggles an expand panel with Copy Link / Email / Resend
+- **✓ Registered** (green, clickable) — token `used_at` is set OR `clients.registered_at` is set; opens registration view modal
+
+Token lookup uses a three-step query on every lead open (see Decisions Log). `generateRegLink()` now stores `client_id` on the token when the lead has one, making step-2 lookups work for future tokens.
+
+Registration button is hidden entirely for Label/Billing leads (`lead.billing !== 'Billing'` guard).
+
+**Registration view modal (`components/shared/RegViewModal.tsx`):**
+- Displays full registration submission: name, contact, address, Instagram, how heard, terms accepted badge, ID photo (signed URL, 1hr expiry)
+- **Export PDF** button opens `/register/view/[clientId]` in a new tab
+- Shared between CRM lead card and Clients page profile — both surfaces open the same modal
+- z-index 10003 (above all existing modals)
+
+**`/register/view/[clientId]` print route:**
+- Server component: fetches client data + generates 1-hr signed ID photo URL
+- Clean letter-sized print layout: Paramount header, client name in Syne display type, all fields, ID photo, confidential footer
+- `PrintTrigger` client component fires `window.print()` 800ms after mount
+
+**Registration bug fixes (applied across multiple commits):**
+- Reg Sent button staying grey after client completes registration: `refreshRegStatus()` re-queries DB on click; if `used_at` is now set, transitions to ✓ Registered without page refresh
+- Leads with `client_id` showing Send Reg after page load: three-step lookup replaces single `lead_id` query
+- Use & Link path: token `used_at` is set but `clients.registered_at` may not be updated by that path — handled by step 3 fallback
+
+**Call / Text / Email action buttons:**
+
+Added to every contact surface in the app:
+- **Lead detail card** (crm/page.tsx): Email (`mailto:`) inline next to email input; Call (`tel:`) + Text (`sms:`) inline next to phone input
+- **Client profile COD contact section**: Email / Call+Text below the InlineField components when values are present
+- **A&R contact card headers**: Email inline with email text; Call + Text below when phone present
+- **Admin contact card headers**: same pattern as A&R
+
+Style: `aBtnStyle(color)` — DM Mono 9px, transparent bg, `var(--border)` border, no underline. Email=`#7BBFFF`, Call=`var(--booked)`, Text=`var(--warm)`. `e.stopPropagation()` on card-header links.
+
+**Select dropdown styling:**
+- `styles/globals.css`: global `select` rule expanded with `-webkit-appearance: none; appearance: none; outline: none` — strips native OS chrome from all select elements so inline styles fully control appearance across all views and browsers.
+
+**SOP / Training tab:**
+- Nav item `{ href: '/sop', label: 'SOP' }` added as the last entry in `navItems`
+- `app/(main)/sop/page.tsx`: full-viewport iframe (`height: calc(100vh - 52px)`) pointing to `/sop.html`
+- `public/sop.html`: static training guide served directly by Next.js; update the guide by replacing this file with no code changes needed
