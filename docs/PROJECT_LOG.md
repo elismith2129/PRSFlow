@@ -305,6 +305,36 @@ Also requires `checklist-photos` Supabase Storage bucket (public) for photo uplo
 
 ---
 
+### June 2, 2026 — WO bug fixes (second pass)
+
+**Fix 1 — Print / Export PDF (scrap the route):**
+- Deleted `app/wo/[id]/print/page.tsx` and `app/wo/[id]/print/PrintTrigger.tsx` entirely. The route was 404ing because the server-side Supabase query couldn't reliably find the WO record.
+- Both Export PDF and Print buttons now call `window.print()` directly from inside the WO modal. The browser's native Save as PDF handles the download.
+- Added `@media print` block to `styles/globals.css` that activates only when `[data-wo-portal]` is in the DOM (i.e., when the WO is open):
+  - `body > * { display: none }` hides all body children (nav, calendar, booking form)
+  - `body > [data-wo-portal]` is shown (more specific selector wins)
+  - All inner backgrounds overridden to white/transparent, all text to `#111`
+  - All buttons hidden
+  - Sticky header made static
+  - Input/textarea styled with thin underline only
+- Added `data-wo-portal=""` attribute to the outermost portal backdrop div.
+- Footer Export PDF button also changed to `window.print()` (was conditionally guarded on `woId`, guard removed since no ID is needed for direct print).
+
+**Fix 2 — Sync missing fields:**
+- Added `notes?: string` and `engineer_status?: string` to `WOFormSync` type.
+- Added to `onFormSync` call in `handleClose`:
+  - `notes: wo.session_notes` → `form.notes`
+  - `rate: stRows[0]?.rate ?? ''` → `form.rate` (first studio row rate; WO has no global rate field)
+  - `rate_daily: stRows[0]?.rate ?? ''` → `form.rate_daily` (same value; form's `rate_type` toggle determines which is shown)
+  - `engineer_status: booking.engineer_status ?? ''` → `form.engineer_status` (WO doesn't edit status; pass booking's stored value through unchanged)
+
+**Fix 3 — WO button color:**
+- Changed `const woInProgress = woStatus === 'draft'` → `const woInProgress = woStatus === 'draft' && !!bookingId`
+- A draft WO on an UNSAVED booking (no `bookingId`) now shows lime green (`#c8f04e`) instead of orange — opening the WO mid-form-fill no longer flips the button.
+- A draft WO on an ALREADY-SAVED booking still shows orange (expected: WO exists but not submitted).
+
+---
+
 ### June 2, 2026 — WO bug fixes (follow-up)
 
 **Fix 1 — WO→Booking form sync on Close & Save:**

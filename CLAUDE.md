@@ -43,7 +43,7 @@ PRSFlow is a single-tenant studio operations app for Paramount Recording Studios
 - `/runner/[studio]/mics` — Mic inventory with condition per mic
 
 **Utility:**
-- `/wo/[id]/print` — Print-ready work order PDF view
+- `/wo/[id]/print` — (deleted) Print/PDF now handled by `window.print()` directly inside WorkOrderPopup with `@media print` CSS
 - `/api/ocr-receipt` — Anthropic claude-haiku-4-5 receipt OCR (base64 image → vendor/amount/item)
 
 ### Data model

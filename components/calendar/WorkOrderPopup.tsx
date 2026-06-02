@@ -181,6 +181,7 @@ export type WOFormSync = {
   payment_type: string; food_budget: boolean; food_amount: string
   invoice_num: string; start_date: string; studio: string; location: string
   rate: string; rate_daily: string
+  notes?: string; engineer_status?: string
 }
 
 export function WorkOrderPopup({
@@ -386,6 +387,10 @@ export function WorkOrderPopup({
       payment_type: wo.payment_status === 'Billing' ? 'billing' : 'COD',
       food_budget: wo.food_budget, food_amount: wo.food_amount,
       invoice_num: wo.invoice_number,
+      notes: wo.session_notes,
+      rate: stRows[0]?.rate ?? '',
+      rate_daily: stRows[0]?.rate ?? '',
+      engineer_status: booking.engineer_status ?? '',
     })
 
     await supabase.from('work_orders').update({
@@ -495,6 +500,7 @@ export function WorkOrderPopup({
 
   return createPortal(
     <div
+      data-wo-portal=""
       style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.75)', overflowY: 'auto' }}
       onClick={e => { if (e.target === e.currentTarget) handleClose() }}
     >
@@ -523,13 +529,13 @@ export function WorkOrderPopup({
             {woId && (
               <>
                 <button
-                  onClick={() => window.open(`/wo/${woId}/print`, '_blank')}
+                  onClick={() => window.print()}
                   style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}
                 >
                   Export PDF
                 </button>
                 <button
-                  onClick={() => window.open(`/wo/${woId}/print?autoprint=1`, '_blank')}
+                  onClick={() => window.print()}
                   style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}
                 >
                   Print
@@ -830,11 +836,9 @@ export function WorkOrderPopup({
 
         {/* ── FOOTER ───────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '14px 20px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-          {woId && (
-            <button onClick={() => window.open(`/wo/${woId}/print`, '_blank')} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
-              Export PDF
-            </button>
-          )}
+          <button onClick={() => window.print()} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
+            Export PDF
+          </button>
           <button onClick={() => onClose()} disabled={saving} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
             Cancel
           </button>

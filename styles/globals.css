@@ -66,3 +66,71 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 input[type="date"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
 }
+
+/* ── Print styles for Work Order modal ──────────────────────────────────────
+   [data-wo-portal] is only in the DOM when the WO popup is open, so these
+   rules only activate when printing with the WO visible.               */
+@media print {
+  /* Hide all body children (nav, calendar, booking form) */
+  body > * { display: none !important; }
+
+  /* Show the WO portal root */
+  body > [data-wo-portal] {
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
+    background: white !important;
+    padding: 24px !important;
+  }
+
+  /* Flatten the centering flex wrapper */
+  body > [data-wo-portal] > * {
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
+    background: white !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+  }
+
+  /* The WO card itself */
+  body > [data-wo-portal] > * > * {
+    background: white !important;
+    border: none !important;
+    border-radius: 0 !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    position: static !important;
+    overflow: visible !important;
+  }
+
+  /* All inner content: white bg, dark text, light borders */
+  [data-wo-portal] * {
+    background-color: transparent !important;
+    color: #111 !important;
+    border-color: #ddd !important;
+    box-shadow: none !important;
+  }
+
+  /* Remove sticky positioning from the header */
+  [data-wo-portal] [style*="sticky"] { position: static !important; }
+
+  /* Hide all buttons (Export PDF, Print, Cancel, Close & Save) */
+  [data-wo-portal] button { display: none !important; }
+
+  /* Inputs and textareas: black text, thin underline only */
+  [data-wo-portal] input,
+  [data-wo-portal] textarea {
+    background: transparent !important;
+    color: #111 !important;
+    border: none !important;
+    border-bottom: 1px solid #aaa !important;
+  }
+
+  /* Accent/status colors → readable dark equivalents */
+  [data-wo-portal] [style*="color: #c8f04e"],
+  [data-wo-portal] [style*="color: #f0f0f0"],
+  [data-wo-portal] [style*="color: #8a8fa0"],
+  [data-wo-portal] [style*="color: #4ade80"],
+  [data-wo-portal] [style*="color: #f87171"] { color: #111 !important; }
+}

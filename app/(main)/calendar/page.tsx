@@ -1280,7 +1280,7 @@ function BookingForm({
                   !!(form.phone || form.email)
                 const woUnlocked = woCanCreate
                 const woComplete = woStatus === 'submitted' || woStatus === 'approved'
-                const woInProgress = woStatus === 'draft'
+                const woInProgress = woStatus === 'draft' && !!bookingId
                 const woColor = woComplete ? '#4ef0a2'
                   : woInProgress ? '#fb923c'
                   : woCanCreate ? '#c8f04e'
