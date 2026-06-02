@@ -11,6 +11,7 @@ const navItems = [
   { href: '/clients', label: 'Clients' },
   { href: '/qc', label: 'Session QC' },
   { href: '/admin', label: 'Admin' },
+  { href: '/sop', label: 'SOP' },
 ]
 
 export function Nav() {
