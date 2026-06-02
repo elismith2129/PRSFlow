@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useState, useCallback, useRef } from 'react'
+import React, { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase, Lead, LeadStatus, Client, ClientContact, BillingType } from '@/lib/supabase'
 import { TOUCH_INTERVAL_DAYS } from '@/lib/settings'
@@ -11,6 +11,7 @@ import StudioSelect from '@/components/shared/StudioSelect'
 import { RegViewModal, RegField } from '@/components/shared/RegViewModal'
 import { combineLocation, parseLocation } from '@/lib/studios'
 import { addArtistToLabel } from '@/lib/roster'
+import { ClientsPageInner } from '@/app/(main)/clients/page'
 
 const STATUS_COLORS: Record<string, string> = {
   hot: 'var(--hot)', warm: 'var(--warm)', cold: 'var(--cold)',
@@ -207,6 +208,17 @@ export default function CRMPage() {
   const [focusField, setFocusField] = useState<string | null>(null)
   const [toast, setToast] = useState<{ clientId: string } | null>(null)
   const router = useRouter()
+  const [tab, setTab] = useState<'leads' | 'clients'>('leads')
+  const [initialClientId, setInitialClientId] = useState<string | null>(null)
+
+  // Switch to clients tab if ?clientId= or ?id= is present on load
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const cid = params.get('clientId') || params.get('id')
+      if (cid) { setTab('clients'); setInitialClientId(cid) }
+    } catch {}
+  }, [])
 
   // Restore persisted state after mount only — reading sessionStorage in a useState lazy
   // initializer runs on the client before hydration completes, causing a server/client mismatch
@@ -365,108 +377,136 @@ export default function CRMPage() {
         />
       )}
 
-      {/* Sub-nav */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexShrink: 0 }}>
-        <div style={{ display: 'flex', gap: 2, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
-          {(['needs-action', 'all-leads', 'analytics'] as CrmView[]).map(v => {
-            const labels: Record<CrmView, string> = { 'needs-action': 'Needs Action', 'all-leads': 'All Leads', 'analytics': 'Analytics' }
-            const active = view === v
-            return (
-              <button key={v} onClick={() => setView(v)} style={{
-                position: 'relative', padding: '7px 18px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                fontFamily: 'DM Mono', fontSize: 11, fontWeight: 500,
-                background: active ? 'var(--surface2)' : 'transparent',
-                color: active ? 'var(--accent)' : 'var(--text2)',
-                transition: 'all 0.15s',
-              }}>
-                {labels[v]}
-                {v === 'needs-action' && needsActionCount > 0 && (
-                  <span style={{
-                    position: 'absolute', top: 2, right: 2,
-                    background: 'var(--hot)', color: '#fff',
-                    borderRadius: '50%', minWidth: 16, height: 16,
-                    fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    padding: '0 3px', lineHeight: 1,
-                  }}>
-                    {needsActionCount > 99 ? '99+' : needsActionCount}
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </div>
-        {view !== 'analytics' && (
-          <button onClick={() => setNewLeadOpen(true)} style={{
-            padding: '8px 20px', background: 'var(--accent)', color: '#0d0f14',
-            border: 'none', borderRadius: 6, fontFamily: 'Syne',
-            fontWeight: 700, fontSize: 11, cursor: 'pointer',
-            letterSpacing: '0.05em', textTransform: 'uppercase',
-          }}>+ New Lead</button>
-        )}
+      {/* LEADS / CLIENTS toggle */}
+      <div style={{ display: 'flex', gap: 20, marginBottom: 10, flexShrink: 0 }}>
+        {(['leads', 'clients'] as const).map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{
+            background: 'none', border: 'none',
+            borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
+            padding: '0 0 4px', cursor: 'pointer',
+            fontFamily: 'Syne', fontWeight: 700, fontSize: 13, letterSpacing: '0.08em',
+            textTransform: 'uppercase', color: tab === t ? 'var(--accent)' : 'var(--text3)',
+            transition: 'color 0.15s',
+          }}>
+            {t === 'leads' ? 'Leads' : 'Clients'}
+          </button>
+        ))}
       </div>
 
-      {(view === 'needs-action' || view === 'all-leads') && (
-        <div style={{ display: 'grid', gridTemplateColumns: '60fr 40fr', gap: 14, flex: 1, minHeight: 0 }}>
-          {view === 'needs-action' ? (
-            <NeedsActionSection
-              leads={leads}
-              latestTouches={latestTouches}
-              selectedId={selectedId}
-              onSelect={selectAndFocus}
-              onMarkTouched={markTouched}
-              onKeepHot={keepHot}
-              onUpdateStatus={updateStatus}
-              loading={loading}
-            />
-          ) : (
-            <AllLeadsView
-              leads={leads}
-              latestTouches={latestTouches}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              onMarkTouched={markTouched}
-              onKeepHot={keepHot}
-              onUpdateStatus={updateStatus}
-              loading={loading}
-            />
-          )}
-
-          {/* Detail panel */}
-          <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', minHeight: 0 }}>
-            {!selected ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--text3)', fontSize: 11 }}>
-                Select a lead to view details
-              </div>
-            ) : (
-              <div style={{ overflowY: 'auto', flex: 1, padding: '14px 16px 16px' }}>
-                <LeadDetail
-                  key={selected.id}
-                  lead={selected}
-                  missing={getMissing(selected)}
-                  latestTouch={latestTouches[selected.id]}
-                  focusField={focusField}
-                  onFocusConsumed={() => setFocusField(null)}
-                  distinctLabels={distinctLabels}
-                  distinctCompanies={distinctCompanies}
-                  onUpdate={(field, val) => {
-                    setLeads(prev => prev.map(l => l.id === selected.id ? { ...l, [field]: val } : l))
-                  }}
-                  onSendEmail={() => setEmailModal(true)}
-                  onDelete={() => {
-                    setLeads(prev => prev.filter(l => l.id !== selected.id))
-                    setSelectedId(null)
-                  }}
-                />
-              </div>
+      {tab === 'leads' && (
+        <>
+          {/* Sub-nav */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: 2, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
+              {(['needs-action', 'all-leads', 'analytics'] as CrmView[]).map(v => {
+                const labels: Record<CrmView, string> = { 'needs-action': 'Needs Action', 'all-leads': 'All Leads', 'analytics': 'Analytics' }
+                const active = view === v
+                return (
+                  <button key={v} onClick={() => setView(v)} style={{
+                    position: 'relative', padding: '7px 18px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                    fontFamily: 'DM Mono', fontSize: 11, fontWeight: 500,
+                    background: active ? 'var(--surface2)' : 'transparent',
+                    color: active ? 'var(--accent)' : 'var(--text2)',
+                    transition: 'all 0.15s',
+                  }}>
+                    {labels[v]}
+                    {v === 'needs-action' && needsActionCount > 0 && (
+                      <span style={{
+                        position: 'absolute', top: 2, right: 2,
+                        background: 'var(--hot)', color: '#fff',
+                        borderRadius: '50%', minWidth: 16, height: 16,
+                        fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        padding: '0 3px', lineHeight: 1,
+                      }}>
+                        {needsActionCount > 99 ? '99+' : needsActionCount}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+            {view !== 'analytics' && (
+              <button onClick={() => setNewLeadOpen(true)} style={{
+                padding: '8px 20px', background: 'var(--accent)', color: '#0d0f14',
+                border: 'none', borderRadius: 6, fontFamily: 'Syne',
+                fontWeight: 700, fontSize: 11, cursor: 'pointer',
+                letterSpacing: '0.05em', textTransform: 'uppercase',
+              }}>+ New Lead</button>
             )}
           </div>
-        </div>
+
+          {(view === 'needs-action' || view === 'all-leads') && (
+            <div style={{ display: 'grid', gridTemplateColumns: '60fr 40fr', gap: 14, flex: 1, minHeight: 0 }}>
+              {view === 'needs-action' ? (
+                <NeedsActionSection
+                  leads={leads}
+                  latestTouches={latestTouches}
+                  selectedId={selectedId}
+                  onSelect={selectAndFocus}
+                  onMarkTouched={markTouched}
+                  onKeepHot={keepHot}
+                  onUpdateStatus={updateStatus}
+                  loading={loading}
+                />
+              ) : (
+                <AllLeadsView
+                  leads={leads}
+                  latestTouches={latestTouches}
+                  selectedId={selectedId}
+                  onSelect={setSelectedId}
+                  onMarkTouched={markTouched}
+                  onKeepHot={keepHot}
+                  onUpdateStatus={updateStatus}
+                  loading={loading}
+                />
+              )}
+
+              {/* Detail panel */}
+              <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', minHeight: 0 }}>
+                {!selected ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--text3)', fontSize: 11 }}>
+                    Select a lead to view details
+                  </div>
+                ) : (
+                  <div style={{ overflowY: 'auto', flex: 1, padding: '14px 16px 16px' }}>
+                    <LeadDetail
+                      key={selected.id}
+                      lead={selected}
+                      missing={getMissing(selected)}
+                      latestTouch={latestTouches[selected.id]}
+                      focusField={focusField}
+                      onFocusConsumed={() => setFocusField(null)}
+                      distinctLabels={distinctLabels}
+                      distinctCompanies={distinctCompanies}
+                      onUpdate={(field, val) => {
+                        setLeads(prev => prev.map(l => l.id === selected.id ? { ...l, [field]: val } : l))
+                      }}
+                      onSendEmail={() => setEmailModal(true)}
+                      onDelete={() => {
+                        setLeads(prev => prev.filter(l => l.id !== selected.id))
+                        setSelectedId(null)
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {view === 'analytics' && (
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              <AnalyticsView leads={leads} />
+            </div>
+          )}
+        </>
       )}
 
-      {view === 'analytics' && (
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          <AnalyticsView leads={leads} />
+      {tab === 'clients' && (
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <Suspense>
+            <ClientsPageInner initialClientId={initialClientId} embedded />
+          </Suspense>
         </div>
       )}
     </div>

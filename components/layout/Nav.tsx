@@ -8,7 +8,6 @@ const navItems = [
   { href: '/', label: 'Dashboard' },
   { href: '/crm', label: 'CRM' },
   { href: '/calendar', label: 'Calendar' },
-  { href: '/clients', label: 'Clients' },
   { href: '/qc', label: 'Session QC' },
   { href: '/admin', label: 'Admin' },
   { href: '/sop', label: 'SOP' },
@@ -82,7 +81,7 @@ export function Nav() {
       <div style={{ display: 'flex', gap: 2 }}>
         {navItems.map(item => {
           const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
-          const badge = item.href === '/clients' && unreviewedRegs > 0
+          const badge = item.href === '/crm' && unreviewedRegs > 0
             ? unreviewedRegs
             : item.href === '/calendar' && tentativeCount > 0
             ? tentativeCount

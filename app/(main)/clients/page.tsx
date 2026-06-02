@@ -23,14 +23,12 @@ interface PendingReg {
 }
 
 export default function ClientsPage() {
-  return (
-    <Suspense>
-      <ClientsPageInner />
-    </Suspense>
-  )
+  const router = useRouter()
+  useEffect(() => { router.replace('/crm') }, [router])
+  return null
 }
 
-function ClientsPageInner() {
+export function ClientsPageInner({ initialClientId, embedded }: { initialClientId?: string | null, embedded?: boolean }) {
   const [clients, setClients] = useState<Client[]>([])
   const [contactsMap, setContactsMap] = useState<ContactsMap>({})
   const [bookingCountMap, setBookingCountMap] = useState<BookingCountMap>({})
@@ -93,16 +91,17 @@ function ClientsPageInner() {
 
   useEffect(() => { load() }, [load])
 
-  // Auto-select: prefer ?id= param, otherwise fall back to first client
+  // Auto-select: prefer initialClientId prop or ?id= param, otherwise fall back to first client
   useEffect(() => {
     if (loading || hasAutoSelected.current || clients.length === 0) return
-    if (idParam && clients.some(c => c.id === idParam)) {
-      setSelectedId(idParam)
+    const targetId = initialClientId || idParam
+    if (targetId && clients.some(c => c.id === targetId)) {
+      setSelectedId(targetId)
     } else {
       setSelectedId(clients[0].id)
     }
     hasAutoSelected.current = true
-  }, [loading, clients, idParam])
+  }, [loading, clients, idParam, initialClientId])
 
   const selected = clients.find(c => c.id === selectedId) || null
 
@@ -110,7 +109,7 @@ function ClientsPageInner() {
     setPendingRegs(prev => prev.filter(r => r.id !== id))
     setSelectedId(id)
     setRegModalOpen(false)
-    router.replace(`/clients?id=${id}`)
+    router.replace(`/crm?clientId=${id}`)
     await supabase
       .from('registration_tokens')
       .update({ registration_reviewed: true })
@@ -122,7 +121,7 @@ function ClientsPageInner() {
   const showProfile = !isMobile || !!selectedId
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 52px - 24px)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', ...(embedded ? { flex: 1, minHeight: 0 } : { height: 'calc(100vh - 52px - 24px)' }) }}>
 
       {/* Registration notification banner */}
       {pendingRegs.length > 0 && (

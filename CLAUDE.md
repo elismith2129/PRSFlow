@@ -28,8 +28,8 @@ PRSFlow is a single-tenant studio operations app for Paramount Recording Studios
 
 **Internal (nav-bearing) routes under `app/(main)/`:**
 - `/` — Dashboard: `LocationStrip` (4 studio cards → drawer with Yesterday/Today sessions + daily ops), `TodoModule`, `QCHomeWidget`
-- `/crm` — Leads pipeline with Needs Action, All Leads, Analytics
-- `/clients` — Client list + editable profile panel
+- `/crm` — Leads + Clients unified page. LEADS tab: Needs Action, All Leads, Analytics. CLIENTS tab: client list + editable profile panel. Toggle at top of page, defaults to LEADS on every load.
+- `/clients` — Redirects to `/crm` (stub for backward-compat; do not delete)
 - `/calendar` — Week/2-week multi-studio grid calendar with booking form + work order popup
 - `/admin` — Daily ops admin view (WO approval, staff submissions)
 
@@ -104,6 +104,7 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 | Registration status | 3-state reg button (Send Reg / Reg Sent / ✓ Registered), view modal with all fields + ID photo, Export PDF print route, COD-only guard | ✅ Complete |
 | Contact actions | Call (`tel:`), Text (`sms:`), Email (`mailto:`) inline buttons on lead cards, client profiles, A&R + Admin card headers | ✅ Complete |
 | SOP tab | `/sop` route + iframe serving `public/sop.html`; update guide by replacing the file | ✅ Complete |
+| CRM+Clients merge | LEADS/CLIENTS toggle on `/crm`; `ClientsPageInner` embedded under CLIENTS tab; Clients removed from nav; `/clients` redirects to `/crm`; reg badge moved to CRM nav item | ✅ Complete |
 
 ## What's Next
 

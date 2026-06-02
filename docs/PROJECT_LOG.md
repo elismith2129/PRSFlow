@@ -305,6 +305,17 @@ Also requires `checklist-photos` Supabase Storage bucket (public) for photo uplo
 
 ---
 
+### June 2, 2026 — CRM + Clients merge
+
+**What changed:**
+
+- **LEADS / CLIENTS toggle** added to `/crm` above the existing Needs Action / All Leads / Analytics sub-nav. Underline style using `var(--accent)` for active tab. Defaults to LEADS on every page load (no persistence).
+- **Clients page embedded** under the CLIENTS tab. `ClientsPageInner` exported from `app/(main)/clients/page.tsx` and rendered with `<Suspense>` inside the CRM page when CLIENTS is active. All existing client list + profile logic is unchanged.
+- **Cross-page nav preserved.** CRM page reads `?clientId=` or `?id=` from URL on mount and auto-switches to the CLIENTS tab with the matching client pre-selected. This preserves the "Start Booking → Confirm Client → /clients?id=..." flow — URLs now land on `/crm?clientId=...` instead.
+- **Clients nav item removed** from `components/layout/Nav.tsx`. Unreviewed registration badge moved from `/clients` to `/crm`.
+- **`/clients` stub redirect** — the default export of `app/(main)/clients/page.tsx` now redirects to `/crm` via `router.replace`. File kept so saved bookmarks don't 404.
+- `app/(main)/clients/page.tsx` changes: export `ClientsPageInner`; add `initialClientId` + `embedded` optional props; `embedded` switches outer div from fixed viewport-height to `flex: 1 / minHeight: 0` for correct layout when hosted inside CRM; `router.replace('/clients?id=...')` changed to `router.replace('/crm?clientId=...')`.
+
 ### June 1, 2026 (continued) — Registration Status, Contact Actions, SOP Tab
 
 **Fixes applied earlier in the day:**
