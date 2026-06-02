@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabase, Client, ClientContact, CLIENT_TYPE_LABELS } from '@/lib/supabase'
 import PhoneInput from '@/components/shared/PhoneInput'
 import { addArtistToLabel, removeArtistFromLabel } from '@/lib/roster'
+import { RegViewModal } from '@/components/shared/RegViewModal'
 
 interface BookingLead {
   id: number
@@ -415,6 +416,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   const [regLinkUrl, setRegLinkUrl] = useState<string | null>(null)
   const [regLinkCopied, setRegLinkCopied] = useState(false)
   const [regLinkGenerating, setRegLinkGenerating] = useState(false)
+  const [regViewOpen, setRegViewOpen] = useState(false)
   const [nameVal, setNameVal] = useState(client?.name || '')
   const [editingName, setEditingName] = useState(false)
   const [rosterArtists, setRosterArtists] = useState<string[]>((client?.artists as string[]) || [])
@@ -645,9 +647,9 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
             </span>
           )}
           {client.registered_at && (
-            <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', padding: '3px 7px', borderRadius: 3, background: 'rgba(78,240,162,0.12)', color: 'var(--booked)', border: '1px solid rgba(78,240,162,0.3)' }}>
-              REGISTERED
-            </span>
+            <button onClick={() => setRegViewOpen(true)} style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', padding: '3px 7px', borderRadius: 3, background: 'rgba(78,240,162,0.12)', color: 'var(--booked)', border: '1px solid rgba(78,240,162,0.3)', cursor: 'pointer' }}>
+              ✓ REGISTERED
+            </button>
           )}
         </div>
       </div>
@@ -755,11 +757,12 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
 
             <SectionHeader label="Verification" />
             {client.registered_at ? (
-              <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--booked)', lineHeight: 1.8, marginBottom: 4 }}>
-                Registered {new Date(client.registered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              <button onClick={() => setRegViewOpen(true)} style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--booked)', lineHeight: 1.8, marginBottom: 4, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' as const }}>
+                ✓ Registered {new Date(client.registered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 {client.terms_accepted && <span> · Terms accepted</span>}
                 {client.id_file_url && <span> · ID on file</span>}
-              </div>
+                <span style={{ marginLeft: 6, fontSize: 9, color: 'var(--text3)' }}>View →</span>
+              </button>
             ) : (
               <div style={{ marginBottom: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: regLinkUrl ? 6 : 0 }}>
@@ -865,6 +868,9 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
             </div>
           </div>
         </div>
+      )}
+      {regViewOpen && client && (
+        <RegViewModal clientId={client.id} onClose={() => setRegViewOpen(false)} />
       )}
     </div>
   )
