@@ -1091,24 +1091,38 @@ const parsedLoc0 = parseLocation(lead.location || '')
   useEffect(() => {
     setRegLinkUrl(null); setRegLinkCopied(false); setRegLinkGenerating(false); setExistingTokenStr(null)
     setRegTokenDates(null); setRegPanelOpen(false)
-    // Always query by lead_id — the registration form only writes used_at on the token,
-    // never client_id, so querying by client_id always returns nothing after completion.
-    // If no token exists for this lead but the lead has a client_id, fall back to
-    // clients.registered_at (handles returning clients auto-matched to new leads).
-    supabase.from('registration_tokens').select('token, created_at, used_at')
-      .eq('lead_id', lead.id).maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setExistingTokenStr(data.token)
-          setRegLinkUrl(`${process.env.NEXT_PUBLIC_BASE_URL || window.location.origin}/register/${data.token}`)
-          setRegTokenDates({ created_at: data.created_at, used_at: data.used_at })
-        } else if (lead.client_id) {
-          supabase.from('clients').select('registered_at').eq('id', lead.client_id).maybeSingle()
-            .then(({ data: c }) => {
-              if (c?.registered_at) setRegTokenDates({ created_at: c.registered_at, used_at: c.registered_at })
-            })
-        }
-      })
+    const base = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
+    (async () => {
+      // 1. Try to find a token for this specific lead
+      const { data: byLead } = await supabase.from('registration_tokens')
+        .select('token, created_at, used_at').eq('lead_id', lead.id).maybeSingle()
+      if (byLead) {
+        setExistingTokenStr(byLead.token)
+        setRegLinkUrl(`${base}/register/${byLead.token}`)
+        setRegTokenDates({ created_at: byLead.created_at, used_at: byLead.used_at })
+        return
+      }
+      if (!lead.client_id) return
+      // 2. No lead-scoped token — search by client_id (covers returning clients whose
+      //    completed registration token was generated from a different lead, and tokens
+      //    created after this fix where client_id is stored on the token).
+      const { data: byClient } = await supabase.from('registration_tokens')
+        .select('token, created_at, used_at').eq('client_id', lead.client_id)
+        .order('created_at', { ascending: false }).limit(1)
+      const tokenRow = byClient?.[0] ?? null
+      if (tokenRow) {
+        setExistingTokenStr(tokenRow.token)
+        if (!tokenRow.used_at) setRegLinkUrl(`${base}/register/${tokenRow.token}`)
+        setRegTokenDates({ created_at: tokenRow.created_at, used_at: tokenRow.used_at })
+        return
+      }
+      // 3. No token at all — check clients.registered_at as final fallback
+      //    (covers clients who used "Use & Link this Profile" where registered_at
+      //    is already set from their original registration)
+      const { data: c } = await supabase.from('clients')
+        .select('registered_at').eq('id', lead.client_id).maybeSingle()
+      if (c?.registered_at) setRegTokenDates({ created_at: c.registered_at, used_at: c.registered_at })
+    })()
   }, [lead.id, lead.client_id])
 
   useEffect(() => {
@@ -1192,6 +1206,7 @@ const khuDays = daysUntilKhu(lead)
     await supabase.from('registration_tokens').insert({
       token,
       lead_id: lead.id,
+      client_id: lead.client_id || null,
       prefill_email: lead.email || null,
       prefill_name: `${lead.fname || ''} ${lead.lname || ''}`.trim() || null,
       expires_at: expiresAt,
@@ -1205,12 +1220,26 @@ const khuDays = daysUntilKhu(lead)
   // Re-queries the DB for the current token status. Returns true if registration
   // is now complete so the caller can skip opening the pending panel.
   async function refreshRegStatus(): Promise<boolean> {
-    const { data } = await supabase.from('registration_tokens')
+    const base = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin
+    const { data: byLead } = await supabase.from('registration_tokens')
       .select('token, created_at, used_at').eq('lead_id', lead.id).maybeSingle()
-    if (data) {
-      setRegTokenDates({ created_at: data.created_at, used_at: data.used_at })
-      if (data.used_at) return true
-    } else if (lead.client_id) {
+    if (byLead) {
+      setRegTokenDates({ created_at: byLead.created_at, used_at: byLead.used_at })
+      if (byLead.used_at) return true
+      setRegLinkUrl(`${base}/register/${byLead.token}`)
+      return false
+    }
+    if (lead.client_id) {
+      const { data: byClient } = await supabase.from('registration_tokens')
+        .select('token, created_at, used_at').eq('client_id', lead.client_id)
+        .order('created_at', { ascending: false }).limit(1)
+      const row = byClient?.[0] ?? null
+      if (row) {
+        setRegTokenDates({ created_at: row.created_at, used_at: row.used_at })
+        if (row.used_at) return true
+        setRegLinkUrl(`${base}/register/${row.token}`)
+        return false
+      }
       const { data: c } = await supabase.from('clients').select('registered_at').eq('id', lead.client_id).maybeSingle()
       if (c?.registered_at) {
         setRegTokenDates({ created_at: c.registered_at, used_at: c.registered_at })
