@@ -579,19 +579,12 @@ export function WorkOrderPopup({
                 ['Engineer', 'engineer'],
                 ['Assistant', 'second_engineer'],
                 ['Producer', 'producer'],
-              ] as [string, keyof WO][]).map(([label, key]) => {
-                let engBg: string | undefined
-                if (key === 'engineer') {
-                  if (booking.engineer_status === 'confirmed') engBg = '#14532d'
-                  else if (booking.engineer_status === 'hold') engBg = '#7c2d12'
-                }
-                return (
-                  <div key={key} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center', ...(engBg ? { background: engBg, borderRadius: 4 } : {}) }}>
-                    <div style={metaLabel}>{label}</div>
-                    <input value={String(wo[key] ?? '')} onChange={e => setWo(w => w ? { ...w, [key]: e.target.value } : w)} style={inp} />
-                  </div>
-                )
-              })}
+              ] as [string, keyof WO][]).map(([label, key]) => (
+                <div key={key} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
+                  <div style={metaLabel}>{label}</div>
+                  <input value={String(wo[key] ?? '')} onChange={e => setWo(w => w ? { ...w, [key]: e.target.value } : w)} style={inp} />
+                </div>
+              ))}
               {/* From / To — cascade changes to all studio time rows */}
               {(['from_time', 'to_time'] as const).map(key => (
                 <div key={key} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>

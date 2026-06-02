@@ -1153,9 +1153,9 @@ function BookingForm({
                           padding: '5px 9px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne',
                           fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
                           cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                          background: engOn ? 'rgba(240,162,78,0.12)' : '#1a1d27',
-                          color: engOn ? '#f0a24e' : '#8b90a8',
-                          border: `1px solid ${engOn ? 'rgba(240,162,78,0.35)' : '#2a2e3d'}`,
+                          background: engOn ? (ENG_STATUS_COLORS[form.engineer_status] ?? '#f0a24e') + '22' : '#1a1d27',
+                          color: engOn ? (ENG_STATUS_COLORS[form.engineer_status] ?? '#f0a24e') : '#8b90a8',
+                          border: `1px solid ${engOn ? (ENG_STATUS_COLORS[form.engineer_status] ?? '#f0a24e') + '55' : '#2a2e3d'}`,
                         }}
                       >{engOn && form.engineer_name ? `● ${form.engineer_name}` : engOn ? '● ENG' : '○ ENG'}</button>
                       {engOn && !form.engineer_name && (
