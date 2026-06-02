@@ -1063,6 +1063,8 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   const [regLinkCopied, setRegLinkCopied] = useState(false)
   const [regLinkGenerating, setRegLinkGenerating] = useState(false)
   const [existingTokenStr, setExistingTokenStr] = useState<string | null>(null)
+  const [regPanelOpen, setRegPanelOpen] = useState(false)
+  const [regViewOpen, setRegViewOpen] = useState(false)
   const [fnameVal, setFnameVal] = useState(lead.fname || '')
   const [lnameVal, setLnameVal] = useState(lead.lname || '')
 const parsedLoc0 = parseLocation(lead.location || '')
@@ -1088,8 +1090,13 @@ const parsedLoc0 = parseLocation(lead.location || '')
   useEffect(() => { setNotesVal(lead.notes || '') }, [lead.notes])
   useEffect(() => {
     setRegLinkUrl(null); setRegLinkCopied(false); setRegLinkGenerating(false); setExistingTokenStr(null)
-    setRegTokenDates(null)
-    supabase.from('registration_tokens').select('token, created_at, used_at').eq('lead_id', lead.id).maybeSingle().then(({ data }) => {
+    setRegTokenDates(null); setRegPanelOpen(false)
+    // Prefer client_id join (handles returning clients auto-matched to new leads);
+    // fall back to lead_id for leads that haven't been confirmed to a client yet.
+    const q = lead.client_id
+      ? supabase.from('registration_tokens').select('token, created_at, used_at').eq('client_id', lead.client_id).maybeSingle()
+      : supabase.from('registration_tokens').select('token, created_at, used_at').eq('lead_id', lead.id).maybeSingle()
+    q.then(({ data }) => {
       if (data) {
         setExistingTokenStr(data.token)
         setRegLinkUrl(`${process.env.NEXT_PUBLIC_BASE_URL || window.location.origin}/register/${data.token}`)
@@ -1186,6 +1193,7 @@ const khuDays = daysUntilKhu(lead)
     setExistingTokenStr(token)
     setRegLinkUrl(`${process.env.NEXT_PUBLIC_BASE_URL || window.location.origin}/register/${token}`)
     setRegLinkGenerating(false)
+    setRegPanelOpen(true)
   }
 
   async function copyRegLink() {
@@ -1267,14 +1275,12 @@ const khuDays = daysUntilKhu(lead)
             )}
           </div>
           <div style={{ flexShrink: 0, display: 'flex', gap: 6, alignItems: 'center' }}>
-            {lead.client_id ? (
-              existingTokenStr ? (
-                <button disabled style={{ padding: '4px 8px', background: 'rgba(78,240,162,0.12)', color: 'var(--booked)', border: '1px solid rgba(78,240,162,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'default' }}>
-                  Reg ✓
-                </button>
-              ) : null
+            {regTokenDates?.used_at ? (
+              <button onClick={() => setRegViewOpen(true)} style={{ padding: '4px 8px', background: 'rgba(78,240,162,0.12)', color: 'var(--booked)', border: '1px solid rgba(78,240,162,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
+                ✓ Registered
+              </button>
             ) : existingTokenStr ? (
-              <button disabled style={{ padding: '4px 8px', background: 'rgba(240,162,78,0.12)', color: 'var(--warm)', border: '1px solid rgba(240,162,78,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'default' }}>
+              <button onClick={() => setRegPanelOpen(v => !v)} style={{ padding: '4px 8px', background: regPanelOpen ? 'rgba(240,162,78,0.18)' : 'rgba(240,162,78,0.08)', color: 'var(--warm)', border: '1px solid rgba(240,162,78,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
                 Reg Sent
               </button>
             ) : (
@@ -1292,21 +1298,28 @@ const khuDays = daysUntilKhu(lead)
         )}
       </div>
 
-      {/* Reg link panel */}
-      {regLinkUrl && !lead.client_id && (
-        <div style={{ marginBottom: 8, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 5, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-            {regLinkUrl}
-          </span>
-          <button onClick={copyRegLink} style={{ padding: '2px 8px', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 3, fontFamily: 'Syne', fontWeight: 700, fontSize: 8, letterSpacing: '0.08em', cursor: 'pointer', flexShrink: 0 }}>
-            {regLinkCopied ? 'Copied!' : 'Copy'}
-          </button>
-          <button onClick={emailRegLink} style={{ padding: '2px 8px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer', flexShrink: 0 }}>
-            Email
-          </button>
-          <button onClick={() => setRegLinkUrl(null)} style={{ padding: '2px 6px', background: 'transparent', color: 'var(--text3)', border: 'none', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer', flexShrink: 0, lineHeight: 1 }}>
-            ✕
-          </button>
+      {/* Reg link panel — shown when pending token is expanded */}
+      {regPanelOpen && regLinkUrl && !regTokenDates?.used_at && (
+        <div style={{ marginBottom: 8, background: 'var(--surface2)', border: '1px solid rgba(240,162,78,0.3)', borderRadius: 5, padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+              {regLinkUrl}
+            </span>
+            <button onClick={() => setRegPanelOpen(false)} style={{ padding: '2px 6px', background: 'transparent', color: 'var(--text3)', border: 'none', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer', flexShrink: 0, lineHeight: 1 }}>
+              ✕
+            </button>
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={copyRegLink} style={{ padding: '3px 10px', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 3, fontFamily: 'Syne', fontWeight: 700, fontSize: 8, letterSpacing: '0.08em', cursor: 'pointer' }}>
+              {regLinkCopied ? 'Copied!' : 'Copy Link'}
+            </button>
+            <button onClick={emailRegLink} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
+              Email
+            </button>
+            <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--warm)', border: '1px solid rgba(240,162,78,0.4)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
+              {regLinkGenerating ? '…' : 'Resend'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -1633,6 +1646,122 @@ const khuDays = daysUntilKhu(lead)
           }}
         />
       )}
+      {regViewOpen && lead.client_id && (
+        <RegViewModal clientId={lead.client_id} onClose={() => setRegViewOpen(false)} />
+      )}
+    </div>
+  )
+}
+
+// ─── REGISTRATION VIEW MODAL ──────────────────────────────────────────────────
+
+function RegField({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div>
+      <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 12, fontFamily: 'DM Mono', color: value ? 'var(--text)' : 'var(--text3)' }}>{value || '—'}</div>
+    </div>
+  )
+}
+
+function RegViewModal({ clientId, onClose }: { clientId: string; onClose: () => void }) {
+  const [client, setClient] = useState<Client | null>(null)
+  const [idUrl, setIdUrl] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase.from('clients').select('*').eq('id', clientId).single().then(({ data }) => {
+      if (data) {
+        setClient(data as Client)
+        if (data.id_file_url) {
+          supabase.storage.from('client-ids').createSignedUrl(data.id_file_url, 3600).then(({ data: u }) => {
+            if (u?.signedUrl) setIdUrl(u.signedUrl)
+          })
+        }
+      }
+      setLoading(false)
+    })
+  }, [clientId])
+
+  const fmtSubmitted = (d: string) =>
+    new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 10003, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: '100%', maxWidth: 540, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 48px rgba(0,0,0,0.6)', margin: '0 16px' }}>
+
+        {/* Header */}
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <div>
+            <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>Registration Record</div>
+            {client?.registered_at && (
+              <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>
+                Submitted {fmtSubmitted(client.registered_at)}
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              onClick={() => window.open(`/register/view/${clientId}`, '_blank')}
+              style={{ padding: '5px 12px', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
+            >
+              Export PDF
+            </button>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 2px' }}>×</button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '18px', overflowY: 'auto', flex: 1 }}>
+          {loading ? (
+            <div style={{ color: 'var(--text3)', fontFamily: 'DM Mono', fontSize: 11, textAlign: 'center', padding: 40 }}>Loading…</div>
+          ) : !client ? (
+            <div style={{ color: 'var(--hot)', fontFamily: 'DM Mono', fontSize: 11 }}>Could not load registration data.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <RegField label="First Name" value={client.fname} />
+                <RegField label="Last Name" value={client.lname} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <RegField label="Email" value={client.email} />
+                <RegField label="Phone" value={client.phone} />
+              </div>
+              <RegField label="Street Address" value={client.address_street} />
+              {client.address_street2 && <RegField label="Address Line 2" value={client.address_street2} />}
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
+                <RegField label="City" value={client.address_city} />
+                <RegField label="State" value={client.address_state} />
+                <RegField label="ZIP" value={client.address_zip} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <RegField label="Instagram" value={client.instagram ? `@${client.instagram.replace(/^@/, '')}` : null} />
+                <RegField label="How They Heard" value={client.how_heard} />
+              </div>
+              {/* Terms */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 2 }}>
+                <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--text3)' }}>Terms & Conditions</span>
+                <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 9, fontFamily: 'DM Mono', background: client.terms_accepted ? 'rgba(78,240,162,0.12)' : 'rgba(240,78,122,0.12)', color: client.terms_accepted ? 'var(--booked)' : 'var(--hot)', border: `1px solid ${client.terms_accepted ? 'rgba(78,240,162,0.3)' : 'rgba(240,78,122,0.3)'}` }}>
+                  {client.terms_accepted ? '✓ Accepted' : 'Not accepted'}
+                  {client.terms_accepted_at ? ` · ${new Date(client.terms_accepted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+                </span>
+              </div>
+              {/* ID Photo */}
+              <div>
+                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--text3)', marginBottom: 8 }}>Government-Issued ID</div>
+                {idUrl ? (
+                  <img src={idUrl} alt="Client ID" style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 6, border: '1px solid var(--border)', objectFit: 'contain', display: 'block' }} />
+                ) : (
+                  <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text3)' }}>No ID on file</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
