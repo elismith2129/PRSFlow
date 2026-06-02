@@ -1091,19 +1091,25 @@ const parsedLoc0 = parseLocation(lead.location || '')
   useEffect(() => {
     setRegLinkUrl(null); setRegLinkCopied(false); setRegLinkGenerating(false); setExistingTokenStr(null)
     setRegTokenDates(null); setRegPanelOpen(false)
-    // Prefer client_id join (handles returning clients auto-matched to new leads);
-    // fall back to lead_id for leads that haven't been confirmed to a client yet.
-    const q = lead.client_id
-      ? supabase.from('registration_tokens').select('token, created_at, used_at').eq('client_id', lead.client_id).maybeSingle()
-      : supabase.from('registration_tokens').select('token, created_at, used_at').eq('lead_id', lead.id).maybeSingle()
-    q.then(({ data }) => {
-      if (data) {
-        setExistingTokenStr(data.token)
-        setRegLinkUrl(`${process.env.NEXT_PUBLIC_BASE_URL || window.location.origin}/register/${data.token}`)
-        setRegTokenDates({ created_at: data.created_at, used_at: data.used_at })
-      }
-    })
-  }, [lead.id])
+    // Always query by lead_id — the registration form only writes used_at on the token,
+    // never client_id, so querying by client_id always returns nothing after completion.
+    // If no token exists for this lead but the lead has a client_id, fall back to
+    // clients.registered_at (handles returning clients auto-matched to new leads).
+    supabase.from('registration_tokens').select('token, created_at, used_at')
+      .eq('lead_id', lead.id).maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setExistingTokenStr(data.token)
+          setRegLinkUrl(`${process.env.NEXT_PUBLIC_BASE_URL || window.location.origin}/register/${data.token}`)
+          setRegTokenDates({ created_at: data.created_at, used_at: data.used_at })
+        } else if (lead.client_id) {
+          supabase.from('clients').select('registered_at').eq('id', lead.client_id).maybeSingle()
+            .then(({ data: c }) => {
+              if (c?.registered_at) setRegTokenDates({ created_at: c.registered_at, used_at: c.registered_at })
+            })
+        }
+      })
+  }, [lead.id, lead.client_id])
 
   useEffect(() => {
     setActivityLog([])
