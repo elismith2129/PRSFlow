@@ -1273,26 +1273,16 @@ function BookingForm({
 
               {/* Work Order + Invoice + Invoice # */}
               {(() => {
-                // Green = mandatory fields filled (no save needed)
                 const woCanCreate = !!form.studio && !!form.start_date &&
                   !!(form.rate || form.rate_daily) &&
                   !!form.payment_type && !!form.client_name &&
                   !!(form.phone || form.email)
                 const woUnlocked = woCanCreate
                 const woComplete = woStatus === 'submitted' || woStatus === 'approved'
-                const woInProgress = woStatus === 'draft' && !!bookingId
-                const woColor = woComplete ? '#4ef0a2'
-                  : woInProgress ? '#fb923c'
-                  : woCanCreate ? '#c8f04e'
-                  : 'var(--text3)'
-                const woBorder = woComplete ? 'rgba(78,240,162,0.6)'
-                  : woInProgress ? 'rgba(251,146,60,0.6)'
-                  : woCanCreate ? 'rgba(200,240,78,0.35)'
-                  : 'var(--border)'
-                const woBg = woComplete ? 'rgba(78,240,162,0.1)'
-                  : woInProgress ? 'rgba(251,146,60,0.08)'
-                  : woCanCreate ? 'rgba(200,240,78,0.05)'
-                  : 'transparent'
+                const woInProgress = woStatus === 'draft'
+                const woColor = woComplete ? '#4ef0a2' : woInProgress ? '#fb923c' : 'var(--text3)'
+                const woBorder = woComplete ? 'rgba(78,240,162,0.6)' : woInProgress ? 'rgba(251,146,60,0.6)' : 'var(--border)'
+                const woBg = woComplete ? 'rgba(78,240,162,0.1)' : woInProgress ? 'rgba(251,146,60,0.08)' : 'transparent'
                 return (
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginTop: 4 }}>
                 <button
@@ -1854,7 +1844,16 @@ function BookingForm({
       {showWO && (
         <WorkOrderPopup
           booking={booking ?? { id: '', start_date: form.start_date, end_date: form.end_date, location: form.location, studio: form.studio, from_time: form.from_time, to_time: form.to_time, payment_type: form.payment_type, client_name: form.client_name, phone: form.phone, email: form.email, artist: form.artist, label: form.label, ordered_by: form.ordered_by, po: form.po, producer: form.producer, engineer_name: form.engineer_name, assistant_name: form.assistant_name, food_budget: form.food_budget, food_amount: form.food_amount, invoice_num: form.invoice_num, rate: form.rate, rate_daily: form.rate_daily } as any}
-
+          liveForm={{
+            client_name: form.client_name, artist: form.artist, label: form.label,
+            ordered_by: form.ordered_by, po: form.po, phone: form.phone, email: form.email,
+            from_time: form.from_time, to_time: form.to_time, producer: form.producer,
+            engineer_name: form.engineer_name, assistant_name: form.assistant_name,
+            payment_type: form.payment_type, food_budget: form.food_budget,
+            food_amount: form.food_amount, invoice_num: form.invoice_num,
+            start_date: form.start_date, studio: form.studio, location: form.location,
+            rate: form.rate, rate_daily: form.rate_daily,
+          }}
           onClose={() => {
             setShowWO(false)
             if (booking) {
