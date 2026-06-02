@@ -218,26 +218,29 @@ export function WorkOrderPopup({
   // Map liveForm fields onto WO state — seeds WO from current booking form values on open
   function applyLiveForm(base: WO): WO {
     if (!liveForm) return base
+    // lv: use live value when it is present (non-null, non-undefined, non-empty string)
+    const lv = (live: string | null | undefined, fallback: string) =>
+      (live !== undefined && live !== '' && live !== null) ? live : fallback
     const studioLetter = liveForm.studio ? toStudioLetter(liveForm.studio) : ''
     return {
       ...base,
-      client: liveForm.client_name || base.client,
-      artist: liveForm.artist || base.artist,
-      label: liveForm.label || base.label,
-      ordered_by: liveForm.ordered_by || base.ordered_by,
-      po_number: liveForm.po || base.po_number,
-      phone: liveForm.phone || base.phone,
-      email: liveForm.email || base.email,
-      from_time: liveForm.from_time || base.from_time,
-      to_time: liveForm.to_time || base.to_time,
-      producer: liveForm.producer || base.producer,
-      engineer: liveForm.engineer_name || base.engineer,
-      second_engineer: liveForm.assistant_name || base.second_engineer,
+      client:         lv(liveForm.client_name,    base.client),
+      artist:         lv(liveForm.artist,          base.artist),
+      label:          lv(liveForm.label,           base.label),
+      ordered_by:     lv(liveForm.ordered_by,      base.ordered_by),
+      po_number:      lv(liveForm.po,              base.po_number),
+      phone:          lv(liveForm.phone,           base.phone),
+      email:          lv(liveForm.email,           base.email),
+      from_time:      lv(liveForm.from_time,       base.from_time),
+      to_time:        lv(liveForm.to_time,         base.to_time),
+      producer:       lv(liveForm.producer,        base.producer),
+      engineer:       lv(liveForm.engineer_name,   base.engineer),
+      second_engineer:lv(liveForm.assistant_name,  base.second_engineer),
       payment_status: liveForm.payment_type === 'billing' ? 'Billing' : liveForm.payment_type === 'COD' ? 'COD' : base.payment_status,
-      food_budget: liveForm.food_budget ?? base.food_budget,
-      food_amount: liveForm.food_amount || base.food_amount,
-      invoice_number: liveForm.invoice_num || base.invoice_number,
-      session_date: liveForm.start_date || base.session_date,
+      food_budget:    liveForm.food_budget ?? base.food_budget,
+      food_amount:    lv(liveForm.food_amount,     base.food_amount),
+      invoice_number: lv(liveForm.invoice_num,     base.invoice_number),
+      session_date:   lv(liveForm.start_date,      base.session_date),
       studios: base.studios.length > 0 ? base.studios : studioLetter ? [studioLetter] : [],
     }
   }
