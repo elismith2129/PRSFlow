@@ -1063,6 +1063,8 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   const [regLinkCopied, setRegLinkCopied] = useState(false)
   const [regLinkGenerating, setRegLinkGenerating] = useState(false)
   const [existingTokenStr, setExistingTokenStr] = useState<string | null>(null)
+  const [regPanelOpen, setRegPanelOpen] = useState(false)
+  const [regViewOpen, setRegViewOpen] = useState(false)
   const [fnameVal, setFnameVal] = useState(lead.fname || '')
   const [lnameVal, setLnameVal] = useState(lead.lname || '')
 const parsedLoc0 = parseLocation(lead.location || '')
@@ -1088,8 +1090,13 @@ const parsedLoc0 = parseLocation(lead.location || '')
   useEffect(() => { setNotesVal(lead.notes || '') }, [lead.notes])
   useEffect(() => {
     setRegLinkUrl(null); setRegLinkCopied(false); setRegLinkGenerating(false); setExistingTokenStr(null)
-    setRegTokenDates(null)
-    supabase.from('registration_tokens').select('token, created_at, used_at').eq('lead_id', lead.id).maybeSingle().then(({ data }) => {
+    setRegTokenDates(null); setRegPanelOpen(false)
+    // Prefer client_id join (handles returning clients auto-matched to new leads);
+    // fall back to lead_id for leads that haven't been confirmed to a client yet.
+    const q = lead.client_id
+      ? supabase.from('registration_tokens').select('token, created_at, used_at').eq('client_id', lead.client_id).maybeSingle()
+      : supabase.from('registration_tokens').select('token, created_at, used_at').eq('lead_id', lead.id).maybeSingle()
+    q.then(({ data }) => {
       if (data) {
         setExistingTokenStr(data.token)
         setRegLinkUrl(`${process.env.NEXT_PUBLIC_BASE_URL || window.location.origin}/register/${data.token}`)
@@ -1186,6 +1193,7 @@ const khuDays = daysUntilKhu(lead)
     setExistingTokenStr(token)
     setRegLinkUrl(`${process.env.NEXT_PUBLIC_BASE_URL || window.location.origin}/register/${token}`)
     setRegLinkGenerating(false)
+    setRegPanelOpen(true)
   }
 
   async function copyRegLink() {
@@ -1267,14 +1275,12 @@ const khuDays = daysUntilKhu(lead)
             )}
           </div>
           <div style={{ flexShrink: 0, display: 'flex', gap: 6, alignItems: 'center' }}>
-            {lead.client_id ? (
-              existingTokenStr ? (
-                <button disabled style={{ padding: '4px 8px', background: 'rgba(78,240,162,0.12)', color: 'var(--booked)', border: '1px solid rgba(78,240,162,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'default' }}>
-                  Reg ✓
-                </button>
-              ) : null
+            {regTokenDates?.used_at ? (
+              <button onClick={() => setRegViewOpen(true)} style={{ padding: '4px 8px', background: 'rgba(78,240,162,0.12)', color: 'var(--booked)', border: '1px solid rgba(78,240,162,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
+                ✓ Registered
+              </button>
             ) : existingTokenStr ? (
-              <button disabled style={{ padding: '4px 8px', background: 'rgba(240,162,78,0.12)', color: 'var(--warm)', border: '1px solid rgba(240,162,78,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'default' }}>
+              <button onClick={() => setRegPanelOpen(v => !v)} style={{ padding: '4px 8px', background: regPanelOpen ? 'rgba(240,162,78,0.18)' : 'rgba(240,162,78,0.08)', color: 'var(--warm)', border: '1px solid rgba(240,162,78,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
                 Reg Sent
               </button>
             ) : (
@@ -1292,21 +1298,28 @@ const khuDays = daysUntilKhu(lead)
         )}
       </div>
 
-      {/* Reg link panel */}
-      {regLinkUrl && !lead.client_id && (
-        <div style={{ marginBottom: 8, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 5, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-            {regLinkUrl}
-          </span>
-          <button onClick={copyRegLink} style={{ padding: '2px 8px', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 3, fontFamily: 'Syne', fontWeight: 700, fontSize: 8, letterSpacing: '0.08em', cursor: 'pointer', flexShrink: 0 }}>
-            {regLinkCopied ? 'Copied!' : 'Copy'}
-          </button>
-          <button onClick={emailRegLink} style={{ padding: '2px 8px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer', flexShrink: 0 }}>
-            Email
-          </button>
-          <button onClick={() => setRegLinkUrl(null)} style={{ padding: '2px 6px', background: 'transparent', color: 'var(--text3)', border: 'none', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer', flexShrink: 0, lineHeight: 1 }}>
-            ✕
-          </button>
+      {/* Reg link panel — shown when pending token is expanded */}
+      {regPanelOpen && regLinkUrl && !regTokenDates?.used_at && (
+        <div style={{ marginBottom: 8, background: 'var(--surface2)', border: '1px solid rgba(240,162,78,0.3)', borderRadius: 5, padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+              {regLinkUrl}
+            </span>
+            <button onClick={() => setRegPanelOpen(false)} style={{ padding: '2px 6px', background: 'transparent', color: 'var(--text3)', border: 'none', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer', flexShrink: 0, lineHeight: 1 }}>
+              ✕
+            </button>
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={copyRegLink} style={{ padding: '3px 10px', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 3, fontFamily: 'Syne', fontWeight: 700, fontSize: 8, letterSpacing: '0.08em', cursor: 'pointer' }}>
+              {regLinkCopied ? 'Copied!' : 'Copy Link'}
+            </button>
+            <button onClick={emailRegLink} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
+              Email
+            </button>
+            <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--warm)', border: '1px solid rgba(240,162,78,0.4)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
+              {regLinkGenerating ? '…' : 'Resend'}
+            </button>
+          </div>
         </div>
       )}
 
