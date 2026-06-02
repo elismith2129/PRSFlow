@@ -1280,9 +1280,9 @@ function BookingForm({
                 const woUnlocked = woCanCreate
                 const woComplete = woStatus === 'submitted' || woStatus === 'approved'
                 const woInProgress = woStatus === 'draft'
-                const woColor = woComplete ? '#4ef0a2' : woInProgress ? '#fb923c' : 'var(--text3)'
-                const woBorder = woComplete ? 'rgba(78,240,162,0.6)' : woInProgress ? 'rgba(251,146,60,0.6)' : 'var(--border)'
-                const woBg = woComplete ? 'rgba(78,240,162,0.1)' : woInProgress ? 'rgba(251,146,60,0.08)' : 'transparent'
+                const woColor = woComplete ? '#4ef0a2' : (woInProgress || woCanCreate) ? '#fb923c' : 'var(--text3)'
+                const woBorder = woComplete ? 'rgba(78,240,162,0.6)' : (woInProgress || woCanCreate) ? 'rgba(251,146,60,0.6)' : 'var(--border)'
+                const woBg = woComplete ? 'rgba(78,240,162,0.1)' : (woInProgress || woCanCreate) ? 'rgba(251,146,60,0.08)' : 'transparent'
                 return (
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginTop: 4 }}>
                 <button
