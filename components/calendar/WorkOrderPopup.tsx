@@ -209,6 +209,7 @@ export function WorkOrderPopup({
   ])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [dirtyFields, setDirtyFields] = useState<Set<string>>(new Set())
   const woIdRef = useRef<string | null>(null)
   // Track which rows exist in DB (vs. local-only new rows)
   const rentIdsInDb = useRef<Set<string>>(new Set())
@@ -242,6 +243,48 @@ export function WorkOrderPopup({
   }
 
   useEffect(() => { initWO() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Push booking form edits into the WO in real time, but skip any WO field
+  // the user has manually edited (those are tracked in dirtyFields).
+  // dirtyFields is reset to empty on every mount, so each fresh WO open starts clean.
+  useEffect(() => {
+    if (!liveForm || !wo) return
+    setWo(prev => {
+      if (!prev) return prev
+      const updates: Partial<WO> = {}
+      const fieldMap: Array<[string, keyof WO]> = [
+        ['client_name', 'client'],
+        ['artist',       'artist'],
+        ['label',        'label'],
+        ['ordered_by',   'ordered_by'],
+        ['po',           'po_number'],
+        ['phone',        'phone'],
+        ['email',        'email'],
+        ['from_time',    'from_time'],
+        ['to_time',      'to_time'],
+        ['producer',     'producer'],
+        ['engineer_name','engineer'],
+        ['assistant_name','second_engineer'],
+        ['food_amount',  'food_amount'],
+        ['invoice_num',  'invoice_number'],
+        ['start_date',   'session_date'],
+      ]
+      for (const [liveKey, woKey] of fieldMap) {
+        const val = (liveForm as any)[liveKey]
+        if (val && !dirtyFields.has(woKey)) {
+          (updates as any)[woKey] = val
+        }
+      }
+      // payment_type → payment_status requires special mapping
+      if (!dirtyFields.has('payment_status')) {
+        if (liveForm.payment_type === 'billing') updates.payment_status = 'Billing'
+        else if (liveForm.payment_type === 'COD') updates.payment_status = 'COD'
+      }
+      // food_budget is boolean — don't use truthy check
+      if (!dirtyFields.has('food_budget')) updates.food_budget = liveForm.food_budget
+      return Object.keys(updates).length > 0 ? { ...prev, ...updates } : prev
+    })
+  }, [liveForm]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function initWO() {
     const { data: existing } = await supabase
@@ -599,7 +642,7 @@ export function WorkOrderPopup({
               <span style={{ fontFamily: 'DM Mono', fontSize: 10, color: '#8a8fa0' }}>Recording Studios (323) 465-4000</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontFamily: 'DM Mono', fontSize: 10, color: '#8a8fa0' }}>Invoice #</span>
-                <input value={wo.invoice_number} onChange={e => setWo(w => w ? { ...w, invoice_number: e.target.value } : w)} style={{ ...inp, width: 90, borderBottom: '1px solid rgba(255,255,255,0.2)' }} />
+                <input value={wo.invoice_number} onChange={e => { setDirtyFields(prev => new Set(prev).add('invoice_number')); setWo(w => w ? { ...w, invoice_number: e.target.value } : w) }} style={{ ...inp, width: 90, borderBottom: '1px solid rgba(255,255,255,0.2)' }} />
               </div>
             </div>
           </div>
@@ -617,7 +660,7 @@ export function WorkOrderPopup({
               ] as [string, keyof WO][]).map(([label, key]) => (
                 <div key={key} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
                   <div style={metaLabel}>{label}</div>
-                  <input value={String(wo[key] ?? '')} onChange={e => setWo(w => w ? { ...w, [key]: e.target.value } : w)} style={inp} />
+                  <input value={String(wo[key] ?? '')} onChange={e => { setDirtyFields(prev => new Set(prev).add(key as string)); setWo(w => w ? { ...w, [key]: e.target.value } : w) }} style={inp} />
                 </div>
               ))}
               {/* From / To — cascade changes to all studio time rows */}
@@ -628,6 +671,7 @@ export function WorkOrderPopup({
                     value={wo[key] ?? ''}
                     onChange={e => {
                       const val = e.target.value
+                      setDirtyFields(prev => new Set(prev).add(key as string))
                       setWo(w => w ? { ...w, [key]: val } : w)
                       setStRows(prev => prev.map(r => {
                         const u = { ...r, [key]: val }
@@ -670,7 +714,7 @@ export function WorkOrderPopup({
                 <div style={{ display: 'flex', gap: 12 }}>
                   {['COD', 'Billing'].map(p => (
                     <label key={p} style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
-                      <input type="radio" checked={wo.payment_status === p} onChange={() => setWo(w => w ? { ...w, payment_status: p } : w)} style={{ accentColor: '#c8f04e', cursor: 'pointer' }} />
+                      <input type="radio" checked={wo.payment_status === p} onChange={() => { setDirtyFields(prev => new Set(prev).add('payment_status')); setWo(w => w ? { ...w, payment_status: p } : w) }} style={{ accentColor: '#c8f04e', cursor: 'pointer' }} />
                       <span style={{ fontFamily: 'DM Mono', fontSize: 11, color: wo.payment_status === p ? '#f0f0f0' : '#8a8fa0' }}>{p}</span>
                     </label>
                   ))}
@@ -680,10 +724,10 @@ export function WorkOrderPopup({
               <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
                 <div style={metaLabel}>Food Budget</div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button type="button" onClick={() => setWo(w => w ? { ...w, food_budget: !w.food_budget } : w)} style={{ padding: '2px 10px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', border: `1px solid ${wo.food_budget ? '#c8f04e' : 'rgba(255,255,255,0.12)'}`, background: wo.food_budget ? 'rgba(200,240,78,0.12)' : 'transparent', color: wo.food_budget ? '#c8f04e' : '#8a8fa0' }}>
+                  <button type="button" onClick={() => { setDirtyFields(prev => new Set(prev).add('food_budget')); setWo(w => w ? { ...w, food_budget: !w.food_budget } : w) }} style={{ padding: '2px 10px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', border: `1px solid ${wo.food_budget ? '#c8f04e' : 'rgba(255,255,255,0.12)'}`, background: wo.food_budget ? 'rgba(200,240,78,0.12)' : 'transparent', color: wo.food_budget ? '#c8f04e' : '#8a8fa0' }}>
                     {wo.food_budget ? 'Yes' : 'No'}
                   </button>
-                  {wo.food_budget && <input value={wo.food_amount} onChange={e => setWo(w => w ? { ...w, food_amount: e.target.value } : w)} placeholder="$0.00" style={{ ...inp, width: 70 }} />}
+                  {wo.food_budget && <input value={wo.food_amount} onChange={e => { setDirtyFields(prev => new Set(prev).add('food_amount')); setWo(w => w ? { ...w, food_amount: e.target.value } : w) }} placeholder="$0.00" style={{ ...inp, width: 70 }} />}
                 </div>
               </div>
             </div>
@@ -701,7 +745,7 @@ export function WorkOrderPopup({
               ] as [string, keyof WO][]).map(([label, key]) => (
                 <div key={key} style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 8, alignItems: 'center' }}>
                   <div style={metaLabel}>{label}</div>
-                  <input value={String(wo[key] ?? '')} onChange={e => setWo(w => w ? { ...w, [key]: e.target.value } : w)} style={inp} />
+                  <input value={String(wo[key] ?? '')} onChange={e => { setDirtyFields(prev => new Set(prev).add(key as string)); setWo(w => w ? { ...w, [key]: e.target.value } : w) }} style={inp} />
                 </div>
               ))}
             </div>
