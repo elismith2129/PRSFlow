@@ -1299,7 +1299,7 @@ const khuDays = daysUntilKhu(lead)
             )}
           </div>
           <div style={{ flexShrink: 0, display: 'flex', gap: 6, alignItems: 'center' }}>
-            {regTokenDates?.used_at ? (
+            {lead.billing !== 'Billing' && (regTokenDates?.used_at ? (
               <button onClick={() => setRegViewOpen(true)} style={{ padding: '4px 8px', background: 'rgba(78,240,162,0.12)', color: 'var(--booked)', border: '1px solid rgba(78,240,162,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
                 ✓ Registered
               </button>
@@ -1311,7 +1311,7 @@ const khuDays = daysUntilKhu(lead)
               <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '4px 8px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
                 {regLinkGenerating ? '…' : 'Send Reg'}
               </button>
-            )}
+            ))}
           </div>
         </div>
         {/* Row 2: Keep Hot Until — hot/warm only */}
