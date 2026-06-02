@@ -42,6 +42,12 @@ const dangerBtn: React.CSSProperties = {
   borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer',
 }
 
+const aBtn = (color: string): React.CSSProperties => ({
+  padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)',
+  background: 'transparent', color, fontFamily: 'DM Mono', fontSize: 9,
+  textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap' as const,
+})
+
 // ─── Section header ───────────────────────────────────────────────────────────
 
 function SectionHeader({ label, action, mt = 16 }: { label: string; action?: React.ReactNode; mt?: number }) {
@@ -141,7 +147,16 @@ function ContactRow({ contact, onSave, onDelete }: {
             {[contact.fname, contact.lname].filter(Boolean).join(' ') || 'Unnamed contact'}
           </span>
           {contact.email && (
-            <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono', marginTop: 1 }}>{contact.email}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
+              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>{contact.email}</span>
+              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('#7BBFFF')}>Email</a>
+            </div>
+          )}
+          {contact.phone && (
+            <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
+              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--booked)')}>Call</a>
+              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--warm)')}>Text</a>
+            </div>
           )}
           {localArtists.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 4 }}>
@@ -272,7 +287,16 @@ function AdminRow({ contact, onSave, onDelete }: {
             </span>
           )}
           {contact.email && (
-            <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono', marginTop: 1 }}>{contact.email}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
+              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>{contact.email}</span>
+              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('#7BBFFF')}>Email</a>
+            </div>
+          )}
+          {contact.phone && (
+            <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
+              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--booked)')}>Call</a>
+              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--warm)')}>Text</a>
+            </div>
           )}
         </div>
         <span style={{ fontSize: 9, color: 'var(--text3)', flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
@@ -721,8 +745,23 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
           <>
             <SectionHeader label="Contact" mt={0} />
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px 16px', marginBottom: 4 }}>
-              <InlineField label="Email" value={client.email} onSave={v => saveClient({ email: v })} />
-              <PhoneInlineField value={client.phone} onSave={v => saveClient({ phone: v })} />
+              <div>
+                <InlineField label="Email" value={client.email} onSave={v => saveClient({ email: v })} />
+                {client.email && (
+                  <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
+                    <a href={`mailto:${client.email}`} style={aBtn('#7BBFFF')}>Email</a>
+                  </div>
+                )}
+              </div>
+              <div>
+                <PhoneInlineField value={client.phone} onSave={v => saveClient({ phone: v })} />
+                {client.phone && (
+                  <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
+                    <a href={`tel:${client.phone.replace(/\D/g, '')}`} style={aBtn('var(--booked)')}>Call</a>
+                    <a href={`sms:${client.phone.replace(/\D/g, '')}`} style={aBtn('var(--warm)')}>Text</a>
+                  </div>
+                )}
+              </div>
               <InlineField label="Instagram" value={client.instagram} onSave={v => saveClient({ instagram: v })} />
               <InlineField label="How heard" value={client.how_heard} onSave={v => saveClient({ how_heard: v })} />
             </div>
