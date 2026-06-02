@@ -185,13 +185,11 @@ export type WOFormSync = {
 
 export function WorkOrderPopup({
   booking,
-  liveForm,
   onClose,
   onStatusChange,
   onFormSync,
 }: {
   booking: Booking
-  liveForm?: WOFormSync
   onClose: () => void
   onStatusChange?: (status: string) => void
   onFormSync?: (updates: Partial<WOFormSync>) => void
@@ -213,33 +211,6 @@ export function WorkOrderPopup({
   const rentIdsInDb = useRef<Set<string>>(new Set())
   const payIdsInDb = useRef<Set<string>>(new Set())
 
-  // Map liveForm fields onto WO state (keeps them in sync)
-  function applyLiveForm(base: WO): WO {
-    if (!liveForm) return base
-    const studioLetter = liveForm.studio ? toStudioLetter(liveForm.studio) : ''
-    return {
-      ...base,
-      client: liveForm.client_name || base.client,
-      artist: liveForm.artist || base.artist,
-      label: liveForm.label || base.label,
-      ordered_by: liveForm.ordered_by || base.ordered_by,
-      po_number: liveForm.po || base.po_number,
-      phone: liveForm.phone || base.phone,
-      email: liveForm.email || base.email,
-      from_time: liveForm.from_time || base.from_time,
-      to_time: liveForm.to_time || base.to_time,
-      producer: liveForm.producer || base.producer,
-      engineer: liveForm.engineer_name || base.engineer,
-      second_engineer: liveForm.assistant_name || base.second_engineer,
-      payment_status: liveForm.payment_type === 'billing' ? 'Billing' : liveForm.payment_type === 'COD' ? 'COD' : base.payment_status,
-      food_budget: liveForm.food_budget ?? base.food_budget,
-      food_amount: liveForm.food_amount || base.food_amount,
-      invoice_number: liveForm.invoice_num || base.invoice_number,
-      session_date: liveForm.start_date || base.session_date,
-      studios: base.studios.length > 0 ? base.studios : studioLetter ? [studioLetter] : [],
-    }
-  }
-
   useEffect(() => { initWO() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function initWO() {
@@ -259,7 +230,7 @@ export function WorkOrderPopup({
       if (rawStudios.length === 0 && studios.length > 0) {
         await supabase.from('work_orders').update({ studios }).eq('id', existing.id)
       }
-      setWo(applyLiveForm({ ...normalizeWO(existing), studios }))
+      setWo({ ...normalizeWO(existing), studios })
       const [{ data: st }, { data: eq }, { data: rent }, { data: pay }] = await Promise.all([
         supabase.from('studio_time_rows').select('*').eq('work_order_id', existing.id).order('sort_order'),
         supabase.from('equipment_condition_rows').select('*').eq('work_order_id', existing.id),
@@ -330,7 +301,7 @@ export function WorkOrderPopup({
       const { data: created } = await supabase.from('work_orders').insert(woPayload).select('*').single()
       if (!created) { setLoading(false); return }
       woIdRef.current = created.id
-      setWo(applyLiveForm(normalizeWO(created)))
+      setWo(normalizeWO(created))
 
       // Auto-generate studio time rows (one per date)
       const stPayloads = dates.map((d, i) => {
@@ -549,19 +520,34 @@ export function WorkOrderPopup({
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             {woId && (
-              <button
-                onClick={() => window.open(`/wo/${woId}/print`, '_blank')}
-                style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}
-              >
-                Export PDF
-              </button>
+              <>
+                <button
+                  onClick={() => window.open(`/wo/${woId}/print`, '_blank')}
+                  style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}
+                >
+                  Export PDF
+                </button>
+                <button
+                  onClick={() => window.open(`/wo/${woId}/print?autoprint=1`, '_blank')}
+                  style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}
+                >
+                  Print
+                </button>
+              </>
             )}
+            <button
+              onClick={() => onClose()}
+              disabled={saving}
+              style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}
+            >
+              Cancel
+            </button>
             <button
               onClick={handleClose}
               disabled={saving}
-              style={{ width: 30, height: 30, borderRadius: 5, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: '#8a8fa0', cursor: saving ? 'default' : 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+              style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : 'rgba(200,240,78,0.12)', border: '1px solid rgba(200,240,78,0.3)', color: saving ? '#8a8fa0' : '#c8f04e' }}
             >
-              {saving ? '…' : '×'}
+              {saving ? 'Saving…' : 'Close & Save'}
             </button>
           </div>
         </div>
@@ -592,12 +578,19 @@ export function WorkOrderPopup({
                 ['Engineer', 'engineer'],
                 ['Assistant', 'second_engineer'],
                 ['Producer', 'producer'],
-              ] as [string, keyof WO][]).map(([label, key]) => (
-                <div key={key} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
-                  <div style={metaLabel}>{label}</div>
-                  <input value={String(wo[key] ?? '')} onChange={e => setWo(w => w ? { ...w, [key]: e.target.value } : w)} style={inp} />
-                </div>
-              ))}
+              ] as [string, keyof WO][]).map(([label, key]) => {
+                let engBg: string | undefined
+                if (key === 'engineer') {
+                  if (booking.engineer_status === 'confirmed') engBg = 'rgba(78,240,162,0.08)'
+                  else if (booking.engineer_status === 'hold') engBg = 'rgba(240,162,78,0.08)'
+                }
+                return (
+                  <div key={key} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center', ...(engBg ? { background: engBg, borderRadius: 4 } : {}) }}>
+                    <div style={metaLabel}>{label}</div>
+                    <input value={String(wo[key] ?? '')} onChange={e => setWo(w => w ? { ...w, [key]: e.target.value } : w)} style={inp} />
+                  </div>
+                )
+              })}
               {/* From / To — cascade changes to all studio time rows */}
               {(['from_time', 'to_time'] as const).map(key => (
                 <div key={key} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
@@ -848,6 +841,9 @@ export function WorkOrderPopup({
               Export PDF
             </button>
           )}
+          <button onClick={() => onClose()} disabled={saving} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
+            Cancel
+          </button>
           <button onClick={handleClose} disabled={saving} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Saving…' : 'Close & Save'}
           </button>

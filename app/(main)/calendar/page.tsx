@@ -1854,16 +1854,7 @@ function BookingForm({
       {showWO && (
         <WorkOrderPopup
           booking={booking ?? { id: '', start_date: form.start_date, end_date: form.end_date, location: form.location, studio: form.studio, from_time: form.from_time, to_time: form.to_time, payment_type: form.payment_type, client_name: form.client_name, phone: form.phone, email: form.email, artist: form.artist, label: form.label, ordered_by: form.ordered_by, po: form.po, producer: form.producer, engineer_name: form.engineer_name, assistant_name: form.assistant_name, food_budget: form.food_budget, food_amount: form.food_amount, invoice_num: form.invoice_num, rate: form.rate, rate_daily: form.rate_daily } as any}
-          liveForm={{
-            client_name: form.client_name, artist: form.artist, label: form.label,
-            ordered_by: form.ordered_by, po: form.po, phone: form.phone, email: form.email,
-            from_time: form.from_time, to_time: form.to_time, producer: form.producer,
-            engineer_name: form.engineer_name, assistant_name: form.assistant_name,
-            payment_type: form.payment_type, food_budget: form.food_budget,
-            food_amount: form.food_amount, invoice_num: form.invoice_num,
-            start_date: form.start_date, studio: form.studio, location: form.location,
-            rate: form.rate, rate_daily: form.rate_daily,
-          }}
+
           onClose={() => {
             setShowWO(false)
             if (booking) {

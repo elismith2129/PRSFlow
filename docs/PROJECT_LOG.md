@@ -305,6 +305,36 @@ Also requires `checklist-photos` Supabase Storage bucket (public) for photo uplo
 
 ---
 
+### June 2, 2026 — WO modal improvements
+
+**Export PDF + Print (Item 1):**
+- Both buttons live in the WO sticky header alongside the existing action buttons.
+- **Export PDF** (existing): opens `/wo/{id}/print` in a new tab — clean white-background layout, user manually saves as PDF via browser.
+- **Print** (new): opens `/wo/{id}/print?autoprint=1` — same print route, but `PrintTrigger` client component auto-fires `window.print()` 800ms after mount. No new library installed; uses the existing print route's `@media print` CSS (already hides buttons and chrome).
+- `app/wo/[id]/print/PrintTrigger.tsx` — new client component (same pattern as `register/view/.../PrintTrigger.tsx`).
+- `app/wo/[id]/print/page.tsx` — accepts `searchParams.autoprint`; renders `<PrintTrigger />` when `=== '1'`.
+
+**Close & Save + Cancel buttons (Item 2):**
+- Removed the X close button from the sticky header.
+- Added **Cancel** (calls `onClose()`, no save) and **Close & Save** (calls `handleClose()`, saves then closes) to both the sticky header and the bottom footer.
+- Cancel: ghost style (`rgba(255,255,255,0.12)` border, `#8a8fa0` text). Close & Save header: outlined accent (`rgba(200,240,78,0.12)` bg). Close & Save footer: full accent (`#c8f04e` bg) — unchanged.
+
+**Engineer box colors (Item 3):**
+- Engineer row in WO meta grid now shows a subtle background tint based on `booking.engineer_status`:
+  - `confirmed` → `rgba(78,240,162,0.08)` (green tint)
+  - `hold` → `rgba(240,162,78,0.08)` (orange tint)
+  - Otherwise → no change (default transparent)
+- Reads `booking.engineer_status` directly from the `booking` prop (already typed as `EngineerStatus` on `Booking`). No new props added.
+
+**Sync on save only (Item 4):**
+- Removed `applyLiveForm()` function and `liveForm?: WOFormSync` prop from `WorkOrderPopup`.
+- WO now reads only from DB on open — no unsaved booking form state bleeds in.
+- WO → booking form sync on Close & Save via `onFormSync` is unchanged.
+- Removed `liveForm={...}` from the calendar page's `<WorkOrderPopup>` render.
+- `WOFormSync` type and `onFormSync` prop are kept (still used for WO→booking sync on save).
+
+---
+
 ### June 2, 2026 — CRM + Clients merge
 
 **What changed:**

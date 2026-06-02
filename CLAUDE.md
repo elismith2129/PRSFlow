@@ -105,6 +105,7 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 | Contact actions | Call (`tel:`), Text (`sms:`), Email (`mailto:`) inline buttons on lead cards, client profiles, A&R + Admin card headers | ✅ Complete |
 | SOP tab | `/sop` route + iframe serving `public/sop.html`; update guide by replacing the file | ✅ Complete |
 | CRM+Clients merge | LEADS/CLIENTS toggle on `/crm`; `ClientsPageInner` embedded under CLIENTS tab; Clients removed from nav; `/clients` redirects to `/crm`; reg badge moved to CRM nav item | ✅ Complete |
+| WO improvements | Export PDF + Print (auto-print via `?autoprint=1`); Close & Save + Cancel at top and bottom; engineer box green/orange by status; sync on save only (removed `liveForm` live injection) | ✅ Complete |
 
 ## What's Next
 

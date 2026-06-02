@@ -7,7 +7,9 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-export default async function WOPrintPage({ params }: { params: { id: string } }) {
+import PrintTrigger from './PrintTrigger'
+
+export default async function WOPrintPage({ params, searchParams }: { params: { id: string }, searchParams: { autoprint?: string } }) {
   const { data: wo } = await supabase.from('work_orders').select('*').eq('id', params.id).single()
   if (!wo) notFound()
 
@@ -61,6 +63,8 @@ export default async function WOPrintPage({ params }: { params: { id: string } }
         `}</style>
       </head>
       <body>
+
+        {searchParams.autoprint === '1' && <PrintTrigger />}
 
         {/* Print button (hidden on print) */}
         {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
