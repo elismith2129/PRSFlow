@@ -1085,7 +1085,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
     supabase.from('registration_tokens').select('token, created_at, used_at').eq('lead_id', lead.id).maybeSingle().then(({ data }) => {
       if (data) {
         setExistingTokenStr(data.token)
-        setRegLinkUrl(`${window.location.origin}/register/${data.token}`)
+        setRegLinkUrl(`${process.env.NEXT_PUBLIC_BASE_URL || window.location.origin}/register/${data.token}`)
         setRegTokenDates({ created_at: data.created_at, used_at: data.used_at })
       }
     })
@@ -1163,7 +1163,6 @@ const khuDays = daysUntilKhu(lead)
     background: 'var(--surface2)', border: '1px solid var(--border)',
     color: 'var(--text)', padding: '4px 6px', fontFamily: 'DM Mono',
     fontSize: 12, outline: 'none', borderRadius: 4, cursor: 'pointer', flex: 1, minWidth: 0,
-    appearance: 'none' as any, WebkitAppearance: 'none' as any,
   }
 
   async function generateRegLink() {
@@ -1178,7 +1177,7 @@ const khuDays = daysUntilKhu(lead)
       expires_at: expiresAt,
     })
     setExistingTokenStr(token)
-    setRegLinkUrl(`${window.location.origin}/register/${token}`)
+    setRegLinkUrl(`${process.env.NEXT_PUBLIC_BASE_URL || window.location.origin}/register/${token}`)
     setRegLinkGenerating(false)
   }
 
@@ -1248,7 +1247,7 @@ const khuDays = daysUntilKhu(lead)
             <select
               value={local.status || lead.status}
               onChange={e => { update('status', e.target.value); saveStatus(e.target.value) }}
-              style={{ ...pillBase, flexShrink: 0, background: `${STATUS_COLORS[local.status || lead.status]}22`, color: STATUS_COLORS[local.status || lead.status] || 'var(--text2)', border: `1px solid ${STATUS_COLORS[local.status || lead.status]}66`, appearance: 'none' as any }}>
+              style={{ ...pillBase, flexShrink: 0, background: `${STATUS_COLORS[local.status || lead.status]}22`, color: STATUS_COLORS[local.status || lead.status] || 'var(--text2)', border: `1px solid ${STATUS_COLORS[local.status || lead.status]}66` }}>
               {['hot', 'warm', 'cold', 'uncontacted', 'booked', 'dead'].map(s => <option key={s} value={s}>{s}</option>)}
             </select>
             {lead.needs_contact !== false && (

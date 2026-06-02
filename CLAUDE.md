@@ -117,5 +117,6 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 - `SUPABASE_SERVICE_ROLE_KEY` (for cron endpoints)
 - `CRON_SECRET` (for cron auth)
 - `ANTHROPIC_API_KEY` (for /api/ocr-receipt)
+- `NEXT_PUBLIC_BASE_URL` (e.g. `https://prs-flow.vercel.app`) — used to construct registration links sent to clients. Falls back to `window.location.origin` if unset (produces localhost URLs in dev).
 
-All five must be set in Vercel for Production, Preview, and Development environments.
+All must be set in Vercel for Production, Preview, and Development environments.

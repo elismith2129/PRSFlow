@@ -119,7 +119,7 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 
 ## Environment variables
 
-All four must be set for **all three Vercel environments** (Production, Preview, Development):
+All must be set for **all three Vercel environments** (Production, Preview, Development):
 
 | Variable | Used by |
 |---|---|
@@ -127,6 +127,8 @@ All four must be set for **all three Vercel environments** (Production, Preview,
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase client (browser) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Cron endpoint (server-side) |
 | `CRON_SECRET` | Cron endpoint auth header |
+| `NEXT_PUBLIC_BASE_URL` | Registration link URL base (e.g. `https://prs-flow.vercel.app`). Falls back to `window.location.origin` if unset, which produces `localhost` URLs in dev — fine for testing but wrong for links sent to clients. Set this in Production and Preview. |
+| `ANTHROPIC_API_KEY` | `/api/ocr-receipt` receipt OCR (server-side) |
 
 ---
 
