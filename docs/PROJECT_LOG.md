@@ -305,6 +305,22 @@ Also requires `checklist-photos` Supabase Storage bucket (public) for photo uplo
 
 ---
 
+### June 2, 2026 — WO bug fixes (follow-up)
+
+**Fix 1 — WO→Booking form sync on Close & Save:**
+- Root cause: `onFormSync` was called after multiple `await` chains inside `handleClose`. Stale React closure risk after async DB writes meant the booking form might not receive the latest `wo` state.
+- Fix: moved `onFormSync` call to the TOP of `handleClose`, synchronously after `setSaving(true)`, before any DB `await` operations. This guarantees it fires with the `wo` captured at click time with no async batching risk. The duplicate call at the bottom of `handleClose` was removed.
+
+**Fix 2 — Export PDF + Print 404:**
+- Root cause: `app/wo/[id]/print/page.tsx` Supabase client was using the anon key. `schema.sql` shows `work_orders` has RLS enabled (`alter table work_orders enable row level security`). If the anon SELECT policy is missing from the actual DB, the query returns null → `notFound()` → 404.
+- Fix: print page now uses `SUPABASE_SERVICE_ROLE_KEY` (already in env) when available, falling back to anon key. Service role bypasses RLS unconditionally on the server. Also fixed misplaced `import PrintTrigger` (was after a `const` declaration; moved to top of file).
+
+**Fix 3 — Engineer box color visibility:**
+- Root cause: rgba tints `rgba(78,240,162,0.08)` and `rgba(240,162,78,0.08)` were too low-opacity to be visible against the dark WO background (`#13161d`).
+- Fix: changed to solid dark hex colors — confirmed = `#14532d` (dark green), hold = `#7c2d12` (dark orange/brick). Text remains `#f0f0f0` / `#8a8fa0` which is readable against both.
+
+---
+
 ### June 2, 2026 — WO modal improvements
 
 **Export PDF + Print (Item 1):**

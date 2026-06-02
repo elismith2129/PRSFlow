@@ -1,13 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import { SignatureBlock } from '@/components/wo/SignatureBlock'
+import PrintTrigger from './PrintTrigger'
 
+// Use service role key (server-only) when available so the query bypasses RLS.
+// Falls back to anon key if service role is not configured.
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
-
-import PrintTrigger from './PrintTrigger'
 
 export default async function WOPrintPage({ params, searchParams }: { params: { id: string }, searchParams: { autoprint?: string } }) {
   const { data: wo } = await supabase.from('work_orders').select('*').eq('id', params.id).single()

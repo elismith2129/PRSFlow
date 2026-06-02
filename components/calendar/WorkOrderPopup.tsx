@@ -376,6 +376,18 @@ export function WorkOrderPopup({
     setSaving(true)
     const id = woIdRef.current
 
+    // Sync to booking form immediately on save trigger, before async DB writes,
+    // so the closure captures the correct wo state without stale-async risk
+    onFormSync?.({
+      client_name: wo.client, artist: wo.artist, label: wo.label,
+      ordered_by: wo.ordered_by, po: wo.po_number, phone: wo.phone, email: wo.email,
+      from_time: wo.from_time, to_time: wo.to_time, producer: wo.producer,
+      engineer_name: wo.engineer, assistant_name: wo.second_engineer,
+      payment_type: wo.payment_status === 'Billing' ? 'billing' : 'COD',
+      food_budget: wo.food_budget, food_amount: wo.food_amount,
+      invoice_num: wo.invoice_number,
+    })
+
     await supabase.from('work_orders').update({
       invoice_number: wo.invoice_number || null,
       session_date: wo.session_date || null,
@@ -428,17 +440,6 @@ export function WorkOrderPopup({
         ? supabase.from('payment_rows').update(payload).eq('id', p.id)
         : supabase.from('payment_rows').insert(payload)
     }))
-
-    // Push shared fields back to booking form
-    onFormSync?.({
-      client_name: wo.client, artist: wo.artist, label: wo.label,
-      ordered_by: wo.ordered_by, po: wo.po_number, phone: wo.phone, email: wo.email,
-      from_time: wo.from_time, to_time: wo.to_time, producer: wo.producer,
-      engineer_name: wo.engineer, assistant_name: wo.second_engineer,
-      payment_type: wo.payment_status === 'Billing' ? 'billing' : 'COD',
-      food_budget: wo.food_budget, food_amount: wo.food_amount,
-      invoice_num: wo.invoice_number,
-    })
 
     setSaving(false)
     onClose()
@@ -581,8 +582,8 @@ export function WorkOrderPopup({
               ] as [string, keyof WO][]).map(([label, key]) => {
                 let engBg: string | undefined
                 if (key === 'engineer') {
-                  if (booking.engineer_status === 'confirmed') engBg = 'rgba(78,240,162,0.08)'
-                  else if (booking.engineer_status === 'hold') engBg = 'rgba(240,162,78,0.08)'
+                  if (booking.engineer_status === 'confirmed') engBg = '#14532d'
+                  else if (booking.engineer_status === 'hold') engBg = '#7c2d12'
                 }
                 return (
                   <div key={key} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center', ...(engBg ? { background: engBg, borderRadius: 4 } : {}) }}>
