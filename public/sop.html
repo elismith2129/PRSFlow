@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#0d0d0d;--surface:#161616;--surface2:#1e1e1e;--border:#252525;--accent:#c8f04e;--text1:#f0f0f0;--text2:#aaa;--text3:#555;--hot:#ff4d4d;--warm:#ff9800;--cold:#5b8def;}
+body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text1);min-height:100vh;}
+.wrap{max-width:900px;margin:0 auto;}
+.top-nav{display:flex;align-items:center;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 20px;position:sticky;top:0;z-index:10;}
+.nav-logo{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-right:20px;padding:14px 0;}
+.nav-logo span{color:var(--accent);}
+.tab-btn{background:none;border:none;color:var(--text3);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:14px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;}
+.tab-btn:hover{color:var(--text2);}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.page{display:none;padding:28px 24px;}
+.page.active{display:block;}
+.hero{margin-bottom:22px;}
+.hero-label{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:6px;}
+.hero-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.2;margin-bottom:8px;}
+.hero-title em{color:var(--accent);font-style:normal;}
+.hero-body{font-size:12px;color:var(--text2);line-height:1.8;max-width:600px;}
+.why-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:22px;}
+.why-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;}
+.why-icon{font-size:18px;margin-bottom:6px;}
+.why-title{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px;}
+.why-body{font-size:11px;color:var(--text2);line-height:1.65;}
+.section-label{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--text3);margin-bottom:12px;padding-bottom:7px;border-bottom:1px solid var(--border);}
+.status-guide{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+.status-pill{padding:5px 13px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1px solid;transition:all .2s;}
+.status-pill.active-pill{transform:scale(1.05);}
+.status-detail{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:18px;display:none;}
+.status-detail.show{display:block;}
+.status-detail-title{font-size:12px;font-weight:700;margin-bottom:5px;}
+.status-detail-body{font-size:11px;color:var(--text2);line-height:1.75;margin-bottom:10px;}
+.status-rule{padding:8px 12px;border-radius:4px;font-size:11px;line-height:1.6;}
+.steps{display:flex;flex-direction:column;gap:2px;margin-bottom:22px;}
+.step{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.step.open{border-color:#c8f04e44;}
+.step-header{display:flex;align-items:center;gap:12px;padding:13px 15px;cursor:pointer;user-select:none;}
+.step-num{width:22px;height:22px;border-radius:4px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--text3);flex-shrink:0;transition:all .2s;}
+.step.open .step-num{background:#c8f04e22;border-color:#c8f04e44;color:var(--accent);}
+.step-title{font-size:12px;font-weight:700;flex:1;}
+.step-tag{font-size:9px;color:var(--text3);background:var(--surface2);padding:2px 8px;border-radius:3px;white-space:nowrap;}
+.step-chevron{font-size:9px;color:var(--text3);transition:transform .2s;}
+.step.open .step-chevron{transform:rotate(180deg);}
+.step-body{max-height:0;overflow:hidden;transition:max-height .3s ease;}
+.step.open .step-body{max-height:600px;}
+.step-inner{padding:0 15px 15px 49px;}
+.step-desc{font-size:11px;color:var(--text2);line-height:1.8;margin-bottom:10px;}
+.tip-box{background:var(--surface2);border-left:2px solid var(--accent);padding:9px 12px;margin-bottom:10px;border-radius:0 4px 4px 0;}
+.tip-label{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:3px;}
+.tip-text{font-size:11px;color:var(--text2);line-height:1.65;}
+.do-list{display:flex;flex-direction:column;gap:4px;}
+.do-item{display:flex;gap:7px;font-size:11px;color:var(--text2);line-height:1.55;}
+.na-explainer{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;margin-bottom:22px;}
+.na-intro{font-size:12px;color:var(--text2);line-height:1.8;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+.na-flow{display:flex;flex-direction:column;margin-bottom:18px;}
+.na-step{display:flex;gap:12px;align-items:flex-start;}
+.na-step-n{width:22px;height:22px;border-radius:4px;background:#c8f04e22;border:1px solid #c8f04e44;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.na-step-content{flex:1;padding-bottom:4px;}
+.na-step-title{font-size:12px;font-weight:700;margin-bottom:3px;}
+.na-step-body{font-size:11px;color:var(--text2);line-height:1.65;}
+.na-connector{width:1px;height:14px;background:var(--border);margin-left:11px;}
+.na-rules{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-top:14px;border-top:1px solid var(--border);}
+.na-rule{border:1px solid;border-radius:6px;padding:12px 14px;}
+.na-rule-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;}
+.na-rule-body{font-size:11px;color:var(--text2);line-height:1.65;}
+.timer-explainer{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;margin-bottom:22px;}
+.timer-intro{font-size:12px;color:var(--text2);line-height:1.8;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+.timer-tracks{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+.timer-track{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px;}
+.timer-track-header{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid;}
+.timer-row{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;font-size:11px;color:var(--text2);line-height:1.6;}
+.timer-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.timer-rules{display:flex;flex-direction:column;gap:8px;padding-top:14px;border-top:1px solid var(--border);}
+.timer-rule-item{display:flex;gap:8px;font-size:11px;color:var(--text2);line-height:1.6;}
+.timer-rule-item span{flex-shrink:0;margin-top:1px;}
+.reg-flow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
+.reg-step{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:13px 14px;}
+.reg-step-n{font-size:24px;font-weight:700;color:var(--border);font-family:'Syne',sans-serif;margin-bottom:3px;}
+.reg-step-title{font-size:11px;font-weight:700;letter-spacing:.05em;margin-bottom:5px;text-transform:uppercase;}
+.reg-step-body{font-size:11px;color:var(--text2);line-height:1.65;}
+.rules-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.rule-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:13px 15px;}
+.rule-card.do-card{border-left:2px solid var(--accent);}
+.rule-card.dont-card{border-left:2px solid var(--hot);}
+.rule-card-title{font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:9px;}
+.rule-card.do-card .rule-card-title{color:var(--accent);}
+.rule-card.dont-card .rule-card-title{color:var(--hot);}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="top-nav">
+  <div class="nav-logo"><span>PRS</span>Flow</div>
+  <button class="tab-btn active" onclick="switchTab('crm',this)">CRM</button>
+  <button class="tab-btn" onclick="switchTab('clients',this)">Clients</button>
+</div>
+
+<div class="page active" id="page-crm">
+  <div class="hero">
+    <div class="hero-label">Training Guide · CRM</div>
+    <div class="hero-title">Leads don't book themselves.<br><em>We close them.</em></div>
+    <div class="hero-body">The CRM tracks every inquiry from first contact to booked session. Most prospects need multiple touchpoints — they need prompting, a push, and someone who stays on it. That's the job. If it's not in the CRM, it doesn't exist.</div>
+  </div>
+  <div class="why-grid">
+    <div class="why-card"><div class="why-icon">💸</div><div class="why-title">Revenue</div><div class="why-body">Prospects rarely book on their own. Consistent follow-up is what converts interest into sessions.</div></div>
+    <div class="why-card"><div class="why-icon">🔁</div><div class="why-title">Team Continuity</div><div class="why-body">Anyone can pick up where someone left off. No dropped balls on shift changes or days off.</div></div>
+    <div class="why-card"><div class="why-icon">📈</div><div class="why-title">Pipeline Visibility</div><div class="why-body">Know exactly where every lead stands. No guessing, no "I thought you were handling that."</div></div>
+    <div class="why-card"><div class="why-icon">🎯</div><div class="why-title">The Push</div><div class="why-body">Most prospects are sitting on the fence. The right follow-up at the right time is what tips them.</div></div>
+  </div>
+  <div class="section-label">Lead statuses — tap to expand</div>
+  <div class="status-guide">
+    <div class="status-pill" style="background:#ff4d4d22;color:#ff4d4d;border-color:#ff4d4d44" onclick="showStatus('hot',this)">🔥 HOT</div>
+    <div class="status-pill" style="background:#ff980022;color:#ff9800;border-color:#ff980044" onclick="showStatus('warm',this)">☀ WARM</div>
+    <div class="status-pill" style="background:#5b8def22;color:#5b8def;border-color:#5b8def44" onclick="showStatus('cold',this)">❄ COLD</div>
+    <div class="status-pill" style="background:#55555522;color:#888;border-color:#55555544" onclick="showStatus('uncontacted',this)">◎ UNCONTACTED</div>
+    <div class="status-pill" style="background:#c8f04e22;color:#c8f04e;border-color:#c8f04e44" onclick="showStatus('booked',this)">✓ BOOKED</div>
+  </div>
+  <div id="status-detail-box"></div>
+
+  <div class="section-label">How the timers work</div>
+  <div class="timer-explainer">
+    <div class="timer-intro">Every Hot and Warm lead has a countdown timer running in the background. The timer controls when a lead gets demoted. <b style="color:var(--text1)">Logging a touch does not reset it.</b> Only clicking <b style="color:var(--hot)">Keep Hot?</b> or <b style="color:var(--warm)">Keep Warm?</b> resets it.</div>
+    <div class="timer-tracks">
+      <div class="timer-track">
+        <div class="timer-track-header" style="color:var(--hot);border-color:#ff4d4d44">🔥 HOT TIMER — 5 days</div>
+        <div class="timer-row"><div class="timer-dot" style="background:var(--hot)"></div><div>Lead created as Hot → <b style="color:var(--text1)">5-day timer starts</b></div></div>
+        <div class="timer-row"><div class="timer-dot" style="background:var(--hot)"></div><div>Day 5 arrives → <b style="color:var(--hot)">Keep Hot?</b> button appears on the card</div></div>
+        <div class="timer-row"><div class="timer-dot" style="background:var(--accent)"></div><div>Click <b style="color:var(--hot)">Keep Hot?</b> → timer resets, lead stays Hot for another 5 days</div></div>
+        <div class="timer-row"><div class="timer-dot" style="background:var(--text3)"></div><div>Don't click it → lead <b style="color:var(--warm)">auto-demotes to Warm</b> immediately</div></div>
+      </div>
+      <div class="timer-track">
+        <div class="timer-track-header" style="color:var(--warm);border-color:#ff980044">☀ WARM TIMER — 3 days</div>
+        <div class="timer-row"><div class="timer-dot" style="background:var(--warm)"></div><div>Lead demoted to Warm → <b style="color:var(--text1)">3-day timer starts</b></div></div>
+        <div class="timer-row"><div class="timer-dot" style="background:var(--warm)"></div><div>Day 3 arrives → <b style="color:var(--warm)">Keep Warm?</b> button appears on the card</div></div>
+        <div class="timer-row"><div class="timer-dot" style="background:var(--accent)"></div><div>Click <b style="color:var(--warm)">Keep Warm?</b> → timer resets for another 3 days</div></div>
+        <div class="timer-row"><div class="timer-dot" style="background:var(--text3)"></div><div>Don't click it → lead <b style="color:var(--text3)">auto-demotes to Cold/Dead</b></div></div>
+      </div>
+    </div>
+    <div class="timer-rules">
+      <div class="timer-rule-item"><span style="color:var(--accent)">✓</span><div><b style="color:var(--text1)">8am daily reset</b> — every morning, all Hot and Warm leads reappear in Needs Action. That's your daily call list.</div></div>
+      <div class="timer-rule-item"><span style="color:var(--accent)">✓</span><div><b style="color:var(--text1)">Contact ≠ timer reset</b> — logging a contact removes the lead from Needs Action for the day but the demotion timer keeps counting. Only Keep Hot? / Keep Warm? resets the clock.</div></div>
+      <div class="timer-rule-item"><span style="color:var(--hot)">✗</span><div><b style="color:var(--text1)">Don't ignore Keep Hot? / Keep Warm?</b> — if you see that button and don't click it, the lead demotes automatically. If they're still worth pursuing, click it.</div></div>
+    </div>
+  </div>
+
+  <div class="section-label">Working the Needs Action view</div>
+  <div class="na-explainer">
+    <div class="na-intro">Needs Action is your daily call list. Every morning at 8am, every Hot and Warm lead reappears here. Work through it top to bottom — Hot first, always. Each lead has a <b style="color:var(--text1)">Contact</b> button. Here's exactly what happens when you click it.</div>
+
+    <div class="na-flow">
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">1</div>
+        <div class="na-step-content">
+          <div class="na-step-title">Click Contact on a lead</div>
+          <div class="na-step-body">An inline prompt expands below the lead card. You don't leave the page — it all happens inline.</div>
+        </div>
+      </div>
+      <div class="na-connector"></div>
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">2</div>
+        <div class="na-step-content">
+          <div class="na-step-title">Enter your initials</div>
+          <div class="na-step-body">Type your initials (2–3 letters). This logs who made the contact. Every touch is attributed — no anonymous entries.</div>
+        </div>
+      </div>
+      <div class="na-connector"></div>
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">3</div>
+        <div class="na-step-content">
+          <div class="na-step-title">Select contact method</div>
+          <div class="na-step-body">Choose how you reached them: <b style="color:var(--text1)">Call · Text · Email</b>. This gets logged in the notes as <span style="color:var(--accent);font-size:11px">[5/21 2:30pm] ES - Call</span></div>
+        </div>
+      </div>
+      <div class="na-connector"></div>
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">4</div>
+        <div class="na-step-content">
+          <div class="na-step-title">Update temperature (optional)</div>
+          <div class="na-step-body">If the lead's status changed based on the conversation, update it here: <b style="color:var(--hot)">Hot</b> · <b style="color:var(--warm)">Warm</b> · <b style="color:var(--text3)">Cold/Dead</b>. Changing status resets the demotion timer. Leave it if nothing changed.</div>
+        </div>
+      </div>
+      <div class="na-connector"></div>
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">5</div>
+        <div class="na-step-content">
+          <div class="na-step-title">Add notes (optional)</div>
+          <div class="na-step-body">Any context worth capturing — what they said, next steps, anything relevant. Keep it brief and specific. This is what the next person reads.</div>
+        </div>
+      </div>
+      <div class="na-connector"></div>
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">6</div>
+        <div class="na-step-content">
+          <div class="na-step-title">Click Log Contact</div>
+          <div class="na-step-body">Lead disappears from Needs Action. It'll reappear tomorrow at 8am if it's still Hot or Warm. The demotion timer keeps running in the background.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="na-rules">
+      <div class="na-rule" style="border-color:#ff4d4d44;background:#ff4d4d08">
+        <div class="na-rule-label" style="color:var(--hot)">HOT leads</div>
+        <div class="na-rule-body">Work these first, every time. A HOT lead sitting untouched in Needs Action is the most expensive thing in the CRM. Same-day contact, no exceptions.</div>
+      </div>
+      <div class="na-rule" style="border-color:#ff980044;background:#ff980008">
+        <div class="na-rule-label" style="color:var(--warm)">WARM leads</div>
+        <div class="na-rule-body">Work these after HOT is cleared. Consistent presence is what moves a Warm lead toward booking. Keep it personal — don't just check a box.</div>
+      </div>
+      <div class="na-rule" style="border-color:#c8f04e44;background:#c8f04e08">
+        <div class="na-rule-label" style="color:var(--accent)">Keep Hot? / Keep Warm?</div>
+        <div class="na-rule-body">If this button appears on a card, the demotion timer has expired. Click it to reset the timer and keep them at their current status. Ignore it and they demote automatically.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">How to work the CRM</div>
+  <div class="steps" id="crm-steps"></div>
+</div>
+
+<div class="page" id="page-clients">
+  <div class="hero">
+    <div class="hero-label">Training Guide · Clients</div>
+    <div class="hero-title">A booked lead becomes<br>a <em>client for life.</em></div>
+    <div class="hero-body">The Clients page is the permanent record for everyone who books with Paramount. ID, agreements, contact info, history — it all lives here. A session should never happen without a full profile on file.</div>
+  </div>
+  <div class="section-label">How a client profile gets created</div>
+  <div class="reg-flow">
+    <div class="reg-step"><div class="reg-step-n">01</div><div class="reg-step-title">Book in CRM</div><div class="reg-step-body">Lead confirms. Click <b style="color:var(--text1)">Book Client → New Client</b>. A unique registration link is generated.</div></div>
+    <div class="reg-step"><div class="reg-step-n">02</div><div class="reg-step-title">Client Registers</div><div class="reg-step-body">Send the link. The client fills out their own profile, uploads ID, and signs T&Cs. You don't enter this for them.</div></div>
+    <div class="reg-step"><div class="reg-step-n">03</div><div class="reg-step-title">Review Profile</div><div class="reg-step-body">Check immediately. ID uploaded? T&Cs signed? Phone and email present? Missing anything — flag it now.</div></div>
+  </div>
+  <div class="section-label">Managing client profiles</div>
+  <div class="steps" id="client-steps"></div>
+  <div class="section-label">Golden rules</div>
+  <div class="rules-grid">
+    <div class="rule-card do-card">
+      <div class="rule-card-title">✓ Always</div>
+      <div class="do-list">
+        <div class="do-item"><span style="color:var(--accent)">✓</span>Verify ID is uploaded before any session</div>
+        <div class="do-item"><span style="color:var(--accent)">✓</span>Confirm T&Cs are signed</div>
+        <div class="do-item"><span style="color:var(--accent)">✓</span>Update contact info the moment it changes</div>
+        <div class="do-item"><span style="color:var(--accent)">✓</span>Add notes after significant interactions</div>
+        <div class="do-item"><span style="color:var(--accent)">✓</span>Flag incomplete profiles immediately</div>
+      </div>
+    </div>
+    <div class="rule-card dont-card">
+      <div class="rule-card-title">✗ Never</div>
+      <div class="do-list">
+        <div class="do-item"><span style="color:var(--hot)">✗</span>Allow a session without ID on file</div>
+        <div class="do-item"><span style="color:var(--hot)">✗</span>Fill out a client's registration for them</div>
+        <div class="do-item"><span style="color:var(--hot)">✗</span>Delete a record without Manager approval</div>
+        <div class="do-item"><span style="color:var(--hot)">✗</span>Ignore an incomplete profile</div>
+        <div class="do-item"><span style="color:var(--hot)">✗</span>Let outdated contact info sit</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const STATUS_DATA={
+  hot:{color:'#ff4d4d',label:'🔥 HOT',title:'Serious lead — ready to move.',body:'Has a date in mind, knows what they want, has a budget, and understands what Paramount offers. Includes regulars who confirm quickly. These leads are close to revenue.',rule:'Contact same day, every time. Call AND text if no answer. Log every attempt. A HOT lead untouched for 24 hours is money walking out the door.',bg:'#ff4d4d11'},
+  warm:{color:'#ff9800',label:'☀ WARM',title:'Interested but not ready yet.',body:'Genuinely interested but no specific date, hasn\'t locked in what they want, no set budget. They need nurturing — consistent presence without pressure.',rule:'Touch every 2–3 days. Help them get concrete: a date, a budget, a plan. Share availability and what\'s been recorded here.',bg:'#ff980011'},
+  cold:{color:'#5b8def',label:'❄ COLD',title:'Low engagement — keep them warm.',body:'No recent response or went quiet. Don\'t drop them — cold leads re-engage. Light, periodic outreach keeps Paramount top of mind.',rule:'Once a week max. If no response after 3–4 weeks, reassess.',bg:'#5b8def11'},
+  uncontacted:{color:'#888',label:'◎ UNCONTACTED',title:'New — no outreach yet.',body:'Just came in. They\'re probably reaching out to other studios right now. Speed of response is everything.',rule:'Contact the same business day. Move to HOT, WARM, or COLD after first contact.',bg:'#44444411'},
+  booked:{color:'#c8f04e',label:'✓ BOOKED',title:'Confirmed — send registration link.',body:'A lead moves to BOOKED after approval or payment from COD. Generate their registration link and get them into the Clients page. Keep the CRM record — don\'t delete it.',rule:'Send the registration link same day. Follow up if they haven\'t completed it within 48 hours.',bg:'#c8f04e11'}
+};
+const CRM_STEPS=[
+  {title:'Adding a New Lead',tag:'Most important step',desc:'The moment an inquiry comes in — phone, email, walk-in, DM, referral — it goes in the CRM immediately. Not later. Right now. Full name always. Phone AND email every single time.',tip:"Open the new lead form while you are on the phone, mid-text, or reading the email. Enter it directly — no paper, no notes app, no waiting until later. That middle step is exactly where leads disappear. One less step, zero missed inquiries.",dos:['Enter the lead the second it comes in','Full name — no first names only','Phone AND email, every time','Note what they want, timeline, and any budget info'],donts:['Wait until later — leads go cold fast','Leave fields half-filled','Enter just a first name and a number']},
+  {title:'Logging Every Touch',tag:'No log = it didn\'t happen',desc:'Every interaction gets logged — calls, texts, emails, in-person. Even "left voicemail, no answer." This is what keeps the team aligned and prevents leads from slipping.',tip:'Log right after the interaction. Be specific: what was said, what\'s next.',dos:['Log every attempt, even no-response','Include dates, what was discussed, next steps'],donts:['Skip logging because it felt minor','Write "called them" with nothing else']},
+  {title:'Keeping Statuses Current',tag:'Needs Action view depends on this',desc:'The Needs Action view shows exactly who needs attention — but only if statuses are accurate. Update the moment something changes.',tip:'Just off a call and they\'re ready to book? Change the status before you do anything else.',dos:['Update status immediately after any shift in intent','Review leads daily — does this status reflect reality?'],donts:['Leave a booked lead showing as HOT or WARM','Keep dead leads as COLD indefinitely']},
+  {title:'Working the Needs Action View',tag:'Start every shift here',desc:'The Needs Action view shows exactly who needs attention right now. This is where every shift starts. HOT first, always.',tip:'Multiple HOT leads untouched? That\'s the only thing that matters until they\'re handled.',dos:['Open Needs Action at the start of every shift','Clear HOT leads before anything else','Click Contact and log it after every interaction'],donts:['Jump to new leads and ignore existing ones','Let HOT leads pile up']},
+  {title:'Booking a Lead',tag:'What the whole CRM exists for',desc:'Lead approves or pays COD — they move to BOOKED. Click Book Client → New Client, generate their registration link, send it same day.',tip:'Don\'t let the link sit. Send immediately. Follow up in 30 minutes if they haven\'t registered.',dos:['Send the registration link same day','Let the client fill out their own profile'],donts:['Delete the CRM record after booking','Mark BOOKED before approval or payment is confirmed']}
+];
+const CLIENT_STEPS=[
+  {title:'Reviewing a New Profile',tag:'Incomplete = liability',desc:'When a new client appears, review it right away. Don\'t assume it\'s complete. ID uploaded? T&Cs signed? Phone and email present?',tip:'Make this part of your daily routine. No session happens with an incomplete profile.',dos:['Check ID is uploaded and legible','Confirm T&Cs signed','Verify phone and email are on file'],donts:['Assume it\'s complete because they submitted it','Allow sessions if ID is missing']},
+  {title:'Keeping Profiles Updated',tag:'Old info causes real problems',desc:'Phone numbers and emails change. Every time a client gives updated info, change it in their profile before the conversation ends.',tip:'Any time a client gives you new contact info — open their profile and update it on the spot.',dos:['Update contact info the moment it changes','Note preferences and special requirements'],donts:['Leave outdated numbers on file','Use personal texts as the main client record']},
+  {title:'Writing Good Notes',tag:'Turns one-time clients into regulars',desc:'Notes capture the relationship. What do they care about? Usual setup? Who they work with? This is what makes any team member able to make a client feel like a VIP.',tip:'"Prefers Studio A, works with Marcus, R&B, usually needs parking for 3 cars" — that\'s what matters.',dos:['Add notes after every session or significant interaction','Note preferences, quirks, recurring needs, who referred them'],donts:['Leave notes empty on active clients','Only write notes when something goes wrong']}
+];
+let openStatus=null,openCrm=null,openClient=null;
+function switchTab(tab,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('page-'+tab).classList.add('active');el.classList.add('active');}
+function showStatus(key,el){if(openStatus===key){document.getElementById('status-detail-box').innerHTML='';document.querySelectorAll('.status-pill').forEach(p=>p.classList.remove('active-pill'));openStatus=null;return;}openStatus=key;document.querySelectorAll('.status-pill').forEach(p=>p.classList.remove('active-pill'));el.classList.add('active-pill');const d=STATUS_DATA[key];document.getElementById('status-detail-box').innerHTML=`<div class="status-detail show" style="border-color:${d.color}44;background:${d.bg}"><div class="status-detail-title" style="color:${d.color}">${d.label} — ${d.title}</div><div class="status-detail-body">${d.body}</div><div class="status-rule" style="background:${d.color}15;color:${d.color};border-left:2px solid ${d.color}"><b>The Rule:</b> ${d.rule}</div></div>`;}
+function buildSteps(data,id,fn){document.getElementById(id).innerHTML=data.map((s,i)=>`<div class="step" onclick="${fn}(${i})"><div class="step-header"><div class="step-num">${String(i+1).padStart(2,'0')}</div><div class="step-title">${s.title}</div><div class="step-tag">${s.tag}</div><div class="step-chevron">▼</div></div><div class="step-body"><div class="step-inner"><div class="step-desc">${s.desc}</div><div class="tip-box"><div class="tip-label">💡 Pro tip</div><div class="tip-text">${s.tip}</div></div><div class="do-list" style="margin-bottom:6px">${(s.dos||[]).map(d=>`<div class="do-item"><span style="color:var(--accent);flex-shrink:0">✓</span>${d}</div>`).join('')}</div><div class="do-list">${(s.donts||[]).map(d=>`<div class="do-item"><span style="color:var(--hot);flex-shrink:0">✗</span>${d}</div>`).join('')}</div></div></div></div>`).join('');}
+buildSteps(CRM_STEPS,'crm-steps','toggleCrm');
+buildSteps(CLIENT_STEPS,'client-steps','toggleClient');
+function toggleCrm(i){const s=document.querySelectorAll('#crm-steps .step');if(openCrm===i){s[i].classList.remove('open');openCrm=null;return;}if(openCrm!==null)s[openCrm].classList.remove('open');s[i].classList.add('open');openCrm=i;}
+function toggleClient(i){const s=document.querySelectorAll('#client-steps .step');if(openClient===i){s[i].classList.remove('open');openClient=null;return;}if(openClient!==null)s[openClient].classList.remove('open');s[i].classList.add('open');openClient=i;}
+</script>
+</body>
+</html>

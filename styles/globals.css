@@ -38,7 +38,12 @@ html, body {
 ::-webkit-scrollbar-track { background: var(--surface); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-select { color-scheme: dark; }
+select {
+  color-scheme: dark;
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+}
 
 @keyframes shimmer {
   0%, 100% { opacity: 0.4; }
