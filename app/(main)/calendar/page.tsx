@@ -1862,7 +1862,10 @@ function BookingForm({
             }
           }}
           onStatusChange={setWoStatus}
-          onFormSync={(updates) => setForm(f => ({ ...f, ...updates }))}
+          onFormSync={(updates) => {
+            console.log('FORM SYNC RECEIVED', updates)
+            setForm(f => ({ ...f, ...updates }))
+          }}
         />
       )}
     </div>

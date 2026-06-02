@@ -306,7 +306,9 @@ export function WorkOrderPopup({
       if (rawStudios.length === 0 && studios.length > 0) {
         await supabase.from('work_orders').update({ studios }).eq('id', existing.id)
       }
-      setWo(applyLiveForm({ ...normalizeWO(existing), studios }))
+      const seededExisting = applyLiveForm({ ...normalizeWO(existing), studios })
+      console.log('WO SEEDED (existing)', { to_time: seededExisting.to_time, client: seededExisting.client })
+      setWo(seededExisting)
       const [{ data: st }, { data: eq }, { data: rent }, { data: pay }] = await Promise.all([
         supabase.from('studio_time_rows').select('*').eq('work_order_id', existing.id).order('sort_order'),
         supabase.from('equipment_condition_rows').select('*').eq('work_order_id', existing.id),
@@ -377,7 +379,9 @@ export function WorkOrderPopup({
       const { data: created } = await supabase.from('work_orders').insert(woPayload).select('*').single()
       if (!created) { setLoading(false); return }
       woIdRef.current = created.id
-      setWo(applyLiveForm(normalizeWO(created)))
+      const seededNew = applyLiveForm(normalizeWO(created))
+      console.log('WO SEEDED (new)', { to_time: seededNew.to_time, client: seededNew.client })
+      setWo(seededNew)
 
       // Auto-generate studio time rows (one per date)
       const stPayloads = dates.map((d, i) => {
@@ -454,6 +458,7 @@ export function WorkOrderPopup({
 
     // Sync to booking form immediately on save trigger, before async DB writes,
     // so the closure captures the correct wo state without stale-async risk
+    console.log('WO SYNC FIRING', { to_time: wo.to_time, from_time: wo.from_time, client: wo.client })
     onFormSync?.({
       client_name: wo.client, artist: wo.artist, label: wo.label,
       ordered_by: wo.ordered_by, po: wo.po_number, phone: wo.phone, email: wo.email,
