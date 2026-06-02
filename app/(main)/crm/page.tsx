@@ -28,6 +28,12 @@ const BOOKING_ICONS: Record<string, string> = {
 const TOUCH_METHODS = ['Call', 'Text', 'Email'] as const
 type TouchMethod = typeof TOUCH_METHODS[number]
 
+const aBtnStyle = (color: string): React.CSSProperties => ({
+  padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)',
+  background: 'transparent', color, fontFamily: 'DM Mono', fontSize: 9,
+  textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap' as const,
+})
+
 const CHART_COLORS = [
   'var(--accent)', 'var(--accent2)', 'var(--hot)', 'var(--warm)',
   'var(--booked)', 'var(--cold)', 'var(--uncontacted)', 'var(--text2)',
@@ -1502,14 +1508,9 @@ const khuDays = daysUntilKhu(lead)
             <input ref={emailRef} value={local.email || ''} onChange={e => update('email', e.target.value)}
               onFocus={() => setFocusedInput('email')} onBlur={e => { setFocusedInput(null); save('email', e.target.value) }}
               onKeyDown={enterBlur} placeholder="Add email" style={{ ...iStyle('email'), flex: 1, minWidth: 0 }} />
-            {onSendEmail && local.email && (() => {
-              const bc = (local.billing || lead.billing) === 'COD' ? '#7BBFFF' : '#96A9FF'
-              return (
-                <button onClick={onSendEmail} style={{ flexShrink: 0, padding: '2px 7px', background: `color-mix(in srgb, ${bc} 12%, transparent)`, border: `1px solid color-mix(in srgb, ${bc} 40%, transparent)`, color: bc, borderRadius: 3, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer' }}>
-                  Email
-                </button>
-              )
-            })()}
+            {local.email && (
+              <a href={`mailto:${local.email}`} style={{ ...aBtnStyle('#7BBFFF'), flexShrink: 0 }}>Email</a>
+            )}
           </div>
         </div>
         <div>
@@ -1518,9 +1519,15 @@ const khuDays = daysUntilKhu(lead)
         </div>
         <div>
           <div style={fieldLabelStyle}>Phone</div>
-          <input ref={phoneRef} value={local.phone || ''} onChange={e => update('phone', e.target.value)}
-            onFocus={() => setFocusedInput('phone')} onBlur={e => { setFocusedInput(null); save('phone', e.target.value) }}
-            onKeyDown={enterBlur} placeholder="Add phone" style={iStyle('phone')} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input ref={phoneRef} value={local.phone || ''} onChange={e => update('phone', e.target.value)}
+              onFocus={() => setFocusedInput('phone')} onBlur={e => { setFocusedInput(null); save('phone', e.target.value) }}
+              onKeyDown={enterBlur} placeholder="Add phone" style={{ ...iStyle('phone'), flex: 1, minWidth: 0 }} />
+            {local.phone && (<>
+              <a href={`tel:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('var(--booked)'), flexShrink: 0 }}>Call</a>
+              <a href={`sms:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('var(--warm)'), flexShrink: 0 }}>Text</a>
+            </>)}
+          </div>
         </div>
       </div>
 
