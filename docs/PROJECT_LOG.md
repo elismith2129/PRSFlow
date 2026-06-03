@@ -28,6 +28,16 @@
 - **Public registration form uses anon INSERT policy on private `client-ids` storage bucket** with 25MB size limit and restricted MIME types (jpeg/png/heic/webp/pdf). Token-gated in app code — the token must exist, be unexpired, and unused before the form renders.
 - **Public routes use Next.js route groups to isolate from internal pages.** `app/(main)/` contains nav-bearing pages (CRM, Clients, Dashboard, etc.); `/register` and any future public routes live outside it. Until Chunk 9 adds auth, this is the only mechanism preventing public visitors from accessing internal data.
 
+### Supabase Policy Changes
+
+As of May 30, 2026, any new table created in the public schema requires an explicit GRANT before it can be accessed via the Supabase Data API. After every `CREATE TABLE` statement, add:
+
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE ON table_name TO anon, authenticated;
+```
+
+This applies to all new tables going forward. Existing tables are unaffected until October 30, 2026 when Supabase enforces this on all existing projects. RLS (Chunk 9) will supersede this when auth is implemented.
+
 ### CRM — Needs Action & timers
 - **Needs Action daily reset runs at 8am PST (cron: `0 15 * * *` UTC).** Hot/Warm leads reappear in Needs Action every day until their keep-hot timer expires (5 days Hot, 3 days Warm) or they are manually moved to Cold/Dead. The reset sets `needs_contact = true` so staff can't dismiss the same lead indefinitely without taking action or changing status.
 - **Lead detail card uses 2-column layouts for space efficiency.** Contact section: Email/Phone on the left, Created/Last Contact on the right (gap 48px). Session & Quote section: Location·Studio + Session Date on the left, Quote/Rate + Start–End times on the right (gap 48px). Location and Studio dropdowns cascade — selecting a venue populates the studio options for that venue only.
@@ -137,7 +147,7 @@
 
 ---
 
-*Last updated: June 2, 2026 — WO save/sync overhaul + booking form polish. See session notes below.*
+*Last updated: June 3, 2026 — Supabase GRANT policy change documented. See session notes below.*
 
 ---
 
