@@ -28,10 +28,13 @@ export default function RunnerWOPage() {
   const [equipConds, setEquipConds] = useState<EquipCond>({})
   const [equipRows, setEquipRows] = useState<any[]>([])
   const [sessionNotes, setSessionNotes] = useState('')
+  const [needsAttentionNotes, setNeedsAttentionNotes] = useState('')
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [submitted, setSubmitted] = useState(false)
+  const [runnerFinished, setRunnerFinished] = useState(false)
+  const [staffName, setStaffName] = useState('')
 
   useEffect(() => {
     async function init() {
@@ -103,7 +106,12 @@ export default function RunnerWOPage() {
       setStRows(st ?? [])
       setEquipRows(eq ?? [])
       setSessionNotes(woData?.session_notes ?? '')
-      setSubmitted(woData?.status === 'submitted' || woData?.status === 'approved')
+      setNeedsAttentionNotes(woData?.needs_attention_notes ?? '')
+      setRunnerFinished(
+        woData?.runner_finished === true ||
+        woData?.status === 'submitted' ||
+        woData?.status === 'approved'
+      )
 
       const conds: EquipCond = {}
       for (const r of eq ?? []) {
@@ -183,16 +191,8 @@ export default function RunnerWOPage() {
     }))
   }
 
-  async function handleSubmit() {
+  async function saveExpenses() {
     if (!woRef.current) return
-    setSubmitting(true)
-
-    // Save notes
-    await supabase.from('work_orders')
-      .update({ session_notes: sessionNotes, status: 'submitted', submitted_at: new Date().toISOString() })
-      .eq('id', woRef.current)
-
-    // Upsert expenses
     for (const exp of expenses) {
       const amt = parseFloat(exp.amount) || null
       if (exp.id) {
@@ -200,19 +200,45 @@ export default function RunnerWOPage() {
           vendor: exp.vendor, item: exp.item, amount: amt, receipt_url: exp.receipt_url,
         }).eq('id', exp.id)
       } else if (exp.vendor || exp.item || amt) {
-        await supabase.from('expense_rows').insert({
+        const { data: inserted } = await supabase.from('expense_rows').insert({
           work_order_id: woRef.current,
-          vendor: exp.vendor,
-          item: exp.item,
-          amount: amt,
-          receipt_url: exp.receipt_url,
-          submitted_by: 'runner',
-        })
+          vendor: exp.vendor, item: exp.item, amount: amt,
+          receipt_url: exp.receipt_url, submitted_by: 'runner',
+        }).select('id').single()
+        if (inserted) {
+          setExpenses(prev => prev.map((e, i) => expenses.indexOf(exp) === i ? { ...e, id: inserted.id } : e))
+        }
       }
     }
+  }
 
+  async function handleFinish() {
+    if (!woRef.current || !staffName.trim()) { alert('Enter your initials first'); return }
+    setSubmitting(true)
+    const now = new Date().toISOString()
+    await supabase.from('work_orders').update({
+      session_notes: sessionNotes,
+      needs_attention_notes: needsAttentionNotes || null,
+      runner_finished: true,
+      runner_finished_at: now,
+      submitted_by: staffName.trim(),
+      status: 'submitted',
+      submitted_at: now,
+    }).eq('id', woRef.current)
+    await saveExpenses()
     setSubmitting(false)
-    setSubmitted(true)
+    setRunnerFinished(true)
+  }
+
+  async function handleSaveChanges() {
+    if (!woRef.current) return
+    setSaving(true)
+    await supabase.from('work_orders').update({
+      session_notes: sessionNotes,
+      needs_attention_notes: needsAttentionNotes || null,
+    }).eq('id', woRef.current)
+    await saveExpenses()
+    setSaving(false)
   }
 
   const sessionDates = Array.from(new Set(stRows.map((r: any) => r.date).filter(Boolean))).sort() as string[]
@@ -220,25 +246,6 @@ export default function RunnerWOPage() {
   if (loading) return (
     <div style={{ minHeight: '100dvh', background: '#0d0f14', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b90a8', fontFamily: 'Syne, sans-serif' }}>
       Loading…
-    </div>
-  )
-
-  if (submitted) return (
-    <div style={{
-      minHeight: '100dvh', background: '#0d0f14', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', gap: 16, fontFamily: 'Syne, sans-serif', padding: 24,
-    }}>
-      <div style={{ fontSize: 48 }}>✓</div>
-      <div style={{ fontSize: 20, fontWeight: 800, color: meta.color }}>Submitted</div>
-      <div style={{ fontSize: 13, color: '#8b90a8', textAlign: 'center' }}>
-        Work order submitted for admin review.
-      </div>
-      <button
-        onClick={() => router.push(`/runner/${studio}`)}
-        style={{ marginTop: 16, background: meta.color, color: '#0d0f14', border: 'none', borderRadius: 10, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
-      >
-        Back to {meta.label}
-      </button>
     </div>
   )
 
@@ -341,6 +348,24 @@ export default function RunnerWOPage() {
           />
         </div>
 
+        {/* Needs Attention / Runner Notes */}
+        <div style={{ background: '#161920', border: '1px solid rgba(249,115,22,0.35)', borderRadius: 12, padding: '14px 14px', marginBottom: 16 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#f97316', marginBottom: 10 }}>
+            Needs Attention / Runner Notes
+          </div>
+          <textarea
+            value={needsAttentionNotes}
+            onChange={e => setNeedsAttentionNotes(e.target.value)}
+            placeholder="Flag anything that needs management attention — damage, issues, missing items…"
+            style={{
+              width: '100%', background: '#0d0f14', border: '1px solid #2a2e3d',
+              borderRadius: 8, padding: '10px 12px', color: '#e8eaf2', fontSize: 12,
+              fontFamily: 'DM Mono, monospace', resize: 'vertical', minHeight: 80,
+              outline: 'none', boxSizing: 'border-box',
+            }}
+          />
+        </div>
+
         {/* Expenses */}
         <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, padding: '14px 14px', marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -407,19 +432,47 @@ export default function RunnerWOPage() {
         </div>
       </div>
 
-      {/* Submit Button */}
+      {/* Footer */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: '#0d0f14', borderTop: '1px solid #2a2e3d' }}>
-        <button
-          onClick={handleSubmit}
-          disabled={submitting}
-          style={{
-            width: '100%', padding: '14px 0', background: meta.color, color: '#0d0f14',
-            border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: submitting ? 'not-allowed' : 'pointer',
-            opacity: submitting ? 0.7 : 1, fontFamily: 'Syne, sans-serif',
-          }}
-        >
-          {submitting ? 'Submitting…' : 'Submit Work Order'}
-        </button>
+        {runnerFinished ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, color: '#4ade80', fontFamily: 'DM Mono, monospace', fontWeight: 700 }}>✓ Finished — submitted for admin review</span>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={handleSaveChanges}
+                disabled={saving}
+                style={{ flex: 1, padding: '13px 0', background: '#1e2130', color: '#e8eaf2', border: '1px solid #2a2e3d', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'Syne, sans-serif' }}
+              >
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+              <button
+                onClick={() => router.push(`/runner/${studio}`)}
+                style={{ flex: 1, padding: '13px 0', background: meta.color, color: '#0d0f14', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
+              >
+                Back to {meta.label}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 10 }}>
+            <input
+              placeholder="Initials"
+              value={staffName}
+              onChange={e => setStaffName(e.target.value)}
+              maxLength={6}
+              style={{ width: 80, background: '#161920', border: '1px solid #2a2e3d', borderRadius: 10, padding: '14px 12px', color: '#e8eaf2', fontSize: 14, fontFamily: 'DM Mono, monospace', outline: 'none', textAlign: 'center', flexShrink: 0 }}
+            />
+            <button
+              onClick={handleFinish}
+              disabled={submitting}
+              style={{ flex: 1, padding: '14px 0', background: meta.color, color: '#0d0f14', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1, fontFamily: 'Syne, sans-serif' }}
+            >
+              {submitting ? 'Finishing…' : 'Finish Work Order'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

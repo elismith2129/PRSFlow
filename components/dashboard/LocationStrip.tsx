@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
 import { DailyOpsModal, type DailyOpsSubmission } from '@/components/dashboard/DailyOpsModal'
+import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 import { CHECKLISTS, flattenSections } from '@/lib/checklist-items'
 
 const LOCATIONS = [
@@ -27,6 +28,8 @@ type WO = {
   client: string | null; artist: string | null; engineer: string | null
   from_time: string | null; to_time: string | null; studios: string[] | null
   status: string; session_notes: string | null; approved_at: string | null
+  runner_finished: boolean | null; admin_approved: boolean | null
+  needs_attention_notes: string | null
 }
 
 type DailyOpsRow = {
@@ -97,16 +100,17 @@ export function LocationStrip() {
   const [approvingId, setApprovingId]       = useState<string | null>(null)
   const [openModal, setOpenModal]           = useState<ModalTarget | null>(null)
   const [checklistProgress, setChecklistProgress] = useState<Record<string, ChecklistProgress>>({})
+  const [woBooking, setWoBooking]           = useState<Booking | null>(null)
 
   useEffect(() => { loadSummaries() }, [])
 
   async function loadSummaries() {
     const [{ data: bkgs }, { data: wos }, { data: ops }, { data: yBkgs }, { data: yWOs }, { data: yOps }] = await Promise.all([
       supabase.from('bookings').select('id, location, status').eq('start_date', today).not('status', 'eq', 'cancelled'),
-      supabase.from('work_orders').select('id, booking_id, status').eq('session_date', today),
+      supabase.from('work_orders').select('id, booking_id, status, runner_finished, admin_approved').eq('session_date', today),
       supabase.from('daily_ops_submissions').select('studio, category, submitted_at, admin_approved_at').eq('date', today),
       supabase.from('bookings').select('id, location, status').eq('start_date', yesterday).not('status', 'eq', 'cancelled'),
-      supabase.from('work_orders').select('id, booking_id, status').eq('session_date', yesterday),
+      supabase.from('work_orders').select('id, booking_id, status, runner_finished, admin_approved').eq('session_date', yesterday),
       supabase.from('daily_ops_submissions').select('studio, category, submitted_at, admin_approved_at').eq('date', yesterday),
     ])
 
@@ -121,12 +125,14 @@ export function LocationStrip() {
       const yLocWOs  = (yWOs ?? []).filter(w => w.booking_id && yBkgIds.has(w.booking_id))
       const yLocOps  = (yOps ?? []).filter(o => (o as any).studio === loc.key)
 
+      const woNeedsReview = (w: any) =>
+        (w.runner_finished || w.status === 'submitted') && !w.admin_approved && w.status !== 'approved'
       result[loc.key] = {
         sessionCount: locBkgs.length,
         pendingCount:
-          locWOs.filter(w => w.status === 'submitted').length +
+          locWOs.filter(woNeedsReview).length +
           locOps.filter(o => o.submitted_at && !o.admin_approved_at).length +
-          yLocWOs.filter(w => w.status === 'submitted').length +
+          yLocWOs.filter(woNeedsReview).length +
           yLocOps.filter((o: any) => o.submitted_at && !o.admin_approved_at).length,
       }
     }
@@ -186,7 +192,14 @@ export function LocationStrip() {
 
   async function approveWO(wo: WO) {
     setApprovingId(wo.id)
-    await supabase.from('work_orders').update({ status: 'approved', approved_at: new Date().toISOString(), approved_by: 'admin' }).eq('id', wo.id)
+    const now = new Date().toISOString()
+    await supabase.from('work_orders').update({
+      status: 'approved',
+      approved_at: now,
+      approved_by: 'admin',
+      admin_approved: true,
+      admin_approved_at: now,
+    }).eq('id', wo.id)
     if (wo.booking_id && wo.invoice_number) {
       await supabase.from('bookings').update({ invoice_num: wo.invoice_number }).eq('id', wo.booking_id)
     }
@@ -209,19 +222,21 @@ export function LocationStrip() {
   }
 
   const yestHasUnapproved = !!(selectedLoc && (
-    yestSessions.some(({ wo }) => wo && wo.status === 'submitted') ||
+    yestSessions.some(({ wo }) => wo && (wo.runner_finished || wo.status === 'submitted' || wo.status === 'approved') && !(wo.admin_approved || wo.status === 'approved')) ||
     DAILY_CATS.some(cat => { const r = yestOpsRows.find(o => o.category === cat.key); return r?.submitted_at && !r?.admin_approved_at })
   ))
 
   function SessionCard({ b, wo, isYesterday }: { b: Booking; wo: WO | null; isYesterday?: boolean }) {
-    const runnerDone  = !!wo && (wo.status === 'submitted' || wo.status === 'approved')
-    const adminDone   = wo?.status === 'approved'
-    const needsReview = isYesterday && runnerDone && !adminDone
-    const col         = selectedLoc!.color
+    const runnerDone     = !!wo && (wo.runner_finished || wo.status === 'submitted' || wo.status === 'approved')
+    const adminDone      = !!(wo?.admin_approved || wo?.status === 'approved')
+    const needsReview    = isYesterday && runnerDone && !adminDone
+    const needsAttention = runnerDone && !!(wo?.needs_attention_notes)
+    const col            = selectedLoc!.color
+    const borderColor    = needsAttention ? '#f9731655' : needsReview ? '#f0a24e55' : 'var(--border)'
     return (
       <div style={{
         background: 'var(--surface)',
-        border: `1px solid ${needsReview ? '#f0a24e55' : 'var(--border)'}`,
+        border: `1px solid ${borderColor}`,
         borderRadius: 10, padding: '12px 14px',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
@@ -229,17 +244,25 @@ export function LocationStrip() {
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{b.client_name || b.artist || '—'}</div>
             {b.artist && b.client_name && <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1 }}>{b.artist}</div>}
           </div>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {needsAttention && !adminDone && (
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#f97316', background: '#f9731622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>⚠ Needs Attention</span>
+            )}
             {needsReview && <span style={{ fontSize: 9, fontWeight: 700, color: '#f0a24e', background: '#f0a24e22', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>Review</span>}
             <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: b.status === 'confirmed' ? col : 'var(--text3)', background: (b.status === 'confirmed' ? col : 'var(--text3)') + '22', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>{b.status}</span>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 10 }}>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: needsAttention && !adminDone ? 8 : 10 }}>
           {b.from_time && <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>{b.from_time}–{b.to_time ?? '?'}</span>}
           {(b as any).studio && <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>Studio {(b as any).studio}</span>}
           {(b as any).engineer_name && <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>Eng: {(b as any).engineer_name}</span>}
           {(b as any).payment_type && <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px' }}>{(b as any).payment_type}</span>}
         </div>
+        {needsAttention && !adminDone && wo?.needs_attention_notes && (
+          <div style={{ fontSize: 11, color: '#f97316', fontFamily: 'DM Mono, monospace', background: '#f9731610', border: '1px solid #f9731630', borderRadius: 6, padding: '6px 10px', marginBottom: 10, lineHeight: 1.5 }}>
+            {wo.needs_attention_notes.length > 120 ? wo.needs_attention_notes.slice(0, 120) + '…' : wo.needs_attention_notes}
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 9, borderTop: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', minWidth: 22 }}>WO</span>
@@ -247,7 +270,17 @@ export function LocationStrip() {
             <TwoCheckbox label="Admin" checked={!!adminDone} clickable={runnerDone && !adminDone && !!wo} loading={approvingId === wo?.id} onClick={() => wo && approveWO(wo)} color={col} />
             {wo && !runnerDone && <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>{wo.status}</span>}
           </div>
-          {wo && <a href={`/wo/${wo.id}/print`} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Syne, sans-serif', textDecoration: 'none', padding: '4px 9px', border: '1px solid var(--border)', borderRadius: 6 }}>PDF</a>}
+          {wo && (
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                onClick={e => { e.stopPropagation(); setWoBooking(b) }}
+                style={{ fontSize: 10, color: col, fontFamily: 'Syne, sans-serif', padding: '4px 9px', border: `1px solid ${col}55`, borderRadius: 6, background: `${col}12`, cursor: 'pointer', fontWeight: 700 }}
+              >
+                View / Edit
+              </button>
+              <a href={`/wo/${wo.id}/print`} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Syne, sans-serif', textDecoration: 'none', padding: '4px 9px', border: '1px solid var(--border)', borderRadius: 6 }}>PDF</a>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -329,39 +362,145 @@ export function LocationStrip() {
             {drawerLoading ? (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', fontFamily: 'Syne' }}>Loading…</div>
             ) : (
-              <div style={{ flex: 1, overflowY: 'auto', padding: '22px 26px', display: 'flex', flexDirection: 'column', gap: 26 }}>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '22px 26px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
 
-                {/* ── YESTERDAY — only if unapproved items exist ── */}
-                {yestHasUnapproved && (
-                  <section>
-                    <SectionLabel label="Yesterday" date={yesterday} orange />
+                  {/* ── LEFT — Yesterday ── */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'Syne' }}>Yesterday</span>
+                      <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
+                        {new Date(yesterday + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
 
-                    {yestSessions.length > 0 && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
-                        {yestSessions.map(({ booking: b, wo }) => (
-                          <SessionCard key={b.id} b={b} wo={wo} isYesterday />
-                        ))}
-                      </div>
-                    )}
+                    {(() => {
+                      const unapprovedSessions = yestSessions.filter(({ wo }) =>
+                        !(wo?.admin_approved || wo?.status === 'approved')
+                      )
+                      const unapprovedOpsCats = DAILY_CATS.filter(cat => {
+                        const row = yestOpsRows.find(o => o.category === cat.key)
+                        return !!(row?.submitted_at && !row?.admin_approved_at)
+                      })
+                      const allClear = unapprovedSessions.length === 0 && unapprovedOpsCats.length === 0
 
-                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-                      {DAILY_CATS.map((cat, i) => {
-                        const row        = yestOpsRows.find(o => o.category === cat.key)
-                        const runnerDone = !!row?.submitted_at
-                        const adminDone  = !!row?.admin_approved_at
-                        const needsReview = runnerDone && !adminDone
+                      if (allClear) {
+                        return (
+                          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '28px 16px', textAlign: 'center' }}>
+                            <div style={{ fontSize: 20, marginBottom: 6 }}>✓</div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#4ade80', fontFamily: 'Syne' }}>All clear</div>
+                            <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 4 }}>Nothing pending from yesterday</div>
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <>
+                          {unapprovedSessions.length > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              {unapprovedSessions.map(({ booking: b, wo }) => (
+                                <SessionCard key={b.id} b={b} wo={wo} isYesterday />
+                              ))}
+                            </div>
+                          )}
+
+                          {unapprovedOpsCats.length > 0 && (
+                            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                              {unapprovedOpsCats.map((cat, i) => {
+                                const row        = yestOpsRows.find(o => o.category === cat.key)
+                                const runnerDone = !!row?.submitted_at
+                                const adminDone  = !!row?.admin_approved_at
+                                const needsReview = runnerDone && !adminDone
+                                return (
+                                  <div key={cat.key}
+                                    onClick={() => setOpenModal({ category: cat.key, date: yesterday })}
+                                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2, #1e2130)')}
+                                    onMouseLeave={e => (e.currentTarget.style.background = needsReview ? '#f0a24e08' : 'transparent')}
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: needsReview ? '#f0a24e08' : 'transparent', borderBottom: i < unapprovedOpsCats.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.1s' }}
+                                  >
+                                    <div>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                                        <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Syne', fontWeight: 600 }}>{cat.label}</span>
+                                        {needsReview && <span style={{ fontSize: 9, fontWeight: 700, color: '#f0a24e', background: '#f0a24e22', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>Review</span>}
+                                      </div>
+                                      {row?.staff_name && (
+                                        <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+                                          {row.staff_name}{row.submitted_at && ` · ${new Date(row.submitted_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                      <TwoCheckbox label="Runner" checked={runnerDone} color={selectedLoc.color} />
+                                      <TwoCheckbox label="Admin"  checked={adminDone}  color={selectedLoc.color} />
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </>
+                      )
+                    })()}
+                  </div>
+
+                  {/* ── RIGHT — Today ── */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingBottom: 10, borderBottom: `1px solid ${selectedLoc.color}44` }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: selectedLoc.color, fontFamily: 'Syne' }}>Today</span>
+                      <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
+                        {new Date(today + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+
+                    {(() => {
+                      const activeSessions = sessions.filter(({ wo }) =>
+                        !(wo?.admin_approved || wo?.status === 'approved')
+                      )
+                      if (sessions.length === 0) {
+                        return <div style={{ color: 'var(--text3)', fontSize: 12, fontFamily: 'Syne', padding: '10px 0' }}>No sessions booked today.</div>
+                      }
+                      return activeSessions.length === 0 ? null : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {activeSessions.map(({ booking: b, wo }) => (
+                            <SessionCard key={b.id} b={b} wo={wo} />
+                          ))}
+                        </div>
+                      )
+                    })()}
+
+                    {(() => {
+                      const activeCats = OPS_CATS.filter(cat => {
+                        const row = opsRows.find(o => o.category === cat.key)
+                        return !row?.admin_approved_at
+                      })
+                      if (activeCats.length === 0) return null
+                      return (
+                      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                      {activeCats.map((cat, i) => {
+                        const row         = opsRows.find(o => o.category === cat.key)
+                        const runnerDone  = !!row?.submitted_at
+                        const adminDone   = !!row?.admin_approved_at
+                        const isChecklist = cat.key === 'opening_checklist' || cat.key === 'closing_checklist'
+                        const prog        = checklistProgress[cat.key]
                         return (
                           <div key={cat.key}
-                            onClick={() => setOpenModal({ category: cat.key, date: yesterday })}
+                            onClick={() => setOpenModal({ category: cat.key, date: today })}
                             onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2, #1e2130)')}
-                            onMouseLeave={e => (e.currentTarget.style.background = needsReview ? '#f0a24e08' : 'transparent')}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: needsReview ? '#f0a24e08' : 'transparent', borderBottom: i < DAILY_CATS.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.1s' }}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', borderBottom: i < activeCats.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.1s' }}
                           >
                             <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Syne', fontWeight: 600 }}>{cat.label}</span>
-                                {needsReview && <span style={{ fontSize: 9, fontWeight: 700, color: '#f0a24e', background: '#f0a24e22', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>Review</span>}
+                                {row?.needs_attention && !adminDone && (
+                                  <span style={{ fontSize: 9, fontWeight: 700, color: '#f0a24e', background: '#f0a24e22', padding: '2px 6px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>⚠</span>
+                                )}
                               </div>
+                              {isChecklist && prog && (
+                                <div style={{ fontSize: 9, color: runnerDone ? '#4ade80' : '#8b90a8', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+                                  {prog.checked}/{prog.total} checked
+                                </div>
+                              )}
                               {row?.staff_name && (
                                 <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
                                   {row.staff_name}{row.submitted_at && ` · ${new Date(row.submitted_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`}
@@ -375,66 +514,12 @@ export function LocationStrip() {
                           </div>
                         )
                       })}
-                    </div>
-                  </section>
-                )}
-
-                {/* ── TODAY ── */}
-                <section>
-                  <SectionLabel label="Today" date={today} />
-
-                  {sessions.length === 0 ? (
-                    <div style={{ color: 'var(--text3)', fontSize: 12, fontFamily: 'Syne', padding: '10px 0', marginBottom: 14 }}>No sessions booked today.</div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-                      {sessions.map(({ booking: b, wo }) => (
-                        <SessionCard key={b.id} b={b} wo={wo} />
-                      ))}
-                    </div>
-                  )}
-
-                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-                    {OPS_CATS.map((cat, i) => {
-                      const row        = opsRows.find(o => o.category === cat.key)
-                      const runnerDone = !!row?.submitted_at
-                      const adminDone  = !!row?.admin_approved_at
-                      const isChecklist = cat.key === 'opening_checklist' || cat.key === 'closing_checklist'
-                      const prog       = checklistProgress[cat.key]
-                      return (
-                        <div key={cat.key}
-                          onClick={() => setOpenModal({ category: cat.key, date: today })}
-                          onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2, #1e2130)')}
-                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', borderBottom: i < OPS_CATS.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.1s' }}
-                        >
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Syne', fontWeight: 600 }}>{cat.label}</span>
-                              {row?.needs_attention && !adminDone && (
-                                <span style={{ fontSize: 9, fontWeight: 700, color: '#f0a24e', background: '#f0a24e22', padding: '2px 6px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>⚠</span>
-                              )}
-                            </div>
-                            {isChecklist && prog && (
-                              <div style={{ fontSize: 9, color: runnerDone ? '#4ade80' : '#8b90a8', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
-                                {prog.checked}/{prog.total} checked
-                              </div>
-                            )}
-                            {row?.staff_name && (
-                              <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
-                                {row.staff_name}{row.submitted_at && ` · ${new Date(row.submitted_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`}
-                              </div>
-                            )}
-                          </div>
-                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <TwoCheckbox label="Runner" checked={runnerDone} color={selectedLoc.color} />
-                            <TwoCheckbox label="Admin"  checked={adminDone}  color={selectedLoc.color} />
-                          </div>
-                        </div>
+                      </div>
                       )
-                    })}
+                    })()}
                   </div>
-                </section>
 
+                </div>
               </div>
             )}
           </div>
@@ -466,6 +551,21 @@ export function LocationStrip() {
           />
         )
       })()}
+
+      {/* ── WO popup opened from daily ops card (zIndex above dialog) ── */}
+      {woBooking && (
+        <WorkOrderPopup
+          booking={woBooking}
+          onClose={() => setWoBooking(null)}
+          onSaved={async () => {
+            setWoBooking(null)
+            if (selectedLoc) {
+              await openDrawer(selectedLoc)
+              await loadSummaries()
+            }
+          }}
+        />
+      )}
     </>
   )
 }

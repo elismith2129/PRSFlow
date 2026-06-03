@@ -32,6 +32,7 @@ type WO = {
   legal_signature: string
   legal_name: string
   legal_date: string
+  needs_attention_notes: string
 }
 
 type StRow = {
@@ -154,6 +155,7 @@ function normalizeWO(d: any): WO {
     legal_signature: d.legal_signature ?? '',
     legal_name: d.legal_name ?? '',
     legal_date: d.legal_date ?? '',
+    needs_attention_notes: d.needs_attention_notes ?? '',
   }
 }
 
@@ -505,6 +507,7 @@ export function WorkOrderPopup({
       legal_signature: wo.legal_signature || null,
       legal_name: wo.legal_name || null,
       legal_date: wo.legal_date || null,
+      needs_attention_notes: wo.needs_attention_notes || null,
       updated_at: new Date().toISOString(),
     }).eq('id', id)
 
@@ -916,6 +919,19 @@ export function WorkOrderPopup({
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* NEEDS ATTENTION — internal only, never printed */}
+          <div data-no-print="" style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 20 }}>
+            <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 10, color: '#f97316', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
+              Needs Attention / Runner Notes
+            </div>
+            <textarea
+              value={wo.needs_attention_notes}
+              onChange={e => setWo(w => w ? { ...w, needs_attention_notes: e.target.value } : w)}
+              placeholder="Internal notes only — never appears on the PDF export…"
+              style={{ width: '100%', minHeight: 80, background: '#1a1e28', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 5, color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }}
+            />
           </div>
 
         </div>{/* end body */}

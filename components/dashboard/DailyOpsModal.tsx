@@ -185,8 +185,8 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
     }
     const doneCount = Object.values(checkedByText).filter(Boolean).length
 
-    const photosToShow: string[] = checklistData?.photo_urls ?? []
-    const notesText: string      = checklistData?.notes ?? ''
+    const photosToShow: string[] = checklistData?.needs_attention_photos ?? checklistData?.photo_urls ?? []
+    const notesText: string      = checklistData?.needs_attention_notes ?? checklistData?.notes ?? ''
     const flagged: boolean        = !!checklistData?.needs_attention
 
     return (

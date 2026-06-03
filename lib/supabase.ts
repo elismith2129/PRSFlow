@@ -219,6 +219,11 @@ export interface WorkOrder {
   legal_signature: string | null
   legal_name: string | null
   legal_date: string | null
+  needs_attention_notes: string | null
+  runner_finished: boolean
+  runner_finished_at: string | null
+  admin_approved: boolean
+  admin_approved_at: string | null
   created_at: string
   updated_at: string | null
 }

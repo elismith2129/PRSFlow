@@ -131,6 +131,9 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     border-radius: 0 !important;
   }
 
+  /* Hide internal-only sections (e.g. Needs Attention) */
+  [data-wo-portal] [data-no-print] { display: none !important; }
+
   /* Hide all buttons, radio/checkbox inputs, select elements */
   [data-wo-portal] button { display: none !important; }
   [data-wo-portal] input[type="radio"],

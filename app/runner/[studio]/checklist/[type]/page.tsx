@@ -22,16 +22,15 @@ export default function ChecklistPage() {
   const allItems = flattenSections(sections)
 
   // Refs to avoid stale closures in async saves
-  const clIdRef        = useRef<string | null>(null)
-  const creatingRef    = useRef(false)
-  const checkedRef     = useRef<Record<string, boolean>>({})
-  const notesUserEdited = useRef(false)
+  const clIdRef           = useRef<string | null>(null)
+  const creatingRef       = useRef(false)
+  const checkedRef        = useRef<Record<string, boolean>>({})
+  const attentionChangedRef = useRef(false)
 
-  const [checked, setChecked]               = useState<Record<string, boolean>>({})
-  const [staffName, setStaffName]           = useState('')
-  const [notes, setNotes]                   = useState('')
-  const [needsAttention, setNeedsAttention] = useState(false)
-  const [photos, setPhotos]                 = useState<string[]>([])
+  const [checked, setChecked]   = useState<Record<string, boolean>>({})
+  const [staffName, setStaffName] = useState('')
+  const [notes, setNotes]       = useState('')
+  const [photos, setPhotos]     = useState<string[]>([])
   const [uploading, setUploading]           = useState(false)
   const [submitting, setSubmitting]         = useState(false)
   const [isSubmitted, setIsSubmitted]       = useState(false)
@@ -57,9 +56,8 @@ export default function ChecklistPage() {
         for (const row of clData.items ?? []) checkedMap[row.item] = row.checked
         checkedRef.current = checkedMap
         setChecked(checkedMap)
-        setNotes(clData.notes ?? '')
-        setPhotos(clData.photo_urls ?? [])
-        setNeedsAttention(clData.needs_attention ?? false)
+        setNotes(clData.needs_attention_notes ?? clData.notes ?? '')
+        setPhotos(clData.needs_attention_photos ?? clData.photo_urls ?? [])
         if (clData.staff_name) setStaffName(clData.staff_name)
       }
       if (subData?.submitted_at) setIsSubmitted(true)
@@ -69,17 +67,29 @@ export default function ChecklistPage() {
     loadExisting()
   }, [studio, type, today])
 
-  // ── Notes debounce — only fires after user edits ─────────────────────────────
+  // ── Attention content sync — fires after runner edits notes or photos ────────
+  // Auto-derives needs_attention from content; no manual toggle needed.
   useEffect(() => {
-    if (!notesUserEdited.current) return
+    if (!attentionChangedRef.current) return
+    const hasAttention = notes.trim().length > 0 || photos.length > 0
     const timer = setTimeout(async () => {
-      if (!clIdRef.current) return
-      await supabase.from('checklists')
-        .update({ notes: notes.trim() || null })
-        .eq('id', clIdRef.current)
-    }, 800)
+      if (clIdRef.current) {
+        await supabase.from('checklists').update({
+          notes: notes.trim() || null,
+          needs_attention_notes: notes.trim() || null,
+          needs_attention_photos: photos.length > 0 ? photos : null,
+          needs_attention: hasAttention,
+        }).eq('id', clIdRef.current)
+      }
+      await supabase.from('daily_ops_submissions').upsert({
+        studio, date: today, category: `${type}_checklist`,
+        needs_attention: hasAttention,
+        attention_notes: notes.trim() || null,
+        photo_urls: photos.length > 0 ? photos : null,
+      }, { onConflict: 'studio,date,category' })
+    }, 600)
     return () => clearTimeout(timer)
-  }, [notes])
+  }, [notes, photos]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Toggle item — saves immediately ─────────────────────────────────────────
   async function toggle(item: string) {
@@ -106,24 +116,11 @@ export default function ChecklistPage() {
     }
   }
 
-  // ── Needs Attention — immediately upserts daily_ops_submissions ──────────────
-  async function handleNeedsAttention() {
-    const newVal = !needsAttention
-    setNeedsAttention(newVal)
-    await supabase.from('daily_ops_submissions').upsert({
-      studio, date: today, category: `${type}_checklist`,
-      needs_attention: newVal,
-      attention_notes: notes.trim() || null,
-      photo_urls: photos.length > 0 ? photos : null,
-    }, { onConflict: 'studio,date,category' })
-  }
-
   // ── Photo upload ──────────────────────────────────────────────────────────────
   async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files
     if (!files || files.length === 0) return
     setUploading(true)
-    setNeedsAttention(true)
     const urls: string[] = []
     for (const file of Array.from(files)) {
       const path = `${studio}/${today}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`
@@ -133,13 +130,8 @@ export default function ChecklistPage() {
         urls.push(publicUrl)
       }
     }
-    const newPhotos = [...photos, ...urls]
-    setPhotos(newPhotos)
-    await supabase.from('daily_ops_submissions').upsert({
-      studio, date: today, category: `${type}_checklist`,
-      needs_attention: true,
-      photo_urls: newPhotos.length > 0 ? newPhotos : null,
-    }, { onConflict: 'studio,date,category' })
+    attentionChangedRef.current = true
+    setPhotos(prev => [...prev, ...urls])
     setUploading(false)
     if (fileRef.current) fileRef.current.value = ''
   }
@@ -150,13 +142,16 @@ export default function ChecklistPage() {
     setSubmitting(true)
     const now = new Date().toISOString()
     const itemsPayload = allItems.map(i => ({ item: i, checked: checkedRef.current[i] ?? false }))
+    const hasAttention = notes.trim().length > 0 || photos.length > 0
 
     if (clIdRef.current) {
       await supabase.from('checklists').update({
         items: itemsPayload, staff_name: staffName.trim(), completed_at: now,
         notes: notes.trim() || null,
         photo_urls: photos.length > 0 ? photos : null,
-        needs_attention: needsAttention,
+        needs_attention: hasAttention,
+        needs_attention_notes: notes.trim() || null,
+        needs_attention_photos: photos.length > 0 ? photos : null,
       }).eq('id', clIdRef.current)
     } else {
       const { data } = await supabase.from('checklists').insert({
@@ -164,17 +159,41 @@ export default function ChecklistPage() {
         items: itemsPayload, completed_at: now,
         notes: notes.trim() || null,
         photo_urls: photos.length > 0 ? photos : null,
-        needs_attention: needsAttention,
+        needs_attention: hasAttention,
+        needs_attention_notes: notes.trim() || null,
+        needs_attention_photos: photos.length > 0 ? photos : null,
       }).select('id').single()
       if (data) clIdRef.current = data.id
     }
     await supabase.from('daily_ops_submissions').upsert({
       studio, date: today, category: `${type}_checklist`,
       staff_name: staffName.trim(), submitted_at: now,
-      needs_attention: needsAttention,
+      needs_attention: hasAttention,
       attention_notes: notes.trim() || null,
       photo_urls: photos.length > 0 ? photos : null,
     }, { onConflict: 'studio,date,category' })
+
+    // Create or update a tasks row for this checklist if attention content exists
+    if (hasAttention && clIdRef.current) {
+      const { data: existingTask } = await supabase
+        .from('tasks').select('id')
+        .eq('source_id', clIdRef.current).maybeSingle()
+      if (existingTask) {
+        await supabase.from('tasks').update({
+          notes: notes.trim() || null,
+          photo_urls: photos.length > 0 ? photos : null,
+        }).eq('id', existingTask.id)
+      } else {
+        await supabase.from('tasks').insert({
+          studio: studio as string,
+          source_type: `${type}_checklist`,
+          source_id: clIdRef.current,
+          notes: notes.trim() || null,
+          photo_urls: photos.length > 0 ? photos : null,
+        })
+      }
+    }
+
     setSubmitting(false)
     setIsSubmitted(true)
   }
@@ -244,44 +263,26 @@ export default function ChecklistPage() {
           </div>
         ))}
 
-        {/* Notes, Photos & Attention */}
-        <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, padding: '16px', marginTop: 8 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', marginBottom: 14 }}>
-            Notes, Photos & Attention
+        {/* Needs Attention */}
+        <div style={{ background: '#161920', border: `1px solid ${(notes.trim() || photos.length > 0) ? '#f9731640' : '#2a2e3d'}`, borderRadius: 12, padding: '16px', marginTop: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: (notes.trim() || photos.length > 0) ? '#f97316' : '#8b90a8', marginBottom: 14 }}>
+            Needs Attention / Runner Notes
           </div>
 
-          <button
-            onClick={handleNeedsAttention}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-              background: needsAttention ? '#f0a24e15' : '#0d0f14',
-              border: `1px solid ${needsAttention ? '#f0a24e55' : '#2a2e3d'}`,
-              borderRadius: 10, padding: '12px 14px', cursor: 'pointer', marginBottom: 14,
-              transition: 'all 0.12s',
-            }}
-          >
-            <div style={{
-              width: 20, height: 20, borderRadius: 10, flexShrink: 0,
-              background: needsAttention ? '#f0a24e' : '#2a2e3d',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, color: '#0d0f14', fontWeight: 900,
-            }}>
-              {needsAttention ? '!' : ''}
-            </div>
-            <div style={{ textAlign: 'left' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: needsAttention ? '#f0a24e' : '#8b90a8' }}>
-                Flag for management — Needs Attention
-              </div>
-              <div style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
-                {needsAttention ? 'Management will be alerted' : 'Tap to flag this submission'}
+          {(notes.trim() || photos.length > 0) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f9731615', border: '1px solid #f9731640', borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
+              <span style={{ fontSize: 14, color: '#f97316', flexShrink: 0 }}>⚠</span>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#f97316', fontFamily: 'Syne, sans-serif' }}>Flagged for management attention</div>
+                <div style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>Management will be notified when you submit</div>
               </div>
             </div>
-          </button>
+          )}
 
           <textarea
             placeholder="Notes / Issues / Incomplete items — anything you couldn't complete, found damaged, or needs attention..."
             value={notes}
-            onChange={e => { notesUserEdited.current = true; setNotes(e.target.value) }}
+            onChange={e => { attentionChangedRef.current = true; setNotes(e.target.value) }}
             rows={4}
             style={{
               width: '100%', boxSizing: 'border-box',
@@ -313,7 +314,7 @@ export default function ChecklistPage() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={url} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid #2a2e3d' }} />
                   <button
-                    onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))}
+                    onClick={() => { attentionChangedRef.current = true; setPhotos(prev => prev.filter((_, j) => j !== i)) }}
                     style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: 9, background: '#f87171', border: 'none', color: '#fff', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}
                   >✕</button>
                 </div>
