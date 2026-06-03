@@ -90,13 +90,13 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 - **Runner pages** use `minHeight: '100dvh'`, `paddingBottom: 120` for the fixed footer, no nav import
 - **Real-time checklist saves:** Items save on tap via `clIdRef` + `creatingRef` pattern. Notes debounce 800ms. Needs-attention upserts `daily_ops_submissions` without `submitted_at` immediately for dashboard badge
 
-## What's Built (as of June 1, 2026)
+## What's Built (as of June 2, 2026)
 
 | Chunk | Feature | Status |
 |-------|---------|--------|
 | 1 | CRM — Needs Action, All Leads, touch logging, Keep Hot/Warm, auto-demotion cron | ✅ Complete |
 | 4 | Clients page — list + profile + contacts + artists + registration flow | ✅ Complete |
-| 6 | Calendar — multi-studio grid, booking form, WO popup, COD hero, live WO sync | ✅ Complete |
+| 6 | Calendar — multi-studio grid, booking form, WO popup, COD hero | ✅ Complete |
 | 7 | Runner Hub — /runner routes, WO form, receipt OCR, daily ops checklists | ✅ Complete |
 | 7b | Dashboard daily ops — LocationStrip drawer, Yesterday/Today, DailyOpsModal | ✅ Complete |
 | CRM polish | StudioSelect component, rate_daily toggle, label roster (`lib/roster.ts`), new lead form dropdowns, Move to Booking nav | ✅ Complete |
@@ -105,7 +105,9 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 | Contact actions | Call (`tel:`), Text (`sms:`), Email (`mailto:`) inline buttons on lead cards, client profiles, A&R + Admin card headers | ✅ Complete |
 | SOP tab | `/sop` route + iframe serving `public/sop.html`; update guide by replacing the file | ✅ Complete |
 | CRM+Clients merge | LEADS/CLIENTS toggle on `/crm`; `ClientsPageInner` embedded under CLIENTS tab; Clients removed from nav; `/clients` redirects to `/crm`; reg badge moved to CRM nav item | ✅ Complete |
-| WO improvements | Export PDF + Print (auto-print via `?autoprint=1`); Close & Save + Cancel at top and bottom; engineer box green/orange by status; sync on save only (removed `liveForm` live injection) | ✅ Complete |
+| WO save/sync overhaul | Close & Save writes to both `work_orders` and `bookings`; `onSaved` refetches booking from DB and reopens form with fresh data; `initWO` query fixed for multiple-WO-per-booking tolerance; studio time rows use TimeInput; FROM/TO removed from WO top meta (redundant with time table); single-day sessions seed stRows from liveForm times on open | ✅ Complete |
+| WO print | `@media print` CSS overhauled: centered full-width, `@page` 0.5cm margins, no transform scale, signature section stays on page; PDF filename set via `document.title` (`CLIENT_INV#` or `LABEL_ARTIST_INV#`) | ✅ Complete |
+| Booking form polish | Engineer name clickable to reopen search pre-filled (Escape/blur reverts, ref-based to avoid stale closure); TBD button grey until active; multi-day sessions show "Edit times in WO" instead of FROM/TO inputs | ✅ Complete |
 
 ## What's Next
 

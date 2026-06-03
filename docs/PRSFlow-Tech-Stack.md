@@ -1,6 +1,6 @@
 # PRSFlow — Tech Stack & Roadmap
 
-*Last updated: May 28, 2026*
+*Last updated: June 2, 2026*
 
 ---
 
@@ -110,10 +110,12 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 | `styles/globals.css` | CSS variable definitions + Google Fonts import |
 | `components/layout/Nav.tsx` | App nav (only renders inside `(main)` route group) |
 | `components/shared/StudioSelect.tsx` | Single flat dropdown for "Venue · Studio" selection; used across CRM and calendar |
-| `components/shared/` | Reusable pickers: `ContactPicker`, `ArtistPicker` |
+| `components/shared/TimeInput.tsx` | Smart 12-hour time input with parse-on-blur. Accepts `8p`, `830a`, `1830`, `8` etc. Used in booking form and WO studio time table. |
+| `components/shared/` | Reusable pickers: `ContactPicker`, `ArtistPicker`, `StudioSelect`, `TimeInput` |
 | `lib/studios.ts` | `STUDIO_LOCATIONS` array + `parseLocation()` / `combineLocation()` for the "Venue · Studio" string format |
 | `lib/roster.ts` | Label artist array helpers: `addArtistToLabel`, `removeArtistFromLabel`, `getArtistsForLabel` |
 | `components/shared/RegViewModal.tsx` | Registration record view modal (used by CRM lead card + Clients profile). Fetches client data + signed ID photo URL on open; Export PDF button opens print route. |
+| `components/calendar/WorkOrderPopup.tsx` | Full Work Order modal. Studio time table, equipment, rentals, payments, notes, signature. Writes to `work_orders` + `bookings` on Close & Save. Fires `onSaved` after all writes complete. |
 | `app/register/view/[clientId]/page.tsx` | Print route for registration PDF. Server component; generates signed ID photo URL server-side. `PrintTrigger` fires `window.print()` after 800ms. |
 | `app/(main)/sop/page.tsx` | SOP / Training tab — full-viewport iframe pointing to `/sop.html` |
 | `public/sop.html` | Self-contained interactive training guide. Replace file to update content; no code change needed. |
@@ -194,6 +196,12 @@ Defined in `styles/globals.css`:
 | sop-tab | `/sop` route + iframe; `public/sop.html` served statically; replace file to update guide with no code changes |
 | **Global select styling ✅** | **`appearance: none` on all select elements** |
 | select-styling | `styles/globals.css` global select rule strips native OS chrome so inline styles fully control appearance across all browsers and views |
+| **WO save/sync overhaul ✅** | **Close & Save writes to work_orders + bookings; onSaved refetches + reopens form** |
+| wo-sync | `handleClose` writes synced fields to both `work_orders` and `bookings`; `onSaved` prop refetches booking by ID and reopens form with fresh data; `initWO` query fixed from `.maybeSingle()` to `.limit(1)` (was creating hundreds of duplicate WOs); `liveForm` memoized to prevent spurious remounts |
+| wo-time-table | FROM/TO removed from WO meta grid (redundant); studio time rows use `TimeInput`; single-day sessions seed stRow times from `liveForm` on open |
+| wo-print | `@media print` CSS overhauled: centered full-width, `@page` 0.5cm margins, no scale transform, signature section stays on page; PDF filename via `document.title` |
+| **Booking form polish ✅** | **Engineer edit-in-place, TBD button, multi-day label** |
+| booking-polish | Engineer name clickable to reopen search pre-filled (ref-based to avoid stale closures); TBD button grey until active; multi-day sessions show "Edit times in WO" instead of FROM/TO inputs |
 
 ### Next
 
@@ -212,7 +220,6 @@ Defined in `styles/globals.css`:
 
 ### Future (not yet sequenced)
 
-- **Chunk 7 — Work Orders:** Structured bookings table, invoicing, payment tracking
 - **Chunk 8 — Admin settings:** Studio configuration, room definitions, rate management
 - **Chunk 9 — Auth + RLS:** Supabase Auth, role-based access (office vs runner), enable RLS across all tables in one migration
 - **Chunk 10 — Dashboard:** Unified ops view, session calendar widget, recent registrations

@@ -55,6 +55,11 @@
 - **SOP/Training tab serves a static HTML file.** `/sop.html` lives in `public/` and is served directly by Next.js static file hosting. The `/sop` route renders a full-viewport `<iframe src="/sop.html">`. No nav-gating — visible to all roles. To update the guide, replace `public/sop.html`; no code change needed.
 - **RegViewModal is a shared component.** Lives at `components/shared/RegViewModal.tsx`. Used by both the CRM lead card (✓ Registered button) and the Clients page profile (REGISTERED header badge + Verification section). Fetches the full client record and generates a 1-hour signed URL for the ID photo on open.
 - **Registration print route at `/register/view/[clientId]`.** Server component (uses anon key). Fetches client data + generates signed ID photo URL server-side. `PrintTrigger` client component fires `window.print()` after 800ms so images load before the dialog opens. Layout: Paramount header, client name in Syne display type, all fields, ID photo, confidential footer.
+- **WO→Booking sync uses DB refetch, not React state sync.** After Close & Save, the WO writes updated fields to both `work_orders` and `bookings` tables, then fires `onSaved`. `onSaved` refetches the booking from `bookings` by ID, closes the form, and reopens it with fresh data. This eliminates the fragile `onFormSync` state-sync chain that was fighting React's closure model and stale state issues. `onSaved` is defined in the calendar page (where `setFormOpen` and `openEdit` are in scope) and threaded as a prop through `BookingForm` → `WorkOrderPopup`.
+- **`initWO` uses `.order('created_at', { ascending: false }).limit(1)` instead of `.maybeSingle()`.** `.maybeSingle()` silently returns `null` when multiple rows match — it was causing `initWO` to always hit the "create new WO" branch, accumulating hundreds of duplicate work_orders per booking. The `.limit(1)` approach tolerates duplicates and always picks the most recent row. 299 duplicate WO rows were cleaned up via REST API batch delete (June 2, 2026).
+- **`liveForm` is memoized in `BookingForm` with `useMemo`.** Passing an inline object literal `liveForm={{ ... }}` to `WorkOrderPopup` caused a new reference on every parent render, which remounted `WorkOrderPopup` (and re-ran `initWO`) constantly. `useMemo` with all form field dependencies prevents spurious remounts.
+- **Engineer edit-in-place uses a ref (`engEditingRef`) alongside state (`engEditing`).** React `useState` has stale closure issues in blur `setTimeout` callbacks — the `onBlur` handler captures `engEditing` from the render it was created in, not the latest value. `engEditingRef.current` is always current in the closure. The Escape handler sets `engApplied.current = true` (not `engEditingRef = false`) so the subsequent blur from unmount skips calling `applyEng` — the blur handler is the single place that clears `engEditingRef`.
+- **WO print: `document.title` sets the default Save as PDF filename.** Before `window.print()`, `document.title` is set to `CLIENT_INV#` (COD) or `LABEL_ARTIST_INV#` (Billing), then restored after. This controls the filename the browser pre-fills in the Save as PDF dialog. All three print buttons use `printWithFilename()` helper. If no invoice number exists, `_INV#` literal is appended as a placeholder.
 
 ---
 
@@ -132,7 +137,7 @@
 
 ---
 
-*Last updated: May 28, 2026 — Calendar view polish session. See session notes below.*
+*Last updated: June 2, 2026 — WO save/sync overhaul + booking form polish. See session notes below.*
 
 ---
 
@@ -442,3 +447,43 @@ Style: `aBtnStyle(color)` — DM Mono 9px, transparent bg, `var(--border)` borde
 - Nav item `{ href: '/sop', label: 'SOP' }` added as the last entry in `navItems`
 - `app/(main)/sop/page.tsx`: full-viewport iframe (`height: calc(100vh - 52px)`) pointing to `/sop.html`
 - `public/sop.html`: static training guide served directly by Next.js; update the guide by replacing this file with no code changes needed
+
+---
+
+### June 2, 2026 — WO Save/Sync Overhaul + Booking Form Polish
+
+**Root cause fixed: `.maybeSingle()` bug accumulated 300+ duplicate WOs**
+
+`initWO` was querying `work_orders` with `.maybeSingle()`, which returns `null` when multiple rows match (rather than throwing). Because the WO modal was remounting on every parent re-render (due to an inline `liveForm` object creating a new reference each time), `initWO` ran constantly. Each run found multiple rows, returned `null`, and created yet another WO. Over time this produced 160+ duplicate `work_orders` rows for one booking_id. **Fix:** Changed query to `.order('created_at', { ascending: false }).limit(1)` and used `data?.[0]`. 299 duplicate rows cleaned up via REST API batch delete. `liveForm` memoized with `useMemo` in `BookingForm` to prevent spurious `WorkOrderPopup` remounts.
+
+**WO Close & Save — DB write + form reopen (replaces onFormSync)**
+
+Previous approach: `handleClose` fired `onFormSync` to push WO values into booking form's React state. This was brittle due to shadow state variables (`anrQuery`, `engOn`, etc.) and React stale closure issues in blur handlers. New approach:
+- `handleClose` writes to BOTH `work_orders` AND `bookings` (syncing `from_time`, `to_time`, `client_name`, `engineer_name`, `assistant_name`, `producer`, `phone`, `email`, `notes`, `invoice_num`, `ordered_by`, `payment_type`)
+- New `onSaved` prop on `WorkOrderPopup` fires after all DB writes complete
+- `onSaved` (defined in calendar page where `setFormOpen`/`openEdit` are in scope) refetches the booking from `bookings` by ID, closes the booking form, and reopens it with fresh data after 50ms
+- `onFormSync` prop retained but no longer used from the calendar page
+
+**Studio time table improvements**
+
+- FROM/TO fields removed from WO meta grid top section — redundant with the per-row times in the studio time table
+- Studio time table FROM/TO cells upgraded from plain `<input>` to `<TimeInput>` — typing `6p` → `6:00 PM` on blur
+- `TimeInput` bug fixed: the early-return path for already-normalized values (`H:MM am/pm`) was returning original case unchanged. Fixed: `s.slice(0, -2) + s.slice(-2).toUpperCase()` ensures AM/PM always uppercase
+- Single-day sessions: on WO open (`initWO`), if `booking.start_date === booking.end_date`, `liveForm.from_time`/`liveForm.to_time` are applied to `stRows[0]` before `setStRows` — so the WO reflects the current booking form times even before the user has saved
+
+**WO print overhaul**
+
+- `@media print` CSS completely rewritten in `styles/globals.css`
+- `@page { margin: 0.5cm }` added as top-level rule (controls browser print margins)
+- Removed `transform: scale(0.72) / transform-origin: top left` (was causing left-shift). WO card now uses `width: 100%; max-width: none` — fills printable width at 10px font
+- `page-break-inside: avoid` on the bottom two-column section (notes + signature + payments) — signature block never orphaned on page 2
+- All dark backgrounds, `rgba(...)` fills, and accent colors normalized to transparent/`#111`
+- `button`, `input[type="radio"]`, `input[type="checkbox"]` hidden
+- `textarea` capped at `max-height: 60px` to prevent notes overflow
+- PDF filename: `printWithFilename()` helper sets `document.title` to `CLIENT_INV#` (COD) or `LABEL_ARTIST_INV#` (Billing) before `window.print()`, restores after. `_INV#` literal appended when no invoice number exists
+
+**Booking form polish**
+
+- **Engineer edit-in-place:** Clicking the `● EngineerName` button opens the search input pre-filled with the current name. Escape or blur-without-selection reverts to original name + status. Implementation uses `engEditingRef` (a ref) alongside `engEditing` state — refs are always current in blur `setTimeout` closures, avoiding the stale closure issue that caused status to reset to 'hold'. The Escape handler sets `engApplied.current = true` (not `engEditingRef = false`) so the subsequent blur from unmount skips `applyEng`. Blur is the single place that clears `engEditingRef`.
+- **TBD button:** Inactive state now fully grey (`var(--text3)` text, `var(--border)` outline). Turns red only when active.
+- **Multi-day sessions:** FROM/TO time inputs replaced with static `"Edit times in WO"` label (grayed out). Staff know per-day times are edited in the studio time table rows inside the WO.
