@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
+import TimeInput from '@/components/shared/TimeInput'
 
 // ─── Local types (editable UI state, strings for all inputs) ─────────────────
 
@@ -190,12 +191,14 @@ export function WorkOrderPopup({
   onClose,
   onStatusChange,
   onFormSync,
+  onSaved,
 }: {
   booking: Booking
   liveForm?: WOFormSync
   onClose: () => void
   onStatusChange?: (status: string) => void
   onFormSync?: (updates: Partial<WOFormSync>) => void
+  onSaved?: () => void
 }) {
   const [wo, setWo] = useState<WO | null>(null)
   const [stRows, setStRows] = useState<StRow[]>([])
@@ -290,11 +293,13 @@ export function WorkOrderPopup({
   }, [liveForm]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function initWO() {
-    const { data: existing } = await supabase
+    const { data: rows } = await supabase
       .from('work_orders')
       .select('*')
       .eq('booking_id', booking.id)
-      .maybeSingle()
+      .order('created_at', { ascending: false })
+      .limit(1)
+    const existing = rows?.[0] ?? null
 
     if (existing) {
       woIdRef.current = existing.id
@@ -307,7 +312,6 @@ export function WorkOrderPopup({
         await supabase.from('work_orders').update({ studios }).eq('id', existing.id)
       }
       const seededExisting = applyLiveForm({ ...normalizeWO(existing), studios })
-      console.log('WO SEEDED (existing)', { to_time: seededExisting.to_time, client: seededExisting.client })
       setWo(seededExisting)
       const [{ data: st }, { data: eq }, { data: rent }, { data: pay }] = await Promise.all([
         supabase.from('studio_time_rows').select('*').eq('work_order_id', existing.id).order('sort_order'),
@@ -316,7 +320,16 @@ export function WorkOrderPopup({
         supabase.from('payment_rows').select('*').eq('work_order_id', existing.id).order('recorded_at'),
       ])
       if (st?.length) {
-        setStRows(st.map(normalizeStRow))
+        const isSingleDay = booking.start_date === booking.end_date || !booking.end_date
+        const rows = st.map(normalizeStRow)
+        if (isSingleDay && liveForm && (liveForm.from_time || liveForm.to_time)) {
+          const r = rows[0]
+          const from = liveForm.from_time || r.from_time
+          const to   = liveForm.to_time   || r.to_time
+          const hrs  = calcHours(from, to)
+          rows[0] = { ...r, from_time: from, to_time: to, total_hours: hrs, charge: calcCharge(hrs, r.rate) }
+        }
+        setStRows(rows)
       } else {
         // Existing WO has no studio time rows — auto-generate from booking
         const dates = dateRange(booking.start_date, booking.end_date)
@@ -380,7 +393,6 @@ export function WorkOrderPopup({
       if (!created) { setLoading(false); return }
       woIdRef.current = created.id
       const seededNew = applyLiveForm(normalizeWO(created))
-      console.log('WO SEEDED (new)', { to_time: seededNew.to_time, client: seededNew.client })
       setWo(seededNew)
 
       // Auto-generate studio time rows (one per date)
@@ -449,29 +461,26 @@ export function WorkOrderPopup({
     if (data) setStRows(prev => [...prev, normalizeStRow(data)])
   }
 
+  // ── Print with filename ───────────────────────────────────────────────────
+
+  function printWithFilename() {
+    const slug = (s: string) => (s || '').trim().replace(/\s+/g, '_')
+    const inv = `_${wo?.invoice_number || 'INV#'}`
+    const name = wo?.payment_status === 'Billing'
+      ? [slug(wo.label), wo.artist ? slug(wo.artist) : ''].filter(Boolean).join('_') + inv
+      : slug(wo?.client ?? '') + inv
+    const prev = document.title
+    document.title = name || prev
+    window.print()
+    document.title = prev
+  }
+
   // ── Save + close ──────────────────────────────────────────────────────────
 
   async function handleClose() {
     if (!wo || !woIdRef.current) { onClose(); return }
     setSaving(true)
     const id = woIdRef.current
-
-    // Sync to booking form immediately on save trigger, before async DB writes,
-    // so the closure captures the correct wo state without stale-async risk
-    console.log('WO SYNC FIRING', { to_time: wo.to_time, from_time: wo.from_time, client: wo.client })
-    onFormSync?.({
-      client_name: wo.client, artist: wo.artist, label: wo.label,
-      ordered_by: wo.ordered_by, po: wo.po_number, phone: wo.phone, email: wo.email,
-      from_time: wo.from_time, to_time: wo.to_time, producer: wo.producer,
-      engineer_name: wo.engineer, assistant_name: wo.second_engineer,
-      payment_type: wo.payment_status === 'Billing' ? 'billing' : 'COD',
-      food_budget: wo.food_budget, food_amount: wo.food_amount,
-      invoice_num: wo.invoice_number,
-      notes: wo.session_notes,
-      rate: stRows[0]?.rate ?? '',
-      rate_daily: stRows[0]?.rate ?? '',
-      engineer_status: booking.engineer_status ?? '',
-    })
 
     await supabase.from('work_orders').update({
       invoice_number: wo.invoice_number || null,
@@ -499,12 +508,28 @@ export function WorkOrderPopup({
       updated_at: new Date().toISOString(),
     }).eq('id', id)
 
+    await supabase.from('bookings').update({
+      from_time: stRows[0]?.from_time || null,
+      to_time: stRows[0]?.to_time || null,
+      client_name: wo.client || null,
+      engineer_name: wo.engineer || null,
+      assistant_name: wo.second_engineer || null,
+      producer: wo.producer || null,
+      phone: wo.phone || null,
+      email: wo.email || null,
+      notes: wo.session_notes || null,
+      invoice_num: wo.invoice_number || null,
+      ordered_by: wo.ordered_by || null,
+      payment_type: wo.payment_status === 'Billing' ? 'billing' : 'COD',
+    }).eq('id', booking.id)
+
     // Save studio time rows
     await Promise.all(stRows.map(r =>
       supabase.from('studio_time_rows').update({
         studio: r.studio, date: r.date, session_info: r.session_info,
         from_time: r.from_time, to_time: r.to_time,
-        total_hours: r.total_hours, rate: r.rate, charge: r.charge, sort_order: r.sort_order,
+        total_hours: r.total_hours, rate: r.rate, charge: r.charge,
+        sort_order: r.sort_order,
       }).eq('id', r.id)
     ))
 
@@ -527,6 +552,7 @@ export function WorkOrderPopup({
     }))
 
     setSaving(false)
+    onSaved?.()
     onClose()
   }
 
@@ -609,13 +635,13 @@ export function WorkOrderPopup({
             {woId && (
               <>
                 <button
-                  onClick={() => window.print()}
+                  onClick={() => printWithFilename()}
                   style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}
                 >
                   Export PDF
                 </button>
                 <button
-                  onClick={() => window.print()}
+                  onClick={() => printWithFilename()}
                   style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}
                 >
                   Print
@@ -669,27 +695,6 @@ export function WorkOrderPopup({
                 <div key={key} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
                   <div style={metaLabel}>{label}</div>
                   <input value={String(wo[key] ?? '')} onChange={e => { setDirtyFields(prev => new Set(prev).add(key as string)); setWo(w => w ? { ...w, [key]: e.target.value } : w) }} style={inp} />
-                </div>
-              ))}
-              {/* From / To — cascade changes to all studio time rows */}
-              {(['from_time', 'to_time'] as const).map(key => (
-                <div key={key} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
-                  <div style={metaLabel}>{key === 'from_time' ? 'From' : 'To'}</div>
-                  <input
-                    value={wo[key] ?? ''}
-                    onChange={e => {
-                      const val = e.target.value
-                      setDirtyFields(prev => new Set(prev).add(key as string))
-                      setWo(w => w ? { ...w, [key]: val } : w)
-                      setStRows(prev => prev.map(r => {
-                        const u = { ...r, [key]: val }
-                        u.total_hours = calcHours(u.from_time, u.to_time)
-                        u.charge = calcCharge(u.total_hours, u.rate)
-                        return u
-                      }))
-                    }}
-                    style={inp}
-                  />
                 </div>
               ))}
               {/* Location — read-only, shown above studios */}
@@ -773,8 +778,8 @@ export function WorkOrderPopup({
                   <div style={cellS}><input value={r.studio} onChange={e => updateStRow(r.id, { studio: e.target.value })} style={inp} /></div>
                   <div style={cellS}><input value={r.date} onChange={e => updateStRow(r.id, { date: e.target.value })} style={inp} /></div>
                   <div style={cellS}><input value={r.session_info} onChange={e => updateStRow(r.id, { session_info: e.target.value })} style={inp} /></div>
-                  <div style={cellS}><input value={r.from_time} onChange={e => updateStRow(r.id, { from_time: e.target.value })} style={inp} /></div>
-                  <div style={cellS}><input value={r.to_time} onChange={e => updateStRow(r.id, { to_time: e.target.value })} style={inp} /></div>
+                  <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} /></div>
+                  <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} /></div>
                   <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{r.total_hours != null ? r.total_hours : '—'}</div>
                   <div style={cellS}><input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} style={inp} /></div>
                   <div style={{ ...cellS, color: r.charge != null ? '#c8f04e' : '#8a8fa0', fontWeight: r.charge != null ? 600 : 400, borderRight: 'none' }}>
@@ -917,7 +922,7 @@ export function WorkOrderPopup({
 
         {/* ── FOOTER ───────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '14px 20px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-          <button onClick={() => window.print()} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
+          <button onClick={() => printWithFilename()} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
             Export PDF
           </button>
           <button onClick={() => onClose()} disabled={saving} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>

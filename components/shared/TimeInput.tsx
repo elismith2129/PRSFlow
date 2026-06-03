@@ -15,8 +15,8 @@ function parse12h(raw: string): string {
   if (!s) return ''
   const sl = s.toLowerCase()
 
-  // Already normalized: "H:MM AM/PM"
-  if (/^\d{1,2}:\d{2} (am|pm)$/i.test(s)) return s
+  // Already normalized: "H:MM AM/PM" — force suffix to uppercase
+  if (/^\d{1,2}:\d{2} (am|pm)$/i.test(s)) return s.slice(0, -2) + s.slice(-2).toUpperCase()
 
   // Legacy 24-hour "HH:MM" colon format, no suffix
   if (/^\d{1,2}:\d{2}$/.test(s)) {

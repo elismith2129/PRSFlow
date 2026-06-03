@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useLayoutEffect, useCallback, useRef, Suspense } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { Booking, Client, ClientContact, Engineer } from '@/lib/supabase'
@@ -574,7 +574,7 @@ function ClientProfilePopup({ clientId, onClose, onDelete }: { clientId: string;
 // ─── BOOKING FORM ────────────────────────────────────────────────────────────
 
 function BookingForm({
-  bookingId, booking, initial, onSave, onDelete, onClose, onDraftChange,
+  bookingId, booking, initial, onSave, onDelete, onClose, onDraftChange, onSaved,
 }: {
   bookingId?: string
   booking?: Booking
@@ -583,6 +583,7 @@ function BookingForm({
   onDelete?: () => Promise<void>
   onClose: () => void
   onDraftChange?: (data: FormData) => void
+  onSaved?: () => void
 }) {
   const [form, setForm] = useState<FormData>(initial)
   const [saving, setSaving] = useState(false)
@@ -601,6 +602,8 @@ function BookingForm({
   const draftTimer = useRef<ReturnType<typeof setTimeout>>()
   const skipNameSearch = useRef(false)
   const engApplied = useRef(false)
+  const engEditingRef = useRef(false)
+  const engPrevStatus = useRef<string>('')
   const asstApplied = useRef(false)
   const [clientArtists, setClientArtists] = useState<string[]>([])
   const [showArtistDD, setShowArtistDD] = useState(false)
@@ -621,6 +624,7 @@ function BookingForm({
   const [engSuggestions, setEngSuggestions] = useState<Engineer[]>([])
   const [showEngDD, setShowEngDD] = useState(false)
   const [engHighlight, setEngHighlight] = useState(-1)
+  const [engEditing, setEngEditing] = useState(false)
   const [asstQuery, setAsstQuery] = useState('')
   const [asstSuggestions, setAsstSuggestions] = useState<Engineer[]>([])
   const [showAsstDD, setShowAsstDD] = useState(false)
@@ -697,6 +701,25 @@ function BookingForm({
   function set<K extends keyof FormData>(k: K, v: FormData[K]) {
     setForm(f => ({ ...f, [k]: v }))
   }
+
+  const liveForm = useMemo(() => ({
+    client_name: form.client_name, artist: form.artist,
+    label: form.label, ordered_by: form.ordered_by,
+    po: form.po, phone: form.phone, email: form.email,
+    from_time: form.from_time, to_time: form.to_time,
+    producer: form.producer, engineer_name: form.engineer_name,
+    assistant_name: form.assistant_name,
+    payment_type: form.payment_type, food_budget: form.food_budget,
+    food_amount: form.food_amount, invoice_num: form.invoice_num,
+    start_date: form.start_date, studio: form.studio,
+    location: form.location, rate: form.rate,
+    rate_daily: form.rate_daily,
+  }), [form.client_name, form.artist, form.label, form.ordered_by,
+    form.po, form.phone, form.email, form.from_time, form.to_time,
+    form.producer, form.engineer_name, form.assistant_name,
+    form.payment_type, form.food_budget, form.food_amount,
+    form.invoice_num, form.start_date, form.studio, form.location,
+    form.rate, form.rate_daily])
 
   // Debounced draft save — reports live form state back to parent for sessionStorage persistence
   useEffect(() => {
@@ -898,7 +921,7 @@ function BookingForm({
     const name = typeof eng === 'string' ? eng : `${eng.first_name} ${eng.last_name}`
     set('engineer_name', name)
     set('engineer_status', 'hold')
-    setEngQuery(''); setShowEngDD(false); setEngHighlight(-1)
+    setEngQuery(''); setShowEngDD(false); setEngHighlight(-1); setEngEditing(false); engEditingRef.current = false
   }
 
   function applyAsst(eng: Engineer | string) {
@@ -1114,10 +1137,14 @@ function BookingForm({
                 <label style={fL}>From – To</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   {!timeTBD && (
-                    <>
-                      <TimeInput value={form.from_time} onChange={v => set('from_time', v)} placeholder="10:00 AM" style={{ ...inp, width: 90 }} />
-                      <TimeInput value={form.to_time} onChange={v => set('to_time', v)} placeholder="10:00 PM" style={{ ...inp, width: 90 }} />
-                    </>
+                    multiDay ? (
+                      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>Edit times in WO</span>
+                    ) : (
+                      <>
+                        <TimeInput value={form.from_time} onChange={v => set('from_time', v)} placeholder="10:00 AM" style={{ ...inp, width: 90 }} />
+                        <TimeInput value={form.to_time} onChange={v => set('to_time', v)} placeholder="10:00 PM" style={{ ...inp, width: 90 }} />
+                      </>
+                    )
                   )}
                   <button
                     type="button"
@@ -1126,8 +1153,8 @@ function BookingForm({
                       padding: '4px 14px', borderRadius: 20, fontSize: 10, fontFamily: 'DM Mono',
                       fontWeight: 600, cursor: 'pointer', border: 'none',
                       background: timeTBD ? '#c2410c' : 'var(--surface2)',
-                      color: timeTBD ? '#fff' : '#c2410c',
-                      outline: timeTBD ? '2px solid rgba(194,65,12,0.4)' : '1px solid rgba(194,65,12,0.35)',
+                      color: timeTBD ? '#fff' : 'var(--text3)',
+                      outline: timeTBD ? '2px solid rgba(194,65,12,0.4)' : '1px solid var(--border)',
                       marginLeft: 0,
                     }}
                   >TBD</button>
@@ -1145,9 +1172,16 @@ function BookingForm({
                       <button
                         type="button"
                         onClick={() => {
-                          const next = !engOn
-                          setEngOn(next)
-                          if (!next) { set('engineer_name', ''); set('engineer_status', 'not_needed'); setEngQuery('') }
+                          if (engOn && form.engineer_name) {
+                            engPrevStatus.current = form.engineer_status
+                            engEditingRef.current = true
+                            setEngEditing(true)
+                            setEngQuery(form.engineer_name)
+                          } else {
+                            const next = !engOn
+                            setEngOn(next)
+                            if (!next) { set('engineer_name', ''); set('engineer_status', 'not_needed'); setEngQuery('') }
+                          }
                         }}
                         style={{
                           padding: '5px 9px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne',
@@ -1158,36 +1192,42 @@ function BookingForm({
                           border: `1px solid ${engOn ? (ENG_STATUS_COLORS[form.engineer_status] ?? '#f0a24e') + '55' : '#2a2e3d'}`,
                         }}
                       >{engOn && form.engineer_name ? `● ${form.engineer_name}` : engOn ? '● ENG' : '○ ENG'}</button>
-                      {engOn && !form.engineer_name && (
+                      {engOn && (!form.engineer_name || engEditing) && (
                         <input
                           placeholder="Name…"
                           value={engQuery}
                           onChange={e => setEngQuery(e.target.value)}
                           onBlur={() => {
-                            const q = engQuery.trim()
                             setTimeout(() => {
                               setShowEngDD(false)
-                              if (!engApplied.current && q) applyEng(q)
-                              engApplied.current = false
+                              if (engEditingRef.current) {
+                                engEditingRef.current = false
+                                if (!engApplied.current) { setEngEditing(false); setEngQuery(''); set('engineer_status', engPrevStatus.current) }
+                                engApplied.current = false
+                              } else {
+                                const q = engQuery.trim()
+                                if (!engApplied.current && q) applyEng(q)
+                                engApplied.current = false
+                              }
                             }, 150)
                           }}
                           onKeyDown={e => {
                             if (e.key === 'ArrowDown') { e.preventDefault(); setEngHighlight(h => Math.min(h + 1, engSuggestions.length - 1)) }
                             else if (e.key === 'ArrowUp') { e.preventDefault(); setEngHighlight(h => Math.max(h - 1, 0)) }
                             else if (e.key === 'Enter') { e.preventDefault(); if (engHighlight >= 0) applyEng(engSuggestions[engHighlight]); else if (engQuery.trim()) applyEng(engQuery.trim()) }
-                            else if (e.key === 'Escape') { setEngQuery(''); setShowEngDD(false) }
+                            else if (e.key === 'Escape') { engApplied.current = true; setEngQuery(''); setShowEngDD(false); setEngEditing(false); set('engineer_status', engPrevStatus.current) }
                           }}
                           style={{ background: '#1a1d27', border: '1px solid #2a2e3d', color: '#e8eaf2', fontFamily: 'DM Mono', fontSize: 11, padding: '5px 8px', borderRadius: 4, flex: 1, minWidth: 0, outline: 'none' }}
                           autoComplete="off"
                         />
                       )}
-                      {engOn && form.engineer_name && (
+                      {engOn && form.engineer_name && !engEditing && (
                         <button type="button" onClick={() => set('engineer_status', cycleEng(form.engineer_status))} style={{ padding: '4px 8px', borderRadius: 20, fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer', border: 'none', background: ENG_STATUS_COLORS[form.engineer_status] + '22', color: ENG_STATUS_COLORS[form.engineer_status], outline: `1px solid ${ENG_STATUS_COLORS[form.engineer_status]}55`, flexShrink: 0 }}>
                           {ENG_STATUS_LABELS[form.engineer_status]}
                         </button>
                       )}
-                      {engOn && form.engineer_name && (
-                        <button type="button" onMouseDown={() => { set('engineer_name', ''); set('engineer_status', 'not_needed'); setEngQuery('') }} style={{ background: 'none', border: 'none', color: '#4a4f64', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '1px 4px', flexShrink: 0 }}>×</button>
+                      {engOn && form.engineer_name && !engEditing && (
+                        <button type="button" onMouseDown={() => { set('engineer_name', ''); set('engineer_status', 'not_needed'); setEngQuery(''); setEngEditing(false) }} style={{ background: 'none', border: 'none', color: '#4a4f64', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '1px 4px', flexShrink: 0 }}>×</button>
                       )}
                     </div>
                     {showEngDD && engSuggestions.length > 0 && (
@@ -1844,16 +1884,7 @@ function BookingForm({
       {showWO && (
         <WorkOrderPopup
           booking={booking ?? { id: '', start_date: form.start_date, end_date: form.end_date, location: form.location, studio: form.studio, from_time: form.from_time, to_time: form.to_time, payment_type: form.payment_type, client_name: form.client_name, phone: form.phone, email: form.email, artist: form.artist, label: form.label, ordered_by: form.ordered_by, po: form.po, producer: form.producer, engineer_name: form.engineer_name, assistant_name: form.assistant_name, food_budget: form.food_budget, food_amount: form.food_amount, invoice_num: form.invoice_num, rate: form.rate, rate_daily: form.rate_daily } as any}
-          liveForm={{
-            client_name: form.client_name, artist: form.artist, label: form.label,
-            ordered_by: form.ordered_by, po: form.po, phone: form.phone, email: form.email,
-            from_time: form.from_time, to_time: form.to_time, producer: form.producer,
-            engineer_name: form.engineer_name, assistant_name: form.assistant_name,
-            payment_type: form.payment_type, food_budget: form.food_budget,
-            food_amount: form.food_amount, invoice_num: form.invoice_num,
-            start_date: form.start_date, studio: form.studio, location: form.location,
-            rate: form.rate, rate_daily: form.rate_daily,
-          }}
+          liveForm={liveForm}
           onClose={() => {
             setShowWO(false)
             if (booking) {
@@ -1862,10 +1893,7 @@ function BookingForm({
             }
           }}
           onStatusChange={setWoStatus}
-          onFormSync={(updates) => {
-            console.log('FORM SYNC RECEIVED', updates)
-            setForm(f => ({ ...f, ...updates }))
-          }}
+          onSaved={onSaved}
         />
       )}
     </div>
@@ -3004,6 +3032,15 @@ function CalendarPageInner() {
           onDraftChange={(data) => {
             try { sessionStorage.setItem('cal_form_draft', JSON.stringify({ editBooking, formData: data })) } catch {}
           }}
+          onSaved={editBooking ? () => {
+            supabase.from('bookings').select('*').eq('id', editBooking.id).single()
+              .then(({ data }) => {
+                if (data) {
+                  setFormOpen(false)
+                  setTimeout(() => openEdit(data as Booking), 50)
+                }
+              })
+          } : undefined}
         />
       )}
     </div>
