@@ -90,7 +90,7 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 - **Runner pages** use `minHeight: '100dvh'`, `paddingBottom: 120` for the fixed footer, no nav import
 - **Real-time checklist saves:** Items save on tap via `clIdRef` + `creatingRef` pattern. Notes debounce 800ms. Needs-attention upserts `daily_ops_submissions` without `submitted_at` immediately for dashboard badge
 
-## What's Built (as of June 3, 2026)
+## What's Built (as of June 4, 2026)
 
 | Chunk | Feature | Status |
 |-------|---------|--------|
@@ -105,13 +105,17 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 | Contact actions | Call (`tel:`), Text (`sms:`), Email (`mailto:`) inline buttons on lead cards, client profiles, A&R + Admin card headers | ✅ Complete |
 | SOP tab | `/sop` route + iframe serving `public/sop.html`; update guide by replacing the file | ✅ Complete |
 | CRM+Clients merge | LEADS/CLIENTS toggle on `/crm`; `ClientsPageInner` embedded under CLIENTS tab; Clients removed from nav; `/clients` redirects to `/crm`; reg badge moved to CRM nav item | ✅ Complete |
-| WO save/sync overhaul | Close & Save writes to both `work_orders` and `bookings`; `onSaved` refetches booking from DB and reopens form with fresh data; `initWO` query fixed for multiple-WO-per-booking tolerance; studio time rows use TimeInput; FROM/TO removed from WO top meta (redundant with time table); single-day sessions seed stRows from liveForm times on open | ✅ Complete |
+| WO save/sync overhaul | Close & Save writes to both `work_orders` and `bookings`; `initWO` query fixed for multiple-WO-per-booking tolerance; studio time rows use TimeInput; FROM/TO removed from WO top meta; single-day sessions seed stRows from liveForm times on open | ✅ Complete |
 | WO print | `@media print` CSS overhauled: centered full-width, `@page` 0.5cm margins, no transform scale, signature section stays on page; PDF filename set via `document.title` (`CLIENT_INV#` or `LABEL_ARTIST_INV#`) | ✅ Complete |
 | Booking form polish | Engineer name clickable to reopen search pre-filled (Escape/blur reverts, ref-based to avoid stale closure); TBD button grey until active; multi-day sessions show "Edit times in WO" instead of FROM/TO inputs | ✅ Complete |
 | WO & daily ops amendment | `needs_attention_notes`/`runner_finished`/`admin_approved` on work_orders; Finish button + confirmation dialog; Cancel/Save/Finish footer (WO stays editable after finish); NA photo upload to `checklist-photos` bucket; admin sees NA thumbnails in WorkOrderPopup; admin approves WO inline from LocationStrip drawer | ✅ Complete |
 | Daily Ops Log | `/daily-ops-log` route + `components/admin/DailyOpsLogSection.tsx`; embedded as Ops Log tab in Admin sidebar; shows approved WOs + ops submissions; filterable by studio/type/date; click WO → WorkOrderPopup; click ops → DailyOpsModal | ✅ Complete |
 | Runner real-time | Supabase `postgres_changes` subscriptions on `bookings` + `work_orders` across all runner pages; session counts and WO badges update live; requires `ALTER PUBLICATION supabase_realtime ADD TABLE` + `REPLICA IDENTITY FULL` per table | ✅ Complete |
 | Runner WO improvements | Session Info reads from live booking record; Label/A&R field shows "LabelName / ContactName"; artist card tap target; UTC→local date fix on all runner pages | ✅ Complete |
+| Day-rate WO | Studio Time table has two layouts: day-rate (compact Date/Room/Hours/Rate/Charge) vs. hourly; correct charge calculation; multi-day reconciles missing rows on open; duplicate rows eliminated | ✅ Complete |
+| Equipment Condition | Horizontal scroll + sticky first column on admin popup and runner page; Not OK cell opens notes+photo popup; section excluded from PDF print | ✅ Complete |
+| WO live sync fixes | `isDayRate` reads from `liveForm` not stale `booking.*`; `wo?.id` dep on reactive effects so they re-run after `initWO`; post-save rate sync on all booking saves; `onSaved={undefined}` prevents form revert on WO close | ✅ Complete |
+| Real-time project standard | `postgres_changes` on all four surfaces: runner WO (`studio_time_rows`), admin WO popup (`studio_time_rows` + `work_orders`), LocationStrip (`bookings` + `work_orders` silent refresh), calendar (`bookings` via `loadRef` pattern) | ✅ Complete |
 
 ## What's Next
 
@@ -120,7 +124,7 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 - **Needs Action rebuild (4.8)** — redesign what "needs action" means vs overdue
 - **Email/webhooks (Chunk 5)** — Squarespace → lead auto-create
 - **Auth (Chunk 9)** — office vs runner roles, RLS
-- **Supabase Realtime replication** — run `supabase/storage-expenses-bucket.sql` equivalent for realtime on any new tables added going forward
+- **Supabase Realtime on new tables** — any new table added going forward needs `ALTER PUBLICATION supabase_realtime ADD TABLE <name>` + `ALTER TABLE <name> REPLICA IDENTITY FULL` before subscriptions will fire
 
 ## Environment Variables
 

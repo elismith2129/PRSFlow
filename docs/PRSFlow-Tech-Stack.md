@@ -1,6 +1,6 @@
 # PRSFlow — Tech Stack & Roadmap
 
-*Last updated: June 2, 2026*
+*Last updated: June 4, 2026*
 
 ---
 
@@ -202,6 +202,21 @@ Defined in `styles/globals.css`:
 | wo-print | `@media print` CSS overhauled: centered full-width, `@page` 0.5cm margins, no scale transform, signature section stays on page; PDF filename via `document.title` |
 | **Booking form polish ✅** | **Engineer edit-in-place, TBD button, multi-day label** |
 | booking-polish | Engineer name clickable to reopen search pre-filled (ref-based to avoid stale closures); TBD button grey until active; multi-day sessions show "Edit times in WO" instead of FROM/TO inputs |
+| **WO & daily ops amendment ✅** | **Runner Finish flow, NA photos, approval loop, Ops Log** |
+| wo-daily-ops-amendment | `runner_finished` + `admin_approved` fields on `work_orders`; runner Finish button + confirmation dialog (WO stays editable after finish); NA notes + photo upload to `checklist-photos`; admin NA thumbnails in WorkOrderPopup; admin approve WO inline from LocationStrip drawer; WO z-index raised to 10010 above drawer |
+| daily-ops-log | `/daily-ops-log` route + `DailyOpsLogSection` component; embedded as Ops Log tab in Admin sidebar alongside Engineers and SRS Log; shows approved WOs + ops submissions; click WO → WorkOrderPopup; click ops → DailyOpsModal |
+| runner-post-amendment | UTC→local date fix on LocationStrip and all runner pages (`getLocalDateStr()`); runner WO footer redesigned (Cancel / Save / Finish three-button layout); NA photo `getPublicUrl()` + delete button; session card full-card tap target; approved WO 8am rule (stays in Today until operational day advances) |
+| runner-session-info | Runner WO session info reads from live booking record (fetches booking after getting `booking_id` from WO); Label/A&R field shows `"LabelName / ContactName"`; artist card tap target; non-cancelled filter matches admin view |
+| **Runner real-time ✅** | **`postgres_changes` subscriptions across all runner pages** |
+| runner-realtime | `postgres_changes` on `bookings` + `work_orders` across runner hub, studio page, and WO page; session counts + WO badges update live; requires `ALTER PUBLICATION supabase_realtime ADD TABLE` + `REPLICA IDENTITY FULL` per table |
+| **Day-rate WO ✅** | **Two-layout Studio Time table, charge fix, multi-day reconciliation** |
+| day-rate-wo | Studio Time table has two layouts: day-rate (compact Date/Room/Hours/Rate/Charge) vs. hourly (multi-row time ranges); correct charge calculation; multi-day day-rate reconciles missing `studio_time_rows` on WO open; duplicate rows eliminated via upsert-by-sort_order |
+| **Equipment Condition ✅** | **Horizontal scroll, sticky col, Not OK popup, PDF exclusion** |
+| equip-condition | Equipment Condition table: horizontal scroll + sticky first column; Not OK cell opens inline popup for notes + photo upload; section excluded from WO PDF print |
+| **WO live sync fixes ✅** | **Stale reads, form revert, post-save rate sync** |
+| wo-live-sync | `isDayRate` reads from `liveForm` not stale `booking.*`; `wo?.id` added to reactive effect dep arrays so they re-run after `initWO`; post-save rate/date sync runs on every booking save (not day-rate only); `onSaved={undefined}` stops WO Close & Save from remounting booking form (preserves unsaved edits) |
+| **Real-time project standard ✅** | **All four surfaces: runner WO stRows, admin WO popup, LocationStrip, calendar** |
+| realtime-project-wide | Runner WO: `studio_time_rows` channel by WO id. Admin WorkOrderPopup: `studio_time_rows` + `work_orders` channels via `resolvedWoId` state. LocationStrip: `fetchDrawerData()` split from `openDrawer()` for silent refresh; `selectedLocRef` for callbacks. Calendar: `loadRef.current = load` pattern for stable subscription without re-subscribing |
 
 ### Next
 
