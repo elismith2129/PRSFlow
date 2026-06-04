@@ -1005,10 +1005,10 @@ export function WorkOrderPopup({
             <input ref={equipNoteFileRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={e => { const f = e.target.files?.[0]; if (f) uploadEquipNotePhoto(f) }} />
             <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflowX: 'auto' }}>
-              <div style={{ minWidth: `${120 + Math.max(sessionDates.length, 1) * 90}px` }}>
+              <div style={{ minWidth: `${130 + Math.max(sessionDates.length, 1) * 90}px` }}>
                 {/* Header — equipment name cell sticky */}
-                <div style={{ display: 'grid', gridTemplateColumns: `120px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                  <div style={{ ...thS, position: 'sticky', left: 0, background: '#1a1e28', zIndex: 2 }}>Equipment</div>
+                <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                  <div style={{ ...thS, position: 'sticky', left: 0, background: '#1a1e28', zIndex: 1 }}>Equipment</div>
                   {sessionDates.length > 0
                     ? sessionDates.map(d => <div key={d} style={thS}>{fmtDate(d)}</div>)
                     : <div style={thS}>—</div>}
@@ -1018,8 +1018,8 @@ export function WorkOrderPopup({
                   const openDate = openNoteKey?.startsWith(`${eq}||`) ? openNoteKey.split('||')[1] : null
                   return (
                     <div key={eq}>
-                      <div style={{ display: 'grid', gridTemplateColumns: `120px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                        <div style={{ ...cellS, color: '#f0f0f0', fontWeight: 500, position: 'sticky', left: 0, background: '#13161d', zIndex: 2 }}>{eq}</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div style={{ ...cellS, color: '#f0f0f0', fontWeight: 500, position: 'sticky', left: 0, background: '#1a1e28', zIndex: 1 }}>{eq}</div>
                         {sessionDates.length > 0
                           ? sessionDates.map(d => {
                               const key = `${eq}||${d}`

@@ -559,49 +559,64 @@ export default function RunnerWOPage() {
 
         {/* Equipment Condition */}
         {sessionDates.length > 0 && (
-          <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, padding: '14px 14px', marginBottom: 16 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', marginBottom: 12 }}>
+          <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', padding: '12px 14px 8px' }}>
               Equipment Condition
             </div>
             <input ref={equipNoteFileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
               onChange={e => { const f = e.target.files?.[0]; if (f) uploadEquipNotePhoto(f) }} />
-            {EQUIPMENT.map(eq => (
-              <div key={eq} style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#e8eaf2', marginBottom: 6 }}>{eq}</div>
-                {sessionDates.map(date => {
-                  const key = `${eq}||${date}`
-                  const cond = equipConds[key]
-                  const hasNote = !!(equipNotes[key]?.note || (equipNotes[key]?.photo_urls?.length ?? 0) > 0)
-                  const isOpen = openNoteKey === key
+            <div style={{ overflowX: 'auto' }}>
+              <div style={{ minWidth: `${130 + Math.max(sessionDates.length, 1) * 90}px` }}>
+                {/* Header row */}
+                <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, background: '#0d0f14', borderBottom: '1px solid #2a2e3d' }}>
+                  <div style={{ padding: '5px 8px', fontSize: 8, fontFamily: 'Syne, sans-serif', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: '#8b90a8', borderRight: '1px solid #2a2e3d', position: 'sticky' as const, left: 0, background: '#0d0f14', zIndex: 1 }}>Equipment</div>
+                  {sessionDates.map(d => (
+                    <div key={d} style={{ padding: '5px 8px', fontSize: 9, fontFamily: 'DM Mono, monospace', color: '#8b90a8', borderRight: '1px solid #2a2e3d', textAlign: 'center' as const }}>{d}</div>
+                  ))}
+                </div>
+                {/* Equipment rows */}
+                {EQUIPMENT.map(eq => {
+                  const openDate = openNoteKey?.startsWith(`${eq}||`) ? openNoteKey.split('||')[1] : null
                   return (
-                    <div key={date}>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-                        <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace', minWidth: 72 }}>{date}</span>
-                        <button
-                          onClick={() => toggleEquip(eq, date, 'ok')}
-                          style={{ flex: 1, padding: '7px 0', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, background: cond === 'ok' ? '#16a34a33' : '#2a2e3d', color: cond === 'ok' ? '#4ade80' : '#8b90a8' }}
-                        >✓ OK</button>
-                        <button
-                          onClick={() => toggleEquip(eq, date, 'not_ok')}
-                          style={{ flex: 1, padding: '7px 0', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, background: cond === 'not_ok' ? '#dc262633' : '#2a2e3d', color: cond === 'not_ok' ? '#f87171' : '#8b90a8' }}
-                        >✗ Not OK</button>
-                        {cond === 'not_ok' && hasNote && (
-                          <span style={{ width: 8, height: 8, borderRadius: 4, background: '#f0a24e', flexShrink: 0 }} />
-                        )}
+                    <div key={eq}>
+                      <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, borderBottom: '1px solid #2a2e3d' }}>
+                        <div style={{ padding: '8px', fontSize: 12, fontWeight: 600, color: '#e8eaf2', fontFamily: 'Syne, sans-serif', borderRight: '1px solid #2a2e3d', position: 'sticky' as const, left: 0, background: '#161920', zIndex: 1, display: 'flex', alignItems: 'center' }}>{eq}</div>
+                        {sessionDates.map(date => {
+                          const key = `${eq}||${date}`
+                          const cond = equipConds[key]
+                          const hasNote = !!(equipNotes[key]?.note || (equipNotes[key]?.photo_urls?.length ?? 0) > 0)
+                          return (
+                            <div key={date} style={{ padding: '6px 4px', borderRight: '1px solid #2a2e3d', display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center' }}>
+                              <button onClick={() => toggleEquip(eq, date, 'ok')} style={{ width: '100%', padding: '4px 0', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 700, fontFamily: 'Syne, sans-serif', background: cond === 'ok' ? '#16a34a33' : '#2a2e3d', color: cond === 'ok' ? '#4ade80' : '#8b90a8' }}>✓ OK</button>
+                              <div style={{ display: 'flex', gap: 3, alignItems: 'center', width: '100%' }}>
+                                <button onClick={() => toggleEquip(eq, date, 'not_ok')} style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 700, fontFamily: 'Syne, sans-serif', background: cond === 'not_ok' ? '#dc262633' : '#2a2e3d', color: cond === 'not_ok' ? '#f87171' : '#8b90a8' }}>✗ Not OK</button>
+                                {cond === 'not_ok' && hasNote && (
+                                  <span style={{ width: 6, height: 6, borderRadius: 3, background: '#f0a24e', flexShrink: 0 }} />
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
-                      {/* Inline note expansion — only when Not OK and open */}
-                      {cond === 'not_ok' && isOpen && (
-                        <div style={{ marginLeft: 80, marginBottom: 8, background: '#0d0f14', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 8, padding: '10px 12px' }}>
+                      {/* Note expansion — inline below the equipment row */}
+                      {openDate && (
+                        <div style={{ padding: '10px 12px', background: '#0d0f14', borderBottom: '1px solid #2a2e3d' }}>
+                          <div style={{ fontSize: 9, fontFamily: 'Syne, sans-serif', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: '#f0a24e', marginBottom: 6 }}>
+                            {eq} — {openDate}
+                          </div>
                           <textarea
-                            value={equipNotes[key]?.note ?? ''}
-                            onChange={e => setEquipNotes(prev => ({ ...prev, [key]: { ...(prev[key] ?? { id: '', photo_urls: [] }), note: e.target.value } }))}
-                            onBlur={e => upsertEquipNote(key, eq, date, { note: e.target.value })}
+                            value={equipNotes[`${eq}||${openDate}`]?.note ?? ''}
+                            onChange={e => {
+                              const k = `${eq}||${openDate}`
+                              setEquipNotes(prev => ({ ...prev, [k]: { ...(prev[k] ?? { id: '', photo_urls: [] }), note: e.target.value } }))
+                            }}
+                            onBlur={e => upsertEquipNote(`${eq}||${openDate}`, eq, openDate, { note: e.target.value })}
                             placeholder="Describe the issue…"
                             style={{ width: '100%', background: 'transparent', border: '1px solid #2a2e3d', borderRadius: 6, color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 12, padding: '8px 10px', resize: 'vertical', outline: 'none', boxSizing: 'border-box', minHeight: 64 }}
                           />
-                          {(equipNotes[key]?.photo_urls?.length ?? 0) > 0 && (
+                          {(equipNotes[`${eq}||${openDate}`]?.photo_urls?.length ?? 0) > 0 && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                              {equipNotes[key].photo_urls.map((url, i) => (
+                              {equipNotes[`${eq}||${openDate}`].photo_urls.map((url, i) => (
                                 <a key={i} href={url} target="_blank" rel="noreferrer">
                                   <img src={url} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(249,115,22,0.3)', display: 'block' }} />
                                 </a>
@@ -609,7 +624,7 @@ export default function RunnerWOPage() {
                             </div>
                           )}
                           <button
-                            onClick={() => { pendingNoteKey.current = { key, equipment: eq, date }; equipNoteFileRef.current?.click() }}
+                            onClick={() => { pendingNoteKey.current = { key: `${eq}||${openDate}`, equipment: eq, date: openDate }; equipNoteFileRef.current?.click() }}
                             disabled={noteUploading}
                             style={{ marginTop: 8, background: '#2a2e3d', border: 'none', borderRadius: 6, padding: '7px 14px', color: noteUploading ? '#8b90a8' : '#e8eaf2', fontSize: 12, fontWeight: 600, cursor: noteUploading ? 'not-allowed' : 'pointer', fontFamily: 'Syne, sans-serif' }}
                           >
@@ -621,7 +636,7 @@ export default function RunnerWOPage() {
                   )
                 })}
               </div>
-            ))}
+            </div>
           </div>
         )}
 
