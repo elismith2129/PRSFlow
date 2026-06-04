@@ -221,15 +221,26 @@ export default function RunnerWOPage() {
     setNaUploading(true)
     const ext = file.name.split('.').pop()
     const path = `na-photos/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-    const { data, error } = await supabase.storage.from('expenses').upload(path, file)
-    if (!error && data) {
-      const { data: signed } = await supabase.storage.from('expenses').createSignedUrl(data.path, 60 * 60 * 24 * 365)
+
+    const { data, error: uploadError } = await supabase.storage.from('expenses').upload(path, file)
+    console.log('[NA photo] storage upload:', { data, error: uploadError })
+
+    if (!uploadError && data) {
+      const { data: signed, error: signError } = await supabase.storage.from('expenses').createSignedUrl(data.path, 60 * 60 * 24 * 365)
+      console.log('[NA photo] createSignedUrl:', { signed, error: signError })
+
       if (signed?.signedUrl) {
-        const updated = [...needsAttentionPhotos, signed.signedUrl]
-        setNeedsAttentionPhotos(updated)
-        await supabase.from('work_orders').update({ needs_attention_photos: updated }).eq('id', woRef.current)
+        const url = signed.signedUrl
+        let updated: string[] = []
+        setNeedsAttentionPhotos(prev => { updated = [...prev, url]; return updated })
+        // Allow state flush before DB write so `updated` is populated
+        const { error: dbError } = await supabase.from('work_orders')
+          .update({ needs_attention_photos: updated })
+          .eq('id', woRef.current)
+        console.log('[NA photo] work_orders update:', { updated, error: dbError })
       }
     }
+
     setNaUploading(false)
     if (naFileRef.current) naFileRef.current.value = ''
   }

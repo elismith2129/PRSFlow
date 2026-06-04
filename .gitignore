@@ -27,3 +27,6 @@ Thumbs.db
 
 # Claude Code auto-memory
 memory/
+
+# Service account keys — never commit credentials
+Google Service Account Key/
