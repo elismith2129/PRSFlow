@@ -2670,8 +2670,9 @@ function CalendarPageInner() {
           // Day-rate only: sync date range (add/remove rows)
           if (payload.rate_type === 'day') {
             const newDates = dateRange(data.start_date, data.end_date)
-            const { data: existingStRows } = await supabase.from('studio_time_rows')
+            const { data: existingStRows, error: existingStRowsError } = await supabase.from('studio_time_rows')
               .select('id, date, created_at').eq('work_order_id', woId).order('created_at', { ascending: true })
+            console.log('[WO sync] existing stRows fetched:', existingStRows?.length, existingStRowsError)
 
             // Dedup: keep earliest row per date
             const keepByDate: Record<string, string> = {}
@@ -2680,21 +2681,28 @@ function CalendarPageInner() {
               if (keepByDate[r.date]) dupeIds.push(r.id)
               else keepByDate[r.date] = r.id
             }
-            if (dupeIds.length > 0) await supabase.from('studio_time_rows').delete().in('id', dupeIds)
+            if (dupeIds.length > 0) {
+              const { error: dedupeError } = await supabase.from('studio_time_rows').delete().in('id', dupeIds)
+              console.log('[WO sync] dedup delete result:', dedupeError)
+            }
 
             const newDateSet = new Set(newDates)
             const coveredDates = new Set(Object.keys(keepByDate))
 
             // Delete rows for dates no longer in the booking range
             const toRemove = Array.from(coveredDates).filter(d => !newDateSet.has(d)).map(d => keepByDate[d]).filter(Boolean)
-            if (toRemove.length > 0) await supabase.from('studio_time_rows').delete().in('id', toRemove)
+            if (toRemove.length > 0) {
+              const { error: removeError } = await supabase.from('studio_time_rows').delete().in('id', toRemove)
+              console.log('[WO sync] date remove result:', removeError)
+            }
 
             // Insert rows for new dates
             const missingDates = newDates.filter(d => !coveredDates.has(d))
+            console.log('[WO sync] date range — newDates:', newDates, 'covered:', Array.from(coveredDates), 'missing:', missingDates)
             if (missingDates.length > 0) {
               const dayRateNum = parseFloat((payload.rate_daily ?? '').replace(/[^0-9.]/g, ''))
               const studio = payload.studio?.match(/Studio\s+([A-Z])/i)?.[1]?.toUpperCase() ?? payload.studio ?? ''
-              await supabase.from('studio_time_rows').insert(missingDates.map((d, i) => ({
+              const { error: insertError } = await supabase.from('studio_time_rows').insert(missingDates.map((d, i) => ({
                 work_order_id: woId,
                 studio,
                 date: d, session_info: '',
@@ -2707,17 +2715,20 @@ function CalendarPageInner() {
                 ot_hours: 0, ot_charge: null,
                 sort_order: coveredDates.size + i,
               })))
+              console.log('[WO sync] date insert result:', insertError)
             }
           }
 
           // Sync rate on all existing studio_time_rows
           const newRateRaw = payload.rate_type === 'day' ? (payload.rate_daily ?? '') : (payload.rate ?? '')
           const newRateNum = parseFloat(newRateRaw.replace(/[^0-9.]/g, ''))
+          console.log('[WO sync] rate sync — newRateRaw:', newRateRaw, 'newRateNum:', newRateNum)
           if (!isNaN(newRateNum) && newRateNum > 0) {
-            const { data: stRows } = await supabase.from('studio_time_rows')
+            const { data: stRows, error: stRowsError } = await supabase.from('studio_time_rows')
               .select('id, rate, day_count, ot_rate, total_hours')
               .eq('work_order_id', woId)
-            await Promise.all((stRows ?? []).map((r: any) => {
+            console.log('[WO sync] stRows fetched:', stRows?.length, stRowsError)
+            const updateResults = await Promise.all((stRows ?? []).map(async (r: any) => {
               const update: Record<string, any> = { rate: newRateRaw }
               if (payload.rate_type === 'day') {
                 const dayCount = r.day_count ?? 1
@@ -2732,8 +2743,11 @@ function CalendarPageInner() {
                 const hrs = r.total_hours != null ? Number(r.total_hours) : null
                 update.charge = hrs != null && hrs > 0 ? parseFloat((hrs * newRateNum).toFixed(2)) : null
               }
-              return supabase.from('studio_time_rows').update(update).eq('id', r.id)
+              const { error: updateError } = await supabase.from('studio_time_rows').update(update).eq('id', r.id)
+              console.log('[WO sync] row update result — id:', r.id, 'update:', update, 'error:', updateError)
+              return updateError
             }))
+            console.log('[WO sync] all row updates done, errors:', updateResults.filter(Boolean))
           }
         }
       }
