@@ -599,7 +599,7 @@ export function WorkOrderPopup({
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (loading) return createPortal(
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 10010, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 12 }}>Loading work order…</div>
     </div>,
     document.body
@@ -612,7 +612,7 @@ export function WorkOrderPopup({
   return createPortal(
     <div
       data-wo-portal=""
-      style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.75)', overflowY: 'auto' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 10010, background: 'rgba(0,0,0,0.75)', overflowY: 'auto' }}
       onClick={e => { if (e.target === e.currentTarget) handleClose() }}
     >
       <div

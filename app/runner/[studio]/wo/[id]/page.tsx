@@ -227,16 +227,20 @@ export default function RunnerWOPage() {
 
     if (!uploadError && data) {
       const { data: { publicUrl } } = supabase.storage.from('checklist-photos').getPublicUrl(data.path)
-      console.log('[NA photo] publicUrl:', publicUrl)
+      console.log('[NA photo] publicUrl value:', publicUrl, '| type:', typeof publicUrl, '| truthy:', !!publicUrl)
 
       if (publicUrl) {
-        let updated: string[] = []
-        setNeedsAttentionPhotos(prev => { updated = [...prev, publicUrl]; return updated })
+        const newPhotos = [...needsAttentionPhotos, publicUrl]
+        setNeedsAttentionPhotos(newPhotos)
         const { error: dbError } = await supabase.from('work_orders')
-          .update({ needs_attention_photos: updated })
+          .update({ needs_attention_photos: newPhotos })
           .eq('id', woRef.current)
-        console.log('[NA photo] work_orders update:', { updated, error: dbError })
+        console.log('[NA photo] work_orders update:', { newPhotos, error: dbError })
+      } else {
+        console.error('[NA photo] publicUrl is falsy — thumbnail will not render. Check checklist-photos bucket is public.')
       }
+    } else {
+      console.error('[NA photo] upload failed:', uploadError)
     }
 
     setNaUploading(false)
@@ -268,6 +272,7 @@ export default function RunnerWOPage() {
     }).eq('id', woRef.current)
     await saveExpenses()
     setSaving(false)
+    router.push(`/runner/${studio}`)
   }
 
   const sessionDates = Array.from(new Set(stRows.map((r: any) => r.date).filter(Boolean))).sort() as string[]
@@ -398,7 +403,7 @@ export default function RunnerWOPage() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
               {needsAttentionPhotos.map((url, i) => (
                 <a key={i} href={url} target="_blank" rel="noreferrer" style={{ display: 'block', flexShrink: 0 }}>
-                  <img src={url} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '2px solid #f9731655', display: 'block' }} />
+                  <img src={url} alt="" onError={() => console.error('[NA photo] img failed to load:', url)} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '2px solid rgba(249,115,22,0.35)', display: 'block' }} />
                 </a>
               ))}
             </div>
