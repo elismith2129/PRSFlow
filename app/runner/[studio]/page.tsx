@@ -24,12 +24,14 @@ export default function StudioDailyOpsPage() {
 
   useEffect(() => {
     async function load() {
-      const today = new Date().toISOString().slice(0, 10)
+      const now = new Date()
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
+      const today = now.toISOString().slice(0, 10)
       const { data: bData } = await supabase
         .from('bookings')
         .select('*')
         .eq('start_date', today)
-        .not('status', 'eq', 'cancelled')
+        .eq('status', 'confirmed')
         .order('from_time', { ascending: true })
 
       const filtered = (bData ?? []).filter((b: Booking) => {

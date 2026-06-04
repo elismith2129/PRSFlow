@@ -44,9 +44,10 @@ type SessionRow = { booking: Booking; wo: WO | null }
 type StudioSummary = { sessionCount: number; pendingCount: number }
 type ModalTarget = { category: string; date: string }
 
-function getYesterday(today: string): string {
-  const d = new Date(today + 'T12:00:00')
-  d.setDate(d.getDate() - 1)
+function getLocalDateStr(offsetDays = 0): string {
+  const d = new Date()
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+  d.setDate(d.getDate() + offsetDays)
   return d.toISOString().slice(0, 10)
 }
 
@@ -86,8 +87,8 @@ function TwoCheckbox({ label, checked, clickable = false, loading = false, onCli
 }
 
 export function LocationStrip() {
-  const today     = new Date().toISOString().slice(0, 10)
-  const yesterday = getYesterday(today)
+  const today     = getLocalDateStr()
+  const yesterday = getLocalDateStr(-1)
 
   const [summaries, setSummaries]           = useState<Record<string, StudioSummary>>({})
   const [loadingSummary, setLoadingSummary] = useState(true)
