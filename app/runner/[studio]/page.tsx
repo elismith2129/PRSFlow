@@ -67,6 +67,7 @@ export default function StudioDailyOpsPage() {
 
   // Real-time: re-run load on any booking change for today
   useEffect(() => {
+    console.log(`[RT] Subscribing to bookings on /runner/${studio}, filter: start_date=eq.${today}`)
     const channel = supabase
       .channel(`runner-bookings-${studio}-${today}`)
       .on('postgres_changes', {
@@ -74,13 +75,22 @@ export default function StudioDailyOpsPage() {
         schema: 'public',
         table: 'bookings',
         filter: `start_date=eq.${today}`,
-      }, () => { load() })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+      }, (payload) => {
+        console.log(`[RT] Real-time event received on /runner/${studio}, bookings:`, payload)
+        load()
+      })
+      .subscribe((status, err) => {
+        console.log(`[RT] bookings subscription status on /runner/${studio}:`, status, err ?? '')
+      })
+    return () => {
+      console.log(`[RT] Unsubscribing from bookings on /runner/${studio}`)
+      supabase.removeChannel(channel)
+    }
   }, [studio, today, load])
 
   // Real-time: re-run load when a WO for today is updated (e.g. admin approves)
   useEffect(() => {
+    console.log(`[RT] Subscribing to work_orders on /runner/${studio}, filter: session_date=eq.${today}`)
     const channel = supabase
       .channel(`runner-wos-${studio}-${today}`)
       .on('postgres_changes', {
@@ -88,9 +98,17 @@ export default function StudioDailyOpsPage() {
         schema: 'public',
         table: 'work_orders',
         filter: `session_date=eq.${today}`,
-      }, () => { load() })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+      }, (payload) => {
+        console.log(`[RT] Real-time event received on /runner/${studio}, work_orders:`, payload)
+        load()
+      })
+      .subscribe((status, err) => {
+        console.log(`[RT] work_orders subscription status on /runner/${studio}:`, status, err ?? '')
+      })
+    return () => {
+      console.log(`[RT] Unsubscribing from work_orders on /runner/${studio}`)
+      supabase.removeChannel(channel)
+    }
   }, [studio, today, load])
 
   function statusBadge(status: string) {

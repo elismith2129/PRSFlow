@@ -47,6 +47,7 @@ export default function RunnerPage() {
   useEffect(() => { load() }, [load])
 
   useEffect(() => {
+    console.log('[RT] Subscribing to bookings on /runner (hub), filter: start_date=eq.' + today)
     const channel = supabase
       .channel(`runner-hub-${today}`)
       .on('postgres_changes', {
@@ -54,9 +55,17 @@ export default function RunnerPage() {
         schema: 'public',
         table: 'bookings',
         filter: `start_date=eq.${today}`,
-      }, () => { load() })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+      }, (payload) => {
+        console.log('[RT] Real-time event received on /runner (hub), bookings:', payload)
+        load()
+      })
+      .subscribe((status, err) => {
+        console.log('[RT] bookings subscription status on /runner (hub):', status, err ?? '')
+      })
+    return () => {
+      console.log('[RT] Unsubscribing from bookings on /runner (hub)')
+      supabase.removeChannel(channel)
+    }
   }, [today, load])
 
   return (

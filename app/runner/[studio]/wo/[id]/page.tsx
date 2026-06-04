@@ -151,6 +151,7 @@ export default function RunnerWOPage() {
   useEffect(() => {
     if (!resolvedWoId) return
 
+    console.log(`[RT] Subscribing to work_orders on /runner/wo/${resolvedWoId}, filter: id=eq.${resolvedWoId}`)
     const channel = supabase
       .channel(`runner-wo-${resolvedWoId}`)
       .on('postgres_changes', {
@@ -159,6 +160,7 @@ export default function RunnerWOPage() {
         table: 'work_orders',
         filter: `id=eq.${resolvedWoId}`,
       }, async (payload) => {
+        console.log(`[RT] Real-time event received on /runner/wo/${resolvedWoId}, work_orders:`, payload)
         const updated = payload.new as any
         setWo(updated)
         const [{ data: bkData }, { data: st }] = await Promise.all([
@@ -170,9 +172,14 @@ export default function RunnerWOPage() {
         if (bkData) setBooking(bkData)
         if (st) setStRows(st)
       })
-      .subscribe()
+      .subscribe((status, err) => {
+        console.log(`[RT] work_orders subscription status on /runner/wo/${resolvedWoId}:`, status, err ?? '')
+      })
 
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      console.log(`[RT] Unsubscribing from work_orders on /runner/wo/${resolvedWoId}`)
+      supabase.removeChannel(channel)
+    }
   }, [resolvedWoId])
 
   async function toggleEquip(eq: string, date: string, val: 'ok' | 'not_ok') {
