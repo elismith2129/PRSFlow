@@ -720,14 +720,14 @@ function BookingForm({
     assistant_name: form.assistant_name,
     payment_type: form.payment_type, food_budget: form.food_budget,
     food_amount: form.food_amount, invoice_num: form.invoice_num,
-    start_date: form.start_date, studio: form.studio,
+    start_date: form.start_date, end_date: form.end_date, studio: form.studio,
     location: form.location, rate: form.rate,
     rate_daily: form.rate_daily,
   }), [form.client_name, form.artist, form.label, form.ordered_by,
     form.po, form.phone, form.email, form.from_time, form.to_time,
     form.producer, form.engineer_name, form.assistant_name,
     form.payment_type, form.food_budget, form.food_amount,
-    form.invoice_num, form.start_date, form.studio, form.location,
+    form.invoice_num, form.start_date, form.end_date, form.studio, form.location,
     form.rate, form.rate_daily])
 
   // Debounced draft save — reports live form state back to parent for sessionStorage persistence

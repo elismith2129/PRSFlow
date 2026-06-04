@@ -203,7 +203,7 @@ export type WOFormSync = {
   po: string; phone: string; email: string; from_time: string; to_time: string
   producer: string; engineer_name: string; assistant_name: string
   payment_type: string; food_budget: boolean; food_amount: string
-  invoice_num: string; start_date: string; studio: string; location: string
+  invoice_num: string; start_date: string; end_date: string; studio: string; location: string
   rate: string; rate_daily: string
   notes?: string; engineer_status?: string
 }
@@ -319,6 +319,108 @@ export function WorkOrderPopup({
       return Object.keys(updates).length > 0 ? { ...prev, ...updates } : prev
     })
   }, [liveForm]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Issue 1 — Live date range sync: when start_date or end_date changes on the booking form,
+  // insert DB rows for new dates and delete rows for removed dates, then reload stRows.
+  // Day-rate only — hourly bookings manage rows manually.
+  useEffect(() => {
+    if (!wo || !liveForm || !woIdRef.current) return
+    const isDayRate = !!liveForm.rate_daily || booking.rate_type === 'day'
+    if (!isDayRate) return
+    const newStart = liveForm.start_date
+    const newEnd = liveForm.end_date || liveForm.start_date
+    if (!newStart) return
+    ;(async () => {
+      const allDates = dateRange(newStart, newEnd)
+      const { data: freshRows } = await supabase.from('studio_time_rows')
+        .select('id, date').eq('work_order_id', woIdRef.current!)
+      const coveredDates = new Set((freshRows ?? []).map((r: any) => r.date))
+      const newDateSet = new Set(allDates)
+
+      // Delete rows for dates no longer in range
+      const toDelete = (freshRows ?? []).filter((r: any) => !newDateSet.has(r.date)).map((r: any) => r.id)
+      if (toDelete.length > 0) await supabase.from('studio_time_rows').delete().in('id', toDelete)
+
+      // Insert rows for new dates
+      const missing = allDates.filter(d => !coveredDates.has(d))
+      if (missing.length > 0) {
+        const rateRaw = liveForm.rate_daily || booking.rate_daily || ''
+        const dayRateNum = parseFloat(rateRaw.replace(/[^0-9.]/g, ''))
+        const studio = liveForm.studio ? toStudioLetter(liveForm.studio) : (booking.studio ? toStudioLetter(booking.studio) : '')
+        await supabase.from('studio_time_rows').insert(missing.map((d, i) => ({
+          work_order_id: woIdRef.current!,
+          studio, date: d, session_info: '',
+          from_time: liveForm.from_time || booking.from_time || '',
+          to_time: liveForm.to_time || booking.to_time || '',
+          total_hours: null,
+          rate: rateRaw,
+          charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
+          day_count: 1,
+          ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
+          ot_hours: 0, ot_charge: null,
+          sort_order: coveredDates.size + i,
+        })))
+      }
+
+      if (toDelete.length > 0 || missing.length > 0) {
+        const { data: reloaded } = await supabase.from('studio_time_rows')
+          .select('*').eq('work_order_id', woIdRef.current!).order('date')
+        setStRows((reloaded ?? []).map(normalizeStRow))
+      }
+    })()
+  }, [liveForm?.start_date, liveForm?.end_date]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Issue 2 — Live rate sync: when rate or rate_daily changes on the booking form,
+  // update rate/charge on every stRow in state and in the DB immediately.
+  useEffect(() => {
+    if (!wo || !liveForm || !woIdRef.current) return
+    const newRateRaw = liveForm.rate_daily || liveForm.rate
+    if (!newRateRaw) return
+    const isDayRate = !!liveForm.rate_daily || booking.rate_type === 'day'
+    const newRateNum = parseFloat(newRateRaw.replace(/[^0-9.]/g, ''))
+    if (isNaN(newRateNum) || newRateNum <= 0) return
+
+    // 1. Update UI state immediately (functional form avoids stale closure)
+    setStRows(prev => prev.map(r => {
+      if (isDayRate) {
+        const dayCount = r.day_count ?? 1
+        const newCharge = parseFloat((dayCount * newRateNum).toFixed(2))
+        // Auto-update ot_rate only if it still equals the value derived from the old rate
+        const oldRateNum = parseFloat((r.rate ?? '').replace(/[^0-9.]/g, ''))
+        const derivedOldOtRate = oldRateNum > 0 ? parseFloat((oldRateNum / 10).toFixed(2)) : -1
+        const currentOtRate = parseFloat((r.ot_rate ?? '').replace(/[^0-9.]/g, ''))
+        const newOtRate = Math.abs(currentOtRate - derivedOldOtRate) < 0.01
+          ? String(parseFloat((newRateNum / 10).toFixed(2)))
+          : r.ot_rate
+        return { ...r, rate: newRateRaw, charge: newCharge, ot_rate: newOtRate }
+      }
+      return { ...r, rate: newRateRaw, charge: calcCharge(r.total_hours, newRateRaw) }
+    }))
+
+    // 2. Persist to DB — re-fetch rows so we have accurate day_count / total_hours
+    ;(async () => {
+      const { data: dbRows } = await supabase.from('studio_time_rows')
+        .select('id, rate, day_count, ot_rate, total_hours')
+        .eq('work_order_id', woIdRef.current!)
+      await Promise.all((dbRows ?? []).map((r: any) => {
+        const update: Record<string, any> = { rate: newRateRaw }
+        if (isDayRate) {
+          const dayCount = r.day_count ?? 1
+          update.charge = parseFloat((dayCount * newRateNum).toFixed(2))
+          const oldRateNum = parseFloat((r.rate ?? '').replace(/[^0-9.]/g, ''))
+          const derivedOldOtRate = oldRateNum > 0 ? parseFloat((oldRateNum / 10).toFixed(2)) : -1
+          const currentOtRate = parseFloat(String(r.ot_rate ?? '0'))
+          if (Math.abs(currentOtRate - derivedOldOtRate) < 0.01) {
+            update.ot_rate = parseFloat((newRateNum / 10).toFixed(2))
+          }
+        } else {
+          const hrs = r.total_hours != null ? Number(r.total_hours) : null
+          update.charge = calcCharge(hrs, newRateRaw)
+        }
+        return supabase.from('studio_time_rows').update(update).eq('id', r.id)
+      }))
+    })()
+  }, [liveForm?.rate, liveForm?.rate_daily]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function initWO() {
     const { data: rows } = await supabase
