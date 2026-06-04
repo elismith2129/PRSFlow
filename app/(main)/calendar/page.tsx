@@ -775,8 +775,7 @@ function BookingForm({
       for (const c of (cd || []) as any[]) {
         const personName = `${c.fname || ''} ${c.lname || ''}`.trim()
         const displayName = personName || c.name || ''
-        // For label-type clients, sub = first artist; for individual, no sub
-        const sub = c.type === 'label' ? (c.artists && c.artists[0] ? c.artists[0] : '') : ''
+        const sub = ''
         const key = `client-${c.id}`
         if (seen.has(key)) continue
         seen.add(key)
@@ -854,7 +853,7 @@ function BookingForm({
       phone: phone || f.phone,
       email: email || f.email,
       payment_type: labelName ? 'billing' : f.payment_type,
-      artist: (r.artists && r.artists.length > 0 ? r.artists[0] : f.artist) || f.artist,
+      artist: labelName ? '' : ((r.artists && r.artists.length > 0 ? r.artists[0] : f.artist) || f.artist),
       is_srs: r.srs_client === true ? true : f.is_srs,
     }))
     setAnrQuery(labelName ? clientName : '')
