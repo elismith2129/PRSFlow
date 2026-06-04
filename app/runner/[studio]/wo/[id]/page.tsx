@@ -23,6 +23,7 @@ export default function RunnerWOPage() {
   const meta = STUDIO_META[studio] ?? { label: studio, abbr: '?', color: '#c8f04e' }
 
   const woRef = useRef<string | null>(null)
+  const [resolvedWoId, setResolvedWoId] = useState<string | null>(null)
   const [wo, setWo]           = useState<any>(null)
   const [booking, setBooking] = useState<any>(null)
   const [stRows, setStRows] = useState<any[]>([])
@@ -98,6 +99,7 @@ export default function RunnerWOPage() {
 
       if (!resolvedId) { setLoading(false); return }
       woRef.current = resolvedId
+      setResolvedWoId(resolvedId)
 
       // Fetch WO first to get booking_id, then fetch linked booking + rows in parallel
       const { data: woData } = await supabase.from('work_orders').select('*').eq('id', resolvedId).single()
@@ -142,6 +144,47 @@ export default function RunnerWOPage() {
     }
     init()
   }, [woIdParam, bookingId])
+
+  // Real-time subscription: sync read-only header fields when admin edits the WO
+  useEffect(() => {
+    if (!resolvedWoId) return
+
+    const channel = supabase
+      .channel(`runner-wo-${resolvedWoId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'work_orders',
+        filter: `id=eq.${resolvedWoId}`,
+      }, async (payload) => {
+        const updated = payload.new as any
+        // Update only the read-only header fields — do not touch sessionNotes,
+        // needsAttentionNotes, needsAttentionPhotos, equipConds, stRows, or expenses
+        setWo((prev: any) => prev ? {
+          ...prev,
+          client:         updated.client,
+          client_name:    updated.client_name,
+          artist:         updated.artist,
+          engineer:       updated.engineer,
+          session_date:   updated.session_date,
+          from_time:      updated.from_time,
+          to_time:        updated.to_time,
+          studios:        updated.studios,
+          label:          updated.label,
+          ordered_by:     updated.ordered_by,
+          payment_status: updated.payment_status,
+        } : prev)
+        // Re-fetch linked booking so header reflects booking edits too
+        if (updated.booking_id) {
+          const { data: bkData } = await supabase
+            .from('bookings').select('*').eq('id', updated.booking_id).single()
+          if (bkData) setBooking(bkData)
+        }
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [resolvedWoId])
 
   async function toggleEquip(eq: string, date: string, val: 'ok' | 'not_ok') {
     const key = `${eq}||${date}`
