@@ -164,6 +164,7 @@ export interface Booking {
   to_time: string | null
   rate: string | null
   rate_daily: string | null
+  rate_type: 'day' | 'hour' | null
   invoice_num: string | null
   client_id: string | null
   client_name: string | null

@@ -47,6 +47,10 @@ type StRow = {
   rate: string
   charge: number | null
   sort_order: number
+  day_count: number | null
+  ot_rate: string
+  ot_hours: string
+  ot_charge: number | null
 }
 
 type EquipRow = {
@@ -173,6 +177,10 @@ function normalizeStRow(d: any): StRow {
     rate: d.rate ?? '',
     charge: d.charge != null ? Number(d.charge) : null,
     sort_order: d.sort_order ?? 0,
+    day_count: d.day_count != null ? Number(d.day_count) : null,
+    ot_rate: d.ot_rate != null ? String(d.ot_rate) : '',
+    ot_hours: d.ot_hours != null ? String(d.ot_hours) : '0',
+    ot_charge: d.ot_charge != null ? Number(d.ot_charge) : null,
   }
 }
 
@@ -337,18 +345,33 @@ export function WorkOrderPopup({
       } else {
         // Existing WO has no studio time rows — auto-generate from booking
         const dates = dateRange(booking.start_date, booking.end_date)
+        const isDay = booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily)
         const stPayloads = dates.map((d, i) => {
+          if (isDay) {
+            const dayRateNum = parseFloat((booking.rate_daily ?? '').replace(/[^0-9.]/g, ''))
+            return {
+              work_order_id: existing.id,
+              studio: studioLetter || booking.studio || '',
+              date: d, session_info: '',
+              from_time: booking.from_time ?? '', to_time: booking.to_time ?? '',
+              total_hours: null,
+              rate: booking.rate_daily ?? '',
+              charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
+              day_count: 1,
+              ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
+              ot_hours: 0, ot_charge: null,
+              sort_order: i,
+            }
+          }
           const hrs = calcHours(booking.from_time ?? '', booking.to_time ?? '')
           return {
             work_order_id: existing.id,
             studio: studioLetter || booking.studio || '',
-            date: d,
-            session_info: '',
-            from_time: booking.from_time ?? '',
-            to_time: booking.to_time ?? '',
+            date: d, session_info: '',
+            from_time: booking.from_time ?? '', to_time: booking.to_time ?? '',
             total_hours: hrs,
-            rate: booking.rate ?? booking.rate_daily ?? '',
-            charge: calcCharge(hrs, booking.rate ?? booking.rate_daily ?? ''),
+            rate: booking.rate ?? '',
+            charge: calcCharge(hrs, booking.rate ?? ''),
             sort_order: i,
           }
         })
@@ -400,18 +423,33 @@ export function WorkOrderPopup({
       setWo(seededNew)
 
       // Auto-generate studio time rows (one per date)
+      const isDay = booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily)
       const stPayloads = dates.map((d, i) => {
+        if (isDay) {
+          const dayRateNum = parseFloat((booking.rate_daily ?? '').replace(/[^0-9.]/g, ''))
+          return {
+            work_order_id: created.id,
+            studio: studioLetter || booking.studio || '',
+            date: d, session_info: '',
+            from_time: booking.from_time ?? '', to_time: booking.to_time ?? '',
+            total_hours: null,
+            rate: booking.rate_daily ?? '',
+            charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
+            day_count: 1,
+            ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
+            ot_hours: 0, ot_charge: null,
+            sort_order: i,
+          }
+        }
         const hrs = calcHours(booking.from_time ?? '', booking.to_time ?? '')
         return {
           work_order_id: created.id,
           studio: studioLetter || booking.studio || '',
-          date: d,
-          session_info: '',
-          from_time: booking.from_time ?? '',
-          to_time: booking.to_time ?? '',
+          date: d, session_info: '',
+          from_time: booking.from_time ?? '', to_time: booking.to_time ?? '',
           total_hours: hrs,
-          rate: booking.rate ?? booking.rate_daily ?? '',
-          charge: calcCharge(hrs, booking.rate ?? booking.rate_daily ?? ''),
+          rate: booking.rate ?? '',
+          charge: calcCharge(hrs, booking.rate ?? ''),
           sort_order: i,
         }
       })
@@ -436,11 +474,26 @@ export function WorkOrderPopup({
     setStRows(prev => prev.map(r => {
       if (r.id !== id) return r
       const u = { ...r, ...updates }
-      if ('from_time' in updates || 'to_time' in updates) {
-        u.total_hours = calcHours(u.from_time, u.to_time)
-      }
-      if ('total_hours' in updates || 'rate' in updates || 'from_time' in updates || 'to_time' in updates) {
-        u.charge = calcCharge(u.total_hours, u.rate)
+      if (u.day_count != null) {
+        // Day-rate row: charge = day_count × rate; ot_charge = ot_hours × ot_rate
+        if ('day_count' in updates || 'rate' in updates) {
+          const days = u.day_count ?? 1
+          const rate = parseFloat((u.rate ?? '').replace(/[^0-9.]/g, ''))
+          u.charge = (!isNaN(rate) && rate > 0) ? parseFloat((days * rate).toFixed(2)) : null
+        }
+        if ('ot_hours' in updates || 'ot_rate' in updates) {
+          const h = parseFloat(u.ot_hours ?? '0') || 0
+          const r = parseFloat((u.ot_rate ?? '').replace(/[^0-9.]/g, '')) || 0
+          u.ot_charge = h > 0 && r > 0 ? parseFloat((h * r).toFixed(2)) : null
+        }
+      } else {
+        // Hourly row
+        if ('from_time' in updates || 'to_time' in updates) {
+          u.total_hours = calcHours(u.from_time, u.to_time)
+        }
+        if ('total_hours' in updates || 'rate' in updates || 'from_time' in updates || 'to_time' in updates) {
+          u.charge = calcCharge(u.total_hours, u.rate)
+        }
       }
       return u
     }))
@@ -535,6 +588,10 @@ export function WorkOrderPopup({
         from_time: r.from_time, to_time: r.to_time,
         total_hours: r.total_hours, rate: r.rate, charge: r.charge,
         sort_order: r.sort_order,
+        day_count: r.day_count ?? null,
+        ot_rate: r.ot_rate ? parseFloat(r.ot_rate.replace(/[^0-9.]/g, '')) || null : null,
+        ot_hours: r.ot_hours ? parseFloat(r.ot_hours) || null : null,
+        ot_charge: r.ot_charge ?? null,
       }).eq('id', r.id)
     ))
 
@@ -563,7 +620,8 @@ export function WorkOrderPopup({
 
   // ── Derived totals ─────────────────────────────────────────────────────────
 
-  const stTotal = stRows.reduce((s, r) => s + (r.charge ?? 0), 0)
+  const stTotal = stRows.reduce((s, r) => s + (r.charge ?? 0) + (r.ot_charge ?? 0), 0)
+  const isDayRate = booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily)
   const rentTotal = rentRows.reduce((s, r) => s + (parseFloat(r.charge) || 0), 0)
   const grandTotal = stTotal + rentTotal
   const totalPaid = payRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
@@ -775,25 +833,91 @@ export function WorkOrderPopup({
           <div>
             <div style={sectionTitle}>Studio Time</div>
             <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '55px 90px 1fr 72px 72px 55px 90px 80px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Rate', 'Charge'].map(h => <div key={h} style={thS}>{h}</div>)}
-              </div>
-              {stRows.map(r => (
-                <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '55px 90px 1fr 72px 72px 55px 90px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <div style={cellS}><input value={r.studio} onChange={e => updateStRow(r.id, { studio: e.target.value })} style={inp} /></div>
-                  <div style={cellS}><input value={r.date} onChange={e => updateStRow(r.id, { date: e.target.value })} style={inp} /></div>
-                  <div style={cellS}><input value={r.session_info} onChange={e => updateStRow(r.id, { session_info: e.target.value })} style={inp} /></div>
-                  <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} /></div>
-                  <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} /></div>
-                  <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{r.total_hours != null ? r.total_hours : '—'}</div>
-                  <div style={cellS}><input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} style={inp} /></div>
-                  <div style={{ ...cellS, color: r.charge != null ? '#c8f04e' : '#8a8fa0', fontWeight: r.charge != null ? 600 : 400, borderRight: 'none' }}>
-                    {r.charge != null ? `$${r.charge.toFixed(2)}` : '—'}
+              {isDayRate ? (
+                <>
+                  {/* Day-rate: two visual rows per DB row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 60px 90px 80px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                    {['Studio / Label', 'Type', 'Qty', 'Rate', 'Charge'].map(h => <div key={h} style={thS}>{h}</div>)}
                   </div>
-                </div>
-              ))}
+                  {stRows.map(r => {
+                    const dayCount = r.day_count ?? 1
+                    const dayCharge = r.charge
+                    const otCharge = r.ot_charge
+                    return (
+                      <div key={r.id}>
+                        {/* Row 1 — Day block */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 60px 90px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
+                          <div style={cellS}>
+                            <input value={r.studio} onChange={e => updateStRow(r.id, { studio: e.target.value })} style={inp} placeholder="Studio" />
+                            {r.date && <div style={{ fontSize: 9, color: '#4a4f64', marginTop: 2 }}>{r.date}</div>}
+                          </div>
+                          <div style={{ ...cellS, color: '#c8f04e', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em' }}>Day Rate</div>
+                          <div style={cellS}>
+                            <input
+                              type="number" min="1" step="1"
+                              value={dayCount}
+                              onChange={e => updateStRow(r.id, { day_count: parseInt(e.target.value) || 1 })}
+                              style={{ ...inp, width: 40 }}
+                            />
+                          </div>
+                          <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{r.rate ? `$${r.rate.replace(/[^0-9.]/g, '')}/day` : '—'}</div>
+                          <div style={{ ...cellS, color: dayCharge != null ? '#c8f04e' : '#8a8fa0', fontWeight: 600, borderRight: 'none' }}>
+                            {dayCharge != null ? `$${dayCharge.toFixed(2)}` : '—'}
+                          </div>
+                        </div>
+                        {/* Row 2 — Overtime */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 60px 90px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                          <div style={{ ...cellS, color: '#8a8fa0', fontStyle: 'italic', fontSize: 10 }}>Overtime</div>
+                          <div style={{ ...cellS, color: '#f0a24e', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em' }}>OT Rate</div>
+                          <div style={cellS}>
+                            <input
+                              type="number" min="0" step="0.5"
+                              value={r.ot_hours ?? '0'}
+                              onChange={e => updateStRow(r.id, { ot_hours: e.target.value })}
+                              style={{ ...inp, width: 40 }}
+                            />
+                          </div>
+                          <div style={cellS}>
+                            <input
+                              value={r.ot_rate ?? ''}
+                              onChange={e => updateStRow(r.id, { ot_rate: e.target.value })}
+                              style={inp}
+                              placeholder="$0/hr"
+                            />
+                          </div>
+                          <div style={{ ...cellS, color: otCharge != null ? '#f0a24e' : '#4a4f64', fontWeight: otCharge != null ? 600 : 400, borderRight: 'none' }}>
+                            {otCharge != null ? `$${otCharge.toFixed(2)}` : '$0.00'}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </>
+              ) : (
+                <>
+                  {/* Hourly: original layout */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '55px 90px 1fr 72px 72px 55px 90px 80px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                    {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Rate', 'Charge'].map(h => <div key={h} style={thS}>{h}</div>)}
+                  </div>
+                  {stRows.map(r => (
+                    <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '55px 90px 1fr 72px 72px 55px 90px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div style={cellS}><input value={r.studio} onChange={e => updateStRow(r.id, { studio: e.target.value })} style={inp} /></div>
+                      <div style={cellS}><input value={r.date} onChange={e => updateStRow(r.id, { date: e.target.value })} style={inp} /></div>
+                      <div style={cellS}><input value={r.session_info} onChange={e => updateStRow(r.id, { session_info: e.target.value })} style={inp} /></div>
+                      <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} /></div>
+                      <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} /></div>
+                      <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{r.total_hours != null ? r.total_hours : '—'}</div>
+                      <div style={cellS}><input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} style={inp} /></div>
+                      <div style={{ ...cellS, color: r.charge != null ? '#c8f04e' : '#8a8fa0', fontWeight: r.charge != null ? 600 : 400, borderRight: 'none' }}>
+                        {r.charge != null ? `$${r.charge.toFixed(2)}` : '—'}
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: '#1a1e28', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <button type="button" onClick={addStRow} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button>
+                {!isDayRate && <button type="button" onClick={addStRow} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button>}
+                {isDayRate && <div />}
                 <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0', fontWeight: 700 }}>Total: ${stTotal.toFixed(2)}</span>
               </div>
             </div>
