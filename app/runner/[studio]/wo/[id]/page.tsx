@@ -29,12 +29,15 @@ export default function RunnerWOPage() {
   const [equipRows, setEquipRows] = useState<any[]>([])
   const [sessionNotes, setSessionNotes] = useState('')
   const [needsAttentionNotes, setNeedsAttentionNotes] = useState('')
+  const [needsAttentionPhotos, setNeedsAttentionPhotos] = useState<string[]>([])
+  const [naUploading, setNaUploading] = useState(false)
+  const naFileRef = useRef<HTMLInputElement>(null)
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [runnerFinished, setRunnerFinished] = useState(false)
-  const [staffName, setStaffName] = useState('')
+  const [showFinishConfirm, setShowFinishConfirm] = useState(false)
 
   useEffect(() => {
     async function init() {
@@ -107,6 +110,7 @@ export default function RunnerWOPage() {
       setEquipRows(eq ?? [])
       setSessionNotes(woData?.session_notes ?? '')
       setNeedsAttentionNotes(woData?.needs_attention_notes ?? '')
+      setNeedsAttentionPhotos(woData?.needs_attention_photos ?? [])
       setRunnerFinished(
         woData?.runner_finished === true ||
         woData?.status === 'submitted' ||
@@ -212,22 +216,37 @@ export default function RunnerWOPage() {
     }
   }
 
+  async function uploadNAPhoto(file: File) {
+    if (!woRef.current) return
+    setNaUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `na-photos/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+    const { data, error } = await supabase.storage.from('expenses').upload(path, file)
+    if (!error && data) {
+      const { data: signed } = await supabase.storage.from('expenses').createSignedUrl(data.path, 60 * 60 * 24 * 365)
+      if (signed?.signedUrl) {
+        const updated = [...needsAttentionPhotos, signed.signedUrl]
+        setNeedsAttentionPhotos(updated)
+        await supabase.from('work_orders').update({ needs_attention_photos: updated }).eq('id', woRef.current)
+      }
+    }
+    setNaUploading(false)
+    if (naFileRef.current) naFileRef.current.value = ''
+  }
+
   async function handleFinish() {
-    if (!woRef.current || !staffName.trim()) { alert('Enter your initials first'); return }
+    if (!woRef.current) return
     setSubmitting(true)
     const now = new Date().toISOString()
     await supabase.from('work_orders').update({
-      session_notes: sessionNotes,
-      needs_attention_notes: needsAttentionNotes || null,
       runner_finished: true,
       runner_finished_at: now,
-      submitted_by: staffName.trim(),
       status: 'submitted',
       submitted_at: now,
     }).eq('id', woRef.current)
-    await saveExpenses()
     setSubmitting(false)
     setRunnerFinished(true)
+    setShowFinishConfirm(false)
   }
 
   async function handleSaveChanges() {
@@ -236,6 +255,7 @@ export default function RunnerWOPage() {
     await supabase.from('work_orders').update({
       session_notes: sessionNotes,
       needs_attention_notes: needsAttentionNotes || null,
+      needs_attention_photos: needsAttentionPhotos.length > 0 ? needsAttentionPhotos : null,
     }).eq('id', woRef.current)
     await saveExpenses()
     setSaving(false)
@@ -361,9 +381,24 @@ export default function RunnerWOPage() {
               width: '100%', background: '#0d0f14', border: '1px solid #2a2e3d',
               borderRadius: 8, padding: '10px 12px', color: '#e8eaf2', fontSize: 12,
               fontFamily: 'DM Mono, monospace', resize: 'vertical', minHeight: 80,
-              outline: 'none', boxSizing: 'border-box',
+              outline: 'none', boxSizing: 'border-box', marginBottom: 10,
             }}
           />
+          {/* Photo thumbnails */}
+          {needsAttentionPhotos.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+              {needsAttentionPhotos.map((url, i) => (
+                <a key={i} href={url} target="_blank" rel="noreferrer" style={{ display: 'block', flexShrink: 0 }}>
+                  <img src={url} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '2px solid #f9731655', display: 'block' }} />
+                </a>
+              ))}
+            </div>
+          )}
+          {/* Upload button */}
+          <input ref={naFileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadNAPhoto(f) }} />
+          <button onClick={() => naFileRef.current?.click()} disabled={naUploading} style={{ background: '#2a2e3d', border: 'none', borderRadius: 8, padding: '8px 14px', color: naUploading ? '#8b90a8' : '#e8eaf2', fontSize: 12, fontWeight: 600, cursor: naUploading ? 'not-allowed' : 'pointer', fontFamily: 'Syne, sans-serif' }}>
+            {naUploading ? 'Uploading…' : '📷 Add Photo'}
+          </button>
         </div>
 
         {/* Expenses */}
@@ -432,47 +467,45 @@ export default function RunnerWOPage() {
         </div>
       </div>
 
-      {/* Footer */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: '#0d0f14', borderTop: '1px solid #2a2e3d' }}>
-        {runnerFinished ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              <span style={{ fontSize: 11, color: '#4ade80', fontFamily: 'DM Mono, monospace', fontWeight: 700 }}>✓ Finished — submitted for admin review</span>
-            </div>
+      {/* Finish confirmation dialog */}
+      {showFinishConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}>
+          <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 16, padding: '24px 20px', width: '100%', maxWidth: 320 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#e8eaf2', marginBottom: 8, fontFamily: 'Syne, sans-serif' }}>Finish Work Order?</div>
+            <div style={{ fontSize: 13, color: '#8b90a8', fontFamily: 'DM Mono, monospace', marginBottom: 20, lineHeight: 1.5 }}>Are you sure this WO is complete?</div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={handleSaveChanges}
-                disabled={saving}
-                style={{ flex: 1, padding: '13px 0', background: '#1e2130', color: '#e8eaf2', border: '1px solid #2a2e3d', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'Syne, sans-serif' }}
-              >
-                {saving ? 'Saving…' : 'Save Changes'}
-              </button>
-              <button
-                onClick={() => router.push(`/runner/${studio}`)}
-                style={{ flex: 1, padding: '13px 0', background: meta.color, color: '#0d0f14', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
-              >
-                Back to {meta.label}
+              <button onClick={() => setShowFinishConfirm(false)} style={{ flex: 1, padding: '12px 0', background: '#2a2e3d', color: '#e8eaf2', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>Cancel</button>
+              <button onClick={handleFinish} disabled={submitting} style={{ flex: 1, padding: '12px 0', background: meta.color, color: '#0d0f14', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1, fontFamily: 'Syne, sans-serif' }}>
+                {submitting ? 'Finishing…' : 'Confirm'}
               </button>
             </div>
           </div>
-        ) : (
-          <div style={{ display: 'flex', gap: 10 }}>
-            <input
-              placeholder="Initials"
-              value={staffName}
-              onChange={e => setStaffName(e.target.value)}
-              maxLength={6}
-              style={{ width: 80, background: '#161920', border: '1px solid #2a2e3d', borderRadius: 10, padding: '14px 12px', color: '#e8eaf2', fontSize: 14, fontFamily: 'DM Mono, monospace', outline: 'none', textAlign: 'center', flexShrink: 0 }}
-            />
-            <button
-              onClick={handleFinish}
-              disabled={submitting}
-              style={{ flex: 1, padding: '14px 0', background: meta.color, color: '#0d0f14', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1, fontFamily: 'Syne, sans-serif' }}
-            >
-              {submitting ? 'Finishing…' : 'Finish Work Order'}
-            </button>
-          </div>
-        )}
+        </div>
+      )}
+
+      {/* Footer — Cancel | Save | Finish (always visible, WO stays editable after finish) */}
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: '#0d0f14', borderTop: '1px solid #2a2e3d' }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => router.push(`/runner/${studio}`)}
+            style={{ flex: 1, padding: '14px 0', background: '#1e2130', color: '#e8eaf2', border: '1px solid #2a2e3d', borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSaveChanges}
+            disabled={saving}
+            style={{ flex: 1, padding: '14px 0', background: '#1e2130', color: '#e8eaf2', border: '1px solid #2a2e3d', borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'Syne, sans-serif' }}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button
+            onClick={() => setShowFinishConfirm(true)}
+            style={{ flex: 2, padding: '14px 0', background: runnerFinished ? '#16a34a33' : meta.color, color: runnerFinished ? '#4ade80' : '#0d0f14', border: runnerFinished ? '1px solid #4ade8055' : 'none', borderRadius: 12, fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
+          >
+            {runnerFinished ? '✓ Finished' : 'Finish Work Order'}
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -33,6 +33,7 @@ type WO = {
   legal_name: string
   legal_date: string
   needs_attention_notes: string
+  needs_attention_photos: string[]
 }
 
 type StRow = {
@@ -156,6 +157,7 @@ function normalizeWO(d: any): WO {
     legal_name: d.legal_name ?? '',
     legal_date: d.legal_date ?? '',
     needs_attention_notes: d.needs_attention_notes ?? '',
+    needs_attention_photos: d.needs_attention_photos ?? [],
   }
 }
 
@@ -932,6 +934,15 @@ export function WorkOrderPopup({
               placeholder="Internal notes only — never appears on the PDF export…"
               style={{ width: '100%', minHeight: 80, background: '#1a1e28', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 5, color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }}
             />
+            {wo.needs_attention_photos?.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                {wo.needs_attention_photos.map((url, i) => (
+                  <a key={i} href={url} target="_blank" rel="noreferrer" style={{ display: 'block', flexShrink: 0 }}>
+                    <img src={url} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, border: '2px solid rgba(249,115,22,0.4)', display: 'block' }} />
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
 
         </div>{/* end body */}

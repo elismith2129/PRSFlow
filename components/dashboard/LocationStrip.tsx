@@ -454,15 +454,12 @@ export function LocationStrip() {
                     </div>
 
                     {(() => {
-                      const activeSessions = sessions.filter(({ wo }) =>
-                        !(wo?.admin_approved || wo?.status === 'approved')
-                      )
                       if (sessions.length === 0) {
                         return <div style={{ color: 'var(--text3)', fontSize: 12, fontFamily: 'Syne', padding: '10px 0' }}>No sessions booked today.</div>
                       }
-                      return activeSessions.length === 0 ? null : (
+                      return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          {activeSessions.map(({ booking: b, wo }) => (
+                          {sessions.map(({ booking: b, wo }) => (
                             <SessionCard key={b.id} b={b} wo={wo} />
                           ))}
                         </div>

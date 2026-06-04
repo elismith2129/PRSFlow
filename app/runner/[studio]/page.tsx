@@ -157,11 +157,20 @@ export default function StudioDailyOpsPage() {
                 return (
                   <div
                     key={b.id}
+                    onClick={() => {
+                      if (wo) {
+                        router.push(`/runner/${studio}/wo/${wo.id}`)
+                      } else {
+                        router.push(`/runner/${studio}/wo/new?booking_id=${b.id}`)
+                      }
+                    }}
                     style={{
                       background: '#161920',
                       border: '1px solid #2a2e3d',
                       borderRadius: 12,
                       padding: '14px 16px',
+                      cursor: 'pointer',
+                      WebkitTapHighlightColor: 'transparent',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
@@ -192,31 +201,7 @@ export default function StudioDailyOpsPage() {
                       )}
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      {woStatusBadge(wo)}
-                      <button
-                        onClick={() => {
-                          if (wo) {
-                            router.push(`/runner/${studio}/wo/${wo.id}`)
-                          } else {
-                            router.push(`/runner/${studio}/wo/new?booking_id=${b.id}`)
-                          }
-                        }}
-                        style={{
-                          background: meta.color,
-                          color: '#0d0f14',
-                          border: 'none',
-                          borderRadius: 8,
-                          padding: '7px 14px',
-                          fontSize: 12,
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          fontFamily: 'Syne, sans-serif',
-                        }}
-                      >
-                        {wo ? 'View WO' : 'Open WO'}
-                      </button>
-                    </div>
+                    {woStatusBadge(wo)}
                   </div>
                 )
               })}
