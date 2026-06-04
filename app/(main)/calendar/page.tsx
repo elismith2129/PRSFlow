@@ -3117,15 +3117,7 @@ function CalendarPageInner() {
           onDraftChange={(data) => {
             try { sessionStorage.setItem('cal_form_draft', JSON.stringify({ editBooking, formData: data })) } catch {}
           }}
-          onSaved={editBooking ? () => {
-            supabase.from('bookings').select('*').eq('id', editBooking.id).single()
-              .then(({ data }) => {
-                if (data) {
-                  setFormOpen(false)
-                  setTimeout(() => openEdit(data as Booking), 50)
-                }
-              })
-          } : undefined}
+          onSaved={undefined}
         />
       )}
     </div>
