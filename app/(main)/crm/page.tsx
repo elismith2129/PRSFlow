@@ -695,9 +695,13 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
   onUpdateStatus: (id: number, status: string) => Promise<void>
   loading: boolean
 }) {
-  const [activeTab, setActiveTab] = useState<NeedsActionTab>(() => {
-    try { return (sessionStorage.getItem('crm_na_tab') as NeedsActionTab) || 'uncontacted' } catch { return 'uncontacted' }
-  })
+  const [activeTab, setActiveTab] = useState<NeedsActionTab>('uncontacted')
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem('crm_na_tab') as NeedsActionTab
+      if (stored) setActiveTab(stored)
+    } catch {}
+  }, [])
   useEffect(() => {
     try { sessionStorage.setItem('crm_na_tab', activeTab) } catch {}
   }, [activeTab])
