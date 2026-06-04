@@ -1,7 +1,13 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+
+function getLocalToday(): string {
+  const now = new Date()
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
+  return now.toISOString().slice(0, 10)
+}
 
 const STUDIOS = [
   { key: 'paramount', label: 'Paramount', abbr: 'PRS', color: '#c8f04e' },
@@ -15,30 +21,43 @@ export default function RunnerPage() {
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    async function load() {
-      const today = new Date().toISOString().slice(0, 10)
-      const { data } = await supabase
-        .from('bookings')
-        .select('location, status')
-        .eq('start_date', today)
-        .not('status', 'eq', 'cancelled')
+  const today = getLocalToday()
 
-      const c: Record<string, number> = {}
-      for (const s of STUDIOS) c[s.key] = 0
-      for (const b of data ?? []) {
-        const loc = (b.location ?? '').toLowerCase()
-        for (const s of STUDIOS) {
-          if (loc.includes(s.key) || loc.includes(s.abbr.toLowerCase())) {
-            c[s.key] = (c[s.key] ?? 0) + 1
-          }
+  const load = useCallback(async () => {
+    const { data } = await supabase
+      .from('bookings')
+      .select('location, status')
+      .eq('start_date', today)
+      .not('status', 'eq', 'cancelled')
+
+    const c: Record<string, number> = {}
+    for (const s of STUDIOS) c[s.key] = 0
+    for (const b of data ?? []) {
+      const loc = (b.location ?? '').toLowerCase()
+      for (const s of STUDIOS) {
+        if (loc.includes(s.key) || loc.includes(s.abbr.toLowerCase())) {
+          c[s.key] = (c[s.key] ?? 0) + 1
         }
       }
-      setCounts(c)
-      setLoading(false)
     }
-    load()
-  }, [])
+    setCounts(c)
+    setLoading(false)
+  }, [today])
+
+  useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`runner-hub-${today}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'bookings',
+        filter: `start_date=eq.${today}`,
+      }, () => { load() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [today, load])
 
   return (
     <div style={{
