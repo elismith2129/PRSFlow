@@ -1,8 +1,14 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import type { Booking } from '@/lib/supabase'
+
+function getLocalToday(): string {
+  const now = new Date()
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
+  return now.toISOString().slice(0, 10)
+}
 
 const STUDIO_META: Record<string, { label: string; abbr: string; color: string }> = {
   paramount: { label: 'Paramount', abbr: 'PRS', color: '#c8f04e' },
@@ -22,40 +28,56 @@ export default function StudioDailyOpsPage() {
   const [woMap, setWoMap] = useState<Record<string, WOStatus>>({})
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    async function load() {
-      const now = new Date()
-      now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
-      const today = now.toISOString().slice(0, 10)
-      const { data: bData } = await supabase
-        .from('bookings')
-        .select('*')
-        .eq('start_date', today)
-        .eq('status', 'confirmed')
-        .order('from_time', { ascending: true })
+  // Stable today string — local calendar date matching how bookings are stored
+  const today = getLocalToday()
 
-      const filtered = (bData ?? []).filter((b: Booking) => {
-        const loc = (b.location ?? '').toLowerCase()
-        return loc.includes(studio) || loc.includes(meta.abbr.toLowerCase())
-      })
-      setBookings(filtered)
+  const load = useCallback(async () => {
+    const { data: bData } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('start_date', today)
+      .eq('status', 'confirmed')
+      .order('from_time', { ascending: true })
 
-      if (filtered.length > 0) {
-        const ids = filtered.map((b: Booking) => b.id)
-        const { data: wos } = await supabase
-          .from('work_orders')
-          .select('id, booking_id, status')
-          .in('booking_id', ids)
-        const map: Record<string, WOStatus> = {}
-        for (const wo of wos ?? []) {
-          if (wo.booking_id) map[wo.booking_id] = { id: wo.id, status: wo.status }
-        }
-        setWoMap(map)
+    const filtered = (bData ?? []).filter((b: Booking) => {
+      const loc = (b.location ?? '').toLowerCase()
+      return loc.includes(studio) || loc.includes(meta.abbr.toLowerCase())
+    })
+    setBookings(filtered)
+
+    if (filtered.length > 0) {
+      const ids = filtered.map((b: Booking) => b.id)
+      const { data: wos } = await supabase
+        .from('work_orders')
+        .select('id, booking_id, status')
+        .in('booking_id', ids)
+      const map: Record<string, WOStatus> = {}
+      for (const wo of wos ?? []) {
+        if (wo.booking_id) map[wo.booking_id] = { id: wo.id, status: wo.status }
       }
-      setLoading(false)
+      setWoMap(map)
+    } else {
+      setWoMap({})
     }
-    load()
-  }, [studio])
+    setLoading(false)
+  }, [studio, today, meta.abbr]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Initial load
+  useEffect(() => { load() }, [load])
+
+  // Real-time: re-run load on any booking change for today at this studio
+  useEffect(() => {
+    const channel = supabase
+      .channel(`runner-bookings-${studio}-${today}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'bookings',
+        filter: `start_date=eq.${today}`,
+      }, () => { load() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [studio, today, load])
 
   function statusBadge(status: string) {
     const colors: Record<string, string> = {
@@ -141,7 +163,7 @@ export default function StudioDailyOpsPage() {
         {/* Today's Sessions */}
         <div style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', marginBottom: 12 }}>
-            Today's Sessions
+            Today's Sessions{!loading && ` · ${bookings.length}`}
           </div>
 
           {loading ? (
