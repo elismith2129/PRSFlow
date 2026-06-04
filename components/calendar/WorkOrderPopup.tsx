@@ -204,7 +204,7 @@ export type WOFormSync = {
   producer: string; engineer_name: string; assistant_name: string
   payment_type: string; food_budget: boolean; food_amount: string
   invoice_num: string; start_date: string; end_date: string; studio: string; location: string
-  rate: string; rate_daily: string
+  rate: string; rate_daily: string; rate_type?: string
   notes?: string; engineer_status?: string
 }
 
@@ -325,7 +325,7 @@ export function WorkOrderPopup({
   // Day-rate only — hourly bookings manage rows manually.
   useEffect(() => {
     if (!wo || !liveForm || !woIdRef.current) return
-    const isDayRate = !!liveForm.rate_daily || booking.rate_type === 'day'
+    const isDayRate = liveForm.rate_type === 'daily' || !!liveForm.rate_daily
     if (!isDayRate) return
     const newStart = liveForm.start_date
     const newEnd = liveForm.end_date || liveForm.start_date
@@ -344,7 +344,7 @@ export function WorkOrderPopup({
       // Insert rows for new dates
       const missing = allDates.filter(d => !coveredDates.has(d))
       if (missing.length > 0) {
-        const rateRaw = liveForm.rate_daily || booking.rate_daily || ''
+        const rateRaw = liveForm.rate_daily || liveForm.rate || ''
         const dayRateNum = parseFloat(rateRaw.replace(/[^0-9.]/g, ''))
         const studio = liveForm.studio ? toStudioLetter(liveForm.studio) : (booking.studio ? toStudioLetter(booking.studio) : '')
         await supabase.from('studio_time_rows').insert(missing.map((d, i) => ({
@@ -374,9 +374,9 @@ export function WorkOrderPopup({
   // update rate/charge on every stRow in state and in the DB immediately.
   useEffect(() => {
     if (!wo || !liveForm || !woIdRef.current) return
-    const newRateRaw = liveForm.rate_daily || liveForm.rate
+    const isDayRate = liveForm.rate_type === 'daily' || !!liveForm.rate_daily
+    const newRateRaw = isDayRate ? liveForm.rate_daily : liveForm.rate
     if (!newRateRaw) return
-    const isDayRate = !!liveForm.rate_daily || booking.rate_type === 'day'
     const newRateNum = parseFloat(newRateRaw.replace(/[^0-9.]/g, ''))
     if (isNaN(newRateNum) || newRateNum <= 0) return
 
@@ -833,7 +833,7 @@ export function WorkOrderPopup({
   // ── Derived totals ─────────────────────────────────────────────────────────
 
   const stTotal = stRows.reduce((s, r) => s + (r.charge ?? 0) + (r.ot_charge ?? 0), 0)
-  const isDayRate = booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily)
+  const isDayRate = (liveForm?.rate_type === 'daily' || !!liveForm?.rate_daily) || (booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily))
   const rentTotal = rentRows.reduce((s, r) => s + (parseFloat(r.charge) || 0), 0)
   const grandTotal = stTotal + rentTotal
   const totalPaid = payRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
