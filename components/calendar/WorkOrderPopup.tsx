@@ -361,16 +361,34 @@ export function WorkOrderPopup({
             ? { ...r, from_time: from, to_time: to, total_hours: hrs }
             : { ...r, from_time: from, to_time: to, total_hours: hrs, charge: calcCharge(hrs, r.rate) }
         }
-        // Day-rate reconciliation: if the booking date range has grown since the WO was
-        // first created, insert rows for any dates not yet covered by existing rows.
+        // Day-rate reconciliation: always use DB as source of truth — never in-memory rows.
+        // This prevents duplicates from concurrent initWO calls (e.g. WO popup remounts).
         const isDay = booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily)
         if (isDay) {
+          // 1. Fresh DB read — ignore in-memory rows entirely
+          const { data: freshSt } = await supabase.from('studio_time_rows')
+            .select('id, date, created_at')
+            .eq('work_order_id', existing.id)
+            .order('created_at', { ascending: true })
+
+          // 2. Dedup: keep the earliest row per date, delete later duplicates
+          const keepByDate: Record<string, string> = {}
+          const dupeIds: string[] = []
+          for (const r of freshSt ?? []) {
+            if (keepByDate[r.date]) dupeIds.push(r.id)
+            else keepByDate[r.date] = r.id
+          }
+          if (dupeIds.length > 0) {
+            await supabase.from('studio_time_rows').delete().in('id', dupeIds)
+          }
+
+          // 3. Insert rows for dates not yet in DB
           const allDates = dateRange(booking.start_date, booking.end_date)
-          const coveredDates = new Set(rows.map(r => r.date))
+          const coveredDates = new Set(Object.keys(keepByDate))
           const missingDates = allDates.filter(d => !coveredDates.has(d))
           if (missingDates.length > 0) {
             const dayRateNum = parseFloat((booking.rate_daily ?? '').replace(/[^0-9.]/g, ''))
-            const missingPayloads = missingDates.map((d, i) => ({
+            await supabase.from('studio_time_rows').insert(missingDates.map((d, i) => ({
               work_order_id: existing.id,
               studio: studioLetter || booking.studio || '',
               date: d, session_info: '',
@@ -381,14 +399,17 @@ export function WorkOrderPopup({
               day_count: 1,
               ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
               ot_hours: 0, ot_charge: null,
-              sort_order: rows.length + i,
-            }))
-            const { data: inserted } = await supabase.from('studio_time_rows').insert(missingPayloads).select('*')
-            if (inserted) rows.push(...inserted.map(normalizeStRow))
+              sort_order: coveredDates.size + i,
+            })))
           }
-          rows.sort((a, b) => a.date.localeCompare(b.date))
+
+          // 4. Reload all rows fresh from DB — never merge in-memory arrays
+          const { data: reloaded } = await supabase.from('studio_time_rows')
+            .select('*').eq('work_order_id', existing.id).order('date')
+          setStRows((reloaded ?? []).map(normalizeStRow))
+        } else {
+          setStRows(rows)
         }
-        setStRows(rows)
       } else {
         // Existing WO has no studio time rows — auto-generate from booking
         const dates = dateRange(booking.start_date, booking.end_date)

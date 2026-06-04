@@ -198,6 +198,15 @@ function emptyForm(overrides: Partial<FormData> = {}): FormData {
   }
 }
 
+function dateRange(start: string, end: string): string[] {
+  const dates: string[] = []
+  const s = new Date(start + 'T12:00:00')
+  const e = new Date(end + 'T12:00:00')
+  const d = new Date(s)
+  while (d <= e) { dates.push(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 1) }
+  return dates
+}
+
 function bookingToForm(b: Booking): FormData {
   return {
     status: b.status, session_type: b.session_type, payment_type: b.payment_type,
@@ -2649,6 +2658,53 @@ function CalendarPageInner() {
       // Remove srs_log entry if SRS was toggled off
       if (!data.is_srs && editBooking.is_srs) {
         await supabase.from('srs_log').delete().eq('booking_id', editBooking.id)
+      }
+      // Day-rate only: sync studio_time_rows when booking date range changes
+      if (payload.rate_type === 'day') {
+        const { data: woRows } = await supabase.from('work_orders').select('id')
+          .eq('booking_id', editBooking.id).order('created_at', { ascending: false }).limit(1)
+        const woId = woRows?.[0]?.id
+        if (woId) {
+          const newDates = dateRange(data.start_date, data.end_date)
+          const { data: existingStRows } = await supabase.from('studio_time_rows')
+            .select('id, date, created_at').eq('work_order_id', woId).order('created_at', { ascending: true })
+
+          // Dedup: keep earliest row per date
+          const keepByDate: Record<string, string> = {}
+          const dupeIds: string[] = []
+          for (const r of existingStRows ?? []) {
+            if (keepByDate[r.date]) dupeIds.push(r.id)
+            else keepByDate[r.date] = r.id
+          }
+          if (dupeIds.length > 0) await supabase.from('studio_time_rows').delete().in('id', dupeIds)
+
+          const newDateSet = new Set(newDates)
+          const coveredDates = new Set(Object.keys(keepByDate))
+
+          // Delete rows for dates no longer in the booking range
+          const toRemove = Array.from(coveredDates).filter(d => !newDateSet.has(d)).map(d => keepByDate[d]).filter(Boolean)
+          if (toRemove.length > 0) await supabase.from('studio_time_rows').delete().in('id', toRemove)
+
+          // Insert rows for new dates
+          const missingDates = newDates.filter(d => !coveredDates.has(d))
+          if (missingDates.length > 0) {
+            const dayRateNum = parseFloat((payload.rate_daily ?? '').replace(/[^0-9.]/g, ''))
+            const studio = payload.studio?.match(/Studio\s+([A-Z])/i)?.[1]?.toUpperCase() ?? payload.studio ?? ''
+            await supabase.from('studio_time_rows').insert(missingDates.map((d, i) => ({
+              work_order_id: woId,
+              studio,
+              date: d, session_info: '',
+              from_time: payload.from_time ?? '', to_time: payload.to_time ?? '',
+              total_hours: null,
+              rate: payload.rate_daily ?? '',
+              charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
+              day_count: 1,
+              ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
+              ot_hours: 0, ot_charge: null,
+              sort_order: coveredDates.size + i,
+            })))
+          }
+        }
       }
     } else {
       const { data: inserted, error } = await supabase.from('bookings').insert(payload).select('id').single()
