@@ -2550,7 +2550,7 @@ function CalendarPageInner() {
         initial.label = isBilling ? (c.name || '') : ''
         initial.email = c.email || ''
         initial.phone = c.phone || ''
-        initial.artist = (c.artists && c.artists.length > 0) ? c.artists[0] : ''
+        if (!isBilling) initial.artist = (c.artists && c.artists.length > 0) ? c.artists[0] : ''
       }
       if (l) {
         if (l.session_date) { initial.start_date = l.session_date; initial.end_date = l.session_date }

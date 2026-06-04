@@ -253,17 +253,12 @@ export function LocationStrip() {
             <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: b.status === 'confirmed' ? col : 'var(--text3)', background: (b.status === 'confirmed' ? col : 'var(--text3)') + '22', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>{b.status}</span>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: needsAttention && !adminDone ? 8 : 10 }}>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 10 }}>
           {b.from_time && <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>{b.from_time}–{b.to_time ?? '?'}</span>}
           {(b as any).studio && <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>Studio {(b as any).studio}</span>}
           {(b as any).engineer_name && <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>Eng: {(b as any).engineer_name}</span>}
           {(b as any).payment_type && <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px' }}>{(b as any).payment_type}</span>}
         </div>
-        {needsAttention && !adminDone && wo?.needs_attention_notes && (
-          <div style={{ fontSize: 11, color: '#f97316', fontFamily: 'DM Mono, monospace', background: '#f9731610', border: '1px solid #f9731630', borderRadius: 6, padding: '6px 10px', marginBottom: 10, lineHeight: 1.5 }}>
-            {wo.needs_attention_notes.length > 120 ? wo.needs_attention_notes.slice(0, 120) + '…' : wo.needs_attention_notes}
-          </div>
-        )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 9, borderTop: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', minWidth: 22 }}>WO</span>
