@@ -167,10 +167,10 @@ export default function RunnerWOPage() {
       (async () => {
         const ext = file.name.split('.').pop()
         const path = `receipts/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-        const { error } = await supabase.storage.from('expenses').upload(path, file)
-        if (error) return null
-        const { data: signed } = await supabase.storage.from('expenses').createSignedUrl(path, 60 * 60 * 24 * 365)
-        return signed?.signedUrl ?? null
+        const { data, error } = await supabase.storage.from('checklist-photos').upload(path, file, { upsert: true })
+        if (error || !data) return null
+        const { data: { publicUrl } } = supabase.storage.from('checklist-photos').getPublicUrl(data.path)
+        return publicUrl ?? null
       })(),
       fetch('/api/ocr-receipt', {
         method: 'POST',
@@ -222,18 +222,16 @@ export default function RunnerWOPage() {
     const ext = file.name.split('.').pop()
     const path = `na-photos/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
 
-    const { data, error: uploadError } = await supabase.storage.from('expenses').upload(path, file)
+    const { data, error: uploadError } = await supabase.storage.from('checklist-photos').upload(path, file, { upsert: true })
     console.log('[NA photo] storage upload:', { data, error: uploadError })
 
     if (!uploadError && data) {
-      const { data: signed, error: signError } = await supabase.storage.from('expenses').createSignedUrl(data.path, 60 * 60 * 24 * 365)
-      console.log('[NA photo] createSignedUrl:', { signed, error: signError })
+      const { data: { publicUrl } } = supabase.storage.from('checklist-photos').getPublicUrl(data.path)
+      console.log('[NA photo] publicUrl:', publicUrl)
 
-      if (signed?.signedUrl) {
-        const url = signed.signedUrl
+      if (publicUrl) {
         let updated: string[] = []
-        setNeedsAttentionPhotos(prev => { updated = [...prev, url]; return updated })
-        // Allow state flush before DB write so `updated` is populated
+        setNeedsAttentionPhotos(prev => { updated = [...prev, publicUrl]; return updated })
         const { error: dbError } = await supabase.from('work_orders')
           .update({ needs_attention_photos: updated })
           .eq('id', woRef.current)
