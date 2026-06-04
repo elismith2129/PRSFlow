@@ -326,7 +326,12 @@ export default function RunnerWOPage() {
           {[
             [wo?.payment_status === 'Billing' ? 'Label / A&R' : 'Client',
              wo?.payment_status === 'Billing'
-               ? (booking?.label || wo?.label || booking?.client_name || wo?.client)
+               ? (() => {
+                   const lbl  = booking?.label || wo?.label || ''
+                   const anr  = booking?.client_name || wo?.client || ''
+                   if (lbl && anr) return `${lbl} / ${anr}`
+                   return lbl || anr || null
+                 })()
                : (booking?.client_name || wo?.client || wo?.client_name)],
             ['Artist',   booking?.artist   || wo?.artist],
             ['Engineer', booking?.engineer_name || wo?.engineer],
