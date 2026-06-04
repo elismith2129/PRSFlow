@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Engineer, EngineerRole, Booking } from '@/lib/supabase'
+import { DailyOpsLogSection } from '@/components/admin/DailyOpsLogSection'
 
 const ROLE_OPTIONS: EngineerRole[] = ['Engineer', 'Assistant', 'Both']
 
@@ -156,11 +157,12 @@ function EngModal({
   )
 }
 
-type AdminSection = 'engineers' | 'srs_log'
+type AdminSection = 'engineers' | 'srs_log' | 'daily_ops_log'
 
 const ADMIN_NAV: { key: AdminSection; label: string }[] = [
   { key: 'engineers', label: 'Engineers' },
   { key: 'srs_log', label: 'SRS Log' },
+  { key: 'daily_ops_log', label: 'Ops Log' },
 ]
 
 type SrsEntry = {
@@ -714,6 +716,8 @@ export default function AdminPage() {
           )}
         </div>
       )}
+
+      {section === 'daily_ops_log' && <DailyOpsLogSection />}
 
       {/* Modal */}
       {modalOpen && (
