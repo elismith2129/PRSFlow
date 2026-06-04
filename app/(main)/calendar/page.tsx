@@ -2659,50 +2659,79 @@ function CalendarPageInner() {
       if (!data.is_srs && editBooking.is_srs) {
         await supabase.from('srs_log').delete().eq('booking_id', editBooking.id)
       }
-      // Day-rate only: sync studio_time_rows when booking date range changes
-      if (payload.rate_type === 'day') {
+      // Sync studio_time_rows when booking is saved (date range and rate)
+      {
         const { data: woRows } = await supabase.from('work_orders').select('id')
           .eq('booking_id', editBooking.id).order('created_at', { ascending: false }).limit(1)
         const woId = woRows?.[0]?.id
         if (woId) {
-          const newDates = dateRange(data.start_date, data.end_date)
-          const { data: existingStRows } = await supabase.from('studio_time_rows')
-            .select('id, date, created_at').eq('work_order_id', woId).order('created_at', { ascending: true })
+          // Day-rate only: sync date range (add/remove rows)
+          if (payload.rate_type === 'day') {
+            const newDates = dateRange(data.start_date, data.end_date)
+            const { data: existingStRows } = await supabase.from('studio_time_rows')
+              .select('id, date, created_at').eq('work_order_id', woId).order('created_at', { ascending: true })
 
-          // Dedup: keep earliest row per date
-          const keepByDate: Record<string, string> = {}
-          const dupeIds: string[] = []
-          for (const r of existingStRows ?? []) {
-            if (keepByDate[r.date]) dupeIds.push(r.id)
-            else keepByDate[r.date] = r.id
+            // Dedup: keep earliest row per date
+            const keepByDate: Record<string, string> = {}
+            const dupeIds: string[] = []
+            for (const r of existingStRows ?? []) {
+              if (keepByDate[r.date]) dupeIds.push(r.id)
+              else keepByDate[r.date] = r.id
+            }
+            if (dupeIds.length > 0) await supabase.from('studio_time_rows').delete().in('id', dupeIds)
+
+            const newDateSet = new Set(newDates)
+            const coveredDates = new Set(Object.keys(keepByDate))
+
+            // Delete rows for dates no longer in the booking range
+            const toRemove = Array.from(coveredDates).filter(d => !newDateSet.has(d)).map(d => keepByDate[d]).filter(Boolean)
+            if (toRemove.length > 0) await supabase.from('studio_time_rows').delete().in('id', toRemove)
+
+            // Insert rows for new dates
+            const missingDates = newDates.filter(d => !coveredDates.has(d))
+            if (missingDates.length > 0) {
+              const dayRateNum = parseFloat((payload.rate_daily ?? '').replace(/[^0-9.]/g, ''))
+              const studio = payload.studio?.match(/Studio\s+([A-Z])/i)?.[1]?.toUpperCase() ?? payload.studio ?? ''
+              await supabase.from('studio_time_rows').insert(missingDates.map((d, i) => ({
+                work_order_id: woId,
+                studio,
+                date: d, session_info: '',
+                from_time: payload.from_time ?? '', to_time: payload.to_time ?? '',
+                total_hours: null,
+                rate: payload.rate_daily ?? '',
+                charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
+                day_count: 1,
+                ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
+                ot_hours: 0, ot_charge: null,
+                sort_order: coveredDates.size + i,
+              })))
+            }
           }
-          if (dupeIds.length > 0) await supabase.from('studio_time_rows').delete().in('id', dupeIds)
 
-          const newDateSet = new Set(newDates)
-          const coveredDates = new Set(Object.keys(keepByDate))
-
-          // Delete rows for dates no longer in the booking range
-          const toRemove = Array.from(coveredDates).filter(d => !newDateSet.has(d)).map(d => keepByDate[d]).filter(Boolean)
-          if (toRemove.length > 0) await supabase.from('studio_time_rows').delete().in('id', toRemove)
-
-          // Insert rows for new dates
-          const missingDates = newDates.filter(d => !coveredDates.has(d))
-          if (missingDates.length > 0) {
-            const dayRateNum = parseFloat((payload.rate_daily ?? '').replace(/[^0-9.]/g, ''))
-            const studio = payload.studio?.match(/Studio\s+([A-Z])/i)?.[1]?.toUpperCase() ?? payload.studio ?? ''
-            await supabase.from('studio_time_rows').insert(missingDates.map((d, i) => ({
-              work_order_id: woId,
-              studio,
-              date: d, session_info: '',
-              from_time: payload.from_time ?? '', to_time: payload.to_time ?? '',
-              total_hours: null,
-              rate: payload.rate_daily ?? '',
-              charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
-              day_count: 1,
-              ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
-              ot_hours: 0, ot_charge: null,
-              sort_order: coveredDates.size + i,
-            })))
+          // Sync rate on all existing studio_time_rows
+          const newRateRaw = payload.rate_type === 'day' ? (payload.rate_daily ?? '') : (payload.rate ?? '')
+          const newRateNum = parseFloat(newRateRaw.replace(/[^0-9.]/g, ''))
+          if (!isNaN(newRateNum) && newRateNum > 0) {
+            const { data: stRows } = await supabase.from('studio_time_rows')
+              .select('id, rate, day_count, ot_rate, total_hours')
+              .eq('work_order_id', woId)
+            await Promise.all((stRows ?? []).map((r: any) => {
+              const update: Record<string, any> = { rate: newRateRaw }
+              if (payload.rate_type === 'day') {
+                const dayCount = r.day_count ?? 1
+                update.charge = parseFloat((dayCount * newRateNum).toFixed(2))
+                const oldRateNum = parseFloat((r.rate ?? '').replace(/[^0-9.]/g, ''))
+                const derivedOldOtRate = oldRateNum > 0 ? parseFloat((oldRateNum / 10).toFixed(2)) : -1
+                const currentOtRate = parseFloat(String(r.ot_rate ?? '0'))
+                if (Math.abs(currentOtRate - derivedOldOtRate) < 0.01) {
+                  update.ot_rate = parseFloat((newRateNum / 10).toFixed(2))
+                }
+              } else {
+                const hrs = r.total_hours != null ? Number(r.total_hours) : null
+                update.charge = hrs != null && hrs > 0 ? parseFloat((hrs * newRateNum).toFixed(2)) : null
+              }
+              return supabase.from('studio_time_rows').update(update).eq('id', r.id)
+            }))
           }
         }
       }

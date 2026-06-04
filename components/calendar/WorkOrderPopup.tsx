@@ -368,7 +368,7 @@ export function WorkOrderPopup({
         setStRows((reloaded ?? []).map(normalizeStRow))
       }
     })()
-  }, [liveForm?.start_date, liveForm?.end_date]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [liveForm?.start_date, liveForm?.end_date, wo?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Issue 2 — Live rate sync: when rate or rate_daily changes on the booking form,
   // update rate/charge on every stRow in state and in the DB immediately.
@@ -420,7 +420,7 @@ export function WorkOrderPopup({
         return supabase.from('studio_time_rows').update(update).eq('id', r.id)
       }))
     })()
-  }, [liveForm?.rate, liveForm?.rate_daily]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [liveForm?.rate, liveForm?.rate_daily, wo?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function initWO() {
     const { data: rows } = await supabase
