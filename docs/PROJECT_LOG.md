@@ -43,6 +43,19 @@ This applies to all new tables going forward. Existing tables are unaffected unt
 - **Lead detail card uses 2-column layouts for space efficiency.** Contact section: Email/Phone on the left, Created/Last Contact on the right (gap 48px). Session & Quote section: Location·Studio + Session Date on the left, Quote/Rate + Start–End times on the right (gap 48px). Location and Studio dropdowns cascade — selecting a venue populates the studio options for that venue only.
 - **Time inputs use 12-hour format with smart parsing.** Accepts `8p` → `8:00 PM`, `830a` → `8:30 AM`, `1830` → `6:30 PM` (24h converted), bare `8` → `8:00 AM`. Saves on Enter or Tab (blur). Legacy 24h values stored in DB are converted for display transparently.
 
+### Runner Hub & Daily Ops
+- **UTC → local date for all runner date queries.** `new Date().toISOString().slice(0, 10)` returns the UTC date — after 5 PM PDT this is already tomorrow. Every runner page now uses timezone-offset correction: `const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); return now.toISOString().slice(0, 10)`. This is also shared as `getLocalToday()` module helper where used across multiple effects. Same fix applied to `getYesterday` in LocationStrip (replaced entirely with `getLocalDateStr(offsetDays = 0)`).
+- **Runner WO footer: Cancel / Save / Finish three-button layout.** Cancel navigates back without saving. Save persists current state and returns to studio hub (`router.push(/runner/[studio])`). Finish shows an inline confirmation dialog ("Are you sure this WO is complete?") before setting `runner_finished = true`, `runner_finished_at`, `status = 'submitted'`. WO remains fully editable after finishing — Finish is a status signal, not a lock. The confirmation dialog uses `showFinishConfirm` state; on confirm `handleFinish` fires.
+- **Approved WOs stay visible in the Today panel until 8am the next day.** Previously, approving a WO immediately removed it from the LocationStrip Today column. The 8am operational-day cutoff (handled by `getLocalDateStr()`) already ages items off naturally when `today` advances. The immediate `activeSessions` filter (`!(wo?.admin_approved || wo?.status === 'approved')`) was removed — Today now shows all sessions for the current operational day regardless of approval state. SessionCard shows visual done-state via the Admin checkbox.
+- **Needs Attention photos stored in `checklist-photos` Supabase Storage bucket.** There is no separate `expenses` bucket — that bucket was never created. Both WO expense receipts and runner Needs Attention photos upload to the `checklist-photos` public bucket (`upsert: true`, `getPublicUrl()`). A migration SQL file at `supabase/storage-expenses-bucket.sql` is provided for creating a private `expenses` bucket if isolation is needed in the future.
+- **Supabase Realtime: tables must be added to the publication + REPLICA IDENTITY FULL.** `postgres_changes` subscriptions connect (show `SUBSCRIBED` status) but events don't fire unless the table is both in the `supabase_realtime` publication AND has `REPLICA IDENTITY FULL` set. Without `FULL`, filtered subscriptions (e.g. `id=eq.xxx`) don't match because Postgres only includes PK columns in the WAL by default. Required SQL: `ALTER PUBLICATION supabase_realtime ADD TABLE bookings; ... REPLICA IDENTITY FULL`. Tables currently enabled: `bookings`, `work_orders`, `studio_time_rows`, `equipment_condition_rows`.
+- **Real-time subscription pattern for runner pages.** Each page uses two `useEffect` hooks: one for initial load (via `useCallback` so the same `load` function is stable across effects), one for the subscription (depends on the stable `load`). Subscriptions use `postgres_changes` with column-equality filters (`start_date=eq.${today}`, `id=eq.${woId}`, `session_date=eq.${today}`). Cleanup via `return () => { supabase.removeChannel(channel) }`. On the runner studio page two separate channels subscribe to `bookings` (any change) and `work_orders` (UPDATE only, by `session_date`). On the WO page, UPDATE on `work_orders` by ID triggers a full re-fetch of the WO record + linked booking + studio time rows — only `sessionNotes`, `needsAttentionNotes`, `needsAttentionPhotos`, and `equipConds` are kept (separate state vars, not in `wo`).
+- **Runner studio page shows all non-cancelled bookings, not just confirmed.** Changed from `.eq('status', 'confirmed')` to `.not('status', 'eq', 'cancelled')` to match what the admin LocationStrip shows. Confirmed, tentative, tour, tech, and open_hours sessions all show.
+- **Daily Ops Log is an admin sidebar tab.** The standalone `/daily-ops-log` route is kept for direct linking but the component (`components/admin/DailyOpsLogSection.tsx`) is also embedded as a tab in the Admin page sidebar alongside Engineers and SRS Log. The component re-fetches fresh on every tab switch (conditional render means it mounts/unmounts each time). Fetches `work_orders` with `admin_approved=true OR status=approved` and `daily_ops_submissions` with `admin_approved_at != null`.
+- **WO card in admin daily ops drawer: artist name is the hero.** SessionCard hero line is `b.artist || b.client_name || '—'`. Label/client name appears smaller underneath only when both are present. This matches how calendar blocks display sessions.
+- **Runner WO Session Info block reads from live booking record.** On init, the runner WO page first fetches the `work_orders` row (to get `booking_id`), then in parallel fetches the linked `bookings` row + studio time rows + equipment condition rows + expense rows. The `booking` state is the source of truth for client name, artist, engineer, date, time, studio — the `wo` snapshot fields are fallbacks. This means admin changes to the booking are always reflected when the runner opens the WO.
+- **Label/A&R field on runner WO shows "Label / A&R: Interscope / Stephen Baynes".** For billing bookings, the Session Info field label is `"Label / A&R"` (not `"Client"`). The value combines `booking?.label || wo?.label` (label name) with `booking?.client_name || wo?.client` (A&R contact name) separated by ` / `. If only one is present, that alone is shown.
+
 ### UI patterns
 - **Clients page = unified two-column view.** List on left, full editable profile in right panel. No separate `/clients/[id]` route. URL uses query param `/clients?id=<uuid>` for shareability.
 - **"Start Booking" replaces "Book Client" everywhere.** Always visible green button on lead detail cards and client profiles. On leads without a client record it opens ConfirmClientModal (creates client, navigates to `/clients?id=...`); on leads or clients that already have a client record it navigates directly to `/calendar?newBooking=1&clientId=...` with form pre-filled. "View Client" button was removed as redundant.
@@ -147,7 +160,7 @@ This applies to all new tables going forward. Existing tables are unaffected unt
 
 ---
 
-*Last updated: June 3, 2026 — Supabase GRANT policy change documented. See session notes below.*
+*Last updated: June 3, 2026 — WO & daily ops amendment, runner hub real-time subscriptions, NA photos, ops log tab, multiple runner fixes documented.*
 
 ---
 
@@ -497,3 +510,88 @@ Previous approach: `handleClose` fired `onFormSync` to push WO values into booki
 - **Engineer edit-in-place:** Clicking the `● EngineerName` button opens the search input pre-filled with the current name. Escape or blur-without-selection reverts to original name + status. Implementation uses `engEditingRef` (a ref) alongside `engEditing` state — refs are always current in blur `setTimeout` closures, avoiding the stale closure issue that caused status to reset to 'hold'. The Escape handler sets `engApplied.current = true` (not `engEditingRef = false`) so the subsequent blur from unmount skips `applyEng`. Blur is the single place that clears `engEditingRef`.
 - **TBD button:** Inactive state now fully grey (`var(--text3)` text, `var(--border)` outline). Turns red only when active.
 - **Multi-day sessions:** FROM/TO time inputs replaced with static `"Edit times in WO"` label (grayed out). Staff know per-day times are edited in the studio time table rows inside the WO.
+
+---
+
+### June 3, 2026 — WO & Daily Ops Amendment (Steps 1–9)
+
+Large session touching runner WO form, dashboard daily ops, checklists, and adding the Daily Ops Log page.
+
+**Schema additions (run in Supabase SQL editor):**
+- `work_orders`: added `needs_attention_notes TEXT`, `runner_finished BOOLEAN DEFAULT false`, `runner_finished_at TIMESTAMPTZ`, `admin_approved BOOLEAN DEFAULT false`, `admin_approved_at TIMESTAMPTZ`, `needs_attention_photos JSONB`
+- `checklists`: added `needs_attention_notes TEXT`, `needs_attention_photos JSONB`
+- `tasks` table: new — for flagging attention items linked to submissions on submit
+
+**Runner WO page (`app/runner/[studio]/wo/[id]/page.tsx`):**
+- Submit button → Finish button. On click: `runner_finished = true`, `runner_finished_at = now()`, `status = 'submitted'`. Confirmation dialog ("Are you sure this WO is complete?") guards accidental finish. WO remains fully editable after finishing (no lock).
+- Save Changes button persists session notes + NA fields without finishing; navigates back to studio hub on save.
+- Needs Attention section: textarea for internal notes (never printed — `data-no-print` attribute), photo upload via `checklist-photos` storage bucket, photo thumbnails with ✕ delete button. Admin sees thumbnails read-only in WorkOrderPopup.
+- Cancel button navigates back without saving (all three footer buttons always visible).
+- Session Info block fetches the linked `bookings` row on load for live data; shows "Label / A&R: LabelName / ContactName" for billing bookings.
+- Real-time subscription on `work_orders` (filtered by `id=eq.${resolvedWoId}`): on UPDATE, full re-fetch of WO + booking + studio time rows; runner's edited fields (session notes, NA, equip conditions) are separate state vars and are not overwritten.
+
+**Dashboard LocationStrip (`components/dashboard/LocationStrip.tsx`):**
+- `getYesterday(today: string)` replaced with `getLocalDateStr(offsetDays = 0)` — uses local time components to avoid UTC date rollover bug after 5 PM PDT.
+- Two-column drawer: Yesterday (unapproved items only; "All clear" empty state) / Today (all sessions regardless of approval status).
+- Approved WOs and ops submissions disappear from Yesterday automatically once approved. Today shows everything until the operational day (8am) advances.
+- Orange ⚠ Needs Attention badge on SessionCard when `runner_finished = true` AND `needs_attention_notes` is present; hidden once admin approves.
+- View/Edit button on SessionCard opens WorkOrderPopup inline. `onSaved` refetches the drawer. Both the runner WO page and admin WorkOrderPopup write the same `work_orders` row — single source of truth.
+- Real-time subscriptions: `bookings` (filtered `start_date=eq.${today}`) + `work_orders` (filtered `session_date=eq.${today}`, UPDATE only). Both call `load()` on any event.
+
+**Checklists (`app/runner/[studio]/checklist/[type]/page.tsx`):**
+- Needs Attention now auto-flags from content rather than a manual toggle — `needs_attention` on the submission is set when `notes` or `photos` are present.
+- Notes + photos debounce combined into a single `useEffect` so they always save together.
+- On Submit: if attention content is present, inserts a row in `tasks` table linking the submission.
+- DailyOpsModal reads `needs_attention_notes` column directly for display.
+
+**Daily Ops Log page (`app/(main)/daily-ops-log/page.tsx` + `components/admin/DailyOpsLogSection.tsx`):**
+- New route `/daily-ops-log` added to nav (between Admin and SOP).
+- Shows all approved WOs (`admin_approved=true OR status=approved`) + all approved ops submissions (`admin_approved_at != null`), sorted by approval time descending.
+- Filter controls: studio, type (Work Order / checklist categories), date range.
+- Clicking a WO row opens WorkOrderPopup. Clicking an ops row opens DailyOpsModal.
+- Component extracted to `components/admin/DailyOpsLogSection.tsx` and embedded as a tab in the Admin sidebar alongside Engineers and SRS Log.
+
+---
+
+### June 3, 2026 — Runner hub and WO fixes (post-amendment)
+
+**UTC → local date fix (`e9d8a71`):**
+- `getYesterday(today)` in LocationStrip replaced with `getLocalDateStr(offsetDays)` (local time components, no UTC rollover).
+- Runner studio page `load()` date computation changed from `toISOString().slice(0,10)` to local-time construction using `getTimezoneOffset()`.
+
+**Four runner fixes (`344c915`):**
+- Runner WO footer redesigned: Cancel (back, no save) | Save (saves + navigates to studio hub) | Finish (confirmation dialog → sets `runner_finished`). Always three buttons, WO stays editable after finish.
+- Needs Attention photo thumbnails: upload to `checklist-photos` public bucket; `getPublicUrl()` replaces signed URLs; thumbnails shown with ✕ delete button; photos saved to `work_orders.needs_attention_photos` immediately on upload.
+- Runner hub session cards: entire card is the tap target (`onClick` on outer div); Open WO button removed; `cursor: pointer` + `WebkitTapHighlightColor: transparent` for clean iPhone tap.
+- Approved WOs 8am rule: removed `activeSessions` filter that was hiding approved WOs from Today column immediately; they now stay until the operational day advances (via `getLocalDateStr()`).
+
+**NA photo storage bucket fix (`9a619e3`):**
+- `expenses` bucket never existed. Switched both WO expense receipts and NA photos to `checklist-photos` (public, confirmed working). `supabase/storage-expenses-bucket.sql` added for future private bucket if needed.
+
+**WO z-index fix (`9085861`):**
+- WorkOrderPopup `zIndex` raised from `10000` → `10010` so it renders above the LocationStrip drawer (`10001`). Both the loading portal and main portal updated.
+
+**Artist field fixes for label bookings (`5a79d59`, `bb9f43e`):**
+- `applyClientAutofill`: for label clients (`labelName` truthy), `artist` field is now set to `''` instead of pre-filling from the roster's first entry.
+- Client suggestion dropdown: `sub` (subtitle under label name) no longer shows the first roster artist — just empty, consistent with not pre-filling.
+- Booking form `openEdit` path: when navigating from "Start Booking" with a label client, `initial.artist` only pre-fills for non-billing clients (`if (!isBilling)`).
+
+**WO card artist hero layout + NA note snippet (`bcfed21`, `5a79d59`):**
+- SessionCard in LocationStrip: artist name is now the hero (large, bold); client/label name appears smaller underneath when both exist. Fallback to client name if no artist.
+- NA note text snippet removed from SessionCard — only the ⚠ badge shows; note text was cluttering the card.
+
+**Ops Log moved to Admin sidebar (`b6efd77`):**
+- `DailyOpsLogSection` extracted to `components/admin/DailyOpsLogSection.tsx`.
+- Admin sidebar: new "Ops Log" tab alongside Engineers and SRS Log. `AdminSection` type extended to `'engineers' | 'srs_log' | 'daily_ops_log'`.
+- Standalone `/daily-ops-log` route simplified to wrap the component.
+
+**Runner WO Session Info sync and Label/A&R field (`10ca3f5`, `07c1d91`, `cac21f2`):**
+- WO page init: fetches WO first (to get `booking_id`), then in parallel fetches linked booking + rows. `booking` state is source of truth for session info.
+- "Label / A&R" label replaces "Client" for billing bookings. Value combines label name + A&R contact name as `"Interscope / Stephen Baynes"` (` / ` separator); falls back gracefully if either is missing.
+
+**Real-time subscriptions across runner pages (`12e1ce2`, `93276e5`, `3f862a4`, `c13524a`, `b6dc2e9`, `dd2a19c`):**
+- Runner hub (`/runner`): `bookings` subscription filtered by `start_date=eq.${today}`; session counts per studio update live.
+- Runner studio page (`/runner/[studio]`): `bookings` + `work_orders` subscriptions for today. WO status badges update live when admin approves.
+- Runner WO page: `work_orders` subscription by ID triggers full re-fetch (WO + booking + studio time rows).
+- All runner pages: filter changed from `.eq('status', 'confirmed')` to `.not('status', 'eq', 'cancelled')` to match the admin view.
+- `console.log` debug statements added to each subscription: subscribe/status/event/unsubscribe. Confirmed subscriptions connect (SUBSCRIBED) but events don't fire without `ALTER PUBLICATION supabase_realtime ADD TABLE` + `REPLICA IDENTITY FULL` on each table.
