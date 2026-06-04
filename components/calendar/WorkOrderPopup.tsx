@@ -353,6 +353,33 @@ export function WorkOrderPopup({
             ? { ...r, from_time: from, to_time: to, total_hours: hrs }
             : { ...r, from_time: from, to_time: to, total_hours: hrs, charge: calcCharge(hrs, r.rate) }
         }
+        // Day-rate reconciliation: if the booking date range has grown since the WO was
+        // first created, insert rows for any dates not yet covered by existing rows.
+        const isDay = booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily)
+        if (isDay) {
+          const allDates = dateRange(booking.start_date, booking.end_date)
+          const coveredDates = new Set(rows.map(r => r.date))
+          const missingDates = allDates.filter(d => !coveredDates.has(d))
+          if (missingDates.length > 0) {
+            const dayRateNum = parseFloat((booking.rate_daily ?? '').replace(/[^0-9.]/g, ''))
+            const missingPayloads = missingDates.map((d, i) => ({
+              work_order_id: existing.id,
+              studio: studioLetter || booking.studio || '',
+              date: d, session_info: '',
+              from_time: booking.from_time ?? '', to_time: booking.to_time ?? '',
+              total_hours: null,
+              rate: booking.rate_daily ?? '',
+              charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
+              day_count: 1,
+              ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
+              ot_hours: 0, ot_charge: null,
+              sort_order: rows.length + i,
+            }))
+            const { data: inserted } = await supabase.from('studio_time_rows').insert(missingPayloads).select('*')
+            if (inserted) rows.push(...inserted.map(normalizeStRow))
+          }
+          rows.sort((a, b) => a.date.localeCompare(b.date))
+        }
         setStRows(rows)
       } else {
         // Existing WO has no studio time rows — auto-generate from booking
