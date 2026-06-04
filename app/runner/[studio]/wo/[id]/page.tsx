@@ -194,6 +194,34 @@ export default function RunnerWOPage() {
     }
   }, [resolvedWoId])
 
+  // Re-fetch stRows when the page becomes visible again or every 30 seconds,
+  // so admin changes to studio_time_rows (booking save, rate sync) show up
+  // without requiring a full page reload.
+  useEffect(() => {
+    if (!resolvedWoId) return
+
+    async function refetchStRows() {
+      const { data: st } = await supabase
+        .from('studio_time_rows')
+        .select('*')
+        .eq('work_order_id', resolvedWoId!)
+        .order('sort_order')
+      if (st) setStRows(st)
+    }
+
+    function handleVisibility() {
+      if (document.visibilityState === 'visible') refetchStRows()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility)
+    const interval = setInterval(refetchStRows, 30000)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      clearInterval(interval)
+    }
+  }, [resolvedWoId])
+
   async function toggleEquip(eq: string, date: string, val: 'ok' | 'not_ok') {
     const key = `${eq}||${date}`
     const newVal = equipConds[key] === val ? null : val
