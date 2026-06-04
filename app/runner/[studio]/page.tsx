@@ -65,7 +65,7 @@ export default function StudioDailyOpsPage() {
   // Initial load
   useEffect(() => { load() }, [load])
 
-  // Real-time: re-run load on any booking change for today at this studio
+  // Real-time: re-run load on any booking change for today
   useEffect(() => {
     const channel = supabase
       .channel(`runner-bookings-${studio}-${today}`)
@@ -74,6 +74,20 @@ export default function StudioDailyOpsPage() {
         schema: 'public',
         table: 'bookings',
         filter: `start_date=eq.${today}`,
+      }, () => { load() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [studio, today, load])
+
+  // Real-time: re-run load when a WO for today is updated (e.g. admin approves)
+  useEffect(() => {
+    const channel = supabase
+      .channel(`runner-wos-${studio}-${today}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'work_orders',
+        filter: `session_date=eq.${today}`,
       }, () => { load() })
       .subscribe()
     return () => { supabase.removeChannel(channel) }

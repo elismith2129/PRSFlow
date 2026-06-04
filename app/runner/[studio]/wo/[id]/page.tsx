@@ -145,7 +145,9 @@ export default function RunnerWOPage() {
     init()
   }, [woIdParam, bookingId])
 
-  // Real-time subscription: sync read-only header fields when admin edits the WO
+  // Real-time: full re-fetch when admin edits the WO record
+  // sessionNotes, needsAttentionNotes, needsAttentionPhotos, and equipConds
+  // are separate state vars and are never touched here.
   useEffect(() => {
     if (!resolvedWoId) return
 
@@ -158,28 +160,15 @@ export default function RunnerWOPage() {
         filter: `id=eq.${resolvedWoId}`,
       }, async (payload) => {
         const updated = payload.new as any
-        // Update only the read-only header fields — do not touch sessionNotes,
-        // needsAttentionNotes, needsAttentionPhotos, equipConds, stRows, or expenses
-        setWo((prev: any) => prev ? {
-          ...prev,
-          client:         updated.client,
-          client_name:    updated.client_name,
-          artist:         updated.artist,
-          engineer:       updated.engineer,
-          session_date:   updated.session_date,
-          from_time:      updated.from_time,
-          to_time:        updated.to_time,
-          studios:        updated.studios,
-          label:          updated.label,
-          ordered_by:     updated.ordered_by,
-          payment_status: updated.payment_status,
-        } : prev)
-        // Re-fetch linked booking so header reflects booking edits too
-        if (updated.booking_id) {
-          const { data: bkData } = await supabase
-            .from('bookings').select('*').eq('id', updated.booking_id).single()
-          if (bkData) setBooking(bkData)
-        }
+        setWo(updated)
+        const [{ data: bkData }, { data: st }] = await Promise.all([
+          updated.booking_id
+            ? supabase.from('bookings').select('*').eq('id', updated.booking_id).single()
+            : Promise.resolve({ data: null }),
+          supabase.from('studio_time_rows').select('*').eq('work_order_id', resolvedWoId).order('sort_order'),
+        ])
+        if (bkData) setBooking(bkData)
+        if (st) setStRows(st)
       })
       .subscribe()
 
