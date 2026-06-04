@@ -325,7 +325,9 @@ export default function RunnerWOPage() {
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', marginBottom: 10 }}>Session Info</div>
           {[
             [wo?.payment_status === 'Billing' ? 'Label / A&R' : 'Client',
-             booking?.client_name || wo?.client || wo?.client_name],
+             wo?.payment_status === 'Billing'
+               ? (booking?.label || wo?.label || booking?.client_name || wo?.client)
+               : (booking?.client_name || wo?.client || wo?.client_name)],
             ['Artist',   booking?.artist   || wo?.artist],
             ['Engineer', booking?.engineer_name || wo?.engineer],
             ['Date',     booking?.start_date   || wo?.session_date],
