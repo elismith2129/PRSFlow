@@ -209,4 +209,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   [data-wo-portal] [style*="marginBottom: 16"] { margin-bottom: 6px !important; }
   [data-wo-portal] [style*="marginBottom: 12"],
   [data-wo-portal] [style*="marginBottom: 8"]  { margin-bottom: 3px !important; }
+
+  /* Studio time scroll container: show all rows in print/PDF, no clipping */
+  [data-st-scroll] { max-height: none !important; overflow: visible !important; }
 }

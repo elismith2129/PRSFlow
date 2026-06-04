@@ -404,109 +404,107 @@ export default function RunnerWOPage() {
         {/* Studio Time */}
         {stRows.length > 0 && (() => {
           const isDayRate = booking?.rate_type === 'day' || (!booking?.rate && !!booking?.rate_daily)
-          const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid #2a2e3d' }
-          const labelStyle: React.CSSProperties = { fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }
-          const valueStyle: React.CSSProperties = { fontSize: 11, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }
-          const chargeStyle: React.CSSProperties = { fontSize: 12, color: meta.color, fontWeight: 700, fontFamily: 'DM Mono, monospace' }
-          const lockedStyle: React.CSSProperties = { fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }
+
+          const thStyle: React.CSSProperties = {
+            padding: '5px 8px', fontSize: 8, fontFamily: 'Syne, sans-serif', fontWeight: 700,
+            letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: '#8b90a8',
+            borderRight: '1px solid #2a2e3d',
+          }
+          const tdStyle: React.CSSProperties = {
+            padding: '8px 8px', fontSize: 11, fontFamily: 'DM Mono, monospace', color: '#e8eaf2',
+            borderRight: '1px solid #2a2e3d', display: 'flex', alignItems: 'center',
+          }
 
           const stTotal = stRows.reduce((s: number, r: any) => {
-            const day = parseFloat(String(r.charge ?? '0')) || 0
-            const ot = isDayRate
-              ? (() => {
-                  const h = parseFloat(otHours[r.id] ?? String(r.ot_hours ?? '0')) || 0
-                  const rate = parseFloat(String(r.ot_rate ?? '0')) || 0
-                  return h > 0 && rate > 0 ? h * rate : 0
-                })()
-              : 0
-            return s + day + ot
+            if (isDayRate) {
+              const rateNum = parseFloat(String(r.rate ?? '').replace(/[^0-9.]/g, '')) || 0
+              const dayCount = r.day_count ?? 1
+              const dayCharge = rateNum * dayCount
+              const otHrs = parseFloat(otHours[r.id] ?? String(r.ot_hours ?? '0')) || 0
+              const otRateNum = parseFloat(String(r.ot_rate ?? '0')) || 0
+              return s + dayCharge + (otHrs > 0 && otRateNum > 0 ? otHrs * otRateNum : 0)
+            }
+            return s + (parseFloat(String(r.charge ?? '0')) || 0)
           }, 0)
 
           return (
-            <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, padding: '14px 14px', marginBottom: 16 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', marginBottom: 12 }}>Studio Time</div>
+            <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', padding: '12px 14px 8px' }}>Studio Time</div>
               {isDayRate ? (
-                stRows.map((r: any, i: number) => {
-                  const dayCount = r.day_count ?? 1
-                  const dayCharge = parseFloat(String(r.charge ?? '0')) || 0
-                  const otRate = parseFloat(String(r.ot_rate ?? '0')) || 0
-                  const currentOtHrs = parseFloat(otHours[r.id] ?? String(r.ot_hours ?? '0')) || 0
-                  const liveOtCharge = currentOtHrs > 0 && otRate > 0 ? parseFloat((currentOtHrs * otRate).toFixed(2)) : 0
-                  return (
-                    <div key={r.id} style={{ marginBottom: i < stRows.length - 1 ? 16 : 0 }}>
-                      {/* Day block — locked */}
-                      <div style={{ background: '#0d0f14', borderRadius: 8, padding: '10px 12px', marginBottom: 8 }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: meta.color, marginBottom: 8 }}>Day Rate</div>
-                        <div style={rowStyle}>
-                          <span style={labelStyle}>Studio</span>
-                          <span style={lockedStyle}>{r.studio || booking?.studio || '—'}</span>
-                        </div>
-                        <div style={rowStyle}>
-                          <span style={labelStyle}>Days</span>
-                          <span style={lockedStyle}>{dayCount} day{dayCount !== 1 ? 's' : ''}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={labelStyle}>Rate</span>
-                          <span style={lockedStyle}>${r.rate?.replace(/[^0-9.]/g, '') || '—'}/day</span>
-                        </div>
-                        <div style={{ textAlign: 'right', marginTop: 6 }}>
-                          <span style={chargeStyle}>${dayCharge.toFixed(2)}</span>
-                        </div>
-                      </div>
-                      {/* OT block — hours editable */}
-                      <div style={{ background: '#0d0f14', borderRadius: 8, padding: '10px 12px' }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#f0a24e', marginBottom: 8 }}>Overtime</div>
-                        <div style={rowStyle}>
-                          <span style={labelStyle}>OT Rate</span>
-                          <span style={lockedStyle}>${otRate.toFixed(2)}/hr</span>
-                        </div>
-                        <div style={{ ...rowStyle, borderBottom: 'none', marginBottom: 0, paddingBottom: 0 }}>
-                          <span style={labelStyle}>OT Hours</span>
-                          <input
-                            type="number" min="0" step="0.5"
-                            value={otHours[r.id] ?? String(r.ot_hours ?? '0')}
-                            onChange={e => setOtHours(prev => ({ ...prev, [r.id]: e.target.value }))}
-                            style={{
-                              background: '#1a1e28', border: '1px solid #3a3f52', borderRadius: 6,
-                              color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 14,
-                              padding: '6px 10px', width: 80, textAlign: 'right', outline: 'none',
-                            }}
-                          />
-                        </div>
-                        <div style={{ textAlign: 'right', marginTop: 6 }}>
-                          <span style={{ ...chargeStyle, color: liveOtCharge > 0 ? '#f0a24e' : '#4a4f64' }}>${liveOtCharge.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })
-              ) : (
-                stRows.map((r: any) => (
-                  <div key={r.id} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid #2a2e3d' }}>
-                    <div style={rowStyle}>
-                      <span style={labelStyle}>Studio</span>
-                      <span style={valueStyle}>{r.studio || '—'}</span>
-                    </div>
-                    <div style={rowStyle}>
-                      <span style={labelStyle}>Time</span>
-                      <span style={valueStyle}>{[r.from_time, r.to_time].filter(Boolean).join(' – ') || '—'}</span>
-                    </div>
-                    <div style={rowStyle}>
-                      <span style={labelStyle}>Hours</span>
-                      <span style={valueStyle}>{r.total_hours ?? '—'}</span>
-                    </div>
-                    <div style={rowStyle}>
-                      <span style={labelStyle}>Rate</span>
-                      <span style={valueStyle}>{r.rate ? `$${r.rate.replace(/[^0-9.]/g, '')}/hr` : '—'}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={labelStyle}>Charge</span>
-                      <span style={chargeStyle}>{r.charge != null ? `$${parseFloat(r.charge).toFixed(2)}` : '—'}</span>
-                    </div>
+                <>
+                  {/* Day-rate compact table */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 80px 55px 75px 75px', background: '#0d0f14', borderTop: '1px solid #2a2e3d', borderBottom: '1px solid #2a2e3d' }}>
+                    {['Date', 'Session Info', 'Day Rate', 'OT Hrs', 'OT Charge', 'Total'].map(h => <div key={h} style={thStyle}>{h}</div>)}
                   </div>
-                ))
+                  <div style={{ overflowY: stRows.length > 5 ? 'auto' : 'visible', maxHeight: stRows.length > 5 ? 200 : undefined }}>
+                    {stRows.map((r: any) => {
+                      const rateNum = parseFloat(String(r.rate ?? '').replace(/[^0-9.]/g, '')) || 0
+                      const dayCount = r.day_count ?? 1
+                      const dayCharge = rateNum * dayCount
+                      const currentOtHrs = parseFloat(otHours[r.id] ?? String(r.ot_hours ?? '0')) || 0
+                      const otRateNum = parseFloat(String(r.ot_rate ?? '0')) || 0
+                      const liveOtCharge = currentOtHrs > 0 && otRateNum > 0 ? currentOtHrs * otRateNum : 0
+                      const rowTotal = dayCharge + liveOtCharge
+                      return (
+                        <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '70px 1fr 80px 55px 75px 75px', borderBottom: '1px solid #2a2e3d' }}>
+                          <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>{r.date || '—'}</div>
+                          <div style={{ ...tdStyle, color: '#8b90a8' }}>{r.session_info || '—'}</div>
+                          <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>
+                            {rateNum > 0 ? `$${rateNum.toLocaleString()} × ${dayCount}` : '—'}
+                          </div>
+                          <div style={{ ...tdStyle, justifyContent: 'center' }}>
+                            <input
+                              type="number" min="0" step="0.5"
+                              value={otHours[r.id] ?? String(r.ot_hours ?? '0')}
+                              onChange={e => setOtHours(prev => ({ ...prev, [r.id]: e.target.value }))}
+                              style={{
+                                background: '#1a1e28', border: '1px solid #3a3f52', borderRadius: 6,
+                                color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 13,
+                                padding: '4px 6px', width: 44, textAlign: 'center', outline: 'none',
+                              }}
+                            />
+                          </div>
+                          <div style={{ ...tdStyle, color: liveOtCharge > 0 ? '#f0a24e' : '#4a4f64', fontWeight: liveOtCharge > 0 ? 600 : 400 }}>
+                            {liveOtCharge > 0 ? `$${liveOtCharge.toFixed(2)}` : '$0.00'}
+                          </div>
+                          <div style={{ ...tdStyle, color: rowTotal > 0 ? meta.color : '#4a4f64', fontWeight: 700, borderRight: 'none' }}>
+                            {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : '—'}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Hourly: original stacked layout */}
+                  {stRows.map((r: any) => (
+                    <div key={r.id} style={{ padding: '10px 14px', borderBottom: '1px solid #2a2e3d' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Studio</span>
+                        <span style={{ fontSize: 11, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }}>{r.studio || '—'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Time</span>
+                        <span style={{ fontSize: 11, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }}>{[r.from_time, r.to_time].filter(Boolean).join(' – ') || '—'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Hours</span>
+                        <span style={{ fontSize: 11, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }}>{r.total_hours ?? '—'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Rate</span>
+                        <span style={{ fontSize: 11, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }}>{r.rate ? `$${r.rate.replace(/[^0-9.]/g, '')}/hr` : '—'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Charge</span>
+                        <span style={{ fontSize: 12, color: meta.color, fontWeight: 700, fontFamily: 'DM Mono, monospace' }}>{r.charge != null ? `$${parseFloat(r.charge).toFixed(2)}` : '—'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </>
               )}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8, paddingTop: 8, borderTop: '1px solid #2a2e3d' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 14px', borderTop: '1px solid #2a2e3d' }}>
                 <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: '#e8eaf2' }}>
                   Total: <span style={{ color: meta.color }}>${stTotal.toFixed(2)}</span>
                 </span>

@@ -166,6 +166,15 @@ function normalizeWO(d: any): WO {
 }
 
 function normalizeStRow(d: any): StRow {
+  const dayCount = d.day_count != null ? Number(d.day_count) : null
+  const rate = d.rate ?? ''
+  // For day-rate rows, always recompute charge from day_count × rate so that
+  // rows seeded before the new columns existed (which stored hours × rate) display correctly.
+  let charge = d.charge != null ? Number(d.charge) : null
+  if (dayCount != null) {
+    const rateNum = parseFloat(String(rate).replace(/[^0-9.]/g, ''))
+    charge = !isNaN(rateNum) && rateNum > 0 ? parseFloat((dayCount * rateNum).toFixed(2)) : null
+  }
   return {
     id: d.id,
     studio: d.studio ?? '',
@@ -174,10 +183,10 @@ function normalizeStRow(d: any): StRow {
     from_time: d.from_time ?? '',
     to_time: d.to_time ?? '',
     total_hours: d.total_hours != null ? Number(d.total_hours) : null,
-    rate: d.rate ?? '',
-    charge: d.charge != null ? Number(d.charge) : null,
+    rate,
+    charge,
     sort_order: d.sort_order ?? 0,
-    day_count: d.day_count != null ? Number(d.day_count) : null,
+    day_count: dayCount,
     ot_rate: d.ot_rate != null ? String(d.ot_rate) : '',
     ot_hours: d.ot_hours != null ? String(d.ot_hours) : '0',
     ot_charge: d.ot_charge != null ? Number(d.ot_charge) : null,
@@ -339,7 +348,10 @@ export function WorkOrderPopup({
           const from = liveForm.from_time || r.from_time
           const to   = liveForm.to_time   || r.to_time
           const hrs  = calcHours(from, to)
-          rows[0] = { ...r, from_time: from, to_time: to, total_hours: hrs, charge: calcCharge(hrs, r.rate) }
+          // Day-rate rows keep their day_count-based charge; only update times for hourly rows
+          rows[0] = r.day_count != null
+            ? { ...r, from_time: from, to_time: to, total_hours: hrs }
+            : { ...r, from_time: from, to_time: to, total_hours: hrs, charge: calcCharge(hrs, r.rate) }
         }
         setStRows(rows)
       } else {
@@ -835,63 +847,47 @@ export function WorkOrderPopup({
             <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
               {isDayRate ? (
                 <>
-                  {/* Day-rate: two visual rows per DB row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 60px 90px 80px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                    {['Studio / Label', 'Type', 'Qty', 'Rate', 'Charge'].map(h => <div key={h} style={thS}>{h}</div>)}
+                  {/* Day-rate: compact single-row-per-day table */}
+                  {/* Header — sticky so it stays visible when body scrolls */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 44px 80px 55px 80px 80px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                    {['Date', 'Session Info', 'Days', 'Rate', 'OT Hrs', 'OT Rate', 'Total'].map(h => <div key={h} style={thS}>{h}</div>)}
                   </div>
-                  {stRows.map(r => {
-                    const dayCount = r.day_count ?? 1
-                    const dayCharge = r.charge
-                    const otCharge = r.ot_charge
-                    return (
-                      <div key={r.id}>
-                        {/* Row 1 — Day block */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 60px 90px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
+                  {/* Body — scrollable after 5 rows; print override via [data-st-scroll] in globals.css */}
+                  <div data-st-scroll="" style={{ overflowY: stRows.length > 5 ? 'auto' : 'visible', maxHeight: stRows.length > 5 ? 200 : undefined }}>
+                    {stRows.map(r => {
+                      const dayCount = r.day_count ?? 1
+                      const rateNum = parseFloat((r.rate ?? '').replace(/[^0-9.]/g, ''))
+                      const dayCharge = !isNaN(rateNum) && rateNum > 0 ? dayCount * rateNum : 0
+                      const otHrs = parseFloat(r.ot_hours ?? '0') || 0
+                      const otRateNum = parseFloat((r.ot_rate ?? '').replace(/[^0-9.]/g, '')) || 0
+                      const otCharge = otHrs > 0 && otRateNum > 0 ? otHrs * otRateNum : 0
+                      const rowTotal = dayCharge + otCharge
+                      return (
+                        <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '75px 1fr 44px 80px 55px 80px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                          <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{r.date || '—'}</div>
+                          <div style={cellS}><input value={r.session_info} onChange={e => updateStRow(r.id, { session_info: e.target.value })} style={inp} placeholder="—" /></div>
                           <div style={cellS}>
-                            <input value={r.studio} onChange={e => updateStRow(r.id, { studio: e.target.value })} style={inp} placeholder="Studio" />
-                            {r.date && <div style={{ fontSize: 9, color: '#4a4f64', marginTop: 2 }}>{r.date}</div>}
-                          </div>
-                          <div style={{ ...cellS, color: '#c8f04e', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em' }}>Day Rate</div>
-                          <div style={cellS}>
-                            <input
-                              type="number" min="1" step="1"
-                              value={dayCount}
+                            <input type="number" min="1" step="1" value={dayCount}
                               onChange={e => updateStRow(r.id, { day_count: parseInt(e.target.value) || 1 })}
-                              style={{ ...inp, width: 40 }}
-                            />
+                              style={{ ...inp, width: 32 }} />
                           </div>
-                          <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{r.rate ? `$${r.rate.replace(/[^0-9.]/g, '')}/day` : '—'}</div>
-                          <div style={{ ...cellS, color: dayCharge != null ? '#c8f04e' : '#8a8fa0', fontWeight: 600, borderRight: 'none' }}>
-                            {dayCharge != null ? `$${dayCharge.toFixed(2)}` : '—'}
-                          </div>
-                        </div>
-                        {/* Row 2 — Overtime */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 60px 90px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                          <div style={{ ...cellS, color: '#8a8fa0', fontStyle: 'italic', fontSize: 10 }}>Overtime</div>
-                          <div style={{ ...cellS, color: '#f0a24e', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em' }}>OT Rate</div>
+                          <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{rateNum > 0 ? `$${rateNum.toLocaleString()}/day` : '—'}</div>
                           <div style={cellS}>
-                            <input
-                              type="number" min="0" step="0.5"
-                              value={r.ot_hours ?? '0'}
+                            <input type="number" min="0" step="0.5" value={r.ot_hours ?? '0'}
                               onChange={e => updateStRow(r.id, { ot_hours: e.target.value })}
-                              style={{ ...inp, width: 40 }}
-                            />
+                              style={{ ...inp, width: 40 }} />
                           </div>
                           <div style={cellS}>
-                            <input
-                              value={r.ot_rate ?? ''}
-                              onChange={e => updateStRow(r.id, { ot_rate: e.target.value })}
-                              style={inp}
-                              placeholder="$0/hr"
-                            />
+                            <input value={r.ot_rate ?? ''} onChange={e => updateStRow(r.id, { ot_rate: e.target.value })}
+                              style={inp} placeholder="$0/hr" />
                           </div>
-                          <div style={{ ...cellS, color: otCharge != null ? '#f0a24e' : '#4a4f64', fontWeight: otCharge != null ? 600 : 400, borderRight: 'none' }}>
-                            {otCharge != null ? `$${otCharge.toFixed(2)}` : '$0.00'}
+                          <div style={{ ...cellS, color: rowTotal > 0 ? '#c8f04e' : '#8a8fa0', fontWeight: 600, borderRight: 'none' }}>
+                            {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : '—'}
                           </div>
                         </div>
-                      </div>
-                    )
-                  })}
+                      )
+                    })}
+                  </div>
                 </>
               ) : (
                 <>
@@ -899,20 +895,22 @@ export function WorkOrderPopup({
                   <div style={{ display: 'grid', gridTemplateColumns: '55px 90px 1fr 72px 72px 55px 90px 80px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                     {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Rate', 'Charge'].map(h => <div key={h} style={thS}>{h}</div>)}
                   </div>
-                  {stRows.map(r => (
-                    <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '55px 90px 1fr 72px 72px 55px 90px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                      <div style={cellS}><input value={r.studio} onChange={e => updateStRow(r.id, { studio: e.target.value })} style={inp} /></div>
-                      <div style={cellS}><input value={r.date} onChange={e => updateStRow(r.id, { date: e.target.value })} style={inp} /></div>
-                      <div style={cellS}><input value={r.session_info} onChange={e => updateStRow(r.id, { session_info: e.target.value })} style={inp} /></div>
-                      <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} /></div>
-                      <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} /></div>
-                      <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{r.total_hours != null ? r.total_hours : '—'}</div>
-                      <div style={cellS}><input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} style={inp} /></div>
-                      <div style={{ ...cellS, color: r.charge != null ? '#c8f04e' : '#8a8fa0', fontWeight: r.charge != null ? 600 : 400, borderRight: 'none' }}>
-                        {r.charge != null ? `$${r.charge.toFixed(2)}` : '—'}
+                  <div data-st-scroll="" style={{ overflowY: stRows.length > 5 ? 'auto' : 'visible', maxHeight: stRows.length > 5 ? 200 : undefined }}>
+                    {stRows.map(r => (
+                      <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '55px 90px 1fr 72px 72px 55px 90px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div style={cellS}><input value={r.studio} onChange={e => updateStRow(r.id, { studio: e.target.value })} style={inp} /></div>
+                        <div style={cellS}><input value={r.date} onChange={e => updateStRow(r.id, { date: e.target.value })} style={inp} /></div>
+                        <div style={cellS}><input value={r.session_info} onChange={e => updateStRow(r.id, { session_info: e.target.value })} style={inp} /></div>
+                        <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} /></div>
+                        <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} /></div>
+                        <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{r.total_hours != null ? r.total_hours : '—'}</div>
+                        <div style={cellS}><input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} style={inp} /></div>
+                        <div style={{ ...cellS, color: r.charge != null ? '#c8f04e' : '#8a8fa0', fontWeight: r.charge != null ? 600 : 400, borderRight: 'none' }}>
+                          {r.charge != null ? `$${r.charge.toFixed(2)}` : '—'}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: '#1a1e28', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
