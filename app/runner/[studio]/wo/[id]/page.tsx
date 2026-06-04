@@ -41,6 +41,11 @@ export default function RunnerWOPage() {
   const [runnerFinished, setRunnerFinished] = useState(false)
   const [showFinishConfirm, setShowFinishConfirm] = useState(false)
   const [otHours, setOtHours] = useState<Record<string, string>>({})
+  const [equipNotes, setEquipNotes] = useState<Record<string, { id: string; note: string; photo_urls: string[] }>>({})
+  const [openNoteKey, setOpenNoteKey] = useState<string | null>(null)
+  const [noteUploading, setNoteUploading] = useState(false)
+  const equipNoteFileRef = useRef<HTMLInputElement>(null)
+  const pendingNoteKey = useRef<{ key: string; equipment: string; date: string } | null>(null)
 
   useEffect(() => {
     async function init() {
@@ -105,19 +110,25 @@ export default function RunnerWOPage() {
       // Fetch WO first to get booking_id, then fetch linked booking + rows in parallel
       const { data: woData } = await supabase.from('work_orders').select('*').eq('id', resolvedId).single()
 
-      const [{ data: bkData }, { data: st }, { data: eq }, { data: exp }] = await Promise.all([
+      const [{ data: bkData }, { data: st }, { data: eq }, { data: exp }, { data: eqNotes }] = await Promise.all([
         woData?.booking_id
           ? supabase.from('bookings').select('*').eq('id', woData.booking_id).single()
           : Promise.resolve({ data: null }),
         supabase.from('studio_time_rows').select('*').eq('work_order_id', resolvedId).order('sort_order'),
         supabase.from('equipment_condition_rows').select('*').eq('work_order_id', resolvedId),
         supabase.from('expense_rows').select('*').eq('work_order_id', resolvedId).order('created_at'),
+        supabase.from('equipment_condition_notes').select('*').eq('work_order_id', resolvedId),
       ])
 
       setWo(woData)
       setBooking(bkData)
       setStRows(st ?? [])
       setEquipRows(eq ?? [])
+      if (eqNotes?.length) {
+        const map: Record<string, { id: string; note: string; photo_urls: string[] }> = {}
+        for (const n of eqNotes) map[`${n.equipment}||${n.date}`] = { id: n.id, note: n.note ?? '', photo_urls: n.photo_urls ?? [] }
+        setEquipNotes(map)
+      }
       setSessionNotes(woData?.session_notes ?? '')
       setNeedsAttentionNotes(woData?.needs_attention_notes ?? '')
       setNeedsAttentionPhotos(woData?.needs_attention_photos ?? [])
@@ -187,11 +198,44 @@ export default function RunnerWOPage() {
     const key = `${eq}||${date}`
     const newVal = equipConds[key] === val ? null : val
     setEquipConds(prev => ({ ...prev, [key]: newVal }))
-
     const row = equipRows.find((r: any) => r.equipment === eq && r.date === date)
     if (row) {
       await supabase.from('equipment_condition_rows').update({ condition: newVal }).eq('id', row.id)
     }
+    if (newVal === 'not_ok') setOpenNoteKey(key)
+    else setOpenNoteKey(prev => prev === key ? null : prev)
+  }
+
+  async function upsertEquipNote(key: string, equipment: string, date: string, updates: { note?: string; photo_urls?: string[] }) {
+    if (!woRef.current) return
+    const current = equipNotes[key]
+    const merged = { note: current?.note ?? '', photo_urls: current?.photo_urls ?? [], ...updates }
+    if (current?.id) {
+      await supabase.from('equipment_condition_notes').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', current.id)
+      setEquipNotes(prev => ({ ...prev, [key]: { ...prev[key], ...updates } }))
+    } else {
+      const { data } = await supabase.from('equipment_condition_notes').insert({
+        work_order_id: woRef.current, equipment, date, note: merged.note, photo_urls: merged.photo_urls,
+      }).select('id').single()
+      if (data) setEquipNotes(prev => ({ ...prev, [key]: { id: data.id, note: merged.note, photo_urls: merged.photo_urls } }))
+    }
+  }
+
+  async function uploadEquipNotePhoto(file: File) {
+    const pending = pendingNoteKey.current
+    if (!pending || !woRef.current) return
+    setNoteUploading(true)
+    const ext = file.name.split('.').pop() ?? 'jpg'
+    const path = `equip-notes/${woRef.current}/${pending.equipment.toLowerCase()}_${pending.date}_${Date.now()}.${ext}`
+    const { data, error } = await supabase.storage.from('checklist-photos').upload(path, file, { upsert: true })
+    if (!error && data) {
+      const { data: { publicUrl } } = supabase.storage.from('checklist-photos').getPublicUrl(data.path)
+      const currentPhotos = equipNotes[pending.key]?.photo_urls ?? []
+      await upsertEquipNote(pending.key, pending.equipment, pending.date, { photo_urls: [...currentPhotos, publicUrl] })
+    }
+    setNoteUploading(false)
+    if (equipNoteFileRef.current) equipNoteFileRef.current.value = ''
+    pendingNoteKey.current = null
   }
 
   async function addExpense() {
@@ -519,35 +563,60 @@ export default function RunnerWOPage() {
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', marginBottom: 12 }}>
               Equipment Condition
             </div>
+            <input ref={equipNoteFileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) uploadEquipNotePhoto(f) }} />
             {EQUIPMENT.map(eq => (
               <div key={eq} style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#e8eaf2', marginBottom: 6 }}>{eq}</div>
                 {sessionDates.map(date => {
                   const key = `${eq}||${date}`
                   const cond = equipConds[key]
+                  const hasNote = !!(equipNotes[key]?.note || (equipNotes[key]?.photo_urls?.length ?? 0) > 0)
+                  const isOpen = openNoteKey === key
                   return (
-                    <div key={date} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-                      <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace', minWidth: 72 }}>{date}</span>
-                      <button
-                        onClick={() => toggleEquip(eq, date, 'ok')}
-                        style={{
-                          flex: 1, padding: '7px 0', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700,
-                          background: cond === 'ok' ? '#16a34a33' : '#2a2e3d',
-                          color: cond === 'ok' ? '#4ade80' : '#8b90a8',
-                        }}
-                      >
-                        ✓ OK
-                      </button>
-                      <button
-                        onClick={() => toggleEquip(eq, date, 'not_ok')}
-                        style={{
-                          flex: 1, padding: '7px 0', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700,
-                          background: cond === 'not_ok' ? '#dc262633' : '#2a2e3d',
-                          color: cond === 'not_ok' ? '#f87171' : '#8b90a8',
-                        }}
-                      >
-                        ✗ Not OK
-                      </button>
+                    <div key={date}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                        <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace', minWidth: 72 }}>{date}</span>
+                        <button
+                          onClick={() => toggleEquip(eq, date, 'ok')}
+                          style={{ flex: 1, padding: '7px 0', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, background: cond === 'ok' ? '#16a34a33' : '#2a2e3d', color: cond === 'ok' ? '#4ade80' : '#8b90a8' }}
+                        >✓ OK</button>
+                        <button
+                          onClick={() => toggleEquip(eq, date, 'not_ok')}
+                          style={{ flex: 1, padding: '7px 0', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, background: cond === 'not_ok' ? '#dc262633' : '#2a2e3d', color: cond === 'not_ok' ? '#f87171' : '#8b90a8' }}
+                        >✗ Not OK</button>
+                        {cond === 'not_ok' && hasNote && (
+                          <span style={{ width: 8, height: 8, borderRadius: 4, background: '#f0a24e', flexShrink: 0 }} />
+                        )}
+                      </div>
+                      {/* Inline note expansion — only when Not OK and open */}
+                      {cond === 'not_ok' && isOpen && (
+                        <div style={{ marginLeft: 80, marginBottom: 8, background: '#0d0f14', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 8, padding: '10px 12px' }}>
+                          <textarea
+                            value={equipNotes[key]?.note ?? ''}
+                            onChange={e => setEquipNotes(prev => ({ ...prev, [key]: { ...(prev[key] ?? { id: '', photo_urls: [] }), note: e.target.value } }))}
+                            onBlur={e => upsertEquipNote(key, eq, date, { note: e.target.value })}
+                            placeholder="Describe the issue…"
+                            style={{ width: '100%', background: 'transparent', border: '1px solid #2a2e3d', borderRadius: 6, color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 12, padding: '8px 10px', resize: 'vertical', outline: 'none', boxSizing: 'border-box', minHeight: 64 }}
+                          />
+                          {(equipNotes[key]?.photo_urls?.length ?? 0) > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                              {equipNotes[key].photo_urls.map((url, i) => (
+                                <a key={i} href={url} target="_blank" rel="noreferrer">
+                                  <img src={url} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(249,115,22,0.3)', display: 'block' }} />
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                          <button
+                            onClick={() => { pendingNoteKey.current = { key, equipment: eq, date }; equipNoteFileRef.current?.click() }}
+                            disabled={noteUploading}
+                            style={{ marginTop: 8, background: '#2a2e3d', border: 'none', borderRadius: 6, padding: '7px 14px', color: noteUploading ? '#8b90a8' : '#e8eaf2', fontSize: 12, fontWeight: 600, cursor: noteUploading ? 'not-allowed' : 'pointer', fontFamily: 'Syne, sans-serif' }}
+                          >
+                            {noteUploading ? 'Uploading…' : '📷 Add Photo'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )
                 })}

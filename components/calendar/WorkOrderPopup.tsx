@@ -193,6 +193,8 @@ function normalizeStRow(d: any): StRow {
   }
 }
 
+type EquipNote = { id: string; note: string; photo_urls: string[] }
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 // Shared fields that sync between booking form and WO
@@ -234,10 +236,15 @@ export function WorkOrderPopup({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [dirtyFields, setDirtyFields] = useState<Set<string>>(new Set())
+  const [equipNotes, setEquipNotes] = useState<Record<string, EquipNote>>({})
+  const [openNoteKey, setOpenNoteKey] = useState<string | null>(null)
+  const [noteUploading, setNoteUploading] = useState(false)
   const woIdRef = useRef<string | null>(null)
   // Track which rows exist in DB (vs. local-only new rows)
   const rentIdsInDb = useRef<Set<string>>(new Set())
   const payIdsInDb = useRef<Set<string>>(new Set())
+  const equipNoteFileRef = useRef<HTMLInputElement>(null)
+  const pendingNoteKey = useRef<{ key: string; equipment: string; date: string } | null>(null)
 
   // Map liveForm fields onto WO state — seeds WO from current booking form values on open
   function applyLiveForm(base: WO): WO {
@@ -334,11 +341,12 @@ export function WorkOrderPopup({
       }
       const seededExisting = applyLiveForm({ ...normalizeWO(existing), studios })
       setWo(seededExisting)
-      const [{ data: st }, { data: eq }, { data: rent }, { data: pay }] = await Promise.all([
+      const [{ data: st }, { data: eq }, { data: rent }, { data: pay }, { data: eqNotes }] = await Promise.all([
         supabase.from('studio_time_rows').select('*').eq('work_order_id', existing.id).order('sort_order'),
         supabase.from('equipment_condition_rows').select('*').eq('work_order_id', existing.id),
         supabase.from('rental_rows').select('*').eq('work_order_id', existing.id).order('sort_order'),
         supabase.from('payment_rows').select('*').eq('work_order_id', existing.id).order('recorded_at'),
+        supabase.from('equipment_condition_notes').select('*').eq('work_order_id', existing.id),
       ])
       if (st?.length) {
         const isSingleDay = booking.start_date === booking.end_date || !booking.end_date
@@ -420,6 +428,11 @@ export function WorkOrderPopup({
         }
       }
       if (eq?.length) setEquipRows(eq as EquipRow[])
+      if (eqNotes?.length) {
+        const map: Record<string, EquipNote> = {}
+        for (const n of eqNotes) map[`${n.equipment}||${n.date}`] = { id: n.id, note: n.note ?? '', photo_urls: n.photo_urls ?? [] }
+        setEquipNotes(map)
+      }
       if (rent?.length) {
         setRentRows(rent.map(r => ({ id: r.id, qty: String(r.qty ?? ''), item: r.item ?? '', supplier: r.supplier ?? '', dates_used: r.dates_used ?? '', rate: r.rate ?? '', charge: String(r.charge ?? '') })))
         rent.forEach(r => rentIdsInDb.current.add(r.id))
@@ -541,12 +554,49 @@ export function WorkOrderPopup({
   // ── Equipment condition ────────────────────────────────────────────────────
 
   function toggleEquip(equipment: string, date: string, cond: 'ok' | 'not_ok') {
+    const key = `${equipment}||${date}`
+    const currentCond = equipRows.find(r => r.equipment === equipment && r.date === date)?.condition
+    const nextCond: 'ok' | 'not_ok' | null = currentCond === cond ? null : cond
     setEquipRows(prev => prev.map(r => {
       if (r.equipment !== equipment || r.date !== date) return r
-      const next = r.condition === cond ? null : cond
-      supabase.from('equipment_condition_rows').update({ condition: next }).eq('id', r.id)
-      return { ...r, condition: next }
+      supabase.from('equipment_condition_rows').update({ condition: nextCond }).eq('id', r.id)
+      return { ...r, condition: nextCond }
     }))
+    if (nextCond === 'not_ok') setOpenNoteKey(key)
+    else setOpenNoteKey(prev => prev === key ? null : prev)
+  }
+
+  async function upsertEquipNote(key: string, equipment: string, date: string, updates: { note?: string; photo_urls?: string[] }) {
+    const woId = woIdRef.current
+    if (!woId) return
+    const current = equipNotes[key]
+    const merged = { note: current?.note ?? '', photo_urls: current?.photo_urls ?? [], ...updates }
+    if (current?.id) {
+      await supabase.from('equipment_condition_notes').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', current.id)
+      setEquipNotes(prev => ({ ...prev, [key]: { ...prev[key], ...updates } }))
+    } else {
+      const { data } = await supabase.from('equipment_condition_notes').insert({
+        work_order_id: woId, equipment, date, note: merged.note, photo_urls: merged.photo_urls,
+      }).select('id').single()
+      if (data) setEquipNotes(prev => ({ ...prev, [key]: { id: data.id, note: merged.note, photo_urls: merged.photo_urls } }))
+    }
+  }
+
+  async function uploadEquipNotePhoto(file: File) {
+    const pending = pendingNoteKey.current
+    if (!pending || !woIdRef.current) return
+    setNoteUploading(true)
+    const ext = file.name.split('.').pop() ?? 'jpg'
+    const path = `equip-notes/${woIdRef.current}/${pending.equipment.toLowerCase()}_${pending.date}_${Date.now()}.${ext}`
+    const { data, error } = await supabase.storage.from('checklist-photos').upload(path, file, { upsert: true })
+    if (!error && data) {
+      const { data: { publicUrl } } = supabase.storage.from('checklist-photos').getPublicUrl(data.path)
+      const currentPhotos = equipNotes[pending.key]?.photo_urls ?? []
+      await upsertEquipNote(pending.key, pending.equipment, pending.date, { photo_urls: [...currentPhotos, publicUrl] })
+    }
+    setNoteUploading(false)
+    if (equipNoteFileRef.current) equipNoteFileRef.current.value = ''
+    pendingNoteKey.current = null
   }
 
   // ── Add studio time row ────────────────────────────────────────────────────
@@ -948,33 +998,85 @@ export function WorkOrderPopup({
             </div>
           </div>
 
-          {/* EQUIPMENT CONDITION */}
-          <div>
+          {/* EQUIPMENT CONDITION — excluded from PDF via data-no-print */}
+          <div data-no-print="">
             <div style={sectionTitle}>Equipment Condition</div>
-            <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: `140px repeat(${Math.max(sessionDates.length, 1)}, 1fr)`, background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                <div style={thS}>Equipment</div>
-                {sessionDates.length > 0
-                  ? sessionDates.map(d => <div key={d} style={thS}>{fmtDate(d)}</div>)
-                  : <div style={thS}>—</div>}
-              </div>
-              {EQUIPMENT_ITEMS.map((eq, eqIdx) => (
-                <div key={eq} style={{ display: 'grid', gridTemplateColumns: `140px repeat(${Math.max(sessionDates.length, 1)}, 1fr)`, borderBottom: eqIdx < EQUIPMENT_ITEMS.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-                  <div style={{ ...cellS, color: '#f0f0f0', fontWeight: 500 }}>{eq}</div>
+            {/* hidden file input for note photos */}
+            <input ref={equipNoteFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) uploadEquipNotePhoto(f) }} />
+            <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflowX: 'auto' }}>
+              <div style={{ minWidth: `${120 + Math.max(sessionDates.length, 1) * 90}px` }}>
+                {/* Header — equipment name cell sticky */}
+                <div style={{ display: 'grid', gridTemplateColumns: `120px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                  <div style={{ ...thS, position: 'sticky', left: 0, background: '#1a1e28', zIndex: 2 }}>Equipment</div>
                   {sessionDates.length > 0
-                    ? sessionDates.map(d => {
-                        const row = equipRows.find(r => r.equipment === eq && r.date === d)
-                        const cond = row?.condition ?? null
-                        return (
-                          <div key={d} style={{ ...cellS, display: 'flex', gap: 4, alignItems: 'center', borderRight: 'none' }}>
-                            <button type="button" onClick={() => row && toggleEquip(eq, d, 'ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', border: `1px solid ${cond === 'ok' ? '#4ade80' : 'rgba(255,255,255,0.1)'}`, background: cond === 'ok' ? 'rgba(74,222,128,0.12)' : 'transparent', color: cond === 'ok' ? '#4ade80' : '#8a8fa0' }}>OK</button>
-                            <button type="button" onClick={() => row && toggleEquip(eq, d, 'not_ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', border: `1px solid ${cond === 'not_ok' ? '#f87171' : 'rgba(255,255,255,0.1)'}`, background: cond === 'not_ok' ? 'rgba(248,113,113,0.12)' : 'transparent', color: cond === 'not_ok' ? '#f87171' : '#8a8fa0' }}>✗</button>
-                          </div>
-                        )
-                      })
-                    : <div style={{ ...cellS, color: '#4a4f64', borderRight: 'none' }}>—</div>}
+                    ? sessionDates.map(d => <div key={d} style={thS}>{fmtDate(d)}</div>)
+                    : <div style={thS}>—</div>}
                 </div>
-              ))}
+                {/* Equipment rows */}
+                {EQUIPMENT_ITEMS.map(eq => {
+                  const openDate = openNoteKey?.startsWith(`${eq}||`) ? openNoteKey.split('||')[1] : null
+                  return (
+                    <div key={eq}>
+                      <div style={{ display: 'grid', gridTemplateColumns: `120px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div style={{ ...cellS, color: '#f0f0f0', fontWeight: 500, position: 'sticky', left: 0, background: '#13161d', zIndex: 2 }}>{eq}</div>
+                        {sessionDates.length > 0
+                          ? sessionDates.map(d => {
+                              const key = `${eq}||${d}`
+                              const row = equipRows.find(r => r.equipment === eq && r.date === d)
+                              const cond = row?.condition ?? null
+                              const hasNote = !!(equipNotes[key]?.note || (equipNotes[key]?.photo_urls?.length ?? 0) > 0)
+                              return (
+                                <div key={d} style={{ ...cellS, display: 'flex', gap: 4, alignItems: 'center', borderRight: 'none' }}>
+                                  <button type="button" onClick={() => row && toggleEquip(eq, d, 'ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', border: `1px solid ${cond === 'ok' ? '#4ade80' : 'rgba(255,255,255,0.1)'}`, background: cond === 'ok' ? 'rgba(74,222,128,0.12)' : 'transparent', color: cond === 'ok' ? '#4ade80' : '#8a8fa0' }}>OK</button>
+                                  <button type="button" onClick={() => row && toggleEquip(eq, d, 'not_ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', border: `1px solid ${cond === 'not_ok' ? '#f87171' : 'rgba(255,255,255,0.1)'}`, background: cond === 'not_ok' ? 'rgba(248,113,113,0.12)' : 'transparent', color: cond === 'not_ok' ? '#f87171' : '#8a8fa0' }}>✗</button>
+                                  {cond === 'not_ok' && hasNote && (
+                                    <span style={{ width: 6, height: 6, borderRadius: 3, background: '#f0a24e', display: 'inline-block', flexShrink: 0 }} />
+                                  )}
+                                </div>
+                              )
+                            })
+                          : <div style={{ ...cellS, color: '#4a4f64', borderRight: 'none' }}>—</div>}
+                      </div>
+                      {/* Note area — inline below the equipment row when a Not OK cell is open */}
+                      {openDate && (
+                        <div style={{ padding: '8px 12px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                          <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#f0a24e', marginBottom: 6 }}>
+                            {eq} — {openDate}
+                          </div>
+                          <textarea
+                            value={equipNotes[`${eq}||${openDate}`]?.note ?? ''}
+                            onChange={e => {
+                              const k = `${eq}||${openDate}`
+                              setEquipNotes(prev => ({ ...prev, [k]: { ...(prev[k] ?? { id: '', photo_urls: [] }), note: e.target.value } }))
+                            }}
+                            onBlur={e => upsertEquipNote(`${eq}||${openDate}`, eq, openDate, { note: e.target.value })}
+                            placeholder="Note about this issue…"
+                            style={{ width: '100%', background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 10, padding: '5px 7px', resize: 'none', outline: 'none', boxSizing: 'border-box', minHeight: 56 }}
+                          />
+                          {(equipNotes[`${eq}||${openDate}`]?.photo_urls?.length ?? 0) > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+                              {equipNotes[`${eq}||${openDate}`].photo_urls.map((url, i) => (
+                                <a key={i} href={url} target="_blank" rel="noreferrer">
+                                  <img src={url} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)', display: 'block' }} />
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            disabled={noteUploading}
+                            onClick={() => { pendingNoteKey.current = { key: `${eq}||${openDate}`, equipment: eq, date: openDate }; equipNoteFileRef.current?.click() }}
+                            style={{ marginTop: 6, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, color: noteUploading ? '#4a4f64' : '#8a8fa0', background: 'none', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, cursor: noteUploading ? 'not-allowed' : 'pointer', padding: '3px 10px' }}
+                          >
+                            {noteUploading ? 'Uploading…' : '+ Photo'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </div>
 
