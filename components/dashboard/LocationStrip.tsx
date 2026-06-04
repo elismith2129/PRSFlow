@@ -242,8 +242,8 @@ export function LocationStrip() {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{b.client_name || b.artist || '—'}</div>
-            {b.artist && b.client_name && <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1 }}>{b.artist}</div>}
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{b.artist || b.client_name || '—'}</div>
+            {b.artist && b.client_name && <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1 }}>{b.client_name}</div>}
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {needsAttention && !adminDone && (

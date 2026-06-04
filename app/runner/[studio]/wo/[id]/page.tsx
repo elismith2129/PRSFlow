@@ -247,6 +247,16 @@ export default function RunnerWOPage() {
     if (naFileRef.current) naFileRef.current.value = ''
   }
 
+  async function deleteNAPhoto(url: string) {
+    const updated = needsAttentionPhotos.filter(u => u !== url)
+    setNeedsAttentionPhotos(updated)
+    if (woRef.current) {
+      await supabase.from('work_orders')
+        .update({ needs_attention_photos: updated.length > 0 ? updated : null })
+        .eq('id', woRef.current)
+    }
+  }
+
   async function handleFinish() {
     if (!woRef.current) return
     setSubmitting(true)
@@ -402,9 +412,15 @@ export default function RunnerWOPage() {
           {needsAttentionPhotos.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
               {needsAttentionPhotos.map((url, i) => (
-                <a key={i} href={url} target="_blank" rel="noreferrer" style={{ display: 'block', flexShrink: 0 }}>
-                  <img src={url} alt="" onError={() => console.error('[NA photo] img failed to load:', url)} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '2px solid rgba(249,115,22,0.35)', display: 'block' }} />
-                </a>
+                <div key={i} style={{ position: 'relative', flexShrink: 0 }}>
+                  <a href={url} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
+                    <img src={url} alt="" onError={() => console.error('[NA photo] img failed to load:', url)} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '2px solid rgba(249,115,22,0.35)', display: 'block' }} />
+                  </a>
+                  <button
+                    onClick={e => { e.preventDefault(); e.stopPropagation(); deleteNAPhoto(url) }}
+                    style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10, background: '#f87171', border: 'none', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: 0 }}
+                  >✕</button>
+                </div>
               ))}
             </div>
           )}
