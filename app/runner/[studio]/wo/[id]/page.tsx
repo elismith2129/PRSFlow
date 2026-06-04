@@ -194,32 +194,37 @@ export default function RunnerWOPage() {
     }
   }, [resolvedWoId])
 
-  // Re-fetch stRows when the page becomes visible again or every 30 seconds,
-  // so admin changes to studio_time_rows (booking save, rate sync) show up
-  // without requiring a full page reload.
+  // Subscribe to studio_time_rows for this WO — updates state instantly when admin
+  // changes rates, dates, or any row field (booking save, rate sync, etc.)
   useEffect(() => {
     if (!resolvedWoId) return
-
-    async function refetchStRows() {
-      const { data: st } = await supabase
-        .from('studio_time_rows')
-        .select('*')
-        .eq('work_order_id', resolvedWoId!)
-        .order('sort_order')
-      if (st) setStRows(st)
-    }
-
-    function handleVisibility() {
-      if (document.visibilityState === 'visible') refetchStRows()
-    }
-
-    document.addEventListener('visibilitychange', handleVisibility)
-    const interval = setInterval(refetchStRows, 30000)
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibility)
-      clearInterval(interval)
-    }
+    const channel = supabase
+      .channel(`runner-wo-strows-${resolvedWoId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'studio_time_rows',
+        filter: `work_order_id=eq.${resolvedWoId}`,
+      }, async () => {
+        const { data: st } = await supabase
+          .from('studio_time_rows')
+          .select('*')
+          .eq('work_order_id', resolvedWoId!)
+          .order('sort_order')
+        if (st) {
+          setStRows(st)
+          // Initialize otHours for any new row IDs without overwriting runner-typed values
+          setOtHours(prev => {
+            const next = { ...prev }
+            for (const r of st) {
+              if (!(r.id in next)) next[r.id] = String(r.ot_hours ?? '0')
+            }
+            return next
+          })
+        }
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
   }, [resolvedWoId])
 
   async function toggleEquip(eq: string, date: string, val: 'ok' | 'not_ok') {

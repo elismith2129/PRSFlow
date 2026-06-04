@@ -2388,6 +2388,22 @@ function CalendarPageInner() {
 
   useEffect(() => { load() }, [load])
 
+  // Keep loadRef current so the subscription callback always calls the latest load
+  // (load changes identity when startDate/view changes from navigation)
+  const loadRef = useRef(load)
+  useEffect(() => { loadRef.current = load }, [load])
+
+  // Subscribe to bookings — re-render calendar blocks on any insert/update/delete
+  useEffect(() => {
+    const channel = supabase
+      .channel('calendar-bookings')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+        loadRef.current()
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
   // Restore collapse state on mount (client only — must be useEffect to avoid SSR hydration mismatch)
   useEffect(() => {
     try { const s = localStorage.getItem('cal_collapsed_locs'); if (s) setCollapsed(new Set(JSON.parse(s))) } catch {}

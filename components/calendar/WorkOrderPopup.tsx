@@ -240,6 +240,7 @@ export function WorkOrderPopup({
   const [openNoteKey, setOpenNoteKey] = useState<string | null>(null)
   const [noteUploading, setNoteUploading] = useState(false)
   const woIdRef = useRef<string | null>(null)
+  const [resolvedWoId, setResolvedWoId] = useState<string | null>(null)
   // Track which rows exist in DB (vs. local-only new rows)
   const rentIdsInDb = useRef<Set<string>>(new Set())
   const payIdsInDb = useRef<Set<string>>(new Set())
@@ -422,6 +423,47 @@ export function WorkOrderPopup({
     })()
   }, [liveForm?.rate, liveForm?.rate_daily, wo?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Real-time subscriptions: studio_time_rows and work_orders for this WO
+  useEffect(() => {
+    if (!resolvedWoId) return
+
+    const stChannel = supabase
+      .channel(`admin-wo-strows-${resolvedWoId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'studio_time_rows',
+        filter: `work_order_id=eq.${resolvedWoId}`,
+      }, async () => {
+        const { data: st } = await supabase
+          .from('studio_time_rows')
+          .select('*')
+          .eq('work_order_id', resolvedWoId!)
+          .order('sort_order')
+        if (st) setStRows(st.map(normalizeStRow))
+      })
+      .subscribe()
+
+    const woChannel = supabase
+      .channel(`admin-wo-status-${resolvedWoId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'work_orders',
+        filter: `id=eq.${resolvedWoId}`,
+      }, (payload) => {
+        const updated = payload.new as any
+        setWo(prev => prev ? { ...prev, status: updated.status ?? prev.status } : prev)
+        onStatusChange?.(updated.status ?? 'draft')
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(stChannel)
+      supabase.removeChannel(woChannel)
+    }
+  }, [resolvedWoId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function initWO() {
     const { data: rows } = await supabase
       .from('work_orders')
@@ -433,6 +475,7 @@ export function WorkOrderPopup({
 
     if (existing) {
       woIdRef.current = existing.id
+      setResolvedWoId(existing.id)
       onStatusChange?.(existing.status ?? 'draft')
       // Fix studios: if DB has empty array but booking has a studio, backfill from booking
       const rawStudios: string[] = existing.studios ?? []
@@ -594,6 +637,7 @@ export function WorkOrderPopup({
       const { data: created } = await supabase.from('work_orders').insert(woPayload).select('*').single()
       if (!created) { setLoading(false); return }
       woIdRef.current = created.id
+      setResolvedWoId(created.id)
       const seededNew = applyLiveForm(normalizeWO(created))
       setWo(seededNew)
 

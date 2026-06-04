@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
 import { DailyOpsModal, type DailyOpsSubmission } from '@/components/dashboard/DailyOpsModal'
@@ -101,9 +101,38 @@ export function LocationStrip() {
   const [approvingId, setApprovingId]       = useState<string | null>(null)
   const [openModal, setOpenModal]           = useState<ModalTarget | null>(null)
   const [checklistProgress, setChecklistProgress] = useState<Record<string, ChecklistProgress>>({})
+  // Ref for stable closure in realtime callbacks — always reflects current selectedLoc
+  const selectedLocRef = useRef<typeof LOCATIONS[0] | null>(null)
   const [woBooking, setWoBooking]           = useState<Booking | null>(null)
 
+  useEffect(() => { selectedLocRef.current = selectedLoc }, [selectedLoc])
+
   useEffect(() => { loadSummaries() }, [])
+
+  // Subscribe to bookings and work_orders — re-fetch summaries (badges) and
+  // silently refresh the open drawer whenever any change lands in the DB.
+  useEffect(() => {
+    async function handleChange() {
+      await loadSummaries()
+      const loc = selectedLocRef.current
+      if (loc) await fetchDrawerData(loc)
+    }
+
+    const bookingsChannel = supabase
+      .channel('daily-ops-bookings')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, handleChange)
+      .subscribe()
+
+    const woChannel = supabase
+      .channel('daily-ops-wos')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, handleChange)
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(bookingsChannel)
+      supabase.removeChannel(woChannel)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadSummaries() {
     const [{ data: bkgs }, { data: wos }, { data: ops }, { data: yBkgs }, { data: yWOs }, { data: yOps }] = await Promise.all([
@@ -141,10 +170,9 @@ export function LocationStrip() {
     setLoadingSummary(false)
   }
 
-  async function openDrawer(loc: typeof LOCATIONS[0]) {
-    setSelectedLoc(loc)
-    setDrawerLoading(true)
-
+  // Fetches and updates drawer state without touching the loading flag — used
+  // both by openDrawer (with loading) and by realtime callbacks (silent refresh).
+  async function fetchDrawerData(loc: typeof LOCATIONS[0]) {
     const [{ data: todayBkgsData }, { data: yestBkgsData }] = await Promise.all([
       supabase.from('bookings').select('*').eq('start_date', today).not('status', 'eq', 'cancelled').order('from_time'),
       supabase.from('bookings').select('*').eq('start_date', yesterday).not('status', 'eq', 'cancelled').order('from_time'),
@@ -183,6 +211,12 @@ export function LocationStrip() {
     setYestSessions(locYestBkgs.map(b => ({ booking: b as Booking, wo: woMapYest[b.id] ?? null })))
     setYestOpsRows(yOps.data ?? [])
     setChecklistProgress(clProgress)
+  }
+
+  async function openDrawer(loc: typeof LOCATIONS[0]) {
+    setSelectedLoc(loc)
+    setDrawerLoading(true)
+    await fetchDrawerData(loc)
     setDrawerLoading(false)
   }
 
