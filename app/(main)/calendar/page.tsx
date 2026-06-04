@@ -2661,9 +2661,11 @@ function CalendarPageInner() {
       }
       // Sync studio_time_rows when booking is saved (date range and rate)
       {
+        console.log('[WO sync] running post-save sync for booking', editBooking.id)
         const { data: woRows } = await supabase.from('work_orders').select('id')
           .eq('booking_id', editBooking.id).order('created_at', { ascending: false }).limit(1)
         const woId = woRows?.[0]?.id
+        console.log('[WO sync] woId found:', woId)
         if (woId) {
           // Day-rate only: sync date range (add/remove rows)
           if (payload.rate_type === 'day') {
