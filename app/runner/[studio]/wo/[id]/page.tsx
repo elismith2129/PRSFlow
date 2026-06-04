@@ -23,7 +23,8 @@ export default function RunnerWOPage() {
   const meta = STUDIO_META[studio] ?? { label: studio, abbr: '?', color: '#c8f04e' }
 
   const woRef = useRef<string | null>(null)
-  const [wo, setWo] = useState<any>(null)
+  const [wo, setWo]           = useState<any>(null)
+  const [booking, setBooking] = useState<any>(null)
   const [stRows, setStRows] = useState<any[]>([])
   const [equipConds, setEquipConds] = useState<EquipCond>({})
   const [equipRows, setEquipRows] = useState<any[]>([])
@@ -98,14 +99,20 @@ export default function RunnerWOPage() {
       if (!resolvedId) { setLoading(false); return }
       woRef.current = resolvedId
 
-      const [{ data: woData }, { data: st }, { data: eq }, { data: exp }] = await Promise.all([
-        supabase.from('work_orders').select('*').eq('id', resolvedId).single(),
+      // Fetch WO first to get booking_id, then fetch linked booking + rows in parallel
+      const { data: woData } = await supabase.from('work_orders').select('*').eq('id', resolvedId).single()
+
+      const [{ data: bkData }, { data: st }, { data: eq }, { data: exp }] = await Promise.all([
+        woData?.booking_id
+          ? supabase.from('bookings').select('*').eq('id', woData.booking_id).single()
+          : Promise.resolve({ data: null }),
         supabase.from('studio_time_rows').select('*').eq('work_order_id', resolvedId).order('sort_order'),
         supabase.from('equipment_condition_rows').select('*').eq('work_order_id', resolvedId),
         supabase.from('expense_rows').select('*').eq('work_order_id', resolvedId).order('created_at'),
       ])
 
       setWo(woData)
+      setBooking(bkData)
       setStRows(st ?? [])
       setEquipRows(eq ?? [])
       setSessionNotes(woData?.session_notes ?? '')
@@ -307,7 +314,7 @@ export default function RunnerWOPage() {
             Work Order
           </div>
           <div style={{ fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>
-            {wo?.client_name || wo?.client || '—'} · {wo?.session_date ?? ''}
+            {booking?.client_name || wo?.client_name || wo?.client || '—'} · {booking?.start_date || wo?.session_date || ''}
           </div>
         </div>
       </div>
@@ -317,12 +324,13 @@ export default function RunnerWOPage() {
         <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, padding: '14px 14px', marginBottom: 16 }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', marginBottom: 10 }}>Session Info</div>
           {[
-            ['Client', wo?.client || wo?.client_name],
-            ['Artist', wo?.artist],
-            ['Engineer', wo?.engineer],
-            ['Date', wo?.session_date],
-            ['Time', [wo?.from_time, wo?.to_time].filter(Boolean).join(' – ')],
-            ['Studio', (wo?.studios ?? []).join(', ')],
+            [wo?.payment_status === 'Billing' ? 'Label / A&R' : 'Client',
+             booking?.client_name || wo?.client || wo?.client_name],
+            ['Artist',   booking?.artist   || wo?.artist],
+            ['Engineer', booking?.engineer_name || wo?.engineer],
+            ['Date',     booking?.start_date   || wo?.session_date],
+            ['Time',     [booking?.from_time || wo?.from_time, booking?.to_time || wo?.to_time].filter(Boolean).join(' – ')],
+            ['Studio',   booking?.studio || (wo?.studios ?? []).join(', ')],
           ].filter(([, v]) => v).map(([l, v]) => (
             <div key={String(l)} style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
               <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace', minWidth: 60 }}>{l}</span>
