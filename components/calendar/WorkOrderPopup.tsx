@@ -181,9 +181,7 @@ function normalizeStRow(d: any): StRow {
   const engFromTime = d.eng_from_time ?? d.from_time ?? ''
   const engToTime   = d.eng_to_time   ?? d.to_time   ?? ''
   const engRate = d.eng_rate != null ? String(d.eng_rate) : ''
-  const engHours = d.day_count != null
-    ? (d.eng_hours != null ? Number(d.eng_hours) : null)
-    : (calcHours(engFromTime, engToTime) ?? (d.total_hours != null ? Number(d.total_hours) : null))
+  const engHours = calcHours(engFromTime, engToTime) ?? (d.eng_hours != null ? Number(d.eng_hours) : null)
   let engCharge = null as number | null
   if (engHours != null && engHours > 0 && engRate) {
     const erNum = parseFloat(engRate.replace(/[^0-9.]/g, ''))
@@ -732,17 +730,11 @@ export function WorkOrderPopup({
           u.charge = calcCharge(u.total_hours, u.rate)
         }
       }
-      // Recalculate eng_charge: day-rate uses eng_hours; hourly uses calcHours(eng times) × eng_rate
+      // Recalculate eng_charge from eng times for all row types
       if ('eng_hours' in updates || 'eng_rate' in updates || 'from_time' in updates || 'to_time' in updates || 'eng_from_time' in updates || 'eng_to_time' in updates) {
-        const isDayRateRow = u.day_count != null
-        let eh: number | null
-        if (isDayRateRow) {
-          eh = u.eng_hours != null ? Number(u.eng_hours) : null
-        } else {
-          const ef = u.eng_from_time || u.from_time
-          const et = u.eng_to_time   || u.to_time
-          eh = calcHours(ef, et)
-        }
+        const ef = u.eng_from_time || u.from_time
+        const et = u.eng_to_time   || u.to_time
+        const eh = calcHours(ef, et) ?? (u.eng_hours != null ? Number(u.eng_hours) : null)
         const er = parseFloat((u.eng_rate ?? '').replace(/[^0-9.]/g, ''))
         u.eng_charge = eh != null && eh > 0 && !isNaN(er) && er > 0 ? parseFloat((eh * er).toFixed(2)) : null
       }
@@ -1137,8 +1129,8 @@ export function WorkOrderPopup({
                 <>
                   {/* Day-rate: compact single-row-per-day table */}
                   {/* Header — sticky so it stays visible when body scrolls */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 44px 80px 55px 80px 80px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                    {['Date', 'Session Info', 'Days', 'Rate', 'OT Hrs', 'OT Rate', 'Total'].map(h => <div key={h} style={thS}>{h}</div>)}
+                  <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 72px 72px 80px 55px 80px 80px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                    {['Date', 'Session Info', 'From', 'To', 'Rate', 'OT Hrs', 'OT Rate', 'Total'].map(h => <div key={h} style={thS}>{h}</div>)}
                   </div>
                   {/* Body — scrollable after 5 rows; print override via [data-st-scroll] in globals.css */}
                   <div data-st-scroll="" style={{ overflowY: stRows.length > 5 ? 'auto' : 'visible', maxHeight: stRows.length > 5 ? 200 : undefined }}>
@@ -1153,18 +1145,15 @@ export function WorkOrderPopup({
                       const engName = liveForm?.engineer_name || booking.engineer_name || ''
                       const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || ''
                       const engRateNum = parseFloat((engRateDisplay ?? '').replace(/[^0-9.]/g, '')) || 0
-                      const engHrs = r.eng_hours ?? null
+                      const engHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
                       const engCharge = engHrs != null && engHrs > 0 && engRateNum > 0 ? engHrs * engRateNum : null
                       return (
                         <div key={r.id}>
-                          <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 44px 80px 55px 80px 80px', borderBottom: engName ? 'none' : '1px solid rgba(255,255,255,0.04)' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 72px 72px 80px 55px 80px 80px', borderBottom: engName ? 'none' : '1px solid rgba(255,255,255,0.04)' }}>
                             <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{r.date || '—'}</div>
                             <div style={cellS}><input value={r.session_info} onChange={e => updateStRow(r.id, { session_info: e.target.value })} style={inp} placeholder="—" /></div>
-                            <div style={cellS}>
-                              <input type="number" min="1" step="1" value={dayCount}
-                                onChange={e => updateStRow(r.id, { day_count: parseInt(e.target.value) || 1 })}
-                                style={{ ...inp, width: 32 }} />
-                            </div>
+                            <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} /></div>
+                            <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} /></div>
                             <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{rateNum > 0 ? `$${rateNum.toLocaleString()}/day` : '—'}</div>
                             <div style={cellS}>
                               <input type="number" min="0" step="0.5" value={r.ot_hours ?? '0'}
@@ -1180,21 +1169,18 @@ export function WorkOrderPopup({
                             </div>
                           </div>
                           {engName && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 44px 80px 55px 80px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 72px 72px 80px 55px 80px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                               <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
                               <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engName}</div>
-                              <div style={cellS}>
-                                <input type="number" min="0" step="0.5" value={r.eng_hours ?? ''}
-                                  placeholder="0"
-                                  onChange={e => updateStRow(r.id, { eng_hours: e.target.value ? parseFloat(e.target.value) : null, eng_rate: r.eng_rate || engRateDisplay })}
-                                  style={{ ...inp, width: 32 }} />
-                              </div>
+                              <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} style={inp} /></div>
+                              <div style={cellS}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} style={inp} /></div>
                               <div style={cellS}>
                                 <input value={r.eng_rate || engRateDisplay}
                                   onChange={e => updateStRow(r.id, { eng_rate: e.target.value })}
                                   style={{ ...inp, width: 64 }} />
                               </div>
-                              <div style={{ gridColumn: 'span 2', ...cellS }} />
+                              <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engHrs != null ? engHrs : '—'}</div>
+                              <div style={{ ...cellS }} />
                               <div style={{ ...cellS, color: engCharge != null ? '#c8f04e' : '#8a8fa0', fontWeight: engCharge != null ? 600 : 400, borderRight: 'none' }}>
                                 {engCharge != null ? `$${engCharge.toFixed(2)}` : '—'}
                               </div>

@@ -575,10 +575,14 @@ export default function RunnerWOPage() {
       await Promise.all(stRows.map((r: any) => {
         const update: Record<string, any> = {}
         if (isDayRate) {
-          const hrs = parseFloat(otHours[r.id] ?? String(r.ot_hours ?? '0')) || 0
-          const rate = parseFloat(String(r.ot_rate ?? '0')) || 0
-          update.ot_hours = hrs || null
-          update.ot_charge = hrs > 0 && rate > 0 ? parseFloat((hrs * rate).toFixed(2)) : null
+          const from = fromTimeMap[r.id] ?? r.from_time ?? ''
+          const to = toTimeMap[r.id] ?? r.to_time ?? ''
+          const otHrs = parseFloat(otHours[r.id] ?? String(r.ot_hours ?? '0')) || 0
+          const otRate = parseFloat(String(r.ot_rate ?? '0')) || 0
+          update.from_time = from || null
+          update.to_time = to || null
+          update.ot_hours = otHrs || null
+          update.ot_charge = otHrs > 0 && otRate > 0 ? parseFloat((otHrs * otRate).toFixed(2)) : null
         } else {
           const from = fromTimeMap[r.id] ?? r.from_time ?? ''
           const to = toTimeMap[r.id] ?? r.to_time ?? ''
@@ -601,11 +605,15 @@ export default function RunnerWOPage() {
           }
         }
         if (isDayRate && hasEngineer) {
-          const ehStr = engHoursMap[r.id] ?? ''
-          const eh = ehStr ? parseFloat(ehStr) : null
-          const er = parseFloat(String(r.eng_rate ?? '').replace(/[^0-9.]/g, '')) || 0
-          update.eng_hours = eh || null
-          update.eng_charge = eh != null && eh > 0 && er > 0 ? parseFloat((eh * er).toFixed(2)) : null
+          const engRaw = r.eng_rate || booking?.engineer_rate || ''
+          const er = parseFloat(String(engRaw).replace(/[^0-9.]/g, '')) || 0
+          const ef = engFromTimeMap[r.id] ?? r.eng_from_time ?? r.from_time ?? ''
+          const et = engToTimeMap[r.id] ?? r.eng_to_time ?? r.to_time ?? ''
+          const engHrs = calcHours(ef, et)
+          update.eng_from_time = ef || null
+          update.eng_to_time = et || null
+          update.eng_hours = engHrs
+          update.eng_charge = engHrs != null && engHrs > 0 && er > 0 ? parseFloat((engHrs * er).toFixed(2)) : null
         }
         return supabase.from('studio_time_rows').update(update).eq('id', r.id)
       }))
@@ -704,7 +712,9 @@ export default function RunnerWOPage() {
             const rate = parseFloat(String(engRateRaw).replace(/[^0-9.]/g, '')) || 0
             if (!rate) return sum
             if (isDayRate) {
-              const hrs = parseFloat(engHoursMap[r.id] ?? String(r.eng_hours ?? '0')) || 0
+              const engLiveFrom = engFromTimeMap[r.id] ?? r.eng_from_time ?? r.from_time ?? ''
+              const engLiveTo = engToTimeMap[r.id] ?? r.eng_to_time ?? r.to_time ?? ''
+              const hrs = calcHours(engLiveFrom, engLiveTo) ?? 0
               return sum + (hrs > 0 ? hrs * rate : 0)
             }
             const ef = engFromTimeMap[r.id] ?? r.eng_from_time ?? r.from_time ?? ''
@@ -723,29 +733,36 @@ export default function RunnerWOPage() {
               ) : isDayRate ? (
                 <>
                   {/* Day-rate compact table */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 80px 55px 75px 75px', background: '#0d0f14', borderTop: '1px solid #2a2e3d', borderBottom: '1px solid #2a2e3d' }}>
-                    {['Date', 'Session Info', 'Day Rate', 'OT Hrs', 'OT Charge', 'Total'].map(h => <div key={h} style={thStyle}>{h}</div>)}
+                  <div style={{ overflowX: 'auto' }}>
+                  <div style={{ minWidth: 500 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 58px 58px 72px 48px 60px 60px', background: '#0d0f14', borderTop: '1px solid #2a2e3d', borderBottom: '1px solid #2a2e3d' }}>
+                    {['Date', 'Session', 'From', 'To', 'Rate', 'OT Hrs', 'OT Chg', 'Total'].map(h => <div key={h} style={thStyle}>{h}</div>)}
                   </div>
                   <div style={{ overflowY: stRows.length > 5 ? 'auto' : 'visible', maxHeight: stRows.length > 5 ? 200 : undefined }}>
                     {stRows.map((r: any) => {
                       const rateNum = parseFloat(String(r.rate ?? '').replace(/[^0-9.]/g, '')) || 0
                       const dayCount = r.day_count ?? 1
                       const dayCharge = rateNum * dayCount
+                      const liveFrom = fromTimeMap[r.id] ?? r.from_time ?? ''
+                      const liveTo = toTimeMap[r.id] ?? r.to_time ?? ''
                       const currentOtHrs = parseFloat(otHours[r.id] ?? String(r.ot_hours ?? '0')) || 0
                       const otRateNum = parseFloat(String(r.ot_rate ?? '0')) || 0
                       const liveOtCharge = currentOtHrs > 0 && otRateNum > 0 ? currentOtHrs * otRateNum : 0
                       const rowTotal = dayCharge + liveOtCharge
-                      const engRateForRow = parseFloat(String(r.eng_rate ?? '').replace(/[^0-9.]/g, '')) || 0
-                      const ehStr = engHoursMap[r.id] ?? ''
-                      const eh = ehStr ? parseFloat(ehStr) : null
-                      const liveEngCharge = eh != null && eh > 0 && engRateForRow > 0 ? eh * engRateForRow : null
+                      const engRateForRow = parseFloat(String(r.eng_rate || booking?.engineer_rate || '').replace(/[^0-9.]/g, '')) || 0
+                      const engLiveFrom = engFromTimeMap[r.id] ?? r.eng_from_time ?? r.from_time ?? ''
+                      const engLiveTo = engToTimeMap[r.id] ?? r.eng_to_time ?? r.to_time ?? ''
+                      const engLiveHours = calcHours(engLiveFrom, engLiveTo)
+                      const liveEngCharge = engLiveHours != null && engLiveHours > 0 && engRateForRow > 0 ? engLiveHours * engRateForRow : null
                       return (
                         <div key={r.id}>
-                          <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 80px 55px 75px 75px', borderBottom: engName ? 'none' : '1px solid #2a2e3d' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 58px 58px 72px 48px 60px 60px', borderBottom: engName ? 'none' : '1px solid #2a2e3d' }}>
                             <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>{r.date || '—'}</div>
                             <div style={{ ...tdStyle, color: '#8b90a8' }}>{r.session_info || '—'}</div>
+                            <div style={{ ...tdStyle, padding: '2px 4px' }}><TimeInput value={liveFrom} onChange={v => setFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ background: 'transparent', color: '#e8eaf2', border: 'none', fontSize: 11, fontFamily: 'DM Mono, monospace', width: '100%' }} /></div>
+                            <div style={{ ...tdStyle, padding: '2px 4px' }}><TimeInput value={liveTo} onChange={v => setToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ background: 'transparent', color: '#e8eaf2', border: 'none', fontSize: 11, fontFamily: 'DM Mono, monospace', width: '100%' }} /></div>
                             <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>
-                              {rateNum > 0 ? `$${rateNum.toLocaleString()} × ${dayCount}` : '—'}
+                              {rateNum > 0 ? `$${rateNum.toLocaleString()}/day` : '—'}
                             </div>
                             <div style={{ ...tdStyle, justifyContent: 'center' }}>
                               <input
@@ -755,7 +772,7 @@ export default function RunnerWOPage() {
                                 style={{
                                   background: '#1a1e28', border: '1px solid #3a3f52', borderRadius: 6,
                                   color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 13,
-                                  padding: '4px 6px', width: 44, textAlign: 'center', outline: 'none',
+                                  padding: '4px 6px', width: 36, textAlign: 'center', outline: 'none',
                                 }}
                               />
                             </div>
@@ -767,24 +784,16 @@ export default function RunnerWOPage() {
                             </div>
                           </div>
                           {engName && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 80px 55px 75px 75px', borderBottom: '1px solid #2a2e3d', background: 'rgba(200,240,78,0.03)' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 58px 58px 72px 48px 60px 60px', borderBottom: '1px solid #2a2e3d', background: 'rgba(200,240,78,0.03)' }}>
                               <div style={{ ...tdStyle }} />
                               <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10, fontStyle: 'italic' }}>{engName}</div>
+                              <div style={{ ...tdStyle, padding: '2px 4px' }}><TimeInput value={engLiveFrom} onChange={v => setEngFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ background: 'transparent', color: '#c8f04e', border: 'none', fontSize: 11, fontFamily: 'DM Mono, monospace', width: '100%' }} /></div>
+                              <div style={{ ...tdStyle, padding: '2px 4px' }}><TimeInput value={engLiveTo} onChange={v => setEngToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ background: 'transparent', color: '#c8f04e', border: 'none', fontSize: 11, fontFamily: 'DM Mono, monospace', width: '100%' }} /></div>
                               <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>
                                 {engRateForRow > 0 ? `$${engRateForRow}/hr` : '—'}
                               </div>
-                              <div style={{ ...tdStyle, justifyContent: 'center' }}>
-                                <input
-                                  type="number" min="0" step="0.5"
-                                  value={engHoursMap[r.id] ?? ''}
-                                  placeholder="0"
-                                  onChange={e => setEngHoursMap(prev => ({ ...prev, [r.id]: e.target.value }))}
-                                  style={{
-                                    background: '#1a1e28', border: '1px solid #3a3f52', borderRadius: 6,
-                                    color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 13,
-                                    padding: '4px 6px', width: 44, textAlign: 'center', outline: 'none',
-                                  }}
-                                />
+                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>
+                                {engLiveHours != null ? engLiveHours : '—'}
                               </div>
                               <div style={{ ...tdStyle }} />
                               <div style={{ ...tdStyle, color: liveEngCharge != null ? meta.color : '#4a4f64', fontWeight: liveEngCharge != null ? 700 : 400, borderRight: 'none' }}>
@@ -795,6 +804,8 @@ export default function RunnerWOPage() {
                         </div>
                       )
                     })}
+                  </div>
+                  </div>
                   </div>
                 </>
               ) : (
