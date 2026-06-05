@@ -78,6 +78,12 @@ export default function RunnerWOPage() {
   const [engHoursMap, setEngHoursMap] = useState<Record<string, string>>({})
   const [fromTimeMap, setFromTimeMap] = useState<Record<string, string>>({})
   const [toTimeMap, setToTimeMap] = useState<Record<string, string>>({})
+  const [engFromTimeMap, setEngFromTimeMap] = useState<Record<string, string>>({})
+  const [engToTimeMap, setEngToTimeMap] = useState<Record<string, string>>({})
+  const initFromTimeRef = useRef<Record<string, string>>({})
+  const initToTimeRef = useRef<Record<string, string>>({})
+  const initEngFromTimeRef = useRef<Record<string, string>>({})
+  const initEngToTimeRef = useRef<Record<string, string>>({})
   const [equipNotes, setEquipNotes] = useState<Record<string, { id: string; note: string; photo_urls: string[] }>>({})
   const [openNoteKey, setOpenNoteKey] = useState<string | null>(null)
   const [noteUploading, setNoteUploading] = useState(false)
@@ -163,11 +169,20 @@ export default function RunnerWOPage() {
       let finalEngHours: Record<string, string> = {}
       let finalFromTimes: Record<string, string> = {}
       let finalToTimes: Record<string, string> = {}
-      for (const r of finalStRows) {
-        finalEngHours[r.id] = defaultEngHrs(r)
-        finalFromTimes[r.id] = r.from_time ?? ''
-        finalToTimes[r.id] = r.to_time ?? ''
+      let finalEngFromTimes: Record<string, string> = {}
+      let finalEngToTimes: Record<string, string> = {}
+      function buildMaps(rows: any[]) {
+        finalEngHours = {}; finalFromTimes = {}; finalToTimes = {}
+        finalEngFromTimes = {}; finalEngToTimes = {}
+        for (const r of rows) {
+          finalEngHours[r.id] = defaultEngHrs(r)
+          finalFromTimes[r.id] = r.from_time ?? ''
+          finalToTimes[r.id] = r.to_time ?? ''
+          finalEngFromTimes[r.id] = r.eng_from_time ?? r.from_time ?? ''
+          finalEngToTimes[r.id] = r.eng_to_time ?? r.to_time ?? ''
+        }
       }
+      buildMaps(finalStRows)
 
       if (finalStRows.length === 0 && bkData && resolvedId) {
         const startD = new Date(bkData.start_date + 'T12:00:00')
@@ -195,14 +210,7 @@ export default function RunnerWOPage() {
         const { data: seeded } = await supabase.from('studio_time_rows').insert(seedInserts).select()
         if (seeded && seeded.length > 0) {
           finalStRows = seeded
-          finalEngHours = {}
-          finalFromTimes = {}
-          finalToTimes = {}
-          for (const r of seeded) {
-            finalEngHours[r.id] = defaultEngHrs(r)
-            finalFromTimes[r.id] = r.from_time ?? ''
-            finalToTimes[r.id] = r.to_time ?? ''
-          }
+          buildMaps(seeded)
         }
       }
 
@@ -210,6 +218,12 @@ export default function RunnerWOPage() {
       setEngHoursMap(finalEngHours)
       setFromTimeMap(finalFromTimes)
       setToTimeMap(finalToTimes)
+      setEngFromTimeMap(finalEngFromTimes)
+      setEngToTimeMap(finalEngToTimes)
+      initFromTimeRef.current = { ...finalFromTimes }
+      initToTimeRef.current = { ...finalToTimes }
+      initEngFromTimeRef.current = { ...finalEngFromTimes }
+      initEngToTimeRef.current = { ...finalEngToTimes }
       setEquipRows(eq ?? [])
       if (eqNotes?.length) {
         const map: Record<string, { id: string; note: string; photo_urls: string[] }> = {}
@@ -311,14 +325,46 @@ export default function RunnerWOPage() {
           setFromTimeMap(prev => {
             const next = { ...prev }
             for (const r of st) {
-              if (!(r.id in next) || !prev[r.id]) next[r.id] = r.from_time ?? ''
+              const init = initFromTimeRef.current[r.id]
+              if (!(r.id in next) || prev[r.id] === init) {
+                next[r.id] = r.from_time ?? ''
+                initFromTimeRef.current[r.id] = r.from_time ?? ''
+              }
             }
             return next
           })
           setToTimeMap(prev => {
             const next = { ...prev }
             for (const r of st) {
-              if (!(r.id in next) || !prev[r.id]) next[r.id] = r.to_time ?? ''
+              const init = initToTimeRef.current[r.id]
+              if (!(r.id in next) || prev[r.id] === init) {
+                next[r.id] = r.to_time ?? ''
+                initToTimeRef.current[r.id] = r.to_time ?? ''
+              }
+            }
+            return next
+          })
+          setEngFromTimeMap(prev => {
+            const next = { ...prev }
+            for (const r of st) {
+              const val = r.eng_from_time ?? r.from_time ?? ''
+              const init = initEngFromTimeRef.current[r.id]
+              if (!(r.id in next) || prev[r.id] === init) {
+                next[r.id] = val
+                initEngFromTimeRef.current[r.id] = val
+              }
+            }
+            return next
+          })
+          setEngToTimeMap(prev => {
+            const next = { ...prev }
+            for (const r of st) {
+              const val = r.eng_to_time ?? r.to_time ?? ''
+              const init = initEngToTimeRef.current[r.id]
+              if (!(r.id in next) || prev[r.id] === init) {
+                next[r.id] = val
+                initEngToTimeRef.current[r.id] = val
+              }
             }
             return next
           })
@@ -543,9 +589,15 @@ export default function RunnerWOPage() {
           update.total_hours = hrs
           update.charge = hrs != null && rateNum > 0 ? parseFloat((hrs * rateNum).toFixed(2)) : null
           if (hasEngineer) {
-            const er = parseFloat(String(r.eng_rate ?? '').replace(/[^0-9.]/g, '')) || 0
-            update.eng_hours = hrs
-            update.eng_charge = hrs != null && hrs > 0 && er > 0 ? parseFloat((hrs * er).toFixed(2)) : null
+            const engRaw = r.eng_rate || booking?.engineer_rate || ''
+            const er = parseFloat(String(engRaw).replace(/[^0-9.]/g, '')) || 0
+            const ef = engFromTimeMap[r.id] ?? r.eng_from_time ?? from
+            const et = engToTimeMap[r.id] ?? r.eng_to_time ?? to
+            const engHrs = calcHours(ef, et)
+            update.eng_from_time = ef || null
+            update.eng_to_time = et || null
+            update.eng_hours = engHrs
+            update.eng_charge = engHrs != null && engHrs > 0 && er > 0 ? parseFloat((engHrs * er).toFixed(2)) : null
           }
         }
         if (isDayRate && hasEngineer) {
@@ -648,15 +700,16 @@ export default function RunnerWOPage() {
           }, 0)
           const engName = wo?.engineer || booking?.engineer_name || ''
           const engTotal = stRows.reduce((sum: number, r: any) => {
-            const rate = parseFloat(String(r.eng_rate ?? '0')) || 0
+            const engRateRaw = r.eng_rate || booking?.engineer_rate || ''
+            const rate = parseFloat(String(engRateRaw).replace(/[^0-9.]/g, '')) || 0
             if (!rate) return sum
             if (isDayRate) {
               const hrs = parseFloat(engHoursMap[r.id] ?? String(r.eng_hours ?? '0')) || 0
               return sum + (hrs > 0 ? hrs * rate : 0)
             }
-            const liveFrom = fromTimeMap[r.id] ?? r.from_time ?? ''
-            const liveTo = toTimeMap[r.id] ?? r.to_time ?? ''
-            const hrs = calcHours(liveFrom, liveTo) ?? 0
+            const ef = engFromTimeMap[r.id] ?? r.eng_from_time ?? r.from_time ?? ''
+            const et = engToTimeMap[r.id] ?? r.eng_to_time ?? r.to_time ?? ''
+            const hrs = calcHours(ef, et) ?? 0
             return sum + (hrs > 0 ? hrs * rate : 0)
           }, 0)
 
@@ -754,13 +807,16 @@ export default function RunnerWOPage() {
                       </div>
                       <div>
                         {stRows.map((r: any) => {
-                          const engRateForRow = parseFloat(String(r.eng_rate ?? '').replace(/[^0-9.]/g, '')) || 0
+                          const engRateForRow = parseFloat(String(r.eng_rate || booking?.engineer_rate || '').replace(/[^0-9.]/g, '')) || 0
                           const rateNum = parseFloat(String(r.rate ?? '').replace(/[^0-9.]/g, '')) || 0
                           const liveFrom = fromTimeMap[r.id] ?? r.from_time ?? ''
                           const liveTo = toTimeMap[r.id] ?? r.to_time ?? ''
                           const liveHours = calcHours(liveFrom, liveTo)
                           const liveCharge = liveHours != null && rateNum > 0 ? parseFloat((liveHours * rateNum).toFixed(2)) : null
-                          const liveEngCharge = liveHours != null && liveHours > 0 && engRateForRow > 0 ? parseFloat((liveHours * engRateForRow).toFixed(2)) : null
+                          const engLiveFrom = engFromTimeMap[r.id] ?? r.eng_from_time ?? r.from_time ?? ''
+                          const engLiveTo = engToTimeMap[r.id] ?? r.eng_to_time ?? r.to_time ?? ''
+                          const engLiveHours = calcHours(engLiveFrom, engLiveTo)
+                          const liveEngCharge = engLiveHours != null && engLiveHours > 0 && engRateForRow > 0 ? parseFloat((engLiveHours * engRateForRow).toFixed(2)) : null
                           return (
                             <div key={r.id}>
                               <div style={{ display: 'grid', gridTemplateColumns: '60px 80px 70px 70px 38px 62px 60px', borderBottom: engName ? 'none' : '1px solid #2a2e3d' }}>
@@ -783,12 +839,12 @@ export default function RunnerWOPage() {
                                   <div style={{ ...tdStyle }} />
                                   <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10, fontStyle: 'italic' }}>{engName}</div>
                                   <div style={{ ...tdStyle, padding: '4px 4px' }}>
-                                    <TimeInput value={liveFrom} onChange={v => setFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ background: '#1a1e28', border: '1px solid #3a3f52', borderRadius: 5, color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 10, padding: '3px 3px', width: '100%', outline: 'none' }} />
+                                    <TimeInput value={engLiveFrom} onChange={v => setEngFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ background: '#1a1e28', border: '1px solid #3a3f52', borderRadius: 5, color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 10, padding: '3px 3px', width: '100%', outline: 'none' }} />
                                   </div>
                                   <div style={{ ...tdStyle, padding: '4px 4px' }}>
-                                    <TimeInput value={liveTo} onChange={v => setToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ background: '#1a1e28', border: '1px solid #3a3f52', borderRadius: 5, color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 10, padding: '3px 3px', width: '100%', outline: 'none' }} />
+                                    <TimeInput value={engLiveTo} onChange={v => setEngToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ background: '#1a1e28', border: '1px solid #3a3f52', borderRadius: 5, color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 10, padding: '3px 3px', width: '100%', outline: 'none' }} />
                                   </div>
-                                  <div style={{ ...tdStyle, justifyContent: 'center', color: '#e8eaf2', fontSize: 10 }}>{liveHours ?? '—'}</div>
+                                  <div style={{ ...tdStyle, justifyContent: 'center', color: '#e8eaf2', fontSize: 10 }}>{engLiveHours ?? '—'}</div>
                                   <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>
                                     {engRateForRow > 0 ? `$${engRateForRow}/hr` : '—'}
                                   </div>

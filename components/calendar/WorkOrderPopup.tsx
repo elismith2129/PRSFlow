@@ -54,6 +54,8 @@ type StRow = {
   eng_hours: number | null
   eng_rate: string
   eng_charge: number | null
+  eng_from_time: string
+  eng_to_time: string
 }
 
 type EquipRow = {
@@ -178,12 +180,14 @@ function normalizeStRow(d: any): StRow {
   } else if (d.total_hours != null) {
     charge = calcCharge(Number(d.total_hours), rate)
   }
-  const engHours = d.eng_hours != null ? Number(d.eng_hours)
-    : d.total_hours != null ? Number(d.total_hours)
-    : calcHours(d.from_time ?? '', d.to_time ?? '')
+  const engFromTime = d.eng_from_time ?? d.from_time ?? ''
+  const engToTime   = d.eng_to_time   ?? d.to_time   ?? ''
   const engRate = d.eng_rate != null ? String(d.eng_rate) : ''
-  let engCharge = d.eng_charge != null ? Number(d.eng_charge) : null
-  if (engCharge == null && engHours != null && engRate) {
+  const engHours = d.day_count != null
+    ? (d.eng_hours != null ? Number(d.eng_hours) : null)
+    : (calcHours(engFromTime, engToTime) ?? (d.total_hours != null ? Number(d.total_hours) : null))
+  let engCharge = null as number | null
+  if (engHours != null && engHours > 0 && engRate) {
     const erNum = parseFloat(engRate.replace(/[^0-9.]/g, ''))
     engCharge = !isNaN(erNum) && erNum > 0 ? parseFloat((engHours * erNum).toFixed(2)) : null
   }
@@ -198,6 +202,8 @@ function normalizeStRow(d: any): StRow {
     eng_hours: engHours,
     eng_rate: engRate,
     eng_charge: engCharge,
+    eng_from_time: engFromTime,
+    eng_to_time: engToTime,
   }
 }
 
@@ -507,8 +513,8 @@ export function WorkOrderPopup({
         const rows = st.map(normalizeStRow)
         if (isSingleDay && liveForm && (liveForm.from_time || liveForm.to_time)) {
           const r = rows[0]
-          const from = liveForm.from_time || r.from_time
-          const to   = liveForm.to_time   || r.to_time
+          const from = r.from_time || liveForm.from_time
+          const to   = r.to_time   || liveForm.to_time
           const hrs  = calcHours(from, to)
           // Day-rate rows keep their day_count-based charge; only update times for hourly rows
           rows[0] = r.day_count != null
@@ -728,12 +734,17 @@ export function WorkOrderPopup({
           u.charge = calcCharge(u.total_hours, u.rate)
         }
       }
-      // Recalculate eng_charge: for hourly rows use total_hours; for day-rate use eng_hours
-      if ('eng_hours' in updates || 'eng_rate' in updates || 'from_time' in updates || 'to_time' in updates) {
+      // Recalculate eng_charge: day-rate uses eng_hours; hourly uses calcHours(eng times) × eng_rate
+      if ('eng_hours' in updates || 'eng_rate' in updates || 'from_time' in updates || 'to_time' in updates || 'eng_from_time' in updates || 'eng_to_time' in updates) {
         const isDayRateRow = u.day_count != null
-        const eh = isDayRateRow
-          ? (u.eng_hours != null ? Number(u.eng_hours) : null)
-          : (u.total_hours != null ? Number(u.total_hours) : null)
+        let eh: number | null
+        if (isDayRateRow) {
+          eh = u.eng_hours != null ? Number(u.eng_hours) : null
+        } else {
+          const ef = u.eng_from_time || u.from_time
+          const et = u.eng_to_time   || u.to_time
+          eh = calcHours(ef, et)
+        }
         const er = parseFloat((u.eng_rate ?? '').replace(/[^0-9.]/g, ''))
         u.eng_charge = eh != null && eh > 0 && !isNaN(er) && er > 0 ? parseFloat((eh * er).toFixed(2)) : null
       }
@@ -874,6 +885,8 @@ export function WorkOrderPopup({
         eng_hours: r.eng_hours ?? null,
         eng_rate: r.eng_rate || null,
         eng_charge: r.eng_charge ?? null,
+        eng_from_time: r.eng_from_time || null,
+        eng_to_time: r.eng_to_time || null,
       }).eq('id', r.id)
     ))
 
@@ -1199,7 +1212,7 @@ export function WorkOrderPopup({
                       const engName = liveForm?.engineer_name || booking.engineer_name || ''
                       const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || ''
                       const engRateNum = parseFloat((engRateDisplay ?? '').replace(/[^0-9.]/g, '')) || 0
-                      const engHrs = r.total_hours ?? null
+                      const engHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time) ?? null
                       const engCharge = engHrs != null && engHrs > 0 && engRateNum > 0 ? engHrs * engRateNum : null
                       return (
                         <div key={r.id}>
@@ -1219,9 +1232,9 @@ export function WorkOrderPopup({
                             <div style={{ display: 'grid', gridTemplateColumns: '55px 90px 1fr 72px 72px 55px 90px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                               <div style={{ gridColumn: 'span 2', ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng: {engName}</div>
                               <div style={cellS} />
-                              <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} /></div>
-                              <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} /></div>
-                              <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{r.total_hours != null ? r.total_hours : '—'}</div>
+                              <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} style={inp} /></div>
+                              <div style={cellS}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} style={inp} /></div>
+                              <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engHrs != null ? engHrs : '—'}</div>
                               <div style={cellS}>
                                 <input value={r.eng_rate || engRateDisplay}
                                   onChange={e => updateStRow(r.id, { eng_rate: e.target.value })}
