@@ -707,11 +707,11 @@ export default function RunnerWOPage() {
                   Session times will appear here
                 </div>
               ) : (
-                /* Unified table: Date | Session | From | To | Type | Rate | OT Rate | Total */
+                /* Unified table: Date | Session | From | To | Hrs | Type | Rate | OT Rate | Total */
                 <div style={{ overflowX: 'auto' }}>
-                  <div style={{ minWidth: 480 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 58px 58px 36px 70px 62px 62px', background: '#0d0f14', borderTop: '1px solid #2a2e3d', borderBottom: '1px solid #2a2e3d' }}>
-                      {['Date', 'Session', 'From', 'To', 'Type', 'Rate', 'OT Rate', 'Total'].map(h => <div key={h} style={thStyle}>{h}</div>)}
+                  <div style={{ minWidth: 520 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 58px 58px 36px 36px 70px 62px 62px', background: '#0d0f14', borderTop: '1px solid #2a2e3d', borderBottom: '1px solid #2a2e3d' }}>
+                      {['Date', 'Session', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Rate', 'Total'].map(h => <div key={h} style={thStyle}>{h}</div>)}
                     </div>
                     <div>
                       {stRows.map((r: any) => {
@@ -738,14 +738,17 @@ export default function RunnerWOPage() {
                           rowTotal = liveHours != null && rateNum > 0 ? parseFloat((liveHours * rateNum).toFixed(2)) : null
                         }
 
+                        const rowHrs = calcHours(liveFrom, liveTo)
+                        const rowHrsDisplay = isDayRow ? (rowHrs ?? 12) : (rowHrs ?? '—')
                         const tSelectStyle = { background: 'transparent', color: '#e8eaf2', border: 'none', fontSize: 10, fontFamily: 'DM Mono, monospace', width: '100%' }
                         return (
                           <div key={r.id}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 58px 58px 36px 70px 62px 62px', borderBottom: engName ? 'none' : '1px solid #2a2e3d' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 58px 58px 36px 36px 70px 62px 62px', borderBottom: engName ? 'none' : '1px solid #2a2e3d' }}>
                               <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>{r.date || '—'}</div>
                               <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>{r.session_info || '—'}</div>
                               <div style={{ ...tdStyle, padding: '2px 4px' }}><TimeInput value={liveFrom} onChange={v => setFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={tSelectStyle} /></div>
                               <div style={{ ...tdStyle, padding: '2px 4px' }}><TimeInput value={liveTo} onChange={v => setToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={tSelectStyle} /></div>
+                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>{rowHrsDisplay !== '—' ? `${rowHrsDisplay}h` : '—'}</div>
                               <div style={{ ...tdStyle, fontSize: 9, color: isDayRow ? '#c8f04e' : '#8b90a8' }}>{isDayRow ? 'Day' : 'Hr'}</div>
                               <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>
                                 {isDayRow
@@ -754,21 +757,22 @@ export default function RunnerWOPage() {
                                 }
                               </div>
                               <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>
-                                {isDayRow && parseFloat(String(r.ot_rate ?? '0')) > 0 ? `$${parseFloat(String(r.ot_rate ?? '0'))}/hr` : '—'}
+                                {parseFloat(String(r.ot_rate ?? '0').replace(/[^0-9.]/g, '')) > 0 ? `$${parseFloat(String(r.ot_rate ?? '0').replace(/[^0-9.]/g, ''))}/hr` : '—'}
                               </div>
                               <div style={{ ...tdStyle, color: rowTotal != null ? meta.color : '#4a4f64', fontWeight: rowTotal != null ? 700 : 400, borderRight: 'none' }}>
                                 {rowTotal != null ? `$${rowTotal.toFixed(2)}` : '—'}
                               </div>
                             </div>
                             {engName && (
-                              <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 58px 58px 36px 70px 62px 62px', borderBottom: '1px solid #2a2e3d', background: 'rgba(200,240,78,0.03)' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 58px 58px 36px 36px 70px 62px 62px', borderBottom: '1px solid #2a2e3d', background: 'rgba(200,240,78,0.03)' }}>
                                 <div style={{ ...tdStyle }} />
                                 <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10, fontStyle: 'italic' }}>{engName}</div>
                                 <div style={{ ...tdStyle, padding: '2px 4px' }}><TimeInput value={engLiveFrom} onChange={v => setEngFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSelectStyle, color: '#c8f04e' }} /></div>
                                 <div style={{ ...tdStyle, padding: '2px 4px' }}><TimeInput value={engLiveTo} onChange={v => setEngToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSelectStyle, color: '#c8f04e' }} /></div>
-                                <div style={{ ...tdStyle }} />
                                 <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>{engLiveHours != null ? `${engLiveHours}h` : '—'}</div>
+                                <div style={{ ...tdStyle }} />
                                 <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>{engRateForRow > 0 ? `$${engRateForRow}/hr` : '—'}</div>
+                                <div style={{ ...tdStyle }} />
                                 <div style={{ ...tdStyle, color: liveEngCharge != null ? meta.color : '#4a4f64', fontWeight: liveEngCharge != null ? 700 : 400, borderRight: 'none' }}>
                                   {liveEngCharge != null ? `$${liveEngCharge.toFixed(2)}` : '—'}
                                 </div>
