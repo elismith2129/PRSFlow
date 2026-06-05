@@ -916,7 +916,13 @@ export function WorkOrderPopup({
   // ── Derived totals ─────────────────────────────────────────────────────────
 
   const stTotal = stRows.reduce((s, r) => s + (r.charge ?? 0) + (r.ot_charge ?? 0), 0)
-  const engTotal = stRows.reduce((s, r) => s + (r.eng_charge ?? 0), 0)
+  const engTotal = stRows.reduce((s, r) => {
+    const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any)?.engineer_rate || ''
+    const rate = parseFloat(engRateDisplay.replace(/[^0-9.]/g, '')) || 0
+    if (!rate) return s
+    const hrs = r.eng_hours ?? 0
+    return s + (hrs > 0 ? parseFloat((hrs * rate).toFixed(2)) : 0)
+  }, 0)
   const isDayRate = (liveForm?.rate_type === 'daily' || !!liveForm?.rate_daily) || (booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily))
   const rentTotal = rentRows.reduce((s, r) => s + (parseFloat(r.charge) || 0), 0)
   const grandTotal = stTotal + engTotal + rentTotal
