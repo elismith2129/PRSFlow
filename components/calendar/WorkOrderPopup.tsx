@@ -175,6 +175,8 @@ function normalizeStRow(d: any): StRow {
   if (dayCount != null) {
     const rateNum = parseFloat(String(rate).replace(/[^0-9.]/g, ''))
     charge = !isNaN(rateNum) && rateNum > 0 ? parseFloat((dayCount * rateNum).toFixed(2)) : null
+  } else if (charge == null && d.total_hours != null) {
+    charge = calcCharge(Number(d.total_hours), rate)
   }
   const engHours = d.eng_hours != null ? Number(d.eng_hours)
     : d.total_hours != null ? Number(d.total_hours)

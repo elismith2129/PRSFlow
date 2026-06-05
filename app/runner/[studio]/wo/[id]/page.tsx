@@ -13,11 +13,23 @@ const STUDIO_META: Record<string, { label: string; abbr: string; color: string }
 
 const EQUIPMENT = ['Speakers', 'Microphone', 'Console']
 
+function timeToMins(t: string): number {
+  if (!t) return NaN
+  const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i)
+  if (!m) return NaN
+  let h = parseInt(m[1], 10)
+  const min = parseInt(m[2], 10)
+  const ap = (m[3] ?? '').toUpperCase()
+  if (ap === 'PM' && h !== 12) h += 12
+  if (ap === 'AM' && h === 12) h = 0
+  return h * 60 + min
+}
 function calcHours(from: string, to: string): number | null {
   if (!from || !to) return null
-  const [fh, fm] = from.split(':').map(Number)
-  const [th, tm] = to.split(':').map(Number)
-  let diff = (th * 60 + tm) - (fh * 60 + fm)
+  const f = timeToMins(from)
+  const t = timeToMins(to)
+  if (isNaN(f) || isNaN(t)) return null
+  let diff = t - f
   if (diff < 0) diff += 24 * 60
   return diff > 0 ? parseFloat((diff / 60).toFixed(2)) : null
 }
