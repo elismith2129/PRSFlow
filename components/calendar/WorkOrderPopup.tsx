@@ -1220,6 +1220,7 @@ export function WorkOrderPopup({
                       const engRateNum = parseFloat((engRateDisplay ?? '').replace(/[^0-9.]/g, '')) || 0
                       const engHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time) ?? null
                       const engCharge = engHrs != null && engHrs > 0 && engRateNum > 0 ? engHrs * engRateNum : null
+                      console.log('[charge debug]', r.id, r.total_hours, r.rate, r.charge)
                       return (
                         <div key={r.id}>
                           <div style={{ display: 'grid', gridTemplateColumns: '55px 90px 1fr 72px 72px 55px 90px 80px', borderBottom: engName ? 'none' : '1px solid rgba(255,255,255,0.04)' }}>
