@@ -213,15 +213,21 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   /* Studio time scroll container: show all rows in print/PDF, no clipping */
   [data-st-scroll] { max-height: none !important; overflow: visible !important; }
 
-  /* Session notes print block: hidden on screen, fully visible in print */
-  [data-si-input] { display: none !important; }
-  [data-si-print] {
+  /* Session notes: expand cell to show full content in print */
+  [data-wo-portal] [data-si-cell] {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    white-space: normal !important;
+  }
+  [data-wo-portal] [data-si-input] { display: none !important; }
+  [data-wo-portal] [data-si-print] {
     display: block !important;
     white-space: pre-wrap !important;
     word-break: break-word !important;
     font-family: 'DM Mono', monospace !important;
     font-size: 9px !important;
     color: #111 !important;
-    padding: 1px 6px 4px !important;
+    padding: 0 !important;
   }
 }

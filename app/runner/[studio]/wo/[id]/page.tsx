@@ -91,6 +91,7 @@ export default function RunnerWOPage() {
   const [notesModalText, setNotesModalText] = useState('')
   const [expandedEngRow, setExpandedEngRow] = useState<string | null>(null)
   const [engPopoverPos, setEngPopoverPos] = useState<{ top: number; left: number } | null>(null)
+  const notesScrollRef = useRef(0)
   const equipNoteFileRef = useRef<HTMLInputElement>(null)
   const pendingNoteKey = useRef<{ key: string; equipment: string; date: string } | null>(null)
 
@@ -617,6 +618,7 @@ export default function RunnerWOPage() {
     await supabase.from('studio_time_rows').update({ session_info: notesModalText }).eq('id', notesModalRowId)
     setStRows(prev => prev.map((r: any) => r.id === notesModalRowId ? { ...r, session_info: notesModalText } : r))
     setNotesModalRowId(null)
+    window.scrollTo({ top: notesScrollRef.current, behavior: 'instant' })
   }
 
   function getInitials(name: string) {
@@ -635,21 +637,21 @@ export default function RunnerWOPage() {
     <div style={{ minHeight: '100dvh', background: '#0d0f14', fontFamily: 'Syne, sans-serif', paddingBottom: 100 }}>
       {/* Session Notes Bottom Sheet */}
       {notesModalRowId && (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: '38vh', zIndex: 10002, display: 'flex', flexDirection: 'column', background: '#161920', borderTop: '3px solid #c8f04e', borderRadius: '16px 16px 0 0' }}>
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, maxHeight: '38vh', zIndex: 10002, display: 'flex', flexDirection: 'column', background: '#161920', borderTop: '3px solid #c8f04e', borderRadius: '16px 16px 0 0', overflow: 'hidden', boxSizing: 'border-box' }}>
           <div style={{ padding: '14px 16px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
             <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 16, color: '#f0f0f0' }}>Session Notes</span>
-            <button onClick={() => setNotesModalRowId(null)} style={{ background: 'none', border: 'none', color: '#8b90a8', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
+            <button onClick={() => { setNotesModalRowId(null); window.scrollTo({ top: notesScrollRef.current, behavior: 'instant' }) }} style={{ background: 'none', border: 'none', color: '#8b90a8', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
           </div>
           <textarea
             value={notesModalText}
             onChange={e => setNotesModalText(e.target.value)}
             placeholder="Song names, notes, instructions…"
-            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 13, padding: '0 16px', resize: 'none', lineHeight: 1.6, overflowY: 'auto' }}
+            style={{ flex: 1, minHeight: 0, background: 'transparent', border: 'none', outline: 'none', color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 13, padding: '0 16px', resize: 'none', lineHeight: 1.6, overflowY: 'auto' }}
             autoFocus
           />
-          <div style={{ display: 'flex', gap: 10, padding: '10px 16px 16px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 10, padding: '10px 16px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))', flexShrink: 0 }}>
             <button onClick={saveNotesModal} style={{ flex: 1, background: '#c8f04e', color: '#0d0f14', border: 'none', borderRadius: 8, padding: '11px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Save</button>
-            <button onClick={() => setNotesModalRowId(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', color: '#8b90a8', border: 'none', borderRadius: 8, padding: '11px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
+            <button onClick={() => { setNotesModalRowId(null); window.scrollTo({ top: notesScrollRef.current, behavior: 'instant' }) }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', color: '#8b90a8', border: 'none', borderRadius: 8, padding: '11px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
           </div>
         </div>
       )}
@@ -796,7 +798,7 @@ export default function RunnerWOPage() {
                               <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>{r.date || '—'}</div>
                               <div style={{ ...tdStyle, padding: '4px 3px' }}>
                                 <button
-                                  onClick={() => { setNotesModalRowId(r.id); setNotesModalText(r.session_info || '') }}
+                                  onClick={() => { notesScrollRef.current = window.scrollY; setNotesModalRowId(r.id); setNotesModalText(r.session_info || '') }}
                                   style={{ width: '100%', padding: '3px 4px', border: `1px solid ${hasNotes ? '#c8f04e' : '#3a3f52'}`, borderRadius: 4, background: hasNotes ? 'rgba(200,240,78,0.08)' : 'transparent', color: hasNotes ? '#c8f04e' : '#4a4f64', fontSize: 9, fontFamily: 'Syne', cursor: 'pointer' }}
                                 >Notes</button>
                               </div>
