@@ -540,7 +540,7 @@ export function WorkOrderPopup({
           const missingDates = allDates.filter(d => !coveredDates.has(d))
           if (missingDates.length > 0) {
             const dayRateNum = parseFloat((booking.rate_daily ?? '').replace(/[^0-9.]/g, ''))
-            await supabase.from('studio_time_rows').insert(missingDates.map((d, i) => ({
+            await supabase.from('studio_time_rows').upsert(missingDates.map((d, i) => ({
               work_order_id: existing.id,
               studio: studioLetter || booking.studio || '',
               date: d, session_info: '',
@@ -552,7 +552,7 @@ export function WorkOrderPopup({
               ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
               ot_hours: 0, ot_charge: null,
               sort_order: coveredDates.size + i,
-            })))
+            })), { onConflict: 'work_order_id,date', ignoreDuplicates: true })
           }
 
           // 4. Reload all rows fresh from DB — never merge in-memory arrays
@@ -563,10 +563,13 @@ export function WorkOrderPopup({
           setStRows(rows)
         }
       } else {
-        // Existing WO has no studio time rows — auto-generate from booking
+        // Existing WO has no studio time rows — fresh DB check before insert to prevent race-condition dupes
         const dates = dateRange(booking.start_date, booking.end_date)
+        const { data: freshCheck } = await supabase.from('studio_time_rows')
+          .select('date').eq('work_order_id', existing.id)
+        const existingDateSet = new Set((freshCheck ?? []).map((r: any) => r.date))
         const isDay = booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily)
-        const stPayloads = dates.map((d, i) => {
+        const stPayloads = dates.filter(d => !existingDateSet.has(d)).map((d, i) => {
           if (isDay) {
             const dayRateNum = parseFloat((booking.rate_daily ?? '').replace(/[^0-9.]/g, ''))
             return {
@@ -580,7 +583,7 @@ export function WorkOrderPopup({
               day_count: 1,
               ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
               ot_hours: 0, ot_charge: null,
-              sort_order: i,
+              sort_order: existingDateSet.size + i,
             }
           }
           const hrs = calcHours(booking.from_time ?? '', booking.to_time ?? '')
@@ -592,13 +595,15 @@ export function WorkOrderPopup({
             total_hours: hrs,
             rate: booking.rate ?? '',
             charge: calcCharge(hrs, booking.rate ?? ''),
-            sort_order: i,
+            sort_order: existingDateSet.size + i,
           }
         })
         if (stPayloads.length) {
-          const { data: stCreated } = await supabase.from('studio_time_rows').insert(stPayloads).select('*')
-          if (stCreated) setStRows(stCreated.map(normalizeStRow))
+          await supabase.from('studio_time_rows').upsert(stPayloads, { onConflict: 'work_order_id,date', ignoreDuplicates: true })
         }
+        const { data: reloaded } = await supabase.from('studio_time_rows')
+          .select('*').eq('work_order_id', existing.id).order('sort_order')
+        setStRows((reloaded ?? []).map(normalizeStRow))
       }
       if (eq?.length) setEquipRows(eq as EquipRow[])
       if (eqNotes?.length) {
@@ -679,7 +684,7 @@ export function WorkOrderPopup({
           sort_order: i,
         }
       })
-      const { data: stCreated } = await supabase.from('studio_time_rows').insert(stPayloads).select('*')
+      const { data: stCreated } = await supabase.from('studio_time_rows').upsert(stPayloads, { onConflict: 'work_order_id,date', ignoreDuplicates: true }).select('*')
       if (stCreated) setStRows(stCreated.map(normalizeStRow))
 
       // Auto-generate equipment condition rows
@@ -1237,10 +1242,13 @@ export function WorkOrderPopup({
                 {!isDayRate && <button type="button" onClick={addStRow} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button>}
                 {isDayRate && <div />}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                  <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0' }}>Studio: ${stTotal.toFixed(2)}</span>
                   {engTotal > 0 && (
                     <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#c8f04e' }}>Eng: ${engTotal.toFixed(2)}</span>
                   )}
-                  <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0', fontWeight: 700 }}>Total: ${stTotal.toFixed(2)}</span>
+                  {engTotal > 0 && (
+                    <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0', fontWeight: 700 }}>Total: ${(stTotal + engTotal).toFixed(2)}</span>
+                  )}
                 </div>
               </div>
             </div>
