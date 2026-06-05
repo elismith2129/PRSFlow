@@ -168,7 +168,7 @@ type FormData = {
   client_name: string; artist: string; label: string; ordered_by: string
   phone: string; email: string; po: string; producer: string
   food_budget: boolean; food_amount: string
-  engineer_name: string; engineer_status: string
+  engineer_name: string; engineer_rate: string; engineer_status: string
   assistant_name: string; assistant_status: string
   notes: string
   client_db_id: string | null
@@ -187,7 +187,7 @@ function emptyForm(overrides: Partial<FormData> = {}): FormData {
     client_name: '', artist: '', label: '', ordered_by: '',
     phone: '', email: '', po: '', producer: '',
     food_budget: false, food_amount: '',
-    engineer_name: '', engineer_status: 'not_needed',
+    engineer_name: '', engineer_rate: '', engineer_status: 'not_needed',
     assistant_name: '', assistant_status: 'not_needed',
     notes: '',
     client_db_id: null,
@@ -221,7 +221,7 @@ function bookingToForm(b: Booking): FormData {
     ordered_by: b.ordered_by ?? '', phone: b.phone ?? '', email: b.email ?? '',
     po: b.po ?? '', producer: b.producer ?? '',
     food_budget: b.food_budget ?? false, food_amount: b.food_amount ?? '',
-    engineer_name: b.engineer_name ?? '', engineer_status: b.engineer_status ?? 'not_needed',
+    engineer_name: b.engineer_name ?? '', engineer_rate: b.engineer_rate ?? '', engineer_status: b.engineer_status ?? 'not_needed',
     assistant_name: b.assistant_name ?? '', assistant_status: b.assistant_status ?? 'not_needed',
     notes: b.notes ?? '',
     client_db_id: b.client_id ?? null,
@@ -723,12 +723,13 @@ function BookingForm({
     start_date: form.start_date, end_date: form.end_date, studio: form.studio,
     location: form.location, rate: form.rate,
     rate_daily: form.rate_daily, rate_type: form.rate_type,
+    engineer_rate: form.engineer_rate,
   }), [form.client_name, form.artist, form.label, form.ordered_by,
     form.po, form.phone, form.email, form.from_time, form.to_time,
     form.producer, form.engineer_name, form.assistant_name,
     form.payment_type, form.food_budget, form.food_amount,
     form.invoice_num, form.start_date, form.end_date, form.studio, form.location,
-    form.rate, form.rate_daily, form.rate_type])
+    form.rate, form.rate_daily, form.rate_type, form.engineer_rate])
 
   // Debounced draft save — reports live form state back to parent for sessionStorage persistence
   useEffect(() => {
@@ -929,6 +930,7 @@ function BookingForm({
     const name = typeof eng === 'string' ? eng : `${eng.first_name} ${eng.last_name}`
     set('engineer_name', name)
     set('engineer_status', 'hold')
+    if (!form.engineer_rate) set('engineer_rate', '$55')
     setEngQuery(''); setShowEngDD(false); setEngHighlight(-1); setEngEditing(false); engEditingRef.current = false
   }
 
@@ -1249,6 +1251,19 @@ function BookingForm({
                       </div>
                     )}
                   </div>
+                  {engOn && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                      <label style={{ ...fL, marginBottom: 0, whiteSpace: 'nowrap' }}>Eng. Rate</label>
+                      <input
+                        type="text"
+                        value={form.engineer_rate}
+                        onChange={e => set('engineer_rate', e.target.value)}
+                        onBlur={e => set('engineer_rate', fmtMoney(e.target.value))}
+                        placeholder="$55"
+                        style={{ background: '#1a1d27', border: '1px solid #2a2e3d', color: '#e8eaf2', fontFamily: 'DM Mono', fontSize: 11, padding: '5px 8px', borderRadius: 4, width: 60, outline: 'none' }}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Assistant */}
@@ -2649,6 +2664,7 @@ function CalendarPageInner() {
       food_budget: data.food_budget,
       food_amount: data.food_amount || null,
       engineer_name: data.engineer_name || null,
+      engineer_rate: data.engineer_rate || null,
       engineer_status: data.engineer_status,
       assistant_name: data.assistant_name || null,
       assistant_status: data.assistant_status,
@@ -2729,8 +2745,10 @@ function CalendarPageInner() {
           const newRateNum = parseFloat(newRateRaw.replace(/[^0-9.]/g, ''))
           if (!isNaN(newRateNum) && newRateNum > 0) {
             const { data: stRows } = await supabase.from('studio_time_rows')
-              .select('id, rate, day_count, ot_rate, total_hours')
+              .select('id, rate, day_count, ot_rate, total_hours, eng_rate')
               .eq('work_order_id', woId)
+            const newEngRate = (payload as any).engineer_rate || null
+            const newEngRateNum = newEngRate ? parseFloat(newEngRate.replace(/[^0-9.]/g, '')) : null
             await Promise.all((stRows ?? []).map((r: any) => {
               const update: Record<string, any> = { rate: newRateRaw }
               if (payload.rate_type === 'day') {
@@ -2745,6 +2763,14 @@ function CalendarPageInner() {
               } else {
                 const hrs = r.total_hours != null ? Number(r.total_hours) : null
                 update.charge = hrs != null && hrs > 0 ? parseFloat((hrs * newRateNum).toFixed(2)) : null
+              }
+              // Sync eng_rate only if row has no rate or still at the $55 default
+              if (newEngRate && newEngRateNum != null && !isNaN(newEngRateNum)) {
+                const currentEngRate = (r.eng_rate ?? '').replace(/[^0-9.]/g, '')
+                const currentEngRateNum = currentEngRate ? parseFloat(currentEngRate) : null
+                if (!currentEngRateNum || Math.abs(currentEngRateNum - 55) < 0.01) {
+                  update.eng_rate = newEngRate
+                }
               }
               return supabase.from('studio_time_rows').update(update).eq('id', r.id)
             }))

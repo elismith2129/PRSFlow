@@ -51,6 +51,9 @@ type StRow = {
   ot_rate: string
   ot_hours: string
   ot_charge: number | null
+  eng_hours: number | null
+  eng_rate: string
+  eng_charge: number | null
 }
 
 type EquipRow = {
@@ -190,6 +193,9 @@ function normalizeStRow(d: any): StRow {
     ot_rate: d.ot_rate != null ? String(d.ot_rate) : '',
     ot_hours: d.ot_hours != null ? String(d.ot_hours) : '0',
     ot_charge: d.ot_charge != null ? Number(d.ot_charge) : null,
+    eng_hours: d.eng_hours != null ? Number(d.eng_hours) : null,
+    eng_rate: d.eng_rate != null ? String(d.eng_rate) : '',
+    eng_charge: d.eng_charge != null ? Number(d.eng_charge) : null,
   }
 }
 
@@ -205,7 +211,7 @@ export type WOFormSync = {
   payment_type: string; food_budget: boolean; food_amount: string
   invoice_num: string; start_date: string; end_date: string; studio: string; location: string
   rate: string; rate_daily: string; rate_type?: string
-  notes?: string; engineer_status?: string
+  notes?: string; engineer_status?: string; engineer_rate?: string
 }
 
 export function WorkOrderPopup({
@@ -714,6 +720,12 @@ export function WorkOrderPopup({
           u.charge = calcCharge(u.total_hours, u.rate)
         }
       }
+      // Recalculate eng_charge whenever eng_hours or eng_rate changes
+      if ('eng_hours' in updates || 'eng_rate' in updates) {
+        const eh = u.eng_hours != null ? Number(u.eng_hours) : null
+        const er = parseFloat((u.eng_rate ?? '').replace(/[^0-9.]/g, ''))
+        u.eng_charge = eh != null && eh > 0 && !isNaN(er) && er > 0 ? parseFloat((eh * er).toFixed(2)) : null
+      }
       return u
     }))
   }
@@ -848,6 +860,9 @@ export function WorkOrderPopup({
         ot_rate: r.ot_rate ? parseFloat(r.ot_rate.replace(/[^0-9.]/g, '')) || null : null,
         ot_hours: r.ot_hours ? parseFloat(r.ot_hours) || null : null,
         ot_charge: r.ot_charge ?? null,
+        eng_hours: r.eng_hours ?? null,
+        eng_rate: r.eng_rate || null,
+        eng_charge: r.eng_charge ?? null,
       }).eq('id', r.id)
     ))
 
@@ -877,9 +892,10 @@ export function WorkOrderPopup({
   // ── Derived totals ─────────────────────────────────────────────────────────
 
   const stTotal = stRows.reduce((s, r) => s + (r.charge ?? 0) + (r.ot_charge ?? 0), 0)
+  const engTotal = stRows.reduce((s, r) => s + (r.eng_charge ?? 0), 0)
   const isDayRate = (liveForm?.rate_type === 'daily' || !!liveForm?.rate_daily) || (booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily))
   const rentTotal = rentRows.reduce((s, r) => s + (parseFloat(r.charge) || 0), 0)
-  const grandTotal = stTotal + rentTotal
+  const grandTotal = stTotal + engTotal + rentTotal
   const totalPaid = payRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
   const balanceDue = grandTotal - totalPaid
   const sessionDates = Array.from(new Set(stRows.map(r => r.date).filter(Boolean))).sort()
@@ -1106,28 +1122,56 @@ export function WorkOrderPopup({
                       const otRateNum = parseFloat((r.ot_rate ?? '').replace(/[^0-9.]/g, '')) || 0
                       const otCharge = otHrs > 0 && otRateNum > 0 ? otHrs * otRateNum : 0
                       const rowTotal = dayCharge + otCharge
+                      const engName = liveForm?.engineer_name || booking.engineer_name || ''
+                      const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || '$55'
+                      const engRateNum = parseFloat((engRateDisplay ?? '').replace(/[^0-9.]/g, '')) || 0
+                      const engHrs = r.eng_hours ?? null
+                      const engCharge = engHrs != null && engHrs > 0 && engRateNum > 0 ? engHrs * engRateNum : null
                       return (
-                        <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '75px 1fr 44px 80px 55px 80px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                          <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{r.date || '—'}</div>
-                          <div style={cellS}><input value={r.session_info} onChange={e => updateStRow(r.id, { session_info: e.target.value })} style={inp} placeholder="—" /></div>
-                          <div style={cellS}>
-                            <input type="number" min="1" step="1" value={dayCount}
-                              onChange={e => updateStRow(r.id, { day_count: parseInt(e.target.value) || 1 })}
-                              style={{ ...inp, width: 32 }} />
+                        <div key={r.id}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 44px 80px 55px 80px 80px', borderBottom: engName ? 'none' : '1px solid rgba(255,255,255,0.04)' }}>
+                            <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{r.date || '—'}</div>
+                            <div style={cellS}><input value={r.session_info} onChange={e => updateStRow(r.id, { session_info: e.target.value })} style={inp} placeholder="—" /></div>
+                            <div style={cellS}>
+                              <input type="number" min="1" step="1" value={dayCount}
+                                onChange={e => updateStRow(r.id, { day_count: parseInt(e.target.value) || 1 })}
+                                style={{ ...inp, width: 32 }} />
+                            </div>
+                            <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{rateNum > 0 ? `$${rateNum.toLocaleString()}/day` : '—'}</div>
+                            <div style={cellS}>
+                              <input type="number" min="0" step="0.5" value={r.ot_hours ?? '0'}
+                                onChange={e => updateStRow(r.id, { ot_hours: e.target.value })}
+                                style={{ ...inp, width: 40 }} />
+                            </div>
+                            <div style={cellS}>
+                              <input value={r.ot_rate ?? ''} onChange={e => updateStRow(r.id, { ot_rate: e.target.value })}
+                                style={inp} placeholder="$0/hr" />
+                            </div>
+                            <div style={{ ...cellS, color: rowTotal > 0 ? '#c8f04e' : '#8a8fa0', fontWeight: 600, borderRight: 'none' }}>
+                              {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : '—'}
+                            </div>
                           </div>
-                          <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{rateNum > 0 ? `$${rateNum.toLocaleString()}/day` : '—'}</div>
-                          <div style={cellS}>
-                            <input type="number" min="0" step="0.5" value={r.ot_hours ?? '0'}
-                              onChange={e => updateStRow(r.id, { ot_hours: e.target.value })}
-                              style={{ ...inp, width: 40 }} />
-                          </div>
-                          <div style={cellS}>
-                            <input value={r.ot_rate ?? ''} onChange={e => updateStRow(r.id, { ot_rate: e.target.value })}
-                              style={inp} placeholder="$0/hr" />
-                          </div>
-                          <div style={{ ...cellS, color: rowTotal > 0 ? '#c8f04e' : '#8a8fa0', fontWeight: 600, borderRight: 'none' }}>
-                            {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : '—'}
-                          </div>
+                          {engName && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 44px 80px 55px 80px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
+                              <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
+                              <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engName}</div>
+                              <div style={cellS}>
+                                <input type="number" min="0" step="0.5" value={r.eng_hours ?? ''}
+                                  placeholder="0"
+                                  onChange={e => updateStRow(r.id, { eng_hours: e.target.value ? parseFloat(e.target.value) : null, eng_rate: r.eng_rate || engRateDisplay })}
+                                  style={{ ...inp, width: 32 }} />
+                              </div>
+                              <div style={cellS}>
+                                <input value={r.eng_rate || engRateDisplay}
+                                  onChange={e => updateStRow(r.id, { eng_rate: e.target.value })}
+                                  style={{ ...inp, width: 64 }} />
+                              </div>
+                              <div style={{ gridColumn: 'span 2', ...cellS }} />
+                              <div style={{ ...cellS, color: engCharge != null ? '#c8f04e' : '#8a8fa0', fontWeight: engCharge != null ? 600 : 400, borderRight: 'none' }}>
+                                {engCharge != null ? `$${engCharge.toFixed(2)}` : '—'}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )
                     })}
@@ -1140,20 +1184,51 @@ export function WorkOrderPopup({
                     {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Rate', 'Charge'].map(h => <div key={h} style={thS}>{h}</div>)}
                   </div>
                   <div data-st-scroll="" style={{ overflowY: stRows.length > 5 ? 'auto' : 'visible', maxHeight: stRows.length > 5 ? 200 : undefined }}>
-                    {stRows.map(r => (
-                      <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '55px 90px 1fr 72px 72px 55px 90px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                        <div style={cellS}><input value={r.studio} onChange={e => updateStRow(r.id, { studio: e.target.value })} style={inp} /></div>
-                        <div style={cellS}><input value={r.date} onChange={e => updateStRow(r.id, { date: e.target.value })} style={inp} /></div>
-                        <div style={cellS}><input value={r.session_info} onChange={e => updateStRow(r.id, { session_info: e.target.value })} style={inp} /></div>
-                        <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} /></div>
-                        <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} /></div>
-                        <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{r.total_hours != null ? r.total_hours : '—'}</div>
-                        <div style={cellS}><input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} style={inp} /></div>
-                        <div style={{ ...cellS, color: r.charge != null ? '#c8f04e' : '#8a8fa0', fontWeight: r.charge != null ? 600 : 400, borderRight: 'none' }}>
-                          {r.charge != null ? `$${r.charge.toFixed(2)}` : '—'}
+                    {stRows.map(r => {
+                      const engName = liveForm?.engineer_name || booking.engineer_name || ''
+                      const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || '$55'
+                      const engRateNum = parseFloat((engRateDisplay ?? '').replace(/[^0-9.]/g, '')) || 0
+                      const engHrs = r.eng_hours ?? null
+                      const engCharge = engHrs != null && engHrs > 0 && engRateNum > 0 ? engHrs * engRateNum : null
+                      return (
+                        <div key={r.id}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '55px 90px 1fr 72px 72px 55px 90px 80px', borderBottom: engName ? 'none' : '1px solid rgba(255,255,255,0.04)' }}>
+                            <div style={cellS}><input value={r.studio} onChange={e => updateStRow(r.id, { studio: e.target.value })} style={inp} /></div>
+                            <div style={cellS}><input value={r.date} onChange={e => updateStRow(r.id, { date: e.target.value })} style={inp} /></div>
+                            <div style={cellS}><input value={r.session_info} onChange={e => updateStRow(r.id, { session_info: e.target.value })} style={inp} /></div>
+                            <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} /></div>
+                            <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} /></div>
+                            <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{r.total_hours != null ? r.total_hours : '—'}</div>
+                            <div style={cellS}><input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} style={inp} /></div>
+                            <div style={{ ...cellS, color: r.charge != null ? '#c8f04e' : '#8a8fa0', fontWeight: r.charge != null ? 600 : 400, borderRight: 'none' }}>
+                              {r.charge != null ? `$${r.charge.toFixed(2)}` : '—'}
+                            </div>
+                          </div>
+                          {engName && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '55px 90px 1fr 72px 72px 55px 90px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
+                              <div style={{ gridColumn: 'span 2', ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng: {engName}</div>
+                              <div style={cellS} />
+                              <div style={{ gridColumn: 'span 2', ...cellS }}>
+                                <span style={{ fontSize: 9, color: '#8a8fa0', marginRight: 4 }}>Hrs</span>
+                                <input type="number" min="0" step="0.5" value={r.eng_hours ?? ''}
+                                  placeholder="0"
+                                  onChange={e => updateStRow(r.id, { eng_hours: e.target.value ? parseFloat(e.target.value) : null, eng_rate: r.eng_rate || engRateDisplay })}
+                                  style={{ ...inp, width: 40 }} />
+                              </div>
+                              <div style={cellS} />
+                              <div style={cellS}>
+                                <input value={r.eng_rate || engRateDisplay}
+                                  onChange={e => updateStRow(r.id, { eng_rate: e.target.value })}
+                                  style={{ ...inp, width: 64 }} />
+                              </div>
+                              <div style={{ ...cellS, color: engCharge != null ? '#c8f04e' : '#8a8fa0', fontWeight: engCharge != null ? 600 : 400, borderRight: 'none' }}>
+                                {engCharge != null ? `$${engCharge.toFixed(2)}` : '—'}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </>
               )}
@@ -1327,6 +1402,7 @@ export function WorkOrderPopup({
               <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
                 {[
                   { label: 'Studio Total', value: stTotal, color: '#f0f0f0', bold: false },
+                  ...(engTotal > 0 ? [{ label: 'Engineer Total', value: engTotal, color: '#c8f04e', bold: false }] : []),
                   { label: 'Rentals Total', value: rentTotal, color: '#f0f0f0', bold: false },
                   { label: 'Grand Total', value: grandTotal, color: '#f0f0f0', bold: true },
                   { label: 'Total Paid', value: totalPaid, color: '#4ade80', bold: false },

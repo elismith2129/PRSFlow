@@ -57,6 +57,9 @@ type LogRow = {
   approvedBy: string | null
   needsAttention: boolean
   clientName: string | null
+  artistName: string | null
+  engineerName: string | null
+  invoiceNum: string | null
   booking?: Booking
   opsCategory?: string
   opsStudio?: string
@@ -76,6 +79,7 @@ export function DailyOpsLogSection() {
   const [filterType, setFilterType] = useState('all')
   const [filterFrom, setFilterFrom] = useState('')
   const [filterTo, setFilterTo] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [woBooking, setWoBooking] = useState<Booking | null>(null)
   const [opsDetail, setOpsDetail] = useState<LogRow | null>(null)
 
@@ -116,6 +120,9 @@ export function DailyOpsLogSection() {
         approvedBy: w.approved_by ?? null,
         needsAttention: !!(w.needs_attention_notes),
         clientName: w.client ?? (booking as any)?.client_name ?? null,
+        artistName: (booking as any)?.artist ?? null,
+        engineerName: (booking as any)?.engineer_name ?? null,
+        invoiceNum: w.invoice_number ?? null,
         booking,
       }
     })
@@ -131,6 +138,9 @@ export function DailyOpsLogSection() {
       approvedBy: o.admin_approved_by ?? null,
       needsAttention: !!(o.needs_attention),
       clientName: null,
+      artistName: null,
+      engineerName: null,
+      invoiceNum: null,
       opsCategory: o.category,
       opsStudio: o.studio,
       opsDate: o.date,
@@ -153,10 +163,16 @@ export function DailyOpsLogSection() {
     if (filterType !== 'all' && r.type !== filterType) return false
     if (filterFrom && r.date < filterFrom) return false
     if (filterTo && r.date > filterTo) return false
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase()
+      const searchable = [r.clientName, r.artistName, STUDIO_LABELS[r.studioKey] ?? r.studioKey, r.engineerName, r.invoiceNum]
+        .filter(Boolean).join(' ').toLowerCase()
+      if (!searchable.includes(q)) return false
+    }
     return true
   })
 
-  const hasFilters = filterStudio !== 'all' || filterType !== 'all' || !!filterFrom || !!filterTo
+  const hasFilters = filterStudio !== 'all' || filterType !== 'all' || !!filterFrom || !!filterTo || !!searchQuery.trim()
 
   const inp: React.CSSProperties = {
     background: 'var(--surface)', border: '1px solid var(--border)',
@@ -174,6 +190,13 @@ export function DailyOpsLogSection() {
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20, alignItems: 'center' }}>
+        <input
+          type="text"
+          placeholder="Search client, artist, studio, engineer, invoice…"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          style={{ ...inp, width: 280 }}
+        />
         <select value={filterStudio} onChange={e => setFilterStudio(e.target.value)} style={inp}>
           {STUDIO_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
         </select>
@@ -185,7 +208,7 @@ export function DailyOpsLogSection() {
         <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} style={{ ...inp, colorScheme: 'dark' }} />
         {hasFilters && (
           <button
-            onClick={() => { setFilterStudio('all'); setFilterType('all'); setFilterFrom(''); setFilterTo('') }}
+            onClick={() => { setFilterStudio('all'); setFilterType('all'); setFilterFrom(''); setFilterTo(''); setSearchQuery('') }}
             style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 12px', color: 'var(--text3)', fontSize: 11, fontFamily: 'DM Mono, monospace', cursor: 'pointer' }}
           >
             Clear

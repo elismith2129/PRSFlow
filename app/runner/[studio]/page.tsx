@@ -230,10 +230,10 @@ export default function StudioDailyOpsPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: '#e8eaf2', marginBottom: 2 }}>
-                          {b.client_name || b.artist || '—'}
+                          {b.artist || b.client_name || '—'}
                         </div>
                         {b.artist && b.client_name && (
-                          <div style={{ fontSize: 11, color: '#8b90a8' }}>{b.artist}</div>
+                          <div style={{ fontSize: 11, color: '#8b90a8' }}>{b.client_name}</div>
                         )}
                       </div>
                       {statusBadge(b.status)}

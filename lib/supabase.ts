@@ -178,6 +178,7 @@ export interface Booking {
   food_budget: boolean
   food_amount: string | null
   engineer_name: string | null
+  engineer_rate: string | null
   engineer_status: EngineerStatus
   assistant_name: string | null
   assistant_status: EngineerStatus

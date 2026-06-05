@@ -41,6 +41,7 @@ export default function RunnerWOPage() {
   const [runnerFinished, setRunnerFinished] = useState(false)
   const [showFinishConfirm, setShowFinishConfirm] = useState(false)
   const [otHours, setOtHours] = useState<Record<string, string>>({})
+  const [engHoursMap, setEngHoursMap] = useState<Record<string, string>>({})
   const [equipNotes, setEquipNotes] = useState<Record<string, { id: string; note: string; photo_urls: string[] }>>({})
   const [openNoteKey, setOpenNoteKey] = useState<string | null>(null)
   const [noteUploading, setNoteUploading] = useState(false)
@@ -123,6 +124,9 @@ export default function RunnerWOPage() {
       setWo(woData)
       setBooking(bkData)
       setStRows(st ?? [])
+      const initEngHours: Record<string, string> = {}
+      for (const r of st ?? []) initEngHours[r.id] = r.eng_hours != null ? String(r.eng_hours) : ''
+      setEngHoursMap(initEngHours)
       setEquipRows(eq ?? [])
       if (eqNotes?.length) {
         const map: Record<string, { id: string; note: string; photo_urls: string[] }> = {}
@@ -218,6 +222,13 @@ export default function RunnerWOPage() {
             const next = { ...prev }
             for (const r of st) {
               if (!(r.id in next)) next[r.id] = String(r.ot_hours ?? '0')
+            }
+            return next
+          })
+          setEngHoursMap(prev => {
+            const next = { ...prev }
+            for (const r of st) {
+              if (!(r.id in next)) next[r.id] = r.eng_hours != null ? String(r.eng_hours) : ''
             }
             return next
           })
@@ -406,17 +417,27 @@ export default function RunnerWOPage() {
     }).eq('id', woRef.current)
     await saveExpenses()
 
-    // Save OT hours for day-rate rows
+    // Save OT hours for day-rate rows + eng_hours for all rows with an engineer
     const isDayRate = booking?.rate_type === 'day' || (!booking?.rate && !!booking?.rate_daily)
-    if (isDayRate && stRows.length > 0) {
+    const hasEngineer = !!(wo?.engineer || booking?.engineer_name)
+    if ((isDayRate || hasEngineer) && stRows.length > 0) {
       await Promise.all(stRows.map((r: any) => {
-        const hrs = parseFloat(otHours[r.id] ?? String(r.ot_hours ?? '0')) || 0
-        const rate = parseFloat(String(r.ot_rate ?? '0')) || 0
-        const ot_charge = hrs > 0 && rate > 0 ? parseFloat((hrs * rate).toFixed(2)) : null
-        return supabase.from('studio_time_rows').update({
-          ot_hours: hrs || null,
-          ot_charge,
-        }).eq('id', r.id)
+        const update: Record<string, any> = {}
+        if (isDayRate) {
+          const hrs = parseFloat(otHours[r.id] ?? String(r.ot_hours ?? '0')) || 0
+          const rate = parseFloat(String(r.ot_rate ?? '0')) || 0
+          update.ot_hours = hrs || null
+          update.ot_charge = hrs > 0 && rate > 0 ? parseFloat((hrs * rate).toFixed(2)) : null
+        }
+        if (hasEngineer) {
+          const ehStr = engHoursMap[r.id] ?? ''
+          const eh = ehStr ? parseFloat(ehStr) : null
+          const engRate = r.eng_rate || (booking as any)?.engineer_rate || '55'
+          const er = parseFloat(String(engRate).replace(/[^0-9.]/g, '')) || 0
+          update.eng_hours = eh || null
+          update.eng_charge = eh != null && eh > 0 && er > 0 ? parseFloat((eh * er).toFixed(2)) : null
+        }
+        return supabase.from('studio_time_rows').update(update).eq('id', r.id)
       }))
     }
 
@@ -503,6 +524,13 @@ export default function RunnerWOPage() {
             }
             return s + (parseFloat(String(r.charge ?? '0')) || 0)
           }, 0)
+          const engName = wo?.engineer || booking?.engineer_name || ''
+          const engTotal = engName ? stRows.reduce((s: number, r: any) => {
+            const ehStr = engHoursMap[r.id] ?? (r.eng_hours != null ? String(r.eng_hours) : '')
+            const eh = ehStr ? parseFloat(ehStr) : null
+            const er = parseFloat(String(r.eng_rate || booking?.engineer_rate || '55').replace(/[^0-9.]/g, '')) || 0
+            return s + (eh != null && eh > 0 && er > 0 ? eh * er : 0)
+          }, 0) : 0
 
           return (
             <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
@@ -522,31 +550,63 @@ export default function RunnerWOPage() {
                       const otRateNum = parseFloat(String(r.ot_rate ?? '0')) || 0
                       const liveOtCharge = currentOtHrs > 0 && otRateNum > 0 ? currentOtHrs * otRateNum : 0
                       const rowTotal = dayCharge + liveOtCharge
+                      const engRateForRow = parseFloat(String(r.eng_rate || booking?.engineer_rate || '55').replace(/[^0-9.]/g, '')) || 0
+                      const ehStr = engHoursMap[r.id] ?? (r.eng_hours != null ? String(r.eng_hours) : '')
+                      const eh = ehStr ? parseFloat(ehStr) : null
+                      const liveEngCharge = eh != null && eh > 0 && engRateForRow > 0 ? eh * engRateForRow : null
                       return (
-                        <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '70px 1fr 80px 55px 75px 75px', borderBottom: '1px solid #2a2e3d' }}>
-                          <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>{r.date || '—'}</div>
-                          <div style={{ ...tdStyle, color: '#8b90a8' }}>{r.session_info || '—'}</div>
-                          <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>
-                            {rateNum > 0 ? `$${rateNum.toLocaleString()} × ${dayCount}` : '—'}
+                        <div key={r.id}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 80px 55px 75px 75px', borderBottom: engName ? 'none' : '1px solid #2a2e3d' }}>
+                            <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>{r.date || '—'}</div>
+                            <div style={{ ...tdStyle, color: '#8b90a8' }}>{r.session_info || '—'}</div>
+                            <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>
+                              {rateNum > 0 ? `$${rateNum.toLocaleString()} × ${dayCount}` : '—'}
+                            </div>
+                            <div style={{ ...tdStyle, justifyContent: 'center' }}>
+                              <input
+                                type="number" min="0" step="0.5"
+                                value={otHours[r.id] ?? String(r.ot_hours ?? '0')}
+                                onChange={e => setOtHours(prev => ({ ...prev, [r.id]: e.target.value }))}
+                                style={{
+                                  background: '#1a1e28', border: '1px solid #3a3f52', borderRadius: 6,
+                                  color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 13,
+                                  padding: '4px 6px', width: 44, textAlign: 'center', outline: 'none',
+                                }}
+                              />
+                            </div>
+                            <div style={{ ...tdStyle, color: liveOtCharge > 0 ? '#f0a24e' : '#4a4f64', fontWeight: liveOtCharge > 0 ? 600 : 400 }}>
+                              {liveOtCharge > 0 ? `$${liveOtCharge.toFixed(2)}` : '$0.00'}
+                            </div>
+                            <div style={{ ...tdStyle, color: rowTotal > 0 ? meta.color : '#4a4f64', fontWeight: 700, borderRight: 'none' }}>
+                              {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : '—'}
+                            </div>
                           </div>
-                          <div style={{ ...tdStyle, justifyContent: 'center' }}>
-                            <input
-                              type="number" min="0" step="0.5"
-                              value={otHours[r.id] ?? String(r.ot_hours ?? '0')}
-                              onChange={e => setOtHours(prev => ({ ...prev, [r.id]: e.target.value }))}
-                              style={{
-                                background: '#1a1e28', border: '1px solid #3a3f52', borderRadius: 6,
-                                color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 13,
-                                padding: '4px 6px', width: 44, textAlign: 'center', outline: 'none',
-                              }}
-                            />
-                          </div>
-                          <div style={{ ...tdStyle, color: liveOtCharge > 0 ? '#f0a24e' : '#4a4f64', fontWeight: liveOtCharge > 0 ? 600 : 400 }}>
-                            {liveOtCharge > 0 ? `$${liveOtCharge.toFixed(2)}` : '$0.00'}
-                          </div>
-                          <div style={{ ...tdStyle, color: rowTotal > 0 ? meta.color : '#4a4f64', fontWeight: 700, borderRight: 'none' }}>
-                            {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : '—'}
-                          </div>
+                          {engName && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 80px 55px 75px 75px', borderBottom: '1px solid #2a2e3d', background: 'rgba(200,240,78,0.03)' }}>
+                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
+                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>{engName}</div>
+                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>
+                                {engRateForRow > 0 ? `$${engRateForRow}/hr` : '—'}
+                              </div>
+                              <div style={{ ...tdStyle, justifyContent: 'center' }}>
+                                <input
+                                  type="number" min="0" step="0.5"
+                                  value={engHoursMap[r.id] ?? (r.eng_hours != null ? String(r.eng_hours) : '')}
+                                  placeholder="0"
+                                  onChange={e => setEngHoursMap(prev => ({ ...prev, [r.id]: e.target.value }))}
+                                  style={{
+                                    background: '#1a1e28', border: '1px solid #3a3f52', borderRadius: 6,
+                                    color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 13,
+                                    padding: '4px 6px', width: 44, textAlign: 'center', outline: 'none',
+                                  }}
+                                />
+                              </div>
+                              <div style={{ ...tdStyle }} />
+                              <div style={{ ...tdStyle, color: liveEngCharge != null ? meta.color : '#4a4f64', fontWeight: liveEngCharge != null ? 700 : 400, borderRight: 'none' }}>
+                                {liveEngCharge != null ? `$${liveEngCharge.toFixed(2)}` : '—'}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )
                     })}
@@ -555,36 +615,79 @@ export default function RunnerWOPage() {
               ) : (
                 <>
                   {/* Hourly: original stacked layout */}
-                  {stRows.map((r: any) => (
-                    <div key={r.id} style={{ padding: '10px 14px', borderBottom: '1px solid #2a2e3d' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Studio</span>
-                        <span style={{ fontSize: 11, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }}>{r.studio || '—'}</span>
+                  {stRows.map((r: any) => {
+                    const engRateForRow = parseFloat(String(r.eng_rate || booking?.engineer_rate || '55').replace(/[^0-9.]/g, '')) || 0
+                    const ehStr = engHoursMap[r.id] ?? (r.eng_hours != null ? String(r.eng_hours) : '')
+                    const eh = ehStr ? parseFloat(ehStr) : null
+                    const liveEngCharge = eh != null && eh > 0 && engRateForRow > 0 ? eh * engRateForRow : null
+                    return (
+                      <div key={r.id} style={{ padding: '10px 14px', borderBottom: '1px solid #2a2e3d' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Studio</span>
+                          <span style={{ fontSize: 11, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }}>{r.studio || '—'}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Time</span>
+                          <span style={{ fontSize: 11, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }}>{[r.from_time, r.to_time].filter(Boolean).join(' – ') || '—'}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Hours</span>
+                          <span style={{ fontSize: 11, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }}>{r.total_hours ?? '—'}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Rate</span>
+                          <span style={{ fontSize: 11, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }}>{r.rate ? `$${r.rate.replace(/[^0-9.]/g, '')}/hr` : '—'}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: engName ? 8 : 0 }}>
+                          <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Charge</span>
+                          <span style={{ fontSize: 12, color: meta.color, fontWeight: 700, fontFamily: 'DM Mono, monospace' }}>{r.charge != null ? `$${parseFloat(r.charge).toFixed(2)}` : '—'}</span>
+                        </div>
+                        {engName && (
+                          <div style={{ borderTop: '1px solid #2a2e3d', paddingTop: 8, background: 'rgba(200,240,78,0.03)', margin: '0 -14px -10px', padding: '8px 14px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                              <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace', fontStyle: 'italic' }}>Eng: {engName}</span>
+                              <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>${engRateForRow}/hr</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Eng Hrs</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <input
+                                  type="number" min="0" step="0.5"
+                                  value={engHoursMap[r.id] ?? (r.eng_hours != null ? String(r.eng_hours) : '')}
+                                  placeholder="0"
+                                  onChange={e => setEngHoursMap(prev => ({ ...prev, [r.id]: e.target.value }))}
+                                  style={{
+                                    background: '#1a1e28', border: '1px solid #3a3f52', borderRadius: 6,
+                                    color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 13,
+                                    padding: '4px 6px', width: 56, textAlign: 'center', outline: 'none',
+                                  }}
+                                />
+                                <span style={{ fontSize: 12, color: liveEngCharge != null ? meta.color : '#4a4f64', fontWeight: 700, fontFamily: 'DM Mono, monospace' }}>
+                                  {liveEngCharge != null ? `$${liveEngCharge.toFixed(2)}` : '—'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Time</span>
-                        <span style={{ fontSize: 11, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }}>{[r.from_time, r.to_time].filter(Boolean).join(' – ') || '—'}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Hours</span>
-                        <span style={{ fontSize: 11, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }}>{r.total_hours ?? '—'}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Rate</span>
-                        <span style={{ fontSize: 11, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }}>{r.rate ? `$${r.rate.replace(/[^0-9.]/g, '')}/hr` : '—'}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Charge</span>
-                        <span style={{ fontSize: 12, color: meta.color, fontWeight: 700, fontFamily: 'DM Mono, monospace' }}>{r.charge != null ? `$${parseFloat(r.charge).toFixed(2)}` : '—'}</span>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </>
               )}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 14px', borderTop: '1px solid #2a2e3d' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 14px', borderTop: '1px solid #2a2e3d', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
                 <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: '#e8eaf2' }}>
-                  Total: <span style={{ color: meta.color }}>${stTotal.toFixed(2)}</span>
+                  Studio: <span style={{ color: meta.color }}>${stTotal.toFixed(2)}</span>
                 </span>
+                {engTotal > 0 && (
+                  <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: '#e8eaf2' }}>
+                    Engineer: <span style={{ color: meta.color }}>${engTotal.toFixed(2)}</span>
+                  </span>
+                )}
+                {engTotal > 0 && (
+                  <span style={{ fontSize: 13, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: '#e8eaf2', borderTop: '1px solid #2a2e3d', paddingTop: 4 }}>
+                    Total: <span style={{ color: meta.color }}>${(stTotal + engTotal).toFixed(2)}</span>
+                  </span>
+                )}
               </div>
             </div>
           )
