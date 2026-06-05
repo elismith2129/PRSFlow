@@ -2735,41 +2735,6 @@ function CalendarPageInner() {
             }
           }
 
-          // Sync rate on all existing studio_time_rows
-          const newRateRaw = payload.rate_type === 'day' ? (payload.rate_daily ?? '') : (payload.rate ?? '')
-          const newRateNum = parseFloat(newRateRaw.replace(/[^0-9.]/g, ''))
-          if (!isNaN(newRateNum) && newRateNum > 0) {
-            const { data: stRows } = await supabase.from('studio_time_rows')
-              .select('id, rate, day_count, ot_rate, total_hours, eng_rate')
-              .eq('work_order_id', woId)
-            const newEngRate = (payload as any).engineer_rate || null
-            const newEngRateNum = newEngRate ? parseFloat(newEngRate.replace(/[^0-9.]/g, '')) : null
-            await Promise.all((stRows ?? []).map((r: any) => {
-              const update: Record<string, any> = { rate: newRateRaw }
-              if (payload.rate_type === 'day') {
-                const dayCount = r.day_count ?? 1
-                update.charge = parseFloat((dayCount * newRateNum).toFixed(2))
-                const oldRateNum = parseFloat((r.rate ?? '').replace(/[^0-9.]/g, ''))
-                const derivedOldOtRate = oldRateNum > 0 ? parseFloat((oldRateNum / 10).toFixed(2)) : -1
-                const currentOtRate = parseFloat(String(r.ot_rate ?? '0'))
-                if (Math.abs(currentOtRate - derivedOldOtRate) < 0.01) {
-                  update.ot_rate = parseFloat((newRateNum / 10).toFixed(2))
-                }
-              } else {
-                const hrs = r.total_hours != null ? Number(r.total_hours) : null
-                update.charge = hrs != null && hrs > 0 ? parseFloat((hrs * newRateNum).toFixed(2)) : null
-              }
-              // Sync eng_rate only if row has no rate or still at the $55 default
-              if (newEngRate && newEngRateNum != null && !isNaN(newEngRateNum)) {
-                const currentEngRate = (r.eng_rate ?? '').replace(/[^0-9.]/g, '')
-                const currentEngRateNum = currentEngRate ? parseFloat(currentEngRate) : null
-                if (!currentEngRateNum || Math.abs(currentEngRateNum - 55) < 0.01) {
-                  update.eng_rate = newEngRate
-                }
-              }
-              return supabase.from('studio_time_rows').update(update).eq('id', r.id)
-            }))
-          }
         }
       }
     } else {
