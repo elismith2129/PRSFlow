@@ -171,8 +171,6 @@ function normalizeWO(d: any): WO {
 function normalizeStRow(d: any): StRow {
   const dayCount = d.day_count != null ? Number(d.day_count) : null
   const rate = d.rate ?? ''
-  // For day-rate rows, always recompute charge from day_count × rate so that
-  // rows seeded before the new columns existed (which stored hours × rate) display correctly.
   let charge = d.charge != null ? Number(d.charge) : null
   if (dayCount != null) {
     const rateNum = parseFloat(String(rate).replace(/[^0-9.]/g, ''))
@@ -199,8 +197,6 @@ function normalizeStRow(d: any): StRow {
   }
 }
 
-type EquipNote = { id: string; note: string; photo_urls: string[] }
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 // Shared fields that sync between booking form and WO
@@ -209,7 +205,7 @@ export type WOFormSync = {
   po: string; phone: string; email: string; from_time: string; to_time: string
   producer: string; engineer_name: string; assistant_name: string
   payment_type: string; food_budget: boolean; food_amount: string
-  invoice_num: string; start_date: string; end_date: string; studio: string; location: string
+  invoice_num: string; start_date: string; studio: string; location: string
   rate: string; rate_daily: string; rate_type?: string
   notes?: string; engineer_status?: string; engineer_rate?: string
 }
@@ -242,16 +238,10 @@ export function WorkOrderPopup({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [dirtyFields, setDirtyFields] = useState<Set<string>>(new Set())
-  const [equipNotes, setEquipNotes] = useState<Record<string, EquipNote>>({})
-  const [openNoteKey, setOpenNoteKey] = useState<string | null>(null)
-  const [noteUploading, setNoteUploading] = useState(false)
   const woIdRef = useRef<string | null>(null)
-  const [resolvedWoId, setResolvedWoId] = useState<string | null>(null)
   // Track which rows exist in DB (vs. local-only new rows)
   const rentIdsInDb = useRef<Set<string>>(new Set())
   const payIdsInDb = useRef<Set<string>>(new Set())
-  const equipNoteFileRef = useRef<HTMLInputElement>(null)
-  const pendingNoteKey = useRef<{ key: string; equipment: string; date: string } | null>(null)
 
   // Map liveForm fields onto WO state — seeds WO from current booking form values on open
   function applyLiveForm(base: WO): WO {
@@ -327,149 +317,6 @@ export function WorkOrderPopup({
     })
   }, [liveForm]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Issue 1 — Live date range sync: when start_date or end_date changes on the booking form,
-  // insert DB rows for new dates and delete rows for removed dates, then reload stRows.
-  // Day-rate only — hourly bookings manage rows manually.
-  useEffect(() => {
-    if (!wo || !liveForm || !woIdRef.current) return
-    const isDayRate = liveForm.rate_type === 'daily' || !!liveForm.rate_daily
-    if (!isDayRate) return
-    const newStart = liveForm.start_date
-    const newEnd = liveForm.end_date || liveForm.start_date
-    if (!newStart) return
-    ;(async () => {
-      const allDates = dateRange(newStart, newEnd)
-      const { data: freshRows } = await supabase.from('studio_time_rows')
-        .select('id, date').eq('work_order_id', woIdRef.current!)
-      const coveredDates = new Set((freshRows ?? []).map((r: any) => r.date))
-      const newDateSet = new Set(allDates)
-
-      // Delete rows for dates no longer in range
-      const toDelete = (freshRows ?? []).filter((r: any) => !newDateSet.has(r.date)).map((r: any) => r.id)
-      if (toDelete.length > 0) await supabase.from('studio_time_rows').delete().in('id', toDelete)
-
-      // Insert rows for new dates
-      const missing = allDates.filter(d => !coveredDates.has(d))
-      if (missing.length > 0) {
-        const rateRaw = liveForm.rate_daily || liveForm.rate || ''
-        const dayRateNum = parseFloat(rateRaw.replace(/[^0-9.]/g, ''))
-        const studio = liveForm.studio ? toStudioLetter(liveForm.studio) : (booking.studio ? toStudioLetter(booking.studio) : '')
-        await supabase.from('studio_time_rows').insert(missing.map((d, i) => ({
-          work_order_id: woIdRef.current!,
-          studio, date: d, session_info: '',
-          from_time: liveForm.from_time || booking.from_time || '',
-          to_time: liveForm.to_time || booking.to_time || '',
-          total_hours: null,
-          rate: rateRaw,
-          charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
-          day_count: 1,
-          ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
-          ot_hours: 0, ot_charge: null,
-          sort_order: coveredDates.size + i,
-        })))
-      }
-
-      if (toDelete.length > 0 || missing.length > 0) {
-        const { data: reloaded } = await supabase.from('studio_time_rows')
-          .select('*').eq('work_order_id', woIdRef.current!).order('date')
-        setStRows((reloaded ?? []).map(normalizeStRow))
-      }
-    })()
-  }, [liveForm?.start_date, liveForm?.end_date, wo?.id]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Issue 2 — Live rate sync: when rate or rate_daily changes on the booking form,
-  // update rate/charge on every stRow in state and in the DB immediately.
-  useEffect(() => {
-    if (!wo || !liveForm || !woIdRef.current) return
-    const isDayRate = liveForm.rate_type === 'daily' || !!liveForm.rate_daily
-    const newRateRaw = isDayRate ? liveForm.rate_daily : liveForm.rate
-    if (!newRateRaw) return
-    const newRateNum = parseFloat(newRateRaw.replace(/[^0-9.]/g, ''))
-    if (isNaN(newRateNum) || newRateNum <= 0) return
-
-    // 1. Update UI state immediately (functional form avoids stale closure)
-    setStRows(prev => prev.map(r => {
-      if (isDayRate) {
-        const dayCount = r.day_count ?? 1
-        const newCharge = parseFloat((dayCount * newRateNum).toFixed(2))
-        // Auto-update ot_rate only if it still equals the value derived from the old rate
-        const oldRateNum = parseFloat((r.rate ?? '').replace(/[^0-9.]/g, ''))
-        const derivedOldOtRate = oldRateNum > 0 ? parseFloat((oldRateNum / 10).toFixed(2)) : -1
-        const currentOtRate = parseFloat((r.ot_rate ?? '').replace(/[^0-9.]/g, ''))
-        const newOtRate = Math.abs(currentOtRate - derivedOldOtRate) < 0.01
-          ? String(parseFloat((newRateNum / 10).toFixed(2)))
-          : r.ot_rate
-        return { ...r, rate: newRateRaw, charge: newCharge, ot_rate: newOtRate }
-      }
-      return { ...r, rate: newRateRaw, charge: calcCharge(r.total_hours, newRateRaw) }
-    }))
-
-    // 2. Persist to DB — re-fetch rows so we have accurate day_count / total_hours
-    ;(async () => {
-      const { data: dbRows } = await supabase.from('studio_time_rows')
-        .select('id, rate, day_count, ot_rate, total_hours')
-        .eq('work_order_id', woIdRef.current!)
-      await Promise.all((dbRows ?? []).map((r: any) => {
-        const update: Record<string, any> = { rate: newRateRaw }
-        if (isDayRate) {
-          const dayCount = r.day_count ?? 1
-          update.charge = parseFloat((dayCount * newRateNum).toFixed(2))
-          const oldRateNum = parseFloat((r.rate ?? '').replace(/[^0-9.]/g, ''))
-          const derivedOldOtRate = oldRateNum > 0 ? parseFloat((oldRateNum / 10).toFixed(2)) : -1
-          const currentOtRate = parseFloat(String(r.ot_rate ?? '0'))
-          if (Math.abs(currentOtRate - derivedOldOtRate) < 0.01) {
-            update.ot_rate = parseFloat((newRateNum / 10).toFixed(2))
-          }
-        } else {
-          const hrs = r.total_hours != null ? Number(r.total_hours) : null
-          update.charge = calcCharge(hrs, newRateRaw)
-        }
-        return supabase.from('studio_time_rows').update(update).eq('id', r.id)
-      }))
-    })()
-  }, [liveForm?.rate, liveForm?.rate_daily, wo?.id]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Real-time subscriptions: studio_time_rows and work_orders for this WO
-  useEffect(() => {
-    if (!resolvedWoId) return
-
-    const stChannel = supabase
-      .channel(`admin-wo-strows-${resolvedWoId}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'studio_time_rows',
-        filter: `work_order_id=eq.${resolvedWoId}`,
-      }, async () => {
-        const { data: st } = await supabase
-          .from('studio_time_rows')
-          .select('*')
-          .eq('work_order_id', resolvedWoId!)
-          .order('sort_order')
-        if (st) setStRows(st.map(normalizeStRow))
-      })
-      .subscribe()
-
-    const woChannel = supabase
-      .channel(`admin-wo-status-${resolvedWoId}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'work_orders',
-        filter: `id=eq.${resolvedWoId}`,
-      }, (payload) => {
-        const updated = payload.new as any
-        setWo(prev => prev ? { ...prev, status: updated.status ?? prev.status } : prev)
-        onStatusChange?.(updated.status ?? 'draft')
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(stChannel)
-      supabase.removeChannel(woChannel)
-    }
-  }, [resolvedWoId]) // eslint-disable-line react-hooks/exhaustive-deps
-
   async function initWO() {
     const { data: rows } = await supabase
       .from('work_orders')
@@ -481,7 +328,6 @@ export function WorkOrderPopup({
 
     if (existing) {
       woIdRef.current = existing.id
-      setResolvedWoId(existing.id)
       onStatusChange?.(existing.status ?? 'draft')
       // Fix studios: if DB has empty array but booking has a studio, backfill from booking
       const rawStudios: string[] = existing.studios ?? []
@@ -492,12 +338,11 @@ export function WorkOrderPopup({
       }
       const seededExisting = applyLiveForm({ ...normalizeWO(existing), studios })
       setWo(seededExisting)
-      const [{ data: st }, { data: eq }, { data: rent }, { data: pay }, { data: eqNotes }] = await Promise.all([
+      const [{ data: st }, { data: eq }, { data: rent }, { data: pay }] = await Promise.all([
         supabase.from('studio_time_rows').select('*').eq('work_order_id', existing.id).order('sort_order'),
         supabase.from('equipment_condition_rows').select('*').eq('work_order_id', existing.id),
         supabase.from('rental_rows').select('*').eq('work_order_id', existing.id).order('sort_order'),
         supabase.from('payment_rows').select('*').eq('work_order_id', existing.id).order('recorded_at'),
-        supabase.from('equipment_condition_notes').select('*').eq('work_order_id', existing.id),
       ])
       if (st?.length) {
         const isSingleDay = booking.start_date === booking.end_date || !booking.end_date
@@ -507,90 +352,24 @@ export function WorkOrderPopup({
           const from = liveForm.from_time || r.from_time
           const to   = liveForm.to_time   || r.to_time
           const hrs  = calcHours(from, to)
-          // Day-rate rows keep their day_count-based charge; only update times for hourly rows
-          rows[0] = r.day_count != null
-            ? { ...r, from_time: from, to_time: to, total_hours: hrs }
-            : { ...r, from_time: from, to_time: to, total_hours: hrs, charge: calcCharge(hrs, r.rate) }
+          rows[0] = { ...r, from_time: from, to_time: to, total_hours: hrs, charge: calcCharge(hrs, r.rate) }
         }
-        // Day-rate reconciliation: always use DB as source of truth — never in-memory rows.
-        // This prevents duplicates from concurrent initWO calls (e.g. WO popup remounts).
-        const isDay = booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily)
-        if (isDay) {
-          // 1. Fresh DB read — ignore in-memory rows entirely
-          const { data: freshSt } = await supabase.from('studio_time_rows')
-            .select('id, date, created_at')
-            .eq('work_order_id', existing.id)
-            .order('created_at', { ascending: true })
-
-          // 2. Dedup: keep the earliest row per date, delete later duplicates
-          const keepByDate: Record<string, string> = {}
-          const dupeIds: string[] = []
-          for (const r of freshSt ?? []) {
-            if (keepByDate[r.date]) dupeIds.push(r.id)
-            else keepByDate[r.date] = r.id
-          }
-          if (dupeIds.length > 0) {
-            await supabase.from('studio_time_rows').delete().in('id', dupeIds)
-          }
-
-          // 3. Insert rows for dates not yet in DB
-          const allDates = dateRange(booking.start_date, booking.end_date)
-          const coveredDates = new Set(Object.keys(keepByDate))
-          const missingDates = allDates.filter(d => !coveredDates.has(d))
-          if (missingDates.length > 0) {
-            const dayRateNum = parseFloat((booking.rate_daily ?? '').replace(/[^0-9.]/g, ''))
-            await supabase.from('studio_time_rows').insert(missingDates.map((d, i) => ({
-              work_order_id: existing.id,
-              studio: studioLetter || booking.studio || '',
-              date: d, session_info: '',
-              from_time: booking.from_time ?? '', to_time: booking.to_time ?? '',
-              total_hours: null,
-              rate: booking.rate_daily ?? '',
-              charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
-              day_count: 1,
-              ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
-              ot_hours: 0, ot_charge: null,
-              sort_order: coveredDates.size + i,
-            })))
-          }
-
-          // 4. Reload all rows fresh from DB — never merge in-memory arrays
-          const { data: reloaded } = await supabase.from('studio_time_rows')
-            .select('*').eq('work_order_id', existing.id).order('date')
-          setStRows((reloaded ?? []).map(normalizeStRow))
-        } else {
-          setStRows(rows)
-        }
+        setStRows(rows)
       } else {
         // Existing WO has no studio time rows — auto-generate from booking
         const dates = dateRange(booking.start_date, booking.end_date)
-        const isDay = booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily)
         const stPayloads = dates.map((d, i) => {
-          if (isDay) {
-            const dayRateNum = parseFloat((booking.rate_daily ?? '').replace(/[^0-9.]/g, ''))
-            return {
-              work_order_id: existing.id,
-              studio: studioLetter || booking.studio || '',
-              date: d, session_info: '',
-              from_time: booking.from_time ?? '', to_time: booking.to_time ?? '',
-              total_hours: null,
-              rate: booking.rate_daily ?? '',
-              charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
-              day_count: 1,
-              ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
-              ot_hours: 0, ot_charge: null,
-              sort_order: i,
-            }
-          }
           const hrs = calcHours(booking.from_time ?? '', booking.to_time ?? '')
           return {
             work_order_id: existing.id,
             studio: studioLetter || booking.studio || '',
-            date: d, session_info: '',
-            from_time: booking.from_time ?? '', to_time: booking.to_time ?? '',
+            date: d,
+            session_info: '',
+            from_time: booking.from_time ?? '',
+            to_time: booking.to_time ?? '',
             total_hours: hrs,
-            rate: booking.rate ?? '',
-            charge: calcCharge(hrs, booking.rate ?? ''),
+            rate: booking.rate ?? booking.rate_daily ?? '',
+            charge: calcCharge(hrs, booking.rate ?? booking.rate_daily ?? ''),
             sort_order: i,
           }
         })
@@ -600,11 +379,6 @@ export function WorkOrderPopup({
         }
       }
       if (eq?.length) setEquipRows(eq as EquipRow[])
-      if (eqNotes?.length) {
-        const map: Record<string, EquipNote> = {}
-        for (const n of eqNotes) map[`${n.equipment}||${n.date}`] = { id: n.id, note: n.note ?? '', photo_urls: n.photo_urls ?? [] }
-        setEquipNotes(map)
-      }
       if (rent?.length) {
         setRentRows(rent.map(r => ({ id: r.id, qty: String(r.qty ?? ''), item: r.item ?? '', supplier: r.supplier ?? '', dates_used: r.dates_used ?? '', rate: r.rate ?? '', charge: String(r.charge ?? '') })))
         rent.forEach(r => rentIdsInDb.current.add(r.id))
@@ -643,38 +417,22 @@ export function WorkOrderPopup({
       const { data: created } = await supabase.from('work_orders').insert(woPayload).select('*').single()
       if (!created) { setLoading(false); return }
       woIdRef.current = created.id
-      setResolvedWoId(created.id)
       const seededNew = applyLiveForm(normalizeWO(created))
       setWo(seededNew)
 
       // Auto-generate studio time rows (one per date)
-      const isDay = booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily)
       const stPayloads = dates.map((d, i) => {
-        if (isDay) {
-          const dayRateNum = parseFloat((booking.rate_daily ?? '').replace(/[^0-9.]/g, ''))
-          return {
-            work_order_id: created.id,
-            studio: studioLetter || booking.studio || '',
-            date: d, session_info: '',
-            from_time: booking.from_time ?? '', to_time: booking.to_time ?? '',
-            total_hours: null,
-            rate: booking.rate_daily ?? '',
-            charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
-            day_count: 1,
-            ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
-            ot_hours: 0, ot_charge: null,
-            sort_order: i,
-          }
-        }
         const hrs = calcHours(booking.from_time ?? '', booking.to_time ?? '')
         return {
           work_order_id: created.id,
           studio: studioLetter || booking.studio || '',
-          date: d, session_info: '',
-          from_time: booking.from_time ?? '', to_time: booking.to_time ?? '',
+          date: d,
+          session_info: '',
+          from_time: booking.from_time ?? '',
+          to_time: booking.to_time ?? '',
           total_hours: hrs,
-          rate: booking.rate ?? '',
-          charge: calcCharge(hrs, booking.rate ?? ''),
+          rate: booking.rate ?? booking.rate_daily ?? '',
+          charge: calcCharge(hrs, booking.rate ?? booking.rate_daily ?? ''),
           sort_order: i,
         }
       })
@@ -700,11 +458,10 @@ export function WorkOrderPopup({
       if (r.id !== id) return r
       const u = { ...r, ...updates }
       if (u.day_count != null) {
-        // Day-rate row: charge = day_count × rate; ot_charge = ot_hours × ot_rate
         if ('day_count' in updates || 'rate' in updates) {
           const days = u.day_count ?? 1
-          const rate = parseFloat((u.rate ?? '').replace(/[^0-9.]/g, ''))
-          u.charge = (!isNaN(rate) && rate > 0) ? parseFloat((days * rate).toFixed(2)) : null
+          const rateNum = parseFloat((u.rate ?? '').replace(/[^0-9.]/g, ''))
+          u.charge = !isNaN(rateNum) && rateNum > 0 ? parseFloat((days * rateNum).toFixed(2)) : null
         }
         if ('ot_hours' in updates || 'ot_rate' in updates) {
           const h = parseFloat(u.ot_hours ?? '0') || 0
@@ -712,7 +469,6 @@ export function WorkOrderPopup({
           u.ot_charge = h > 0 && r > 0 ? parseFloat((h * r).toFixed(2)) : null
         }
       } else {
-        // Hourly row
         if ('from_time' in updates || 'to_time' in updates) {
           u.total_hours = calcHours(u.from_time, u.to_time)
         }
@@ -720,7 +476,6 @@ export function WorkOrderPopup({
           u.charge = calcCharge(u.total_hours, u.rate)
         }
       }
-      // Recalculate eng_charge whenever eng_hours or eng_rate changes
       if ('eng_hours' in updates || 'eng_rate' in updates) {
         const eh = u.eng_hours != null ? Number(u.eng_hours) : null
         const er = parseFloat((u.eng_rate ?? '').replace(/[^0-9.]/g, ''))
@@ -733,49 +488,12 @@ export function WorkOrderPopup({
   // ── Equipment condition ────────────────────────────────────────────────────
 
   function toggleEquip(equipment: string, date: string, cond: 'ok' | 'not_ok') {
-    const key = `${equipment}||${date}`
-    const currentCond = equipRows.find(r => r.equipment === equipment && r.date === date)?.condition
-    const nextCond: 'ok' | 'not_ok' | null = currentCond === cond ? null : cond
     setEquipRows(prev => prev.map(r => {
       if (r.equipment !== equipment || r.date !== date) return r
-      supabase.from('equipment_condition_rows').update({ condition: nextCond }).eq('id', r.id)
-      return { ...r, condition: nextCond }
+      const next = r.condition === cond ? null : cond
+      supabase.from('equipment_condition_rows').update({ condition: next }).eq('id', r.id)
+      return { ...r, condition: next }
     }))
-    if (nextCond === 'not_ok') setOpenNoteKey(key)
-    else setOpenNoteKey(prev => prev === key ? null : prev)
-  }
-
-  async function upsertEquipNote(key: string, equipment: string, date: string, updates: { note?: string; photo_urls?: string[] }) {
-    const woId = woIdRef.current
-    if (!woId) return
-    const current = equipNotes[key]
-    const merged = { note: current?.note ?? '', photo_urls: current?.photo_urls ?? [], ...updates }
-    if (current?.id) {
-      await supabase.from('equipment_condition_notes').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', current.id)
-      setEquipNotes(prev => ({ ...prev, [key]: { ...prev[key], ...updates } }))
-    } else {
-      const { data } = await supabase.from('equipment_condition_notes').insert({
-        work_order_id: woId, equipment, date, note: merged.note, photo_urls: merged.photo_urls,
-      }).select('id').single()
-      if (data) setEquipNotes(prev => ({ ...prev, [key]: { id: data.id, note: merged.note, photo_urls: merged.photo_urls } }))
-    }
-  }
-
-  async function uploadEquipNotePhoto(file: File) {
-    const pending = pendingNoteKey.current
-    if (!pending || !woIdRef.current) return
-    setNoteUploading(true)
-    const ext = file.name.split('.').pop() ?? 'jpg'
-    const path = `equip-notes/${woIdRef.current}/${pending.equipment.toLowerCase()}_${pending.date}_${Date.now()}.${ext}`
-    const { data, error } = await supabase.storage.from('checklist-photos').upload(path, file, { upsert: true })
-    if (!error && data) {
-      const { data: { publicUrl } } = supabase.storage.from('checklist-photos').getPublicUrl(data.path)
-      const currentPhotos = equipNotes[pending.key]?.photo_urls ?? []
-      await upsertEquipNote(pending.key, pending.equipment, pending.date, { photo_urls: [...currentPhotos, publicUrl] })
-    }
-    setNoteUploading(false)
-    if (equipNoteFileRef.current) equipNoteFileRef.current.value = ''
-    pendingNoteKey.current = null
   }
 
   // ── Add studio time row ────────────────────────────────────────────────────
@@ -891,9 +609,9 @@ export function WorkOrderPopup({
 
   // ── Derived totals ─────────────────────────────────────────────────────────
 
+  const isDayRate = (liveForm?.rate_type === 'daily' || !!liveForm?.rate_daily) || (booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily))
   const stTotal = stRows.reduce((s, r) => s + (r.charge ?? 0) + (r.ot_charge ?? 0), 0)
   const engTotal = stRows.reduce((s, r) => s + (r.eng_charge ?? 0), 0)
-  const isDayRate = (liveForm?.rate_type === 'daily' || !!liveForm?.rate_daily) || (booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily))
   const rentTotal = rentRows.reduce((s, r) => s + (parseFloat(r.charge) || 0), 0)
   const grandTotal = stTotal + engTotal + rentTotal
   const totalPaid = payRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
@@ -1107,13 +825,10 @@ export function WorkOrderPopup({
             <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
               {isDayRate ? (
                 <>
-                  {/* Day-rate: compact single-row-per-day table */}
-                  {/* Header — sticky so it stays visible when body scrolls */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 44px 80px 55px 80px 80px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 44px 90px 55px 80px 80px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                     {['Date', 'Session Info', 'Days', 'Rate', 'OT Hrs', 'OT Rate', 'Total'].map(h => <div key={h} style={thS}>{h}</div>)}
                   </div>
-                  {/* Body — scrollable after 5 rows; print override via [data-st-scroll] in globals.css */}
-                  <div data-st-scroll="" style={{ overflowY: stRows.length > 5 ? 'auto' : 'visible', maxHeight: stRows.length > 5 ? 200 : undefined }}>
+                  <div>
                     {stRows.map(r => {
                       const dayCount = r.day_count ?? 1
                       const rateNum = parseFloat((r.rate ?? '').replace(/[^0-9.]/g, ''))
@@ -1123,13 +838,13 @@ export function WorkOrderPopup({
                       const otCharge = otHrs > 0 && otRateNum > 0 ? otHrs * otRateNum : 0
                       const rowTotal = dayCharge + otCharge
                       const engName = liveForm?.engineer_name || booking.engineer_name || ''
-                      const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || '$55'
-                      const engRateNum = parseFloat((engRateDisplay ?? '').replace(/[^0-9.]/g, '')) || 0
+                      const engRateVal = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || ''
+                      const engRateNum = parseFloat((engRateVal ?? '').replace(/[^0-9.]/g, '')) || 0
                       const engHrs = r.eng_hours ?? null
                       const engCharge = engHrs != null && engHrs > 0 && engRateNum > 0 ? engHrs * engRateNum : null
                       return (
                         <div key={r.id}>
-                          <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 44px 80px 55px 80px 80px', borderBottom: engName ? 'none' : '1px solid rgba(255,255,255,0.04)' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 44px 90px 55px 80px 80px', borderBottom: engName ? 'none' : '1px solid rgba(255,255,255,0.04)' }}>
                             <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{r.date || '—'}</div>
                             <div style={cellS}><input value={r.session_info} onChange={e => updateStRow(r.id, { session_info: e.target.value })} style={inp} placeholder="—" /></div>
                             <div style={cellS}>
@@ -1152,19 +867,19 @@ export function WorkOrderPopup({
                             </div>
                           </div>
                           {engName && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 44px 80px 55px 80px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 44px 90px 55px 80px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                               <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
                               <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engName}</div>
                               <div style={cellS}>
                                 <input type="number" min="0" step="0.5" value={r.eng_hours ?? ''}
                                   placeholder="0"
-                                  onChange={e => updateStRow(r.id, { eng_hours: e.target.value ? parseFloat(e.target.value) : null, eng_rate: r.eng_rate || engRateDisplay })}
+                                  onChange={e => updateStRow(r.id, { eng_hours: e.target.value ? parseFloat(e.target.value) : null, eng_rate: r.eng_rate || engRateVal })}
                                   style={{ ...inp, width: 32 }} />
                               </div>
                               <div style={cellS}>
-                                <input value={r.eng_rate || engRateDisplay}
+                                <input value={r.eng_rate || engRateVal}
                                   onChange={e => updateStRow(r.id, { eng_rate: e.target.value })}
-                                  style={{ ...inp, width: 64 }} />
+                                  style={{ ...inp, width: 72 }} />
                               </div>
                               <div style={{ gridColumn: 'span 2', ...cellS }} />
                               <div style={{ ...cellS, color: engCharge != null ? '#c8f04e' : '#8a8fa0', fontWeight: engCharge != null ? 600 : 400, borderRight: 'none' }}>
@@ -1179,15 +894,14 @@ export function WorkOrderPopup({
                 </>
               ) : (
                 <>
-                  {/* Hourly: original layout */}
                   <div style={{ display: 'grid', gridTemplateColumns: '55px 90px 1fr 72px 72px 55px 90px 80px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                     {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Rate', 'Charge'].map(h => <div key={h} style={thS}>{h}</div>)}
                   </div>
-                  <div data-st-scroll="" style={{ overflowY: stRows.length > 5 ? 'auto' : 'visible', maxHeight: stRows.length > 5 ? 200 : undefined }}>
+                  <div>
                     {stRows.map(r => {
                       const engName = liveForm?.engineer_name || booking.engineer_name || ''
-                      const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || '$55'
-                      const engRateNum = parseFloat((engRateDisplay ?? '').replace(/[^0-9.]/g, '')) || 0
+                      const engRateVal = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || ''
+                      const engRateNum = parseFloat((engRateVal ?? '').replace(/[^0-9.]/g, '')) || 0
                       const engHrs = r.eng_hours ?? null
                       const engCharge = engHrs != null && engHrs > 0 && engRateNum > 0 ? engHrs * engRateNum : null
                       return (
@@ -1208,16 +922,16 @@ export function WorkOrderPopup({
                             <div style={{ display: 'grid', gridTemplateColumns: '55px 90px 1fr 72px 72px 55px 90px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                               <div style={{ gridColumn: 'span 2', ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng: {engName}</div>
                               <div style={cellS} />
-                              <div style={{ gridColumn: 'span 2', ...cellS }}>
-                                <span style={{ fontSize: 9, color: '#8a8fa0', marginRight: 4 }}>Hrs</span>
+                              <div style={{ gridColumn: 'span 2', ...cellS, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{ fontSize: 9, color: '#8a8fa0' }}>Hrs</span>
                                 <input type="number" min="0" step="0.5" value={r.eng_hours ?? ''}
                                   placeholder="0"
-                                  onChange={e => updateStRow(r.id, { eng_hours: e.target.value ? parseFloat(e.target.value) : null, eng_rate: r.eng_rate || engRateDisplay })}
+                                  onChange={e => updateStRow(r.id, { eng_hours: e.target.value ? parseFloat(e.target.value) : null, eng_rate: r.eng_rate || engRateVal })}
                                   style={{ ...inp, width: 40 }} />
                               </div>
                               <div style={cellS} />
                               <div style={cellS}>
-                                <input value={r.eng_rate || engRateDisplay}
+                                <input value={r.eng_rate || engRateVal}
                                   onChange={e => updateStRow(r.id, { eng_rate: e.target.value })}
                                   style={{ ...inp, width: 64 }} />
                               </div>
@@ -1233,92 +947,39 @@ export function WorkOrderPopup({
                 </>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: '#1a1e28', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                {!isDayRate && <button type="button" onClick={addStRow} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button>}
-                {isDayRate && <div />}
-                <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0', fontWeight: 700 }}>Total: ${stTotal.toFixed(2)}</span>
+                <button type="button" onClick={addStRow} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button>
+                <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0', fontWeight: 700 }}>Studio: ${stTotal.toFixed(2)}</span>
               </div>
             </div>
           </div>
 
-          {/* EQUIPMENT CONDITION — excluded from PDF via data-no-print */}
-          <div data-no-print="">
+          {/* EQUIPMENT CONDITION */}
+          <div>
             <div style={sectionTitle}>Equipment Condition</div>
-            {/* hidden file input for note photos */}
-            <input ref={equipNoteFileRef} type="file" accept="image/*" style={{ display: 'none' }}
-              onChange={e => { const f = e.target.files?.[0]; if (f) uploadEquipNotePhoto(f) }} />
-            <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflowX: 'auto' }}>
-              <div style={{ minWidth: `${130 + Math.max(sessionDates.length, 1) * 90}px` }}>
-                {/* Header — equipment name cell sticky */}
-                <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                  <div style={{ ...thS, position: 'sticky', left: 0, background: '#1a1e28', zIndex: 1 }}>Equipment</div>
-                  {sessionDates.length > 0
-                    ? sessionDates.map(d => <div key={d} style={thS}>{fmtDate(d)}</div>)
-                    : <div style={thS}>—</div>}
-                </div>
-                {/* Equipment rows */}
-                {EQUIPMENT_ITEMS.map(eq => {
-                  const openDate = openNoteKey?.startsWith(`${eq}||`) ? openNoteKey.split('||')[1] : null
-                  return (
-                    <div key={eq}>
-                      <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                        <div style={{ ...cellS, color: '#f0f0f0', fontWeight: 500, position: 'sticky', left: 0, background: '#1a1e28', zIndex: 1 }}>{eq}</div>
-                        {sessionDates.length > 0
-                          ? sessionDates.map(d => {
-                              const key = `${eq}||${d}`
-                              const row = equipRows.find(r => r.equipment === eq && r.date === d)
-                              const cond = row?.condition ?? null
-                              const hasNote = !!(equipNotes[key]?.note || (equipNotes[key]?.photo_urls?.length ?? 0) > 0)
-                              return (
-                                <div key={d} style={{ ...cellS, display: 'flex', gap: 4, alignItems: 'center', borderRight: 'none' }}>
-                                  <button type="button" onClick={() => row && toggleEquip(eq, d, 'ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', border: `1px solid ${cond === 'ok' ? '#4ade80' : 'rgba(255,255,255,0.1)'}`, background: cond === 'ok' ? 'rgba(74,222,128,0.12)' : 'transparent', color: cond === 'ok' ? '#4ade80' : '#8a8fa0' }}>OK</button>
-                                  <button type="button" onClick={() => row && toggleEquip(eq, d, 'not_ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', border: `1px solid ${cond === 'not_ok' ? '#f87171' : 'rgba(255,255,255,0.1)'}`, background: cond === 'not_ok' ? 'rgba(248,113,113,0.12)' : 'transparent', color: cond === 'not_ok' ? '#f87171' : '#8a8fa0' }}>✗</button>
-                                  {cond === 'not_ok' && hasNote && (
-                                    <span style={{ width: 6, height: 6, borderRadius: 3, background: '#f0a24e', display: 'inline-block', flexShrink: 0 }} />
-                                  )}
-                                </div>
-                              )
-                            })
-                          : <div style={{ ...cellS, color: '#4a4f64', borderRight: 'none' }}>—</div>}
-                      </div>
-                      {/* Note area — inline below the equipment row when a Not OK cell is open */}
-                      {openDate && (
-                        <div style={{ padding: '8px 12px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                          <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#f0a24e', marginBottom: 6 }}>
-                            {eq} — {openDate}
-                          </div>
-                          <textarea
-                            value={equipNotes[`${eq}||${openDate}`]?.note ?? ''}
-                            onChange={e => {
-                              const k = `${eq}||${openDate}`
-                              setEquipNotes(prev => ({ ...prev, [k]: { ...(prev[k] ?? { id: '', photo_urls: [] }), note: e.target.value } }))
-                            }}
-                            onBlur={e => upsertEquipNote(`${eq}||${openDate}`, eq, openDate, { note: e.target.value })}
-                            placeholder="Note about this issue…"
-                            style={{ width: '100%', background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 10, padding: '5px 7px', resize: 'none', outline: 'none', boxSizing: 'border-box', minHeight: 56 }}
-                          />
-                          {(equipNotes[`${eq}||${openDate}`]?.photo_urls?.length ?? 0) > 0 && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-                              {equipNotes[`${eq}||${openDate}`].photo_urls.map((url, i) => (
-                                <a key={i} href={url} target="_blank" rel="noreferrer">
-                                  <img src={url} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)', display: 'block' }} />
-                                </a>
-                              ))}
-                            </div>
-                          )}
-                          <button
-                            type="button"
-                            disabled={noteUploading}
-                            onClick={() => { pendingNoteKey.current = { key: `${eq}||${openDate}`, equipment: eq, date: openDate }; equipNoteFileRef.current?.click() }}
-                            style={{ marginTop: 6, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, color: noteUploading ? '#4a4f64' : '#8a8fa0', background: 'none', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, cursor: noteUploading ? 'not-allowed' : 'pointer', padding: '3px 10px' }}
-                          >
-                            {noteUploading ? 'Uploading…' : '+ Photo'}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
+            <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `140px repeat(${Math.max(sessionDates.length, 1)}, 1fr)`, background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                <div style={thS}>Equipment</div>
+                {sessionDates.length > 0
+                  ? sessionDates.map(d => <div key={d} style={thS}>{fmtDate(d)}</div>)
+                  : <div style={thS}>—</div>}
               </div>
+              {EQUIPMENT_ITEMS.map((eq, eqIdx) => (
+                <div key={eq} style={{ display: 'grid', gridTemplateColumns: `140px repeat(${Math.max(sessionDates.length, 1)}, 1fr)`, borderBottom: eqIdx < EQUIPMENT_ITEMS.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                  <div style={{ ...cellS, color: '#f0f0f0', fontWeight: 500 }}>{eq}</div>
+                  {sessionDates.length > 0
+                    ? sessionDates.map(d => {
+                        const row = equipRows.find(r => r.equipment === eq && r.date === d)
+                        const cond = row?.condition ?? null
+                        return (
+                          <div key={d} style={{ ...cellS, display: 'flex', gap: 4, alignItems: 'center', borderRight: 'none' }}>
+                            <button type="button" onClick={() => row && toggleEquip(eq, d, 'ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', border: `1px solid ${cond === 'ok' ? '#4ade80' : 'rgba(255,255,255,0.1)'}`, background: cond === 'ok' ? 'rgba(74,222,128,0.12)' : 'transparent', color: cond === 'ok' ? '#4ade80' : '#8a8fa0' }}>OK</button>
+                            <button type="button" onClick={() => row && toggleEquip(eq, d, 'not_ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', border: `1px solid ${cond === 'not_ok' ? '#f87171' : 'rgba(255,255,255,0.1)'}`, background: cond === 'not_ok' ? 'rgba(248,113,113,0.12)' : 'transparent', color: cond === 'not_ok' ? '#f87171' : '#8a8fa0' }}>✗</button>
+                          </div>
+                        )
+                      })
+                    : <div style={{ ...cellS, color: '#4a4f64', borderRight: 'none' }}>—</div>}
+                </div>
+              ))}
             </div>
           </div>
 

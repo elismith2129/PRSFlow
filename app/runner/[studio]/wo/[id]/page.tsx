@@ -12,6 +12,21 @@ const STUDIO_META: Record<string, { label: string; abbr: string; color: string }
 
 const EQUIPMENT = ['Speakers', 'Microphone', 'Console']
 
+function calcHours(from: string, to: string): number | null {
+  if (!from || !to) return null
+  const [fh, fm] = from.split(':').map(Number)
+  const [th, tm] = to.split(':').map(Number)
+  let diff = (th * 60 + tm) - (fh * 60 + fm)
+  if (diff < 0) diff += 24 * 60
+  return diff > 0 ? parseFloat((diff / 60).toFixed(2)) : null
+}
+function calcCharge(fromTime: string, toTime: string, rate: string): number | null {
+  const h = calcHours(fromTime, toTime)
+  if (h == null) return null
+  const r = parseFloat(String(rate).replace(/[^0-9.]/g, ''))
+  return !isNaN(r) && r > 0 ? parseFloat((h * r).toFixed(2)) : null
+}
+
 type EquipCond = Record<string, 'ok' | 'not_ok' | null>
 type Expense = { id?: string; vendor: string; item: string; amount: string; receipt_url: string | null; uploading?: boolean }
 
@@ -123,10 +138,43 @@ export default function RunnerWOPage() {
 
       setWo(woData)
       setBooking(bkData)
-      setStRows(st ?? [])
-      const initEngHours: Record<string, string> = {}
-      for (const r of st ?? []) initEngHours[r.id] = r.eng_hours != null ? String(r.eng_hours) : ''
-      setEngHoursMap(initEngHours)
+      let finalStRows = st ?? []
+      let finalEngHours: Record<string, string> = {}
+      for (const r of finalStRows) finalEngHours[r.id] = r.eng_hours != null ? String(r.eng_hours) : ''
+
+      if (finalStRows.length === 0 && bkData && resolvedId) {
+        const startD = new Date(bkData.start_date + 'T12:00:00')
+        const endD = bkData.end_date ? new Date(bkData.end_date + 'T12:00:00') : startD
+        const seedDates: string[] = []
+        for (let d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
+          seedDates.push(d.toISOString().split('T')[0])
+        }
+        const isDR = bkData.rate_type === 'day' || (!bkData.rate && !!bkData.rate_daily)
+        const rateVal = isDR ? (bkData.rate_daily ?? '') : (bkData.rate ?? '')
+        const seedInserts = seedDates.map((date, i) => ({
+          work_order_id: resolvedId,
+          booking_id: bkData.id,
+          date,
+          studio: bkData.studio ?? '',
+          session_info: [bkData.artist, bkData.engineer_name].filter(Boolean).join(' / ') || '',
+          from_time: bkData.from_time ?? '',
+          to_time: bkData.to_time ?? '',
+          total_hours: !isDR ? calcHours(bkData.from_time ?? '', bkData.to_time ?? '') : null,
+          rate: rateVal,
+          charge: !isDR ? calcCharge(bkData.from_time ?? '', bkData.to_time ?? '', rateVal) : null,
+          day_count: isDR ? 1 : null,
+          sort_order: i,
+        }))
+        const { data: seeded } = await supabase.from('studio_time_rows').insert(seedInserts).select()
+        if (seeded && seeded.length > 0) {
+          finalStRows = seeded
+          finalEngHours = {}
+          for (const r of seeded) finalEngHours[r.id] = r.eng_hours != null ? String(r.eng_hours) : ''
+        }
+      }
+
+      setStRows(finalStRows)
+      setEngHoursMap(finalEngHours)
       setEquipRows(eq ?? [])
       if (eqNotes?.length) {
         const map: Record<string, { id: string; note: string; photo_urls: string[] }> = {}
@@ -432,7 +480,7 @@ export default function RunnerWOPage() {
         if (hasEngineer) {
           const ehStr = engHoursMap[r.id] ?? ''
           const eh = ehStr ? parseFloat(ehStr) : null
-          const engRate = r.eng_rate || (booking as any)?.engineer_rate || '55'
+          const engRate = r.eng_rate || (booking as any)?.engineer_rate || ''
           const er = parseFloat(String(engRate).replace(/[^0-9.]/g, '')) || 0
           update.eng_hours = eh || null
           update.eng_charge = eh != null && eh > 0 && er > 0 ? parseFloat((eh * er).toFixed(2)) : null
@@ -500,7 +548,7 @@ export default function RunnerWOPage() {
         </div>
 
         {/* Studio Time */}
-        {stRows.length > 0 && (() => {
+        {(() => {
           const isDayRate = booking?.rate_type === 'day' || (!booking?.rate && !!booking?.rate_daily)
 
           const thStyle: React.CSSProperties = {
@@ -528,14 +576,18 @@ export default function RunnerWOPage() {
           const engTotal = engName ? stRows.reduce((s: number, r: any) => {
             const ehStr = engHoursMap[r.id] ?? (r.eng_hours != null ? String(r.eng_hours) : '')
             const eh = ehStr ? parseFloat(ehStr) : null
-            const er = parseFloat(String(r.eng_rate || booking?.engineer_rate || '55').replace(/[^0-9.]/g, '')) || 0
+            const er = parseFloat(String(r.eng_rate || booking?.engineer_rate || '').replace(/[^0-9.]/g, '')) || 0
             return s + (eh != null && eh > 0 && er > 0 ? eh * er : 0)
           }, 0) : 0
 
           return (
             <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', padding: '12px 14px 8px' }}>Studio Time</div>
-              {isDayRate ? (
+              {stRows.length === 0 ? (
+                <div style={{ padding: '14px', color: '#8b90a8', fontSize: 12, fontFamily: 'DM Mono, monospace', textAlign: 'center' }}>
+                  Session times will appear here
+                </div>
+              ) : isDayRate ? (
                 <>
                   {/* Day-rate compact table */}
                   <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 80px 55px 75px 75px', background: '#0d0f14', borderTop: '1px solid #2a2e3d', borderBottom: '1px solid #2a2e3d' }}>
@@ -550,7 +602,7 @@ export default function RunnerWOPage() {
                       const otRateNum = parseFloat(String(r.ot_rate ?? '0')) || 0
                       const liveOtCharge = currentOtHrs > 0 && otRateNum > 0 ? currentOtHrs * otRateNum : 0
                       const rowTotal = dayCharge + liveOtCharge
-                      const engRateForRow = parseFloat(String(r.eng_rate || booking?.engineer_rate || '55').replace(/[^0-9.]/g, '')) || 0
+                      const engRateForRow = parseFloat(String(r.eng_rate || booking?.engineer_rate || '').replace(/[^0-9.]/g, '')) || 0
                       const ehStr = engHoursMap[r.id] ?? (r.eng_hours != null ? String(r.eng_hours) : '')
                       const eh = ehStr ? parseFloat(ehStr) : null
                       const liveEngCharge = eh != null && eh > 0 && engRateForRow > 0 ? eh * engRateForRow : null
@@ -614,43 +666,33 @@ export default function RunnerWOPage() {
                 </>
               ) : (
                 <>
-                  {/* Hourly: original stacked layout */}
-                  {stRows.map((r: any) => {
-                    const engRateForRow = parseFloat(String(r.eng_rate || booking?.engineer_rate || '55').replace(/[^0-9.]/g, '')) || 0
-                    const ehStr = engHoursMap[r.id] ?? (r.eng_hours != null ? String(r.eng_hours) : '')
-                    const eh = ehStr ? parseFloat(ehStr) : null
-                    const liveEngCharge = eh != null && eh > 0 && engRateForRow > 0 ? eh * engRateForRow : null
-                    return (
-                      <div key={r.id} style={{ padding: '10px 14px', borderBottom: '1px solid #2a2e3d' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Studio</span>
-                          <span style={{ fontSize: 11, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }}>{r.studio || '—'}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Time</span>
-                          <span style={{ fontSize: 11, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }}>{[r.from_time, r.to_time].filter(Boolean).join(' – ') || '—'}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Hours</span>
-                          <span style={{ fontSize: 11, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }}>{r.total_hours ?? '—'}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Rate</span>
-                          <span style={{ fontSize: 11, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }}>{r.rate ? `$${r.rate.replace(/[^0-9.]/g, '')}/hr` : '—'}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: engName ? 8 : 0 }}>
-                          <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Charge</span>
-                          <span style={{ fontSize: 12, color: meta.color, fontWeight: 700, fontFamily: 'DM Mono, monospace' }}>{r.charge != null ? `$${parseFloat(r.charge).toFixed(2)}` : '—'}</span>
-                        </div>
-                        {engName && (
-                          <div style={{ borderTop: '1px solid #2a2e3d', paddingTop: 8, background: 'rgba(200,240,78,0.03)', margin: '0 -14px -10px', padding: '8px 14px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                              <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace', fontStyle: 'italic' }}>Eng: {engName}</span>
-                              <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>${engRateForRow}/hr</span>
+                  {/* Hourly compact table */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 50px 80px 80px', background: '#0d0f14', borderTop: '1px solid #2a2e3d', borderBottom: '1px solid #2a2e3d' }}>
+                    {['Date', 'Session Info', 'Hrs', 'Rate', 'Charge'].map(h => <div key={h} style={thStyle}>{h}</div>)}
+                  </div>
+                  <div>
+                    {stRows.map((r: any) => {
+                      const engRateForRow = parseFloat(String(r.eng_rate || booking?.engineer_rate || '').replace(/[^0-9.]/g, '')) || 0
+                      const ehStr = engHoursMap[r.id] ?? (r.eng_hours != null ? String(r.eng_hours) : '')
+                      const eh = ehStr ? parseFloat(ehStr) : null
+                      const liveEngCharge = eh != null && eh > 0 && engRateForRow > 0 ? eh * engRateForRow : null
+                      const rateNum = parseFloat(String(r.rate ?? '').replace(/[^0-9.]/g, '')) || 0
+                      return (
+                        <div key={r.id}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 50px 80px 80px', borderBottom: engName ? 'none' : '1px solid #2a2e3d' }}>
+                            <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>{r.date || '—'}</div>
+                            <div style={{ ...tdStyle, color: '#8b90a8' }}>{r.session_info || '—'}</div>
+                            <div style={{ ...tdStyle, justifyContent: 'center', color: '#e8eaf2' }}>{r.total_hours ?? '—'}</div>
+                            <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>{rateNum > 0 ? `$${rateNum}/hr` : '—'}</div>
+                            <div style={{ ...tdStyle, color: r.charge != null ? meta.color : '#4a4f64', fontWeight: r.charge != null ? 700 : 400, borderRight: 'none' }}>
+                              {r.charge != null ? `$${parseFloat(r.charge).toFixed(2)}` : '—'}
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Eng Hrs</span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          </div>
+                          {engName && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 50px 80px 80px', borderBottom: '1px solid #2a2e3d', background: 'rgba(200,240,78,0.03)' }}>
+                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
+                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>{engName}</div>
+                              <div style={{ ...tdStyle, justifyContent: 'center' }}>
                                 <input
                                   type="number" min="0" step="0.5"
                                   value={engHoursMap[r.id] ?? (r.eng_hours != null ? String(r.eng_hours) : '')}
@@ -659,36 +701,41 @@ export default function RunnerWOPage() {
                                   style={{
                                     background: '#1a1e28', border: '1px solid #3a3f52', borderRadius: 6,
                                     color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 13,
-                                    padding: '4px 6px', width: 56, textAlign: 'center', outline: 'none',
+                                    padding: '4px 6px', width: 44, textAlign: 'center', outline: 'none',
                                   }}
                                 />
-                                <span style={{ fontSize: 12, color: liveEngCharge != null ? meta.color : '#4a4f64', fontWeight: 700, fontFamily: 'DM Mono, monospace' }}>
-                                  {liveEngCharge != null ? `$${liveEngCharge.toFixed(2)}` : '—'}
-                                </span>
+                              </div>
+                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>
+                                {engRateForRow > 0 ? `$${engRateForRow}/hr` : '—'}
+                              </div>
+                              <div style={{ ...tdStyle, color: liveEngCharge != null ? meta.color : '#4a4f64', fontWeight: liveEngCharge != null ? 700 : 400, borderRight: 'none' }}>
+                                {liveEngCharge != null ? `$${liveEngCharge.toFixed(2)}` : '—'}
                               </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </>
               )}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 14px', borderTop: '1px solid #2a2e3d', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-                <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: '#e8eaf2' }}>
-                  Studio: <span style={{ color: meta.color }}>${stTotal.toFixed(2)}</span>
-                </span>
-                {engTotal > 0 && (
+              {stRows.length > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 14px', borderTop: '1px solid #2a2e3d', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
                   <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: '#e8eaf2' }}>
-                    Engineer: <span style={{ color: meta.color }}>${engTotal.toFixed(2)}</span>
+                    Studio: <span style={{ color: meta.color }}>${stTotal.toFixed(2)}</span>
                   </span>
-                )}
-                {engTotal > 0 && (
-                  <span style={{ fontSize: 13, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: '#e8eaf2', borderTop: '1px solid #2a2e3d', paddingTop: 4 }}>
-                    Total: <span style={{ color: meta.color }}>${(stTotal + engTotal).toFixed(2)}</span>
-                  </span>
-                )}
-              </div>
+                  {engTotal > 0 && (
+                    <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: '#e8eaf2' }}>
+                      Engineer: <span style={{ color: meta.color }}>${engTotal.toFixed(2)}</span>
+                    </span>
+                  )}
+                  {engTotal > 0 && (
+                    <span style={{ fontSize: 13, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: '#e8eaf2', borderTop: '1px solid #2a2e3d', paddingTop: 4 }}>
+                      Total: <span style={{ color: meta.color }}>${(stTotal + engTotal).toFixed(2)}</span>
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           )
         })()}

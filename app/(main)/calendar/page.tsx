@@ -930,7 +930,6 @@ function BookingForm({
     const name = typeof eng === 'string' ? eng : `${eng.first_name} ${eng.last_name}`
     set('engineer_name', name)
     set('engineer_status', 'hold')
-    if (!form.engineer_rate) set('engineer_rate', '$55')
     setEngQuery(''); setShowEngDD(false); setEngHighlight(-1); setEngEditing(false); engEditingRef.current = false
   }
 

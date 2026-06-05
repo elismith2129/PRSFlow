@@ -10,7 +10,6 @@ const navItems = [
   { href: '/calendar', label: 'Calendar' },
   { href: '/qc', label: 'Session QC' },
   { href: '/admin', label: 'Admin' },
-  { href: '/daily-ops-log', label: 'Ops Log' },
   { href: '/sop', label: 'SOP' },
 ]
 
