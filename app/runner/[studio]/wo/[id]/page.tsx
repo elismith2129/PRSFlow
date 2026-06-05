@@ -282,7 +282,15 @@ export default function RunnerWOPage() {
           setEngHoursMap(prev => {
             const next = { ...prev }
             for (const r of st) {
-              if (!(r.id in next)) next[r.id] = defaultEngHrs(r)
+              if (!(r.id in next)) {
+                next[r.id] = defaultEngHrs(r)
+              } else if (r.eng_hours != null) {
+                // Admin set eng_hours — accept it only if runner hasn't manually overridden
+                const autoDefault = r.total_hours != null
+                  ? String(r.total_hours)
+                  : (() => { const h = calcHours(r.from_time ?? '', r.to_time ?? ''); return h != null ? String(h) : '' })()
+                if (prev[r.id] === autoDefault) next[r.id] = String(r.eng_hours)
+              }
             }
             return next
           })

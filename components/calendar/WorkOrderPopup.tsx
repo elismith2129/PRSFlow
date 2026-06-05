@@ -171,31 +171,31 @@ function normalizeWO(d: any): WO {
 function normalizeStRow(d: any): StRow {
   const dayCount = d.day_count != null ? Number(d.day_count) : null
   const rate = d.rate ?? ''
-  // For day-rate rows, always recompute charge from day_count × rate so that
-  // rows seeded before the new columns existed (which stored hours × rate) display correctly.
   let charge = d.charge != null ? Number(d.charge) : null
   if (dayCount != null) {
     const rateNum = parseFloat(String(rate).replace(/[^0-9.]/g, ''))
     charge = !isNaN(rateNum) && rateNum > 0 ? parseFloat((dayCount * rateNum).toFixed(2)) : null
   }
+  const engHours = d.eng_hours != null ? Number(d.eng_hours)
+    : d.total_hours != null ? Number(d.total_hours)
+    : calcHours(d.from_time ?? '', d.to_time ?? '')
+  const engRate = d.eng_rate != null ? String(d.eng_rate) : ''
+  let engCharge = d.eng_charge != null ? Number(d.eng_charge) : null
+  if (engCharge == null && engHours != null && engRate) {
+    const erNum = parseFloat(engRate.replace(/[^0-9.]/g, ''))
+    engCharge = !isNaN(erNum) && erNum > 0 ? parseFloat((engHours * erNum).toFixed(2)) : null
+  }
   return {
-    id: d.id,
-    studio: d.studio ?? '',
-    date: d.date ?? '',
-    session_info: d.session_info ?? '',
-    from_time: d.from_time ?? '',
-    to_time: d.to_time ?? '',
+    id: d.id, studio: d.studio ?? '', date: d.date ?? '', session_info: d.session_info ?? '',
+    from_time: d.from_time ?? '', to_time: d.to_time ?? '',
     total_hours: d.total_hours != null ? Number(d.total_hours) : null,
-    rate,
-    charge,
-    sort_order: d.sort_order ?? 0,
-    day_count: dayCount,
+    rate, charge, sort_order: d.sort_order ?? 0, day_count: dayCount,
     ot_rate: d.ot_rate != null ? String(d.ot_rate) : '',
     ot_hours: d.ot_hours != null ? String(d.ot_hours) : '0',
     ot_charge: d.ot_charge != null ? Number(d.ot_charge) : null,
-    eng_hours: d.eng_hours != null ? Number(d.eng_hours) : null,
-    eng_rate: d.eng_rate != null ? String(d.eng_rate) : '',
-    eng_charge: d.eng_charge != null ? Number(d.eng_charge) : null,
+    eng_hours: engHours,
+    eng_rate: engRate,
+    eng_charge: engCharge,
   }
 }
 
@@ -327,13 +327,11 @@ export function WorkOrderPopup({
     })
   }, [liveForm]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Issue 1 — Live date range sync: when start_date or end_date changes on the booking form,
-  // insert DB rows for new dates and delete rows for removed dates, then reload stRows.
-  // Day-rate only — hourly bookings manage rows manually.
+  // Live date range sync: when start_date or end_date changes, insert rows for new dates
+  // and delete rows for removed dates, then reload stRows. Applies to both day-rate and hourly.
   useEffect(() => {
     if (!wo || !liveForm || !woIdRef.current) return
     const isDayRate = liveForm.rate_type === 'daily' || !!liveForm.rate_daily
-    if (!isDayRate) return
     const newStart = liveForm.start_date
     const newEnd = liveForm.end_date || liveForm.start_date
     if (!newStart) return
@@ -351,19 +349,22 @@ export function WorkOrderPopup({
       // Insert rows for new dates
       const missing = allDates.filter(d => !coveredDates.has(d))
       if (missing.length > 0) {
-        const rateRaw = liveForm.rate_daily || liveForm.rate || ''
-        const dayRateNum = parseFloat(rateRaw.replace(/[^0-9.]/g, ''))
+        const rateRaw = isDayRate ? (liveForm.rate_daily || liveForm.rate || '') : (liveForm.rate || '')
+        const rateNum = parseFloat(rateRaw.replace(/[^0-9.]/g, ''))
         const studio = liveForm.studio ? toStudioLetter(liveForm.studio) : (booking.studio ? toStudioLetter(booking.studio) : '')
+        const fromTime = liveForm.from_time || booking.from_time || ''
+        const toTime = liveForm.to_time || booking.to_time || ''
         await supabase.from('studio_time_rows').insert(missing.map((d, i) => ({
           work_order_id: woIdRef.current!,
           studio, date: d, session_info: '',
-          from_time: liveForm.from_time || booking.from_time || '',
-          to_time: liveForm.to_time || booking.to_time || '',
-          total_hours: null,
+          from_time: fromTime, to_time: toTime,
+          total_hours: isDayRate ? null : calcHours(fromTime, toTime),
           rate: rateRaw,
-          charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
-          day_count: 1,
-          ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
+          charge: isDayRate
+            ? (!isNaN(rateNum) && rateNum > 0 ? rateNum : null)
+            : calcCharge(calcHours(fromTime, toTime), rateRaw),
+          day_count: isDayRate ? 1 : null,
+          ot_rate: isDayRate && !isNaN(rateNum) && rateNum > 0 ? rateNum / 10 : null,
           ot_hours: 0, ot_charge: null,
           sort_order: coveredDates.size + i,
         })))
@@ -1123,7 +1124,7 @@ export function WorkOrderPopup({
                       const otCharge = otHrs > 0 && otRateNum > 0 ? otHrs * otRateNum : 0
                       const rowTotal = dayCharge + otCharge
                       const engName = liveForm?.engineer_name || booking.engineer_name || ''
-                      const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || '$55'
+                      const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || ''
                       const engRateNum = parseFloat((engRateDisplay ?? '').replace(/[^0-9.]/g, '')) || 0
                       const engHrs = r.eng_hours ?? null
                       const engCharge = engHrs != null && engHrs > 0 && engRateNum > 0 ? engHrs * engRateNum : null
@@ -1186,7 +1187,7 @@ export function WorkOrderPopup({
                   <div data-st-scroll="" style={{ overflowY: stRows.length > 5 ? 'auto' : 'visible', maxHeight: stRows.length > 5 ? 200 : undefined }}>
                     {stRows.map(r => {
                       const engName = liveForm?.engineer_name || booking.engineer_name || ''
-                      const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || '$55'
+                      const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || ''
                       const engRateNum = parseFloat((engRateDisplay ?? '').replace(/[^0-9.]/g, '')) || 0
                       const engHrs = r.eng_hours ?? null
                       const engCharge = engHrs != null && engHrs > 0 && engRateNum > 0 ? engHrs * engRateNum : null
@@ -1235,7 +1236,12 @@ export function WorkOrderPopup({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: '#1a1e28', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 {!isDayRate && <button type="button" onClick={addStRow} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button>}
                 {isDayRate && <div />}
-                <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0', fontWeight: 700 }}>Total: ${stTotal.toFixed(2)}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                  {engTotal > 0 && (
+                    <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#c8f04e' }}>Eng: ${engTotal.toFixed(2)}</span>
+                  )}
+                  <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0', fontWeight: 700 }}>Total: ${stTotal.toFixed(2)}</span>
+                </div>
               </div>
             </div>
           </div>
