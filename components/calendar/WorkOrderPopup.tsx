@@ -726,9 +726,12 @@ export function WorkOrderPopup({
           u.charge = calcCharge(u.total_hours, u.rate)
         }
       }
-      // Recalculate eng_charge whenever eng_hours or eng_rate changes
-      if ('eng_hours' in updates || 'eng_rate' in updates) {
-        const eh = u.eng_hours != null ? Number(u.eng_hours) : null
+      // Recalculate eng_charge: for hourly rows use total_hours; for day-rate use eng_hours
+      if ('eng_hours' in updates || 'eng_rate' in updates || 'from_time' in updates || 'to_time' in updates) {
+        const isDayRateRow = u.day_count != null
+        const eh = isDayRateRow
+          ? (u.eng_hours != null ? Number(u.eng_hours) : null)
+          : (u.total_hours != null ? Number(u.total_hours) : null)
         const er = parseFloat((u.eng_rate ?? '').replace(/[^0-9.]/g, ''))
         u.eng_charge = eh != null && eh > 0 && !isNaN(er) && er > 0 ? parseFloat((eh * er).toFixed(2)) : null
       }
@@ -1194,7 +1197,7 @@ export function WorkOrderPopup({
                       const engName = liveForm?.engineer_name || booking.engineer_name || ''
                       const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || ''
                       const engRateNum = parseFloat((engRateDisplay ?? '').replace(/[^0-9.]/g, '')) || 0
-                      const engHrs = r.eng_hours ?? null
+                      const engHrs = r.total_hours ?? null
                       const engCharge = engHrs != null && engHrs > 0 && engRateNum > 0 ? engHrs * engRateNum : null
                       return (
                         <div key={r.id}>
@@ -1214,14 +1217,9 @@ export function WorkOrderPopup({
                             <div style={{ display: 'grid', gridTemplateColumns: '55px 90px 1fr 72px 72px 55px 90px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                               <div style={{ gridColumn: 'span 2', ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng: {engName}</div>
                               <div style={cellS} />
-                              <div style={{ gridColumn: 'span 2', ...cellS }}>
-                                <span style={{ fontSize: 9, color: '#8a8fa0', marginRight: 4 }}>Hrs</span>
-                                <input type="number" min="0" step="0.5" value={r.eng_hours ?? ''}
-                                  placeholder="0"
-                                  onChange={e => updateStRow(r.id, { eng_hours: e.target.value ? parseFloat(e.target.value) : null, eng_rate: r.eng_rate || engRateDisplay })}
-                                  style={{ ...inp, width: 40 }} />
-                              </div>
-                              <div style={cellS} />
+                              <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} /></div>
+                              <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} /></div>
+                              <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{r.total_hours != null ? r.total_hours : '—'}</div>
                               <div style={cellS}>
                                 <input value={r.eng_rate || engRateDisplay}
                                   onChange={e => updateStRow(r.id, { eng_rate: e.target.value })}

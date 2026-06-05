@@ -530,12 +530,16 @@ export default function RunnerWOPage() {
           update.to_time = to
           update.total_hours = hrs
           update.charge = hrs != null && rateNum > 0 ? parseFloat((hrs * rateNum).toFixed(2)) : null
+          if (hasEngineer) {
+            const er = parseFloat(String(r.eng_rate ?? '').replace(/[^0-9.]/g, '')) || 0
+            update.eng_hours = hrs
+            update.eng_charge = hrs != null && hrs > 0 && er > 0 ? parseFloat((hrs * er).toFixed(2)) : null
+          }
         }
-        if (hasEngineer) {
+        if (isDayRate && hasEngineer) {
           const ehStr = engHoursMap[r.id] ?? ''
           const eh = ehStr ? parseFloat(ehStr) : null
-          const engRate = r.eng_rate || ''
-          const er = parseFloat(String(engRate).replace(/[^0-9.]/g, '')) || 0
+          const er = parseFloat(String(r.eng_rate ?? '').replace(/[^0-9.]/g, '')) || 0
           update.eng_hours = eh || null
           update.eng_charge = eh != null && eh > 0 && er > 0 ? parseFloat((eh * er).toFixed(2)) : null
         }
@@ -632,9 +636,16 @@ export default function RunnerWOPage() {
           }, 0)
           const engName = wo?.engineer || booking?.engineer_name || ''
           const engTotal = stRows.reduce((sum: number, r: any) => {
-            const hrs = parseFloat(engHoursMap[r.id] ?? String(r.eng_hours ?? '0')) || 0
             const rate = parseFloat(String(r.eng_rate ?? '0')) || 0
-            return sum + (hrs > 0 && rate > 0 ? hrs * rate : 0)
+            if (!rate) return sum
+            if (isDayRate) {
+              const hrs = parseFloat(engHoursMap[r.id] ?? String(r.eng_hours ?? '0')) || 0
+              return sum + (hrs > 0 ? hrs * rate : 0)
+            }
+            const liveFrom = fromTimeMap[r.id] ?? r.from_time ?? ''
+            const liveTo = toTimeMap[r.id] ?? r.to_time ?? ''
+            const hrs = calcHours(liveFrom, liveTo) ?? 0
+            return sum + (hrs > 0 ? hrs * rate : 0)
           }, 0)
 
           return (
@@ -732,14 +743,12 @@ export default function RunnerWOPage() {
                       <div>
                         {stRows.map((r: any) => {
                           const engRateForRow = parseFloat(String(r.eng_rate ?? '').replace(/[^0-9.]/g, '')) || 0
-                          const ehStr = engHoursMap[r.id] ?? ''
-                          const eh = ehStr ? parseFloat(ehStr) : null
-                          const liveEngCharge = eh != null && eh > 0 && engRateForRow > 0 ? eh * engRateForRow : null
                           const rateNum = parseFloat(String(r.rate ?? '').replace(/[^0-9.]/g, '')) || 0
                           const liveFrom = fromTimeMap[r.id] ?? r.from_time ?? ''
                           const liveTo = toTimeMap[r.id] ?? r.to_time ?? ''
                           const liveHours = calcHours(liveFrom, liveTo)
                           const liveCharge = liveHours != null && rateNum > 0 ? parseFloat((liveHours * rateNum).toFixed(2)) : null
+                          const liveEngCharge = liveHours != null && liveHours > 0 && engRateForRow > 0 ? parseFloat((liveHours * engRateForRow).toFixed(2)) : null
                           return (
                             <div key={r.id}>
                               <div style={{ display: 'grid', gridTemplateColumns: '60px 80px 70px 70px 38px 62px 60px', borderBottom: engName ? 'none' : '1px solid #2a2e3d' }}>
@@ -761,21 +770,13 @@ export default function RunnerWOPage() {
                                 <div style={{ display: 'grid', gridTemplateColumns: '60px 80px 70px 70px 38px 62px 60px', borderBottom: '1px solid #2a2e3d', background: 'rgba(200,240,78,0.03)' }}>
                                   <div style={{ ...tdStyle }} />
                                   <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10, fontStyle: 'italic' }}>{engName}</div>
-                                  <div style={{ ...tdStyle }} />
-                                  <div style={{ ...tdStyle }} />
-                                  <div style={{ ...tdStyle, justifyContent: 'center' }}>
-                                    <input
-                                      type="number" min="0" step="0.5"
-                                      value={engHoursMap[r.id] ?? ''}
-                                      placeholder="0"
-                                      onChange={e => setEngHoursMap(prev => ({ ...prev, [r.id]: e.target.value }))}
-                                      style={{
-                                        background: '#1a1e28', border: '1px solid #3a3f52', borderRadius: 6,
-                                        color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 12,
-                                        padding: '3px 4px', width: 30, textAlign: 'center', outline: 'none',
-                                      }}
-                                    />
+                                  <div style={{ ...tdStyle, padding: '4px 4px' }}>
+                                    <TimeInput value={liveFrom} onChange={v => setFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ background: '#1a1e28', border: '1px solid #3a3f52', borderRadius: 5, color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 10, padding: '3px 3px', width: '100%', outline: 'none' }} />
                                   </div>
+                                  <div style={{ ...tdStyle, padding: '4px 4px' }}>
+                                    <TimeInput value={liveTo} onChange={v => setToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ background: '#1a1e28', border: '1px solid #3a3f52', borderRadius: 5, color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 10, padding: '3px 3px', width: '100%', outline: 'none' }} />
+                                  </div>
+                                  <div style={{ ...tdStyle, justifyContent: 'center', color: '#e8eaf2', fontSize: 10 }}>{liveHours ?? '—'}</div>
                                   <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>
                                     {engRateForRow > 0 ? `$${engRateForRow}/hr` : '—'}
                                   </div>
