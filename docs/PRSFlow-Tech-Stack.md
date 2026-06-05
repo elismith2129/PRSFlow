@@ -1,6 +1,6 @@
 # PRSFlow — Tech Stack & Roadmap
 
-*Last updated: June 4, 2026*
+*Last updated: June 5, 2026*
 
 ---
 
@@ -118,6 +118,11 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 | `components/calendar/WorkOrderPopup.tsx` | Full Work Order modal. Studio time table, equipment, rentals, payments, notes, signature. Writes to `work_orders` + `bookings` on Close & Save. Fires `onSaved` after all writes complete. |
 | `app/register/view/[clientId]/page.tsx` | Print route for registration PDF. Server component; generates signed ID photo URL server-side. `PrintTrigger` fires `window.print()` after 800ms. |
 | `app/(main)/sop/page.tsx` | SOP / Training tab — full-viewport iframe pointing to `/sop.html` |
+| `app/(main)/daily-ops-log/page.tsx` | Daily Ops Log route — wraps `DailyOpsLogSection`; also embedded as Admin sidebar tab |
+| `app/runner/[studio]/wo/[id]/page.tsx` | Runner WO form — equipment condition, expenses, eng hours, receipt OCR, Save/Finish footer |
+| `components/admin/DailyOpsLogSection.tsx` | Approved WOs + ops submissions log; studio/type/date filters + search; click-to-open WO or ops modal |
+| `components/dashboard/LocationStrip.tsx` | 4-studio dashboard strip; drawer with Yesterday/Today sessions + daily ops rows; real-time subscriptions |
+| `lib/checklist-items.ts` | Per-studio opening/closing checklist items; `CHECKLISTS[studio][type]`, `getChecklistSections()`, `flattenSections()` |
 | `public/sop.html` | Self-contained interactive training guide. Replace file to update content; no code change needed. |
 | `schema.sql` | Full database schema — run in Supabase SQL editor to recreate |
 
@@ -217,6 +222,14 @@ Defined in `styles/globals.css`:
 | wo-live-sync | `isDayRate` reads from `liveForm` not stale `booking.*`; `wo?.id` added to reactive effect dep arrays so they re-run after `initWO`; post-save rate/date sync runs on every booking save (not day-rate only); `onSaved={undefined}` stops WO Close & Save from remounting booking form (preserves unsaved edits) |
 | **Real-time project standard ✅** | **All four surfaces: runner WO stRows, admin WO popup, LocationStrip, calendar** |
 | realtime-project-wide | Runner WO: `studio_time_rows` channel by WO id. Admin WorkOrderPopup: `studio_time_rows` + `work_orders` channels via `resolvedWoId` state. LocationStrip: `fetchDrawerData()` split from `openDrawer()` for silent refresh; `selectedLocRef` for callbacks. Calendar: `loadRef.current = load` pattern for stable subscription without re-subscribing |
+| **Engineer in WO ✅** | **`bookings.engineer_rate`, eng sub-row in Studio Time, Engineer Total, runner compact table, auto-seed** |
+| engineer-in-wo | `bookings.engineer_rate` text field (blank default); engineer sub-row in Studio Time on admin WO popup + runner WO page, both day-rate and hourly layouts; Col 1 blank, Col 2 eng name, eng_hours editable (rate locked on runner); `eng_charge = eng_hours × eng_rate`; Engineer Total in WO totals block; post-save rate sync from `bookings.engineer_rate` to `studio_time_rows.eng_rate`; runner compact table replaces stacked card view; auto-seed `studio_time_rows` from booking on WO open when none exist |
+| **Ops Log search + nav cleanup ✅** | **Search bar in DailyOpsLogSection; Ops Log removed from top nav** |
+| ops-log-search | Case-insensitive live filter in DailyOpsLogSection by client, artist, studio, engineer, invoice number; Ops Log nav item removed from top nav (accessible only from Admin sidebar tab) |
+| **Runner session hero ✅** | **Artist name as primary headline on runner session cards** |
+| runner-session-hero | Runner studio page session cards: `b.artist || b.client_name` as large hero; client name as smaller secondary text only when both present; matches admin SessionCard in LocationStrip drawer |
+| **WO eng UX fixes ✅** | **eng hours default, $55 removed everywhere, date reconciliation for hourly, RT sync** |
+| wo-eng-fixes | `normalizeStRow` defaults `eng_hours` from `total_hours` → `calcHours` when null; `eng_charge` recomputed on normalize when both `eng_hours` + `eng_rate` available; $55 default removed from booking form, runner WO, and admin WO `engRateDisplay`; Eng subtotal line added to Studio Time inline footer; live date range sync `useEffect` runs for both day-rate and hourly (no `isDayRate` guard); runner RT accepts admin-set `eng_hours` without overwriting runner-typed values; `bkData` fallback to URL `bookingId` param when `woData.booking_id` is null |
 
 ### Next
 

@@ -60,9 +60,12 @@ This applies to all new tables going forward. Existing tables are unaffected unt
 - **Runner WO Session Info block reads from live booking record.** On init, the runner WO page first fetches the `work_orders` row (to get `booking_id`), then in parallel fetches the linked `bookings` row + studio time rows + equipment condition rows + expense rows. The `booking` state is the source of truth for client name, artist, engineer, date, time, studio — the `wo` snapshot fields are fallbacks. This means admin changes to the booking are always reflected when the runner opens the WO.
 - **Label/A&R field on runner WO shows "Label / A&R: Interscope / Stephen Baynes".** For billing bookings, the Session Info field label is `"Label / A&R"` (not `"Client"`). The value combines `booking?.label || wo?.label` (label name) with `booking?.client_name || wo?.client` (A&R contact name) separated by ` / `. If only one is present, that alone is shown.
 - **Engineer hours live in studio_time_rows, not work_orders.** `studio_time_rows` has three new columns: `eng_hours numeric`, `eng_rate text`, `eng_charge numeric`. The Studio Time table shows a compact engineer sub-row below each day's row whenever `booking.engineer_name` (or `wo.engineer`) is set. Admin can edit both eng_hours and eng_rate; runner can only edit eng_hours (rate is locked/display-only). `eng_charge = eng_hours × eng_rate` computed on change. Engineer Total appears in the WO totals block (above Rentals). Grand total = stTotal + engTotal + rentTotal.
-- **`bookings.engineer_rate` is the source of truth for the session rate.** Set on booking save; defaults to `$55` in the booking form when an engineer is selected and the field is empty. On booking save, the post-save rate sync block propagates `engineer_rate` to any existing `studio_time_rows.eng_rate` — but only if `eng_rate` is currently null/empty OR equals `$55` (so manually changed rates are never overwritten). Runner WO page reads eng_rate from `r.eng_rate || booking.engineer_rate || 55` for display.
+- **`bookings.engineer_rate` is the source of truth for the session rate.** Set on booking save; the field starts blank (no default — the `$55` default that existed briefly was removed June 5, 2026). On booking save, the post-save rate sync block propagates `engineer_rate` to any existing `studio_time_rows.eng_rate` — but only if `eng_rate` is currently null/empty (so manually changed rates are never overwritten). Runner WO page reads eng_rate from `r.eng_rate || booking.engineer_rate || ''` for display.
 - **Ops Log search bar filters DailyOpsLogSection by client, artist, studio, engineer, invoice number.** Case-insensitive, live as-you-type. `LogRow` now carries `artistName`, `engineerName`, `invoiceNum` (populated from joined booking rows). `hasFilters` includes `!!searchQuery.trim()`. Search input is the leftmost element in the filter bar.
 - **Runner session cards: artist is the hero name.** `b.artist || b.client_name || '—'` for the primary headline. `b.client_name` appears as secondary sub-text only when both artist AND client_name are set. Matches admin SessionCard in LocationStrip drawer.
+- **`normalizeStRow` defaults `eng_hours` when null on WO open.** `WorkOrderPopup`'s `normalizeStRow` function defaults `eng_hours` to `total_hours` (for hourly rows) or `calcHours(from_time, to_time)` (for day-rate rows where `total_hours` is null) when the DB value is null. `eng_charge` is also recomputed from the defaulted value × `eng_rate` if both are available and `eng_charge` was null. This means the eng sub-row always shows a meaningful hours value on first open without requiring manual admin input.
+- **Live date range sync runs for both day-rate and hourly sessions.** The `useEffect` in `WorkOrderPopup` that reconciles `studio_time_rows` when `start_date`/`end_date` changes has no day-rate guard — both delete (rows for dates removed from range) and insert (rows for new dates) run regardless of rate type. Hourly inserts seed `total_hours` from `calcHours(from_time, to_time)` and `charge` from `calcCharge`; day-rate inserts keep `day_count = 1` with OT rate seeding.
+- **Runner RT eng_hours: accept admin changes without overwriting runner input.** When the runner WO real-time subscription fires and a row's `eng_hours` becomes non-null (admin set it via the admin popup), the runner's `engHoursMap` entry is updated — but only if the runner's current value still equals the auto-computed default (`total_hours → calcHours`, ignoring the DB `eng_hours` field). If the runner has typed a custom value different from that default, it is preserved.
 
 ### UI patterns
 - **Clients page = unified two-column view.** List on left, full editable profile in right panel. No separate `/clients/[id]` route. URL uses query param `/clients?id=<uuid>` for shareability.
@@ -168,7 +171,7 @@ This applies to all new tables going forward. Existing tables are unaffected unt
 
 ---
 
-*Last updated: June 4, 2026 — Day-rate WO structure, Equipment Condition improvements, WO live sync fixes (stale reads, form revert, post-save rate sync), real-time subscriptions established as project-wide standard on all four surfaces.*
+*Last updated: June 5, 2026 — Engineer hours/rate in WO, ops log search, runner session hero, three-part WO eng UX fix series (eng hours default, $55 removed, date reconciliation for hourly, RT sync).*
 
 ---
 
@@ -640,3 +643,54 @@ Covers commits `358974d` through `aa682d2`.
   4. **Calendar page** — `bookings` channel. `loadRef.current = load` pattern: a separate `useEffect([load])` keeps the ref current so the mount-time subscription always calls the latest `load` without re-subscribing. Channel: `calendar-bookings`.
 - Diagnostic `[WO sync]` console.logs stripped from `handleSave` WO sync block (`aa682d2`).
 - `equipment_condition_notes` table added to `supabase_realtime` publication (SQL run directly in Supabase; no code commit). Supabase realtime tables now: `bookings`, `work_orders`, `studio_time_rows`, `equipment_condition_rows`.
+
+---
+
+### June 5, 2026 — Engineer hours/rate in WO, Ops Log search, Runner session hero
+
+**Commits: `89c2fe3`, `188b989`**
+
+**Engineer sub-row in Studio Time (`89c2fe3`):**
+- `bookings.engineer_rate` text column added to schema; starts blank (no default value)
+- Admin WorkOrderPopup Studio Time table shows a compact engineer sub-row below each day's row whenever `booking.engineer_name` is set — both day-rate and hourly layouts. Col 1 blank, Col 2 engineer name (italic), Col 3 eng_hours input, Col 4 eng_rate input, Col 7/last eng_charge display. `eng_charge = eng_hours × eng_rate` computed on each change
+- Engineer Total appears in WO totals block (between Studio Total and Rentals). Grand total = stTotal + engTotal + rentTotal
+- Runner WO page updated to match: compact single-row table for both day-rate and hourly (replacing the previous stacked card view); engineer sub-row in both layouts with eng_hours editable and eng_rate display-only
+- `bookings.engineer_rate` set on booking save; post-save sync propagates to `studio_time_rows.eng_rate` for existing rows if currently null/empty
+- `handleSaveChanges` on runner WO page saves `eng_hours` + `eng_rate` + `eng_charge` for every stRow
+
+**Ops Log search (`89c2fe3`):**
+- Search bar added to `DailyOpsLogSection` filter row as leftmost element
+- Case-insensitive live filter on all log rows by client name, artist name, studio, engineer name, invoice number
+- `LogRow` type extended with `artistName`, `engineerName`, `invoiceNum` fields populated from joined booking rows
+
+**Runner session hero (`89c2fe3`):**
+- Runner studio page session cards: artist name (`b.artist || b.client_name || '—'`) is now the large primary headline
+- Client/label name appears as smaller secondary text below only when both artist AND client_name are present
+- Matches admin SessionCard in LocationStrip drawer
+
+---
+
+### June 5, 2026 — WO engineer UX polish (three-part fix series)
+
+**Commits: `3c09ce2`, `31d78bb`, `f69c134`**
+
+**Part 1 — Five focused fixes (`3c09ce2`):**
+1. **Ops Log removed from top nav** — `{ href: '/daily-ops-log', label: 'Ops Log' }` removed from `navItems` in `Nav.tsx`. Ops Log accessible only from Admin sidebar tab.
+2. **Engineer sub-row in admin WO** — both day-rate and hourly layouts show eng sub-row; `eng_hours`/`eng_rate` written to DB on `handleClose`; Engineer Total in WO totals block.
+3. **$55 default removed everywhere** — `applyEng` in booking form no longer sets `engineer_rate = '$55'`; booking form eng_rate placeholder cleared; runner WO `handleSaveChanges` no longer falls back to rate `55`.
+4. **Runner WO compact table** — replaced stacked card layout with compact single-row table for both day-rate and hourly; engineer sub-rows in both; Col 1 blank (not "Eng" text), engineer name in Col 2 italic.
+5. **Auto-seed studio_time_rows** — on WO init, if `stRows` is empty after fetching, seeds rows from booking date range; uses correct `isDayRate` branching for rate/charge/day_count; inserts to DB; initializes `engHoursMap` via `defaultEngHrs`.
+
+**Part 2 — Runner WO UX refinements (`31d78bb`):**
+1. **`defaultEngHrs(r)` helper** — returns `r.eng_hours` if set, else `r.total_hours`, else `calcHours(from_time, to_time)`, else `''`. Applied when initializing `engHoursMap` after init and auto-seed.
+2. **$55 fully removed from runner** — all occurrences of `|| '$55'`, `|| '55'`, placeholder `"$55"` removed from runner WO page (`engRateForRow`, `engTotal`, `handleSaveChanges`).
+3. **Subtotal labels** — runner WO subtotal footer shows `"Studio: $X"` and `"Eng: $X"`. Admin WO totals block shows `"Eng Total"`.
+4. **Eng sub-row column alignment** — Col 1 blank in both day-rate and hourly eng rows; engineer name in Col 2 with italic; consistent across both layouts.
+5. **`bkData` fallback for non-standard WO URLs** — runner WO `init()` fetches booking by `woData?.booking_id || bookingId` (URL param fallback). Fixes the case where `woData.booking_id` is null.
+
+**Part 3 — Admin WO eng defaults + date reconciliation (`f69c134`):**
+1. **`normalizeStRow` eng_hours default** — defaults `eng_hours` to `total_hours` then `calcHours(from_time, to_time)` when DB value is null. Recomputes `eng_charge` from defaulted value × `eng_rate` when `eng_charge` is null and `eng_rate` is set.
+2. **$55 removed from admin WO** — `engRateDisplay` fallback chain changed from `|| '$55'` to `|| ''` in both day-rate and hourly sections of WorkOrderPopup.
+3. **Eng subtotal in Studio Time footer** — inline footer below the Studio Time table shows `"Eng: $X"` when `engTotal > 0`, above the existing `"Total: $X"` line.
+4. **Date reconciliation for hourly** — live date range sync `useEffect` had `if (!isDayRate) return` guard; guard removed. Deletes stale rows and inserts new-date rows for both day-rate and hourly. Hourly inserts use `total_hours = calcHours(from_time, to_time)`, `charge = calcCharge(...)`, `day_count = null`.
+5. **Runner RT accepts admin-set eng_hours** — `setEngHoursMap` in the runner WO RT subscription: when an existing row's `eng_hours` becomes non-null (admin set it), update the runner's map entry — but only if the runner's current value equals the auto-computed default (i.e., runner hasn't typed a custom override).
