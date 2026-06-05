@@ -354,7 +354,7 @@ export function WorkOrderPopup({
         const studio = liveForm.studio ? toStudioLetter(liveForm.studio) : (booking.studio ? toStudioLetter(booking.studio) : '')
         const fromTime = liveForm.from_time || booking.from_time || ''
         const toTime = liveForm.to_time || booking.to_time || ''
-        await supabase.from('studio_time_rows').insert(missing.map((d, i) => ({
+        await supabase.from('studio_time_rows').upsert(missing.map((d, i) => ({
           work_order_id: woIdRef.current!,
           studio, date: d, session_info: '',
           from_time: fromTime, to_time: toTime,
@@ -367,7 +367,7 @@ export function WorkOrderPopup({
           ot_rate: isDayRate && !isNaN(rateNum) && rateNum > 0 ? rateNum / 10 : null,
           ot_hours: 0, ot_charge: null,
           sort_order: coveredDates.size + i,
-        })))
+        })), { onConflict: 'work_order_id,date', ignoreDuplicates: true })
       }
 
       if (toDelete.length > 0 || missing.length > 0) {
