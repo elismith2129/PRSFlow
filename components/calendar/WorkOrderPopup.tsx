@@ -955,18 +955,24 @@ export function WorkOrderPopup({
 
   const inp: React.CSSProperties = {
     background: 'transparent', border: 'none',
-    borderBottom: '1px solid rgba(255,255,255,0.1)',
     color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 11,
-    padding: '2px 4px', outline: 'none', width: '100%', lineHeight: 1.5,
+    padding: '1px 0', outline: 'none', width: '100%', lineHeight: 1.4,
   }
   const cellS: React.CSSProperties = {
-    padding: '6px 8px', borderRight: '1px solid rgba(255,255,255,0.06)',
-    fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0',
+    padding: '4px 8px', fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0',
+    display: 'flex', alignItems: 'center',
   }
   const thS: React.CSSProperties = {
-    padding: '5px 8px', fontSize: 8, fontFamily: 'Syne', fontWeight: 700,
+    padding: '4px 8px', fontSize: 8, fontFamily: 'Syne', fontWeight: 700,
     letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a8fa0',
-    borderRight: '1px solid rgba(255,255,255,0.06)',
+  }
+  const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+  function shortDate(d: string) {
+    if (!d) return '—'
+    const parts = d.split('-')
+    if (parts.length < 3) return d
+    const m = parseInt(parts[1], 10) - 1
+    return `${MONTHS_SHORT[m]} ${parseInt(parts[2], 10)}`
   }
   const sectionTitle: React.CSSProperties = {
     fontFamily: 'Syne', fontWeight: 700, fontSize: 10, color: '#8a8fa0',
@@ -1181,13 +1187,13 @@ export function WorkOrderPopup({
                   const rowHrsDisplay = isDayRow ? (rowHrs ?? 12) : (rowHrs ?? '—')
                   return (
                     <div key={r.id}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 72px 72px 40px 58px 82px 78px 80px', borderBottom: engName ? 'none' : '1px solid rgba(255,255,255,0.04)' }}>
-                        <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{r.date || '—'}</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 72px 72px 40px 58px 82px 78px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{shortDate(r.date)}</div>
                         <div style={cellS}><input value={r.session_info} onChange={e => updateStRow(r.id, { session_info: e.target.value })} style={inp} placeholder="—" /></div>
                         <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} /></div>
                         <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} /></div>
-                        <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10, padding: '6px 4px' }}>{rowHrsDisplay !== '—' ? `${rowHrsDisplay}h` : '—'}</div>
-                        <div style={{ ...cellS, display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 2, padding: '4px 4px' }}>
+                        <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{rowHrsDisplay !== '—' ? `${rowHrsDisplay}h` : '—'}</div>
+                        <div style={{ ...cellS, gap: 2, padding: '3px 4px' }}>
                           <button style={toggleStyle(isDayRow)} onClick={() => !isDayRow && toggleRowRateType(r.id)}>Day</button>
                           <button style={toggleStyle(!isDayRow)} onClick={() => isDayRow && toggleRowRateType(r.id)}>Hr</button>
                         </div>
@@ -1200,7 +1206,7 @@ export function WorkOrderPopup({
                         <div style={cellS}>
                           <input value={r.ot_rate ?? ''} onChange={e => updateStRow(r.id, { ot_rate: e.target.value })} style={inp} placeholder="$0/hr" />
                         </div>
-                        <div style={{ ...cellS, color: rowTotal > 0 ? '#c8f04e' : '#8a8fa0', fontWeight: rowTotal > 0 ? 600 : 400, borderRight: 'none' }}>
+                        <div style={{ ...cellS, color: rowTotal > 0 ? '#c8f04e' : '#8a8fa0', fontWeight: rowTotal > 0 ? 600 : 400 }}>
                           {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : '—'}
                         </div>
                       </div>
@@ -1210,13 +1216,13 @@ export function WorkOrderPopup({
                           <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engName}</div>
                           <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} style={inp} /></div>
                           <div style={cellS}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} style={inp} /></div>
-                          <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10, padding: '6px 4px' }}>{engHrs != null ? `${engHrs}h` : '—'}</div>
-                          <div style={{ ...cellS }} />
+                          <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engHrs != null ? `${engHrs}h` : '—'}</div>
+                          <div style={cellS} />
                           <div style={cellS}>
                             <input value={r.eng_rate || engRateDisplay} onChange={e => updateStRow(r.id, { eng_rate: e.target.value })} style={{ ...inp, width: 64 }} />
                           </div>
-                          <div style={{ ...cellS }} />
-                          <div style={{ ...cellS, color: engCharge != null ? '#c8f04e' : '#8a8fa0', fontWeight: engCharge != null ? 600 : 400, borderRight: 'none' }}>
+                          <div style={cellS} />
+                          <div style={{ ...cellS, color: engCharge != null ? '#c8f04e' : '#8a8fa0', fontWeight: engCharge != null ? 600 : 400 }}>
                             {engCharge != null ? `$${engCharge.toFixed(2)}` : '—'}
                           </div>
                         </div>

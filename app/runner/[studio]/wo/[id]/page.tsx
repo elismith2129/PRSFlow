@@ -87,6 +87,9 @@ export default function RunnerWOPage() {
   const [equipNotes, setEquipNotes] = useState<Record<string, { id: string; note: string; photo_urls: string[] }>>({})
   const [openNoteKey, setOpenNoteKey] = useState<string | null>(null)
   const [noteUploading, setNoteUploading] = useState(false)
+  const [notesModalRowId, setNotesModalRowId] = useState<string | null>(null)
+  const [notesModalText, setNotesModalText] = useState('')
+  const [expandedEngRow, setExpandedEngRow] = useState<string | null>(null)
   const equipNoteFileRef = useRef<HTMLInputElement>(null)
   const pendingNoteKey = useRef<{ key: string; equipment: string; date: string } | null>(null)
 
@@ -608,6 +611,17 @@ export default function RunnerWOPage() {
     router.push(`/runner/${studio}`)
   }
 
+  async function saveNotesModal() {
+    if (!notesModalRowId) return
+    await supabase.from('studio_time_rows').update({ session_info: notesModalText }).eq('id', notesModalRowId)
+    setStRows(prev => prev.map((r: any) => r.id === notesModalRowId ? { ...r, session_info: notesModalText } : r))
+    setNotesModalRowId(null)
+  }
+
+  function getInitials(name: string) {
+    return name.split(/\s+/).filter(Boolean).map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
+  }
+
   const sessionDates = Array.from(new Set(stRows.map((r: any) => r.date).filter(Boolean))).sort() as string[]
 
   if (loading) return (
@@ -618,6 +632,26 @@ export default function RunnerWOPage() {
 
   return (
     <div style={{ minHeight: '100dvh', background: '#0d0f14', fontFamily: 'Syne, sans-serif', paddingBottom: 100 }}>
+      {/* Session Notes Modal */}
+      {notesModalRowId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 10002, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '20px 20px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #2a2e3d' }}>
+            <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 18, color: '#f0f0f0' }}>Session Notes</span>
+            <button onClick={() => setNotesModalRowId(null)} style={{ background: 'none', border: 'none', color: '#8b90a8', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
+          </div>
+          <textarea
+            value={notesModalText}
+            onChange={e => setNotesModalText(e.target.value)}
+            placeholder="Song names, notes, instructions…"
+            style={{ flex: 1, background: '#161920', border: 'none', outline: 'none', color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 14, padding: 20, resize: 'none', lineHeight: 1.6 }}
+            autoFocus
+          />
+          <div style={{ display: 'flex', gap: 10, padding: '14px 20px', borderTop: '1px solid #2a2e3d' }}>
+            <button onClick={saveNotesModal} style={{ flex: 1, background: '#c8f04e', color: '#0d0f14', border: 'none', borderRadius: 8, padding: '12px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Save</button>
+            <button onClick={() => setNotesModalRowId(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', color: '#8b90a8', border: 'none', borderRadius: 8, padding: '12px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div style={{
         background: '#161920', borderBottom: `3px solid ${meta.color}`,
@@ -707,11 +741,12 @@ export default function RunnerWOPage() {
                   Session times will appear here
                 </div>
               ) : (
-                /* Unified table: Date | Session | From | To | Hrs | Type | Rate | OT Rate | Total */
+                /* Unified compact table: Date | Notes | From | To | Hrs | Type | Rate | OT Rate | Total */
+                /* Eng sub-row: blank | Initials | eng_from | eng_to | engHrs | blank | eng_rate | blank | engCharge */
                 <div style={{ overflowX: 'auto' }}>
-                  <div style={{ minWidth: 520 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 58px 58px 36px 36px 70px 62px 62px', background: '#0d0f14', borderTop: '1px solid #2a2e3d', borderBottom: '1px solid #2a2e3d' }}>
-                      {['Date', 'Session', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Rate', 'Total'].map(h => <div key={h} style={thStyle}>{h}</div>)}
+                  <div style={{ minWidth: 444 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '54px 44px 52px 52px 34px 32px 62px 56px 58px', background: '#0d0f14', borderTop: '1px solid #2a2e3d', borderBottom: '1px solid #2a2e3d' }}>
+                      {['Date', 'Notes', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT', 'Total'].map(h => <div key={h} style={thStyle}>{h}</div>)}
                     </div>
                     <div>
                       {stRows.map((r: any) => {
@@ -720,8 +755,9 @@ export default function RunnerWOPage() {
                         const liveTo = toTimeMap[r.id] ?? r.to_time ?? ''
                         const engRateForRow = parseFloat(String(r.eng_rate || booking?.engineer_rate || '').replace(/[^0-9.]/g, '')) || 0
                         const engLiveFrom = engFromTimeMap[r.id] ?? r.eng_from_time ?? r.from_time ?? ''
+                        const engLiveFrom2 = engLiveFrom
                         const engLiveTo = engToTimeMap[r.id] ?? r.eng_to_time ?? r.to_time ?? ''
-                        const engLiveHours = calcHours(engLiveFrom, engLiveTo)
+                        const engLiveHours = calcHours(engLiveFrom2, engLiveTo)
                         const liveEngCharge = engLiveHours != null && engLiveHours > 0 && engRateForRow > 0 ? parseFloat((engLiveHours * engRateForRow).toFixed(2)) : null
 
                         let rowTotal: number | null = null
@@ -740,40 +776,53 @@ export default function RunnerWOPage() {
 
                         const rowHrs = calcHours(liveFrom, liveTo)
                         const rowHrsDisplay = isDayRow ? (rowHrs ?? 12) : (rowHrs ?? '—')
-                        const tSelectStyle = { background: 'transparent', color: '#e8eaf2', border: 'none', fontSize: 10, fontFamily: 'DM Mono, monospace', width: '100%' }
+                        const hasNotes = !!(r.session_info || '').trim()
+                        const tSel = { background: 'transparent', color: '#e8eaf2', border: 'none', fontSize: 10, fontFamily: 'DM Mono, monospace', width: '100%' }
+                        const initials = engName ? getInitials(engName) : ''
+                        const engExpanded = expandedEngRow === r.id
                         return (
                           <div key={r.id}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 58px 58px 36px 36px 70px 62px 62px', borderBottom: engName ? 'none' : '1px solid #2a2e3d' }}>
-                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>{r.date || '—'}</div>
-                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>{r.session_info || '—'}</div>
-                              <div style={{ ...tdStyle, padding: '2px 4px' }}><TimeInput value={liveFrom} onChange={v => setFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={tSelectStyle} /></div>
-                              <div style={{ ...tdStyle, padding: '2px 4px' }}><TimeInput value={liveTo} onChange={v => setToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={tSelectStyle} /></div>
-                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>{rowHrsDisplay !== '—' ? `${rowHrsDisplay}h` : '—'}</div>
-                              <div style={{ ...tdStyle, fontSize: 9, color: isDayRow ? '#c8f04e' : '#8b90a8' }}>{isDayRow ? 'Day' : 'Hr'}</div>
-                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '54px 44px 52px 52px 34px 32px 62px 56px 58px', borderBottom: engName ? 'none' : '1px solid #2a2e3d' }}>
+                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>{r.date || '—'}</div>
+                              <div style={{ ...tdStyle, padding: '4px 3px' }}>
+                                <button
+                                  onClick={() => { setNotesModalRowId(r.id); setNotesModalText(r.session_info || '') }}
+                                  style={{ width: '100%', padding: '3px 4px', border: `1px solid ${hasNotes ? '#c8f04e' : '#3a3f52'}`, borderRadius: 4, background: hasNotes ? 'rgba(200,240,78,0.08)' : 'transparent', color: hasNotes ? '#c8f04e' : '#4a4f64', fontSize: 9, fontFamily: 'Syne', cursor: 'pointer' }}
+                                >Notes</button>
+                              </div>
+                              <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={liveFrom} onChange={v => setFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={tSel} /></div>
+                              <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={liveTo} onChange={v => setToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={tSel} /></div>
+                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>{rowHrsDisplay !== '—' ? `${rowHrsDisplay}h` : '—'}</div>
+                              <div style={{ ...tdStyle, fontSize: 8, color: isDayRow ? '#c8f04e' : '#8b90a8' }}>{isDayRow ? 'Day' : 'Hr'}</div>
+                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>
                                 {isDayRow
-                                  ? (parseFloat(String(r.rate_daily ?? r.rate ?? '').replace(/[^0-9.]/g, '')) > 0 ? `$${parseFloat(String(r.rate_daily ?? r.rate ?? '').replace(/[^0-9.]/g, '')).toLocaleString()}/day` : '—')
+                                  ? (parseFloat(String(r.rate_daily ?? r.rate ?? '').replace(/[^0-9.]/g, '')) > 0 ? `$${parseFloat(String(r.rate_daily ?? r.rate ?? '').replace(/[^0-9.]/g, '')).toLocaleString()}/d` : '—')
                                   : (parseFloat(String(r.rate ?? '').replace(/[^0-9.]/g, '')) > 0 ? `$${parseFloat(String(r.rate ?? '').replace(/[^0-9.]/g, ''))}/hr` : '—')
                                 }
                               </div>
-                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>
+                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>
                                 {parseFloat(String(r.ot_rate ?? '0').replace(/[^0-9.]/g, '')) > 0 ? `$${parseFloat(String(r.ot_rate ?? '0').replace(/[^0-9.]/g, ''))}/hr` : '—'}
                               </div>
-                              <div style={{ ...tdStyle, color: rowTotal != null ? meta.color : '#4a4f64', fontWeight: rowTotal != null ? 700 : 400, borderRight: 'none' }}>
+                              <div style={{ ...tdStyle, color: rowTotal != null ? meta.color : '#4a4f64', fontWeight: rowTotal != null ? 700 : 400, borderRight: 'none', fontSize: 10 }}>
                                 {rowTotal != null ? `$${rowTotal.toFixed(2)}` : '—'}
                               </div>
                             </div>
                             {engName && (
-                              <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 58px 58px 36px 36px 70px 62px 62px', borderBottom: '1px solid #2a2e3d', background: 'rgba(200,240,78,0.03)' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: '54px 44px 52px 52px 34px 32px 62px 56px 58px', borderBottom: '1px solid #2a2e3d', background: 'rgba(200,240,78,0.03)' }}>
                                 <div style={{ ...tdStyle }} />
-                                <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10, fontStyle: 'italic' }}>{engName}</div>
-                                <div style={{ ...tdStyle, padding: '2px 4px' }}><TimeInput value={engLiveFrom} onChange={v => setEngFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSelectStyle, color: '#c8f04e' }} /></div>
-                                <div style={{ ...tdStyle, padding: '2px 4px' }}><TimeInput value={engLiveTo} onChange={v => setEngToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSelectStyle, color: '#c8f04e' }} /></div>
-                                <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>{engLiveHours != null ? `${engLiveHours}h` : '—'}</div>
+                                <div style={{ ...tdStyle, padding: '4px 3px' }}>
+                                  <button
+                                    onClick={() => setExpandedEngRow(engExpanded ? null : r.id)}
+                                    style={{ padding: '2px 5px', border: '1px solid #c8f04e', borderRadius: 4, background: 'rgba(200,240,78,0.08)', color: '#c8f04e', fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                                  >{engExpanded ? engName : initials}</button>
+                                </div>
+                                <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={engLiveFrom2} onChange={v => setEngFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSel, color: '#c8f04e' }} /></div>
+                                <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={engLiveTo} onChange={v => setEngToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSel, color: '#c8f04e' }} /></div>
+                                <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>{engLiveHours != null ? `${engLiveHours}h` : '—'}</div>
                                 <div style={{ ...tdStyle }} />
                                 <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>{engRateForRow > 0 ? `$${engRateForRow}/hr` : '—'}</div>
                                 <div style={{ ...tdStyle }} />
-                                <div style={{ ...tdStyle, color: liveEngCharge != null ? meta.color : '#4a4f64', fontWeight: liveEngCharge != null ? 700 : 400, borderRight: 'none' }}>
+                                <div style={{ ...tdStyle, color: liveEngCharge != null ? meta.color : '#4a4f64', fontWeight: liveEngCharge != null ? 700 : 400, borderRight: 'none', fontSize: 10 }}>
                                   {liveEngCharge != null ? `$${liveEngCharge.toFixed(2)}` : '—'}
                                 </div>
                               </div>
