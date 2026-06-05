@@ -1258,7 +1258,7 @@ function BookingForm({
                         value={form.engineer_rate}
                         onChange={e => set('engineer_rate', e.target.value)}
                         onBlur={e => set('engineer_rate', fmtMoney(e.target.value))}
-                        placeholder="$55"
+                        placeholder=""
                         style={{ background: '#1a1d27', border: '1px solid #2a2e3d', color: '#e8eaf2', fontFamily: 'DM Mono', fontSize: 11, padding: '5px 8px', borderRadius: 4, width: 60, outline: 'none' }}
                       />
                     </div>

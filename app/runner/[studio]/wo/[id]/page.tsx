@@ -26,6 +26,12 @@ function calcCharge(fromTime: string, toTime: string, rate: string): number | nu
   const r = parseFloat(String(rate).replace(/[^0-9.]/g, ''))
   return !isNaN(r) && r > 0 ? parseFloat((h * r).toFixed(2)) : null
 }
+function defaultEngHrs(r: any): string {
+  if (r.eng_hours != null) return String(r.eng_hours)
+  if (r.total_hours != null) return String(r.total_hours)
+  const h = calcHours(r.from_time ?? '', r.to_time ?? '')
+  return h != null ? String(h) : ''
+}
 
 type EquipCond = Record<string, 'ok' | 'not_ok' | null>
 type Expense = { id?: string; vendor: string; item: string; amount: string; receipt_url: string | null; uploading?: boolean }
@@ -127,8 +133,8 @@ export default function RunnerWOPage() {
       const { data: woData } = await supabase.from('work_orders').select('*').eq('id', resolvedId).single()
 
       const [{ data: bkData }, { data: st }, { data: eq }, { data: exp }, { data: eqNotes }] = await Promise.all([
-        woData?.booking_id
-          ? supabase.from('bookings').select('*').eq('id', woData.booking_id).single()
+        (woData?.booking_id || bookingId)
+          ? supabase.from('bookings').select('*').eq('id', woData?.booking_id || bookingId).single()
           : Promise.resolve({ data: null }),
         supabase.from('studio_time_rows').select('*').eq('work_order_id', resolvedId).order('sort_order'),
         supabase.from('equipment_condition_rows').select('*').eq('work_order_id', resolvedId),
@@ -140,7 +146,7 @@ export default function RunnerWOPage() {
       setBooking(bkData)
       let finalStRows = st ?? []
       let finalEngHours: Record<string, string> = {}
-      for (const r of finalStRows) finalEngHours[r.id] = r.eng_hours != null ? String(r.eng_hours) : ''
+      for (const r of finalStRows) finalEngHours[r.id] = defaultEngHrs(r)
 
       if (finalStRows.length === 0 && bkData && resolvedId) {
         const startD = new Date(bkData.start_date + 'T12:00:00')
@@ -169,7 +175,7 @@ export default function RunnerWOPage() {
         if (seeded && seeded.length > 0) {
           finalStRows = seeded
           finalEngHours = {}
-          for (const r of seeded) finalEngHours[r.id] = r.eng_hours != null ? String(r.eng_hours) : ''
+          for (const r of seeded) finalEngHours[r.id] = defaultEngHrs(r)
         }
       }
 
@@ -276,7 +282,7 @@ export default function RunnerWOPage() {
           setEngHoursMap(prev => {
             const next = { ...prev }
             for (const r of st) {
-              if (!(r.id in next)) next[r.id] = r.eng_hours != null ? String(r.eng_hours) : ''
+              if (!(r.id in next)) next[r.id] = defaultEngHrs(r)
             }
             return next
           })
@@ -480,7 +486,7 @@ export default function RunnerWOPage() {
         if (hasEngineer) {
           const ehStr = engHoursMap[r.id] ?? ''
           const eh = ehStr ? parseFloat(ehStr) : null
-          const engRate = r.eng_rate || (booking as any)?.engineer_rate || ''
+          const engRate = r.eng_rate || ''
           const er = parseFloat(String(engRate).replace(/[^0-9.]/g, '')) || 0
           update.eng_hours = eh || null
           update.eng_charge = eh != null && eh > 0 && er > 0 ? parseFloat((eh * er).toFixed(2)) : null
@@ -574,9 +580,9 @@ export default function RunnerWOPage() {
           }, 0)
           const engName = wo?.engineer || booking?.engineer_name || ''
           const engTotal = engName ? stRows.reduce((s: number, r: any) => {
-            const ehStr = engHoursMap[r.id] ?? (r.eng_hours != null ? String(r.eng_hours) : '')
+            const ehStr = engHoursMap[r.id] ?? ''
             const eh = ehStr ? parseFloat(ehStr) : null
-            const er = parseFloat(String(r.eng_rate || booking?.engineer_rate || '').replace(/[^0-9.]/g, '')) || 0
+            const er = parseFloat(String(r.eng_rate ?? '').replace(/[^0-9.]/g, '')) || 0
             return s + (eh != null && eh > 0 && er > 0 ? eh * er : 0)
           }, 0) : 0
 
@@ -602,8 +608,8 @@ export default function RunnerWOPage() {
                       const otRateNum = parseFloat(String(r.ot_rate ?? '0')) || 0
                       const liveOtCharge = currentOtHrs > 0 && otRateNum > 0 ? currentOtHrs * otRateNum : 0
                       const rowTotal = dayCharge + liveOtCharge
-                      const engRateForRow = parseFloat(String(r.eng_rate || booking?.engineer_rate || '').replace(/[^0-9.]/g, '')) || 0
-                      const ehStr = engHoursMap[r.id] ?? (r.eng_hours != null ? String(r.eng_hours) : '')
+                      const engRateForRow = parseFloat(String(r.eng_rate ?? '').replace(/[^0-9.]/g, '')) || 0
+                      const ehStr = engHoursMap[r.id] ?? ''
                       const eh = ehStr ? parseFloat(ehStr) : null
                       const liveEngCharge = eh != null && eh > 0 && engRateForRow > 0 ? eh * engRateForRow : null
                       return (
@@ -635,15 +641,15 @@ export default function RunnerWOPage() {
                           </div>
                           {engName && (
                             <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 80px 55px 75px 75px', borderBottom: '1px solid #2a2e3d', background: 'rgba(200,240,78,0.03)' }}>
-                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
-                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>{engName}</div>
+                              <div style={{ ...tdStyle }} />
+                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10, fontStyle: 'italic' }}>{engName}</div>
                               <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>
                                 {engRateForRow > 0 ? `$${engRateForRow}/hr` : '—'}
                               </div>
                               <div style={{ ...tdStyle, justifyContent: 'center' }}>
                                 <input
                                   type="number" min="0" step="0.5"
-                                  value={engHoursMap[r.id] ?? (r.eng_hours != null ? String(r.eng_hours) : '')}
+                                  value={engHoursMap[r.id] ?? ''}
                                   placeholder="0"
                                   onChange={e => setEngHoursMap(prev => ({ ...prev, [r.id]: e.target.value }))}
                                   style={{
@@ -672,8 +678,8 @@ export default function RunnerWOPage() {
                   </div>
                   <div>
                     {stRows.map((r: any) => {
-                      const engRateForRow = parseFloat(String(r.eng_rate || booking?.engineer_rate || '').replace(/[^0-9.]/g, '')) || 0
-                      const ehStr = engHoursMap[r.id] ?? (r.eng_hours != null ? String(r.eng_hours) : '')
+                      const engRateForRow = parseFloat(String(r.eng_rate ?? '').replace(/[^0-9.]/g, '')) || 0
+                      const ehStr = engHoursMap[r.id] ?? ''
                       const eh = ehStr ? parseFloat(ehStr) : null
                       const liveEngCharge = eh != null && eh > 0 && engRateForRow > 0 ? eh * engRateForRow : null
                       const rateNum = parseFloat(String(r.rate ?? '').replace(/[^0-9.]/g, '')) || 0
@@ -690,12 +696,12 @@ export default function RunnerWOPage() {
                           </div>
                           {engName && (
                             <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 50px 80px 80px', borderBottom: '1px solid #2a2e3d', background: 'rgba(200,240,78,0.03)' }}>
-                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
-                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10 }}>{engName}</div>
+                              <div style={{ ...tdStyle }} />
+                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 10, fontStyle: 'italic' }}>{engName}</div>
                               <div style={{ ...tdStyle, justifyContent: 'center' }}>
                                 <input
                                   type="number" min="0" step="0.5"
-                                  value={engHoursMap[r.id] ?? (r.eng_hours != null ? String(r.eng_hours) : '')}
+                                  value={engHoursMap[r.id] ?? ''}
                                   placeholder="0"
                                   onChange={e => setEngHoursMap(prev => ({ ...prev, [r.id]: e.target.value }))}
                                   style={{
@@ -726,7 +732,7 @@ export default function RunnerWOPage() {
                   </span>
                   {engTotal > 0 && (
                     <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: '#e8eaf2' }}>
-                      Engineer: <span style={{ color: meta.color }}>${engTotal.toFixed(2)}</span>
+                      Eng: <span style={{ color: meta.color }}>${engTotal.toFixed(2)}</span>
                     </span>
                   )}
                   {engTotal > 0 && (
