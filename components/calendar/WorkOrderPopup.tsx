@@ -173,13 +173,11 @@ function normalizeWO(d: any): WO {
 function normalizeStRow(d: any): StRow {
   const dayCount = d.day_count != null ? Number(d.day_count) : null
   const rate = d.rate ?? ''
-  let charge = d.charge != null ? Number(d.charge) : null
-  if (dayCount != null) {
-    const rateNum = parseFloat(String(rate).replace(/[^0-9.]/g, ''))
-    charge = !isNaN(rateNum) && rateNum > 0 ? parseFloat((dayCount * rateNum).toFixed(2)) : null
-  } else if (d.total_hours != null) {
-    charge = calcCharge(Number(d.total_hours), rate)
-  }
+  const totalHours = d.total_hours != null ? Number(d.total_hours) : null
+  const rateNum = parseFloat(String(d.rate ?? '').replace(/[^0-9.]/g, ''))
+  const charge = (d.day_count == null && totalHours != null && totalHours > 0 && !isNaN(rateNum) && rateNum > 0)
+    ? parseFloat((totalHours * rateNum).toFixed(2))
+    : (d.charge != null ? Number(d.charge) : null)
   const engFromTime = d.eng_from_time ?? d.from_time ?? ''
   const engToTime   = d.eng_to_time   ?? d.to_time   ?? ''
   const engRate = d.eng_rate != null ? String(d.eng_rate) : ''
@@ -1220,7 +1218,6 @@ export function WorkOrderPopup({
                       const engRateNum = parseFloat((engRateDisplay ?? '').replace(/[^0-9.]/g, '')) || 0
                       const engHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time) ?? null
                       const engCharge = engHrs != null && engHrs > 0 && engRateNum > 0 ? engHrs * engRateNum : null
-                      console.log('[charge debug]', r.id, r.total_hours, r.rate, r.charge)
                       return (
                         <div key={r.id}>
                           <div style={{ display: 'grid', gridTemplateColumns: '55px 90px 1fr 72px 72px 55px 90px 80px', borderBottom: engName ? 'none' : '1px solid rgba(255,255,255,0.04)' }}>
