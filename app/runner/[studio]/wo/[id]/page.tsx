@@ -90,6 +90,7 @@ export default function RunnerWOPage() {
   const [notesModalRowId, setNotesModalRowId] = useState<string | null>(null)
   const [notesModalText, setNotesModalText] = useState('')
   const [expandedEngRow, setExpandedEngRow] = useState<string | null>(null)
+  const [engPopoverPos, setEngPopoverPos] = useState<{ top: number; left: number } | null>(null)
   const equipNoteFileRef = useRef<HTMLInputElement>(null)
   const pendingNoteKey = useRef<{ key: string; equipment: string; date: string } | null>(null)
 
@@ -632,25 +633,34 @@ export default function RunnerWOPage() {
 
   return (
     <div style={{ minHeight: '100dvh', background: '#0d0f14', fontFamily: 'Syne, sans-serif', paddingBottom: 100 }}>
-      {/* Session Notes Modal */}
+      {/* Session Notes Bottom Sheet */}
       {notesModalRowId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 10002, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '20px 20px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #2a2e3d' }}>
-            <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 18, color: '#f0f0f0' }}>Session Notes</span>
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: '38vh', zIndex: 10002, display: 'flex', flexDirection: 'column', background: '#161920', borderTop: '3px solid #c8f04e', borderRadius: '16px 16px 0 0' }}>
+          <div style={{ padding: '14px 16px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 16, color: '#f0f0f0' }}>Session Notes</span>
             <button onClick={() => setNotesModalRowId(null)} style={{ background: 'none', border: 'none', color: '#8b90a8', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
           </div>
           <textarea
             value={notesModalText}
             onChange={e => setNotesModalText(e.target.value)}
             placeholder="Song names, notes, instructions…"
-            style={{ flex: 1, background: '#161920', border: 'none', outline: 'none', color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 14, padding: 20, resize: 'none', lineHeight: 1.6 }}
+            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 13, padding: '0 16px', resize: 'none', lineHeight: 1.6, overflowY: 'auto' }}
             autoFocus
           />
-          <div style={{ display: 'flex', gap: 10, padding: '14px 20px', borderTop: '1px solid #2a2e3d' }}>
-            <button onClick={saveNotesModal} style={{ flex: 1, background: '#c8f04e', color: '#0d0f14', border: 'none', borderRadius: 8, padding: '12px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Save</button>
-            <button onClick={() => setNotesModalRowId(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', color: '#8b90a8', border: 'none', borderRadius: 8, padding: '12px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
+          <div style={{ display: 'flex', gap: 10, padding: '10px 16px 16px', flexShrink: 0 }}>
+            <button onClick={saveNotesModal} style={{ flex: 1, background: '#c8f04e', color: '#0d0f14', border: 'none', borderRadius: 8, padding: '11px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Save</button>
+            <button onClick={() => setNotesModalRowId(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', color: '#8b90a8', border: 'none', borderRadius: 8, padding: '11px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
           </div>
         </div>
+      )}
+      {/* Engineer name popover */}
+      {expandedEngRow && engPopoverPos && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 98 }} onClick={() => { setExpandedEngRow(null); setEngPopoverPos(null) }} />
+          <div style={{ position: 'fixed', top: engPopoverPos.top - 8, left: engPopoverPos.left, transform: 'translateY(-100%)', zIndex: 99, background: '#1a1e28', border: '1px solid #c8f04e', borderRadius: 6, padding: '6px 10px', whiteSpace: 'nowrap' }}>
+            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: '#c8f04e' }}>{wo?.engineer || booking?.engineer_name || ''}</span>
+          </div>
+        </>
       )}
       {/* Header */}
       <div style={{
@@ -812,9 +822,16 @@ export default function RunnerWOPage() {
                                 <div style={{ ...tdStyle }} />
                                 <div style={{ ...tdStyle, padding: '4px 3px' }}>
                                   <button
-                                    onClick={() => setExpandedEngRow(engExpanded ? null : r.id)}
-                                    style={{ padding: '2px 5px', border: '1px solid #c8f04e', borderRadius: 4, background: 'rgba(200,240,78,0.08)', color: '#c8f04e', fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                                  >{engExpanded ? engName : initials}</button>
+                                    onClick={e => {
+                                      if (engExpanded) { setExpandedEngRow(null); setEngPopoverPos(null) }
+                                      else {
+                                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                                        setExpandedEngRow(r.id)
+                                        setEngPopoverPos({ top: rect.top, left: rect.left })
+                                      }
+                                    }}
+                                    style={{ padding: '2px 5px', border: '1px solid #c8f04e', borderRadius: 4, background: 'rgba(200,240,78,0.08)', color: '#c8f04e', fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer' }}
+                                  >{initials}</button>
                                 </div>
                                 <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={engLiveFrom2} onChange={v => setEngFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSel, color: '#c8f04e' }} /></div>
                                 <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={engLiveTo} onChange={v => setEngToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSel, color: '#c8f04e' }} /></div>
