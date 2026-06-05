@@ -69,6 +69,10 @@ Tables in use (all with public RLS — auth deferred to Chunk 9):
 - `stock_items` — per-studio stock with qty + low bool
 - `mic_inventory` — global mic list with condition (good/fair/damaged)
 - `expense_rows` — WO expense line items with receipt_url
+- `bookings.engineer_rate` — text column; hourly rate for the session engineer (e.g. "$55")
+- `studio_time_rows.eng_hours` — numeric; hours worked by engineer on that row
+- `studio_time_rows.eng_rate` — text; engineer rate override for that row (defaults to booking.engineer_rate / $55)
+- `studio_time_rows.eng_charge` — numeric; computed eng_hours × eng_rate
 
 Most date/time fields stored as `text`. Money fields stored as `text`.
 
@@ -90,7 +94,7 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 - **Runner pages** use `minHeight: '100dvh'`, `paddingBottom: 120` for the fixed footer, no nav import
 - **Real-time checklist saves:** Items save on tap via `clIdRef` + `creatingRef` pattern. Notes debounce 800ms. Needs-attention upserts `daily_ops_submissions` without `submitted_at` immediately for dashboard badge
 
-## What's Built (as of June 4, 2026)
+## What's Built (as of June 5, 2026)
 
 | Chunk | Feature | Status |
 |-------|---------|--------|
@@ -116,6 +120,9 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 | Equipment Condition | Horizontal scroll + sticky first column on admin popup and runner page; Not OK cell opens notes+photo popup; section excluded from PDF print | ✅ Complete |
 | WO live sync fixes | `isDayRate` reads from `liveForm` not stale `booking.*`; `wo?.id` dep on reactive effects so they re-run after `initWO`; post-save rate sync on all booking saves; `onSaved={undefined}` prevents form revert on WO close | ✅ Complete |
 | Real-time project standard | `postgres_changes` on all four surfaces: runner WO (`studio_time_rows`), admin WO popup (`studio_time_rows` + `work_orders`), LocationStrip (`bookings` + `work_orders` silent refresh), calendar (`bookings` via `loadRef` pattern) | ✅ Complete |
+| Engineer in WO | `bookings.engineer_rate` field ($55 default when eng selected); eng sub-row in Studio Time table on admin + runner (rate locked on runner); Engineer Total in WO totals; booking save syncs eng_rate to existing stRows (only if null or still at $55 default) | ✅ Complete |
+| Ops Log search | Search bar in DailyOpsLogSection filters by client, artist, studio, engineer, invoice number; case-insensitive live filter | ✅ Complete |
+| Runner session hero | Artist name is the large hero on runner session cards; client name is the secondary sub-text below | ✅ Complete |
 
 ## What's Next
 
