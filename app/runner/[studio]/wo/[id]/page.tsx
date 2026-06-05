@@ -311,14 +311,14 @@ export default function RunnerWOPage() {
           setFromTimeMap(prev => {
             const next = { ...prev }
             for (const r of st) {
-              if (!(r.id in next)) next[r.id] = r.from_time ?? ''
+              if (!(r.id in next) || !prev[r.id]) next[r.id] = r.from_time ?? ''
             }
             return next
           })
           setToTimeMap(prev => {
             const next = { ...prev }
             for (const r of st) {
-              if (!(r.id in next)) next[r.id] = r.to_time ?? ''
+              if (!(r.id in next) || !prev[r.id]) next[r.id] = r.to_time ?? ''
             }
             return next
           })
