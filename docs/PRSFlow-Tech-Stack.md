@@ -110,7 +110,7 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 | `styles/globals.css` | CSS variable definitions + Google Fonts import |
 | `components/layout/Nav.tsx` | App nav (only renders inside `(main)` route group) |
 | `components/shared/StudioSelect.tsx` | Single flat dropdown for "Venue · Studio" selection; used across CRM and calendar |
-| `components/shared/TimeInput.tsx` | Smart 12-hour time input with parse-on-blur. Accepts `8p`, `830a`, `1830`, `8` etc. Used in booking form and WO studio time table. |
+| `components/shared/TimeInput.tsx` | 30-min interval `<select>` dropdown with 48 options (12:00 AM–11:30 PM, 12-hour AM/PM format). Used in booking form and WO Studio Time table From/To cells. Replaced the previous smart-parse text input. |
 | `components/shared/` | Reusable pickers: `ContactPicker`, `ArtistPicker`, `StudioSelect`, `TimeInput` |
 | `lib/studios.ts` | `STUDIO_LOCATIONS` array + `parseLocation()` / `combineLocation()` for the "Venue · Studio" string format |
 | `lib/roster.ts` | Label artist array helpers: `addArtistToLabel`, `removeArtistFromLabel`, `getArtistsForLabel` |
@@ -230,6 +230,10 @@ Defined in `styles/globals.css`:
 | runner-session-hero | Runner studio page session cards: `b.artist || b.client_name` as large hero; client name as smaller secondary text only when both present; matches admin SessionCard in LocationStrip drawer |
 | **WO eng UX fixes ✅** | **eng hours default, $55 removed everywhere, date reconciliation for hourly, RT sync** |
 | wo-eng-fixes | `normalizeStRow` defaults `eng_hours` from `total_hours` → `calcHours` when null; `eng_charge` recomputed on normalize when both `eng_hours` + `eng_rate` available; $55 default removed from booking form, runner WO, and admin WO `engRateDisplay`; Eng subtotal line added to Studio Time inline footer; live date range sync `useEffect` runs for both day-rate and hourly (no `isDayRate` guard); runner RT accepts admin-set `eng_hours` without overwriting runner-typed values; `bkData` fallback to URL `bookingId` param when `woData.booking_id` is null |
+| **Per-row rate type + unified Studio Time table ✅** | **Architecture: each row toggles day/hour independently; single 9-col table replaces dual layouts** |
+| per-row-rate-type | `studio_time_rows.row_rate_type` + `row_rate_daily` columns; `toggleRowRateType()` converts rate on toggle; booking-level rate-sync effects deleted; `normalizeStRow` branches on `row_rate_type`; unified Date\|SessionInfo\|From\|To\|Hrs\|Type\|Rate\|OT\|Total table in admin WorkOrderPopup + runner WO page; Type cell has Day/Hr inline toggle (admin) or display label (runner); `TimeInput` changed to 30-min `<select>` with 48 options; OT rate auto-populates from hourly rate; `shortDate()` helper for `M-D` date format; admin cell dividers removed; runner compact 444px table |
+| **Runner WO UX polish ✅** | **Notes bottom sheet, iOS Safari scroll lock, viewport fixes, eng initials popover, PDF session notes** |
+| runner-wo-ux | Notes bottom sheet: `position: fixed` floating card (`bottom:16, left:12, right:12, borderRadius:12`); iOS scroll lock via `body.position=fixed + top=-scrollY` pattern (not `overflow:hidden`); `Viewport` export in `app/layout.tsx` sets `maximumScale:1, userScalable:false`; runner root containers `maxWidth:100vw, overflowX:hidden`; eng name → initials pill with tap-to-expand fixed popover; `<span data-si-print>` reveals session notes in `@media print`; admin session info cell opens 280px popover with editable textarea |
 
 ### Next
 

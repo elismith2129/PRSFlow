@@ -94,6 +94,14 @@ This applies to all new tables going forward. Existing tables are unaffected unt
 - **`liveForm` is memoized in `BookingForm` with `useMemo`.** Passing an inline object literal `liveForm={{ ... }}` to `WorkOrderPopup` caused a new reference on every parent render, which remounted `WorkOrderPopup` (and re-ran `initWO`) constantly. `useMemo` with all form field dependencies prevents spurious remounts.
 - **Engineer edit-in-place uses a ref (`engEditingRef`) alongside state (`engEditing`).** React `useState` has stale closure issues in blur `setTimeout` callbacks — the `onBlur` handler captures `engEditing` from the render it was created in, not the latest value. `engEditingRef.current` is always current in the closure. The Escape handler sets `engApplied.current = true` (not `engEditingRef = false`) so the subsequent blur from unmount skips calling `applyEng` — the blur handler is the single place that clears `engEditingRef`.
 - **WO print: `document.title` sets the default Save as PDF filename.** Before `window.print()`, `document.title` is set to `CLIENT_INV#` (COD) or `LABEL_ARTIST_INV#` (Billing), then restored after. This controls the filename the browser pre-fills in the Save as PDF dialog. All three print buttons use `printWithFilename()` helper. If no invoice number exists, `_INV#` literal is appended as a placeholder.
+- **Per-row rate type replaces booking-level rate type in the Studio Time table.** `studio_time_rows` gained two columns: `row_rate_type text DEFAULT 'hour'` and `rate_daily text`. Each row independently toggles between `'hour'` and `'day'` billing. `toggleRowRateType(id)` converts: hour→day sets `rate_daily = rate × 10`; day→hour sets `rate = rate_daily ÷ 10`. This decouples individual rows from the booking-level `rate_type` and eliminated the booking-level rate-sync `useEffect` in WorkOrderPopup and the post-save rate sync block in `calendar/page.tsx`. `normalizeStRow` branches on `row_rate_type`: day rows use `rate_daily` flat; hourly rows derive charge from `totalHours × rate`.
+- **Unified 9-column Studio Time table replaces two separate layouts.** Column order: Date | Session Info | From | To | Hrs | Type | Rate | OT Rate | Total. The Type cell shows Day/Hr inline toggle buttons in admin (editable) or a display label in runner (read-only). This replaced the separate day-rate compact layout and hourly layout that existed previously in both admin WorkOrderPopup and runner WO page.
+- **`TimeInput` is now a `<select>` with 48 pre-built options (every 30 min, 12-hour AM/PM).** The previous smart-parse text `<input>` (accepting `8p`, `830a`, `1830`, etc.) was replaced with a controlled select dropdown. This eliminates ambiguous input and parse-on-blur edge cases. Used in booking form, WO Studio Time table From/To cells, and engineer sub-row From/To cells.
+- **iOS Safari scroll lock pattern.** `document.body.style.overflow = 'hidden'` does NOT lock scroll on iOS Safari — the page still scrolls behind overlays. Correct pattern: on open, read `scrollY`, then set `document.body.style.top = -\`${scrollY}px\`; position = 'fixed'; width = '100%'`. On close, clear all three properties, then call `window.scrollTo({ top: savedScrollY, behavior: 'instant' })`. Applied to the runner WO notes bottom sheet.
+- **Runner WO notes bottom sheet (floating card, not full overlay).** The notes edit view is a `position: fixed` floating card: `bottom: 16, left: 12, right: 12; borderRadius: 12; boxShadow: '0 -4px 24px rgba(0,0,0,0.4)'`. No background dim. Uses explicit `paddingLeft/paddingRight` longhand on all child elements (shorthand padding can be overridden by global resets on iOS). Root containers on all runner pages have `maxWidth: '100vw', overflowX: 'hidden'` to prevent horizontal overflow on devices with scrollbars.
+- **Runner WO viewport fixes.** Next.js `Viewport` export in `app/layout.tsx` sets `maximumScale: 1, userScalable: false` — prevents iOS Safari pinch-zoom from breaking the layout. Runner page root containers use `left: 0, right: 0` instead of `width: 100vw` to avoid triggering horizontal overflow on devices where `100vw` includes the scrollbar width.
+- **PDF session notes revealed via `data-si-print` span.** Inside the Studio Time table Session Info cell, a `<span data-si-print>` wraps the full session notes text. `@media print` CSS in `globals.css` reveals this span (it is hidden in screen view). This puts session notes inside the cell in the printed/PDF WO without adding a visible element to the on-screen table.
+- **Admin session info popover in Studio Time table.** Clicking the Session Info cell in the admin WO Studio Time table opens a 280px `position: fixed` popover with an editable textarea for session notes and Save/Close buttons. Allows admin to edit per-row session notes without opening a separate modal.
 
 ---
 
@@ -171,7 +179,7 @@ This applies to all new tables going forward. Existing tables are unaffected unt
 
 ---
 
-*Last updated: June 5, 2026 — Engineer hours/rate in WO, ops log search, runner session hero, three-part WO eng UX fix series (eng hours default, $55 removed, date reconciliation for hourly, RT sync).*
+*Last updated: June 5, 2026 — per-row rate type architecture, unified Studio Time table, TimeInput → 30-min select, runner WO UX polish series (notes bottom sheet, iOS Safari scroll lock, viewport fixes, eng initials popover, PDF session notes, admin session info popover).*
 
 ---
 
@@ -694,3 +702,72 @@ Covers commits `358974d` through `aa682d2`.
 3. **Eng subtotal in Studio Time footer** — inline footer below the Studio Time table shows `"Eng: $X"` when `engTotal > 0`, above the existing `"Total: $X"` line.
 4. **Date reconciliation for hourly** — live date range sync `useEffect` had `if (!isDayRate) return` guard; guard removed. Deletes stale rows and inserts new-date rows for both day-rate and hourly. Hourly inserts use `total_hours = calcHours(from_time, to_time)`, `charge = calcCharge(...)`, `day_count = null`.
 5. **Runner RT accepts admin-set eng_hours** — `setEngHoursMap` in the runner WO RT subscription: when an existing row's `eng_hours` becomes non-null (admin set it), update the runner's map entry — but only if the runner's current value equals the auto-computed default (i.e., runner hasn't typed a custom override).
+
+---
+
+### June 5, 2026 — Per-row rate type architecture + unified Studio Time table
+
+**Commits: `d7dcf71` through `9b4b8a4`, `af6b46c`, `3f25b0c`–`3e90378`**
+
+**Architecture change — per-row rate type (`9b4b8a4`):**
+- `studio_time_rows` gained two new columns: `row_rate_type text DEFAULT 'hour'` and `rate_daily text`
+- Each row independently toggles between `'hour'` and `'day'` billing — decouples rows from booking-level `rate_type`
+- `toggleRowRateType(id)`: hour→day sets `rate_daily = rate × 10`; day→hour sets `rate = rate_daily ÷ 10`
+- Booking-level rate-sync `useEffect` in WorkOrderPopup deleted; post-save rate sync block in `calendar/page.tsx` deleted
+- `normalizeStRow` branches on `row_rate_type`: day rows use `rate_daily` flat; hourly rows derive charge from `totalHours × rate`
+
+**Unified 9-column Studio Time table (admin + runner):**
+- Columns: Date | Session Info | From | To | Hrs | Type | Rate | OT Rate | Total
+- Type cell shows Day/Hr toggle buttons (admin, `display: flex, flexDirection: row`) or display-only label (runner)
+- Replaces the previous dual-layout (separate compact day-rate table vs. full hourly table) in both `WorkOrderPopup` and runner WO page
+- `TimeInput` component changed from smart-parse text `<input>` to `<select>` with 48 options (every 30 min, 12-hour AM/PM)
+- Eng sub-row From/To inputs linked to parent studio row's `from_time`/`to_time`
+- Day-rate rows: Days column removed; From + To `TimeInput` selects added per row (`af6b46c`)
+- Multi-day booking form: FROM/TO inputs restored (no longer hidden for multi-day sessions — `d7dcf71`)
+
+**Bug fixes in this session:**
+- `normalizeStRow` charge fix (`3f25b0c`): always derive charge from `totalHours × rateNum` for hourly rows (was using raw DB value when rate empty)
+- `engTotal` on admin WO: fallback reads `liveForm?.engineer_rate || booking?.engineer_rate` when no stRow has eng_rate set (`fe9c54c`)
+- `TimeInput` changed to 30-min select (`fe9c54c`)
+- Runner Hrs column display and admin stale charge fixed (`0b26b5b`, `6b1c5c8`)
+- Dedup stRows on init: prevents duplicate rows when WO opened multiple times (`1a3859e`)
+- Admin Studio Time footer subtotals shown even when only eng data is present (`1a3859e`)
+- Raw insert path in date-range reconciliation correctly writes `total_hours` + `charge` (`d7b571d`)
+- OT Rate for hourly rows auto-populates from hourly rate in `normalizeStRow` (`6f42ee6`)
+
+**Studio Time visual cleanup (`3e90378`):**
+- Admin: cell dividers removed; date format changed to `M-D` (e.g. `6-5`) via `shortDate()` helper; reduced cell padding; vertically centered cells
+- Runner: compact 444px table width; Session Notes → "Notes" pill that opens a bottom sheet; engineer name → two-letter initials pill that opens a fixed-position popover showing full name
+
+---
+
+### June 5, 2026 — Runner WO UX polish series (notes bottom sheet + iOS fixes)
+
+**Commits: `c3467b3` through `271a75f`**
+
+**Notes bottom sheet (`c3467b3`, `110466b`):**
+- Replaced full-screen modal with `position: fixed` bottom sheet: `bottom: 0, left: 0, right: 0; maxHeight: 38vh`; `3px solid #c8f04e` accent top border; no background dim; autoFocus textarea; Save + Cancel with iOS safe-area padding
+- Admin session info popover: clicking Session Info cell in admin WO Studio Time opens a 280px fixed popover with editable textarea + Save/Close
+
+**PDF session notes (`c3467b3`):**
+- `<span data-si-print>` wraps full session notes inside the Session Info cell; hidden on screen, revealed in `@media print` CSS in `globals.css`
+- Notes appear inline in the Studio Time table in the printed/PDF WO
+
+**Eng initials popover (`c3467b3`):**
+- Engineer name in runner Studio Time table shows as two-letter initials pill
+- Tap opens a `position: fixed` popover above the pill showing the full engineer name
+- Transparent backdrop closes on tap
+
+**Runner viewport and overflow fixes (`1f6de3e`, `110466b`, `e212b4a`–`271a75f`):**
+- All runner page root containers: `maxWidth: '100vw', overflowX: 'hidden'`
+- Bottom sheet wrapper uses `left: 0, right: 0` instead of `width: 100vw` (avoids horizontal overflow on devices with scrollbars)
+- All child elements of the bottom sheet use explicit `paddingLeft/paddingRight: 16` longhand (avoids global reset overrides on iOS)
+- Next.js `Viewport` export in `app/layout.tsx`: `maximumScale: 1, userScalable: false` — prevents iOS Safari pinch-zoom
+
+**iOS Safari scroll lock pattern (`271a75f`):**
+- `document.body.style.overflow = 'hidden'` does not work on iOS — page still scrolls behind fixed overlays
+- Correct pattern: on open, save `scrollY`, then `body.style.top = \`-${scrollY}px\`; body.style.position = 'fixed'; body.style.width = '100%'`
+- On close (Save, Cancel, or any exit path): clear all three properties, then `window.scrollTo({ top: savedScrollY, behavior: 'instant' })`
+
+**Bottom sheet redesigned as floating card (`5bcf18a`):**
+- Changed from full-width bottom-anchored overlay to floating card: `bottom: 16, left: 12, right: 12`; `borderRadius: 12`; `border: '1px solid #2a2e3d'`; `boxShadow: '0 -4px 24px rgba(0,0,0,0.4)'`; accent top border removed

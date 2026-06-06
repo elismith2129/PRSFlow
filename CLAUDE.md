@@ -93,6 +93,8 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 - **z-index ladder:** Nav = 9999. LocationStrip dialog = 10001. DailyOpsModal = 10002. RegViewModal = 10003. All modals must sit above 9999
 - **Runner pages** use `minHeight: '100dvh'`, `paddingBottom: 120` for the fixed footer, no nav import
 - **Real-time checklist saves:** Items save on tap via `clIdRef` + `creatingRef` pattern. Notes debounce 800ms. Needs-attention upserts `daily_ops_submissions` without `submitted_at` immediately for dashboard badge
+- **`TimeInput` is a `<select>` with 48 options (every 30 min, 12-hour AM/PM format).** The previous smart-parse text input was replaced. Used in booking form and WO Studio Time From/To cells.
+- **iOS Safari scroll lock: use `body.position=fixed` + `top=-scrollY`, not `overflow:hidden`.** `overflow:hidden` on body does not block scroll on iOS. Correct pattern: save `scrollY`, set `body.style.top=\`-${scrollY}px\`, position=fixed, width=100%` on open; clear all three and call `window.scrollTo({ top: savedScrollY, behavior: 'instant' })` on close.
 
 ## What's Built (as of June 5, 2026)
 
@@ -124,6 +126,8 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 | Ops Log search | Search bar in DailyOpsLogSection filters by client, artist, studio, engineer, invoice number; case-insensitive live filter; Ops Log removed from top nav (admin sidebar only) | ✅ Complete |
 | Runner session hero | Artist name is the large hero on runner session cards; client name is the secondary sub-text below | ✅ Complete |
 | WO eng UX fixes | `normalizeStRow` defaults eng_hours from total_hours → calcHours when null; $55 removed everywhere; Eng subtotal in Studio Time inline footer; date reconciliation applies to both day-rate and hourly (no isDayRate guard); runner RT accepts admin-set eng_hours without overwriting runner-typed values; bkData fallback for non-standard WO URLs; runner compact table layout for hourly; auto-seed stRows from booking on WO open | ✅ Complete |
+| Per-row rate type + unified Studio Time | `studio_time_rows.row_rate_type` + `rate_daily` columns; each row toggles Day/Hr independently; `toggleRowRateType()` converts rate; unified 9-col table (Date\|SessionInfo\|From\|To\|Hrs\|Type\|Rate\|OT\|Total) replaces dual layouts in admin + runner; `TimeInput` → 30-min `<select>` with 48 options; `shortDate()` date format; OT rate auto-populated for hourly rows; admin cell dividers removed | ✅ Complete |
+| Runner WO UX polish | Notes bottom sheet: floating card (`position:fixed, bottom:16, left:12, right:12, borderRadius:12`); iOS Safari scroll lock via `body.position=fixed+top=-scrollY` (not `overflow:hidden`); `Viewport` export sets `maximumScale:1, userScalable:false`; runner root containers `maxWidth:100vw, overflowX:hidden`; eng initials pill with tap-to-expand popover; `<span data-si-print>` reveals notes in PDF; admin session info cell opens editable popover | ✅ Complete |
 
 ## What's Next
 
