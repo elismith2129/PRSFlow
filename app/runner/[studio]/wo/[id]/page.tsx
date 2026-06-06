@@ -638,7 +638,7 @@ export default function RunnerWOPage() {
     <div style={{ minHeight: '100dvh', maxWidth: '100vw', overflowX: 'hidden', background: '#0d0f14', fontFamily: 'Syne, sans-serif', paddingBottom: 100 }}>
       {/* Session Notes Bottom Sheet */}
       {notesModalRowId && (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, maxHeight: '38vh', zIndex: 10002, display: 'flex', flexDirection: 'column', background: '#161920', borderTop: '3px solid #c8f04e', borderRadius: '16px 16px 0 0', overflow: 'hidden', boxSizing: 'border-box' }}>
+        <div style={{ position: 'fixed', bottom: 16, left: 12, right: 12, maxHeight: '38vh', zIndex: 10002, display: 'flex', flexDirection: 'column', background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, overflow: 'hidden', boxSizing: 'border-box', boxShadow: '0 -4px 24px rgba(0,0,0,0.4)' }}>
           <div style={{ width: '100%', boxSizing: 'border-box', paddingTop: 14, paddingBottom: 10, paddingLeft: 16, paddingRight: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
             <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 16, color: '#f0f0f0' }}>Session Notes</span>
             <button onClick={() => { document.body.style.overflow = ''; setNotesModalRowId(null); window.scrollTo({ top: notesScrollRef.current, behavior: 'instant' }) }} style={{ background: 'none', border: 'none', color: '#8b90a8', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
