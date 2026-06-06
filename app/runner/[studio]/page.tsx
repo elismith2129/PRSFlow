@@ -154,6 +154,8 @@ export default function StudioDailyOpsPage() {
   return (
     <div style={{
       minHeight: '100dvh',
+      maxWidth: '100vw',
+      overflowX: 'hidden',
       background: '#0d0f14',
       fontFamily: 'Syne, sans-serif',
       padding: '0 0 80px',

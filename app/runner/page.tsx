@@ -71,6 +71,8 @@ export default function RunnerPage() {
   return (
     <div style={{
       minHeight: '100dvh',
+      maxWidth: '100vw',
+      overflowX: 'hidden',
       background: '#0d0f14',
       display: 'flex',
       flexDirection: 'column',

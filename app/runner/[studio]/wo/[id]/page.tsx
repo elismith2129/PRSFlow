@@ -628,16 +628,16 @@ export default function RunnerWOPage() {
   const sessionDates = Array.from(new Set(stRows.map((r: any) => r.date).filter(Boolean))).sort() as string[]
 
   if (loading) return (
-    <div style={{ minHeight: '100dvh', background: '#0d0f14', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b90a8', fontFamily: 'Syne, sans-serif' }}>
+    <div style={{ minHeight: '100dvh', maxWidth: '100vw', overflowX: 'hidden', background: '#0d0f14', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b90a8', fontFamily: 'Syne, sans-serif' }}>
       Loading…
     </div>
   )
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#0d0f14', fontFamily: 'Syne, sans-serif', paddingBottom: 100 }}>
+    <div style={{ minHeight: '100dvh', maxWidth: '100vw', overflowX: 'hidden', background: '#0d0f14', fontFamily: 'Syne, sans-serif', paddingBottom: 100 }}>
       {/* Session Notes Bottom Sheet */}
       {notesModalRowId && (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, maxHeight: '38vh', zIndex: 10002, display: 'flex', flexDirection: 'column', background: '#161920', borderTop: '3px solid #c8f04e', borderRadius: '16px 16px 0 0', overflow: 'hidden', boxSizing: 'border-box' }}>
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, width: '100vw', maxWidth: '100vw', maxHeight: '38vh', zIndex: 10002, display: 'flex', flexDirection: 'column', background: '#161920', borderTop: '3px solid #c8f04e', borderRadius: '16px 16px 0 0', overflow: 'hidden', overflowX: 'hidden', boxSizing: 'border-box' }}>
           <div style={{ padding: '14px 16px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
             <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 16, color: '#f0f0f0' }}>Session Notes</span>
             <button onClick={() => { setNotesModalRowId(null); window.scrollTo({ top: notesScrollRef.current, behavior: 'instant' }) }} style={{ background: 'none', border: 'none', color: '#8b90a8', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
