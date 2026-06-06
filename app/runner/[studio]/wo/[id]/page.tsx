@@ -639,7 +639,7 @@ export default function RunnerWOPage() {
       {/* Session Notes Bottom Sheet */}
       {notesModalRowId && (
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, maxHeight: '38vh', zIndex: 10002, display: 'flex', flexDirection: 'column', background: '#161920', borderTop: '3px solid #c8f04e', borderRadius: '16px 16px 0 0', overflow: 'hidden', boxSizing: 'border-box' }}>
-          <div style={{ width: '100%', boxSizing: 'border-box', padding: '14px 16px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <div style={{ width: '100%', boxSizing: 'border-box', paddingTop: 14, paddingBottom: 10, paddingLeft: 16, paddingRight: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
             <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 16, color: '#f0f0f0' }}>Session Notes</span>
             <button onClick={() => { document.body.style.overflow = ''; setNotesModalRowId(null); window.scrollTo({ top: notesScrollRef.current, behavior: 'instant' }) }} style={{ background: 'none', border: 'none', color: '#8b90a8', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
           </div>
@@ -647,10 +647,10 @@ export default function RunnerWOPage() {
             value={notesModalText}
             onChange={e => setNotesModalText(e.target.value)}
             placeholder="Song names, notes, instructions…"
-            style={{ flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', background: 'transparent', border: 'none', outline: 'none', color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 13, padding: '0 16px', resize: 'none', lineHeight: 1.6, overflowY: 'auto' }}
+            style={{ flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', background: 'transparent', border: 'none', outline: 'none', color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 13, paddingTop: 0, paddingBottom: 0, paddingLeft: 16, paddingRight: 16, resize: 'none', lineHeight: 1.6, overflowY: 'auto' }}
             autoFocus
           />
-          <div style={{ width: '100%', boxSizing: 'border-box', display: 'flex', gap: 10, padding: '10px 16px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))', flexShrink: 0 }}>
+          <div style={{ width: '100%', boxSizing: 'border-box', display: 'flex', gap: 10, paddingTop: 10, paddingLeft: 16, paddingRight: 16, paddingBottom: 'calc(16px + env(safe-area-inset-bottom))', flexShrink: 0 }}>
             <button onClick={saveNotesModal} style={{ flex: 1, background: '#c8f04e', color: '#0d0f14', border: 'none', borderRadius: 8, padding: '11px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Save</button>
             <button onClick={() => { document.body.style.overflow = ''; setNotesModalRowId(null); window.scrollTo({ top: notesScrollRef.current, behavior: 'instant' }) }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', color: '#8b90a8', border: 'none', borderRadius: 8, padding: '11px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
           </div>
