@@ -725,13 +725,13 @@ export default function RunnerWOPage() {
         {/* Studio Time */}
         {(() => {
           const thStyle: React.CSSProperties = {
-            padding: '5px 8px', fontSize: 8, fontFamily: 'Syne, sans-serif', fontWeight: 700,
+            padding: '5px 6px', fontSize: 8, fontFamily: 'Syne, sans-serif', fontWeight: 700,
             letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: '#8b90a8',
-            borderRight: '1px solid #2a2e3d',
+            borderRight: '1px solid #2a2e3d', whiteSpace: 'nowrap', overflow: 'hidden',
           }
           const tdStyle: React.CSSProperties = {
-            padding: '8px 8px', fontSize: 11, fontFamily: 'DM Mono, monospace', color: '#e8eaf2',
-            borderRight: '1px solid #2a2e3d', display: 'flex', alignItems: 'center',
+            padding: '8px 6px', fontSize: 11, fontFamily: 'DM Mono, monospace', color: '#e8eaf2',
+            borderRight: '1px solid #2a2e3d', display: 'flex', alignItems: 'center', overflow: 'hidden',
           }
 
           const stTotal = stRows.reduce((s: number, r: any) => {
@@ -771,8 +771,8 @@ export default function RunnerWOPage() {
               ) : (
                 /* Date | Notes | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total */
                 <div style={{ overflowX: 'auto' }}>
-                  <div style={{ minWidth: 494 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '44px 44px 48px 48px 30px 28px 58px 40px 52px 50px 52px', background: '#0d0f14', borderTop: '1px solid #2a2e3d', borderBottom: '1px solid #2a2e3d' }}>
+                  <div style={{ minWidth: 590 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '50px 55px 70px 70px 35px 35px 65px 45px 55px 50px 60px', background: '#0d0f14', borderTop: '1px solid #2a2e3d', borderBottom: '1px solid #2a2e3d' }}>
                       {['Date', 'Notes', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total'].map(h => <div key={h} style={thStyle}>{h}</div>)}
                     </div>
                     <div>
@@ -811,7 +811,7 @@ export default function RunnerWOPage() {
                         const hasNotes = !!(r.session_info || '').trim()
                         return (
                           <div key={r.id}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '44px 44px 48px 48px 30px 28px 58px 40px 52px 50px 52px', borderBottom: engName ? 'none' : '1px solid #2a2e3d' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '50px 55px 70px 70px 35px 35px 65px 45px 55px 50px 60px', borderBottom: engName ? 'none' : '1px solid #2a2e3d' }}>
                               {/* Date */}
                               <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9, position: 'relative', cursor: 'pointer' }}>
                                 <span style={{ pointerEvents: 'none' }}>{shortDate(r.date || '')}</span>
@@ -874,7 +874,7 @@ export default function RunnerWOPage() {
                               </div>
                             </div>
                             {engName && (
-                              <div style={{ display: 'grid', gridTemplateColumns: '44px 44px 48px 48px 30px 28px 58px 40px 52px 50px 52px', borderBottom: '1px solid #2a2e3d', background: 'rgba(200,240,78,0.03)' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: '50px 55px 70px 70px 35px 35px 65px 45px 55px 50px 60px', borderBottom: '1px solid #2a2e3d', background: 'rgba(200,240,78,0.03)' }}>
                                 <div style={{ ...tdStyle, padding: '4px 3px' }}>
                                   <button
                                     onClick={e => {
