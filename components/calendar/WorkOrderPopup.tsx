@@ -826,7 +826,8 @@ export function WorkOrderPopup({
   // ── Add studio time row ────────────────────────────────────────────────────
 
   async function addStRow() {
-    const newRow = { work_order_id: woIdRef.current!, studio: '', date: '', session_info: '', from_time: '', to_time: '', total_hours: null, rate: '', rate_daily: null, row_rate_type: 'hour', charge: null, sort_order: stRows.length }
+    const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
+    const newRow = { work_order_id: woIdRef.current!, studio: '', date: '', session_info: '', from_time: '', to_time: '', total_hours: null, rate: '', rate_daily: null, row_rate_type: 'hour', charge: null, sort_order: maxOrder + 1 }
     const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
     if (data) setStRows(prev => [...prev, normalizeStRow(data)])
   }
@@ -1189,7 +1190,20 @@ export function WorkOrderPopup({
                   return (
                     <div key={r.id}>
                       <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 72px 72px 40px 58px 82px 78px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                        <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{shortDate(r.date)}</div>
+                        <div style={{ ...cellS, padding: '2px 6px' }}>
+                          <input
+                            type="text"
+                            value={r.date || ''}
+                            onChange={e => setStRows(prev => prev.map(row => row.id === r.id ? { ...row, date: e.target.value } : row))}
+                            onBlur={() => setStRows(prev => {
+                              const sorted = [...prev].sort((a, b) => (a.date || '').localeCompare(b.date || '')).map((row, i) => ({ ...row, sort_order: i }))
+                              sorted.forEach(row => { supabase.from('studio_time_rows').update({ date: row.date, sort_order: row.sort_order }).eq('id', row.id) })
+                              return sorted
+                            })}
+                            style={{ ...inp, fontSize: 9, color: '#8a8fa0', width: '100%' }}
+                            placeholder="YYYY-MM-DD"
+                          />
+                        </div>
                         <div
                           data-si-cell=""
                           style={{ ...cellS, cursor: 'pointer', overflow: 'hidden' }}

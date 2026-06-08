@@ -799,7 +799,20 @@ export default function RunnerWOPage() {
                         return (
                           <div key={r.id}>
                             <div style={{ display: 'grid', gridTemplateColumns: '54px 44px 52px 52px 34px 32px 62px 56px 58px', borderBottom: engName ? 'none' : '1px solid #2a2e3d' }}>
-                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>{r.date || '—'}</div>
+                              <div style={{ ...tdStyle, padding: '2px 4px' }}>
+                                <input
+                                  type="text"
+                                  value={r.date || ''}
+                                  onChange={e => setStRows((prev: any[]) => prev.map((row: any) => row.id === r.id ? { ...row, date: e.target.value } : row))}
+                                  onBlur={() => setStRows((prev: any[]) => {
+                                    const sorted = [...prev].sort((a: any, b: any) => (a.date || '').localeCompare(b.date || '')).map((row: any, i: number) => ({ ...row, sort_order: i }))
+                                    sorted.forEach((row: any) => { supabase.from('studio_time_rows').update({ date: row.date, sort_order: row.sort_order }).eq('id', row.id) })
+                                    return sorted
+                                  })}
+                                  style={{ background: 'transparent', border: 'none', outline: 'none', color: '#8b90a8', fontSize: 9, fontFamily: 'DM Mono, monospace', width: '100%', padding: 0 }}
+                                  placeholder="YYYY-MM-DD"
+                                />
+                              </div>
                               <div style={{ ...tdStyle, padding: '4px 3px' }}>
                                 <button
                                   onClick={() => { notesScrollRef.current = window.scrollY; document.body.style.top = `-${window.scrollY}px`; document.body.style.position = 'fixed'; document.body.style.width = '100%'; setNotesModalRowId(r.id); setNotesModalText(r.session_info || '') }}
