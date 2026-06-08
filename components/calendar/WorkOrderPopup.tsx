@@ -396,7 +396,7 @@ export function WorkOrderPopup({
             ? (!isNaN(rateNum) && rateNum > 0 ? rateNum : null)
             : calcCharge(calcHours(fromTime, toTime), rateRaw),
           day_count: isDayRate ? 1 : null,
-          ot_rate: isDayRate ? (!isNaN(rateNum) && rateNum > 0 ? rateNum / 10 : null) : rateRaw,
+          ot_rate: isDayRate ? (!isNaN(rateNum) && rateNum > 0 ? rateNum / 10 : null) : (rateNum || null),
           sort_order: coveredDates.size + i,
         })))
       }
@@ -572,7 +572,7 @@ export function WorkOrderPopup({
             total_hours: hrs,
             rate: booking.rate ?? '',
             charge: calcCharge(hrs, booking.rate ?? ''),
-            ot_rate: booking.rate ?? '',
+            ot_rate: parseFloat((booking.rate ?? '').replace(/[^0-9.]/g, '')) || null,
             sort_order: existingDateSet.size + i,
           }
         })
@@ -658,7 +658,7 @@ export function WorkOrderPopup({
           total_hours: hrs,
           rate: booking.rate ?? '',
           charge: calcCharge(hrs, booking.rate ?? ''),
-          ot_rate: booking.rate ?? '',
+          ot_rate: parseFloat((booking.rate ?? '').replace(/[^0-9.]/g, '')) || null,
           sort_order: i,
         }
       })
@@ -846,7 +846,7 @@ export function WorkOrderPopup({
       rate: last?.rate || '',
       rate_daily: last?.rate_daily || null,
       row_rate_type: last?.row_rate_type || 'hour',
-      ot_rate: last?.ot_rate || null,
+      ot_rate: last?.ot_rate ? (parseFloat(last.ot_rate.replace(/[^0-9.]/g, '')) || null) : null,
       charge: null,
       sort_order: maxOrder + 1,
     }
