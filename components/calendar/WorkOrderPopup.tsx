@@ -374,8 +374,8 @@ export function WorkOrderPopup({
       const coveredDates = new Set((freshRows ?? []).map((r: any) => r.date))
       const newDateSet = new Set(allDates)
 
-      // Delete rows for dates no longer in range
-      const toDelete = (freshRows ?? []).filter((r: any) => !newDateSet.has(r.date)).map((r: any) => r.id)
+      // Delete rows for dates no longer in range; preserve rows with blank date (manually added)
+      const toDelete = (freshRows ?? []).filter((r: any) => r.date && !newDateSet.has(r.date)).map((r: any) => r.id)
       if (toDelete.length > 0) await supabase.from('studio_time_rows').delete().in('id', toDelete)
 
       // Insert rows for new dates
@@ -688,34 +688,45 @@ export function WorkOrderPopup({
       if (r.id !== id) return r
       const u = { ...r, ...updates }
 
+      // Total hours always auto-calc from times (both rate types)
+      if ('from_time' in updates || 'to_time' in updates || 'row_rate_type' in updates) {
+        u.total_hours = calcHours(u.from_time, u.to_time)
+      }
+
       if (u.row_rate_type === 'day') {
-        // Charge = rate_daily (flat per row, no multiplier)
+        // Charge = rate_daily (flat, OT is separate)
         if ('rate_daily' in updates || 'row_rate_type' in updates) {
           const rn = parseFloat((u.rate_daily ?? '').replace(/[^0-9.]/g, ''))
           u.charge = !isNaN(rn) && rn > 0 ? rn : null
+          // OT rate auto-calc: 10% of day rate
+          if (!('ot_rate' in updates)) {
+            u.ot_rate = rn > 0 ? String(parseFloat((rn * 0.10).toFixed(2))) : u.ot_rate
+          }
         }
-        // OT hours auto-derived from times
+        // OT hours auto-derived from times (Total Hrs - 12 when > 12)
         if ('from_time' in updates || 'to_time' in updates || 'row_rate_type' in updates) {
-          const actual = calcHours(u.from_time, u.to_time) ?? 0
+          const actual = u.total_hours ?? 0
           u.ot_hours = String(Math.max(0, parseFloat(actual.toFixed(2)) - 12))
         }
-        // OT charge
-        if ('from_time' in updates || 'to_time' in updates || 'ot_rate' in updates || 'row_rate_type' in updates) {
-          const h = parseFloat(u.ot_hours ?? '0') || 0
-          const rn = parseFloat((u.ot_rate ?? '').replace(/[^0-9.]/g, '')) || 0
-          u.ot_charge = h > 0 && rn > 0 ? parseFloat((h * rn).toFixed(2)) : null
-        }
       } else {
-        // Hourly row
-        if ('from_time' in updates || 'to_time' in updates) {
-          u.total_hours = calcHours(u.from_time, u.to_time)
-        }
+        // Hourly: charge = total_hours × rate
         if ('total_hours' in updates || 'rate' in updates || 'from_time' in updates || 'to_time' in updates || 'row_rate_type' in updates) {
           u.charge = calcCharge(u.total_hours, u.rate)
         }
+        // OT rate auto-calc: same as rate
+        if ('rate' in updates || 'row_rate_type' in updates) {
+          if (!('ot_rate' in updates)) u.ot_rate = u.rate
+        }
       }
 
-      // Recalculate eng_charge from eng times for all row types
+      // OT charge = OT hrs × OT rate (both rate types)
+      if ('ot_hours' in updates || 'ot_rate' in updates || 'from_time' in updates || 'to_time' in updates || 'rate' in updates || 'rate_daily' in updates || 'row_rate_type' in updates) {
+        const h = parseFloat(u.ot_hours ?? '0') || 0
+        const rn = parseFloat((u.ot_rate ?? '').replace(/[^0-9.]/g, '')) || 0
+        u.ot_charge = h > 0 && rn > 0 ? parseFloat((h * rn).toFixed(2)) : null
+      }
+
+      // Eng charge
       if ('eng_hours' in updates || 'eng_rate' in updates || 'from_time' in updates || 'to_time' in updates || 'eng_from_time' in updates || 'eng_to_time' in updates) {
         const ef = u.eng_from_time || u.from_time
         const et = u.eng_to_time   || u.to_time
@@ -827,7 +838,22 @@ export function WorkOrderPopup({
 
   async function addStRow() {
     const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
-    const newRow = { work_order_id: woIdRef.current!, studio: '', date: '', session_info: '', from_time: '', to_time: '', total_hours: null, rate: '', rate_daily: null, row_rate_type: 'hour', charge: null, sort_order: maxOrder + 1 }
+    const last = stRows[stRows.length - 1]
+    const newRow = {
+      work_order_id: woIdRef.current!,
+      studio: last?.studio || '',
+      date: '',
+      session_info: '',
+      from_time: last?.from_time || '',
+      to_time: last?.to_time || '',
+      total_hours: null,
+      rate: last?.rate || '',
+      rate_daily: last?.rate_daily || null,
+      row_rate_type: last?.row_rate_type || 'hour',
+      ot_rate: last?.ot_rate || null,
+      charge: null,
+      sort_order: maxOrder + 1,
+    }
     const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
     if (data) setStRows(prev => [...prev, normalizeStRow(data)])
   }
@@ -1164,9 +1190,9 @@ export function WorkOrderPopup({
           <div>
             <div style={sectionTitle}>Studio Time</div>
             <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
-              {/* Header: Date | Session Info | From | To | Hrs | Type | Rate | OT Rate | Total */}
-              <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 72px 72px 40px 58px 82px 78px 80px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                {['Date', 'Session Info', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Rate', 'Total'].map(h => <div key={h} style={thS}>{h}</div>)}
+              {/* Header: Studio | Date | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Charge | Total */}
+              <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 66px 66px 40px 52px 76px 50px 70px 68px 76px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                {['Studio', 'Date', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total'].map(h => <div key={h} style={thS}>{h}</div>)}
               </div>
               <div data-st-scroll="" style={{ overflowY: stRows.length > 5 ? 'auto' : 'visible', maxHeight: stRows.length > 5 ? 200 : undefined }}>
                 {stRows.map(r => {
@@ -1176,20 +1202,21 @@ export function WorkOrderPopup({
                   const engRateNum = parseFloat((engRateDisplay ?? '').replace(/[^0-9.]/g, '')) || 0
                   const engHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
                   const engCharge = engHrs != null && engHrs > 0 && engRateNum > 0 ? parseFloat((engHrs * engRateNum).toFixed(2)) : null
-                  const rowTotal = isDayRow
-                    ? (r.charge ?? 0) + (r.ot_charge ?? 0)
-                    : (r.charge ?? 0)
+                  const rowTotal = (r.charge ?? 0) + (r.ot_charge ?? 0)
                   const toggleStyle = (active: boolean): React.CSSProperties => ({
                     fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, padding: '2px 5px',
                     borderRadius: 3, border: 'none', cursor: 'pointer',
                     background: active ? '#c8f04e' : 'rgba(255,255,255,0.06)',
                     color: active ? '#0d0f14' : '#8a8fa0',
                   })
-                  const rowHrs = calcHours(r.from_time, r.to_time)
-                  const rowHrsDisplay = isDayRow ? (rowHrs ?? 12) : (rowHrs ?? '—')
+                  const rowHrs = r.total_hours ?? calcHours(r.from_time, r.to_time)
+                  const otHrsNum = parseFloat(r.ot_hours ?? '0') || 0
                   return (
                     <div key={r.id}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 72px 72px 40px 58px 82px 78px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 66px 66px 40px 52px 76px 50px 70px 68px 76px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        {/* Studio */}
+                        <div style={cellS}><input value={r.studio} onChange={e => updateStRow(r.id, { studio: e.target.value })} style={inp} placeholder="—" /></div>
+                        {/* Date — transparent overlay opens native picker, auto-sorts on pick */}
                         <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10, position: 'relative', cursor: 'pointer' }}>
                           <span style={{ pointerEvents: 'none' }}>{shortDate(r.date)}</span>
                           <input
@@ -1209,63 +1236,45 @@ export function WorkOrderPopup({
                             style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
                           />
                         </div>
-                        <div
-                          data-si-cell=""
-                          style={{ ...cellS, cursor: 'pointer', overflow: 'hidden' }}
-                          onClick={e => {
-                            e.stopPropagation()
-                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                            setSiPopoverRowId(r.id)
-                            setSiPopoverText(r.session_info || '')
-                            setSiPopoverPos({ top: rect.bottom + 4, left: rect.left })
-                          }}
-                        >
-                          <span data-si-input="" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', color: r.session_info ? '#f0f0f0' : '#4a4f60', fontSize: 11 }}>
-                            {r.session_info || '—'}
-                          </span>
-                          {r.session_info && <span data-si-print="" style={{ display: 'none' }}>{r.session_info}</span>}
-                        </div>
-                        {siPopoverRowId === r.id && siPopoverPos && (
-                          <>
-                            <div style={{ position: 'fixed', inset: 0, zIndex: 199 }} onClick={() => setSiPopoverRowId(null)} />
-                            <div style={{ position: 'fixed', top: siPopoverPos.top, left: siPopoverPos.left, width: 280, zIndex: 200, background: '#1a1e28', border: '1px solid #c8f04e', borderRadius: 8, padding: 12 }} onClick={e => e.stopPropagation()}>
-                              <textarea
-                                value={siPopoverText}
-                                onChange={e => setSiPopoverText(e.target.value)}
-                                autoFocus
-                                rows={4}
-                                style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'vertical', color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 11, lineHeight: 1.5, marginBottom: 8, boxSizing: 'border-box' }}
-                                placeholder="Session notes…"
-                              />
-                              <div style={{ display: 'flex', gap: 6 }}>
-                                <button onClick={() => { updateStRow(r.id, { session_info: siPopoverText }); setSiPopoverRowId(null) }} style={{ flex: 1, background: '#c8f04e', color: '#0d0f14', border: 'none', borderRadius: 5, padding: '5px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Save</button>
-                                <button onClick={() => setSiPopoverRowId(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', color: '#8a8fa0', border: 'none', borderRadius: 5, padding: '5px 0', fontFamily: 'Syne', fontSize: 11, cursor: 'pointer' }}>Close</button>
-                              </div>
-                            </div>
-                          </>
-                        )}
+                        {/* From / To */}
                         <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} /></div>
                         <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} /></div>
-                        <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{rowHrsDisplay !== '—' ? `${rowHrsDisplay}h` : '—'}</div>
+                        {/* Total Hrs — always auto-calc */}
+                        <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{rowHrs != null ? `${rowHrs}h` : '—'}</div>
+                        {/* Rate Type toggle */}
                         <div style={{ ...cellS, gap: 2, padding: '3px 4px' }}>
                           <button style={toggleStyle(isDayRow)} onClick={() => !isDayRow && toggleRowRateType(r.id)}>Day</button>
                           <button style={toggleStyle(!isDayRow)} onClick={() => isDayRow && toggleRowRateType(r.id)}>Hr</button>
                         </div>
+                        {/* Rate */}
                         <div style={cellS}>
                           {isDayRow
                             ? <input value={r.rate_daily} onChange={e => updateStRow(r.id, { rate_daily: e.target.value })} style={inp} placeholder="$0/day" />
                             : <input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} style={inp} placeholder="$0/hr" />
                           }
                         </div>
+                        {/* OT Hrs — day: auto display; hourly: editable */}
                         <div style={cellS}>
-                          <input value={r.ot_rate ?? ''} onChange={e => updateStRow(r.id, { ot_rate: e.target.value })} style={inp} placeholder="$0/hr" />
+                          {isDayRow
+                            ? <span style={{ fontSize: 10, color: '#8a8fa0' }}>{otHrsNum > 0 ? `${otHrsNum}h` : '—'}</span>
+                            : <input value={r.ot_hours ?? ''} onChange={e => updateStRow(r.id, { ot_hours: e.target.value })} style={inp} placeholder="0" />
+                          }
                         </div>
+                        {/* OT Rate — editable (auto-populated but overridable) */}
+                        <div style={cellS}>
+                          <input value={r.ot_rate ?? ''} onChange={e => updateStRow(r.id, { ot_rate: e.target.value })} style={inp} placeholder="$0" />
+                        </div>
+                        {/* OT Charge — computed read-only */}
+                        <div style={{ ...cellS, color: (r.ot_charge ?? 0) > 0 ? '#c8f04e' : '#8a8fa0', fontSize: 10 }}>
+                          {(r.ot_charge ?? 0) > 0 ? `$${r.ot_charge!.toFixed(2)}` : '—'}
+                        </div>
+                        {/* Total Charge = charge + OT charge */}
                         <div style={{ ...cellS, color: rowTotal > 0 ? '#c8f04e' : '#8a8fa0', fontWeight: rowTotal > 0 ? 600 : 400 }}>
                           {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : '—'}
                         </div>
                       </div>
                       {engName && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 72px 72px 40px 58px 82px 78px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 66px 66px 40px 52px 76px 50px 70px 68px 76px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                           <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
                           <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engName}</div>
                           <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} style={inp} /></div>
@@ -1275,6 +1284,8 @@ export function WorkOrderPopup({
                           <div style={cellS}>
                             <input value={r.eng_rate || engRateDisplay} onChange={e => updateStRow(r.id, { eng_rate: e.target.value })} style={{ ...inp, width: 64 }} />
                           </div>
+                          <div style={cellS} />
+                          <div style={cellS} />
                           <div style={cellS} />
                           <div style={{ ...cellS, color: engCharge != null ? '#c8f04e' : '#8a8fa0', fontWeight: engCharge != null ? 600 : 400 }}>
                             {engCharge != null ? `$${engCharge.toFixed(2)}` : '—'}
