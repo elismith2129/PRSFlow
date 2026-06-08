@@ -408,7 +408,7 @@ export function WorkOrderPopup({
         setStRows((reloaded ?? []).map(normalizeStRow))
       }
     })()
-  }, [liveForm?.start_date, liveForm?.end_date, wo?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [liveForm?.start_date, liveForm?.end_date]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Real-time subscriptions: studio_time_rows and work_orders for this WO
   useEffect(() => {
@@ -1190,9 +1190,9 @@ export function WorkOrderPopup({
           <div>
             <div style={sectionTitle}>Studio Time</div>
             <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
-              {/* Header: Studio | Date | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Charge | Total */}
-              <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 66px 66px 40px 52px 76px 50px 70px 68px 76px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                {['Studio', 'Date', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total'].map(h => <div key={h} style={thS}>{h}</div>)}
+              {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total */}
+              <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total'].map(h => <div key={h} style={thS}>{h}</div>)}
               </div>
               <div data-st-scroll="" style={{ overflowY: stRows.length > 5 ? 'auto' : 'visible', maxHeight: stRows.length > 5 ? 200 : undefined }}>
                 {stRows.map(r => {
@@ -1213,7 +1213,7 @@ export function WorkOrderPopup({
                   const otHrsNum = parseFloat(r.ot_hours ?? '0') || 0
                   return (
                     <div key={r.id}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 66px 66px 40px 52px 76px 50px 70px 68px 76px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                         {/* Studio */}
                         <div style={cellS}><input value={r.studio} onChange={e => updateStRow(r.id, { studio: e.target.value })} style={inp} placeholder="—" /></div>
                         {/* Date — transparent overlay opens native picker, auto-sorts on pick */}
@@ -1236,6 +1236,42 @@ export function WorkOrderPopup({
                             style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
                           />
                         </div>
+                        {/* Session Info — click to edit via popover */}
+                        <div
+                          data-si-cell=""
+                          style={{ ...cellS, cursor: 'pointer', overflow: 'hidden' }}
+                          onClick={e => {
+                            e.stopPropagation()
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                            setSiPopoverRowId(r.id)
+                            setSiPopoverText(r.session_info || '')
+                            setSiPopoverPos({ top: rect.bottom + 4, left: rect.left })
+                          }}
+                        >
+                          <span data-si-input="" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', color: r.session_info ? '#f0f0f0' : '#4a4f60', fontSize: 11 }}>
+                            {r.session_info || '—'}
+                          </span>
+                          {r.session_info && <span data-si-print="" style={{ display: 'none' }}>{r.session_info}</span>}
+                        </div>
+                        {siPopoverRowId === r.id && siPopoverPos && (
+                          <>
+                            <div style={{ position: 'fixed', inset: 0, zIndex: 199 }} onClick={() => setSiPopoverRowId(null)} />
+                            <div style={{ position: 'fixed', top: siPopoverPos.top, left: siPopoverPos.left, width: 280, zIndex: 200, background: '#1a1e28', border: '1px solid #c8f04e', borderRadius: 8, padding: 12 }} onClick={e => e.stopPropagation()}>
+                              <textarea
+                                value={siPopoverText}
+                                onChange={e => setSiPopoverText(e.target.value)}
+                                autoFocus
+                                rows={4}
+                                style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'vertical', color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 11, lineHeight: 1.5, marginBottom: 8, boxSizing: 'border-box' }}
+                                placeholder="Session notes…"
+                              />
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                <button onClick={() => { updateStRow(r.id, { session_info: siPopoverText }); setSiPopoverRowId(null) }} style={{ flex: 1, background: '#c8f04e', color: '#0d0f14', border: 'none', borderRadius: 5, padding: '5px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Save</button>
+                                <button onClick={() => setSiPopoverRowId(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', color: '#8a8fa0', border: 'none', borderRadius: 5, padding: '5px 0', fontFamily: 'Syne', fontSize: 11, cursor: 'pointer' }}>Close</button>
+                              </div>
+                            </div>
+                          </>
+                        )}
                         {/* From / To */}
                         <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} /></div>
                         <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} /></div>
@@ -1274,9 +1310,10 @@ export function WorkOrderPopup({
                         </div>
                       </div>
                       {engName && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 66px 66px 40px 52px 76px 50px 70px 68px 76px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                           <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
                           <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engName}</div>
+                          <div style={cellS} />
                           <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} style={inp} /></div>
                           <div style={cellS}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} style={inp} /></div>
                           <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engHrs != null ? `${engHrs}h` : '—'}</div>

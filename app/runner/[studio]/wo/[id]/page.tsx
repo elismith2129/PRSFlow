@@ -770,11 +770,11 @@ export default function RunnerWOPage() {
                   Session times will appear here
                 </div>
               ) : (
-                /* Studio | Date | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total */
+                /* Date | Notes | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total */
                 <div style={{ overflowX: 'auto' }}>
                   <div style={{ minWidth: 494 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '44px 44px 48px 48px 30px 28px 58px 40px 52px 50px 52px', background: '#0d0f14', borderTop: '1px solid #2a2e3d', borderBottom: '1px solid #2a2e3d' }}>
-                      {['Studio', 'Date', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total'].map(h => <div key={h} style={thStyle}>{h}</div>)}
+                      {['Date', 'Notes', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total'].map(h => <div key={h} style={thStyle}>{h}</div>)}
                     </div>
                     <div>
                       {stRows.map((r: any) => {
@@ -809,11 +809,10 @@ export default function RunnerWOPage() {
                         const tSel = { background: 'transparent', color: '#e8eaf2', border: 'none', fontSize: 10, fontFamily: 'DM Mono, monospace', width: '100%' }
                         const initials = engName ? getInitials(engName) : ''
                         const engExpanded = expandedEngRow === r.id
+                        const hasNotes = !!(r.session_info || '').trim()
                         return (
                           <div key={r.id}>
                             <div style={{ display: 'grid', gridTemplateColumns: '44px 44px 48px 48px 30px 28px 58px 40px 52px 50px 52px', borderBottom: engName ? 'none' : '1px solid #2a2e3d' }}>
-                              {/* Studio */}
-                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>{r.studio || '—'}</div>
                               {/* Date */}
                               <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9, position: 'relative', cursor: 'pointer' }}>
                                 <span style={{ pointerEvents: 'none' }}>{shortDate(r.date || '')}</span>
@@ -833,6 +832,13 @@ export default function RunnerWOPage() {
                                   }}
                                   style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
                                 />
+                              </div>
+                              {/* Notes — opens bottom sheet */}
+                              <div style={{ ...tdStyle, padding: '4px 3px' }}>
+                                <button
+                                  onClick={() => { notesScrollRef.current = window.scrollY; document.body.style.top = `-${window.scrollY}px`; document.body.style.position = 'fixed'; document.body.style.width = '100%'; setNotesModalRowId(r.id); setNotesModalText(r.session_info || '') }}
+                                  style={{ width: '100%', padding: '3px 4px', border: `1px solid ${hasNotes ? '#c8f04e' : '#3a3f52'}`, borderRadius: 4, background: hasNotes ? 'rgba(200,240,78,0.08)' : 'transparent', color: hasNotes ? '#c8f04e' : '#4a4f64', fontSize: 9, fontFamily: 'Syne', cursor: 'pointer' }}
+                                >Notes</button>
                               </div>
                               {/* From / To */}
                               <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={liveFrom} onChange={v => setFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={tSel} /></div>
@@ -870,7 +876,6 @@ export default function RunnerWOPage() {
                             </div>
                             {engName && (
                               <div style={{ display: 'grid', gridTemplateColumns: '44px 44px 48px 48px 30px 28px 58px 40px 52px 50px 52px', borderBottom: '1px solid #2a2e3d', background: 'rgba(200,240,78,0.03)' }}>
-                                <div style={{ ...tdStyle }} />
                                 <div style={{ ...tdStyle, padding: '4px 3px' }}>
                                   <button
                                     onClick={e => {
@@ -884,6 +889,7 @@ export default function RunnerWOPage() {
                                     style={{ padding: '2px 5px', border: '1px solid #c8f04e', borderRadius: 4, background: 'rgba(200,240,78,0.08)', color: '#c8f04e', fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer' }}
                                   >{initials}</button>
                                 </div>
+                                <div style={{ ...tdStyle }} />
                                 <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={engLiveFrom} onChange={v => setEngFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSel, color: '#c8f04e' }} /></div>
                                 <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={engLiveTo} onChange={v => setEngToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSel, color: '#c8f04e' }} /></div>
                                 <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>{engLiveHours != null ? `${engLiveHours}h` : '—'}</div>
