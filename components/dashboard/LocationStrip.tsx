@@ -136,10 +136,10 @@ export function LocationStrip() {
 
   async function loadSummaries() {
     const [{ data: bkgs }, { data: wos }, { data: ops }, { data: yBkgs }, { data: yWOs }, { data: yOps }] = await Promise.all([
-      supabase.from('bookings').select('id, location, status').eq('start_date', today).not('status', 'eq', 'cancelled'),
+      supabase.from('bookings').select('id, location, status').eq('start_date', today).eq('status', 'confirmed'),
       supabase.from('work_orders').select('id, booking_id, status, runner_finished, admin_approved').eq('session_date', today),
       supabase.from('daily_ops_submissions').select('studio, category, submitted_at, admin_approved_at').eq('date', today),
-      supabase.from('bookings').select('id, location, status').eq('start_date', yesterday).not('status', 'eq', 'cancelled'),
+      supabase.from('bookings').select('id, location, status').eq('start_date', yesterday).eq('status', 'confirmed'),
       supabase.from('work_orders').select('id, booking_id, status, runner_finished, admin_approved').eq('session_date', yesterday),
       supabase.from('daily_ops_submissions').select('studio, category, submitted_at, admin_approved_at').eq('date', yesterday),
     ])
@@ -174,8 +174,8 @@ export function LocationStrip() {
   // both by openDrawer (with loading) and by realtime callbacks (silent refresh).
   async function fetchDrawerData(loc: typeof LOCATIONS[0]) {
     const [{ data: todayBkgsData }, { data: yestBkgsData }] = await Promise.all([
-      supabase.from('bookings').select('*').eq('start_date', today).not('status', 'eq', 'cancelled').order('from_time'),
-      supabase.from('bookings').select('*').eq('start_date', yesterday).not('status', 'eq', 'cancelled').order('from_time'),
+      supabase.from('bookings').select('*').eq('start_date', today).eq('status', 'confirmed').order('from_time'),
+      supabase.from('bookings').select('*').eq('start_date', yesterday).eq('status', 'confirmed').order('from_time'),
     ])
 
     const locTodayBkgs = (todayBkgsData ?? []).filter(b => matchesLoc(b.location, loc.key, loc.abbr))

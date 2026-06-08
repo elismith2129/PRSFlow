@@ -36,7 +36,7 @@ export default function StudioDailyOpsPage() {
       .from('bookings')
       .select('*')
       .eq('start_date', today)
-      .not('status', 'eq', 'cancelled')
+      .eq('status', 'confirmed')
       .order('from_time', { ascending: true })
 
     const filtered = (bData ?? []).filter((b: Booking) => {
