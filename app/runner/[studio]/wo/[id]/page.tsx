@@ -200,7 +200,6 @@ export default function RunnerWOPage() {
         const rateVal = isDR ? (bkData.rate_daily ?? '') : (bkData.rate ?? '')
         const seedInserts = seedDates.map((date, i) => ({
           work_order_id: resolvedId,
-          booking_id: bkData.id,
           date,
           studio: bkData.studio ?? '',
           session_info: [bkData.artist, bkData.engineer_name].filter(Boolean).join(' / ') || '',
