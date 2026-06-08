@@ -128,21 +128,30 @@ export function LocationStrip() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, handleChange)
       .subscribe()
 
+    const stRowsChannel = supabase
+      .channel('daily-ops-strows')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'studio_time_rows' }, handleChange)
+      .subscribe()
+
     return () => {
       supabase.removeChannel(bookingsChannel)
       supabase.removeChannel(woChannel)
+      supabase.removeChannel(stRowsChannel)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadSummaries() {
-    const [{ data: bkgs }, { data: wos }, { data: ops }, { data: yBkgs }, { data: yWOs }, { data: yOps }] = await Promise.all([
+    const [{ data: bkgs }, { data: wos }, { data: ops }, { data: yBkgs }, { data: yWOs }, { data: yOps }, { data: submittedStRows }] = await Promise.all([
       supabase.from('bookings').select('id, location, status').eq('start_date', today).eq('status', 'confirmed'),
-      supabase.from('work_orders').select('id, booking_id, status, runner_finished, admin_approved').eq('session_date', today),
+      supabase.from('work_orders').select('id, booking_id').eq('session_date', today),
       supabase.from('daily_ops_submissions').select('studio, category, submitted_at, admin_approved_at').eq('date', today),
       supabase.from('bookings').select('id, location, status').eq('start_date', yesterday).eq('status', 'confirmed'),
-      supabase.from('work_orders').select('id, booking_id, status, runner_finished, admin_approved').eq('session_date', yesterday),
+      supabase.from('work_orders').select('id, booking_id').eq('session_date', yesterday),
       supabase.from('daily_ops_submissions').select('studio, category, submitted_at, admin_approved_at').eq('date', yesterday),
+      supabase.from('studio_time_rows').select('work_order_id').in('date', [today, yesterday]).eq('status', 'submitted'),
     ])
+
+    const submittedWoIds = new Set((submittedStRows ?? []).map((r: any) => r.work_order_id).filter(Boolean))
 
     const result: Record<string, StudioSummary> = {}
     for (const loc of LOCATIONS) {
@@ -155,14 +164,12 @@ export function LocationStrip() {
       const yLocWOs  = (yWOs ?? []).filter(w => w.booking_id && yBkgIds.has(w.booking_id))
       const yLocOps  = (yOps ?? []).filter(o => (o as any).studio === loc.key)
 
-      const woNeedsReview = (w: any) =>
-        (w.runner_finished || w.status === 'submitted') && !w.admin_approved && w.status !== 'approved'
       result[loc.key] = {
         sessionCount: locBkgs.length,
         pendingCount:
-          locWOs.filter(woNeedsReview).length +
+          locWOs.filter(w => submittedWoIds.has(w.id)).length +
           locOps.filter(o => o.submitted_at && !o.admin_approved_at).length +
-          yLocWOs.filter(woNeedsReview).length +
+          yLocWOs.filter(w => submittedWoIds.has(w.id)).length +
           yLocOps.filter((o: any) => o.submitted_at && !o.admin_approved_at).length,
       }
     }

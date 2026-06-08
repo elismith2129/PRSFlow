@@ -210,6 +210,7 @@ export default function RunnerWOPage() {
           charge: !isDR ? calcCharge(bkData.from_time ?? '', bkData.to_time ?? '', rateVal) : null,
           day_count: isDR ? 1 : null,
           sort_order: i,
+          status: 'in_progress',
         }))
         const { data: seeded } = await supabase.from('studio_time_rows').insert(seedInserts).select()
         if (seeded && seeded.length > 0) {
@@ -551,12 +552,19 @@ export default function RunnerWOPage() {
     if (!woRef.current) return
     setSubmitting(true)
     const now = new Date().toISOString()
+    const localToday = getLocalToday()
     await supabase.from('work_orders').update({
       runner_finished: true,
       runner_finished_at: now,
       status: 'submitted',
       submitted_at: now,
     }).eq('id', woRef.current)
+    const todayRowIds = stRows
+      .filter((r: any) => r.date === localToday)
+      .map((r: any) => r.id)
+    if (todayRowIds.length > 0) {
+      await supabase.from('studio_time_rows').update({ status: 'submitted' }).in('id', todayRowIds)
+    }
     setSubmitting(false)
     setRunnerFinished(true)
     setShowFinishConfirm(false)
@@ -815,6 +823,9 @@ export default function RunnerWOPage() {
                               {/* Date */}
                               <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9, position: 'relative', cursor: 'pointer' }}>
                                 <span style={{ pointerEvents: 'none' }}>{shortDate(r.date || '')}</span>
+                                {(r.status === 'submitted' || r.status === 'approved') && (
+                                  <span style={{ position: 'absolute', top: 3, right: 3, width: 6, height: 6, borderRadius: '50%', background: r.status === 'approved' ? '#c8f04e' : '#fb923c', pointerEvents: 'none' }} />
+                                )}
                                 <input
                                   type="date"
                                   value={r.date || ''}

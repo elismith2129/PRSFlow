@@ -58,6 +58,7 @@ type StRow = {
   eng_charge: number | null
   eng_from_time: string
   eng_to_time: string
+  status: string
 }
 
 type EquipRow = {
@@ -89,6 +90,12 @@ const STUDIO_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'X']
 const EQUIPMENT_ITEMS = ['Speakers', 'Microphone', 'Console']
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getLocalToday(): string {
+  const now = new Date()
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
+  return now.toISOString().slice(0, 10)
+}
 
 function timeToMins(t: string | null | undefined): number {
   if (!t) return 0
@@ -225,6 +232,7 @@ function normalizeStRow(d: any): StRow {
     eng_charge: engCharge,
     eng_from_time: engFromTime,
     eng_to_time: engToTime,
+    status: d.status ?? 'in_progress',
   }
 }
 
@@ -270,6 +278,7 @@ export function WorkOrderPopup({
   ])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [approving, setApproving] = useState(false)
   const [dirtyFields, setDirtyFields] = useState<Set<string>>(new Set())
   const [equipNotes, setEquipNotes] = useState<Record<string, EquipNote>>({})
   const [openNoteKey, setOpenNoteKey] = useState<string | null>(null)
@@ -398,6 +407,7 @@ export function WorkOrderPopup({
           day_count: isDayRate ? 1 : null,
           ot_rate: isDayRate ? (!isNaN(rateNum) && rateNum > 0 ? rateNum / 10 : null) : (rateNum || null),
           sort_order: coveredDates.size + i,
+          status: 'in_progress',
         })))
       }
 
@@ -530,6 +540,7 @@ export function WorkOrderPopup({
               day_count: 1,
               ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
               sort_order: coveredDates.size + i,
+              status: 'in_progress',
             })))
           }
 
@@ -561,6 +572,7 @@ export function WorkOrderPopup({
               day_count: 1,
               ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
               sort_order: existingDateSet.size + i,
+              status: 'in_progress',
             }
           }
           const hrs = calcHours(booking.from_time ?? '', booking.to_time ?? '')
@@ -574,6 +586,7 @@ export function WorkOrderPopup({
             charge: calcCharge(hrs, booking.rate ?? ''),
             ot_rate: parseFloat((booking.rate ?? '').replace(/[^0-9.]/g, '')) || null,
             sort_order: existingDateSet.size + i,
+            status: 'in_progress',
           }
         })
         if (stPayloads.length) {
@@ -647,6 +660,7 @@ export function WorkOrderPopup({
             day_count: 1,
             ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
             sort_order: i,
+            status: 'in_progress',
           }
         }
         const hrs = calcHours(booking.from_time ?? '', booking.to_time ?? '')
@@ -660,6 +674,7 @@ export function WorkOrderPopup({
           charge: calcCharge(hrs, booking.rate ?? ''),
           ot_rate: parseFloat((booking.rate ?? '').replace(/[^0-9.]/g, '')) || null,
           sort_order: i,
+          status: 'in_progress',
         }
       })
       const { data: stCreated } = await supabase.from('studio_time_rows').insert(stPayloads).select('*')
@@ -849,6 +864,7 @@ export function WorkOrderPopup({
       ot_rate: last?.ot_rate ? (parseFloat(last.ot_rate.replace(/[^0-9.]/g, '')) || null) : null,
       charge: null,
       sort_order: maxOrder + 1,
+      status: 'in_progress',
     }
     const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
     if (data) setStRows(prev => [...prev, normalizeStRow(data)])
@@ -866,6 +882,19 @@ export function WorkOrderPopup({
     document.title = name || prev
     window.print()
     document.title = prev
+  }
+
+  // ── Approve today's submitted rows ────────────────────────────────────────
+
+  async function handleApprove() {
+    const today = getLocalToday()
+    const toApprove = stRows.filter(r => r.date === today && r.status === 'submitted')
+    if (!toApprove.length) return
+    setApproving(true)
+    await Promise.all(toApprove.map(r =>
+      supabase.from('studio_time_rows').update({ status: 'approved' }).eq('id', r.id)
+    ))
+    setApproving(false)
   }
 
   // ── Save + close ──────────────────────────────────────────────────────────
@@ -1215,6 +1244,9 @@ export function WorkOrderPopup({
                         {/* Date — transparent overlay opens native picker, auto-sorts on pick */}
                         <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10, position: 'relative', cursor: 'pointer' }}>
                           <span style={{ pointerEvents: 'none' }}>{shortDate(r.date)}</span>
+                          {(r.status === 'submitted' || r.status === 'approved') && (
+                            <span style={{ position: 'absolute', top: 3, right: 3, width: 6, height: 6, borderRadius: '50%', background: r.status === 'approved' ? '#c8f04e' : '#fb923c', pointerEvents: 'none' }} />
+                          )}
                           <input
                             type="date"
                             value={r.date || ''}
@@ -1553,6 +1585,19 @@ export function WorkOrderPopup({
           <button onClick={() => onClose()} disabled={saving} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
             Cancel
           </button>
+          {(() => {
+            const canApprove = stRows.some(r => r.date === getLocalToday() && r.status === 'submitted')
+            return (
+              <button
+                onClick={handleApprove}
+                disabled={!canApprove || approving}
+                title={!canApprove ? 'No submitted sessions for today' : undefined}
+                style={{ padding: '7px 18px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: canApprove && !approving ? 'pointer' : 'default', background: canApprove ? (approving ? 'rgba(200,240,78,0.5)' : '#c8f04e') : 'rgba(200,240,78,0.1)', border: 'none', color: canApprove ? '#0d0f14' : '#4a5030', opacity: approving ? 0.7 : 1 }}
+              >
+                {approving ? 'Approving…' : 'Approve'}
+              </button>
+            )
+          })()}
           <button onClick={handleClose} disabled={saving} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Saving…' : 'Close & Save'}
           </button>
