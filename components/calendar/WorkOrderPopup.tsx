@@ -279,9 +279,6 @@ export function WorkOrderPopup({
   const [siPopoverRowId, setSiPopoverRowId] = useState<string | null>(null)
   const [siPopoverText, setSiPopoverText] = useState('')
   const [siPopoverPos, setSiPopoverPos] = useState<{ top: number; left: number } | null>(null)
-  const [datePopoverRowId, setDatePopoverRowId] = useState<string | null>(null)
-  const [datePopoverVal, setDatePopoverVal] = useState('')
-  const [datePopoverPos, setDatePopoverPos] = useState<{ top: number; left: number } | null>(null)
   // Track which rows exist in DB (vs. local-only new rows)
   const rentIdsInDb = useRef<Set<string>>(new Set())
   const payIdsInDb = useRef<Set<string>>(new Set())
@@ -826,21 +823,6 @@ export function WorkOrderPopup({
     pendingNoteKey.current = null
   }
 
-  // ── Date popover save ──────────────────────────────────────────────────────
-
-  function saveDatePopover() {
-    const newDate = datePopoverVal
-    setStRows(prev => {
-      const sorted = prev
-        .map(row => row.id === datePopoverRowId ? { ...row, date: newDate } : row)
-        .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
-        .map((row, i) => ({ ...row, sort_order: i }))
-      sorted.forEach(row => { supabase.from('studio_time_rows').update({ date: row.date, sort_order: row.sort_order }).eq('id', row.id) })
-      return sorted
-    })
-    setDatePopoverRowId(null)
-  }
-
   // ── Add studio time row ────────────────────────────────────────────────────
 
   async function addStRow() {
@@ -1208,36 +1190,25 @@ export function WorkOrderPopup({
                   return (
                     <div key={r.id}>
                       <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr 72px 72px 40px 58px 82px 78px 80px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                        <div
-                          style={{ ...cellS, color: '#8a8fa0', fontSize: 10, cursor: 'pointer' }}
-                          onClick={e => {
-                            e.stopPropagation()
-                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                            setDatePopoverRowId(r.id)
-                            setDatePopoverVal(r.date || '')
-                            setDatePopoverPos({ top: rect.bottom + 4, left: rect.left })
-                          }}
-                        >
-                          {shortDate(r.date)}
+                        <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10, position: 'relative', cursor: 'pointer' }}>
+                          <span style={{ pointerEvents: 'none' }}>{shortDate(r.date)}</span>
+                          <input
+                            type="date"
+                            value={r.date || ''}
+                            onChange={e => {
+                              const newDate = e.target.value
+                              setStRows(prev => {
+                                const sorted = prev
+                                  .map(row => row.id === r.id ? { ...row, date: newDate } : row)
+                                  .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+                                  .map((row, i) => ({ ...row, sort_order: i }))
+                                sorted.forEach(row => { supabase.from('studio_time_rows').update({ date: row.date, sort_order: row.sort_order }).eq('id', row.id) })
+                                return sorted
+                              })
+                            }}
+                            style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+                          />
                         </div>
-                        {datePopoverRowId === r.id && datePopoverPos && (
-                          <>
-                            <div style={{ position: 'fixed', inset: 0, zIndex: 199 }} onClick={() => setDatePopoverRowId(null)} />
-                            <div style={{ position: 'fixed', top: datePopoverPos.top, left: datePopoverPos.left, zIndex: 200, background: '#1a1e28', border: '1px solid #c8f04e', borderRadius: 8, padding: 12, minWidth: 200 }} onClick={e => e.stopPropagation()}>
-                              <input
-                                type="date"
-                                value={datePopoverVal}
-                                onChange={e => setDatePopoverVal(e.target.value)}
-                                autoFocus
-                                style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 12, marginBottom: 10, colorScheme: 'dark' as any, boxSizing: 'border-box' }}
-                              />
-                              <div style={{ display: 'flex', gap: 6 }}>
-                                <button onClick={saveDatePopover} style={{ flex: 1, background: '#c8f04e', color: '#0d0f14', border: 'none', borderRadius: 5, padding: '5px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Save</button>
-                                <button onClick={() => setDatePopoverRowId(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', color: '#8a8fa0', border: 'none', borderRadius: 5, padding: '5px 0', fontFamily: 'Syne', fontSize: 11, cursor: 'pointer' }}>Close</button>
-                              </div>
-                            </div>
-                          </>
-                        )}
                         <div
                           data-si-cell=""
                           style={{ ...cellS, cursor: 'pointer', overflow: 'hidden' }}

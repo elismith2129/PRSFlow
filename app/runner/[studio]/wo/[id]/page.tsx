@@ -89,8 +89,6 @@ export default function RunnerWOPage() {
   const [noteUploading, setNoteUploading] = useState(false)
   const [notesModalRowId, setNotesModalRowId] = useState<string | null>(null)
   const [notesModalText, setNotesModalText] = useState('')
-  const [dateModalRowId, setDateModalRowId] = useState<string | null>(null)
-  const [dateModalVal, setDateModalVal] = useState('')
   const [expandedEngRow, setExpandedEngRow] = useState<string | null>(null)
   const [engPopoverPos, setEngPopoverPos] = useState<{ top: number; left: number } | null>(null)
   const notesScrollRef = useRef(0)
@@ -638,25 +636,6 @@ export default function RunnerWOPage() {
     return `${parseInt(parts[1], 10)}-${parseInt(parts[2], 10)}`
   }
 
-  function saveDateModal() {
-    if (!dateModalRowId) return
-    const newDate = dateModalVal
-    setStRows((prev: any[]) => {
-      const sorted = prev
-        .map((row: any) => row.id === dateModalRowId ? { ...row, date: newDate } : row)
-        .sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''))
-        .map((row: any, i: number) => ({ ...row, sort_order: i }))
-      sorted.forEach((row: any) => { supabase.from('studio_time_rows').update({ date: row.date, sort_order: row.sort_order }).eq('id', row.id) })
-      return sorted
-    })
-    const scrollY = notesScrollRef.current
-    document.body.style.position = ''
-    document.body.style.top = ''
-    document.body.style.width = ''
-    setDateModalRowId(null)
-    window.scrollTo({ top: scrollY, behavior: 'instant' })
-  }
-
   const sessionDates = Array.from(new Set(stRows.map((r: any) => r.date).filter(Boolean))).sort() as string[]
 
   if (loading) return (
@@ -684,28 +663,6 @@ export default function RunnerWOPage() {
           <div style={{ width: '100%', boxSizing: 'border-box', display: 'flex', gap: 10, paddingTop: 10, paddingLeft: 16, paddingRight: 16, paddingBottom: 'calc(16px + env(safe-area-inset-bottom))', flexShrink: 0 }}>
             <button onClick={saveNotesModal} style={{ flex: 1, background: '#c8f04e', color: '#0d0f14', border: 'none', borderRadius: 8, padding: '11px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Save</button>
             <button onClick={() => { const scrollY = notesScrollRef.current; document.body.style.position = ''; document.body.style.top = ''; document.body.style.width = ''; setNotesModalRowId(null); window.scrollTo({ top: scrollY, behavior: 'instant' }) }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', color: '#8b90a8', border: 'none', borderRadius: 8, padding: '11px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
-          </div>
-        </div>
-      )}
-      {/* Date edit bottom sheet */}
-      {dateModalRowId && (
-        <div style={{ position: 'fixed', bottom: 16, left: 12, right: 12, zIndex: 10003, background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, boxSizing: 'border-box', boxShadow: '0 -4px 24px rgba(0,0,0,0.4)' }}>
-          <div style={{ width: '100%', boxSizing: 'border-box', paddingTop: 14, paddingBottom: 10, paddingLeft: 16, paddingRight: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 16, color: '#f0f0f0' }}>Edit Date</span>
-            <button onClick={() => { const scrollY = notesScrollRef.current; document.body.style.position = ''; document.body.style.top = ''; document.body.style.width = ''; setDateModalRowId(null); window.scrollTo({ top: scrollY, behavior: 'instant' }) }} style={{ background: 'none', border: 'none', color: '#8b90a8', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
-          </div>
-          <div style={{ paddingLeft: 16, paddingRight: 16, paddingBottom: 10 }}>
-            <input
-              type="date"
-              value={dateModalVal}
-              onChange={e => setDateModalVal(e.target.value)}
-              autoFocus
-              style={{ width: '100%', background: 'transparent', border: '1px solid #3a3f52', borderRadius: 6, outline: 'none', color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 14, padding: '8px 10px', boxSizing: 'border-box', colorScheme: 'dark' as any }}
-            />
-          </div>
-          <div style={{ display: 'flex', gap: 10, paddingLeft: 16, paddingRight: 16, paddingBottom: 'calc(16px + env(safe-area-inset-bottom))' as any }}>
-            <button onClick={saveDateModal} style={{ flex: 1, background: '#c8f04e', color: '#0d0f14', border: 'none', borderRadius: 8, padding: '11px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Save</button>
-            <button onClick={() => { const scrollY = notesScrollRef.current; document.body.style.position = ''; document.body.style.top = ''; document.body.style.width = ''; setDateModalRowId(null); window.scrollTo({ top: scrollY, behavior: 'instant' }) }} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', color: '#8b90a8', border: 'none', borderRadius: 8, padding: '11px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
           </div>
         </div>
       )}
@@ -849,11 +806,24 @@ export default function RunnerWOPage() {
                         return (
                           <div key={r.id}>
                             <div style={{ display: 'grid', gridTemplateColumns: '54px 44px 52px 52px 34px 32px 62px 56px 58px', borderBottom: engName ? 'none' : '1px solid #2a2e3d' }}>
-                              <div style={{ ...tdStyle, padding: '4px 3px' }}>
-                                <button
-                                  onClick={() => { notesScrollRef.current = window.scrollY; document.body.style.top = `-${window.scrollY}px`; document.body.style.position = 'fixed'; document.body.style.width = '100%'; setDateModalRowId(r.id); setDateModalVal(r.date || '') }}
-                                  style={{ width: '100%', padding: '3px 4px', border: `1px solid ${r.date ? '#3a3f52' : '#2a2e3d'}`, borderRadius: 4, background: 'transparent', color: r.date ? '#8b90a8' : '#4a4f64', fontSize: 9, fontFamily: 'DM Mono, monospace', cursor: 'pointer', textAlign: 'left' as const }}
-                                >{shortDate(r.date || '')}</button>
+                              <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9, position: 'relative', cursor: 'pointer' }}>
+                                <span style={{ pointerEvents: 'none' }}>{shortDate(r.date || '')}</span>
+                                <input
+                                  type="date"
+                                  value={r.date || ''}
+                                  onChange={e => {
+                                    const newDate = e.target.value
+                                    setStRows((prev: any[]) => {
+                                      const sorted = prev
+                                        .map((row: any) => row.id === r.id ? { ...row, date: newDate } : row)
+                                        .sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''))
+                                        .map((row: any, i: number) => ({ ...row, sort_order: i }))
+                                      sorted.forEach((row: any) => { supabase.from('studio_time_rows').update({ date: row.date, sort_order: row.sort_order }).eq('id', row.id) })
+                                      return sorted
+                                    })
+                                  }}
+                                  style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+                                />
                               </div>
                               <div style={{ ...tdStyle, padding: '4px 3px' }}>
                                 <button
