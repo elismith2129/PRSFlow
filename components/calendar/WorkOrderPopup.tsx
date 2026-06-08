@@ -386,7 +386,7 @@ export function WorkOrderPopup({
         const studio = liveForm.studio ? toStudioLetter(liveForm.studio) : (booking.studio ? toStudioLetter(booking.studio) : '')
         const fromTime = liveForm.from_time || booking.from_time || ''
         const toTime = liveForm.to_time || booking.to_time || ''
-        await supabase.from('studio_time_rows').upsert(missing.map((d, i) => ({
+        await supabase.from('studio_time_rows').insert(missing.map((d, i) => ({
           work_order_id: woIdRef.current!,
           studio, date: d, session_info: '',
           from_time: fromTime, to_time: toTime,
@@ -397,9 +397,8 @@ export function WorkOrderPopup({
             : calcCharge(calcHours(fromTime, toTime), rateRaw),
           day_count: isDayRate ? 1 : null,
           ot_rate: isDayRate ? (!isNaN(rateNum) && rateNum > 0 ? rateNum / 10 : null) : rateRaw,
-          ot_hours: 0, ot_charge: null,
           sort_order: coveredDates.size + i,
-        })), { onConflict: 'work_order_id,date', ignoreDuplicates: true })
+        })))
       }
 
       if (toDelete.length > 0 || missing.length > 0) {
@@ -520,7 +519,7 @@ export function WorkOrderPopup({
           const missingDates = allDates.filter(d => !coveredDates.has(d))
           if (missingDates.length > 0) {
             const dayRateNum = parseFloat((booking.rate_daily ?? '').replace(/[^0-9.]/g, ''))
-            await supabase.from('studio_time_rows').upsert(missingDates.map((d, i) => ({
+            await supabase.from('studio_time_rows').insert(missingDates.map((d, i) => ({
               work_order_id: existing.id,
               studio: studioLetter || booking.studio || '',
               date: d, session_info: '',
@@ -530,9 +529,8 @@ export function WorkOrderPopup({
               charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
               day_count: 1,
               ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
-              ot_hours: 0, ot_charge: null,
               sort_order: coveredDates.size + i,
-            })), { onConflict: 'work_order_id,date', ignoreDuplicates: true })
+            })))
           }
 
           // 4. Reload all rows fresh from DB — never merge in-memory arrays
@@ -562,7 +560,6 @@ export function WorkOrderPopup({
               charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
               day_count: 1,
               ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
-              ot_hours: 0, ot_charge: null,
               sort_order: existingDateSet.size + i,
             }
           }
@@ -580,7 +577,7 @@ export function WorkOrderPopup({
           }
         })
         if (stPayloads.length) {
-          await supabase.from('studio_time_rows').upsert(stPayloads, { onConflict: 'work_order_id,date', ignoreDuplicates: true })
+          await supabase.from('studio_time_rows').insert(stPayloads)
         }
         const { data: reloaded } = await supabase.from('studio_time_rows')
           .select('*').eq('work_order_id', existing.id).order('sort_order')
@@ -649,7 +646,6 @@ export function WorkOrderPopup({
             charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
             day_count: 1,
             ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
-            ot_hours: 0, ot_charge: null,
             sort_order: i,
           }
         }
@@ -666,7 +662,7 @@ export function WorkOrderPopup({
           sort_order: i,
         }
       })
-      const { data: stCreated } = await supabase.from('studio_time_rows').upsert(stPayloads, { onConflict: 'work_order_id,date', ignoreDuplicates: true }).select('*')
+      const { data: stCreated } = await supabase.from('studio_time_rows').insert(stPayloads).select('*')
       if (stCreated) setStRows(stCreated.map(normalizeStRow))
 
       // Auto-generate equipment condition rows

@@ -2719,7 +2719,7 @@ function CalendarPageInner() {
             if (missingDates.length > 0) {
               const dayRateNum = parseFloat((payload.rate_daily ?? '').replace(/[^0-9.]/g, ''))
               const studio = payload.studio?.match(/Studio\s+([A-Z])/i)?.[1]?.toUpperCase() ?? payload.studio ?? ''
-              await supabase.from('studio_time_rows').upsert(missingDates.map((d, i) => ({
+              await supabase.from('studio_time_rows').insert(missingDates.map((d, i) => ({
                 work_order_id: woId,
                 studio,
                 date: d, session_info: '',
@@ -2729,9 +2729,8 @@ function CalendarPageInner() {
                 charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
                 day_count: 1,
                 ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
-                ot_hours: 0, ot_charge: null,
                 sort_order: coveredDates.size + i,
-              })), { onConflict: 'work_order_id,date', ignoreDuplicates: true })
+              })))
             }
           }
 
