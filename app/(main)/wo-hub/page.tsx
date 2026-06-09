@@ -281,7 +281,6 @@ export default function WoHubPage() {
                   border: '1px solid var(--border)',
                   borderRadius: 8,
                   cursor: 'pointer',
-                  overflow: 'hidden',
                   marginBottom: 6,
                 }}
               >
