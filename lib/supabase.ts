@@ -242,6 +242,8 @@ export interface StudioTimeRow {
   rate: string | null
   charge: number | null
   sort_order: number
+  admin_checked: boolean | null
+  admin_locked: boolean | null
 }
 
 export interface EquipmentConditionRow {

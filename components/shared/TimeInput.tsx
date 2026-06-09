@@ -6,6 +6,7 @@ interface TimeInputProps {
   onBlur?: () => void
   placeholder?: string
   style?: React.CSSProperties
+  disabled?: boolean
 }
 
 const TIMES: string[] = []
@@ -17,7 +18,7 @@ for (let h = 0; h < 24; h++) {
   }
 }
 
-export default function TimeInput({ value, onChange, onBlur, placeholder = '--:--', style }: TimeInputProps) {
+export default function TimeInput({ value, onChange, onBlur, placeholder = '--:--', style, disabled }: TimeInputProps) {
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     onChange(e.target.value)
     onBlur?.()
@@ -27,6 +28,7 @@ export default function TimeInput({ value, onChange, onBlur, placeholder = '--:-
     <select
       value={value || ''}
       onChange={handleChange}
+      disabled={disabled}
       style={{
         background: '#1a1e28',
         color: value ? '#f0f0f0' : '#555',

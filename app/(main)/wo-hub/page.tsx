@@ -6,11 +6,10 @@ import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type WoStatus = 'in_progress' | 'submitted' | 'approved' | 'archived'
+type WoStatus = 'in_progress' | 'submitted' | 'approved'
 
 type WoEntry = {
   woId: string
-  woDbStatus: string
   invoiceNum: string | null
   booking: Booking
   status: WoStatus
@@ -23,25 +22,22 @@ const STATUS_COLORS: Record<WoStatus, string> = {
   in_progress: '#6B7280',
   submitted:   '#F97316',
   approved:    '#14B8A6',
-  archived:    '#3B82F6',
 }
 
 const STATUS_BG: Record<WoStatus, string> = {
   in_progress: 'rgba(107,114,128,0.13)',
   submitted:   'rgba(249,115,22,0.13)',
   approved:    'rgba(20,184,166,0.13)',
-  archived:    'rgba(59,130,246,0.13)',
 }
 
 const STATUS_LABELS: Record<WoStatus, string> = {
   in_progress: 'IN PROGRESS',
   submitted:   'SUBMITTED',
   approved:    'APPROVED',
-  archived:    'ARCHIVED',
 }
 
 const STUDIO_PILLS = ['ALL', 'PRS', 'ARS', 'ERS', 'TRK'] as const
-const STATUS_PILLS  = ['ALL', 'IN PROGRESS', 'SUBMITTED', 'APPROVED', 'ARCHIVED'] as const
+const STATUS_PILLS  = ['ALL', 'IN PROGRESS', 'SUBMITTED', 'APPROVED'] as const
 
 type StudioFilter = typeof STUDIO_PILLS[number]
 type StatusFilter  = typeof STATUS_PILLS[number]
@@ -57,7 +53,6 @@ const STATUS_FILTER_MAP: Partial<Record<StatusFilter, WoStatus>> = {
   'IN PROGRESS': 'in_progress',
   'SUBMITTED':   'submitted',
   'APPROVED':    'approved',
-  'ARCHIVED':    'archived',
 }
 
 // session_type values to exclude (historical import data uses these)
@@ -68,17 +63,6 @@ const EXCLUDED_TYPES = new Set(['tech', 'tour', 'open_hours'])
 function getVenuePill(location: string): StudioFilter | null {
   const venue = (location || '').split(' · ')[0]
   return VENUE_MAP[venue] ?? null
-}
-
-function deriveStatus(
-  stRows: { status: string | null }[],
-  woDbStatus: string,
-): WoStatus {
-  if (woDbStatus === 'archived') return 'archived'
-  if (stRows.length === 0) return 'in_progress'
-  if (stRows.every(r => r.status === 'approved')) return 'approved'
-  if (stRows.some(r => r.status === 'submitted')) return 'submitted'
-  return 'in_progress'
 }
 
 function computeTotal(
@@ -143,7 +127,7 @@ export default function WoHubPage() {
       supabase.from('bookings').select('*').in('id', bookingIds),
       supabase
         .from('studio_time_rows')
-        .select('work_order_id, status, charge, eng_charge')
+        .select('work_order_id, charge, eng_charge')
         .in('work_order_id', woIds),
     ])
 
@@ -167,12 +151,11 @@ export default function WoHubPage() {
       if (EXCLUDED_TYPES.has(st)) continue
 
       const rows   = stRowMap.get(wo.id) ?? []
-      const status = deriveStatus(rows, wo.status || '')
+      const status = ((wo.status || 'in_progress') as WoStatus)
       const total  = computeTotal(rows)
 
       result.push({
-        woId:       wo.id,
-        woDbStatus: wo.status || '',
+        woId:      wo.id,
         invoiceNum: wo.invoice_number,
         booking,
         status,
@@ -191,13 +174,13 @@ export default function WoHubPage() {
 
   useEffect(() => { load() }, [load])
 
-  // Realtime: re-derive status when runner submits or admin approves a row
+  // Realtime: reload when runner submits or admin approves
   useEffect(() => {
     const channel = supabase
-      .channel('wo-hub-strows')
+      .channel('wo-hub-wos')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'studio_time_rows' },
+        { event: 'UPDATE', schema: 'public', table: 'work_orders' },
         () => load(),
       )
       .subscribe()

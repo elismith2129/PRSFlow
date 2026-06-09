@@ -210,7 +210,6 @@ export default function RunnerWOPage() {
           charge: !isDR ? calcCharge(bkData.from_time ?? '', bkData.to_time ?? '', rateVal) : null,
           day_count: isDR ? 1 : null,
           sort_order: i,
-          status: 'in_progress',
         }))
         const { data: seeded } = await supabase.from('studio_time_rows').insert(seedInserts).select()
         if (seeded && seeded.length > 0) {
@@ -559,12 +558,6 @@ export default function RunnerWOPage() {
       status: 'submitted',
       submitted_at: now,
     }).eq('id', woRef.current)
-    const todayRowIds = stRows
-      .filter((r: any) => r.date === localToday)
-      .map((r: any) => r.id)
-    if (todayRowIds.length > 0) {
-      await supabase.from('studio_time_rows').update({ status: 'submitted' }).in('id', todayRowIds)
-    }
     setSubmitting(false)
     setRunnerFinished(true)
     setShowFinishConfirm(false)
@@ -818,14 +811,11 @@ export default function RunnerWOPage() {
                         const engExpanded = expandedEngRow === r.id
                         const hasNotes = !!(r.session_info || '').trim()
                         return (
-                          <div key={r.id}>
+                          <div key={r.id} style={{ background: r.admin_locked ? 'rgba(20,184,166,0.06)' : undefined }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '50px 55px 85px 85px 42px 35px 65px 45px 55px 50px 60px', borderBottom: engName ? 'none' : '1px solid #2a2e3d' }}>
                               {/* Date */}
                               <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9, position: 'relative', cursor: 'pointer' }}>
                                 <span style={{ pointerEvents: 'none' }}>{shortDate(r.date || '')}</span>
-                                {(r.status === 'submitted' || r.status === 'approved') && (
-                                  <span style={{ position: 'absolute', top: 3, right: 3, width: 6, height: 6, borderRadius: '50%', background: r.status === 'approved' ? '#c8f04e' : '#fb923c', pointerEvents: 'none' }} />
-                                )}
                                 <input
                                   type="date"
                                   value={r.date || ''}
@@ -840,7 +830,8 @@ export default function RunnerWOPage() {
                                       return sorted
                                     })
                                   }}
-                                  style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+                                  disabled={!!r.admin_locked}
+                                  style={{ position: 'absolute', inset: 0, opacity: 0, cursor: r.admin_locked ? 'default' : 'pointer', width: '100%', height: '100%' }}
                                 />
                               </div>
                               {/* Notes — opens bottom sheet */}
@@ -851,8 +842,8 @@ export default function RunnerWOPage() {
                                 >Notes</button>
                               </div>
                               {/* From / To */}
-                              <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={liveFrom} onChange={v => setFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={tSel} /></div>
-                              <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={liveTo} onChange={v => setToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={tSel} /></div>
+                              <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={liveFrom} onChange={v => setFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={tSel} disabled={!!r.admin_locked} /></div>
+                              <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={liveTo} onChange={v => setToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={tSel} disabled={!!r.admin_locked} /></div>
                               {/* Hrs */}
                               <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>{rowHrs != null ? `${rowHrs}h` : '—'}</div>
                               {/* Type */}
@@ -868,7 +859,7 @@ export default function RunnerWOPage() {
                               <div style={{ ...tdStyle, padding: '2px 3px' }}>
                                 {isDayRow
                                   ? <span style={{ fontSize: 9, color: '#8b90a8' }}>{autoOtHrs > 0 ? `${autoOtHrs}h` : '—'}</span>
-                                  : <input value={otHours[r.id] ?? ''} onChange={e => setOtHours(prev => ({ ...prev, [r.id]: e.target.value }))} style={{ ...tSel, fontSize: 9 }} placeholder="0" />
+                                  : <input value={otHours[r.id] ?? ''} onChange={e => setOtHours(prev => ({ ...prev, [r.id]: e.target.value }))} disabled={!!r.admin_locked} style={{ ...tSel, fontSize: 9 }} placeholder="0" />
                                 }
                               </div>
                               {/* OT Rate */}

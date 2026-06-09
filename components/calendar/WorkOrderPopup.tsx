@@ -58,7 +58,8 @@ type StRow = {
   eng_charge: number | null
   eng_from_time: string
   eng_to_time: string
-  status: string
+  admin_checked: boolean
+  admin_locked: boolean
 }
 
 type EquipRow = {
@@ -169,7 +170,7 @@ function normalizeWO(d: any): WO {
     po_number: d.po_number ?? '',
     phone: d.phone ?? '',
     email: d.email ?? '',
-    status: d.status ?? 'draft',
+    status: d.status ?? 'in_progress',
     session_notes: d.session_notes ?? '',
     legal_signature: d.legal_signature ?? '',
     legal_name: d.legal_name ?? '',
@@ -232,7 +233,8 @@ function normalizeStRow(d: any): StRow {
     eng_charge: engCharge,
     eng_from_time: engFromTime,
     eng_to_time: engToTime,
-    status: d.status ?? 'in_progress',
+    admin_checked: d.admin_checked ?? false,
+    admin_locked: d.admin_locked ?? false,
   }
 }
 
@@ -279,6 +281,7 @@ export function WorkOrderPopup({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [approving, setApproving] = useState(false)
+  const [pendingLockedEdits, setPendingLockedEdits] = useState<Record<string, StRow>>({})
   const [dirtyFields, setDirtyFields] = useState<Set<string>>(new Set())
   const [equipNotes, setEquipNotes] = useState<Record<string, EquipNote>>({})
   const [openNoteKey, setOpenNoteKey] = useState<string | null>(null)
@@ -407,7 +410,6 @@ export function WorkOrderPopup({
           day_count: isDayRate ? 1 : null,
           ot_rate: isDayRate ? (!isNaN(rateNum) && rateNum > 0 ? rateNum / 10 : null) : (rateNum || null),
           sort_order: coveredDates.size + i,
-          status: 'in_progress',
         })))
       }
 
@@ -450,7 +452,7 @@ export function WorkOrderPopup({
       }, (payload) => {
         const updated = payload.new as any
         setWo(prev => prev ? { ...prev, status: updated.status ?? prev.status } : prev)
-        onStatusChange?.(updated.status ?? 'draft')
+        onStatusChange?.(updated.status ?? 'in_progress')
       })
       .subscribe()
 
@@ -540,7 +542,6 @@ export function WorkOrderPopup({
               day_count: 1,
               ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
               sort_order: coveredDates.size + i,
-              status: 'in_progress',
             })))
           }
 
@@ -572,7 +573,6 @@ export function WorkOrderPopup({
               day_count: 1,
               ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
               sort_order: existingDateSet.size + i,
-              status: 'in_progress',
             }
           }
           const hrs = calcHours(booking.from_time ?? '', booking.to_time ?? '')
@@ -586,7 +586,6 @@ export function WorkOrderPopup({
             charge: calcCharge(hrs, booking.rate ?? ''),
             ot_rate: parseFloat((booking.rate ?? '').replace(/[^0-9.]/g, '')) || null,
             sort_order: existingDateSet.size + i,
-            status: 'in_progress',
           }
         })
         if (stPayloads.length) {
@@ -660,7 +659,6 @@ export function WorkOrderPopup({
             day_count: 1,
             ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
             sort_order: i,
-            status: 'in_progress',
           }
         }
         const hrs = calcHours(booking.from_time ?? '', booking.to_time ?? '')
@@ -674,7 +672,6 @@ export function WorkOrderPopup({
           charge: calcCharge(hrs, booking.rate ?? ''),
           ot_rate: parseFloat((booking.rate ?? '').replace(/[^0-9.]/g, '')) || null,
           sort_order: i,
-          status: 'in_progress',
         }
       })
       const { data: stCreated } = await supabase.from('studio_time_rows').insert(stPayloads).select('*')
@@ -687,7 +684,7 @@ export function WorkOrderPopup({
       const { data: eqCreated } = await supabase.from('equipment_condition_rows').insert(eqPayloads).select('*')
       if (eqCreated) setEquipRows(eqCreated as EquipRow[])
 
-      onStatusChange?.('draft')
+      onStatusChange?.('in_progress')
     }
     setLoading(false)
   }
@@ -695,6 +692,10 @@ export function WorkOrderPopup({
   // ── Studio time row updates ─────────────────────────────────────────────────
 
   function updateStRow(id: string, updates: Partial<StRow>) {
+    const row = stRows.find(r => r.id === id)
+    if (row?.admin_locked && !pendingLockedEdits[id]) {
+      setPendingLockedEdits(p => ({ ...p, [id]: { ...row } }))
+    }
     setStRows(prev => prev.map(r => {
       if (r.id !== id) return r
       const u = { ...r, ...updates }
@@ -864,7 +865,6 @@ export function WorkOrderPopup({
       ot_rate: last?.ot_rate ? (parseFloat(last.ot_rate.replace(/[^0-9.]/g, '')) || null) : null,
       charge: null,
       sort_order: maxOrder + 1,
-      status: 'in_progress',
     }
     const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
     if (data) setStRows(prev => [...prev, normalizeStRow(data)])
@@ -884,16 +884,39 @@ export function WorkOrderPopup({
     document.title = prev
   }
 
-  // ── Approve today's rows ─────────────────────────────────────────────────
+  // ── Per-row admin lock ────────────────────────────────────────────────────
+
+  async function handleToggleLock(rowId: string, currentLocked: boolean) {
+    const newLocked = !currentLocked
+    await supabase.from('studio_time_rows').update({
+      admin_checked: newLocked,
+      admin_locked: newLocked,
+    }).eq('id', rowId)
+    setStRows(prev => prev.map(r => r.id === rowId
+      ? { ...r, admin_checked: newLocked, admin_locked: newLocked }
+      : r
+    ))
+    if (!newLocked) {
+      setPendingLockedEdits(p => { const n = { ...p }; delete n[rowId]; return n })
+    }
+  }
+
+  // ── Approve WO ────────────────────────────────────────────────────────────
 
   async function handleApprove() {
-    const today = getLocalToday()
-    const toApprove = stRows.filter(r => r.date === today && r.status !== 'approved')
-    if (!toApprove.length) return
+    if (!woIdRef.current || !wo) return
+    if (wo.status === 'approved') return
     setApproving(true)
-    await Promise.all(toApprove.map(r =>
-      supabase.from('studio_time_rows').update({ status: 'approved' }).eq('id', r.id)
-    ))
+    const now = new Date().toISOString()
+    await supabase.from('work_orders').update({
+      status: 'approved',
+      approved_at: now,
+      approved_by: 'admin',
+      admin_approved: true,
+      admin_approved_at: now,
+    }).eq('id', woIdRef.current)
+    setWo(prev => prev ? { ...prev, status: 'approved' } : prev)
+    onStatusChange?.('approved')
     setApproving(false)
   }
 
@@ -1215,9 +1238,9 @@ export function WorkOrderPopup({
           <div>
             <div style={sectionTitle}>Studio Time</div>
             <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
-              {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total */}
-              <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total'].map(h => <div key={h} style={thS}>{h}</div>)}
+              {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock */}
+              <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total', ''].map(h => <div key={h} style={thS}>{h}</div>)}
               </div>
               <div data-st-scroll="" style={{ overflowY: stRows.length > 5 ? 'auto' : 'visible', maxHeight: stRows.length > 5 ? 200 : undefined }}>
                 {stRows.map(r => {
@@ -1238,15 +1261,12 @@ export function WorkOrderPopup({
                   const otHrsNum = parseFloat(r.ot_hours ?? '0') || 0
                   return (
                     <div key={r.id}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: r.admin_locked ? 'rgba(20,184,166,0.04)' : undefined }}>
                         {/* Studio */}
                         <div style={cellS}><input value={r.studio} onChange={e => updateStRow(r.id, { studio: e.target.value })} style={inp} placeholder="—" /></div>
                         {/* Date — transparent overlay opens native picker, auto-sorts on pick */}
                         <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10, position: 'relative', cursor: 'pointer' }}>
                           <span style={{ pointerEvents: 'none' }}>{shortDate(r.date)}</span>
-                          {(r.status === 'submitted' || r.status === 'approved') && (
-                            <span style={{ position: 'absolute', top: 3, right: 3, width: 6, height: 6, borderRadius: '50%', background: r.status === 'approved' ? '#c8f04e' : '#fb923c', pointerEvents: 'none' }} />
-                          )}
                           <input
                             type="date"
                             value={r.date || ''}
@@ -1336,9 +1356,37 @@ export function WorkOrderPopup({
                         <div style={{ ...cellS, color: rowTotal > 0 ? '#c8f04e' : '#8a8fa0', fontWeight: rowTotal > 0 ? 600 : 400 }}>
                           {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : '—'}
                         </div>
+                        {/* Lock pill */}
+                        <div style={{ ...cellS, justifyContent: 'center', padding: '3px 4px' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleLock(r.id, r.admin_locked)}
+                            style={{
+                              fontSize: 8, fontFamily: 'DM Mono', fontWeight: 700, padding: '2px 5px',
+                              borderRadius: 3, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                              background: r.admin_locked ? '#14B8A6' : 'rgba(255,255,255,0.06)',
+                              color: r.admin_locked ? '#0d0f14' : '#6B7280',
+                            }}
+                          >{r.admin_locked ? '🔒' : '✓'}</button>
+                        </div>
                       </div>
+                      {pendingLockedEdits[r.id] && (
+                        <div style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.08)', borderBottom: '1px solid rgba(20,184,166,0.2)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'DM Mono', color: '#14B8A6' }}>
+                          <span>Editing a locked row —</span>
+                          <button
+                            type="button"
+                            onClick={() => { handleToggleLock(r.id, true); setPendingLockedEdits(p => { const n = { ...p }; delete n[r.id]; return n }) }}
+                            style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid #14B8A6', background: 'rgba(20,184,166,0.15)', color: '#14B8A6', fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer' }}
+                          >Update</button>
+                          <button
+                            type="button"
+                            onClick={() => { const orig = pendingLockedEdits[r.id]; setStRows(prev => prev.map(row => row.id === r.id ? orig : row)); setPendingLockedEdits(p => { const n = { ...p }; delete n[r.id]; return n }) }}
+                            style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: '#8a8fa0', fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}
+                          >Revert</button>
+                        </div>
+                      )}
                       {engName && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                           <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
                           <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engName}</div>
                           <div style={cellS} />
@@ -1355,6 +1403,7 @@ export function WorkOrderPopup({
                           <div style={{ ...cellS, color: engCharge != null ? '#c8f04e' : '#8a8fa0', fontWeight: engCharge != null ? 600 : 400 }}>
                             {engCharge != null ? `$${engCharge.toFixed(2)}` : '—'}
                           </div>
+                          <div style={cellS} />
                         </div>
                       )}
                     </div>
@@ -1587,10 +1636,10 @@ export function WorkOrderPopup({
           </button>
           <button
             onClick={handleApprove}
-            disabled={approving}
-            style={{ padding: '7px 18px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: approving ? 'default' : 'pointer', background: approving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: approving ? 0.7 : 1 }}
+            disabled={approving || wo?.status === 'approved'}
+            style={{ padding: '7px 18px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: (approving || wo?.status === 'approved') ? 'default' : 'pointer', background: wo?.status === 'approved' ? '#14B8A6' : approving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: (approving || wo?.status === 'approved') ? 0.8 : 1 }}
           >
-            {approving ? 'Approving…' : 'Approve'}
+            {wo?.status === 'approved' ? 'Approved ✓' : approving ? 'Approving…' : 'Approve'}
           </button>
           <button onClick={handleClose} disabled={saving} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Saving…' : 'Close & Save'}
