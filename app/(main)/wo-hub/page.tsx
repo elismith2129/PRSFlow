@@ -266,8 +266,7 @@ export default function WoHubPage() {
         </div>
       ) : (
         <div>
-          {filtered.map((e, i) => {
-            if (i === 0) console.log('[WO Hub] first row status:', e.status, '| borderLeft color:', STATUS_COLORS[e.status])
+          {filtered.map((e) => {
             const cod  = isCod(e.booking.payment_type)
             const pill = getVenuePill(e.booking.location)
 
@@ -280,13 +279,14 @@ export default function WoHubPage() {
                   alignItems: 'stretch',
                   background: 'var(--surface)',
                   border: '1px solid var(--border)',
-                  borderLeft: `4px solid ${STATUS_COLORS[e.status]}`,
                   borderRadius: 8,
                   cursor: 'pointer',
                   overflow: 'hidden',
                   marginBottom: 6,
                 }}
               >
+                {/* Left status bar */}
+                <div style={{ width: 4, alignSelf: 'stretch', background: STATUS_COLORS[e.status], borderRadius: '8px 0 0 8px', flexShrink: 0 }} />
 
                 {/* Row content */}
                 <div style={{
