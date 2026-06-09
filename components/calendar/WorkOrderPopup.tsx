@@ -297,7 +297,8 @@ export function WorkOrderPopup({
   const payIdsInDb = useRef<Set<string>>(new Set())
   const equipNoteFileRef = useRef<HTMLInputElement>(null)
   const pendingNoteKey = useRef<{ key: string; equipment: string; date: string } | null>(null)
-  const addingRowRef = useRef(false)
+  const addingStRowRef = useRef(false)
+  const addingEngRowRef = useRef(false)
 
   // Map liveForm fields onto WO state — seeds WO from current booking form values on open
   function applyLiveForm(base: WO): WO {
@@ -858,8 +859,8 @@ export function WorkOrderPopup({
   // ── Add studio time row ────────────────────────────────────────────────────
 
   async function addStRow() {
-    if (addingRowRef.current) return
-    addingRowRef.current = true
+    if (addingStRowRef.current) return
+    addingStRowRef.current = true
     try {
       const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
       const last = stRows[stRows.length - 1]
@@ -902,13 +903,13 @@ export function WorkOrderPopup({
         if (last?.eng_rate || (last?.eng_hours ?? 0) > 0) setShowEngRows(true)
       }
     } finally {
-      addingRowRef.current = false
+      addingStRowRef.current = false
     }
   }
 
   async function addEngRow() {
-    if (addingRowRef.current) return
-    addingRowRef.current = true
+    if (addingEngRowRef.current) return
+    addingEngRowRef.current = true
     try {
       const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
       const lastEng = [...stRows].reverse().find(r => r.eng_rate || (r.eng_hours ?? 0) > 0 || r.eng_from_time) || stRows[stRows.length - 1]
@@ -938,7 +939,7 @@ export function WorkOrderPopup({
         setStRows(prev => [...prev, normalizeStRow(data)])
       }
     } finally {
-      addingRowRef.current = false
+      addingEngRowRef.current = false
     }
   }
 
@@ -1314,6 +1315,7 @@ export function WorkOrderPopup({
               </div>
               <div data-st-scroll="" style={{ pointerEvents: isCompleted ? 'none' : undefined, opacity: isCompleted ? 0.65 : 1 }}>
                 {stRows.map(r => {
+                  const isEngOnly = !r.studio && !r.date
                   const isDayRow = r.row_rate_type === 'day'
                   const engName = wo?.engineer || liveForm?.engineer_name || booking.engineer_name || ''
                   const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || ''
@@ -1331,7 +1333,7 @@ export function WorkOrderPopup({
                   const otHrsNum = parseFloat(r.ot_hours ?? '0') || 0
                   return (
                     <div key={r.id}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: r.admin_locked ? 'rgba(20,184,166,0.04)' : undefined }}>
+                      {!isEngOnly && <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: r.admin_locked ? 'rgba(20,184,166,0.04)' : undefined }}>
                         {/* Studio */}
                         <div style={cellS}><input value={r.studio} onChange={e => updateStRow(r.id, { studio: e.target.value })} style={inp} placeholder="—" /></div>
                         {/* Date — transparent overlay opens native picker, auto-sorts on pick */}
@@ -1439,8 +1441,8 @@ export function WorkOrderPopup({
                             }}
                           >{r.admin_locked ? '🔒' : '✓'}</button>
                         </div>
-                      </div>
-                      {pendingLockedEdits[r.id] && (
+                      </div>}
+                      {!isEngOnly && pendingLockedEdits[r.id] && (
                         <div style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.08)', borderBottom: '1px solid rgba(20,184,166,0.2)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'DM Mono', color: '#14B8A6' }}>
                           <span>Editing a locked row —</span>
                           <button

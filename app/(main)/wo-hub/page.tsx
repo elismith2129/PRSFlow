@@ -266,7 +266,8 @@ export default function WoHubPage() {
         </div>
       ) : (
         <div>
-          {filtered.map(e => {
+          {filtered.map((e, i) => {
+            if (i === 0) console.log('[WO Hub] first row status:', e.status, '| borderLeft color:', STATUS_COLORS[e.status])
             const cod  = isCod(e.booking.payment_type)
             const pill = getVenuePill(e.booking.location)
 
