@@ -54,7 +54,8 @@ This applies to all new tables going forward. Existing tables are unaffected unt
   - **Admin WorkOrderPopup**: uses `resolvedWoId` state (set after `initWO` resolves) to gate subscription setup. Two channels: `studio_time_rows` filtered by `work_order_id` (any event → refetch + normalize all rows); `work_orders` by ID (UPDATE → patch `status` only). Channel names: `admin-wo-strows-{id}`, `admin-wo-status-{id}`.
   - **LocationStrip**: `fetchDrawerData(loc)` extracted from `openDrawer()` — all fetch/setState logic, no loading state. Subscription callbacks call `fetchDrawerData(selectedLocRef.current)` silently (no spinner). `selectedLocRef` tracks current open location. Two channels: `bookings` (any change) + `work_orders` (any change).
   - **Calendar page**: `loadRef.current = load` pattern — `loadRef` is set in a separate `useEffect([load])` so the mount-time subscription always calls the latest `load` version without re-subscribing. Channel: `calendar-bookings` on `bookings` table.
-- **Runner studio page shows all non-cancelled bookings, not just confirmed.** Changed from `.eq('status', 'confirmed')` to `.not('status', 'eq', 'cancelled')` to match what the admin LocationStrip shows. Confirmed, tentative, tour, tech, and open_hours sessions all show.
+- **Runner studio page and Daily Ops cards show confirmed sessions only.** Both filter to `.eq('status', 'confirmed')`. A prior change used `.not('status', 'eq', 'cancelled')` to show all non-cancelled statuses — reverted in June 2026 because tentative and other statuses shouldn't surface in daily runner ops.
+- **Multi-day bookings require `lte/gte` date range queries.** `.eq('start_date', today)` only matches Day 1 of a multi-day session. Any query surfacing sessions "active today" uses `.lte('start_date', today).gte('end_date', today)`. Applies to: `loadSummaries()`, `fetchDrawerData()`, and runner hub `load()`. Supabase Realtime filter strings cannot express compound AND conditions — RT callbacks trigger a full JS-side reload without a date filter.
 - **Daily Ops Log is an admin sidebar tab.** The standalone `/daily-ops-log` route is kept for direct linking but the component (`components/admin/DailyOpsLogSection.tsx`) is also embedded as a tab in the Admin page sidebar alongside Engineers and SRS Log. The component re-fetches fresh on every tab switch (conditional render means it mounts/unmounts each time). Fetches `work_orders` with `admin_approved=true OR status=approved` and `daily_ops_submissions` with `admin_approved_at != null`.
 - **WO card in admin daily ops drawer: artist name is the hero.** SessionCard hero line is `b.artist || b.client_name || '—'`. Label/client name appears smaller underneath only when both are present. This matches how calendar blocks display sessions.
 - **Runner WO Session Info block reads from live booking record.** On init, the runner WO page first fetches the `work_orders` row (to get `booking_id`), then in parallel fetches the linked `bookings` row + studio time rows + equipment condition rows + expense rows. The `booking` state is the source of truth for client name, artist, engineer, date, time, studio — the `wo` snapshot fields are fallbacks. This means admin changes to the booking are always reflected when the runner opens the WO.
@@ -66,6 +67,10 @@ This applies to all new tables going forward. Existing tables are unaffected unt
 - **`normalizeStRow` defaults `eng_hours` when null on WO open.** `WorkOrderPopup`'s `normalizeStRow` function defaults `eng_hours` to `total_hours` (for hourly rows) or `calcHours(from_time, to_time)` (for day-rate rows where `total_hours` is null) when the DB value is null. `eng_charge` is also recomputed from the defaulted value × `eng_rate` if both are available and `eng_charge` was null. This means the eng sub-row always shows a meaningful hours value on first open without requiring manual admin input.
 - **Live date range sync runs for both day-rate and hourly sessions.** The `useEffect` in `WorkOrderPopup` that reconciles `studio_time_rows` when `start_date`/`end_date` changes has no day-rate guard — both delete (rows for dates removed from range) and insert (rows for new dates) run regardless of rate type. Hourly inserts seed `total_hours` from `calcHours(from_time, to_time)` and `charge` from `calcCharge`; day-rate inserts keep `day_count = 1` with OT rate seeding.
 - **Runner RT eng_hours: accept admin changes without overwriting runner input.** When the runner WO real-time subscription fires and a row's `eng_hours` becomes non-null (admin set it via the admin popup), the runner's `engHoursMap` entry is updated — but only if the runner's current value still equals the auto-computed default (`total_hours → calcHours`, ignoring the DB `eng_hours` field). If the runner has typed a custom value different from that default, it is preserved.
+- **`studio_time_rows.status` cycles: `in_progress` → `submitted` → `approved`.** Column: `status text NOT NULL DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'submitted', 'approved'))`. Every new row insert seeds `status: 'in_progress'`. Runner Finish sets today's stRows to `submitted`. Admin Approve button (WorkOrderPopup footer) sets today's stRows to `approved`. Rows remain fully editable regardless of status. Status dots in the Date cell top-right: no dot = in_progress; orange `#fb923c` 6px circle = submitted; lime `#c8f04e` = approved. Dots render based on `r.status` for every row regardless of date — past-date rows with submitted/approved status show dots correctly.
+- **`handleFinish()` and `handleApprove()` scope to today's rows only.** `handleFinish()` (runner WO) updates rows where `date === getLocalToday()`. `handleApprove()` (admin WorkOrderPopup) updates rows where `date === getLocalToday() && status !== 'approved'`. Future-date rows are never prematurely submitted or approved. The Approve button's `disabled` prop only gates on the `approving` in-flight state — it is always clickable (no count-based gate).
+- **Dashboard badge (`pendingCount`) driven by `studio_time_rows.status`.** `loadSummaries()` in LocationStrip adds a fifth parallel query for today's stRows with `status = 'submitted'`, maps them to WO IDs, and counts matching WOs per studio. A third RT channel (`daily-ops-strows`, UPDATE on `studio_time_rows`) keeps the badge live when runner submits or admin approves. `studio_time_rows` must be in the `supabase_realtime` publication with `REPLICA IDENTITY FULL` for these events to fire.
+- **Approved sessions drop from the Today drawer column.** `fetchDrawerData()` queries today's stRow statuses after loading WOs; bookings where all today's stRows are `approved` are excluded from `activeTodayBkgs` and disappear from the drawer without a page refresh.
 
 ### UI patterns
 - **Clients page = unified two-column view.** List on left, full editable profile in right panel. No separate `/clients/[id]` route. URL uses query param `/clients?id=<uuid>` for shareability.
@@ -179,7 +184,7 @@ This applies to all new tables going forward. Existing tables are unaffected unt
 
 ---
 
-*Last updated: June 5, 2026 — per-row rate type architecture, unified Studio Time table, TimeInput → 30-min select, runner WO UX polish series (notes bottom sheet, iOS Safari scroll lock, viewport fixes, eng initials popover, PDF session notes, admin session info popover).*
+*Last updated: June 8, 2026 — Studio Time table bugfix series (OT auto-calc, native date picker overlay, insert fixes, session notes restored, column widths); confirmed sessions filter; WO status cycling per studio_time_row (in_progress/submitted/approved); multi-day booking date range queries; LocationStrip badge driven by stRow status; approved sessions drop from drawer.*
 
 ---
 
@@ -771,3 +776,66 @@ Covers commits `358974d` through `aa682d2`.
 
 **Bottom sheet redesigned as floating card (`5bcf18a`):**
 - Changed from full-width bottom-anchored overlay to floating card: `bottom: 16, left: 12, right: 12`; `borderRadius: 12`; `border: '1px solid #2a2e3d'`; `boxShadow: '0 -4px 24px rgba(0,0,0,0.4)'`; accent top border removed
+
+---
+
+### June 8, 2026 — Studio Time table bugfix series (post-unification)
+
+**Commits: `8ad111c` through `752be11`**
+
+Bug fixes and refinements after the per-row rate type / unified Studio Time table architecture landed in the previous session.
+
+**Table structure finalized (`7f22409`, `5a63b36`):**
+- Admin WO popup: 12-column layout — Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total. Session Info column (click-to-edit 280px fixed popover) was dropped in the initial unification and is now restored.
+- Runner WO page: 11-column layout — Date | Notes | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total. Studio column removed (redundant on mobile); Notes pill column added between Date and From to open the session notes bottom sheet.
+- OT auto-calc: day-rate rows auto-compute OT hours from `max(0, total_hours - 12)` + OT charge; hourly rows expose an editable OT Hrs input with OT Rate display and derived OT charge.
+- OT Rate auto-seeded from `rate_daily × 0.10` (day-rate) or `rate` value (hourly) when not overridden.
+- New row auto-populate: adding a row copies From, To, Rate Type, Rate, OT Rate from the previous row (date left blank).
+- `initWO` cleanup now preserves rows with a blank date — fixes manually-added rows being deleted on WO reopen.
+
+**Date cell redesigned (`8ad111c`, `9399a51`, `aa45230`):**
+- Transparent `<input type="date">` overlay sits over the `shortDate()` display text in the Date cell. Clicking opens the native OS date picker directly.
+- Date auto-saves and rows re-sort by date on pick — no separate Save step needed.
+- Rows auto-sort by date when the date input loses focus.
+
+**Studio time rows not creating — insert/upsert root cause fixes (`e4008ad`, `2db8e5d`, `91a21c8`):**
+- All insert sites used `upsert(onConflict: 'work_order_id,date')` which requires a `UNIQUE(work_order_id, date)` DB constraint that was never added. Without it, every insert returned 400 and no rows were ever created. Fix: changed to plain `insert()` at all five sites in `WorkOrderPopup.tsx` and `calendar/page.tsx`. Pre-checks already filter existing dates before inserting, so plain insert is safe.
+- Runner WO seed insert had `booking_id` in the payload — `booking_id` is not a column on `studio_time_rows`. Removed.
+- `ot_rate` is a numeric DB column but received raw rate strings like `"$145"`. Added `/[^0-9.]/` strip at all `ot_rate` write sites. Also removed `ot_hours`/`ot_charge` from day-rate INSERT payloads (columns don't exist in the DB schema).
+
+**Studio time rows not appearing on admin popup after the fix:**
+- Root cause: `wo?.id` in the live date-range sync `useEffect` dep array caused the effect to fire on initial WO load, racing with `initWO`'s row seeding. The effect inserted rows first; `initWO`'s subsequent fetch returned the just-inserted rows but `setStRows([])` wiped them when the upsert's `data` was empty. Fix: removed `wo?.id` from the effect's deps — it now only fires on actual date changes.
+
+**Runner WO column width fixes (`0dd79e3`, `45fbc44`, `752be11`):**
+- FROM/TO columns widened on mobile so "8:00 AM" doesn't truncate.
+- TYPE/RATE cell separator and table `overflow-x` behavior corrected for narrow screens.
+
+---
+
+### June 8, 2026 — Confirmed sessions filter, WO status cycling, Daily Ops improvements
+
+**Commits: `94481d9` through `ba99025`**
+
+**Confirmed sessions filter (`94481d9`):**
+Daily Ops card (LocationStrip) and runner hub reverted to `status = 'confirmed'` only. The prior `.not('status', 'eq', 'cancelled')` change (which showed all non-cancelled statuses) was rolled back — tentative, hold, and other statuses shouldn't appear in daily runner ops.
+
+**WO status cycling per `studio_time_row` (`6f1c818`):**
+
+New `status` column: `text NOT NULL DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'submitted', 'approved'))`. Migration run directly in Supabase SQL editor before this commit.
+
+Three-state lifecycle:
+- `in_progress` — default on row creation; no dot in the Studio Time Date cell
+- `submitted` — runner taps Finish → today's rows updated to `submitted`; orange dot (`#fb923c`, 6px) appears in Date cell top-right
+- `approved` — admin clicks Approve → today's rows updated to `approved`; lime dot (`#c8f04e`) appears in Date cell top-right
+
+All new row insert sites (date-range reconciliation, auto-seed, date picker save, addStRow) include `status: 'in_progress'` in the payload. `normalizeStRow` falls back to `'in_progress'` when the DB value is null. Dot renders based on `r.status` for every row regardless of date — past-day rows with submitted or approved status show the appropriate dot.
+
+Dashboard badge: `pendingCount` on LocationStrip studio cards is now driven by stRow status. `loadSummaries()` adds a fifth parallel query for today's stRows with `status = 'submitted'`, maps them to WO IDs, and counts per studio. A third RT channel on LocationStrip (`daily-ops-strows`, UPDATE on `studio_time_rows`) keeps the badge live.
+
+Approved sessions drop from the Today column: after loading today's WOs, `fetchDrawerData()` queries stRow statuses; bookings where all today's stRows are `approved` are excluded from `activeTodayBkgs` without a page refresh.
+
+**Fix series (`81151a2` → `ba99025`):**
+- `81151a2`: TypeScript build error — `getLocalToday` called but not defined in runner WO `handleFinish`. Fixed with an inline IIFE.
+- `3650e74`: Three post-cycling fixes — (1) Yesterday section removed from runner hub (today's sessions only); (2) badge queries today's stRows only (not yesterday's); (3) approved sessions drop from drawer via stRow status cross-reference.
+- `f89c035`: Multi-day session support — `loadSummaries()`, `fetchDrawerData()`, and runner hub `load()` all changed from `.eq('start_date', today)` to `.lte('start_date', today).gte('end_date', today)`. Admin Approve button `disabled` prop scoped to `approving` in-flight state only.
+- `3f04978` / `ba99025`: Scope correction. An over-broad fix had made `handleApprove()` and `handleFinish()` target ALL rows in the WO (future-date rows would be prematurely submitted/approved). Corrected: `handleFinish()` submits rows where `date === getLocalToday()`; `handleApprove()` approves rows where `date === today && status !== 'approved'`. Dot rendering was already correct (no date restriction) and unchanged.

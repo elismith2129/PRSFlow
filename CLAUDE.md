@@ -73,6 +73,7 @@ Tables in use (all with public RLS — auth deferred to Chunk 9):
 - `studio_time_rows.eng_hours` — numeric; hours worked by engineer on that row (auto-populated from `total_hours` or `calcHours(from_time, to_time)` when null on WO open)
 - `studio_time_rows.eng_rate` — text; engineer rate override for that row (blank until set; inherits from `booking.engineer_rate` display-side only, not DB default)
 - `studio_time_rows.eng_charge` — numeric; computed eng_hours × eng_rate
+- `studio_time_rows.status` — text NOT NULL DEFAULT 'in_progress'; CHECK IN ('in_progress','submitted','approved'). Runner Finish → today's rows set to 'submitted'. Admin Approve → today's rows set to 'approved'. Status dot in Date cell top-right: orange #fb923c = submitted, lime #c8f04e = approved, none = in_progress.
 
 Most date/time fields stored as `text`. Money fields stored as `text`.
 
@@ -96,7 +97,7 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 - **`TimeInput` is a `<select>` with 48 options (every 30 min, 12-hour AM/PM format).** The previous smart-parse text input was replaced. Used in booking form and WO Studio Time From/To cells.
 - **iOS Safari scroll lock: use `body.position=fixed` + `top=-scrollY`, not `overflow:hidden`.** `overflow:hidden` on body does not block scroll on iOS. Correct pattern: save `scrollY`, set `body.style.top=\`-${scrollY}px\`, position=fixed, width=100%` on open; clear all three and call `window.scrollTo({ top: savedScrollY, behavior: 'instant' })` on close.
 
-## What's Built (as of June 5, 2026)
+## What's Built (as of June 8, 2026)
 
 | Chunk | Feature | Status |
 |-------|---------|--------|
@@ -128,6 +129,9 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 | WO eng UX fixes | `normalizeStRow` defaults eng_hours from total_hours → calcHours when null; $55 removed everywhere; Eng subtotal in Studio Time inline footer; date reconciliation applies to both day-rate and hourly (no isDayRate guard); runner RT accepts admin-set eng_hours without overwriting runner-typed values; bkData fallback for non-standard WO URLs; runner compact table layout for hourly; auto-seed stRows from booking on WO open | ✅ Complete |
 | Per-row rate type + unified Studio Time | `studio_time_rows.row_rate_type` + `rate_daily` columns; each row toggles Day/Hr independently; `toggleRowRateType()` converts rate; unified 9-col table (Date\|SessionInfo\|From\|To\|Hrs\|Type\|Rate\|OT\|Total) replaces dual layouts in admin + runner; `TimeInput` → 30-min `<select>` with 48 options; `shortDate()` date format; OT rate auto-populated for hourly rows; admin cell dividers removed | ✅ Complete |
 | Runner WO UX polish | Notes bottom sheet: floating card (`position:fixed, bottom:16, left:12, right:12, borderRadius:12`); iOS Safari scroll lock via `body.position=fixed+top=-scrollY` (not `overflow:hidden`); `Viewport` export sets `maximumScale:1, userScalable:false`; runner root containers `maxWidth:100vw, overflowX:hidden`; eng initials pill with tap-to-expand popover; `<span data-si-print>` reveals notes in PDF; admin session info cell opens editable popover | ✅ Complete |
+| Studio Time table bugfixes | 12-col admin / 11-col runner tables; Session Info column restored; OT auto-calc; native date picker overlay (transparent `<input type="date">`) with auto-save + auto-sort; all `upsert(onConflict)` → `insert()` (constraint never existed); `booking_id` removed from runner insert; `$`/`,` stripped from `ot_rate`; `wo?.id` removed from date-range sync effect deps; runner mobile column widths corrected | ✅ Complete |
+| WO status cycling | `studio_time_rows.status`: in_progress/submitted/approved; runner Finish submits today's rows; admin Approve approves today's rows; status dots in Date cell; all inserts seed `status:'in_progress'`; dots render for all rows regardless of date; `handleFinish` and `handleApprove` scoped to `date === getLocalToday()` | ✅ Complete |
+| Confirmed sessions + multi-day | Daily Ops cards and runner hub filter to `status='confirmed'`; booking queries use `lte('start_date',today).gte('end_date',today)` for multi-day; LocationStrip badge driven by `studio_time_rows.status='submitted'`; third RT channel on LocationStrip for stRows; approved sessions drop from Today drawer | ✅ Complete |
 
 ## What's Next
 

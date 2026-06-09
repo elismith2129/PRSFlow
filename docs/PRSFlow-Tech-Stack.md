@@ -1,6 +1,6 @@
 # PRSFlow — Tech Stack & Roadmap
 
-*Last updated: June 5, 2026*
+*Last updated: June 8, 2026*
 
 ---
 
@@ -234,6 +234,12 @@ Defined in `styles/globals.css`:
 | per-row-rate-type | `studio_time_rows.row_rate_type` + `row_rate_daily` columns; `toggleRowRateType()` converts rate on toggle; booking-level rate-sync effects deleted; `normalizeStRow` branches on `row_rate_type`; unified Date\|SessionInfo\|From\|To\|Hrs\|Type\|Rate\|OT\|Total table in admin WorkOrderPopup + runner WO page; Type cell has Day/Hr inline toggle (admin) or display label (runner); `TimeInput` changed to 30-min `<select>` with 48 options; OT rate auto-populates from hourly rate; `shortDate()` helper for `M-D` date format; admin cell dividers removed; runner compact 444px table |
 | **Runner WO UX polish ✅** | **Notes bottom sheet, iOS Safari scroll lock, viewport fixes, eng initials popover, PDF session notes** |
 | runner-wo-ux | Notes bottom sheet: `position: fixed` floating card (`bottom:16, left:12, right:12, borderRadius:12`); iOS scroll lock via `body.position=fixed + top=-scrollY` pattern (not `overflow:hidden`); `Viewport` export in `app/layout.tsx` sets `maximumScale:1, userScalable:false`; runner root containers `maxWidth:100vw, overflowX:hidden`; eng name → initials pill with tap-to-expand fixed popover; `<span data-si-print>` reveals session notes in `@media print`; admin session info cell opens 280px popover with editable textarea |
+| **Studio Time bugfixes ✅** | **Post-unification fixes: OT auto-calc, native date picker overlay, insert fixes, session notes restored, mobile column widths** |
+| studio-time-fixes | 12-col admin / 11-col runner tables finalized; Session Info column restored (admin popover); OT auto-calc from `max(0,hours-12)`; OT Rate auto-seeded; new row auto-populates from previous; date cell → transparent `<input type="date">` overlay with auto-save + auto-sort on pick; all `upsert(onConflict)` → `insert()` (constraint never existed); removed invalid `booking_id` from runner insert; stripped `$`/`,` from `ot_rate` before write; `wo?.id` removed from date-range sync effect deps to fix initWO race; runner mobile column widths corrected |
+| **WO status cycling ✅** | **`studio_time_rows.status`: in_progress → submitted → approved; runner Finish and admin Approve scoped to today's rows; status dots in Date cell** |
+| wo-status-cycling | `status text NOT NULL DEFAULT 'in_progress' CHECK (status IN ('in_progress','submitted','approved'))` column on `studio_time_rows`; runner Finish submits today's rows; admin Approve approves today's rows; orange dot `#fb923c` = submitted, lime dot `#c8f04e` = approved in Date cell top-right; all insert sites seed `status:'in_progress'`; dots render based on `r.status` for all rows regardless of date |
+| **Confirmed sessions + multi-day ✅** | **Daily Ops + runner hub filter to confirmed only; lte/gte date range for multi-day; badge driven by stRow status; RT channel for stRows** |
+| confirmed-multiday | `.eq('status','confirmed')` on all booking queries; `.lte('start_date',today).gte('end_date',today)` for multi-day support; `pendingCount` badge derived from `studio_time_rows.status='submitted'` cross-referenced to WO ids; third LocationStrip RT channel on `studio_time_rows` UPDATE; approved sessions drop from Today drawer column |
 
 ### Next
 
