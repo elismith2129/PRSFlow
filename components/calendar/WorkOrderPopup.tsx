@@ -282,6 +282,8 @@ export function WorkOrderPopup({
   const [saving, setSaving] = useState(false)
   const [completing, setCompleting] = useState(false)
   const [showEngRows, setShowEngRows] = useState(false)
+  const [confirmDeleteRowId, setConfirmDeleteRowId] = useState<string | null>(null)
+  const [confirmClearEngId, setConfirmClearEngId] = useState<string | null>(null)
   const [pendingLockedEdits, setPendingLockedEdits] = useState<Record<string, StRow>>({})
   const [dirtyFields, setDirtyFields] = useState<Set<string>>(new Set())
   const [equipNotes, setEquipNotes] = useState<Record<string, EquipNote>>({})
@@ -859,88 +861,91 @@ export function WorkOrderPopup({
   // ── Add studio time row ────────────────────────────────────────────────────
 
   async function addStRow() {
-    if (addingStRowRef.current) return
-    addingStRowRef.current = true
-    try {
-      const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
-      const last = stRows[stRows.length - 1]
-      const rowRateType = last?.row_rate_type || 'hour'
-      const fromTime = last?.from_time || ''
-      const toTime = last?.to_time || ''
-      const rateStr = last?.rate || ''
-      const rateDailyStr = last?.rate_daily || ''
+    const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
+    const last = stRows[stRows.length - 1]
+    const rowRateType = last?.row_rate_type || 'hour'
+    const fromTime = last?.from_time || ''
+    const toTime = last?.to_time || ''
+    const rateStr = last?.rate || ''
+    const rateDailyStr = last?.rate_daily || ''
 
-      let totalHours: number | null = null
-      let charge: number | null = null
-      if (rowRateType === 'hour') {
-        totalHours = calcHours(fromTime, toTime)
-        const rateNum = parseFloat(rateStr.replace(/[^0-9.]/g, ''))
-        charge = totalHours != null && !isNaN(rateNum) && rateNum > 0
-          ? parseFloat((totalHours * rateNum).toFixed(2)) : null
-      } else {
-        const rateNum = parseFloat((rateDailyStr || rateStr).replace(/[^0-9.]/g, ''))
-        charge = !isNaN(rateNum) && rateNum > 0 ? rateNum : null
-      }
+    let totalHours: number | null = null
+    let charge: number | null = null
+    if (rowRateType === 'hour') {
+      totalHours = calcHours(fromTime, toTime)
+      const rateNum = parseFloat(rateStr.replace(/[^0-9.]/g, ''))
+      charge = totalHours != null && !isNaN(rateNum) && rateNum > 0
+        ? parseFloat((totalHours * rateNum).toFixed(2)) : null
+    } else {
+      const rateNum = parseFloat((rateDailyStr || rateStr).replace(/[^0-9.]/g, ''))
+      charge = !isNaN(rateNum) && rateNum > 0 ? rateNum : null
+    }
 
-      const newRow = {
-        work_order_id: woIdRef.current!,
-        studio: last?.studio || '',
-        date: '',
-        session_info: '',
-        from_time: fromTime,
-        to_time: toTime,
-        total_hours: totalHours,
-        rate: rateStr,
-        rate_daily: rateDailyStr || null,
-        row_rate_type: rowRateType,
-        ot_rate: last?.ot_rate ? (parseFloat(last.ot_rate.replace(/[^0-9.]/g, '')) || null) : null,
-        charge,
-        sort_order: maxOrder + 1,
-      }
-      const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
-      if (data) {
-        setStRows(prev => [...prev, normalizeStRow(data)])
-        if (last?.eng_rate || (last?.eng_hours ?? 0) > 0) setShowEngRows(true)
-      }
-    } finally {
-      addingStRowRef.current = false
+    const newRow = {
+      work_order_id: woIdRef.current!,
+      studio: last?.studio || '',
+      date: '',
+      session_info: '',
+      from_time: fromTime,
+      to_time: toTime,
+      total_hours: totalHours,
+      rate: rateStr,
+      rate_daily: rateDailyStr || null,
+      row_rate_type: rowRateType,
+      ot_rate: last?.ot_rate ? (parseFloat(last.ot_rate.replace(/[^0-9.]/g, '')) || null) : null,
+      charge,
+      sort_order: maxOrder + 1,
+    }
+    const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
+    if (data) {
+      setStRows(prev => [...prev, normalizeStRow(data)])
+      if (last?.eng_rate || (last?.eng_hours ?? 0) > 0) setShowEngRows(true)
     }
   }
 
   async function addEngRow() {
-    if (addingEngRowRef.current) return
-    addingEngRowRef.current = true
-    try {
-      const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
-      const lastEng = [...stRows].reverse().find(r => r.eng_rate || (r.eng_hours ?? 0) > 0 || r.eng_from_time) || stRows[stRows.length - 1]
-      const newRow = {
-        work_order_id: woIdRef.current!,
-        studio: '',
-        date: lastEng?.date || '',
-        session_info: '',
-        from_time: '',
-        to_time: '',
-        total_hours: null,
-        rate: '',
-        rate_daily: null,
-        row_rate_type: 'hour',
-        ot_rate: null,
-        charge: null,
-        sort_order: maxOrder + 1,
-        eng_from_time: lastEng?.eng_from_time || '',
-        eng_to_time: lastEng?.eng_to_time || '',
-        eng_rate: lastEng?.eng_rate || '',
-        eng_hours: null,
-        eng_charge: null,
-      }
-      const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
-      if (data) {
-        setShowEngRows(true)
-        setStRows(prev => [...prev, normalizeStRow(data)])
-      }
-    } finally {
-      addingEngRowRef.current = false
+    const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
+    const lastEng = [...stRows].reverse().find(r => r.eng_rate || (r.eng_hours ?? 0) > 0 || r.eng_from_time) || stRows[stRows.length - 1]
+    const newRow = {
+      work_order_id: woIdRef.current!,
+      studio: '',
+      date: '',
+      session_info: '',
+      from_time: '',
+      to_time: '',
+      total_hours: null,
+      rate: '',
+      rate_daily: null,
+      row_rate_type: 'hour',
+      ot_rate: null,
+      charge: null,
+      sort_order: maxOrder + 1,
+      eng_from_time: lastEng?.eng_from_time || '',
+      eng_to_time: lastEng?.eng_to_time || '',
+      eng_rate: lastEng?.eng_rate || '',
+      eng_hours: null,
+      eng_charge: null,
     }
+    const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
+    if (data) {
+      setShowEngRows(true)
+      setStRows(prev => [...prev, normalizeStRow(data)])
+    }
+  }
+
+  async function deleteStRow(id: string) {
+    await supabase.from('studio_time_rows').delete().eq('id', id)
+    setStRows(prev => prev.filter(r => r.id !== id))
+    setConfirmDeleteRowId(null)
+    setConfirmClearEngId(null)
+  }
+
+  async function clearEngRow(id: string) {
+    await supabase.from('studio_time_rows').update({
+      eng_from_time: null, eng_to_time: null, eng_rate: null, eng_hours: null, eng_charge: null,
+    }).eq('id', id)
+    setStRows(prev => prev.map(r => r.id === id ? { ...r, eng_from_time: '', eng_to_time: '', eng_rate: '', eng_hours: null, eng_charge: null } : r))
+    setConfirmClearEngId(null)
   }
 
   // ── Print with filename ───────────────────────────────────────────────────
@@ -1309,11 +1314,11 @@ export function WorkOrderPopup({
           <div>
             <div style={sectionTitle}>Studio Time</div>
             <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
-              {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock */}
-              <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total', ''].map(h => <div key={h} style={thS}>{h}</div>)}
+              {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock | Del */}
+              <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total', '', ''].map((h, i) => <div key={i} style={thS}>{h}</div>)}
               </div>
-              <div data-st-scroll="" style={{ pointerEvents: isCompleted ? 'none' : undefined, opacity: isCompleted ? 0.65 : 1 }}>
+              <div data-st-scroll="" style={{ pointerEvents: isCompleted ? 'none' : undefined, opacity: isCompleted ? 0.65 : 1, maxHeight: 420, overflowY: 'auto' }}>
                 {stRows.map(r => {
                   const isEngOnly = !r.studio && !r.date
                   const isDayRow = r.row_rate_type === 'day'
@@ -1333,7 +1338,7 @@ export function WorkOrderPopup({
                   const otHrsNum = parseFloat(r.ot_hours ?? '0') || 0
                   return (
                     <div key={r.id}>
-                      {!isEngOnly && <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: r.admin_locked ? 'rgba(20,184,166,0.04)' : undefined }}>
+                      {!isEngOnly && <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: r.admin_locked ? 'rgba(20,184,166,0.04)' : undefined }}>
                         {/* Studio */}
                         <div style={cellS}><input value={r.studio} onChange={e => updateStRow(r.id, { studio: e.target.value })} style={inp} placeholder="—" /></div>
                         {/* Date — transparent overlay opens native picker, auto-sorts on pick */}
@@ -1441,6 +1446,20 @@ export function WorkOrderPopup({
                             }}
                           >{r.admin_locked ? '🔒' : '✓'}</button>
                         </div>
+                        {/* Delete row */}
+                        <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto' }}>
+                          {confirmDeleteRowId === r.id ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                              <span style={{ fontSize: 7, color: '#f97316', fontFamily: 'DM Mono', whiteSpace: 'nowrap' }}>Del?</span>
+                              <div style={{ display: 'flex', gap: 3 }}>
+                                <button type="button" onClick={() => deleteStRow(r.id)} style={{ fontSize: 8, fontFamily: 'DM Mono', color: '#f97316', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 700 }}>Y</button>
+                                <button type="button" onClick={() => setConfirmDeleteRowId(null)} style={{ fontSize: 8, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>N</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button type="button" onClick={() => setConfirmDeleteRowId(r.id)} disabled={isCompleted} style={{ fontSize: 13, fontFamily: 'DM Mono', color: isCompleted ? '#2a2f3a' : '#4a4f60', background: 'none', border: 'none', cursor: isCompleted ? 'default' : 'pointer', padding: 0, lineHeight: 1 }}>×</button>
+                          )}
+                        </div>
                       </div>}
                       {!isEngOnly && pendingLockedEdits[r.id] && (
                         <div style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.08)', borderBottom: '1px solid rgba(20,184,166,0.2)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'DM Mono', color: '#14B8A6' }}>
@@ -1458,7 +1477,7 @@ export function WorkOrderPopup({
                         </div>
                       )}
                       {(showEngRows || !!engName) && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                           <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
                           <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engName}</div>
                           <div style={cellS} />
@@ -1475,7 +1494,20 @@ export function WorkOrderPopup({
                           <div style={{ ...cellS, color: engCharge != null ? '#c8f04e' : '#8a8fa0', fontWeight: engCharge != null ? 600 : 400 }}>
                             {engCharge != null ? `$${engCharge.toFixed(2)}` : '—'}
                           </div>
-                          <div style={cellS} />
+                          {/* Eng delete */}
+                          <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto' }}>
+                            {confirmClearEngId === r.id ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                                <span style={{ fontSize: 7, color: '#f97316', fontFamily: 'DM Mono', whiteSpace: 'nowrap' }}>Del?</span>
+                                <div style={{ display: 'flex', gap: 3 }}>
+                                  <button type="button" onClick={() => isEngOnly ? deleteStRow(r.id) : clearEngRow(r.id)} style={{ fontSize: 8, fontFamily: 'DM Mono', color: '#f97316', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 700 }}>Y</button>
+                                  <button type="button" onClick={() => setConfirmClearEngId(null)} style={{ fontSize: 8, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>N</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button type="button" onClick={() => setConfirmClearEngId(r.id)} disabled={isCompleted} style={{ fontSize: 13, fontFamily: 'DM Mono', color: isCompleted ? '#2a2f3a' : '#4a4f60', background: 'none', border: 'none', cursor: isCompleted ? 'default' : 'pointer', padding: 0, lineHeight: 1 }}>×</button>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
