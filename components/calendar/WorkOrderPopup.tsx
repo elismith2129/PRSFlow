@@ -888,7 +888,7 @@ export function WorkOrderPopup({
 
   async function handleApprove() {
     const today = getLocalToday()
-    const toApprove = stRows.filter(r => r.date === today && r.status === 'submitted')
+    const toApprove = stRows.filter(r => r.date === today && r.status !== 'approved')
     if (!toApprove.length) return
     setApproving(true)
     await Promise.all(toApprove.map(r =>
@@ -1585,19 +1585,13 @@ export function WorkOrderPopup({
           <button onClick={() => onClose()} disabled={saving} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
             Cancel
           </button>
-          {(() => {
-            const canApprove = stRows.some(r => r.date === getLocalToday() && r.status === 'submitted')
-            return (
-              <button
-                onClick={handleApprove}
-                disabled={!canApprove || approving}
-                title={!canApprove ? 'No submitted sessions for today' : undefined}
-                style={{ padding: '7px 18px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: canApprove && !approving ? 'pointer' : 'default', background: canApprove ? (approving ? 'rgba(200,240,78,0.5)' : '#c8f04e') : 'rgba(200,240,78,0.1)', border: 'none', color: canApprove ? '#0d0f14' : '#4a5030', opacity: approving ? 0.7 : 1 }}
-              >
-                {approving ? 'Approving…' : 'Approve'}
-              </button>
-            )
-          })()}
+          <button
+            onClick={handleApprove}
+            disabled={approving}
+            style={{ padding: '7px 18px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: approving ? 'default' : 'pointer', background: approving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: approving ? 0.7 : 1 }}
+          >
+            {approving ? 'Approving…' : 'Approve'}
+          </button>
           <button onClick={handleClose} disabled={saving} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Saving…' : 'Close & Save'}
           </button>

@@ -37,7 +37,8 @@ export default function StudioDailyOpsPage() {
     const { data: bData } = await supabase
       .from('bookings')
       .select('*')
-      .eq('start_date', today)
+      .lte('start_date', today)
+      .gte('end_date', today)
       .eq('status', 'confirmed')
       .order('from_time', { ascending: true })
 
@@ -68,28 +69,14 @@ export default function StudioDailyOpsPage() {
   // Initial load
   useEffect(() => { load() }, [load])
 
-  // Real-time: re-run load on any booking change for today
+  // Real-time: re-run load on any booking change
   useEffect(() => {
-    console.log(`[RT] Subscribing to bookings on /runner/${studio}, filter: start_date=eq.${today}`)
     const channel = supabase
-      .channel(`runner-bookings-${studio}-${today}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'bookings',
-        filter: `start_date=eq.${today}`,
-      }, (payload) => {
-        console.log(`[RT] Real-time event received on /runner/${studio}, bookings:`, payload)
-        load()
-      })
-      .subscribe((status, err) => {
-        console.log(`[RT] bookings subscription status on /runner/${studio}:`, status, err ?? '')
-      })
-    return () => {
-      console.log(`[RT] Unsubscribing from bookings on /runner/${studio}`)
-      supabase.removeChannel(channel)
-    }
-  }, [studio, today, load])
+      .channel(`runner-bookings-${studio}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => { load() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [studio, load])
 
   // Real-time: re-run load when a WO for today is updated (e.g. admin approves)
   useEffect(() => {
