@@ -884,11 +884,10 @@ export function WorkOrderPopup({
     document.title = prev
   }
 
-  // ── Approve today's submitted rows ────────────────────────────────────────
+  // ── Approve all non-approved rows ────────────────────────────────────────
 
   async function handleApprove() {
-    const today = getLocalToday()
-    const toApprove = stRows.filter(r => r.date === today && r.status !== 'approved')
+    const toApprove = stRows.filter(r => r.status !== 'approved')
     if (!toApprove.length) return
     setApproving(true)
     await Promise.all(toApprove.map(r =>

@@ -552,18 +552,17 @@ export default function RunnerWOPage() {
     if (!woRef.current) return
     setSubmitting(true)
     const now = new Date().toISOString()
-    const localToday = (() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10) })()
     await supabase.from('work_orders').update({
       runner_finished: true,
       runner_finished_at: now,
       status: 'submitted',
       submitted_at: now,
     }).eq('id', woRef.current)
-    const todayRowIds = stRows
-      .filter((r: any) => r.date === localToday)
+    const allRowIds = stRows
+      .filter((r: any) => r.status !== 'approved')
       .map((r: any) => r.id)
-    if (todayRowIds.length > 0) {
-      await supabase.from('studio_time_rows').update({ status: 'submitted' }).in('id', todayRowIds)
+    if (allRowIds.length > 0) {
+      await supabase.from('studio_time_rows').update({ status: 'submitted' }).in('id', allRowIds)
     }
     setSubmitting(false)
     setRunnerFinished(true)
