@@ -281,6 +281,7 @@ export function WorkOrderPopup({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [completing, setCompleting] = useState(false)
+  const [showEngRows, setShowEngRows] = useState(false)
   const [pendingLockedEdits, setPendingLockedEdits] = useState<Record<string, StRow>>({})
   const [dirtyFields, setDirtyFields] = useState<Set<string>>(new Set())
   const [equipNotes, setEquipNotes] = useState<Record<string, EquipNote>>({})
@@ -420,6 +421,13 @@ export function WorkOrderPopup({
       }
     })()
   }, [liveForm?.start_date, liveForm?.end_date]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-show eng sub-rows when any row already has eng data
+  useEffect(() => {
+    if (!showEngRows && stRows.some(r => r.eng_rate || (r.eng_hours ?? 0) > 0)) {
+      setShowEngRows(true)
+    }
+  }, [stRows]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Real-time subscriptions: studio_time_rows and work_orders for this WO
   useEffect(() => {
@@ -851,19 +859,37 @@ export function WorkOrderPopup({
   async function addStRow() {
     const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
     const last = stRows[stRows.length - 1]
+    const rowRateType = last?.row_rate_type || 'hour'
+    const fromTime = last?.from_time || ''
+    const toTime = last?.to_time || ''
+    const rateStr = last?.rate || ''
+    const rateDailyStr = last?.rate_daily || ''
+
+    let totalHours: number | null = null
+    let charge: number | null = null
+    if (rowRateType === 'hour') {
+      totalHours = calcHours(fromTime, toTime)
+      const rateNum = parseFloat(rateStr.replace(/[^0-9.]/g, ''))
+      charge = totalHours != null && !isNaN(rateNum) && rateNum > 0
+        ? parseFloat((totalHours * rateNum).toFixed(2)) : null
+    } else {
+      const rateNum = parseFloat((rateDailyStr || rateStr).replace(/[^0-9.]/g, ''))
+      charge = !isNaN(rateNum) && rateNum > 0 ? rateNum : null
+    }
+
     const newRow = {
       work_order_id: woIdRef.current!,
       studio: last?.studio || '',
       date: '',
       session_info: '',
-      from_time: last?.from_time || '',
-      to_time: last?.to_time || '',
-      total_hours: null,
-      rate: last?.rate || '',
-      rate_daily: last?.rate_daily || null,
-      row_rate_type: last?.row_rate_type || 'hour',
+      from_time: fromTime,
+      to_time: toTime,
+      total_hours: totalHours,
+      rate: rateStr,
+      rate_daily: rateDailyStr || null,
+      row_rate_type: rowRateType,
       ot_rate: last?.ot_rate ? (parseFloat(last.ot_rate.replace(/[^0-9.]/g, '')) || null) : null,
-      charge: null,
+      charge,
       sort_order: maxOrder + 1,
     }
     const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
@@ -1240,10 +1266,10 @@ export function WorkOrderPopup({
               <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                 {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total', ''].map(h => <div key={h} style={thS}>{h}</div>)}
               </div>
-              <div data-st-scroll="" style={{ overflowY: stRows.length > 5 ? 'auto' : 'visible', maxHeight: stRows.length > 5 ? 200 : undefined, pointerEvents: isCompleted ? 'none' : undefined, opacity: isCompleted ? 0.65 : 1 }}>
+              <div data-st-scroll="" style={{ pointerEvents: isCompleted ? 'none' : undefined, opacity: isCompleted ? 0.65 : 1 }}>
                 {stRows.map(r => {
                   const isDayRow = r.row_rate_type === 'day'
-                  const engName = liveForm?.engineer_name || booking.engineer_name || ''
+                  const engName = wo?.engineer || liveForm?.engineer_name || booking.engineer_name || ''
                   const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || ''
                   const engRateNum = parseFloat((engRateDisplay ?? '').replace(/[^0-9.]/g, '')) || 0
                   const engHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
@@ -1383,7 +1409,7 @@ export function WorkOrderPopup({
                           >Revert</button>
                         </div>
                       )}
-                      {engName && (
+                      {(showEngRows || !!engName) && (
                         <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                           <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
                           <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engName}</div>
@@ -1409,7 +1435,10 @@ export function WorkOrderPopup({
                 })}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: '#1a1e28', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <button type="button" onClick={addStRow} disabled={isCompleted} style={{ fontSize: 10, fontFamily: 'DM Mono', color: isCompleted ? '#4a4f60' : '#8a8fa0', background: 'none', border: 'none', cursor: isCompleted ? 'default' : 'pointer', padding: 0 }}>+ Add row</button>
+                <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                  <button type="button" onClick={addStRow} disabled={isCompleted} style={{ fontSize: 10, fontFamily: 'DM Mono', color: isCompleted ? '#4a4f60' : '#8a8fa0', background: 'none', border: 'none', cursor: isCompleted ? 'default' : 'pointer', padding: 0 }}>+ Add row</button>
+                  {!showEngRows && <button type="button" onClick={() => setShowEngRows(true)} disabled={isCompleted} style={{ fontSize: 10, fontFamily: 'DM Mono', color: isCompleted ? '#4a4f60' : '#c8f04e88', background: 'none', border: 'none', cursor: isCompleted ? 'default' : 'pointer', padding: 0 }}>+ Add Eng</button>}
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
                   <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0' }}>Studio: ${stTotal.toFixed(2)}</span>
                   {engTotal > 0 && (

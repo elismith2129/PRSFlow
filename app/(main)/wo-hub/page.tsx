@@ -383,23 +383,6 @@ export default function WoHubPage() {
                     {e.total > 0 ? fmtMoney(e.total) : '—'}
                   </div>
 
-                  {/* Status badge — 110px fixed, centered */}
-                  <div style={{
-                    width: 110, flexShrink: 0,
-                    display: 'flex', justifyContent: 'center',
-                  }}>
-                    <div style={{
-                      fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
-                      letterSpacing: '0.06em',
-                      background: STATUS_BG[e.status],
-                      color: STATUS_COLORS[e.status],
-                      border: `1px solid ${STATUS_COLORS[e.status]}`,
-                      borderRadius: 4, padding: '2px 8px',
-                      whiteSpace: 'nowrap',
-                    }}>
-                      {STATUS_LABELS[e.status]}
-                    </div>
-                  </div>
                 </div>
               </div>
             )

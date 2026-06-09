@@ -273,17 +273,15 @@ export function LocationStrip() {
             <TwoCheckbox label="Runner" checked={runnerDone} color={col} />
             <TwoCheckbox label="Admin" checked={!!adminDone} color={col} />
           </div>
-          {wo && (
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button
-                onClick={e => { e.stopPropagation(); setWoBooking(b) }}
-                style={{ fontSize: 10, color: col, fontFamily: 'Syne, sans-serif', padding: '4px 9px', border: `1px solid ${col}55`, borderRadius: 6, background: `${col}12`, cursor: 'pointer', fontWeight: 700 }}
-              >
-                View / Edit
-              </button>
-              <a href={`/wo/${wo.id}/print`} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Syne, sans-serif', textDecoration: 'none', padding: '4px 9px', border: '1px solid var(--border)', borderRadius: 6 }}>PDF</a>
-            </div>
-          )}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={e => { e.stopPropagation(); setWoBooking(b) }}
+              style={{ fontSize: 10, color: col, fontFamily: 'Syne, sans-serif', padding: '4px 9px', border: `1px solid ${col}55`, borderRadius: 6, background: `${col}12`, cursor: 'pointer', fontWeight: 700 }}
+            >
+              View / Edit
+            </button>
+            {wo && <a href={`/wo/${wo.id}/print`} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Syne, sans-serif', textDecoration: 'none', padding: '4px 9px', border: '1px solid var(--border)', borderRadius: 6 }}>PDF</a>}
+          </div>
         </div>
       </div>
     )
@@ -321,9 +319,7 @@ export function LocationStrip() {
               <div style={{ padding: '10px 14px 12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13, color: active ? loc.color : 'var(--text2)' }}>{loc.label}</div>
-                  {!loadingSummary && pending > 0 && (
-                    <div style={{ background: '#f0a24e', color: '#0d0f14', borderRadius: 100, fontSize: 9, fontWeight: 800, padding: '1px 6px', fontFamily: 'DM Mono, monospace' }}>{pending}</div>
-                  )}
+
                 </div>
                 <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: active ? loc.color : 'var(--text3)', marginTop: 2 }}>
                   {loadingSummary ? '…' : active ? `${sessCount} SESSION${sessCount !== 1 ? 'S' : ''}` : 'OPEN'}
