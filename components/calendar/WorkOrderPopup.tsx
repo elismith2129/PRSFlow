@@ -861,7 +861,6 @@ export function WorkOrderPopup({
   // ── Add studio time row ────────────────────────────────────────────────────
 
   async function addStRow() {
-    const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
     const last = stRows[stRows.length - 1]
     const rowRateType = last?.row_rate_type || 'hour'
     const fromTime = last?.from_time || ''
@@ -894,7 +893,7 @@ export function WorkOrderPopup({
       row_rate_type: rowRateType,
       ot_rate: last?.ot_rate ? (parseFloat(last.ot_rate.replace(/[^0-9.]/g, '')) || null) : null,
       charge,
-      sort_order: maxOrder + 1,
+      sort_order: Date.now(),
     }
     const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
     if (data) {
@@ -904,7 +903,6 @@ export function WorkOrderPopup({
   }
 
   async function addEngRow() {
-    const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
     const lastEng = [...stRows].reverse().find(r => r.eng_rate || (r.eng_hours ?? 0) > 0 || r.eng_from_time) || stRows[stRows.length - 1]
     const newRow = {
       work_order_id: woIdRef.current!,
@@ -919,7 +917,7 @@ export function WorkOrderPopup({
       row_rate_type: 'hour',
       ot_rate: null,
       charge: null,
-      sort_order: maxOrder + 1,
+      sort_order: Date.now(),
       eng_from_time: lastEng?.eng_from_time || '',
       eng_to_time: lastEng?.eng_to_time || '',
       eng_rate: lastEng?.eng_rate || '',
