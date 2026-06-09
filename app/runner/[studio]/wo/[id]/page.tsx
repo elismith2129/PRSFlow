@@ -552,7 +552,7 @@ export default function RunnerWOPage() {
     if (!woRef.current) return
     setSubmitting(true)
     const now = new Date().toISOString()
-    const localToday = getLocalToday()
+    const localToday = (() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10) })()
     await supabase.from('work_orders').update({
       runner_finished: true,
       runner_finished_at: now,
