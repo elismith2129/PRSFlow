@@ -301,6 +301,7 @@ export function WorkOrderPopup({
   const pendingNoteKey = useRef<{ key: string; equipment: string; date: string } | null>(null)
   const addingStRowRef = useRef(false)
   const addingEngRowRef = useRef(false)
+  const originalStRowsRef = useRef<StRow[]>([])
 
   // Map liveForm fields onto WO state — seeds WO from current booking form values on open
   function applyLiveForm(base: WO): WO {
@@ -560,8 +561,11 @@ export function WorkOrderPopup({
           // 4. Reload all rows fresh from DB — never merge in-memory arrays
           const { data: reloaded } = await supabase.from('studio_time_rows')
             .select('*').eq('work_order_id', existing.id).order('date')
-          setStRows((reloaded ?? []).map(normalizeStRow))
+          const reloadedRows = (reloaded ?? []).map(normalizeStRow)
+          originalStRowsRef.current = reloadedRows
+          setStRows(reloadedRows)
         } else {
+          originalStRowsRef.current = rows
           setStRows(rows)
         }
       } else {
@@ -605,7 +609,9 @@ export function WorkOrderPopup({
         }
         const { data: reloaded } = await supabase.from('studio_time_rows')
           .select('*').eq('work_order_id', existing.id).order('sort_order')
-        setStRows((reloaded ?? []).map(normalizeStRow))
+        const reloadedRows2 = (reloaded ?? []).map(normalizeStRow)
+        originalStRowsRef.current = reloadedRows2
+        setStRows(reloadedRows2)
       }
       if (eq?.length) setEquipRows(eq as EquipRow[])
       if (eqNotes?.length) {
@@ -687,7 +693,11 @@ export function WorkOrderPopup({
         }
       })
       const { data: stCreated } = await supabase.from('studio_time_rows').insert(stPayloads).select('*')
-      if (stCreated) setStRows(stCreated.map(normalizeStRow))
+      if (stCreated) {
+        const createdRows = stCreated.map(normalizeStRow)
+        originalStRowsRef.current = createdRows
+        setStRows(createdRows)
+      }
 
       // Auto-generate equipment condition rows
       const eqPayloads = dates.flatMap(d =>
@@ -862,7 +872,7 @@ export function WorkOrderPopup({
 
   async function addStRow() {
     const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
-    const last = stRows[stRows.length - 1]
+    const last = [...stRows].reverse().find(r => !!(r.studio || r.date)) ?? stRows[stRows.length - 1]
     const rowRateType = last?.row_rate_type || 'hour'
     const fromTime = last?.from_time || ''
     const toTime = last?.to_time || ''
@@ -1083,8 +1093,19 @@ export function WorkOrderPopup({
         : supabase.from('payment_rows').insert(payload)
     }))
 
+    originalStRowsRef.current = stRows
     setSaving(false)
     onSaved?.()
+    onClose()
+  }
+
+  async function handleCancel() {
+    const originalIds = new Set(originalStRowsRef.current.map(r => r.id))
+    const added = stRows.filter(r => !originalIds.has(r.id))
+    if (added.length) {
+      await supabase.from('studio_time_rows').delete().in('id', added.map(r => r.id))
+    }
+    setStRows(originalStRowsRef.current)
     onClose()
   }
 
@@ -1738,7 +1759,7 @@ export function WorkOrderPopup({
           <button onClick={() => printWithFilename()} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
             Export PDF
           </button>
-          <button onClick={() => onClose()} disabled={saving} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
+          <button onClick={() => handleCancel()} disabled={saving} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
             Cancel
           </button>
           <button
