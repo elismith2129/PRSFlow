@@ -141,35 +141,29 @@ export function LocationStrip() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadSummaries() {
-    const [{ data: bkgs }, { data: wos }, { data: ops }, { data: yBkgs }, { data: yWOs }, { data: yOps }, { data: submittedStRows }] = await Promise.all([
+    const [{ data: bkgs }, { data: wos }, { data: ops }, { data: yOps }, { data: submittedStRows }] = await Promise.all([
       supabase.from('bookings').select('id, location, status').eq('start_date', today).eq('status', 'confirmed'),
       supabase.from('work_orders').select('id, booking_id').eq('session_date', today),
       supabase.from('daily_ops_submissions').select('studio, category, submitted_at, admin_approved_at').eq('date', today),
-      supabase.from('bookings').select('id, location, status').eq('start_date', yesterday).eq('status', 'confirmed'),
-      supabase.from('work_orders').select('id, booking_id').eq('session_date', yesterday),
       supabase.from('daily_ops_submissions').select('studio, category, submitted_at, admin_approved_at').eq('date', yesterday),
-      supabase.from('studio_time_rows').select('work_order_id').in('date', [today, yesterday]).eq('status', 'submitted'),
+      supabase.from('studio_time_rows').select('work_order_id').eq('date', today).eq('status', 'submitted'),
     ])
 
     const submittedWoIds = new Set((submittedStRows ?? []).map((r: any) => r.work_order_id).filter(Boolean))
 
     const result: Record<string, StudioSummary> = {}
     for (const loc of LOCATIONS) {
-      const locBkgs  = (bkgs ?? []).filter(b => matchesLoc(b.location, loc.key, loc.abbr))
-      const bkgIds   = new Set(locBkgs.map(b => b.id))
-      const locWOs   = (wos ?? []).filter(w => w.booking_id && bkgIds.has(w.booking_id))
-      const locOps   = (ops ?? []).filter(o => (o as any).studio === loc.key)
-      const yLocBkgs = (yBkgs ?? []).filter(b => matchesLoc(b.location, loc.key, loc.abbr))
-      const yBkgIds  = new Set(yLocBkgs.map(b => b.id))
-      const yLocWOs  = (yWOs ?? []).filter(w => w.booking_id && yBkgIds.has(w.booking_id))
-      const yLocOps  = (yOps ?? []).filter(o => (o as any).studio === loc.key)
+      const locBkgs = (bkgs ?? []).filter(b => matchesLoc(b.location, loc.key, loc.abbr))
+      const bkgIds  = new Set(locBkgs.map(b => b.id))
+      const locWOs  = (wos ?? []).filter(w => w.booking_id && bkgIds.has(w.booking_id))
+      const locOps  = (ops ?? []).filter(o => (o as any).studio === loc.key)
+      const yLocOps = (yOps ?? []).filter(o => (o as any).studio === loc.key)
 
       result[loc.key] = {
         sessionCount: locBkgs.length,
         pendingCount:
           locWOs.filter(w => submittedWoIds.has(w.id)).length +
           locOps.filter(o => o.submitted_at && !o.admin_approved_at).length +
-          yLocWOs.filter(w => submittedWoIds.has(w.id)).length +
           yLocOps.filter((o: any) => o.submitted_at && !o.admin_approved_at).length,
       }
     }
@@ -203,6 +197,24 @@ export function LocationStrip() {
     const woMapYest: Record<string, WO> = {}
     for (const w of yWOs.data ?? []) if (w.booking_id) woMapYest[w.booking_id] = w
 
+    // Fetch today's stRow statuses to filter out fully-approved sessions
+    const todayWoIds = (tWOs.data ?? []).map((w: any) => w.id).filter(Boolean)
+    const { data: todayStRowsData } = todayWoIds.length > 0
+      ? await supabase.from('studio_time_rows').select('work_order_id, status').in('work_order_id', todayWoIds).eq('date', today)
+      : { data: [] as any[] }
+    const stRowStatusesByWoId: Record<string, string[]> = {}
+    for (const r of todayStRowsData ?? []) {
+      if (!stRowStatusesByWoId[r.work_order_id]) stRowStatusesByWoId[r.work_order_id] = []
+      stRowStatusesByWoId[r.work_order_id].push(r.status)
+    }
+    const activeTodayBkgs = locTodayBkgs.filter(b => {
+      const wo = woMapToday[b.id]
+      if (!wo) return true
+      const statuses = stRowStatusesByWoId[wo.id] ?? []
+      if (statuses.length === 0) return true
+      return statuses.some(s => s !== 'approved')
+    })
+
     const clProgress: Record<string, ChecklistProgress> = {}
     for (const row of tChecklists.data ?? []) {
       const catKey = `${row.type}_checklist`
@@ -213,7 +225,7 @@ export function LocationStrip() {
       clProgress[catKey] = { checked: done, total }
     }
 
-    setSessions(locTodayBkgs.map(b => ({ booking: b as Booking, wo: woMapToday[b.id] ?? null })))
+    setSessions(activeTodayBkgs.map(b => ({ booking: b as Booking, wo: woMapToday[b.id] ?? null })))
     setOpsRows(tOps.data ?? [])
     setYestSessions(locYestBkgs.map(b => ({ booking: b as Booking, wo: woMapYest[b.id] ?? null })))
     setYestOpsRows(yOps.data ?? [])

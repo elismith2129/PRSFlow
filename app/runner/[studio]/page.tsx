@@ -10,12 +10,6 @@ function getLocalToday(): string {
   return now.toISOString().slice(0, 10)
 }
 
-function getLocalYesterday(): string {
-  const now = new Date()
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
-  now.setDate(now.getDate() - 1)
-  return now.toISOString().slice(0, 10)
-}
 
 const STUDIO_META: Record<string, { label: string; abbr: string; color: string }> = {
   paramount: { label: 'Paramount', abbr: 'PRS', color: '#c8f04e' },
@@ -34,12 +28,9 @@ export default function StudioDailyOpsPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [woMap, setWoMap] = useState<Record<string, WOStatus>>({})
   const [loading, setLoading] = useState(true)
-  const [yesterdayBookings, setYesterdayBookings] = useState<Booking[]>([])
-  const [yesterdayWoMap, setYesterdayWoMap] = useState<Record<string, WOStatus>>({})
 
-  // Stable date strings — local calendar dates matching how bookings are stored
+  // Stable today string — local calendar date matching how bookings are stored
   const today = getLocalToday()
-  const yesterday = getLocalYesterday()
 
   const load = useCallback(async () => {
     // ── Today ──────────────────────────────────────────────────────────────
@@ -71,55 +62,8 @@ export default function StudioDailyOpsPage() {
       setWoMap({})
     }
 
-    // ── Yesterday — sessions with submitted studio_time_rows ───────────────
-    const { data: yBData } = await supabase
-      .from('bookings')
-      .select('*')
-      .eq('start_date', yesterday)
-      .eq('status', 'confirmed')
-
-    const yFiltered = (yBData ?? []).filter((b: Booking) => {
-      const loc = (b.location ?? '').toLowerCase()
-      return loc.includes(studio) || loc.includes(meta.abbr.toLowerCase())
-    })
-
-    if (yFiltered.length > 0) {
-      const yBkgIds = yFiltered.map((b: Booking) => b.id)
-      const { data: yWos } = await supabase
-        .from('work_orders')
-        .select('id, booking_id, status')
-        .in('booking_id', yBkgIds)
-      const yWoIds = (yWos ?? []).map((w: any) => w.id).filter(Boolean)
-
-      if (yWoIds.length > 0) {
-        const { data: yStRows } = await supabase
-          .from('studio_time_rows')
-          .select('work_order_id')
-          .in('work_order_id', yWoIds)
-          .eq('date', yesterday)
-          .eq('status', 'submitted')
-        const submittedWoIds = new Set((yStRows ?? []).map((r: any) => r.work_order_id).filter(Boolean))
-        const yWoMap: Record<string, WOStatus> = {}
-        const pendingBkgIds = new Set<string>()
-        for (const w of yWos ?? []) {
-          if (w.booking_id && submittedWoIds.has(w.id)) {
-            yWoMap[w.booking_id] = { id: w.id, status: w.status }
-            pendingBkgIds.add(w.booking_id)
-          }
-        }
-        setYesterdayBookings(yFiltered.filter((b: Booking) => pendingBkgIds.has(b.id)))
-        setYesterdayWoMap(yWoMap)
-      } else {
-        setYesterdayBookings([])
-        setYesterdayWoMap({})
-      }
-    } else {
-      setYesterdayBookings([])
-      setYesterdayWoMap({})
-    }
-
     setLoading(false)
-  }, [studio, today, yesterday, meta.abbr]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [studio, today, meta.abbr]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initial load
   useEffect(() => { load() }, [load])
@@ -170,19 +114,6 @@ export default function StudioDailyOpsPage() {
     }
   }, [studio, today, load])
 
-  // Real-time: re-run load when a yesterday studio_time_row status changes (submitted → approved)
-  useEffect(() => {
-    const channel = supabase
-      .channel(`runner-strows-${studio}-${yesterday}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'studio_time_rows',
-        filter: `date=eq.${yesterday}`,
-      }, () => { load() })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [studio, yesterday, load])
 
   function statusBadge(status: string) {
     const colors: Record<string, string> = {
@@ -337,63 +268,6 @@ export default function StudioDailyOpsPage() {
             </div>
           )}
         </div>
-
-        {/* Yesterday — Pending Approval */}
-        {yesterdayBookings.length > 0 && (
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#fb923c', marginBottom: 12 }}>
-              Yesterday · Pending Approval · {yesterdayBookings.length}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {yesterdayBookings.map(b => {
-                const wo = yesterdayWoMap[b.id] ?? null
-                return (
-                  <div
-                    key={b.id}
-                    onClick={() => wo && router.push(`/runner/${studio}/wo/${wo.id}`)}
-                    style={{
-                      background: '#161920',
-                      border: '1px solid #fb923c33',
-                      borderRadius: 12,
-                      padding: '14px 16px',
-                      cursor: wo ? 'pointer' : 'default',
-                      WebkitTapHighlightColor: 'transparent',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#e8eaf2', marginBottom: 2 }}>
-                          {b.artist || b.client_name || '—'}
-                        </div>
-                        {b.artist && b.client_name && (
-                          <div style={{ fontSize: 11, color: '#8b90a8' }}>{b.client_name}</div>
-                        )}
-                      </div>
-                      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#fb923c', background: '#fb923c22', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>
-                        Pending
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>
-                        {b.from_time ?? '?'} – {b.to_time ?? '?'}
-                      </span>
-                      {b.studio && (
-                        <span style={{ fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>
-                          Studio {b.studio}
-                        </span>
-                      )}
-                      {b.engineer_name && (
-                        <span style={{ fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>
-                          Eng: {b.engineer_name}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Quick Actions */}
         <div>
