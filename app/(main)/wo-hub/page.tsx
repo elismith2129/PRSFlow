@@ -319,11 +319,10 @@ export default function WoHubPage() {
                   padding: '10px 16px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 14,
                   minWidth: 0,
                 }}>
-                  {/* Client + artist */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* Client + artist — flexible, takes remaining space */}
+                  <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
                     <div style={{
                       fontFamily: 'DM Mono', fontWeight: 700, fontSize: 13,
                       color: 'var(--text)',
@@ -342,66 +341,85 @@ export default function WoHubPage() {
                     )}
                   </div>
 
-                  {/* Studio pill */}
-                  {pill && (
-                    <div style={{
-                      fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
-                      letterSpacing: '0.06em',
-                      background: 'var(--surface2)', color: 'var(--text2)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 4, padding: '2px 6px', flexShrink: 0,
-                    }}>
-                      {pill}
-                    </div>
-                  )}
-
-                  {/* Date range */}
+                  {/* Studio badge — 60px fixed */}
                   <div style={{
+                    width: 60, flexShrink: 0,
+                    display: 'flex', justifyContent: 'center',
+                  }}>
+                    {pill ? (
+                      <div style={{
+                        fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
+                        letterSpacing: '0.06em',
+                        background: 'var(--surface2)', color: 'var(--text2)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 4, padding: '2px 6px',
+                      }}>
+                        {pill}
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono' }}>—</span>
+                    )}
+                  </div>
+
+                  {/* Date range — 120px fixed */}
+                  <div style={{
+                    width: 120, flexShrink: 0,
                     fontSize: 11, color: 'var(--text2)',
-                    fontFamily: 'DM Mono', whiteSpace: 'nowrap', flexShrink: 0,
+                    fontFamily: 'DM Mono', whiteSpace: 'nowrap',
                   }}>
                     {fmtDateRange(e.booking.start_date, e.booking.end_date)}
                   </div>
 
-                  {/* Invoice number */}
+                  {/* Invoice number — 80px fixed */}
                   <div style={{
-                    fontSize: 11, color: 'var(--text3)',
-                    fontFamily: 'DM Mono', flexShrink: 0,
+                    width: 80, flexShrink: 0,
+                    fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono',
                   }}>
                     {e.invoiceNum ? `#${e.invoiceNum}` : '—'}
                   </div>
 
-                  {/* Payment type badge */}
+                  {/* Payment type badge — 80px fixed, centered */}
                   <div style={{
-                    fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
-                    letterSpacing: '0.06em',
-                    background: cod ? 'rgba(109,127,199,0.15)' : 'rgba(150,169,255,0.15)',
-                    color: cod ? '#6D7FC7' : '#96A9FF',
-                    border: `1px solid ${cod ? '#6D7FC7' : '#96A9FF'}`,
-                    borderRadius: 4, padding: '2px 6px', flexShrink: 0,
+                    width: 80, flexShrink: 0,
+                    display: 'flex', justifyContent: 'center',
                   }}>
-                    {cod ? 'COD' : 'LABEL'}
+                    <div style={{
+                      fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
+                      letterSpacing: '0.06em',
+                      background: cod ? 'rgba(109,127,199,0.15)' : 'rgba(150,169,255,0.15)',
+                      color: cod ? '#6D7FC7' : '#96A9FF',
+                      border: `1px solid ${cod ? '#6D7FC7' : '#96A9FF'}`,
+                      borderRadius: 4, padding: '2px 6px',
+                    }}>
+                      {cod ? 'COD' : 'LABEL'}
+                    </div>
                   </div>
 
-                  {/* Total */}
+                  {/* Total — 90px fixed, right-aligned */}
                   <div style={{
+                    width: 90, flexShrink: 0,
                     fontSize: 13, fontFamily: 'DM Mono', fontWeight: 700,
-                    color: 'var(--text)', flexShrink: 0, minWidth: 90, textAlign: 'right',
+                    color: 'var(--text)', textAlign: 'right',
                   }}>
                     {e.total > 0 ? fmtMoney(e.total) : '—'}
                   </div>
 
-                  {/* Status badge */}
+                  {/* Status badge — 110px fixed, centered */}
                   <div style={{
-                    fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
-                    letterSpacing: '0.06em',
-                    background: STATUS_BG[e.status],
-                    color: STATUS_COLORS[e.status],
-                    border: `1px solid ${STATUS_COLORS[e.status]}`,
-                    borderRadius: 4, padding: '2px 8px',
-                    flexShrink: 0, whiteSpace: 'nowrap',
+                    width: 110, flexShrink: 0,
+                    display: 'flex', justifyContent: 'center',
                   }}>
-                    {STATUS_LABELS[e.status]}
+                    <div style={{
+                      fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
+                      letterSpacing: '0.06em',
+                      background: STATUS_BG[e.status],
+                      color: STATUS_COLORS[e.status],
+                      border: `1px solid ${STATUS_COLORS[e.status]}`,
+                      borderRadius: 4, padding: '2px 8px',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {STATUS_LABELS[e.status]}
+                    </div>
                   </div>
                 </div>
               </div>
