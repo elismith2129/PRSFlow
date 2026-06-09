@@ -279,18 +279,13 @@ export default function WoHubPage() {
                   alignItems: 'stretch',
                   background: 'var(--surface)',
                   border: '1px solid var(--border)',
+                  borderLeft: `4px solid ${STATUS_COLORS[e.status]}`,
                   borderRadius: 8,
                   cursor: 'pointer',
                   overflow: 'hidden',
                   marginBottom: 6,
                 }}
               >
-                {/* Left status bar */}
-                <div style={{
-                  width: 4,
-                  background: STATUS_COLORS[e.status],
-                  flexShrink: 0,
-                }} />
 
                 {/* Row content */}
                 <div style={{

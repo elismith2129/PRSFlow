@@ -280,7 +280,7 @@ export function LocationStrip() {
             >
               View / Edit
             </button>
-            {wo && <a href={`/wo/${wo.id}/print`} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Syne, sans-serif', textDecoration: 'none', padding: '4px 9px', border: '1px solid var(--border)', borderRadius: 6 }}>PDF</a>}
+            <a href={wo ? `/wo/${wo.id}/print` : '#'} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Syne, sans-serif', textDecoration: 'none', padding: '4px 9px', border: '1px solid var(--border)', borderRadius: 6 }}>PDF</a>
           </div>
         </div>
       </div>
