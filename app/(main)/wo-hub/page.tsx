@@ -295,6 +295,20 @@ export default function WoHubPage() {
                   alignItems: 'center',
                   minWidth: 0,
                 }}>
+                  {/* Status pill — left side */}
+                  <div style={{ flexShrink: 0, marginRight: 12 }}>
+                    <div style={{
+                      fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
+                      letterSpacing: '0.08em',
+                      background: STATUS_BG[e.status],
+                      color: STATUS_COLORS[e.status],
+                      border: `1px solid ${STATUS_COLORS[e.status]}`,
+                      borderRadius: 4, padding: '2px 7px',
+                    }}>
+                      {STATUS_LABELS[e.status]}
+                    </div>
+                  </div>
+
                   {/* Client + artist — flexible, takes remaining space */}
                   <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
                     <div style={{
@@ -376,20 +390,6 @@ export default function WoHubPage() {
                     color: 'var(--text)', textAlign: 'right',
                   }}>
                     {e.total > 0 ? fmtMoney(e.total) : '—'}
-                  </div>
-
-                  {/* Status pill — 90px fixed */}
-                  <div style={{ width: 90, flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>
-                    <div style={{
-                      fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
-                      letterSpacing: '0.08em',
-                      background: STATUS_BG[e.status],
-                      color: STATUS_COLORS[e.status],
-                      border: `1px solid ${STATUS_COLORS[e.status]}`,
-                      borderRadius: 4, padding: '2px 7px',
-                    }}>
-                      {STATUS_LABELS[e.status]}
-                    </div>
                   </div>
 
                 </div>
