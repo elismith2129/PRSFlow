@@ -378,6 +378,20 @@ export default function WoHubPage() {
                     {e.total > 0 ? fmtMoney(e.total) : '—'}
                   </div>
 
+                  {/* Status pill — 90px fixed */}
+                  <div style={{ width: 90, flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>
+                    <div style={{
+                      fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
+                      letterSpacing: '0.08em',
+                      background: STATUS_BG[e.status],
+                      color: STATUS_COLORS[e.status],
+                      border: `1px solid ${STATUS_COLORS[e.status]}`,
+                      borderRadius: 4, padding: '2px 7px',
+                    }}>
+                      {STATUS_LABELS[e.status]}
+                    </div>
+                  </div>
+
                 </div>
               </div>
             )
