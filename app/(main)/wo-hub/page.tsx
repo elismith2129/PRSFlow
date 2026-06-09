@@ -6,7 +6,7 @@ import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type WoStatus = 'in_progress' | 'submitted' | 'approved'
+type WoStatus = 'open' | 'completed'
 
 type WoEntry = {
   woId: string
@@ -19,25 +19,22 @@ type WoEntry = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<WoStatus, string> = {
-  in_progress: '#6B7280',
-  submitted:   '#F97316',
-  approved:    '#14B8A6',
+  open:      '#6B7280',
+  completed: '#14B8A6',
 }
 
 const STATUS_BG: Record<WoStatus, string> = {
-  in_progress: 'rgba(107,114,128,0.13)',
-  submitted:   'rgba(249,115,22,0.13)',
-  approved:    'rgba(20,184,166,0.13)',
+  open:      'rgba(107,114,128,0.13)',
+  completed: 'rgba(20,184,166,0.13)',
 }
 
 const STATUS_LABELS: Record<WoStatus, string> = {
-  in_progress: 'IN PROGRESS',
-  submitted:   'SUBMITTED',
-  approved:    'APPROVED',
+  open:      'OPEN',
+  completed: 'COMPLETED',
 }
 
 const STUDIO_PILLS = ['ALL', 'PRS', 'ARS', 'ERS', 'TRK'] as const
-const STATUS_PILLS  = ['ALL', 'IN PROGRESS', 'SUBMITTED', 'APPROVED'] as const
+const STATUS_PILLS  = ['ALL', 'OPEN', 'COMPLETED'] as const
 
 type StudioFilter = typeof STUDIO_PILLS[number]
 type StatusFilter  = typeof STATUS_PILLS[number]
@@ -50,9 +47,8 @@ const VENUE_MAP: Record<string, StudioFilter> = {
 }
 
 const STATUS_FILTER_MAP: Partial<Record<StatusFilter, WoStatus>> = {
-  'IN PROGRESS': 'in_progress',
-  'SUBMITTED':   'submitted',
-  'APPROVED':    'approved',
+  'OPEN':      'open',
+  'COMPLETED': 'completed',
 }
 
 // session_type values to exclude (historical import data uses these)
@@ -151,7 +147,7 @@ export default function WoHubPage() {
       if (EXCLUDED_TYPES.has(st)) continue
 
       const rows   = stRowMap.get(wo.id) ?? []
-      const status = ((wo.status || 'in_progress') as WoStatus)
+      const status = ((wo.status || 'open') as WoStatus)
       const total  = computeTotal(rows)
 
       result.push({

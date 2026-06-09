@@ -72,8 +72,6 @@ export default function RunnerWOPage() {
   const [submitting, setSubmitting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [runnerFinished, setRunnerFinished] = useState(false)
-  const [showFinishConfirm, setShowFinishConfirm] = useState(false)
   const [otHours, setOtHours] = useState<Record<string, string>>({})
   const [engHoursMap, setEngHoursMap] = useState<Record<string, string>>({})
   const [fromTimeMap, setFromTimeMap] = useState<Record<string, string>>({})
@@ -131,7 +129,7 @@ export default function RunnerWOPage() {
               client: booking.client_name,
               artist: booking.artist,
               payment_status: booking.payment_type,
-              status: 'draft',
+              status: 'open',
             })
             .select()
             .single()
@@ -237,12 +235,6 @@ export default function RunnerWOPage() {
       setSessionNotes(woData?.session_notes ?? '')
       setNeedsAttentionNotes(woData?.needs_attention_notes ?? '')
       setNeedsAttentionPhotos(woData?.needs_attention_photos ?? [])
-      setRunnerFinished(
-        woData?.runner_finished === true ||
-        woData?.status === 'submitted' ||
-        woData?.status === 'approved'
-      )
-
       const conds: EquipCond = {}
       for (const r of eq ?? []) {
         conds[`${r.equipment}||${r.date}`] = r.condition
@@ -547,22 +539,6 @@ export default function RunnerWOPage() {
     }
   }
 
-  async function handleFinish() {
-    if (!woRef.current) return
-    setSubmitting(true)
-    const now = new Date().toISOString()
-    const localToday = (() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10) })()
-    await supabase.from('work_orders').update({
-      runner_finished: true,
-      runner_finished_at: now,
-      status: 'submitted',
-      submitted_at: now,
-    }).eq('id', woRef.current)
-    setSubmitting(false)
-    setRunnerFinished(true)
-    setShowFinishConfirm(false)
-  }
-
   async function handleSaveChanges() {
     if (!woRef.current) return
     setSaving(true)
@@ -648,6 +624,8 @@ export default function RunnerWOPage() {
     </div>
   )
 
+  const isCompleted = wo?.status === 'completed'
+
   return (
     <div style={{ minHeight: '100dvh', maxWidth: '100vw', overflowX: 'hidden', background: '#0d0f14', fontFamily: 'Syne, sans-serif', paddingBottom: 100 }}>
       {/* Session Notes Bottom Sheet */}
@@ -696,7 +674,14 @@ export default function RunnerWOPage() {
         </div>
       </div>
 
-      <div style={{ padding: '16px 16px' }}>
+      {isCompleted && (
+        <div style={{ background: 'rgba(20,184,166,0.12)', borderBottom: '1px solid rgba(20,184,166,0.3)', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 13, color: '#14B8A6' }}>✓</span>
+          <span style={{ fontSize: 12, color: '#14B8A6', fontFamily: 'DM Mono, monospace', fontWeight: 700 }}>This work order has been completed by admin. It is now read-only.</span>
+        </div>
+      )}
+
+      <div style={{ padding: '16px 16px', pointerEvents: isCompleted ? 'none' : undefined, opacity: isCompleted ? 0.65 : 1 }}>
         {/* Session Info */}
         <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, padding: '14px 14px', marginBottom: 16 }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', marginBottom: 10 }}>Session Info</div>
@@ -1138,23 +1123,7 @@ export default function RunnerWOPage() {
         </div>
       </div>
 
-      {/* Finish confirmation dialog */}
-      {showFinishConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}>
-          <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 16, padding: '24px 20px', width: '100%', maxWidth: 320 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#e8eaf2', marginBottom: 8, fontFamily: 'Syne, sans-serif' }}>Finish Work Order?</div>
-            <div style={{ fontSize: 13, color: '#8b90a8', fontFamily: 'DM Mono, monospace', marginBottom: 20, lineHeight: 1.5 }}>Are you sure this WO is complete?</div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setShowFinishConfirm(false)} style={{ flex: 1, padding: '12px 0', background: '#2a2e3d', color: '#e8eaf2', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>Cancel</button>
-              <button onClick={handleFinish} disabled={submitting} style={{ flex: 1, padding: '12px 0', background: meta.color, color: '#0d0f14', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1, fontFamily: 'Syne, sans-serif' }}>
-                {submitting ? 'Finishing…' : 'Confirm'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Footer — Cancel | Save | Finish (always visible, WO stays editable after finish) */}
+      {/* Footer — Cancel | Save */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: '#0d0f14', borderTop: '1px solid #2a2e3d' }}>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
@@ -1165,16 +1134,10 @@ export default function RunnerWOPage() {
           </button>
           <button
             onClick={handleSaveChanges}
-            disabled={saving}
-            style={{ flex: 1, padding: '14px 0', background: '#1e2130', color: '#e8eaf2', border: '1px solid #2a2e3d', borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'Syne, sans-serif' }}
+            disabled={saving || isCompleted}
+            style={{ flex: 2, padding: '14px 0', background: meta.color, color: '#0d0f14', border: 'none', borderRadius: 12, fontSize: 13, fontWeight: 800, cursor: (saving || isCompleted) ? 'not-allowed' : 'pointer', opacity: (saving || isCompleted) ? 0.5 : 1, fontFamily: 'Syne, sans-serif' }}
           >
             {saving ? 'Saving…' : 'Save'}
-          </button>
-          <button
-            onClick={() => setShowFinishConfirm(true)}
-            style={{ flex: 2, padding: '14px 0', background: runnerFinished ? '#16a34a33' : meta.color, color: runnerFinished ? '#4ade80' : '#0d0f14', border: runnerFinished ? '1px solid #4ade8055' : 'none', borderRadius: 12, fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
-          >
-            {runnerFinished ? '✓ Finished' : 'Finish Work Order'}
           </button>
         </div>
       </div>

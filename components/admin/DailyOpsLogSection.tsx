@@ -89,7 +89,7 @@ export function DailyOpsLogSection() {
     setLoading(true)
     const [{ data: wos }, { data: ops }] = await Promise.all([
       supabase.from('work_orders').select('*')
-        .or('admin_approved.eq.true,status.eq.approved')
+        .eq('status', 'completed')
         .order('admin_approved_at', { ascending: false, nullsFirst: false })
         .limit(500),
       supabase.from('daily_ops_submissions').select('*')

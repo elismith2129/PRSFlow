@@ -27,8 +27,7 @@ type WO = {
   id: string; booking_id: string | null; invoice_number: string | null
   client: string | null; artist: string | null; engineer: string | null
   from_time: string | null; to_time: string | null; studios: string[] | null
-  status: string; session_notes: string | null; approved_at: string | null
-  runner_finished: boolean | null; admin_approved: boolean | null
+  status: string; session_notes: string | null
   needs_attention_notes: string | null
 }
 
@@ -98,7 +97,6 @@ export function LocationStrip() {
   const [opsRows, setOpsRows]               = useState<DailyOpsRow[]>([])
   const [yestSessions, setYestSessions]     = useState<SessionRow[]>([])
   const [yestOpsRows, setYestOpsRows]       = useState<DailyOpsRow[]>([])
-  const [approvingId, setApprovingId]       = useState<string | null>(null)
   const [openModal, setOpenModal]           = useState<ModalTarget | null>(null)
   const [checklistProgress, setChecklistProgress] = useState<Record<string, ChecklistProgress>>({})
   // Ref for stable closure in realtime callbacks — always reflects current selectedLoc
@@ -139,7 +137,7 @@ export function LocationStrip() {
       supabase.from('bookings').select('id, location, status').lte('start_date', today).gte('end_date', today).eq('status', 'confirmed'),
       supabase.from('daily_ops_submissions').select('studio, category, submitted_at, admin_approved_at').eq('date', today),
       supabase.from('daily_ops_submissions').select('studio, category, submitted_at, admin_approved_at').eq('date', yesterday),
-      supabase.from('work_orders').select('booking_id').eq('status', 'submitted'),
+      supabase.from('work_orders').select('booking_id').eq('status', 'open'),
     ])
 
     const submittedBkgIds = new Set((submittedWOs ?? []).map((w: any) => w.booking_id).filter(Boolean))
@@ -191,7 +189,7 @@ export function LocationStrip() {
     const activeTodayBkgs = locTodayBkgs.filter(b => {
       const wo = woMapToday[b.id]
       if (!wo) return true
-      return wo.status !== 'approved'
+      return wo.status !== 'completed'
     })
 
     const clProgress: Record<string, ChecklistProgress> = {}
@@ -223,49 +221,28 @@ export function LocationStrip() {
     setSessions([]); setOpsRows([]); setYestSessions([]); setYestOpsRows([])
   }
 
-  async function approveWO(wo: WO) {
-    setApprovingId(wo.id)
-    const now = new Date().toISOString()
-    await supabase.from('work_orders').update({
-      status: 'approved',
-      approved_at: now,
-      approved_by: 'admin',
-      admin_approved: true,
-      admin_approved_at: now,
-    }).eq('id', wo.id)
-    if (wo.booking_id && wo.invoice_number) {
-      await supabase.from('bookings').update({ invoice_num: wo.invoice_number }).eq('id', wo.booking_id)
-    }
-    setApprovingId(null)
-    if (selectedLoc) await openDrawer(selectedLoc)
-    await loadSummaries()
-  }
-
   async function approveOps(category: string, date: string) {
     if (!selectedLoc) return
-    setApprovingId(category + date)
     const studioKey = category === 'mic_inventory' ? 'global' : selectedLoc.key
     await supabase.from('daily_ops_submissions').upsert({
       studio: studioKey, date, category,
       admin_approved_at: new Date().toISOString(), admin_approved_by: 'admin',
     }, { onConflict: 'studio,date,category' })
-    setApprovingId(null)
     if (selectedLoc) await openDrawer(selectedLoc)
     await loadSummaries()
   }
 
   const yestHasUnapproved = !!(selectedLoc && (
-    yestSessions.some(({ wo }) => wo && (wo.runner_finished || wo.status === 'submitted' || wo.status === 'approved') && !(wo.admin_approved || wo.status === 'approved')) ||
+    yestSessions.some(({ wo }) => wo && wo.status !== 'completed') ||
     DAILY_CATS.some(cat => { const r = yestOpsRows.find(o => o.category === cat.key); return r?.submitted_at && !r?.admin_approved_at })
   ))
 
   function SessionCard({ b, wo, isYesterday }: { b: Booking; wo: WO | null; isYesterday?: boolean }) {
-    const runnerDone     = !!wo && (wo.runner_finished || wo.status === 'submitted' || wo.status === 'approved')
-    const adminDone      = !!(wo?.admin_approved || wo?.status === 'approved')
-    const needsReview    = isYesterday && runnerDone && !adminDone
-    const needsAttention = runnerDone && !!(wo?.needs_attention_notes)
+    const runnerDone     = wo?.status === 'completed'
+    const adminDone      = wo?.status === 'completed'
+    const needsAttention = !!(wo?.needs_attention_notes)
     const col            = selectedLoc!.color
-    const borderColor    = needsAttention ? '#f9731655' : needsReview ? '#f0a24e55' : 'var(--border)'
+    const borderColor    = needsAttention ? '#f9731655' : 'var(--border)'
     return (
       <div style={{
         background: 'var(--surface)',
@@ -278,10 +255,9 @@ export function LocationStrip() {
             {b.artist && b.client_name && <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1 }}>{b.client_name}</div>}
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {needsAttention && !adminDone && (
+            {needsAttention && (
               <span style={{ fontSize: 9, fontWeight: 700, color: '#f97316', background: '#f9731622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>⚠ Needs Attention</span>
             )}
-            {needsReview && <span style={{ fontSize: 9, fontWeight: 700, color: '#f0a24e', background: '#f0a24e22', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>Review</span>}
             <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: b.status === 'confirmed' ? col : 'var(--text3)', background: (b.status === 'confirmed' ? col : 'var(--text3)') + '22', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>{b.status}</span>
           </div>
         </div>
@@ -295,8 +271,7 @@ export function LocationStrip() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', minWidth: 22 }}>WO</span>
             <TwoCheckbox label="Runner" checked={runnerDone} color={col} />
-            <TwoCheckbox label="Admin" checked={!!adminDone} clickable={runnerDone && !adminDone && !!wo} loading={approvingId === wo?.id} onClick={() => wo && approveWO(wo)} color={col} />
-            {wo && !runnerDone && <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>{wo.status}</span>}
+            <TwoCheckbox label="Admin" checked={!!adminDone} color={col} />
           </div>
           {wo && (
             <div style={{ display: 'flex', gap: 6 }}>
@@ -404,7 +379,7 @@ export function LocationStrip() {
 
                     {(() => {
                       const unapprovedSessions = yestSessions.filter(({ wo }) =>
-                        !(wo?.admin_approved || wo?.status === 'approved')
+                        wo?.status !== 'completed'
                       )
                       const unapprovedOpsCats = DAILY_CATS.filter(cat => {
                         const row = yestOpsRows.find(o => o.category === cat.key)

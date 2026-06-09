@@ -170,7 +170,7 @@ function normalizeWO(d: any): WO {
     po_number: d.po_number ?? '',
     phone: d.phone ?? '',
     email: d.email ?? '',
-    status: d.status ?? 'in_progress',
+    status: d.status ?? 'open',
     session_notes: d.session_notes ?? '',
     legal_signature: d.legal_signature ?? '',
     legal_name: d.legal_name ?? '',
@@ -280,7 +280,7 @@ export function WorkOrderPopup({
   ])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [approving, setApproving] = useState(false)
+  const [completing, setCompleting] = useState(false)
   const [pendingLockedEdits, setPendingLockedEdits] = useState<Record<string, StRow>>({})
   const [dirtyFields, setDirtyFields] = useState<Set<string>>(new Set())
   const [equipNotes, setEquipNotes] = useState<Record<string, EquipNote>>({})
@@ -452,7 +452,7 @@ export function WorkOrderPopup({
       }, (payload) => {
         const updated = payload.new as any
         setWo(prev => prev ? { ...prev, status: updated.status ?? prev.status } : prev)
-        onStatusChange?.(updated.status ?? 'in_progress')
+        onStatusChange?.(updated.status ?? 'open')
       })
       .subscribe()
 
@@ -474,7 +474,7 @@ export function WorkOrderPopup({
     if (existing) {
       woIdRef.current = existing.id
       setResolvedWoId(existing.id)
-      onStatusChange?.(existing.status ?? 'draft')
+      onStatusChange?.(existing.status ?? 'open')
       // Fix studios: if DB has empty array but booking has a studio, backfill from booking
       const rawStudios: string[] = existing.studios ?? []
       const studioLetter = booking.studio ? toStudioLetter(booking.studio) : ''
@@ -634,7 +634,7 @@ export function WorkOrderPopup({
         phone: booking.phone ?? '',
         email: booking.email ?? '',
         session_notes: booking.notes ?? '',
-        status: 'draft',
+        status: 'open',
       }
       const { data: created } = await supabase.from('work_orders').insert(woPayload).select('*').single()
       if (!created) { setLoading(false); return }
@@ -684,7 +684,7 @@ export function WorkOrderPopup({
       const { data: eqCreated } = await supabase.from('equipment_condition_rows').insert(eqPayloads).select('*')
       if (eqCreated) setEquipRows(eqCreated as EquipRow[])
 
-      onStatusChange?.('in_progress')
+      onStatusChange?.('open')
     }
     setLoading(false)
   }
@@ -901,23 +901,20 @@ export function WorkOrderPopup({
     }
   }
 
-  // ── Approve WO ────────────────────────────────────────────────────────────
+  // ── Complete WO ───────────────────────────────────────────────────────────
 
-  async function handleApprove() {
+  async function handleComplete() {
     if (!woIdRef.current || !wo) return
-    if (wo.status === 'approved') return
-    setApproving(true)
+    if (wo.status === 'completed') return
+    setCompleting(true)
     const now = new Date().toISOString()
     await supabase.from('work_orders').update({
-      status: 'approved',
-      approved_at: now,
-      approved_by: 'admin',
-      admin_approved: true,
+      status: 'completed',
       admin_approved_at: now,
     }).eq('id', woIdRef.current)
-    setWo(prev => prev ? { ...prev, status: 'approved' } : prev)
-    onStatusChange?.('approved')
-    setApproving(false)
+    setWo(prev => prev ? { ...prev, status: 'completed' } : prev)
+    onStatusChange?.('completed')
+    setCompleting(false)
   }
 
   // ── Save + close ──────────────────────────────────────────────────────────
@@ -1071,6 +1068,7 @@ export function WorkOrderPopup({
   if (!wo) return null
 
   const woId = woIdRef.current
+  const isCompleted = wo.status === 'completed'
 
   return createPortal(
     <div
@@ -1095,8 +1093,8 @@ export function WorkOrderPopup({
             </span>
             <span style={{
               fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 10,
-              background: wo.status === 'approved' ? 'rgba(200,240,78,0.15)' : wo.status === 'submitted' ? 'rgba(251,146,60,0.15)' : 'rgba(138,143,160,0.12)',
-              color: wo.status === 'approved' ? '#c8f04e' : wo.status === 'submitted' ? '#fb923c' : '#8a8fa0',
+              background: wo.status === 'completed' ? 'rgba(20,184,166,0.15)' : 'rgba(138,143,160,0.12)',
+              color: wo.status === 'completed' ? '#14B8A6' : '#8a8fa0',
             }}>{wo.status}</span>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -1242,7 +1240,7 @@ export function WorkOrderPopup({
               <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                 {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total', ''].map(h => <div key={h} style={thS}>{h}</div>)}
               </div>
-              <div data-st-scroll="" style={{ overflowY: stRows.length > 5 ? 'auto' : 'visible', maxHeight: stRows.length > 5 ? 200 : undefined }}>
+              <div data-st-scroll="" style={{ overflowY: stRows.length > 5 ? 'auto' : 'visible', maxHeight: stRows.length > 5 ? 200 : undefined, pointerEvents: isCompleted ? 'none' : undefined, opacity: isCompleted ? 0.65 : 1 }}>
                 {stRows.map(r => {
                   const isDayRow = r.row_rate_type === 'day'
                   const engName = liveForm?.engineer_name || booking.engineer_name || ''
@@ -1356,8 +1354,8 @@ export function WorkOrderPopup({
                         <div style={{ ...cellS, color: rowTotal > 0 ? '#c8f04e' : '#8a8fa0', fontWeight: rowTotal > 0 ? 600 : 400 }}>
                           {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : '—'}
                         </div>
-                        {/* Lock pill */}
-                        <div style={{ ...cellS, justifyContent: 'center', padding: '3px 4px' }}>
+                        {/* Lock pill — always clickable even when WO is completed */}
+                        <div style={{ ...cellS, justifyContent: 'center', padding: '3px 4px', pointerEvents: 'auto' }}>
                           <button
                             type="button"
                             onClick={() => handleToggleLock(r.id, r.admin_locked)}
@@ -1411,7 +1409,7 @@ export function WorkOrderPopup({
                 })}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: '#1a1e28', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <button type="button" onClick={addStRow} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button>
+                <button type="button" onClick={addStRow} disabled={isCompleted} style={{ fontSize: 10, fontFamily: 'DM Mono', color: isCompleted ? '#4a4f60' : '#8a8fa0', background: 'none', border: 'none', cursor: isCompleted ? 'default' : 'pointer', padding: 0 }}>+ Add row</button>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
                   <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0' }}>Studio: ${stTotal.toFixed(2)}</span>
                   {engTotal > 0 && (
@@ -1635,11 +1633,11 @@ export function WorkOrderPopup({
             Cancel
           </button>
           <button
-            onClick={handleApprove}
-            disabled={approving || wo?.status === 'approved'}
-            style={{ padding: '7px 18px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: (approving || wo?.status === 'approved') ? 'default' : 'pointer', background: wo?.status === 'approved' ? '#14B8A6' : approving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: (approving || wo?.status === 'approved') ? 0.8 : 1 }}
+            onClick={handleComplete}
+            disabled={completing || isCompleted}
+            style={{ padding: '7px 18px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: (completing || isCompleted) ? 'default' : 'pointer', background: isCompleted ? '#14B8A6' : completing ? 'rgba(20,184,166,0.5)' : '#14B8A6', border: 'none', color: '#0d0f14', opacity: (completing || isCompleted) ? 0.8 : 1 }}
           >
-            {wo?.status === 'approved' ? 'Approved ✓' : approving ? 'Approving…' : 'Approve'}
+            {isCompleted ? 'Completed ✓' : completing ? 'Completing…' : 'Complete WO'}
           </button>
           <button onClick={handleClose} disabled={saving} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Saving…' : 'Close & Save'}
