@@ -921,7 +921,7 @@ export function WorkOrderPopup({
     const newRow: StRow = {
       id: 'temp-' + Date.now() + '-' + Math.random(),
       studio: '',
-      date: '',
+      date: lastEng?.date || '',
       session_info: '',
       from_time: '',
       to_time: '',
@@ -1092,7 +1092,16 @@ export function WorkOrderPopup({
     // Reload to get real IDs for any inserted temp rows
     const { data: reloaded } = await supabase
       .from('studio_time_rows').select('*').eq('work_order_id', id).order('sort_order')
-    originalStRowsRef.current = (reloaded ?? []).map(normalizeStRow)
+    const reloadedRows = (reloaded ?? []).map(normalizeStRow)
+    originalStRowsRef.current = reloadedRows
+    const withEngRate = reloadedRows.filter(r => !!r.eng_rate).map(r => r.id)
+    if (withEngRate.length > 0) {
+      setVisibleEngRows(prev => {
+        const next = new Set(prev)
+        withEngRate.forEach(id => next.add(id))
+        return next
+      })
+    }
 
     // Upsert rental rows that have content
     const rentToSave = rentRows.filter(r => r.item || r.charge)
@@ -1354,7 +1363,7 @@ export function WorkOrderPopup({
               </div>
               <div data-st-scroll="" style={{ pointerEvents: isCompleted ? 'none' : undefined, opacity: isCompleted ? 0.65 : 1, maxHeight: 420, overflowY: 'auto' }}>
                 {stRows.map(r => {
-                  const isEngOnly = !r.studio && !r.date
+                  const isEngOnly = !r.studio
                   const isDayRow = r.row_rate_type === 'day'
                   const engName = wo?.engineer || liveForm?.engineer_name || booking.engineer_name || ''
                   const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || ''
@@ -1383,14 +1392,12 @@ export function WorkOrderPopup({
                             value={r.date || ''}
                             onChange={e => {
                               const newDate = e.target.value
-                              setStRows(prev => {
-                                const sorted = prev
+                              setStRows(prev =>
+                                prev
                                   .map(row => row.id === r.id ? { ...row, date: newDate } : row)
                                   .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
                                   .map((row, i) => ({ ...row, sort_order: i }))
-                                sorted.forEach(row => { supabase.from('studio_time_rows').update({ date: row.date, sort_order: row.sort_order }).eq('id', row.id) })
-                                return sorted
-                              })
+                              )
                             }}
                             style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
                           />
@@ -1514,7 +1521,27 @@ export function WorkOrderPopup({
                         <>
                           <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                             <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
-                            <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engName}</div>
+                            {isEngOnly ? (
+                              <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10, position: 'relative', cursor: 'pointer' }}>
+                                <span style={{ pointerEvents: 'none' }}>{shortDate(r.date) || '—'}</span>
+                                <input
+                                  type="date"
+                                  value={r.date || ''}
+                                  onChange={e => {
+                                    const newDate = e.target.value
+                                    setStRows(prev =>
+                                      prev
+                                        .map(row => row.id === r.id ? { ...row, date: newDate } : row)
+                                        .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+                                        .map((row, i) => ({ ...row, sort_order: i }))
+                                    )
+                                  }}
+                                  style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%', colorScheme: 'dark' }}
+                                />
+                              </div>
+                            ) : (
+                              <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engName}</div>
+                            )}
                             <div style={cellS} />
                             <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} style={inp} /></div>
                             <div style={cellS}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} style={inp} /></div>
