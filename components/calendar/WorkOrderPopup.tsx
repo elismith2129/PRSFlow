@@ -299,7 +299,6 @@ export function WorkOrderPopup({
   const payIdsInDb = useRef<Set<string>>(new Set())
   const equipNoteFileRef = useRef<HTMLInputElement>(null)
   const pendingNoteKey = useRef<{ key: string; equipment: string; date: string } | null>(null)
-  const localStRowOpRef = useRef(false)
   const originalStRowsRef = useRef<StRow[]>([])
 
   // Map liveForm fields onto WO state — seeds WO from current booking form values on open
@@ -433,27 +432,9 @@ export function WorkOrderPopup({
     }
   }, [stRows]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Real-time subscriptions: studio_time_rows and work_orders for this WO
+  // Real-time subscription: work_orders status updates only
   useEffect(() => {
     if (!resolvedWoId) return
-
-    const stChannel = supabase
-      .channel(`admin-wo-strows-${resolvedWoId}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'studio_time_rows',
-        filter: `work_order_id=eq.${resolvedWoId}`,
-      }, async () => {
-        if (localStRowOpRef.current) return
-        const { data: st } = await supabase
-          .from('studio_time_rows')
-          .select('*')
-          .eq('work_order_id', resolvedWoId!)
-          .order('sort_order')
-        if (st) setStRows(st.map(normalizeStRow))
-      })
-      .subscribe()
 
     const woChannel = supabase
       .channel(`admin-wo-status-${resolvedWoId}`)
@@ -470,7 +451,6 @@ export function WorkOrderPopup({
       .subscribe()
 
     return () => {
-      supabase.removeChannel(stChannel)
       supabase.removeChannel(woChannel)
     }
   }, [resolvedWoId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -871,114 +851,94 @@ export function WorkOrderPopup({
   // ── Add studio time row ────────────────────────────────────────────────────
 
   async function addStRow() {
-    localStRowOpRef.current = true
-    try {
-      const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
-      const last = [...stRows].reverse().find(r => !!(r.studio || r.date)) ?? stRows[stRows.length - 1]
-      const rowRateType = last?.row_rate_type || 'hour'
-      const fromTime = last?.from_time || ''
-      const toTime = last?.to_time || ''
-      const rateStr = last?.rate || ''
-      const rateDailyStr = last?.rate_daily || ''
+    const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
+    const last = [...stRows].reverse().find(r => !!(r.studio || r.date)) ?? stRows[stRows.length - 1]
+    const rowRateType = last?.row_rate_type || 'hour'
+    const fromTime = last?.from_time || ''
+    const toTime = last?.to_time || ''
+    const rateStr = last?.rate || ''
+    const rateDailyStr = last?.rate_daily || ''
 
-      let totalHours: number | null = null
-      let charge: number | null = null
-      if (rowRateType === 'hour') {
-        totalHours = calcHours(fromTime, toTime)
-        const rateNum = parseFloat(rateStr.replace(/[^0-9.]/g, ''))
-        charge = totalHours != null && !isNaN(rateNum) && rateNum > 0
-          ? parseFloat((totalHours * rateNum).toFixed(2)) : null
-      } else {
-        const rateNum = parseFloat((rateDailyStr || rateStr).replace(/[^0-9.]/g, ''))
-        charge = !isNaN(rateNum) && rateNum > 0 ? rateNum : null
-      }
+    let totalHours: number | null = null
+    let charge: number | null = null
+    if (rowRateType === 'hour') {
+      totalHours = calcHours(fromTime, toTime)
+      const rateNum = parseFloat(rateStr.replace(/[^0-9.]/g, ''))
+      charge = totalHours != null && !isNaN(rateNum) && rateNum > 0
+        ? parseFloat((totalHours * rateNum).toFixed(2)) : null
+    } else {
+      const rateNum = parseFloat((rateDailyStr || rateStr).replace(/[^0-9.]/g, ''))
+      charge = !isNaN(rateNum) && rateNum > 0 ? rateNum : null
+    }
 
-      const newRow = {
-        work_order_id: woIdRef.current!,
-        studio: last?.studio || '',
-        date: '',
-        session_info: '',
-        from_time: fromTime,
-        to_time: toTime,
-        total_hours: totalHours,
-        rate: rateStr,
-        rate_daily: rateDailyStr || null,
-        row_rate_type: rowRateType,
-        ot_rate: last?.ot_rate ? (parseFloat(last.ot_rate.replace(/[^0-9.]/g, '')) || null) : null,
-        charge,
-        sort_order: maxOrder + 1 + Math.floor(Math.random() * 1000),
-      }
-      const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
-      if (data) {
-        setStRows(prev => [...prev, normalizeStRow(data)])
-        if (last?.eng_rate || (last?.eng_hours ?? 0) > 0) setShowEngRows(true)
-      }
-    } finally {
-      localStRowOpRef.current = false
+    const newRow = {
+      work_order_id: woIdRef.current!,
+      studio: last?.studio || '',
+      date: '',
+      session_info: '',
+      from_time: fromTime,
+      to_time: toTime,
+      total_hours: totalHours,
+      rate: rateStr,
+      rate_daily: rateDailyStr || null,
+      row_rate_type: rowRateType,
+      ot_rate: last?.ot_rate ? (parseFloat(last.ot_rate.replace(/[^0-9.]/g, '')) || null) : null,
+      charge,
+      sort_order: maxOrder + 1 + Math.floor(Math.random() * 1000),
+    }
+    const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
+    if (data) {
+      setStRows(prev => [...prev, normalizeStRow(data)])
+      if (last?.eng_rate || (last?.eng_hours ?? 0) > 0) setShowEngRows(true)
     }
   }
 
   async function addEngRow() {
-    localStRowOpRef.current = true
-    try {
-      const engMaxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
-      const lastEng = [...stRows].reverse().find(r => r.eng_rate || (r.eng_hours ?? 0) > 0 || r.eng_from_time) || stRows[stRows.length - 1]
-      const newRow = {
-        work_order_id: woIdRef.current!,
-        studio: '',
-        date: '',
-        session_info: '',
-        from_time: '',
-        to_time: '',
-        total_hours: null,
-        rate: '',
-        rate_daily: null,
-        row_rate_type: 'hour',
-        ot_rate: null,
-        charge: null,
-        sort_order: engMaxOrder + 1 + Math.floor(Math.random() * 1000),
-        eng_from_time: lastEng?.eng_from_time || '',
-        eng_to_time: lastEng?.eng_to_time || '',
-        eng_rate: lastEng?.eng_rate || '',
-        eng_hours: null,
-        eng_charge: null,
-      }
-      const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
-      if (data) {
-        setShowEngRows(true)
-        setStRows(prev => [...prev, normalizeStRow(data)])
-      }
-    } finally {
-      localStRowOpRef.current = false
+    const engMaxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
+    const lastEng = [...stRows].reverse().find(r => r.eng_rate || (r.eng_hours ?? 0) > 0 || r.eng_from_time) || stRows[stRows.length - 1]
+    const newRow = {
+      work_order_id: woIdRef.current!,
+      studio: '',
+      date: '',
+      session_info: '',
+      from_time: '',
+      to_time: '',
+      total_hours: null,
+      rate: '',
+      rate_daily: null,
+      row_rate_type: 'hour',
+      ot_rate: null,
+      charge: null,
+      sort_order: engMaxOrder + 1 + Math.floor(Math.random() * 1000),
+      eng_from_time: lastEng?.eng_from_time || '',
+      eng_to_time: lastEng?.eng_to_time || '',
+      eng_rate: lastEng?.eng_rate || '',
+      eng_hours: null,
+      eng_charge: null,
+    }
+    const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
+    if (data) {
+      setShowEngRows(true)
+      setStRows(prev => [...prev, normalizeStRow(data)])
     }
   }
 
   async function deleteStRow(id: string) {
-    localStRowOpRef.current = true
-    try {
-      await supabase.from('studio_time_rows').delete().eq('id', id)
-      setStRows(prev => prev.filter(r => r.id !== id))
-      setConfirmDeleteRowId(null)
-      setConfirmClearEngId(null)
-    } finally {
-      localStRowOpRef.current = false
-    }
+    await supabase.from('studio_time_rows').delete().eq('id', id)
+    setStRows(prev => prev.filter(r => r.id !== id))
+    setConfirmDeleteRowId(null)
+    setConfirmClearEngId(null)
   }
 
   async function clearEngRow(id: string) {
-    localStRowOpRef.current = true
-    try {
-      await supabase.from('studio_time_rows').update({
-        eng_from_time: null, eng_to_time: null, eng_rate: null, eng_hours: null, eng_charge: null,
-      }).eq('id', id)
-      const updated = stRows.map(r => r.id === id ? { ...r, eng_from_time: '', eng_to_time: '', eng_rate: '', eng_hours: null, eng_charge: null } : r)
-      setStRows(updated)
-      setConfirmClearEngId(null)
-      if (!updated.some(r => r.eng_rate || (r.eng_hours ?? 0) > 0 || r.eng_from_time)) {
-        setShowEngRows(false)
-      }
-    } finally {
-      localStRowOpRef.current = false
+    await supabase.from('studio_time_rows').update({
+      eng_from_time: null, eng_to_time: null, eng_rate: null, eng_hours: null, eng_charge: null,
+    }).eq('id', id)
+    const updated = stRows.map(r => r.id === id ? { ...r, eng_from_time: '', eng_to_time: '', eng_rate: '', eng_hours: null, eng_charge: null } : r)
+    setStRows(updated)
+    setConfirmClearEngId(null)
+    if (!updated.some(r => r.eng_rate || (r.eng_hours ?? 0) > 0 || r.eng_from_time)) {
+      setShowEngRows(false)
     }
   }
 
@@ -1096,6 +1056,8 @@ export function WorkOrderPopup({
         eng_charge: r.eng_charge ?? null,
         eng_from_time: r.eng_from_time || null,
         eng_to_time: r.eng_to_time || null,
+        admin_checked: r.admin_checked,
+        admin_locked: r.admin_locked,
       }).eq('id', r.id)
     ))
 
