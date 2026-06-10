@@ -58,8 +58,6 @@ type StRow = {
   eng_charge: number | null
   eng_from_time: string
   eng_to_time: string
-  admin_checked: boolean
-  admin_locked: boolean
 }
 
 type EquipRow = {
@@ -91,12 +89,6 @@ const STUDIO_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'X']
 const EQUIPMENT_ITEMS = ['Speakers', 'Microphone', 'Console']
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function getLocalToday(): string {
-  const now = new Date()
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
-  return now.toISOString().slice(0, 10)
-}
 
 function timeToMins(t: string | null | undefined): number {
   if (!t) return 0
@@ -170,7 +162,7 @@ function normalizeWO(d: any): WO {
     po_number: d.po_number ?? '',
     phone: d.phone ?? '',
     email: d.email ?? '',
-    status: d.status ?? 'open',
+    status: d.status ?? 'draft',
     session_notes: d.session_notes ?? '',
     legal_signature: d.legal_signature ?? '',
     legal_name: d.legal_name ?? '',
@@ -213,7 +205,7 @@ function normalizeStRow(d: any): StRow {
   const engFromTime = d.eng_from_time ?? d.from_time ?? ''
   const engToTime   = d.eng_to_time   ?? d.to_time   ?? ''
   const engRate = d.eng_rate != null ? String(d.eng_rate) : ''
-  const engHours = d.eng_hours != null ? Number(d.eng_hours) : null
+  const engHours = calcHours(engFromTime, engToTime) ?? (d.eng_hours != null ? Number(d.eng_hours) : null)
   let engCharge = null as number | null
   if (engHours != null && engHours > 0 && engRate) {
     const erNum = parseFloat(engRate.replace(/[^0-9.]/g, ''))
@@ -233,8 +225,6 @@ function normalizeStRow(d: any): StRow {
     eng_charge: engCharge,
     eng_from_time: engFromTime,
     eng_to_time: engToTime,
-    admin_checked: d.admin_checked ?? false,
-    admin_locked: d.admin_locked ?? false,
   }
 }
 
@@ -280,11 +270,6 @@ export function WorkOrderPopup({
   ])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [completing, setCompleting] = useState(false)
-  const [visibleEngRows, setVisibleEngRows] = useState<Set<string>>(new Set())
-  const [confirmDeleteRowId, setConfirmDeleteRowId] = useState<string | null>(null)
-  const [confirmClearEngId, setConfirmClearEngId] = useState<string | null>(null)
-  const [pendingLockedEdits, setPendingLockedEdits] = useState<Record<string, StRow>>({})
   const [dirtyFields, setDirtyFields] = useState<Set<string>>(new Set())
   const [equipNotes, setEquipNotes] = useState<Record<string, EquipNote>>({})
   const [openNoteKey, setOpenNoteKey] = useState<string | null>(null)
@@ -299,7 +284,6 @@ export function WorkOrderPopup({
   const payIdsInDb = useRef<Set<string>>(new Set())
   const equipNoteFileRef = useRef<HTMLInputElement>(null)
   const pendingNoteKey = useRef<{ key: string; equipment: string; date: string } | null>(null)
-  const originalStRowsRef = useRef<StRow[]>([])
 
   // Map liveForm fields onto WO state — seeds WO from current booking form values on open
   function applyLiveForm(base: WO): WO {
@@ -425,22 +409,26 @@ export function WorkOrderPopup({
     })()
   }, [liveForm?.start_date, liveForm?.end_date]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-show eng sub-rows for rows that already have eng data
-  useEffect(() => {
-    const withEng = stRows.filter(r => r.studio === '').map(r => r.id)
-    if (withEng.length > 0) {
-      setVisibleEngRows(prev => {
-        const next = new Set(prev)
-        let changed = false
-        withEng.forEach(id => { if (!next.has(id)) { next.add(id); changed = true } })
-        return changed ? next : prev
-      })
-    }
-  }, [stRows]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Real-time subscription: work_orders status updates only
+  // Real-time subscriptions: studio_time_rows and work_orders for this WO
   useEffect(() => {
     if (!resolvedWoId) return
+
+    const stChannel = supabase
+      .channel(`admin-wo-strows-${resolvedWoId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'studio_time_rows',
+        filter: `work_order_id=eq.${resolvedWoId}`,
+      }, async () => {
+        const { data: st } = await supabase
+          .from('studio_time_rows')
+          .select('*')
+          .eq('work_order_id', resolvedWoId!)
+          .order('sort_order')
+        if (st) setStRows(st.map(normalizeStRow))
+      })
+      .subscribe()
 
     const woChannel = supabase
       .channel(`admin-wo-status-${resolvedWoId}`)
@@ -452,11 +440,12 @@ export function WorkOrderPopup({
       }, (payload) => {
         const updated = payload.new as any
         setWo(prev => prev ? { ...prev, status: updated.status ?? prev.status } : prev)
-        onStatusChange?.(updated.status ?? 'open')
+        onStatusChange?.(updated.status ?? 'draft')
       })
       .subscribe()
 
     return () => {
+      supabase.removeChannel(stChannel)
       supabase.removeChannel(woChannel)
     }
   }, [resolvedWoId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -473,7 +462,7 @@ export function WorkOrderPopup({
     if (existing) {
       woIdRef.current = existing.id
       setResolvedWoId(existing.id)
-      onStatusChange?.(existing.status ?? 'open')
+      onStatusChange?.(existing.status ?? 'draft')
       // Fix studios: if DB has empty array but booking has a studio, backfill from booking
       const rawStudios: string[] = existing.studios ?? []
       const studioLetter = booking.studio ? toStudioLetter(booking.studio) : ''
@@ -547,11 +536,8 @@ export function WorkOrderPopup({
           // 4. Reload all rows fresh from DB — never merge in-memory arrays
           const { data: reloaded } = await supabase.from('studio_time_rows')
             .select('*').eq('work_order_id', existing.id).order('date')
-          const reloadedRows = (reloaded ?? []).map(normalizeStRow)
-          originalStRowsRef.current = reloadedRows
-          setStRows(reloadedRows)
+          setStRows((reloaded ?? []).map(normalizeStRow))
         } else {
-          originalStRowsRef.current = rows
           setStRows(rows)
         }
       } else {
@@ -595,9 +581,7 @@ export function WorkOrderPopup({
         }
         const { data: reloaded } = await supabase.from('studio_time_rows')
           .select('*').eq('work_order_id', existing.id).order('sort_order')
-        const reloadedRows2 = (reloaded ?? []).map(normalizeStRow)
-        originalStRowsRef.current = reloadedRows2
-        setStRows(reloadedRows2)
+        setStRows((reloaded ?? []).map(normalizeStRow))
       }
       if (eq?.length) setEquipRows(eq as EquipRow[])
       if (eqNotes?.length) {
@@ -638,7 +622,7 @@ export function WorkOrderPopup({
         phone: booking.phone ?? '',
         email: booking.email ?? '',
         session_notes: booking.notes ?? '',
-        status: 'open',
+        status: 'draft',
       }
       const { data: created } = await supabase.from('work_orders').insert(woPayload).select('*').single()
       if (!created) { setLoading(false); return }
@@ -679,11 +663,7 @@ export function WorkOrderPopup({
         }
       })
       const { data: stCreated } = await supabase.from('studio_time_rows').insert(stPayloads).select('*')
-      if (stCreated) {
-        const createdRows = stCreated.map(normalizeStRow)
-        originalStRowsRef.current = createdRows
-        setStRows(createdRows)
-      }
+      if (stCreated) setStRows(stCreated.map(normalizeStRow))
 
       // Auto-generate equipment condition rows
       const eqPayloads = dates.flatMap(d =>
@@ -692,7 +672,7 @@ export function WorkOrderPopup({
       const { data: eqCreated } = await supabase.from('equipment_condition_rows').insert(eqPayloads).select('*')
       if (eqCreated) setEquipRows(eqCreated as EquipRow[])
 
-      onStatusChange?.('open')
+      onStatusChange?.('draft')
     }
     setLoading(false)
   }
@@ -700,10 +680,6 @@ export function WorkOrderPopup({
   // ── Studio time row updates ─────────────────────────────────────────────────
 
   function updateStRow(id: string, updates: Partial<StRow>) {
-    const row = stRows.find(r => r.id === id)
-    if (row?.admin_locked && !pendingLockedEdits[id]) {
-      setPendingLockedEdits(p => ({ ...p, [id]: { ...row } }))
-    }
     setStRows(prev => prev.map(r => {
       if (r.id !== id) return r
       const u = { ...r, ...updates }
@@ -856,109 +832,26 @@ export function WorkOrderPopup({
 
   // ── Add studio time row ────────────────────────────────────────────────────
 
-  function addStRow() {
+  async function addStRow() {
     const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
-    const last = [...stRows].reverse().find(r => !!(r.studio || r.date)) ?? stRows[stRows.length - 1]
-    const rowRateType = last?.row_rate_type || 'hour'
-    const fromTime = last?.from_time || ''
-    const toTime = last?.to_time || ''
-    const rateStr = last?.rate || ''
-    const rateDailyStr = last?.rate_daily || ''
-
-    let totalHours: number | null = null
-    let charge: number | null = null
-    let otHours = '0'
-    if (rowRateType === 'hour') {
-      totalHours = calcHours(fromTime, toTime)
-      const rateNum = parseFloat(rateStr.replace(/[^0-9.]/g, ''))
-      charge = totalHours != null && !isNaN(rateNum) && rateNum > 0
-        ? parseFloat((totalHours * rateNum).toFixed(2)) : null
-    } else {
-      const rateNum = parseFloat((rateDailyStr || rateStr).replace(/[^0-9.]/g, ''))
-      charge = !isNaN(rateNum) && rateNum > 0 ? rateNum : null
-      otHours = String(Math.max(0, (totalHours ?? 0) - 12))
-    }
-    const otRateNum = last?.ot_rate ? parseFloat(last.ot_rate.replace(/[^0-9.]/g, '')) || 0 : 0
-    const otRateStr = otRateNum > 0 ? String(otRateNum) : (rowRateType === 'hour' ? rateStr : '')
-    const otHoursNum = parseFloat(otHours) || 0
-    const otRateNum2 = parseFloat(otRateStr.replace(/[^0-9.]/g, '')) || 0
-    const otCharge = otHoursNum > 0 && otRateNum2 > 0 ? parseFloat((otHoursNum * otRateNum2).toFixed(2)) : null
-
-    const newRow: StRow = {
-      id: 'temp-' + Date.now() + '-' + Math.random(),
+    const last = stRows[stRows.length - 1]
+    const newRow = {
+      work_order_id: woIdRef.current!,
       studio: last?.studio || '',
       date: '',
       session_info: '',
-      from_time: fromTime,
-      to_time: toTime,
-      total_hours: totalHours,
-      rate: rateStr,
-      rate_daily: rateDailyStr || '',
-      row_rate_type: rowRateType,
-      charge,
-      sort_order: maxOrder + 1 + Math.floor(Math.random() * 1000),
-      day_count: null,
-      ot_rate: otRateStr,
-      ot_hours: otHours,
-      ot_charge: otCharge,
-      eng_hours: null,
-      eng_rate: '',
-      eng_charge: null,
-      eng_from_time: '',
-      eng_to_time: '',
-      admin_checked: false,
-      admin_locked: false,
-    }
-    setStRows(prev => [...prev, newRow])
-    if (last?.eng_rate || (last?.eng_hours ?? 0) > 0) {
-      setVisibleEngRows(prev => { const next = new Set(prev); next.add(newRow.id); return next })
-    }
-  }
-
-  function addEngRow() {
-    const engMaxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
-    const lastEng = [...stRows].reverse().find(r => r.eng_rate || (r.eng_hours ?? 0) > 0 || r.eng_from_time) || stRows[stRows.length - 1]
-    const newRow: StRow = {
-      id: 'temp-' + Date.now() + '-' + Math.random(),
-      studio: '',
-      date: '',
-      session_info: '',
-      from_time: '',
-      to_time: '',
+      from_time: last?.from_time || '',
+      to_time: last?.to_time || '',
       total_hours: null,
-      rate: '',
-      rate_daily: '',
-      row_rate_type: 'hour',
+      rate: last?.rate || '',
+      rate_daily: last?.rate_daily || null,
+      row_rate_type: last?.row_rate_type || 'hour',
+      ot_rate: last?.ot_rate ? (parseFloat(last.ot_rate.replace(/[^0-9.]/g, '')) || null) : null,
       charge: null,
-      sort_order: engMaxOrder + 1 + Math.floor(Math.random() * 1000),
-      day_count: null,
-      ot_rate: '',
-      ot_hours: '0',
-      ot_charge: null,
-      eng_from_time: lastEng?.eng_from_time || '',
-      eng_to_time: lastEng?.eng_to_time || '',
-      eng_rate: lastEng?.eng_rate || '',
-      eng_hours: null,
-      eng_charge: null,
-      admin_checked: false,
-      admin_locked: false,
+      sort_order: maxOrder + 1,
     }
-    setVisibleEngRows(prev => { const next = new Set(prev); next.add(newRow.id); return next })
-    setStRows(prev => [...prev, newRow])
-  }
-
-  function deleteStRow(id: string) {
-    setStRows(prev => prev.filter(r => r.id !== id))
-    setVisibleEngRows(prev => { const next = new Set(prev); next.delete(id); return next })
-    setConfirmDeleteRowId(null)
-    setConfirmClearEngId(null)
-  }
-
-  function clearEngRow(id: string) {
-    const updated = stRows.map(r => r.id === id ? { ...r, eng_from_time: '', eng_to_time: '', eng_rate: '', eng_hours: null, eng_charge: null } : r)
-    setStRows(updated)
-    setConfirmClearEngId(null)
-    setVisibleEngRows(prev => { const next = new Set(prev); next.delete(id); return next })
+    const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
+    if (data) setStRows(prev => [...prev, normalizeStRow(data)])
   }
 
   // ── Print with filename ───────────────────────────────────────────────────
@@ -973,39 +866,6 @@ export function WorkOrderPopup({
     document.title = name || prev
     window.print()
     document.title = prev
-  }
-
-  // ── Per-row admin lock ────────────────────────────────────────────────────
-
-  async function handleToggleLock(rowId: string, currentLocked: boolean) {
-    const newLocked = !currentLocked
-    await supabase.from('studio_time_rows').update({
-      admin_checked: newLocked,
-      admin_locked: newLocked,
-    }).eq('id', rowId)
-    setStRows(prev => prev.map(r => r.id === rowId
-      ? { ...r, admin_checked: newLocked, admin_locked: newLocked }
-      : r
-    ))
-    if (!newLocked) {
-      setPendingLockedEdits(p => { const n = { ...p }; delete n[rowId]; return n })
-    }
-  }
-
-  // ── Complete WO ───────────────────────────────────────────────────────────
-
-  async function handleComplete() {
-    if (!woIdRef.current || !wo) return
-    if (wo.status === 'completed') return
-    setCompleting(true)
-    const now = new Date().toISOString()
-    await supabase.from('work_orders').update({
-      status: 'completed',
-      admin_approved_at: now,
-    }).eq('id', woIdRef.current)
-    setWo(prev => prev ? { ...prev, status: 'completed' } : prev)
-    onStatusChange?.('completed')
-    setCompleting(false)
   }
 
   // ── Save + close ──────────────────────────────────────────────────────────
@@ -1057,15 +917,9 @@ export function WorkOrderPopup({
       payment_type: wo.payment_status === 'Billing' ? 'billing' : 'COD',
     }).eq('id', booking.id)
 
-    // Save studio time rows: delete removed rows, insert temp rows, update existing rows
-    const toDelete = originalStRowsRef.current.filter(orig => !stRows.find(r => r.id === orig.id))
-    if (toDelete.length) {
-      await supabase.from('studio_time_rows').delete().in('id', toDelete.map(r => r.id))
-    }
-
-    await Promise.all(stRows.map(r => {
-      const payload = {
-        work_order_id: id,
+    // Save studio time rows
+    await Promise.all(stRows.map(r =>
+      supabase.from('studio_time_rows').update({
         studio: r.studio, date: r.date, session_info: r.session_info,
         from_time: r.from_time, to_time: r.to_time,
         total_hours: r.total_hours, rate: r.rate, rate_daily: r.rate_daily || null,
@@ -1081,21 +935,8 @@ export function WorkOrderPopup({
         eng_charge: r.eng_charge ?? null,
         eng_from_time: r.eng_from_time || null,
         eng_to_time: r.eng_to_time || null,
-        admin_checked: r.admin_checked,
-        admin_locked: r.admin_locked,
-      }
-      if (r.id.startsWith('temp-')) {
-        return supabase.from('studio_time_rows').insert(payload)
-      }
-      return supabase.from('studio_time_rows').update(payload).eq('id', r.id)
-    }))
-
-    // Reload to get real IDs for any inserted temp rows
-    const { data: reloaded } = await supabase
-      .from('studio_time_rows').select('*').eq('work_order_id', id).order('sort_order')
-    const reloadedRows = (reloaded ?? []).map(normalizeStRow)
-    originalStRowsRef.current = reloadedRows
-    setVisibleEngRows(new Set(reloadedRows.filter(r => r.studio === '').map(r => r.id)))
+      }).eq('id', r.id)
+    ))
 
     // Upsert rental rows that have content
     const rentToSave = rentRows.filter(r => r.item || r.charge)
@@ -1117,11 +958,6 @@ export function WorkOrderPopup({
 
     setSaving(false)
     onSaved?.()
-    onClose()
-  }
-
-  function handleCancel() {
-    setStRows(originalStRowsRef.current)
     onClose()
   }
 
@@ -1183,7 +1019,6 @@ export function WorkOrderPopup({
   if (!wo) return null
 
   const woId = woIdRef.current
-  const isCompleted = wo.status === 'completed'
 
   return createPortal(
     <div
@@ -1208,8 +1043,8 @@ export function WorkOrderPopup({
             </span>
             <span style={{
               fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 10,
-              background: wo.status === 'completed' ? 'rgba(20,184,166,0.15)' : 'rgba(138,143,160,0.12)',
-              color: wo.status === 'completed' ? '#14B8A6' : '#8a8fa0',
+              background: wo.status === 'approved' ? 'rgba(200,240,78,0.15)' : wo.status === 'submitted' ? 'rgba(251,146,60,0.15)' : 'rgba(138,143,160,0.12)',
+              color: wo.status === 'approved' ? '#c8f04e' : wo.status === 'submitted' ? '#fb923c' : '#8a8fa0',
             }}>{wo.status}</span>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -1351,15 +1186,14 @@ export function WorkOrderPopup({
           <div>
             <div style={sectionTitle}>Studio Time</div>
             <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
-              {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock | Del */}
-              <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total', '', ''].map((h, i) => <div key={i} style={thS}>{h}</div>)}
+              {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total */}
+              <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total'].map(h => <div key={h} style={thS}>{h}</div>)}
               </div>
-              <div data-st-scroll="" style={{ pointerEvents: isCompleted ? 'none' : undefined, opacity: isCompleted ? 0.65 : 1, maxHeight: 420, overflowY: 'auto' }}>
+              <div data-st-scroll="" style={{ overflowY: stRows.length > 5 ? 'auto' : 'visible', maxHeight: stRows.length > 5 ? 200 : undefined }}>
                 {stRows.map(r => {
-                  const isEngOnly = !r.studio
                   const isDayRow = r.row_rate_type === 'day'
-                  const engName = wo?.engineer || liveForm?.engineer_name || booking.engineer_name || ''
+                  const engName = liveForm?.engineer_name || booking.engineer_name || ''
                   const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || ''
                   const engRateNum = parseFloat((engRateDisplay ?? '').replace(/[^0-9.]/g, '')) || 0
                   const engHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
@@ -1375,7 +1209,7 @@ export function WorkOrderPopup({
                   const otHrsNum = parseFloat(r.ot_hours ?? '0') || 0
                   return (
                     <div key={r.id}>
-                      {!isEngOnly && <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: r.admin_locked ? 'rgba(20,184,166,0.04)' : undefined }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                         {/* Studio */}
                         <div style={cellS}><input value={r.studio} onChange={e => updateStRow(r.id, { studio: e.target.value })} style={inp} placeholder="—" /></div>
                         {/* Date — transparent overlay opens native picker, auto-sorts on pick */}
@@ -1386,12 +1220,14 @@ export function WorkOrderPopup({
                             value={r.date || ''}
                             onChange={e => {
                               const newDate = e.target.value
-                              setStRows(prev =>
-                                prev
+                              setStRows(prev => {
+                                const sorted = prev
                                   .map(row => row.id === r.id ? { ...row, date: newDate } : row)
-                                  .sort((a, b) => (a.date || 'zzzz').localeCompare(b.date || 'zzzz'))
+                                  .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
                                   .map((row, i) => ({ ...row, sort_order: i }))
-                              )
+                                sorted.forEach(row => { supabase.from('studio_time_rows').update({ date: row.date, sort_order: row.sort_order }).eq('id', row.id) })
+                                return sorted
+                              })
                             }}
                             style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
                           />
@@ -1468,115 +1304,33 @@ export function WorkOrderPopup({
                         <div style={{ ...cellS, color: rowTotal > 0 ? '#c8f04e' : '#8a8fa0', fontWeight: rowTotal > 0 ? 600 : 400 }}>
                           {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : '—'}
                         </div>
-                        {/* Lock pill — always clickable even when WO is completed */}
-                        <div style={{ ...cellS, justifyContent: 'center', padding: '3px 4px', pointerEvents: 'auto' }}>
-                          <button
-                            type="button"
-                            onClick={() => handleToggleLock(r.id, r.admin_locked)}
-                            style={{
-                              fontSize: 8, fontFamily: 'DM Mono', fontWeight: 700, padding: '2px 5px',
-                              borderRadius: 3, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-                              background: r.admin_locked ? '#14B8A6' : 'rgba(255,255,255,0.06)',
-                              color: r.admin_locked ? '#0d0f14' : '#6B7280',
-                            }}
-                          >{r.admin_locked ? '🔒' : '✓'}</button>
-                        </div>
-                        {/* Delete row */}
-                        <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto' }}>
-                          {confirmDeleteRowId === r.id ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                              <span style={{ fontSize: 7, color: '#f97316', fontFamily: 'DM Mono', whiteSpace: 'nowrap' }}>Del?</span>
-                              <div style={{ display: 'flex', gap: 3 }}>
-                                <button type="button" onClick={() => deleteStRow(r.id)} style={{ fontSize: 8, fontFamily: 'DM Mono', color: '#f97316', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 700 }}>Y</button>
-                                <button type="button" onClick={() => setConfirmDeleteRowId(null)} style={{ fontSize: 8, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>N</button>
-                              </div>
-                            </div>
-                          ) : (
-                            <button type="button" onClick={() => setConfirmDeleteRowId(r.id)} disabled={isCompleted} style={{ fontSize: 13, fontFamily: 'DM Mono', color: isCompleted ? '#2a2f3a' : '#4a4f60', background: 'none', border: 'none', cursor: isCompleted ? 'default' : 'pointer', padding: 0, lineHeight: 1 }}>×</button>
-                          )}
-                        </div>
-                      </div>}
-                      {!isEngOnly && pendingLockedEdits[r.id] && (
-                        <div style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.08)', borderBottom: '1px solid rgba(20,184,166,0.2)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'DM Mono', color: '#14B8A6' }}>
-                          <span>Editing a locked row —</span>
-                          <button
-                            type="button"
-                            onClick={() => { handleToggleLock(r.id, true); setPendingLockedEdits(p => { const n = { ...p }; delete n[r.id]; return n }) }}
-                            style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid #14B8A6', background: 'rgba(20,184,166,0.15)', color: '#14B8A6', fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer' }}
-                          >Update</button>
-                          <button
-                            type="button"
-                            onClick={() => { const orig = pendingLockedEdits[r.id]; setStRows(prev => prev.map(row => row.id === r.id ? orig : row)); setPendingLockedEdits(p => { const n = { ...p }; delete n[r.id]; return n }) }}
-                            style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: '#8a8fa0', fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}
-                          >Revert</button>
-                        </div>
-                      )}
-                      {visibleEngRows.has(r.id) && (
-                        <>
-                          <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
-                            <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
-                            {isEngOnly ? (
-                              <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10, position: 'relative', cursor: 'pointer' }}>
-                                <span style={{ pointerEvents: 'none' }}>{shortDate(r.date) || '—'}</span>
-                                <input
-                                  type="date"
-                                  value={r.date || ''}
-                                  onChange={e => {
-                                    const newDate = e.target.value
-                                    setStRows(prev =>
-                                      prev
-                                        .map(row => row.id === r.id ? { ...row, date: newDate } : row)
-                                        .sort((a, b) => (a.date || 'zzzz').localeCompare(b.date || 'zzzz'))
-                                        .map((row, i) => ({ ...row, sort_order: i }))
-                                    )
-                                  }}
-                                  style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%', colorScheme: 'dark' }}
-                                />
-                              </div>
-                            ) : (
-                              <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engName}</div>
-                            )}
-                            <div style={cellS} />
-                            <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} style={inp} /></div>
-                            <div style={cellS}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} style={inp} /></div>
-                            <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engHrs != null ? `${engHrs}h` : '—'}</div>
-                            <div style={cellS} />
-                            <div style={cellS}>
-                              <input value={r.eng_rate || engRateDisplay} onChange={e => updateStRow(r.id, { eng_rate: e.target.value })} style={{ ...inp, width: 64 }} />
-                            </div>
-                            <div style={cellS} />
-                            <div style={cellS} />
-                            <div style={cellS} />
-                            <div style={{ ...cellS, color: engCharge != null ? '#c8f04e' : '#8a8fa0', fontWeight: engCharge != null ? 600 : 400 }}>
-                              {engCharge != null ? `$${engCharge.toFixed(2)}` : '—'}
-                            </div>
-                            {/* Eng lock */}
-                            <div style={{ ...cellS, justifyContent: 'center', padding: '3px 4px', pointerEvents: 'auto' }}>
-                              <button type="button" onClick={() => handleToggleLock(r.id, r.admin_locked)} style={{ fontSize: 8, fontFamily: 'DM Mono', fontWeight: 700, padding: '2px 5px', borderRadius: 3, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', background: r.admin_locked ? '#14B8A6' : 'rgba(255,255,255,0.06)', color: r.admin_locked ? '#0d0f14' : '#6B7280' }}>{r.admin_locked ? '🔒' : '✓'}</button>
-                            </div>
-                            {/* Eng delete × */}
-                            <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto' }}>
-                              <button type="button" onClick={() => setConfirmClearEngId(r.id)} disabled={isCompleted} style={{ fontSize: 13, fontFamily: 'DM Mono', color: isCompleted ? '#2a2f3a' : '#4a4f60', background: 'none', border: 'none', cursor: isCompleted ? 'default' : 'pointer', padding: 0, lineHeight: 1 }}>×</button>
-                            </div>
+                      </div>
+                      {engName && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
+                          <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
+                          <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engName}</div>
+                          <div style={cellS} />
+                          <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} style={inp} /></div>
+                          <div style={cellS}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} style={inp} /></div>
+                          <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engHrs != null ? `${engHrs}h` : '—'}</div>
+                          <div style={cellS} />
+                          <div style={cellS}>
+                            <input value={r.eng_rate || engRateDisplay} onChange={e => updateStRow(r.id, { eng_rate: e.target.value })} style={{ ...inp, width: 64 }} />
                           </div>
-                          {confirmClearEngId === r.id && (
-                            <div style={{ padding: '5px 12px', background: 'rgba(249,115,22,0.08)', borderBottom: '1px solid rgba(249,115,22,0.2)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'DM Mono', color: '#f97316' }}>
-                              <span>Delete engineer row?</span>
-                              <button type="button" onClick={() => isEngOnly ? deleteStRow(r.id) : clearEngRow(r.id)} style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid #f97316', background: 'rgba(249,115,22,0.15)', color: '#f97316', fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer' }}>Y</button>
-                              <button type="button" onClick={() => setConfirmClearEngId(null)} style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: '#8a8fa0', fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}>N</button>
-                            </div>
-                          )}
-                        </>
+                          <div style={cellS} />
+                          <div style={cellS} />
+                          <div style={cellS} />
+                          <div style={{ ...cellS, color: engCharge != null ? '#c8f04e' : '#8a8fa0', fontWeight: engCharge != null ? 600 : 400 }}>
+                            {engCharge != null ? `$${engCharge.toFixed(2)}` : '—'}
+                          </div>
+                        </div>
                       )}
                     </div>
                   )
                 })}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: '#1a1e28', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                  <button type="button" onClick={addStRow} disabled={isCompleted} style={{ fontSize: 10, fontFamily: 'DM Mono', color: isCompleted ? '#4a4f60' : '#8a8fa0', background: 'none', border: 'none', cursor: isCompleted ? 'default' : 'pointer', padding: 0 }}>+ Add Studio Time</button>
-                  <button type="button" onClick={addEngRow} disabled={isCompleted} style={{ fontSize: 10, fontFamily: 'DM Mono', color: isCompleted ? '#4a4f60' : '#c8f04e88', background: 'none', border: 'none', cursor: isCompleted ? 'default' : 'pointer', padding: 0 }}>+ Add Eng</button>
-                </div>
+                <button type="button" onClick={addStRow} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
                   <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0' }}>Studio: ${stTotal.toFixed(2)}</span>
                   {engTotal > 0 && (
@@ -1796,15 +1550,8 @@ export function WorkOrderPopup({
           <button onClick={() => printWithFilename()} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
             Export PDF
           </button>
-          <button onClick={() => handleCancel()} disabled={saving} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
+          <button onClick={() => onClose()} disabled={saving} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
             Cancel
-          </button>
-          <button
-            onClick={handleComplete}
-            disabled={completing || isCompleted}
-            style={{ padding: '7px 18px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: (completing || isCompleted) ? 'default' : 'pointer', background: isCompleted ? '#14B8A6' : completing ? 'rgba(20,184,166,0.5)' : '#14B8A6', border: 'none', color: '#0d0f14', opacity: (completing || isCompleted) ? 0.8 : 1 }}
-          >
-            {isCompleted ? 'Completed ✓' : completing ? 'Completing…' : 'Complete WO'}
           </button>
           <button onClick={handleClose} disabled={saving} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Saving…' : 'Close & Save'}
