@@ -213,7 +213,7 @@ function normalizeStRow(d: any): StRow {
   const engFromTime = d.eng_from_time ?? d.from_time ?? ''
   const engToTime   = d.eng_to_time   ?? d.to_time   ?? ''
   const engRate = d.eng_rate != null ? String(d.eng_rate) : ''
-  const engHours = calcHours(engFromTime, engToTime) ?? (d.eng_hours != null ? Number(d.eng_hours) : null)
+  const engHours = d.eng_hours != null ? Number(d.eng_hours) : null
   let engCharge = null as number | null
   if (engHours != null && engHours > 0 && engRate) {
     const erNum = parseFloat(engRate.replace(/[^0-9.]/g, ''))
@@ -427,7 +427,7 @@ export function WorkOrderPopup({
 
   // Auto-show eng sub-rows for rows that already have eng data
   useEffect(() => {
-    const withEng = stRows.filter(r => r.eng_rate || (r.eng_hours ?? 0) > 0).map(r => r.id)
+    const withEng = stRows.filter(r => !!r.eng_rate).map(r => r.id)
     if (withEng.length > 0) {
       setVisibleEngRows(prev => {
         const next = new Set(prev)
