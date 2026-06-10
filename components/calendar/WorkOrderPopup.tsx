@@ -921,7 +921,7 @@ export function WorkOrderPopup({
     const newRow: StRow = {
       id: 'temp-' + Date.now() + '-' + Math.random(),
       studio: '',
-      date: lastEng?.date || '',
+      date: '',
       session_info: '',
       from_time: '',
       to_time: '',
@@ -949,6 +949,7 @@ export function WorkOrderPopup({
 
   function deleteStRow(id: string) {
     setStRows(prev => prev.filter(r => r.id !== id))
+    setVisibleEngRows(prev => { const next = new Set(prev); next.delete(id); return next })
     setConfirmDeleteRowId(null)
     setConfirmClearEngId(null)
   }
@@ -1094,14 +1095,7 @@ export function WorkOrderPopup({
       .from('studio_time_rows').select('*').eq('work_order_id', id).order('sort_order')
     const reloadedRows = (reloaded ?? []).map(normalizeStRow)
     originalStRowsRef.current = reloadedRows
-    const withEngRate = reloadedRows.filter(r => !!r.eng_rate).map(r => r.id)
-    if (withEngRate.length > 0) {
-      setVisibleEngRows(prev => {
-        const next = new Set(prev)
-        withEngRate.forEach(id => next.add(id))
-        return next
-      })
-    }
+    setVisibleEngRows(new Set(reloadedRows.filter(r => !!r.eng_rate).map(r => r.id)))
 
     // Upsert rental rows that have content
     const rentToSave = rentRows.filter(r => r.item || r.charge)
