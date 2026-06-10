@@ -300,6 +300,7 @@ export function WorkOrderPopup({
   const equipNoteFileRef = useRef<HTMLInputElement>(null)
   const pendingNoteKey = useRef<{ key: string; equipment: string; date: string } | null>(null)
   const originalStRowsRef = useRef<StRow[]>([])
+  const deletedRowsRef = useRef<StRow[]>([])
 
   // Map liveForm fields onto WO state — seeds WO from current booking form values on open
   function applyLiveForm(base: WO): WO {
@@ -924,6 +925,8 @@ export function WorkOrderPopup({
   }
 
   async function deleteStRow(id: string) {
+    const row = stRows.find(r => r.id === id)
+    if (row) deletedRowsRef.current = [...deletedRowsRef.current, row]
     await supabase.from('studio_time_rows').delete().eq('id', id)
     setStRows(prev => prev.filter(r => r.id !== id))
     setConfirmDeleteRowId(null)
@@ -937,7 +940,7 @@ export function WorkOrderPopup({
     const updated = stRows.map(r => r.id === id ? { ...r, eng_from_time: '', eng_to_time: '', eng_rate: '', eng_hours: null, eng_charge: null } : r)
     setStRows(updated)
     setConfirmClearEngId(null)
-    if (!updated.some(r => r.eng_rate || (r.eng_hours ?? 0) > 0 || r.eng_from_time)) {
+    if (!updated.some(r => r.eng_rate)) {
       setShowEngRows(false)
     }
   }
@@ -1080,6 +1083,7 @@ export function WorkOrderPopup({
     }))
 
     originalStRowsRef.current = stRows
+    deletedRowsRef.current = []
     setSaving(false)
     onSaved?.()
     onClose()
@@ -1090,6 +1094,33 @@ export function WorkOrderPopup({
     const added = stRows.filter(r => !originalIds.has(r.id))
     if (added.length) {
       await supabase.from('studio_time_rows').delete().in('id', added.map(r => r.id))
+    }
+    if (deletedRowsRef.current.length > 0) {
+      await Promise.all(deletedRowsRef.current.map(r =>
+        supabase.from('studio_time_rows').insert({
+          id: r.id,
+          work_order_id: woIdRef.current!,
+          studio: r.studio, date: r.date, session_info: r.session_info,
+          from_time: r.from_time, to_time: r.to_time,
+          total_hours: r.total_hours, rate: r.rate,
+          rate_daily: r.rate_daily || null,
+          row_rate_type: r.row_rate_type,
+          charge: r.charge,
+          sort_order: r.sort_order,
+          day_count: r.day_count ?? null,
+          ot_rate: r.ot_rate ? parseFloat(r.ot_rate.replace(/[^0-9.]/g, '')) || null : null,
+          ot_hours: r.ot_hours ? parseFloat(r.ot_hours) || null : null,
+          ot_charge: r.ot_charge ?? null,
+          eng_hours: r.eng_hours ?? null,
+          eng_rate: r.eng_rate || null,
+          eng_charge: r.eng_charge ?? null,
+          eng_from_time: r.eng_from_time || null,
+          eng_to_time: r.eng_to_time || null,
+          admin_checked: r.admin_checked,
+          admin_locked: r.admin_locked,
+        })
+      ))
+      deletedRowsRef.current = []
     }
     setStRows(originalStRowsRef.current)
     onClose()
