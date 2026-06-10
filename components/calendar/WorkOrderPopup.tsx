@@ -281,7 +281,7 @@ export function WorkOrderPopup({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [completing, setCompleting] = useState(false)
-  const [showEngRows, setShowEngRows] = useState(false)
+  const [visibleEngRows, setVisibleEngRows] = useState<Set<string>>(new Set())
   const [confirmDeleteRowId, setConfirmDeleteRowId] = useState<string | null>(null)
   const [confirmClearEngId, setConfirmClearEngId] = useState<string | null>(null)
   const [pendingLockedEdits, setPendingLockedEdits] = useState<Record<string, StRow>>({})
@@ -425,10 +425,16 @@ export function WorkOrderPopup({
     })()
   }, [liveForm?.start_date, liveForm?.end_date]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-show eng sub-rows when any row already has eng data
+  // Auto-show eng sub-rows for rows that already have eng data
   useEffect(() => {
-    if (!showEngRows && stRows.some(r => r.eng_rate || (r.eng_hours ?? 0) > 0)) {
-      setShowEngRows(true)
+    const withEng = stRows.filter(r => r.eng_rate || (r.eng_hours ?? 0) > 0).map(r => r.id)
+    if (withEng.length > 0) {
+      setVisibleEngRows(prev => {
+        const next = new Set(prev)
+        let changed = false
+        withEng.forEach(id => { if (!next.has(id)) { next.add(id); changed = true } })
+        return changed ? next : prev
+      })
     }
   }, [stRows]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -904,7 +910,9 @@ export function WorkOrderPopup({
       admin_locked: false,
     }
     setStRows(prev => [...prev, newRow])
-    if (last?.eng_rate || (last?.eng_hours ?? 0) > 0) setShowEngRows(true)
+    if (last?.eng_rate || (last?.eng_hours ?? 0) > 0) {
+      setVisibleEngRows(prev => { const next = new Set(prev); next.add(newRow.id); return next })
+    }
   }
 
   function addEngRow() {
@@ -935,7 +943,7 @@ export function WorkOrderPopup({
       admin_checked: false,
       admin_locked: false,
     }
-    setShowEngRows(true)
+    setVisibleEngRows(prev => { const next = new Set(prev); next.add(newRow.id); return next })
     setStRows(prev => [...prev, newRow])
   }
 
@@ -949,9 +957,7 @@ export function WorkOrderPopup({
     const updated = stRows.map(r => r.id === id ? { ...r, eng_from_time: '', eng_to_time: '', eng_rate: '', eng_hours: null, eng_charge: null } : r)
     setStRows(updated)
     setConfirmClearEngId(null)
-    if (!updated.some(r => r.eng_rate || (r.eng_hours ?? 0) > 0)) {
-      setShowEngRows(false)
-    }
+    setVisibleEngRows(prev => { const next = new Set(prev); next.delete(id); return next })
   }
 
   // ── Print with filename ───────────────────────────────────────────────────
@@ -1504,7 +1510,7 @@ export function WorkOrderPopup({
                           >Revert</button>
                         </div>
                       )}
-                      {(showEngRows || !!engName) && (
+                      {visibleEngRows.has(r.id) && (
                         <>
                           <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                             <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
