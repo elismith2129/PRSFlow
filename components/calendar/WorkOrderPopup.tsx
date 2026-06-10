@@ -850,7 +850,7 @@ export function WorkOrderPopup({
 
   // ── Add studio time row ────────────────────────────────────────────────────
 
-  async function addStRow() {
+  function addStRow() {
     const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
     const last = [...stRows].reverse().find(r => !!(r.studio || r.date)) ?? stRows[stRows.length - 1]
     const rowRateType = last?.row_rate_type || 'hour'
@@ -861,6 +861,7 @@ export function WorkOrderPopup({
 
     let totalHours: number | null = null
     let charge: number | null = null
+    let otHours = '0'
     if (rowRateType === 'hour') {
       totalHours = calcHours(fromTime, toTime)
       const rateNum = parseFloat(rateStr.replace(/[^0-9.]/g, ''))
@@ -869,10 +870,16 @@ export function WorkOrderPopup({
     } else {
       const rateNum = parseFloat((rateDailyStr || rateStr).replace(/[^0-9.]/g, ''))
       charge = !isNaN(rateNum) && rateNum > 0 ? rateNum : null
+      otHours = String(Math.max(0, (totalHours ?? 0) - 12))
     }
+    const otRateNum = last?.ot_rate ? parseFloat(last.ot_rate.replace(/[^0-9.]/g, '')) || 0 : 0
+    const otRateStr = otRateNum > 0 ? String(otRateNum) : (rowRateType === 'hour' ? rateStr : '')
+    const otHoursNum = parseFloat(otHours) || 0
+    const otRateNum2 = parseFloat(otRateStr.replace(/[^0-9.]/g, '')) || 0
+    const otCharge = otHoursNum > 0 && otRateNum2 > 0 ? parseFloat((otHoursNum * otRateNum2).toFixed(2)) : null
 
-    const newRow = {
-      work_order_id: woIdRef.current!,
+    const newRow: StRow = {
+      id: 'temp-' + Date.now() + '-' + Math.random(),
       studio: last?.studio || '',
       date: '',
       session_info: '',
@@ -880,24 +887,31 @@ export function WorkOrderPopup({
       to_time: toTime,
       total_hours: totalHours,
       rate: rateStr,
-      rate_daily: rateDailyStr || null,
+      rate_daily: rateDailyStr || '',
       row_rate_type: rowRateType,
-      ot_rate: last?.ot_rate ? (parseFloat(last.ot_rate.replace(/[^0-9.]/g, '')) || null) : null,
       charge,
       sort_order: maxOrder + 1 + Math.floor(Math.random() * 1000),
+      day_count: null,
+      ot_rate: otRateStr,
+      ot_hours: otHours,
+      ot_charge: otCharge,
+      eng_hours: null,
+      eng_rate: '',
+      eng_charge: null,
+      eng_from_time: '',
+      eng_to_time: '',
+      admin_checked: false,
+      admin_locked: false,
     }
-    const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
-    if (data) {
-      setStRows(prev => [...prev, normalizeStRow(data)])
-      if (last?.eng_rate || (last?.eng_hours ?? 0) > 0) setShowEngRows(true)
-    }
+    setStRows(prev => [...prev, newRow])
+    if (last?.eng_rate || (last?.eng_hours ?? 0) > 0) setShowEngRows(true)
   }
 
-  async function addEngRow() {
+  function addEngRow() {
     const engMaxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
     const lastEng = [...stRows].reverse().find(r => r.eng_rate || (r.eng_hours ?? 0) > 0 || r.eng_from_time) || stRows[stRows.length - 1]
-    const newRow = {
-      work_order_id: woIdRef.current!,
+    const newRow: StRow = {
+      id: 'temp-' + Date.now() + '-' + Math.random(),
       studio: '',
       date: '',
       session_info: '',
@@ -905,35 +919,33 @@ export function WorkOrderPopup({
       to_time: '',
       total_hours: null,
       rate: '',
-      rate_daily: null,
+      rate_daily: '',
       row_rate_type: 'hour',
-      ot_rate: null,
       charge: null,
       sort_order: engMaxOrder + 1 + Math.floor(Math.random() * 1000),
+      day_count: null,
+      ot_rate: '',
+      ot_hours: '0',
+      ot_charge: null,
       eng_from_time: lastEng?.eng_from_time || '',
       eng_to_time: lastEng?.eng_to_time || '',
       eng_rate: lastEng?.eng_rate || '',
       eng_hours: null,
       eng_charge: null,
+      admin_checked: false,
+      admin_locked: false,
     }
-    const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
-    if (data) {
-      setShowEngRows(true)
-      setStRows(prev => [...prev, normalizeStRow(data)])
-    }
+    setShowEngRows(true)
+    setStRows(prev => [...prev, newRow])
   }
 
-  async function deleteStRow(id: string) {
-    await supabase.from('studio_time_rows').delete().eq('id', id)
+  function deleteStRow(id: string) {
     setStRows(prev => prev.filter(r => r.id !== id))
     setConfirmDeleteRowId(null)
     setConfirmClearEngId(null)
   }
 
-  async function clearEngRow(id: string) {
-    await supabase.from('studio_time_rows').update({
-      eng_from_time: null, eng_to_time: null, eng_rate: null, eng_hours: null, eng_charge: null,
-    }).eq('id', id)
+  function clearEngRow(id: string) {
     const updated = stRows.map(r => r.id === id ? { ...r, eng_from_time: '', eng_to_time: '', eng_rate: '', eng_hours: null, eng_charge: null } : r)
     setStRows(updated)
     setConfirmClearEngId(null)
@@ -1038,9 +1050,15 @@ export function WorkOrderPopup({
       payment_type: wo.payment_status === 'Billing' ? 'billing' : 'COD',
     }).eq('id', booking.id)
 
-    // Save studio time rows
-    await Promise.all(stRows.map(r =>
-      supabase.from('studio_time_rows').update({
+    // Save studio time rows: delete removed rows, insert temp rows, update existing rows
+    const toDelete = originalStRowsRef.current.filter(orig => !stRows.find(r => r.id === orig.id))
+    if (toDelete.length) {
+      await supabase.from('studio_time_rows').delete().in('id', toDelete.map(r => r.id))
+    }
+
+    await Promise.all(stRows.map(r => {
+      const payload = {
+        work_order_id: id,
         studio: r.studio, date: r.date, session_info: r.session_info,
         from_time: r.from_time, to_time: r.to_time,
         total_hours: r.total_hours, rate: r.rate, rate_daily: r.rate_daily || null,
@@ -1058,8 +1076,17 @@ export function WorkOrderPopup({
         eng_to_time: r.eng_to_time || null,
         admin_checked: r.admin_checked,
         admin_locked: r.admin_locked,
-      }).eq('id', r.id)
-    ))
+      }
+      if (r.id.startsWith('temp-')) {
+        return supabase.from('studio_time_rows').insert(payload)
+      }
+      return supabase.from('studio_time_rows').update(payload).eq('id', r.id)
+    }))
+
+    // Reload to get real IDs for any inserted temp rows
+    const { data: reloaded } = await supabase
+      .from('studio_time_rows').select('*').eq('work_order_id', id).order('sort_order')
+    originalStRowsRef.current = (reloaded ?? []).map(normalizeStRow)
 
     // Upsert rental rows that have content
     const rentToSave = rentRows.filter(r => r.item || r.charge)
@@ -1079,18 +1106,12 @@ export function WorkOrderPopup({
         : supabase.from('payment_rows').insert(payload)
     }))
 
-    originalStRowsRef.current = stRows
     setSaving(false)
     onSaved?.()
     onClose()
   }
 
-  async function handleCancel() {
-    const originalIds = new Set(originalStRowsRef.current.map(r => r.id))
-    const added = stRows.filter(r => !originalIds.has(r.id))
-    if (added.length) {
-      await supabase.from('studio_time_rows').delete().in('id', added.map(r => r.id))
-    }
+  function handleCancel() {
     setStRows(originalStRowsRef.current)
     onClose()
   }
