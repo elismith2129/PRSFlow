@@ -949,7 +949,7 @@ export function WorkOrderPopup({
     const updated = stRows.map(r => r.id === id ? { ...r, eng_from_time: '', eng_to_time: '', eng_rate: '', eng_hours: null, eng_charge: null } : r)
     setStRows(updated)
     setConfirmClearEngId(null)
-    if (!updated.some(r => r.eng_rate || (r.eng_hours ?? 0) > 0 || r.eng_from_time)) {
+    if (!updated.some(r => r.eng_rate || (r.eng_hours ?? 0) > 0)) {
       setShowEngRows(false)
     }
   }
