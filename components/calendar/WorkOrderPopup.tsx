@@ -427,7 +427,7 @@ export function WorkOrderPopup({
 
   // Auto-show eng sub-rows for rows that already have eng data
   useEffect(() => {
-    const withEng = stRows.filter(r => !!r.eng_rate).map(r => r.id)
+    const withEng = stRows.filter(r => !!r.eng_rate || (r.eng_hours != null && r.eng_hours > 0)).map(r => r.id)
     if (withEng.length > 0) {
       setVisibleEngRows(prev => {
         const next = new Set(prev)
@@ -1095,7 +1095,7 @@ export function WorkOrderPopup({
       .from('studio_time_rows').select('*').eq('work_order_id', id).order('sort_order')
     const reloadedRows = (reloaded ?? []).map(normalizeStRow)
     originalStRowsRef.current = reloadedRows
-    setVisibleEngRows(new Set(reloadedRows.filter(r => !!r.eng_rate).map(r => r.id)))
+    setVisibleEngRows(new Set(reloadedRows.filter(r => !!r.eng_rate || (r.eng_hours != null && r.eng_hours > 0)).map(r => r.id)))
 
     // Upsert rental rows that have content
     const rentToSave = rentRows.filter(r => r.item || r.charge)
@@ -1389,7 +1389,7 @@ export function WorkOrderPopup({
                               setStRows(prev =>
                                 prev
                                   .map(row => row.id === r.id ? { ...row, date: newDate } : row)
-                                  .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+                                  .sort((a, b) => (a.date || 'zzzz').localeCompare(b.date || 'zzzz'))
                                   .map((row, i) => ({ ...row, sort_order: i }))
                               )
                             }}
@@ -1526,7 +1526,7 @@ export function WorkOrderPopup({
                                     setStRows(prev =>
                                       prev
                                         .map(row => row.id === r.id ? { ...row, date: newDate } : row)
-                                        .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+                                        .sort((a, b) => (a.date || 'zzzz').localeCompare(b.date || 'zzzz'))
                                         .map((row, i) => ({ ...row, sort_order: i }))
                                     )
                                   }}
