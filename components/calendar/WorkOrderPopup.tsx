@@ -1359,7 +1359,7 @@ export function WorkOrderPopup({
                               setStRows(prev => {
                                 const sorted = prev
                                   .map(row => row.id === r.id ? { ...row, date: newDate } : row)
-                                  .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+                                  .sort((a, b) => (a.date || 'zzzz').localeCompare(b.date || 'zzzz'))
                                   .map((row, i) => ({ ...row, sort_order: i }))
                                 sorted.forEach(row => { supabase.from('studio_time_rows').update({ date: row.date, sort_order: row.sort_order }).eq('id', row.id) })
                                 return sorted
@@ -1484,42 +1484,41 @@ export function WorkOrderPopup({
                         </div>
                       )}
                       {(showEngRows || !!engName) && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
-                          <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
-                          <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engName}</div>
-                          <div style={cellS} />
-                          <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} style={inp} /></div>
-                          <div style={cellS}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} style={inp} /></div>
-                          <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engHrs != null ? `${engHrs}h` : '—'}</div>
-                          <div style={cellS} />
-                          <div style={cellS}>
-                            <input value={r.eng_rate || engRateDisplay} onChange={e => updateStRow(r.id, { eng_rate: e.target.value })} style={{ ...inp, width: 64 }} />
-                          </div>
-                          <div style={cellS} />
-                          <div style={cellS} />
-                          <div style={cellS} />
-                          <div style={{ ...cellS, color: engCharge != null ? '#c8f04e' : '#8a8fa0', fontWeight: engCharge != null ? 600 : 400 }}>
-                            {engCharge != null ? `$${engCharge.toFixed(2)}` : '—'}
-                          </div>
-                          {/* Eng lock */}
-                          <div style={{ ...cellS, justifyContent: 'center', padding: '3px 4px', pointerEvents: 'auto' }}>
-                            <button type="button" onClick={() => handleToggleLock(r.id, r.admin_locked)} style={{ fontSize: 8, fontFamily: 'DM Mono', fontWeight: 700, padding: '2px 5px', borderRadius: 3, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', background: r.admin_locked ? '#14B8A6' : 'rgba(255,255,255,0.06)', color: r.admin_locked ? '#0d0f14' : '#6B7280' }}>{r.admin_locked ? '🔒' : '✓'}</button>
-                          </div>
-                          {/* Eng delete */}
-                          <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto' }}>
-                            {confirmClearEngId === r.id ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                                <span style={{ fontSize: 7, color: '#f97316', fontFamily: 'DM Mono', whiteSpace: 'nowrap' }}>Del?</span>
-                                <div style={{ display: 'flex', gap: 3 }}>
-                                  <button type="button" onClick={() => isEngOnly ? deleteStRow(r.id) : clearEngRow(r.id)} style={{ fontSize: 8, fontFamily: 'DM Mono', color: '#f97316', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 700 }}>Y</button>
-                                  <button type="button" onClick={() => setConfirmClearEngId(null)} style={{ fontSize: 8, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>N</button>
-                                </div>
-                              </div>
-                            ) : (
+                        <>
+                          <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
+                            <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
+                            <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engName}</div>
+                            <div style={cellS} />
+                            <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} style={inp} /></div>
+                            <div style={cellS}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} style={inp} /></div>
+                            <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engHrs != null ? `${engHrs}h` : '—'}</div>
+                            <div style={cellS} />
+                            <div style={cellS}>
+                              <input value={r.eng_rate || engRateDisplay} onChange={e => updateStRow(r.id, { eng_rate: e.target.value })} style={{ ...inp, width: 64 }} />
+                            </div>
+                            <div style={cellS} />
+                            <div style={cellS} />
+                            <div style={cellS} />
+                            <div style={{ ...cellS, color: engCharge != null ? '#c8f04e' : '#8a8fa0', fontWeight: engCharge != null ? 600 : 400 }}>
+                              {engCharge != null ? `$${engCharge.toFixed(2)}` : '—'}
+                            </div>
+                            {/* Eng lock */}
+                            <div style={{ ...cellS, justifyContent: 'center', padding: '3px 4px', pointerEvents: 'auto' }}>
+                              <button type="button" onClick={() => handleToggleLock(r.id, r.admin_locked)} style={{ fontSize: 8, fontFamily: 'DM Mono', fontWeight: 700, padding: '2px 5px', borderRadius: 3, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', background: r.admin_locked ? '#14B8A6' : 'rgba(255,255,255,0.06)', color: r.admin_locked ? '#0d0f14' : '#6B7280' }}>{r.admin_locked ? '🔒' : '✓'}</button>
+                            </div>
+                            {/* Eng delete × */}
+                            <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto' }}>
                               <button type="button" onClick={() => setConfirmClearEngId(r.id)} disabled={isCompleted} style={{ fontSize: 13, fontFamily: 'DM Mono', color: isCompleted ? '#2a2f3a' : '#4a4f60', background: 'none', border: 'none', cursor: isCompleted ? 'default' : 'pointer', padding: 0, lineHeight: 1 }}>×</button>
-                            )}
+                            </div>
                           </div>
-                        </div>
+                          {confirmClearEngId === r.id && (
+                            <div style={{ padding: '5px 12px', background: 'rgba(249,115,22,0.08)', borderBottom: '1px solid rgba(249,115,22,0.2)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'DM Mono', color: '#f97316' }}>
+                              <span>Delete engineer row?</span>
+                              <button type="button" onClick={() => isEngOnly ? deleteStRow(r.id) : clearEngRow(r.id)} style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid #f97316', background: 'rgba(249,115,22,0.15)', color: '#f97316', fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer' }}>Y</button>
+                              <button type="button" onClick={() => setConfirmClearEngId(null)} style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: '#8a8fa0', fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}>N</button>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   )
