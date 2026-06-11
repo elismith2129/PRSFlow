@@ -1147,8 +1147,8 @@ function BookingForm({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   {!timeTBD && (
                     <>
-                      <TimeInput value={form.from_time} onChange={v => set('from_time', v)} placeholder="10:00 AM" style={{ ...inp, width: 90 }} />
-                      <TimeInput value={form.to_time} onChange={v => set('to_time', v)} placeholder="10:00 PM" style={{ ...inp, width: 90 }} />
+                      <TimeInput value={form.from_time} onChange={v => set('from_time', v)} style={{ ...inp, width: 90 }} />
+                      <TimeInput value={form.to_time} onChange={v => set('to_time', v)} style={{ ...inp, width: 90 }} />
                     </>
                   )}
                   <button

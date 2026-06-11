@@ -2316,8 +2316,8 @@ function NewLeadModal({ leads, onClose, onSave }: {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 10 }}>
         <div><label style={labelS}>Session Date</label><input type="date" value={form.session_date} onChange={e => set('session_date', e.target.value)} style={inputStyle} /></div>
-        <div><label style={labelS}>Start Time</label><TimeInput value={form.session_start} onChange={v => set('session_start', v)} placeholder="10:00 AM" style={inputStyle} /></div>
-        <div><label style={labelS}>End Time</label><TimeInput value={form.session_end} onChange={v => set('session_end', v)} placeholder="10:00 PM" style={inputStyle} /></div>
+        <div><label style={labelS}>Start Time</label><TimeInput value={form.session_start} onChange={v => set('session_start', v)} style={inputStyle} /></div>
+        <div><label style={labelS}>End Time</label><TimeInput value={form.session_end} onChange={v => set('session_end', v)} style={inputStyle} /></div>
       </div>
       <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
         <input type="checkbox" id="new_engineer_needed" checked={form.engineer_needed as boolean} onChange={e => setForm(prev => ({ ...prev, engineer_needed: e.target.checked }))} style={{ cursor: 'pointer', accentColor: 'var(--accent)', width: 13, height: 13 }} />
