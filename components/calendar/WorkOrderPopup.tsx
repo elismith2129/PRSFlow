@@ -94,6 +94,17 @@ const EQUIPMENT_ITEMS = ['Speakers', 'Microphone', 'Console']
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+function formatCurrency(val: string): string {
+  const num = parseFloat(String(val).replace(/[$,]/g, ''))
+  if (isNaN(num)) return ''
+  return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function stripCurrency(val: string): number | null {
+  const n = parseFloat(String(val).replace(/[$,]/g, ''))
+  return isNaN(n) ? null : n
+}
+
 function getLocalToday(): string {
   const now = new Date()
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
@@ -611,7 +622,7 @@ export function WorkOrderPopup({
         rent.forEach(r => rentIdsInDb.current.add(r.id))
       }
       if (pay?.length) {
-        setPayRows(pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: String(p.amount ?? ''), memo: p.memo ?? '', last_four: p.last_four ?? '' })))
+        setPayRows(pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: p.amount != null ? formatCurrency(String(p.amount)) : '', memo: p.memo ?? '', last_four: p.last_four ?? '' })))
         pay.forEach(p => payIdsInDb.current.add(p.id))
       }
     } else {
@@ -1162,7 +1173,7 @@ export function WorkOrderPopup({
     // Upsert payment rows that have content
     const payToSave = payRows.filter(p => p.payment_type || p.amount)
     await Promise.all(payToSave.map(p => {
-      const payload = { id: p.id, work_order_id: id, payment_type: p.payment_type || null, amount: parseFloat(p.amount) || null, memo: p.memo || null, last_four: p.last_four || null }
+      const payload = { id: p.id, work_order_id: id, payment_type: p.payment_type || null, amount: stripCurrency(p.amount), memo: p.memo || null, last_four: p.last_four || null }
       return payIdsInDb.current.has(p.id)
         ? supabase.from('payment_rows').update(payload).eq('id', p.id)
         : supabase.from('payment_rows').insert(payload)
@@ -1225,7 +1236,7 @@ export function WorkOrderPopup({
   }, 0)
   const rentTotal = rentRows.reduce((s, r) => s + (parseFloat(r.charge) || 0), 0)
   const grandTotal = stTotal + engTotal + rentTotal
-  const totalPaid = payRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
+  const totalPaid = payRows.reduce((s, r) => s + (stripCurrency(r.amount) ?? 0), 0)
   const balanceDue = grandTotal - totalPaid
   const sessionDates = Array.from(new Set(stRows.map(r => r.date).filter(Boolean))).sort()
 
@@ -1850,7 +1861,7 @@ export function WorkOrderPopup({
                             {['Cash', 'Zelle', 'Credit Card', 'Debit Card', 'Check', 'Other'].map(t => <option key={t} value={t}>{t}</option>)}
                           </select>
                         </div>
-                        <div style={cellS}><input value={p.amount} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x))} placeholder="0.00" style={inp} /></div>
+                        <div style={cellS}><input value={p.amount} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x))} onBlur={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: formatCurrency(e.target.value) } : x))} placeholder="0.00" style={inp} /></div>
                         <div style={cellS}><input value={p.memo} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))} placeholder="memo" style={inp} /></div>
                         {needsLast4 && (
                           <div style={cellS}><input value={p.last_four} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) } : x))} placeholder="last 4" maxLength={4} style={inp} /></div>

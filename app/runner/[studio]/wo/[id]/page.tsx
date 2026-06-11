@@ -13,6 +13,17 @@ const STUDIO_META: Record<string, { label: string; abbr: string; color: string }
 
 const EQUIPMENT = ['Speakers', 'Microphone', 'Console']
 
+function formatCurrency(val: string): string {
+  const num = parseFloat(String(val).replace(/[$,]/g, ''))
+  if (isNaN(num)) return ''
+  return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function stripCurrency(val: string): number | null {
+  const n = parseFloat(String(val).replace(/[$,]/g, ''))
+  return isNaN(n) ? null : n
+}
+
 function timeToMins(t: string): number {
   if (!t) return NaN
   const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i)
@@ -249,7 +260,7 @@ export default function RunnerWOPage() {
       const payMapped = (pay ?? []).map((p: any) => ({
         id: p.id,
         payment_type: p.payment_type ?? '',
-        amount: p.amount != null ? String(p.amount) : '',
+        amount: p.amount != null ? formatCurrency(String(p.amount)) : '',
         memo: p.memo ?? '',
         last_four: p.last_four ?? '',
       }))
@@ -616,7 +627,7 @@ export default function RunnerWOPage() {
         id: p.id,
         work_order_id: woRef.current!,
         payment_type: p.payment_type || null,
-        amount: parseFloat(p.amount) || null,
+        amount: stripCurrency(p.amount),
         memo: p.memo || null,
         last_four: p.last_four || null,
       }
@@ -685,7 +696,7 @@ export default function RunnerWOPage() {
     return s + (parseFloat(String(r.charge ?? '0').replace(/[^0-9.]/g, '')) || 0)
   }, 0)
 
-  const totalPaid = payRows.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
+  const totalPaid = payRows.reduce((s, p) => s + (stripCurrency(p.amount) ?? 0), 0)
   const grandTotal = stTotal + engTotal + rentTotal
   const balanceDue = grandTotal - totalPaid
 
@@ -1085,6 +1096,7 @@ export default function RunnerWOPage() {
                   <input
                     value={p.amount}
                     onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x))}
+                    onBlur={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: formatCurrency(e.target.value) } : x))}
                     placeholder="0.00"
                     inputMode="decimal"
                     style={{ width: 80, background: '#0d0f14', border: '1px solid #2a2e3d', borderRadius: 6, color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 11, padding: '6px 8px', outline: 'none', textAlign: 'right' }}
