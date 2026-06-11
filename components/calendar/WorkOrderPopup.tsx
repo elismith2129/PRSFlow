@@ -853,7 +853,7 @@ export function WorkOrderPopup({
 
   // ── Add studio time row ────────────────────────────────────────────────────
 
-  async function addStRow() {
+  function addStRow() {
     const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
     const last = [...stRows].reverse().find(r => !!(r.studio || r.date)) ?? stRows[stRows.length - 1]
     const rowRateType = last?.row_rate_type || 'hour'
@@ -874,8 +874,8 @@ export function WorkOrderPopup({
       charge = !isNaN(rateNum) && rateNum > 0 ? rateNum : null
     }
 
-    const newRow = {
-      work_order_id: woIdRef.current!,
+    const newRow: StRow = {
+      id: crypto.randomUUID(),
       studio: last?.studio || '',
       date: '',
       session_info: '',
@@ -883,17 +883,25 @@ export function WorkOrderPopup({
       to_time: toTime,
       total_hours: totalHours,
       rate: rateStr,
-      rate_daily: rateDailyStr || null,
+      rate_daily: rateDailyStr || '',
       row_rate_type: rowRateType,
-      ot_rate: last?.ot_rate ? (parseFloat(last.ot_rate.replace(/[^0-9.]/g, '')) || null) : null,
+      ot_rate: last?.ot_rate || '',
+      ot_hours: '0',
+      ot_charge: null,
       charge,
-      sort_order: maxOrder + 1 + Math.floor(Math.random() * 1000),
+      sort_order: maxOrder + 1,
+      day_count: null,
+      eng_hours: null,
+      eng_rate: '',
+      eng_charge: null,
+      eng_from_time: '',
+      eng_to_time: '',
+      admin_checked: false,
+      admin_locked: false,
+      eng_visible: true,
     }
-    const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
-    if (data) {
-      setStRows(prev => [...prev, normalizeStRow(data)])
-      if (last?.eng_rate || (last?.eng_hours ?? 0) > 0) setShowEngRows(true)
-    }
+    setStRows(prev => [...prev, newRow])
+    if (last?.eng_rate || (last?.eng_hours ?? 0) > 0) setShowEngRows(true)
   }
 
   function addEngRow() {
