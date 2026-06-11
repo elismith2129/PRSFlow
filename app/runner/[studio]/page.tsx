@@ -129,6 +129,7 @@ export default function StudioDailyOpsPage() {
 
   function woStatusBadge(wo: WOStatus) {
     if (!wo) return <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>No WO</span>
+    if (wo.status === 'completed') return null
     const colors: Record<string, string> = { draft: '#8b90a8', submitted: '#f0a24e', approved: '#c8f04e' }
     const c = colors[wo.status] ?? '#8b90a8'
     return (
@@ -201,6 +202,7 @@ export default function StudioDailyOpsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {bookings.map(b => {
                 const wo = woMap[b.id] ?? null
+                const completed = wo?.status === 'completed'
                 return (
                   <div
                     key={b.id}
@@ -213,7 +215,7 @@ export default function StudioDailyOpsPage() {
                     }}
                     style={{
                       background: '#161920',
-                      border: '1px solid #2a2e3d',
+                      border: completed ? '1px solid #14B8A6' : '1px solid #2a2e3d',
                       borderRadius: 12,
                       padding: '14px 16px',
                       cursor: 'pointer',
@@ -229,7 +231,9 @@ export default function StudioDailyOpsPage() {
                           <div style={{ fontSize: 11, color: '#8b90a8' }}>{b.client_name}</div>
                         )}
                       </div>
-                      {statusBadge(b.status)}
+                      {completed && (
+                        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#14B8A6', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>COMPLETED</span>
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', gap: 16, marginBottom: 10, flexWrap: 'wrap' }}>

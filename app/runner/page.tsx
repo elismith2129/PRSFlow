@@ -27,8 +27,9 @@ export default function RunnerPage() {
     const { data } = await supabase
       .from('bookings')
       .select('location, status')
-      .eq('start_date', today)
-      .not('status', 'eq', 'cancelled')
+      .lte('start_date', today)
+      .gte('end_date', today)
+      .eq('status', 'confirmed')
 
     const c: Record<string, number> = {}
     for (const s of STUDIOS) c[s.key] = 0
@@ -54,14 +55,8 @@ export default function RunnerPage() {
         event: '*',
         schema: 'public',
         table: 'bookings',
-        filter: `start_date=eq.${today}`,
-      }, (payload) => {
-        console.log('[RT] Real-time event received on /runner (hub), bookings:', payload)
-        load()
-      })
-      .subscribe((status, err) => {
-        console.log('[RT] bookings subscription status on /runner (hub):', status, err ?? '')
-      })
+      }, () => { load() })
+      .subscribe()
     return () => {
       console.log('[RT] Unsubscribing from bookings on /runner (hub)')
       supabase.removeChannel(channel)

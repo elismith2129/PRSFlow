@@ -247,7 +247,7 @@ export function LocationStrip() {
   function SessionCard({ b, wo, isYesterday }: { b: Booking; wo: WO | null; isYesterday?: boolean }) {
     const completed      = wo?.status === 'completed'
     const needsAttention = !!(wo?.needs_attention_notes)
-    const borderColor    = completed ? '#14B8A6' : needsAttention ? '#f9731655' : 'var(--border)'
+    const borderColor    = completed ? '#14B8A6' : isYesterday ? '#F97316' : '#c8f04e'
     return (
       <div
         onClick={() => setWoBooking(b)}
