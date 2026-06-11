@@ -97,6 +97,12 @@ export default function TimeInput({ value, onChange, onBlur, placeholder = '—'
     setRaw(e.target.value)
   }
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur()
+    }
+  }
+
   function handleBlur() {
     focused.current = false
     const parsed = parseTime(raw)
@@ -111,6 +117,7 @@ export default function TimeInput({ value, onChange, onBlur, placeholder = '—'
       type="text"
       value={raw}
       onChange={handleChange}
+      onKeyDown={handleKeyDown}
       onFocus={handleFocus}
       onBlur={handleBlur}
       disabled={disabled}
