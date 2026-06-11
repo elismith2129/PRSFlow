@@ -68,9 +68,11 @@ export default function RunnerWOPage() {
   const [naUploading, setNaUploading] = useState(false)
   const naFileRef = useRef<HTMLInputElement>(null)
   const [payRows, setPayRows] = useState<{ id: string; payment_type: string; amount: string }[]>([])
-  const [legalSig, setLegalSig] = useState('')
-  const [legalName, setLegalName] = useState('')
-  const [legalDate, setLegalDate] = useState('')
+  const [signatureData, setSignatureData] = useState('')
+  const [printName, setPrintName] = useState('')
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const isDrawingRef = useRef(false)
+  const initialSigRef = useRef('')
   const [submitting, setSubmitting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -248,9 +250,9 @@ export default function RunnerWOPage() {
         payment_type: p.payment_type ?? '',
         amount: p.amount != null ? String(p.amount) : '',
       })))
-      setLegalSig(woData?.legal_signature ?? '')
-      setLegalName(woData?.legal_name ?? '')
-      setLegalDate(woData?.legal_date ?? '')
+      initialSigRef.current = woData?.signature_data ?? ''
+      setSignatureData(woData?.signature_data ?? '')
+      setPrintName(woData?.print_name ?? '')
 
       setLoading(false)
     }
@@ -388,6 +390,84 @@ export default function RunnerWOPage() {
     return () => { supabase.removeChannel(channel) }
   }, [resolvedWoId])
 
+  useEffect(() => {
+    if (loading) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.strokeStyle = '#e8eaf2'
+    ctx.lineWidth = 2.5
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    if (initialSigRef.current) {
+      const img = new Image()
+      img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      img.src = initialSigRef.current
+    }
+  }, [loading])
+
+  function getCanvasPos(
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>,
+    canvas: HTMLCanvasElement
+  ) {
+    const rect = canvas.getBoundingClientRect()
+    let clientX: number, clientY: number
+    if ('touches' in e && e.touches.length > 0) {
+      clientX = e.touches[0].clientX
+      clientY = e.touches[0].clientY
+    } else if ('changedTouches' in e && (e as React.TouchEvent).changedTouches.length > 0) {
+      clientX = (e as React.TouchEvent).changedTouches[0].clientX
+      clientY = (e as React.TouchEvent).changedTouches[0].clientY
+    } else {
+      clientX = (e as React.MouseEvent).clientX
+      clientY = (e as React.MouseEvent).clientY
+    }
+    return {
+      x: (clientX - rect.left) * (canvas.width / rect.width),
+      y: (clientY - rect.top) * (canvas.height / rect.height),
+    }
+  }
+
+  function startDraw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    isDrawingRef.current = true
+    const ctx = canvas.getContext('2d')!
+    ctx.strokeStyle = '#e8eaf2'
+    ctx.lineWidth = 2.5
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    const pos = getCanvasPos(e, canvas)
+    ctx.beginPath()
+    ctx.moveTo(pos.x, pos.y)
+  }
+
+  function continueDraw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+    if (!isDrawingRef.current) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    const pos = getCanvasPos(e, canvas)
+    ctx.lineTo(pos.x, pos.y)
+    ctx.stroke()
+  }
+
+  function endDraw() {
+    if (!isDrawingRef.current) return
+    isDrawingRef.current = false
+    const canvas = canvasRef.current
+    if (!canvas) return
+    setSignatureData(canvas.toDataURL('image/png'))
+  }
+
+  function clearSignature() {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    canvas.getContext('2d')!.clearRect(0, 0, canvas.width, canvas.height)
+    setSignatureData('')
+  }
+
   async function toggleEquip(eq: string, date: string, val: 'ok' | 'not_ok') {
     const key = `${eq}||${date}`
     const newVal = equipConds[key] === val ? null : val
@@ -480,9 +560,8 @@ export default function RunnerWOPage() {
       session_notes: sessionNotes,
       needs_attention_notes: needsAttentionNotes || null,
       needs_attention_photos: needsAttentionPhotos.length > 0 ? needsAttentionPhotos : null,
-      legal_signature: legalSig || null,
-      legal_name: legalName || null,
-      legal_date: legalDate || null,
+      print_name: printName || null,
+      signature_data: signatureData || null,
     }).eq('id', woRef.current)
 
     // Save time/hours/charge for all rows (per-row row_rate_type)
@@ -596,6 +675,7 @@ export default function RunnerWOPage() {
   )
 
   const isCompleted = wo?.status === 'completed'
+  const isCOD = (booking?.payment_type ?? wo?.payment_status ?? '').toString().toUpperCase() === 'COD'
 
   return (
     <div style={{ minHeight: '100dvh', maxWidth: '100vw', overflowX: 'hidden', background: '#0d0f14', fontFamily: 'Syne, sans-serif', paddingBottom: 100 }}>
@@ -998,26 +1078,58 @@ export default function RunnerWOPage() {
           </div>
         )}
 
-        {/* Legal + Signature */}
-        <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, padding: '14px 14px', marginBottom: 16 }}>
-          <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', color: '#4a4f64', lineHeight: 1.8, marginBottom: 14 }}>
-            By signing below, I acknowledge that I am authorized to approve charges for this session. I accept responsibility for all associated costs and understand that payment is due in full at the time of service unless otherwise agreed. I also acknowledge that Paramount Recording is not responsible for any media, personal items, or equipment left behind.
-            <br /><br />
-            <em>No Tapes, CDs, DVDs, Thumb Drives, Computer Drives or other Recording Media will be released until payment in full is received.</em>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {([['Signature', legalSig, (v: string) => setLegalSig(v)], ['Print Name', legalName, (v: string) => setLegalName(v)], ['Date', legalDate, (v: string) => setLegalDate(v)]] as [string, string, (v: string) => void][]).map(([label, val, setter]) => (
-              <div key={label} style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>{label}</span>
+        {/* Legal + Signature — COD only */}
+        {isCOD && (
+          <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, padding: '14px', marginBottom: 16 }}>
+            <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', color: '#4a4f64', lineHeight: 1.8, marginBottom: 14 }}>
+              By signing below, I acknowledge that I am authorized to approve charges for this session. I accept responsibility for all associated costs and understand that payment is due in full at the time of service unless otherwise agreed. I also acknowledge that Paramount Recording is not responsible for any media, personal items, or equipment left behind.
+              <br /><br />
+              <em>No Tapes, CDs, DVDs, Thumb Drives, Computer Drives or other Recording Media will be released until payment in full is received.</em>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Date</span>
+                <span style={{ fontSize: 12, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }}>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Print Name</span>
                 <input
-                  value={val}
-                  onChange={e => setter(e.target.value)}
+                  value={printName}
+                  onChange={e => setPrintName(e.target.value)}
+                  placeholder="Full name"
                   style={{ background: 'transparent', border: 'none', borderBottom: '1px solid #3a3f52', color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 12, padding: '4px 2px', outline: 'none', width: '100%' }}
                 />
               </div>
-            ))}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Signature</span>
+                  <button
+                    onClick={clearSignature}
+                    style={{ background: 'none', border: '1px solid #3a3f52', borderRadius: 6, padding: '3px 10px', color: '#8b90a8', fontSize: 10, cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}
+                  >
+                    Clear
+                  </button>
+                </div>
+                <canvas
+                  ref={canvasRef}
+                  width={700}
+                  height={200}
+                  onMouseDown={startDraw}
+                  onMouseMove={continueDraw}
+                  onMouseUp={endDraw}
+                  onMouseLeave={endDraw}
+                  onTouchStart={startDraw}
+                  onTouchMove={continueDraw}
+                  onTouchEnd={endDraw}
+                  style={{ width: '100%', height: 100, background: '#0d0f14', borderRadius: 8, border: '1px solid #3a3f52', display: 'block', touchAction: 'none', cursor: 'crosshair' }}
+                />
+                {signatureData && (
+                  <div style={{ fontSize: 9, color: '#4a4f64', fontFamily: 'DM Mono, monospace', marginTop: 4 }}>Signature captured ✓</div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Needs Attention / Runner Notes */}
         <div style={{ background: '#161920', border: '1px solid rgba(249,115,22,0.35)', borderRadius: 12, padding: '14px 14px', marginBottom: 16 }}>
