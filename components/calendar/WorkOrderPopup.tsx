@@ -1364,7 +1364,7 @@ export function WorkOrderPopup({
               </div>
               <div data-st-scroll="" style={{ maxHeight: 420, overflowY: 'auto' }}>
                 {stRows.map(r => {
-                  const isEngOnly = !r.studio && !r.date
+                  const isEngOnly = r.studio === ''
                   const isDayRow = r.row_rate_type === 'day'
                   const engName = wo?.engineer || liveForm?.engineer_name || booking.engineer_name || ''
                   const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || ''
