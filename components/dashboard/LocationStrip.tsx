@@ -186,10 +186,17 @@ export function LocationStrip() {
     const woMapYest: Record<string, WO> = {}
     for (const w of yWOs.data ?? []) if (w.booking_id) woMapYest[w.booking_id] = w
 
+    // Keep completed WOs in Today until 9am the following morning
+    const now = new Date()
+    const nineAmTomorrow = new Date(today + 'T09:00:00')
+    nineAmTomorrow.setDate(nineAmTomorrow.getDate() + 1)
+    const pastRetentionWindow = now >= nineAmTomorrow
     const activeTodayBkgs = locTodayBkgs.filter(b => {
       const wo = woMapToday[b.id]
       if (!wo) return true
-      return wo.status !== 'completed'
+      if (wo.status !== 'completed') return true
+      if (!pastRetentionWindow) return true  // before 9am next day — keep completed WOs
+      return false
     })
 
     const clProgress: Record<string, ChecklistProgress> = {}

@@ -988,15 +988,15 @@ export function WorkOrderPopup({
 
   async function handleComplete() {
     if (!woIdRef.current || !wo) return
-    if (wo.status === 'completed') return
     setCompleting(true)
+    const newStatus = wo.status === 'completed' ? 'open' : 'completed'
     const now = new Date().toISOString()
     await supabase.from('work_orders').update({
-      status: 'completed',
-      admin_approved_at: now,
+      status: newStatus,
+      admin_approved_at: newStatus === 'completed' ? now : null,
     }).eq('id', woIdRef.current)
-    setWo(prev => prev ? { ...prev, status: 'completed' } : prev)
-    onStatusChange?.('completed')
+    setWo(prev => prev ? { ...prev, status: newStatus } : prev)
+    onStatusChange?.(newStatus)
     setCompleting(false)
   }
 
@@ -1813,10 +1813,10 @@ export function WorkOrderPopup({
           </button>
           <button
             onClick={handleComplete}
-            disabled={completing || isCompleted}
-            style={{ padding: '7px 18px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: (completing || isCompleted) ? 'default' : 'pointer', background: isCompleted ? '#14B8A6' : completing ? 'rgba(20,184,166,0.5)' : '#14B8A6', border: 'none', color: '#0d0f14', opacity: (completing || isCompleted) ? 0.8 : 1 }}
+            disabled={completing}
+            style={{ padding: '7px 18px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: completing ? 'default' : 'pointer', background: isCompleted ? 'rgba(255,255,255,0.08)' : completing ? 'rgba(20,184,166,0.5)' : '#14B8A6', border: isCompleted ? '1px solid rgba(255,255,255,0.12)' : 'none', color: isCompleted ? '#8a8fa0' : '#0d0f14', opacity: completing ? 0.7 : 1 }}
           >
-            {isCompleted ? 'Completed ✓' : completing ? 'Completing…' : 'Complete WO'}
+            {completing ? (isCompleted ? 'Re-opening…' : 'Completing…') : isCompleted ? 'Re-open WO' : 'Complete WO'}
           </button>
           <button onClick={handleClose} disabled={saving} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Saving…' : 'Close & Save'}
