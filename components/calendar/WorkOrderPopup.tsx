@@ -428,7 +428,7 @@ export function WorkOrderPopup({
 
   // Auto-show eng sub-rows when any row already has eng data
   useEffect(() => {
-    if (!showEngRows && stRows.some(r => r.eng_rate || (r.eng_hours ?? 0) > 0)) {
+    if (!showEngRows && stRows.some(r => !!r.eng_rate)) {
       setShowEngRows(true)
     }
   }, [stRows]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -1231,7 +1231,7 @@ export function WorkOrderPopup({
               </>
             )}
             <button
-              onClick={() => onClose()}
+              onClick={() => handleCancel()}
               disabled={saving}
               style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}
             >
