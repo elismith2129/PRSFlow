@@ -47,7 +47,6 @@ function defaultEngHrs(r: any): string {
 }
 
 type EquipCond = Record<string, 'ok' | 'not_ok' | null>
-type Expense = { id?: string; vendor: string; item: string; amount: string; receipt_url: string | null; uploading?: boolean }
 
 export default function RunnerWOPage() {
   const router = useRouter()
@@ -68,7 +67,10 @@ export default function RunnerWOPage() {
   const [needsAttentionPhotos, setNeedsAttentionPhotos] = useState<string[]>([])
   const [naUploading, setNaUploading] = useState(false)
   const naFileRef = useRef<HTMLInputElement>(null)
-  const [expenses, setExpenses] = useState<Expense[]>([])
+  const [payRows, setPayRows] = useState<{ id: string; payment_type: string; amount: string }[]>([])
+  const [legalSig, setLegalSig] = useState('')
+  const [legalName, setLegalName] = useState('')
+  const [legalDate, setLegalDate] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -156,13 +158,13 @@ export default function RunnerWOPage() {
       // Fetch WO first to get booking_id, then fetch linked booking + rows in parallel
       const { data: woData } = await supabase.from('work_orders').select('*').eq('id', resolvedId).single()
 
-      const [{ data: bkData }, { data: st }, { data: eq }, { data: exp }, { data: eqNotes }] = await Promise.all([
+      const [{ data: bkData }, { data: st }, { data: eq }, { data: pay }, { data: eqNotes }] = await Promise.all([
         (woData?.booking_id || bookingId)
           ? supabase.from('bookings').select('*').eq('id', woData?.booking_id || bookingId).single()
           : Promise.resolve({ data: null }),
         supabase.from('studio_time_rows').select('*').eq('work_order_id', resolvedId).order('sort_order'),
         supabase.from('equipment_condition_rows').select('*').eq('work_order_id', resolvedId),
-        supabase.from('expense_rows').select('*').eq('work_order_id', resolvedId).order('created_at'),
+        supabase.from('payment_rows').select('*').eq('work_order_id', resolvedId).order('recorded_at'),
         supabase.from('equipment_condition_notes').select('*').eq('work_order_id', resolvedId),
       ])
 
@@ -241,13 +243,14 @@ export default function RunnerWOPage() {
       }
       setEquipConds(conds)
 
-      setExpenses((exp ?? []).map((e: any) => ({
-        id: e.id,
-        vendor: e.vendor ?? '',
-        item: e.item ?? '',
-        amount: e.amount != null ? String(e.amount) : '',
-        receipt_url: e.receipt_url,
+      setPayRows((pay ?? []).map((p: any) => ({
+        id: p.id,
+        payment_type: p.payment_type ?? '',
+        amount: p.amount != null ? String(p.amount) : '',
       })))
+      setLegalSig(woData?.legal_signature ?? '')
+      setLegalName(woData?.legal_name ?? '')
+      setLegalDate(woData?.legal_date ?? '')
 
       setLoading(false)
     }
@@ -429,75 +432,6 @@ export default function RunnerWOPage() {
     pendingNoteKey.current = null
   }
 
-  async function addExpense() {
-    setExpenses(prev => [...prev, { vendor: '', item: '', amount: '', receipt_url: null }])
-  }
-
-  async function uploadReceipt(idx: number, file: File) {
-    setExpenses(prev => prev.map((e, i) => i === idx ? { ...e, uploading: true } : e))
-
-    // Run OCR in parallel with upload
-    const base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve((reader.result as string).split(',')[1])
-      reader.onerror = reject
-      reader.readAsDataURL(file)
-    })
-    const mediaType = file.type || 'image/jpeg'
-
-    const [uploadResult, ocrResult] = await Promise.allSettled([
-      (async () => {
-        const ext = file.name.split('.').pop()
-        const path = `receipts/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-        const { data, error } = await supabase.storage.from('checklist-photos').upload(path, file, { upsert: true })
-        if (error || !data) return null
-        const { data: { publicUrl } } = supabase.storage.from('checklist-photos').getPublicUrl(data.path)
-        return publicUrl ?? null
-      })(),
-      fetch('/api/ocr-receipt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image_base64: base64, media_type: mediaType }),
-      }).then(r => r.json()).catch(() => null),
-    ])
-
-    const url = uploadResult.status === 'fulfilled' ? uploadResult.value : null
-    const ocr = ocrResult.status === 'fulfilled' ? ocrResult.value : null
-
-    setExpenses(prev => prev.map((e, i) => {
-      if (i !== idx) return e
-      return {
-        ...e,
-        receipt_url: url,
-        uploading: false,
-        vendor: e.vendor || ocr?.vendor || e.vendor,
-        item: e.item || ocr?.item || e.item,
-        amount: e.amount || ocr?.amount || e.amount,
-      }
-    }))
-  }
-
-  async function saveExpenses() {
-    if (!woRef.current) return
-    for (const exp of expenses) {
-      const amt = parseFloat(exp.amount) || null
-      if (exp.id) {
-        await supabase.from('expense_rows').update({
-          vendor: exp.vendor, item: exp.item, amount: amt, receipt_url: exp.receipt_url,
-        }).eq('id', exp.id)
-      } else if (exp.vendor || exp.item || amt) {
-        const { data: inserted } = await supabase.from('expense_rows').insert({
-          work_order_id: woRef.current,
-          vendor: exp.vendor, item: exp.item, amount: amt,
-          receipt_url: exp.receipt_url, submitted_by: 'runner',
-        }).select('id').single()
-        if (inserted) {
-          setExpenses(prev => prev.map((e, i) => expenses.indexOf(exp) === i ? { ...e, id: inserted.id } : e))
-        }
-      }
-    }
-  }
-
   async function uploadNAPhoto(file: File) {
     if (!woRef.current) return
     setNaUploading(true)
@@ -546,8 +480,10 @@ export default function RunnerWOPage() {
       session_notes: sessionNotes,
       needs_attention_notes: needsAttentionNotes || null,
       needs_attention_photos: needsAttentionPhotos.length > 0 ? needsAttentionPhotos : null,
+      legal_signature: legalSig || null,
+      legal_name: legalName || null,
+      legal_date: legalDate || null,
     }).eq('id', woRef.current)
-    await saveExpenses()
 
     // Save time/hours/charge for all rows (per-row row_rate_type)
     const hasEngineer = !!(wo?.engineer || booking?.engineer_name)
@@ -617,6 +553,41 @@ export default function RunnerWOPage() {
   }
 
   const sessionDates = Array.from(new Set(stRows.map((r: any) => r.date).filter(Boolean))).sort() as string[]
+
+  const stTotal = stRows.reduce((s: number, r: any) => {
+    const liveFrom = fromTimeMap[r.id] ?? r.from_time ?? ''
+    const liveTo = toTimeMap[r.id] ?? r.to_time ?? ''
+    const otRateNum = parseFloat(String(r.ot_rate ?? r.rate ?? '0').replace(/[^0-9.]/g, '')) || 0
+    if (r.row_rate_type === 'day') {
+      const rateDailyNum = parseFloat(String(r.rate_daily ?? r.rate ?? '').replace(/[^0-9.]/g, '')) || 0
+      const actualHrs = calcHours(liveFrom, liveTo) ?? 0
+      const autoOtHrs = Math.max(0, parseFloat(actualHrs.toFixed(2)) - 12)
+      return s + rateDailyNum + (autoOtHrs > 0 && otRateNum > 0 ? autoOtHrs * otRateNum : 0)
+    }
+    const liveHrs = calcHours(liveFrom, liveTo)
+    const rateNum = parseFloat(String(r.rate ?? '').replace(/[^0-9.]/g, '')) || 0
+    const otHrsNum = parseFloat(otHours[r.id] || '0') || 0
+    const base = liveHrs != null && rateNum > 0 ? liveHrs * rateNum : (parseFloat(String(r.charge ?? '0')) || 0)
+    return s + base + (otHrsNum > 0 && otRateNum > 0 ? otHrsNum * otRateNum : 0)
+  }, 0)
+
+  const engTotal = stRows.reduce((sum: number, r: any) => {
+    const engRateRaw = r.eng_rate || booking?.engineer_rate || ''
+    const rate = parseFloat(String(engRateRaw).replace(/[^0-9.]/g, '')) || 0
+    if (!rate) return sum
+    const ef = engFromTimeMap[r.id] ?? r.eng_from_time ?? r.from_time ?? ''
+    const et = engToTimeMap[r.id] ?? r.eng_to_time ?? r.to_time ?? ''
+    const hrs = calcHours(ef, et) ?? 0
+    return sum + (hrs > 0 ? hrs * rate : 0)
+  }, 0)
+
+  const rentTotal = ((wo?.rental_rows ?? []) as any[]).reduce((s: number, r: any) => {
+    return s + (parseFloat(String(r.charge ?? '0').replace(/[^0-9.]/g, '')) || 0)
+  }, 0)
+
+  const totalPaid = payRows.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
+  const grandTotal = stTotal + engTotal + rentTotal
+  const balanceDue = grandTotal - totalPaid
 
   if (loading) return (
     <div style={{ minHeight: '100dvh', maxWidth: '100vw', overflowX: 'hidden', background: '#0d0f14', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b90a8', fontFamily: 'Syne, sans-serif' }}>
@@ -720,32 +691,7 @@ export default function RunnerWOPage() {
             borderRight: '1px solid #2a2e3d', display: 'flex', alignItems: 'center', overflow: 'hidden',
           }
 
-          const stTotal = stRows.reduce((s: number, r: any) => {
-            const liveFrom = fromTimeMap[r.id] ?? r.from_time ?? ''
-            const liveTo = toTimeMap[r.id] ?? r.to_time ?? ''
-            const otRateNum = parseFloat(String(r.ot_rate ?? r.rate ?? '0').replace(/[^0-9.]/g, '')) || 0
-            if (r.row_rate_type === 'day') {
-              const rateDailyNum = parseFloat(String(r.rate_daily ?? r.rate ?? '').replace(/[^0-9.]/g, '')) || 0
-              const actualHrs = calcHours(liveFrom, liveTo) ?? 0
-              const autoOtHrs = Math.max(0, parseFloat(actualHrs.toFixed(2)) - 12)
-              return s + rateDailyNum + (autoOtHrs > 0 && otRateNum > 0 ? autoOtHrs * otRateNum : 0)
-            }
-            const liveHrs = calcHours(liveFrom, liveTo)
-            const rateNum = parseFloat(String(r.rate ?? '').replace(/[^0-9.]/g, '')) || 0
-            const otHrsNum = parseFloat(otHours[r.id] || '0') || 0
-            const base = liveHrs != null && rateNum > 0 ? liveHrs * rateNum : (parseFloat(String(r.charge ?? '0')) || 0)
-            return s + base + (otHrsNum > 0 && otRateNum > 0 ? otHrsNum * otRateNum : 0)
-          }, 0)
           const engName = wo?.engineer || booking?.engineer_name || ''
-          const engTotal = stRows.reduce((sum: number, r: any) => {
-            const engRateRaw = r.eng_rate || booking?.engineer_rate || ''
-            const rate = parseFloat(String(engRateRaw).replace(/[^0-9.]/g, '')) || 0
-            if (!rate) return sum
-            const ef = engFromTimeMap[r.id] ?? r.eng_from_time ?? r.from_time ?? ''
-            const et = engToTimeMap[r.id] ?? r.eng_to_time ?? r.to_time ?? ''
-            const hrs = calcHours(ef, et) ?? 0
-            return sum + (hrs > 0 ? hrs * rate : 0)
-          }, 0)
 
           return (
             <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
@@ -1019,6 +965,60 @@ export default function RunnerWOPage() {
           />
         </div>
 
+        {/* Payments (read-only) */}
+        {payRows.length > 0 && (
+          <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', padding: '12px 14px 8px' }}>Payments</div>
+            {payRows.map((p, i) => (
+              <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', borderTop: '1px solid #2a2e3d' }}>
+                <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', color: '#e8eaf2' }}>{p.payment_type || '—'}</span>
+                <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', color: '#4ade80', fontWeight: 700 }}>${parseFloat(p.amount || '0').toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Totals */}
+        {stRows.length > 0 && (
+          <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', padding: '12px 14px 8px' }}>Totals</div>
+            {([
+              { label: 'Studio Total', value: stTotal, color: '#e8eaf2', bold: false },
+              ...(engTotal > 0 ? [{ label: 'Eng Total', value: engTotal, color: meta.color, bold: false }] : []),
+              ...(rentTotal > 0 ? [{ label: 'Rentals Total', value: rentTotal, color: '#e8eaf2', bold: false }] : []),
+              { label: 'Grand Total', value: grandTotal, color: '#e8eaf2', bold: true },
+              { label: 'Total Paid', value: totalPaid, color: '#4ade80', bold: false },
+              { label: 'Balance Due', value: balanceDue, color: balanceDue > 0 ? '#f87171' : '#4ade80', bold: true },
+            ] as { label: string; value: number; color: string; bold: boolean }[]).map(({ label, value, color, bold }) => (
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', borderTop: '1px solid #2a2e3d' }}>
+                <span style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: '#8b90a8' }}>{label}</span>
+                <span style={{ fontSize: bold ? 13 : 11, fontFamily: 'DM Mono, monospace', color, fontWeight: bold ? 700 : 400 }}>${value.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Legal + Signature */}
+        <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, padding: '14px 14px', marginBottom: 16 }}>
+          <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', color: '#4a4f64', lineHeight: 1.8, marginBottom: 14 }}>
+            By signing below, I acknowledge that I am authorized to approve charges for this session. I accept responsibility for all associated costs and understand that payment is due in full at the time of service unless otherwise agreed. I also acknowledge that Paramount Recording is not responsible for any media, personal items, or equipment left behind.
+            <br /><br />
+            <em>No Tapes, CDs, DVDs, Thumb Drives, Computer Drives or other Recording Media will be released until payment in full is received.</em>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {([['Signature', legalSig, (v: string) => setLegalSig(v)], ['Print Name', legalName, (v: string) => setLegalName(v)], ['Date', legalDate, (v: string) => setLegalDate(v)]] as [string, string, (v: string) => void][]).map(([label, val, setter]) => (
+              <div key={label} style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>{label}</span>
+                <input
+                  value={val}
+                  onChange={e => setter(e.target.value)}
+                  style={{ background: 'transparent', border: 'none', borderBottom: '1px solid #3a3f52', color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 12, padding: '4px 2px', outline: 'none', width: '100%' }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Needs Attention / Runner Notes */}
         <div style={{ background: '#161920', border: '1px solid rgba(249,115,22,0.35)', borderRadius: 12, padding: '14px 14px', marginBottom: 16 }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#f97316', marginBottom: 10 }}>
@@ -1058,70 +1058,6 @@ export default function RunnerWOPage() {
           </button>
         </div>
 
-        {/* Expenses */}
-        <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, padding: '14px 14px', marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8' }}>
-              Expenses
-            </div>
-            <button
-              onClick={addExpense}
-              style={{ background: meta.color + '22', color: meta.color, border: 'none', borderRadius: 6, padding: '4px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
-            >
-              + Add
-            </button>
-          </div>
-
-          {expenses.length === 0 && (
-            <div style={{ fontSize: 12, color: '#8b90a8', textAlign: 'center', padding: '12px 0' }}>No expenses yet</div>
-          )}
-
-          {expenses.map((exp, i) => (
-            <div key={i} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: i < expenses.length - 1 ? '1px solid #2a2e3d' : 'none' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-                <input
-                  placeholder="Vendor"
-                  value={exp.vendor}
-                  onChange={e => setExpenses(prev => prev.map((x, j) => j === i ? { ...x, vendor: e.target.value } : x))}
-                  style={inputStyle}
-                />
-                <input
-                  placeholder="Amount $"
-                  type="number"
-                  value={exp.amount}
-                  onChange={e => setExpenses(prev => prev.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))}
-                  style={inputStyle}
-                />
-              </div>
-              <input
-                placeholder="Item description"
-                value={exp.item}
-                onChange={e => setExpenses(prev => prev.map((x, j) => j === i ? { ...x, item: e.target.value } : x))}
-                style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', marginBottom: 8 }}
-              />
-              {/* Receipt upload */}
-              {exp.receipt_url ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 10, color: '#4ade80', fontFamily: 'DM Mono, monospace' }}>✓ Receipt uploaded</span>
-                  <a href={exp.receipt_url} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: '#8b90a8' }}>view</a>
-                </div>
-              ) : (
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11, color: '#8b90a8' }}>
-                  <span style={{ background: '#2a2e3d', padding: '4px 10px', borderRadius: 6 }}>
-                    {exp.uploading ? 'Uploading…' : '📷 Add Receipt'}
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    style={{ display: 'none' }}
-                    onChange={e => { if (e.target.files?.[0]) uploadReceipt(i, e.target.files[0]) }}
-                  />
-                </label>
-              )}
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Footer — Cancel | Save */}
