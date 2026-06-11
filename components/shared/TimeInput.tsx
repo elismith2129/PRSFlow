@@ -89,8 +89,9 @@ export default function TimeInput({ value, onChange, onBlur, placeholder = '—'
     if (!focused.current) setRaw(value || '')
   }, [value])
 
-  function handleFocus() {
+  function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
     focused.current = true
+    e.target.select()
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
