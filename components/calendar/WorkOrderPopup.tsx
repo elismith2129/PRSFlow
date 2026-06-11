@@ -894,11 +894,11 @@ export function WorkOrderPopup({
     }
   }
 
-  async function addEngRow() {
+  function addEngRow() {
     const engMaxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
     const lastEng = [...stRows].reverse().find(r => r.eng_rate || (r.eng_hours ?? 0) > 0 || r.eng_from_time) || stRows[stRows.length - 1]
-    const newRow = {
-      work_order_id: woIdRef.current!,
+    const newRow: StRow = {
+      id: crypto.randomUUID(),
       studio: '',
       date: '',
       session_info: '',
@@ -906,22 +906,23 @@ export function WorkOrderPopup({
       to_time: '',
       total_hours: null,
       rate: '',
-      rate_daily: null,
+      rate_daily: '',
       row_rate_type: 'hour',
-      ot_rate: null,
+      ot_rate: '',
+      ot_hours: '',
+      ot_charge: null,
       charge: null,
-      sort_order: engMaxOrder + 1 + Math.floor(Math.random() * 1000),
+      sort_order: engMaxOrder + 1,
+      day_count: null,
       eng_from_time: lastEng?.eng_from_time || '',
       eng_to_time: lastEng?.eng_to_time || '',
       eng_rate: lastEng?.eng_rate || '',
       eng_hours: null,
       eng_charge: null,
+      admin_checked: false,
+      admin_locked: false,
     }
-    const { data } = await supabase.from('studio_time_rows').insert(newRow).select('*').single()
-    if (data) {
-      setShowEngRows(true)
-      setStRows(prev => [...prev, normalizeStRow(data)])
-    }
+    setStRows(prev => [...prev, newRow])
   }
 
   async function deleteStRow(id: string) {
@@ -1041,9 +1042,10 @@ export function WorkOrderPopup({
       payment_type: wo.payment_status === 'Billing' ? 'billing' : 'COD',
     }).eq('id', booking.id)
 
-    // Save studio time rows
-    await Promise.all(stRows.map(r =>
-      supabase.from('studio_time_rows').update({
+    // Save studio time rows — insert new rows, update existing
+    const originalStIds = new Set(originalStRowsRef.current.map(r => r.id))
+    await Promise.all(stRows.map(r => {
+      const payload = {
         studio: r.studio, date: r.date, session_info: r.session_info,
         from_time: r.from_time, to_time: r.to_time,
         total_hours: r.total_hours, rate: r.rate, rate_daily: r.rate_daily || null,
@@ -1061,8 +1063,11 @@ export function WorkOrderPopup({
         eng_to_time: r.eng_to_time || null,
         admin_checked: r.admin_checked,
         admin_locked: r.admin_locked,
-      }).eq('id', r.id)
-    ))
+      }
+      return originalStIds.has(r.id)
+        ? supabase.from('studio_time_rows').update(payload).eq('id', r.id)
+        : supabase.from('studio_time_rows').insert({ ...payload, id: r.id, work_order_id: id })
+    }))
 
     // Upsert rental rows that have content
     const rentToSave = rentRows.filter(r => r.item || r.charge)
@@ -1514,7 +1519,7 @@ export function WorkOrderPopup({
                           >Revert</button>
                         </div>
                       )}
-                      {showEngRows && (
+                      {(r.studio === '' || !!r.eng_rate) && (
                         <>
                           <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                             <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
