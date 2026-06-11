@@ -1386,21 +1386,18 @@ export function WorkOrderPopup({
                         {/* Studio */}
                         <div style={cellS}><input value={r.studio} onChange={e => updateStRow(r.id, { studio: e.target.value })} style={inp} placeholder="—" /></div>
                         {/* Date — transparent overlay opens native picker, auto-sorts on pick */}
-                        <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10, position: 'relative', cursor: 'pointer' }}>
+                        <div key={r.id + '-date'} style={{ ...cellS, color: '#8a8fa0', fontSize: 10, position: 'relative', cursor: 'pointer' }}>
                           <span style={{ pointerEvents: 'none' }}>{shortDate(r.date)}</span>
                           <input
                             type="date"
                             value={r.date || ''}
                             onChange={e => {
                               const newDate = e.target.value
-                              setStRows(prev => {
-                                const sorted = prev
-                                  .map(row => row.id === r.id ? { ...row, date: newDate } : row)
-                                  .sort((a, b) => (a.date || 'zzzz').localeCompare(b.date || 'zzzz'))
-                                  .map((row, i) => ({ ...row, sort_order: i }))
-                                sorted.forEach(row => { supabase.from('studio_time_rows').update({ date: row.date, sort_order: row.sort_order }).eq('id', row.id) })
-                                return sorted
-                              })
+                              setStRows(prev => prev
+                                .map(row => row.id === r.id ? { ...row, date: newDate } : row)
+                                .sort((a, b) => (a.date || 'zzzz').localeCompare(b.date || 'zzzz'))
+                                .map((row, i) => ({ ...row, sort_order: i }))
+                              )
                             }}
                             style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
                           />
@@ -1525,22 +1522,19 @@ export function WorkOrderPopup({
                           <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                             <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
                             {/* Date picker — uses r.date for eng-only rows; shared with main row for studio rows */}
-                            <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10, position: 'relative', cursor: 'pointer' }}>
-                              <span style={{ pointerEvents: 'none' }}>{isEngOnly ? shortDate(r.date) : shortDate(r.date)}</span>
+                            <div key={r.id + '-eng-date'} style={{ ...cellS, color: '#8a8fa0', fontSize: 10, position: 'relative', cursor: isEngOnly ? 'pointer' : 'default' }}>
+                              <span style={{ pointerEvents: 'none' }}>{shortDate(r.date)}</span>
                               {isEngOnly && (
                                 <input
                                   type="date"
                                   value={r.date || ''}
                                   onChange={e => {
                                     const newDate = e.target.value
-                                    setStRows(prev => {
-                                      const sorted = prev
-                                        .map(row => row.id === r.id ? { ...row, date: newDate } : row)
-                                        .sort((a, b) => (a.date || 'zzzz').localeCompare(b.date || 'zzzz'))
-                                        .map((row, i) => ({ ...row, sort_order: i }))
-                                      sorted.forEach(row => { supabase.from('studio_time_rows').update({ date: row.date, sort_order: row.sort_order }).eq('id', row.id) })
-                                      return sorted
-                                    })
+                                    setStRows(prev => prev
+                                      .map(row => row.id === r.id ? { ...row, date: newDate } : row)
+                                      .sort((a, b) => (a.date || 'zzzz').localeCompare(b.date || 'zzzz'))
+                                      .map((row, i) => ({ ...row, sort_order: i }))
+                                    )
                                   }}
                                   style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
                                 />
