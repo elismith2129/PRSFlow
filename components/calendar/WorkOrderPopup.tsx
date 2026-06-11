@@ -546,9 +546,11 @@ export function WorkOrderPopup({
           const reloadedRows = (reloaded ?? []).map(normalizeStRow)
           originalStRowsRef.current = reloadedRows
           setStRows(reloadedRows)
+          if (existing.engineer && reloadedRows.some(r => !r.eng_rate)) setShowEngRows(true)
         } else {
           originalStRowsRef.current = rows
           setStRows(rows)
+          if (existing.engineer && rows.some(r => !r.eng_rate)) setShowEngRows(true)
         }
       } else {
         // Existing WO has no studio time rows — fresh DB check before insert to prevent race-condition dupes
@@ -594,6 +596,7 @@ export function WorkOrderPopup({
         const reloadedRows2 = (reloaded ?? []).map(normalizeStRow)
         originalStRowsRef.current = reloadedRows2
         setStRows(reloadedRows2)
+        if (existing.engineer && reloadedRows2.some(r => !r.eng_rate)) setShowEngRows(true)
       }
       if (eq?.length) setEquipRows(eq as EquipRow[])
       if (eqNotes?.length) {
@@ -679,6 +682,7 @@ export function WorkOrderPopup({
         const createdRows = stCreated.map(normalizeStRow)
         originalStRowsRef.current = createdRows
         setStRows(createdRows)
+        if (booking.engineer_name && createdRows.some(r => !r.eng_rate)) setShowEngRows(true)
       }
 
       // Auto-generate equipment condition rows
@@ -1070,6 +1074,14 @@ export function WorkOrderPopup({
         ? supabase.from('studio_time_rows').update(payload).eq('id', r.id)
         : supabase.from('studio_time_rows').insert({ ...payload, id: r.id, work_order_id: id })
     }))
+
+    // Persist cleared eng fields for manually cleared rows
+    const clearedIds = Array.from(clearedEngRows).filter(cid => !cid.startsWith('temp-'))
+    if (clearedIds.length) {
+      await supabase.from('studio_time_rows')
+        .update({ eng_rate: null, eng_hours: null, eng_charge: null, eng_from_time: null, eng_to_time: null })
+        .in('id', clearedIds)
+    }
 
     // Upsert rental rows that have content
     const rentToSave = rentRows.filter(r => r.item || r.charge)
@@ -1523,7 +1535,7 @@ export function WorkOrderPopup({
                           >Revert</button>
                         </div>
                       )}
-                      {(r.studio === '' || !!r.eng_rate || !!wo?.engineer) && !clearedEngRows.has(r.id) && (
+                      {(r.studio === '' || !!r.eng_rate) && !clearedEngRows.has(r.id) && (
                         <>
                           <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                             <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
