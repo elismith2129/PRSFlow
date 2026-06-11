@@ -84,6 +84,8 @@ type PayRow = {
   id: string
   payment_type: string
   amount: string
+  memo: string
+  last_four: string
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -278,7 +280,7 @@ export function WorkOrderPopup({
     { id: crypto.randomUUID(), qty: '', item: '', supplier: '', dates_used: '', rate: '', charge: '' },
   ])
   const [payRows, setPayRows] = useState<PayRow[]>([
-    { id: crypto.randomUUID(), payment_type: '', amount: '' },
+    { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '' },
   ])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -607,7 +609,7 @@ export function WorkOrderPopup({
         rent.forEach(r => rentIdsInDb.current.add(r.id))
       }
       if (pay?.length) {
-        setPayRows(pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: String(p.amount ?? '') })))
+        setPayRows(pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: String(p.amount ?? ''), memo: p.memo ?? '', last_four: p.last_four ?? '' })))
         pay.forEach(p => payIdsInDb.current.add(p.id))
       }
     } else {
@@ -1089,7 +1091,7 @@ export function WorkOrderPopup({
     // Upsert payment rows that have content
     const payToSave = payRows.filter(p => p.payment_type || p.amount)
     await Promise.all(payToSave.map(p => {
-      const payload = { id: p.id, work_order_id: id, payment_type: p.payment_type || null, amount: parseFloat(p.amount) || null }
+      const payload = { id: p.id, work_order_id: id, payment_type: p.payment_type || null, amount: parseFloat(p.amount) || null, memo: p.memo || null, last_four: p.last_four || null }
       return payIdsInDb.current.has(p.id)
         ? supabase.from('payment_rows').update(payload).eq('id', p.id)
         : supabase.from('payment_rows').insert(payload)
@@ -1743,20 +1745,29 @@ export function WorkOrderPopup({
               <div>
                 <div style={sectionTitle}>Payments</div>
                 <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 24px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                    {['Type', 'Amount', ''].map(h => <div key={h} style={thS}>{h}</div>)}
-                  </div>
-                  {payRows.map((p, idx) => (
-                    <div key={p.id} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 24px', borderBottom: idx < payRows.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-                      <div style={cellS}><input value={p.payment_type} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, payment_type: e.target.value } : x))} placeholder="Cash / CC / Zelle…" style={inp} /></div>
-                      <div style={cellS}><input value={p.amount} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x))} placeholder="$0.00" style={inp} /></div>
-                      <div style={{ ...cellS, borderRight: 'none', padding: '6px 4px' }}>
-                        <button type="button" onClick={() => setPayRows(p2 => p2.filter(x => x.id !== p.id))} style={{ background: 'none', border: 'none', color: '#4a4f64', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                  {payRows.map((p, idx) => {
+                    const needsLast4 = p.payment_type === 'Credit Card' || p.payment_type === 'Debit Card'
+                    return (
+                      <div key={p.id} style={{ display: 'grid', gridTemplateColumns: needsLast4 ? '130px 80px 1fr 70px 24px' : '130px 80px 1fr 24px', borderBottom: idx < payRows.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none', alignItems: 'center' }}>
+                        <div style={cellS}>
+                          <select value={p.payment_type} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, payment_type: e.target.value, last_four: '' } : x))} style={{ ...inp, background: 'transparent', cursor: 'pointer' }}>
+                            <option value="">— type —</option>
+                            {['Cash', 'Zelle', 'Credit Card', 'Debit Card', 'Check', 'Other'].map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                        </div>
+                        <div style={cellS}><input value={p.amount} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x))} placeholder="0.00" style={inp} /></div>
+                        <div style={cellS}><input value={p.memo} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))} placeholder="memo" style={inp} /></div>
+                        {needsLast4 && (
+                          <div style={cellS}><input value={p.last_four} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) } : x))} placeholder="last 4" maxLength={4} style={inp} /></div>
+                        )}
+                        <div style={{ ...cellS, borderRight: 'none', padding: '6px 4px' }}>
+                          <button type="button" onClick={() => setPayRows(p2 => p2.filter(x => x.id !== p.id))} style={{ background: 'none', border: 'none', color: '#4a4f64', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                   <div style={{ padding: '7px 10px' }}>
-                    <button type="button" onClick={() => setPayRows(p => [...p, { id: crypto.randomUUID(), payment_type: '', amount: '' }])} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add payment</button>
+                    <button type="button" onClick={() => setPayRows(p => [...p, { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '' }])} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add payment</button>
                   </div>
                 </div>
               </div>

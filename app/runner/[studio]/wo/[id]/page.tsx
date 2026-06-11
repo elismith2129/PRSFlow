@@ -67,7 +67,8 @@ export default function RunnerWOPage() {
   const [needsAttentionPhotos, setNeedsAttentionPhotos] = useState<string[]>([])
   const [naUploading, setNaUploading] = useState(false)
   const naFileRef = useRef<HTMLInputElement>(null)
-  const [payRows, setPayRows] = useState<{ id: string; payment_type: string; amount: string }[]>([])
+  const [payRows, setPayRows] = useState<{ id: string; payment_type: string; amount: string; memo: string; last_four: string }[]>([])
+  const payIdsInDb = useRef<Set<string>>(new Set())
   const [signatureData, setSignatureData] = useState('')
   const [printName, setPrintName] = useState('')
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -245,11 +246,15 @@ export default function RunnerWOPage() {
       }
       setEquipConds(conds)
 
-      setPayRows((pay ?? []).map((p: any) => ({
+      const payMapped = (pay ?? []).map((p: any) => ({
         id: p.id,
         payment_type: p.payment_type ?? '',
         amount: p.amount != null ? String(p.amount) : '',
-      })))
+        memo: p.memo ?? '',
+        last_four: p.last_four ?? '',
+      }))
+      setPayRows(payMapped)
+      payMapped.forEach((p: any) => payIdsInDb.current.add(p.id))
       initialSigRef.current = woData?.signature_data ?? ''
       setSignatureData(woData?.signature_data ?? '')
       setPrintName(woData?.print_name ?? '')
@@ -603,6 +608,22 @@ export default function RunnerWOPage() {
         return supabase.from('studio_time_rows').update(update).eq('id', r.id)
       }))
     }
+
+    // Save payment rows
+    const payToSave = payRows.filter(p => p.payment_type || p.amount)
+    await Promise.all(payToSave.map(p => {
+      const payload = {
+        id: p.id,
+        work_order_id: woRef.current!,
+        payment_type: p.payment_type || null,
+        amount: parseFloat(p.amount) || null,
+        memo: p.memo || null,
+        last_four: p.last_four || null,
+      }
+      return payIdsInDb.current.has(p.id)
+        ? supabase.from('payment_rows').update(payload).eq('id', p.id)
+        : supabase.from('payment_rows').insert(payload)
+    }))
 
     setSaving(false)
     router.push(`/runner/${studio}`)
@@ -1045,18 +1066,62 @@ export default function RunnerWOPage() {
           />
         </div>
 
-        {/* Payments (read-only) */}
-        {payRows.length > 0 && (
-          <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', padding: '12px 14px 8px' }}>Payments</div>
-            {payRows.map((p, i) => (
-              <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', borderTop: '1px solid #2a2e3d' }}>
-                <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', color: '#e8eaf2' }}>{p.payment_type || '—'}</span>
-                <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', color: '#4ade80', fontWeight: 700 }}>${parseFloat(p.amount || '0').toFixed(2)}</span>
+        {/* Payments */}
+        <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', padding: '12px 14px 8px' }}>Payments</div>
+          {payRows.map((p, i) => {
+            const needsLast4 = p.payment_type === 'Credit Card' || p.payment_type === 'Debit Card'
+            return (
+              <div key={p.id} style={{ borderTop: '1px solid #2a2e3d', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <select
+                    value={p.payment_type}
+                    onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, payment_type: e.target.value, last_four: '' } : x))}
+                    style={{ flex: 1, background: '#0d0f14', border: '1px solid #2a2e3d', borderRadius: 6, color: p.payment_type ? '#e8eaf2' : '#8b90a8', fontFamily: 'DM Mono, monospace', fontSize: 11, padding: '6px 8px', outline: 'none' }}
+                  >
+                    <option value="">— type —</option>
+                    {['Cash', 'Zelle', 'Credit Card', 'Debit Card', 'Check', 'Other'].map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <input
+                    value={p.amount}
+                    onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x))}
+                    placeholder="0.00"
+                    inputMode="decimal"
+                    style={{ width: 80, background: '#0d0f14', border: '1px solid #2a2e3d', borderRadius: 6, color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 11, padding: '6px 8px', outline: 'none', textAlign: 'right' }}
+                  />
+                  <button
+                    onClick={() => setPayRows(prev => prev.filter(x => x.id !== p.id))}
+                    style={{ background: 'none', border: 'none', color: '#4a4f64', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}
+                  >×</button>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    value={p.memo}
+                    onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))}
+                    placeholder="Memo"
+                    style={{ flex: 1, background: '#0d0f14', border: '1px solid #2a2e3d', borderRadius: 6, color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 11, padding: '6px 8px', outline: 'none' }}
+                  />
+                  {needsLast4 && (
+                    <input
+                      value={p.last_four}
+                      onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) } : x))}
+                      placeholder="Last 4"
+                      inputMode="numeric"
+                      maxLength={4}
+                      style={{ width: 72, background: '#0d0f14', border: '1px solid #2a2e3d', borderRadius: 6, color: '#e8eaf2', fontFamily: 'DM Mono, monospace', fontSize: 11, padding: '6px 8px', outline: 'none' }}
+                    />
+                  )}
+                </div>
               </div>
-            ))}
+            )
+          })}
+          <div style={{ padding: '10px 14px' }}>
+            <button
+              onClick={() => setPayRows(prev => [...prev, { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '' }])}
+              style={{ background: 'none', border: 'none', color: '#8b90a8', fontFamily: 'DM Mono, monospace', fontSize: 11, cursor: 'pointer', padding: 0 }}
+            >+ Add payment</button>
           </div>
-        )}
+        </div>
 
         {/* Totals */}
         {stRows.length > 0 && (
