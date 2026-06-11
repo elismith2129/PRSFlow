@@ -1,6 +1,6 @@
 # PRSFlow — Tech Stack & Roadmap
 
-*Last updated: June 8, 2026*
+*Last updated: June 10, 2026*
 
 ---
 
@@ -110,7 +110,7 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 | `styles/globals.css` | CSS variable definitions + Google Fonts import |
 | `components/layout/Nav.tsx` | App nav (only renders inside `(main)` route group) |
 | `components/shared/StudioSelect.tsx` | Single flat dropdown for "Venue · Studio" selection; used across CRM and calendar |
-| `components/shared/TimeInput.tsx` | 30-min interval `<select>` dropdown with 48 options (12:00 AM–11:30 PM, 12-hour AM/PM format). Used in booking form and WO Studio Time table From/To cells. Replaced the previous smart-parse text input. |
+| `components/shared/TimeInput.tsx` | Smart-parse text `<input>` with auto-format on blur. Accepts `10a`→`10:00 AM`, `930p`→`9:30 PM`, `1430`→`2:30 PM`, bare `8`→`8:00 AM`. Enter commits. Used in booking form and WO Studio Time From/To cells. (Was briefly a 30-min `<select>` June 5–10, 2026 — reverted; select was harder to use on mobile.) |
 | `components/shared/` | Reusable pickers: `ContactPicker`, `ArtistPicker`, `StudioSelect`, `TimeInput` |
 | `lib/studios.ts` | `STUDIO_LOCATIONS` array + `parseLocation()` / `combineLocation()` for the "Venue · Studio" string format |
 | `lib/roster.ts` | Label artist array helpers: `addArtistToLabel`, `removeArtistFromLabel`, `getArtistsForLabel` |
@@ -119,7 +119,8 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 | `app/register/view/[clientId]/page.tsx` | Print route for registration PDF. Server component; generates signed ID photo URL server-side. `PrintTrigger` fires `window.print()` after 800ms. |
 | `app/(main)/sop/page.tsx` | SOP / Training tab — full-viewport iframe pointing to `/sop.html` |
 | `app/(main)/daily-ops-log/page.tsx` | Daily Ops Log route — wraps `DailyOpsLogSection`; also embedded as Admin sidebar tab |
-| `app/runner/[studio]/wo/[id]/page.tsx` | Runner WO form — equipment condition, expenses, eng hours, receipt OCR, Save/Finish footer |
+| `app/runner/[studio]/wo/[id]/page.tsx` | Runner WO form — studio time table, equipment condition, expenses, eng hours, receipt OCR, canvas signature pad (COD-only), payment rows (editable), Save/Finish footer |
+| `app/(main)/wo-hub/page.tsx` | WO Hub — all work orders list, filterable by studio/date/status; linked from nav |
 | `components/admin/DailyOpsLogSection.tsx` | Approved WOs + ops submissions log; studio/type/date filters + search; click-to-open WO or ops modal |
 | `components/dashboard/LocationStrip.tsx` | 4-studio dashboard strip; drawer with Yesterday/Today sessions + daily ops rows; real-time subscriptions |
 | `lib/checklist-items.ts` | Per-studio opening/closing checklist items; `CHECKLISTS[studio][type]`, `getChecklistSections()`, `flattenSections()` |
@@ -240,6 +241,19 @@ Defined in `styles/globals.css`:
 | wo-status-cycling | `status text NOT NULL DEFAULT 'in_progress' CHECK (status IN ('in_progress','submitted','approved'))` column on `studio_time_rows`; runner Finish submits today's rows; admin Approve approves today's rows; orange dot `#fb923c` = submitted, lime dot `#c8f04e` = approved in Date cell top-right; all insert sites seed `status:'in_progress'`; dots render based on `r.status` for all rows regardless of date |
 | **Confirmed sessions + multi-day ✅** | **Daily Ops + runner hub filter to confirmed only; lte/gte date range for multi-day; badge driven by stRow status; RT channel for stRows** |
 | confirmed-multiday | `.eq('status','confirmed')` on all booking queries; `.lte('start_date',today).gte('end_date',today)` for multi-day support; `pendingCount` badge derived from `studio_time_rows.status='submitted'` cross-referenced to WO ids; third LocationStrip RT channel on `studio_time_rows` UPDATE; approved sessions drop from Today drawer column |
+| **WO Hub + WO status simplification ✅** | **`/wo-hub` route; WO status is `open`/`completed` only** |
+| wo-hub | New `/wo-hub` page listing all WOs filterable by studio/date/status; WO status simplified to `open`/`completed`; "Complete WO" button toggles without locking popup; runner_finished flow removed (stRow status is the granular mechanism) |
+| **Studio Time local-first ✅** | **All edits held in state, single DB commit on Save; Cancel fully reverts** |
+| studio-time-local-first | All Studio Time cell edits (times, rate, type, date, add/delete row, eng clear) queued in React state; written to DB in batch on Close & Save; Cancel deletes pending inserts + restores pending deletes; WorkOrderPopup real-time subscription on `studio_time_rows` removed while popup is open |
+| **`eng_visible` + `admin_locked` columns ✅** | **Eng sub-row visibility + row lock state persisted to DB** |
+| eng-visible | `studio_time_rows.eng_visible boolean DEFAULT false` and `admin_locked boolean DEFAULT false`; eng sub-row shows/hides based on persisted DB value; locked rows read-only for runner; replaces ephemeral `autoEngRows`/`clearedEngRows` React state |
+| **TimeInput rewrite ✅** | **Smart-parse text input replaces 30-min select** |
+| timeinput-rewrite | `components/shared/TimeInput.tsx` rewritten to smart-parse text `<input>`; `parseTime()` handles AM/PM suffix, 24h numeric, colon format, already-normalized values; reverted from the June 5 `<select>` for mobile usability |
+| **Runner WO bottom sections ✅** | **Rebuilt notes, equip, expenses; Session QC removed from nav** |
+| runner-wo-bottom | Notes floating card (`position:fixed, bottom:16`); equipment horizontal scroll + sticky col; expenses inline add/remove; Session QC nav item removed |
+| **Canvas signature pad + payment improvements ✅** | **COD-only legal section; payment type dropdown + memo + last_four; currency auto-format** |
+| canvas-signature | `work_orders.print_name` + `work_orders.signature_data` (base64 PNG) replace `legal_signature/legal_name/legal_date`; COD-only guard; `touchAction:none` on canvas; `initialSigRef` pattern for reloading existing sig; both admin WO + runner WO aligned |
+| payment-improvements | Payment type dropdown (Cash/Zelle/Credit Card/Debit Card/Check/Other); `memo` text field; `last_four` text field (Credit/Debit only); `× remove` per row; runner payment section now editable; `formatCurrency`/`stripCurrency` helpers; `$`/`,` stripped before DB write |
 
 ### Next
 

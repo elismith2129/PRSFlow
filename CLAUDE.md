@@ -32,6 +32,7 @@ PRSFlow is a single-tenant studio operations app for Paramount Recording Studios
 - `/clients` — Redirects to `/crm` (stub for backward-compat; do not delete)
 - `/calendar` — Week/2-week multi-studio grid calendar with booking form + work order popup
 - `/admin` — Daily ops admin view (WO approval, staff submissions)
+- `/wo-hub` — All work orders list, filterable by studio/date/status
 
 **Runner routes (phone-first, no nav):**
 - `/runner` — Studio select landing
@@ -94,10 +95,10 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 - **z-index ladder:** Nav = 9999. LocationStrip dialog = 10001. DailyOpsModal = 10002. RegViewModal = 10003. All modals must sit above 9999
 - **Runner pages** use `minHeight: '100dvh'`, `paddingBottom: 120` for the fixed footer, no nav import
 - **Real-time checklist saves:** Items save on tap via `clIdRef` + `creatingRef` pattern. Notes debounce 800ms. Needs-attention upserts `daily_ops_submissions` without `submitted_at` immediately for dashboard badge
-- **`TimeInput` is a `<select>` with 48 options (every 30 min, 12-hour AM/PM format).** The previous smart-parse text input was replaced. Used in booking form and WO Studio Time From/To cells.
+- **`TimeInput` is a smart-parse text `<input>` with auto-format on blur.** Accepts `10a`→`10:00 AM`, `930p`→`9:30 PM`, `1430`→`2:30 PM` (24h), bare `8`→`8:00 AM`. Enter commits. Click/focus selects all. Used in booking form and WO Studio Time From/To cells. (Was briefly a 30-min `<select>` June 5–10, 2026 — reverted for mobile usability.)
 - **iOS Safari scroll lock: use `body.position=fixed` + `top=-scrollY`, not `overflow:hidden`.** `overflow:hidden` on body does not block scroll on iOS. Correct pattern: save `scrollY`, set `body.style.top=\`-${scrollY}px\`, position=fixed, width=100%` on open; clear all three and call `window.scrollTo({ top: savedScrollY, behavior: 'instant' })` on close.
 
-## What's Built (as of June 8, 2026)
+## What's Built (as of June 10, 2026)
 
 | Chunk | Feature | Status |
 |-------|---------|--------|
@@ -132,6 +133,14 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 | Studio Time table bugfixes | 12-col admin / 11-col runner tables; Session Info column restored; OT auto-calc; native date picker overlay (transparent `<input type="date">`) with auto-save + auto-sort; all `upsert(onConflict)` → `insert()` (constraint never existed); `booking_id` removed from runner insert; `$`/`,` stripped from `ot_rate`; `wo?.id` removed from date-range sync effect deps; runner mobile column widths corrected | ✅ Complete |
 | WO status cycling | `studio_time_rows.status`: in_progress/submitted/approved; runner Finish submits today's rows; admin Approve approves today's rows; status dots in Date cell; all inserts seed `status:'in_progress'`; dots render for all rows regardless of date; `handleFinish` and `handleApprove` scoped to `date === getLocalToday()` | ✅ Complete |
 | Confirmed sessions + multi-day | Daily Ops cards and runner hub filter to `status='confirmed'`; booking queries use `lte('start_date',today).gte('end_date',today)` for multi-day; LocationStrip badge driven by `studio_time_rows.status='submitted'`; third RT channel on LocationStrip for stRows; approved sessions drop from Today drawer | ✅ Complete |
+| WO Hub | `/wo-hub` nav page listing all WOs, filterable by studio/date/status | ✅ Complete |
+| WO status simplified | `work_orders.status` is `open`/`completed` only; "Complete WO" toggles without locking; `runner_finished` flow removed | ✅ Complete |
+| Studio Time local-first | All stRow edits queued in state, single DB commit on Save; Cancel fully reverts; RT subscription removed while popup is open | ✅ Complete |
+| `eng_visible` + `admin_locked` | `studio_time_rows.eng_visible` persists eng sub-row visibility; `admin_locked` persists row lock; replaces ephemeral React state | ✅ Complete |
+| TimeInput rewrite | Smart-parse text `<input>` replaces 30-min `<select>`; `parseTime()` for AM/PM + 24h input | ✅ Complete |
+| Runner WO bottom sections | Notes floating card, equipment horizontal scroll, expenses inline; Session QC removed from nav | ✅ Complete |
+| Canvas signature pad | COD-only canvas finger-draw pad in runner WO + admin WO; `work_orders.print_name` + `signature_data`; replaces `legal_signature/legal_name/legal_date` | ✅ Complete |
+| Payment improvements | Type dropdown (Cash/Zelle/CC/Debit/Check/Other); `memo` field; `last_four` (CC/Debit only); `× remove`; runner payments now editable; `$1,234.56` currency auto-format | ✅ Complete |
 
 ## What's Next
 

@@ -101,12 +101,19 @@ This applies to all new tables going forward. Existing tables are unaffected unt
 - **WO print: `document.title` sets the default Save as PDF filename.** Before `window.print()`, `document.title` is set to `CLIENT_INV#` (COD) or `LABEL_ARTIST_INV#` (Billing), then restored after. This controls the filename the browser pre-fills in the Save as PDF dialog. All three print buttons use `printWithFilename()` helper. If no invoice number exists, `_INV#` literal is appended as a placeholder.
 - **Per-row rate type replaces booking-level rate type in the Studio Time table.** `studio_time_rows` gained two columns: `row_rate_type text DEFAULT 'hour'` and `rate_daily text`. Each row independently toggles between `'hour'` and `'day'` billing. `toggleRowRateType(id)` converts: hour→day sets `rate_daily = rate × 10`; day→hour sets `rate = rate_daily ÷ 10`. This decouples individual rows from the booking-level `rate_type` and eliminated the booking-level rate-sync `useEffect` in WorkOrderPopup and the post-save rate sync block in `calendar/page.tsx`. `normalizeStRow` branches on `row_rate_type`: day rows use `rate_daily` flat; hourly rows derive charge from `totalHours × rate`.
 - **Unified 9-column Studio Time table replaces two separate layouts.** Column order: Date | Session Info | From | To | Hrs | Type | Rate | OT Rate | Total. The Type cell shows Day/Hr inline toggle buttons in admin (editable) or a display label in runner (read-only). This replaced the separate day-rate compact layout and hourly layout that existed previously in both admin WorkOrderPopup and runner WO page.
-- **`TimeInput` is now a `<select>` with 48 pre-built options (every 30 min, 12-hour AM/PM).** The previous smart-parse text `<input>` (accepting `8p`, `830a`, `1830`, etc.) was replaced with a controlled select dropdown. This eliminates ambiguous input and parse-on-blur edge cases. Used in booking form, WO Studio Time table From/To cells, and engineer sub-row From/To cells.
+- **`TimeInput` is a smart-parse text `<input>` with auto-format on blur.** Accepts: `10a`→`10:00 AM`, `930p`→`9:30 PM`, `1430`→`2:30 PM` (24h auto-converted), bare `8`→`8:00 AM`. Enter key triggers blur/commit. Click/focus selects all text so typing immediately replaces the existing value. Blank is valid (shows placeholder `—`). Drop-in for the same `value`/`onChange`/`disabled` props as any input. *(History: the original smart-parse text input was replaced by a 30-min `<select>` in the per-row rate type session on June 5, 2026, then reverted back to text input on June 10, 2026 — the select was harder to use on mobile.)*
 - **iOS Safari scroll lock pattern.** `document.body.style.overflow = 'hidden'` does NOT lock scroll on iOS Safari — the page still scrolls behind overlays. Correct pattern: on open, read `scrollY`, then set `document.body.style.top = -\`${scrollY}px\`; position = 'fixed'; width = '100%'`. On close, clear all three properties, then call `window.scrollTo({ top: savedScrollY, behavior: 'instant' })`. Applied to the runner WO notes bottom sheet.
 - **Runner WO notes bottom sheet (floating card, not full overlay).** The notes edit view is a `position: fixed` floating card: `bottom: 16, left: 12, right: 12; borderRadius: 12; boxShadow: '0 -4px 24px rgba(0,0,0,0.4)'`. No background dim. Uses explicit `paddingLeft/paddingRight` longhand on all child elements (shorthand padding can be overridden by global resets on iOS). Root containers on all runner pages have `maxWidth: '100vw', overflowX: 'hidden'` to prevent horizontal overflow on devices with scrollbars.
 - **Runner WO viewport fixes.** Next.js `Viewport` export in `app/layout.tsx` sets `maximumScale: 1, userScalable: false` — prevents iOS Safari pinch-zoom from breaking the layout. Runner page root containers use `left: 0, right: 0` instead of `width: 100vw` to avoid triggering horizontal overflow on devices where `100vw` includes the scrollbar width.
 - **PDF session notes revealed via `data-si-print` span.** Inside the Studio Time table Session Info cell, a `<span data-si-print>` wraps the full session notes text. `@media print` CSS in `globals.css` reveals this span (it is hidden in screen view). This puts session notes inside the cell in the printed/PDF WO without adding a visible element to the on-screen table.
 - **Admin session info popover in Studio Time table.** Clicking the Session Info cell in the admin WO Studio Time table opens a 280px `position: fixed` popover with an editable textarea for session notes and Save/Close buttons. Allows admin to edit per-row session notes without opening a separate modal.
+- **WO status is `open` or `completed` only.** The work_orders-level `status` column has two values: `open` (default) and `completed`. The previous multi-value model (`draft`, `submitted`, `approved` at the WO level) was removed in June 2026. Row-level approval lives on `studio_time_rows.status` (in_progress/submitted/approved). "Complete WO" toggles `open` ↔ `completed` without locking the popup for editing. Runner submit flow (`runner_finished`) was removed at the same time — the stRow status cycle is the granular approval mechanism.
+- **Studio Time table is local-first: all edits commit on Save.** Every Studio Time edit (time fields, rate, type, date, add row, delete row, clear eng) is held in React state and written to DB in a single batch when the user clicks Save/Close. Previously, changes wrote to DB on every cell blur, causing 409 conflicts on rapid edits and race conditions with RT subscriptions. Real-time subscription was removed from WorkOrderPopup as a result. Cancel fully reverts: deletes new rows from DB, restores deleted rows, resets all edits.
+- **`studio_time_rows.admin_locked` controls per-row edit permissions.** `admin_locked boolean DEFAULT false`. Admin can lock any row. Locked rows are visually distinguished with a lock pill; runner sees locked rows as read-only.
+- **`studio_time_rows.eng_visible` drives eng sub-row visibility.** `eng_visible boolean DEFAULT false`. Set to `true` when admin opens a row's eng sub-row; set to `false` when admin clears eng hours/rate. Replaces the previous `autoEngRows`/`clearedEngRows` React state approach which caused visibility to reset on WO reopen.
+- **`work_orders.print_name` and `work_orders.signature_data` replace legacy legal columns.** Previous columns `legal_signature`, `legal_name`, `legal_date` are no longer written to from the UI (columns remain in DB for historical data). Both admin WO popup and runner WO page write to `print_name` (text) and `signature_data` (base64 PNG from canvas). The legal section is **COD-only** — hidden for Billing sessions. Date is auto-filled to today (read-only, not saved to DB). Canvas signature pad uses `touchAction: none` for iOS drawing without scroll interference; existing sigs load back into the canvas on WO open.
+- **`payment_rows` extended with `memo text` and `last_four text`.** Payment type is now a dropdown (Cash, Zelle, Credit Card, Debit Card, Check, Other) instead of free text. `last_four` only shows when type is Credit Card or Debit Card. Payment amounts display as `$1,234.56` formatted; `$`/`,` stripped before writing to DB as numeric. Both admin WO and runner WO share this behavior; runner WO payment section is now editable (was previously read-only display).
+- **Session QC removed from nav.** The `/qc` nav item was removed — Session QC was never fully built; the nav link was just dead weight.
 
 ---
 
@@ -184,7 +191,7 @@ This applies to all new tables going forward. Existing tables are unaffected unt
 
 ---
 
-*Last updated: June 8, 2026 — Studio Time table bugfix series (OT auto-calc, native date picker overlay, insert fixes, session notes restored, column widths); confirmed sessions filter; WO status cycling per studio_time_row (in_progress/submitted/approved); multi-day booking date range queries; LocationStrip badge driven by stRow status; approved sessions drop from drawer.*
+*Last updated: June 10, 2026 — WO Hub, Studio Time local-first refactor, eng_visible/admin_locked columns, WO open/completed toggle, TimeInput smart-parse rewrite, runner WO bottom sections rebuild, canvas signature pad (COD-only, admin+runner aligned), payment type dropdown + memo + last_four, payment amount currency auto-format.*
 
 ---
 
@@ -839,3 +846,100 @@ Approved sessions drop from the Today column: after loading today's WOs, `fetchD
 - `3650e74`: Three post-cycling fixes — (1) Yesterday section removed from runner hub (today's sessions only); (2) badge queries today's stRows only (not yesterday's); (3) approved sessions drop from drawer via stRow status cross-reference.
 - `f89c035`: Multi-day session support — `loadSummaries()`, `fetchDrawerData()`, and runner hub `load()` all changed from `.eq('start_date', today)` to `.lte('start_date', today).gte('end_date', today)`. Admin Approve button `disabled` prop scoped to `approving` in-flight state only.
 - `3f04978` / `ba99025`: Scope correction. An over-broad fix had made `handleApprove()` and `handleFinish()` target ALL rows in the WO (future-date rows would be prematurely submitted/approved). Corrected: `handleFinish()` submits rows where `date === getLocalToday()`; `handleApprove()` approves rows where `date === today && status !== 'approved'`. Dot rendering was already correct (no date restriction) and unchanged.
+
+---
+
+### June 8–10, 2026 — WO Hub, Studio Time local-first, eng visibility, WO toggle
+
+**Commits: `071d2c5` through `f73ca01`**
+
+**WO Hub (`071d2c5`–`8ff4e5d`):**
+- New route `/wo-hub` (`app/(main)/wo-hub/`) — standalone page listing all work orders, filterable by studio, date, status. Separate from the calendar/booking view.
+- Added to nav between Admin and SOP.
+
+**WO status simplification — open/completed only (`1996053`, `acf3809`):**
+- `work_orders.status` simplified to two values: `open` (default) and `completed`. The multi-value runner submit/approve model at the WO level was removed.
+- "Complete WO" button in WorkOrderPopup footer toggles between `open` and `completed` — WO stays fully editable in either state.
+- `runner_finished` / `runner_finished_at` columns and the runner Finish confirmation dialog removed. The stRow-level status cycle (`in_progress → submitted → approved`) is now the sole granular mechanism.
+
+**Studio Time local-first refactor (`d909dc1`, `e9fafa1`, `3c95f2e`):**
+- All Studio Time edits (time inputs, rate, type, date, add/delete row, eng clear) now held in React state and written to DB in a single batch on Close & Save.
+- Eliminated all per-blur DB writes to `studio_time_rows` — previously caused 409 conflicts and real-time subscription races.
+- Cancel fully reverts: deletes new rows from DB, restores deleted rows, resets all edits to what was in the DB at open time. WorkOrderPopup real-time subscription on `studio_time_rows` removed (local state is authoritative while the popup is open).
+- `pendingDeletes`, `pendingInserts`, and `dirtyRows` tracked in refs so Cancel/Save knows exactly what to undo or commit.
+
+**Eng sub-row visibility system — `studio_time_rows.eng_visible` (`1d1d178`–`4d6dda2`):**
+- New column `eng_visible boolean DEFAULT false` on `studio_time_rows`. Controls whether the eng sub-row shows for each row.
+- Set to `true` when admin opens/activates the eng sub-row; set to `false` when admin clears eng hours and rate (both blank). Persisted to DB, so eng rows are stable on WO reopen.
+- `admin_locked boolean DEFAULT false` column added simultaneously — admin can lock individual rows; runner sees locked rows as read-only; lock state persisted per row.
+- Replaced `autoEngRows` / `clearedEngRows` React state approach which reset on every WO reopen.
+
+**WO complete toggles `open`/`completed` + 9am Today retention rule (`f73ca01`):**
+- "Complete WO" footer button now toggles: if `status === 'open'` → set `completed`; if `status === 'completed'` → set `open`. Button label reflects current state.
+- Today panel (LocationStrip drawer) retains all sessions until 9am the following operational day regardless of WO complete status. Previously, completed WOs disappeared immediately.
+
+---
+
+### June 10, 2026 — TimeInput rewrite, daily ops card polish, runner WO bottom sections
+
+**Commits: `cb39bb0`, `37b3891`, `56ebd91`, `bf32eb7`, `f4dfd6d`, `fceb6cb`**
+
+**TimeInput rewrite — smart-parse text input (`cb39bb0`, `37b3891`, `56ebd91`):**
+- `components/shared/TimeInput.tsx` rewritten from a 30-min `<select>` (48 options) back to a smart-parse text `<input>`.
+- Accepts: `10a`→`10:00 AM`, `930p`→`9:30 PM`, `1430`→`2:30 PM` (24h auto-converted), bare `8`→`8:00 AM`. Enter key commits. Click/focus selects all text.
+- Reason: the select was harder to use on mobile — users had to scroll through 48 options instead of typing.
+- `parseTime()` handles: already-normalized `H:MM AM/PM`, AM/PM suffix strings, pure numeric 3–4 digit (24h), colon format without AM/PM. AM/PM normalized to uppercase.
+
+**Daily ops card UI polish (`bf32eb7`, `f4dfd6d`):**
+- LocationStrip drawer session cards: layout tightened; status indicators refined; approved session visual treatment added.
+- DailyOpsModal: item status display cleaned up; NA thumbnail sizing corrected.
+
+**Runner WO bottom sections + Session QC nav removal (`fceb6cb`):**
+- Runner WO page (`app/runner/[studio]/wo/[id]/page.tsx`) bottom sections rebuilt:
+  - Session notes: floating card (`position: fixed, bottom: 16, left: 12, right: 12, borderRadius: 12`) — previously inline textarea.
+  - Equipment condition: horizontal scroll with sticky first column.
+  - Expenses section: inline add/remove with receipt upload.
+  - Footer: Cancel | Save | Finish (Finish triggers stRow status submit for today's rows).
+- Session QC (`/qc`) removed from nav — never fully built.
+
+---
+
+### June 10, 2026 — Canvas signature pad, payment improvements
+
+**Commits: `fdca542`, `7960be4`, `9a8c341`, `a55a6e8`**
+
+**Canvas signature pad on runner WO (`fdca542`):**
+- Legal / signature section added to runner WO page — COD sessions only (`isCOD` guard based on `booking.payment_type` or `wo.payment_status`).
+- HTML5 `<canvas>` (700×200 logical px, `width: 100%, height: 100px` display) with mouse + touch drawing. `touchAction: 'none'` on the canvas prevents scroll during signing (no passive listener warnings).
+- `getCanvasPos()` normalizes `MouseEvent` + `TouchEvent` using `'touches' in e` check; `changedTouches` fallback for `touchend`.
+- On `endDraw`: `canvas.toDataURL('image/png')` stored in `signatureData` state. Existing signature reloaded via `Image.onload → ctx.drawImage` using `initialSigRef` pattern (set synchronously before state updates; read in `useEffect([loading])`).
+- Print Name text input, read-only date display (today's date, not saved to DB), Clear button.
+- Saves to: `work_orders.print_name` (text) and `work_orders.signature_data` (base64 PNG).
+
+**Payment type dropdown + memo + last four (`7960be4`):**
+- Payment type changed from free-text input to dropdown: Cash, Zelle, Credit Card, Debit Card, Check, Other.
+- `memo` text field added per payment row.
+- `last_four` text field (4-digit, numeric-only, `maxLength: 4`) added — only visible when type is Credit Card or Debit Card.
+- Runner WO payment section is now fully editable (was previously read-only).
+- `× remove` button on each payment row.
+- New payment rows: `+ Add payment` button adds `{ id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '' }`.
+- Schema: `ALTER TABLE payment_rows ADD COLUMN memo text; ALTER TABLE payment_rows ADD COLUMN last_four text;` run in Supabase.
+
+**Admin WO signature alignment (`9a8c341`):**
+- Admin WorkOrderPopup updated to match runner signature implementation.
+- WO type had `legal_signature`, `legal_name`, `legal_date` — replaced with `print_name: string` and `signature_data: string`.
+- `normalizeWO` maps `d.print_name ?? ''` and `d.signature_data ?? ''`.
+- Save payload: removed `legal_signature/legal_name/legal_date`, added `print_name: wo.print_name || null, signature_data: wo.signature_data || null`.
+- Canvas drawing functions: `getAdminCanvasPos`, `startAdminDraw`, `continueAdminDraw`, `endAdminDraw`, `clearAdminSignature` (same pattern as runner).
+- COD detection: `wo.payment_status === 'COD'` guards the legal section in admin popup.
+- `adminInitialSigRef` set in both `initWO` paths (seededExisting + seededNew) for correct canvas reload.
+
+**Payment amount currency auto-format (`a55a6e8`):**
+- `formatCurrency(val)`: on blur, formats numeric input to `$1,234.56` using `toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })`.
+- `stripCurrency(val)`: strips `$` and `,` before writing to DB; returns `null` for empty/non-numeric.
+- `totalPaid` computed as `payRows.reduce((s, p) => s + (stripCurrency(p.amount) ?? 0), 0)`.
+- Applied to both admin WorkOrderPopup and runner WO page.
+
+---
+
+*Last updated: June 10, 2026 — WO Hub, Studio Time local-first refactor, eng_visible/admin_locked columns, WO open/completed toggle, TimeInput smart-parse rewrite, runner WO bottom sections rebuild, canvas signature pad (COD-only, admin + runner aligned), payment type dropdown + memo + last_four, payment amount currency format.*
