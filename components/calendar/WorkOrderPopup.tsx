@@ -547,11 +547,11 @@ export function WorkOrderPopup({
           const reloadedRows = (reloaded ?? []).map(normalizeStRow)
           originalStRowsRef.current = reloadedRows
           setStRows(reloadedRows)
-          if (existing.engineer) setAutoEngRows(new Set(reloadedRows.filter(r => r.studio !== '').map(r => r.id)))
+          if (existing.engineer) setAutoEngRows(new Set(reloadedRows.filter(r => r.studio !== '' && !!r.eng_rate).map(r => r.id)))
         } else {
           originalStRowsRef.current = rows
           setStRows(rows)
-          if (existing.engineer) setAutoEngRows(new Set(rows.filter(r => r.studio !== '').map(r => r.id)))
+          if (existing.engineer) setAutoEngRows(new Set(rows.filter(r => r.studio !== '' && !!r.eng_rate).map(r => r.id)))
         }
       } else {
         // Existing WO has no studio time rows — fresh DB check before insert to prevent race-condition dupes
@@ -597,7 +597,7 @@ export function WorkOrderPopup({
         const reloadedRows2 = (reloaded ?? []).map(normalizeStRow)
         originalStRowsRef.current = reloadedRows2
         setStRows(reloadedRows2)
-        if (existing.engineer) setAutoEngRows(new Set(reloadedRows2.filter(r => r.studio !== '').map(r => r.id)))
+        if (existing.engineer) setAutoEngRows(new Set(reloadedRows2.filter(r => r.studio !== '' && !!r.eng_rate).map(r => r.id)))
       }
       if (eq?.length) setEquipRows(eq as EquipRow[])
       if (eqNotes?.length) {
@@ -683,7 +683,7 @@ export function WorkOrderPopup({
         const createdRows = stCreated.map(normalizeStRow)
         originalStRowsRef.current = createdRows
         setStRows(createdRows)
-        if (booking.engineer_name) setAutoEngRows(new Set(createdRows.filter(r => r.studio !== '').map(r => r.id)))
+        if (booking.engineer_name) setAutoEngRows(new Set(createdRows.filter(r => r.studio !== '' && !!r.eng_rate).map(r => r.id)))
       }
 
       // Auto-generate equipment condition rows
@@ -1077,9 +1077,9 @@ export function WorkOrderPopup({
     }))
 
     // Persist cleared eng fields for manually cleared rows
-    const clearedIds = Array.from(clearedEngRows).filter(cid => !cid.startsWith('temp-'))
+    const clearedIds = Array.from(clearedEngRows).filter(id => !id.startsWith('temp-'))
     if (clearedIds.length) {
-      await supabase.from('studio_time_rows')
+      const { error: clearError } = await supabase.from('studio_time_rows')
         .update({ eng_rate: null, eng_hours: null, eng_charge: null, eng_from_time: null, eng_to_time: null })
         .in('id', clearedIds)
     }
