@@ -283,6 +283,7 @@ export function WorkOrderPopup({
   const [completing, setCompleting] = useState(false)
   const [showEngRows, setShowEngRows] = useState(false)
   const [clearedEngRows, setClearedEngRows] = useState<Set<string>>(new Set())
+  const [autoEngRows, setAutoEngRows] = useState<Set<string>>(new Set())
   const [confirmDeleteRowId, setConfirmDeleteRowId] = useState<string | null>(null)
   const [confirmClearEngId, setConfirmClearEngId] = useState<string | null>(null)
   const [pendingLockedEdits, setPendingLockedEdits] = useState<Record<string, StRow>>({})
@@ -546,11 +547,11 @@ export function WorkOrderPopup({
           const reloadedRows = (reloaded ?? []).map(normalizeStRow)
           originalStRowsRef.current = reloadedRows
           setStRows(reloadedRows)
-          if (existing.engineer && reloadedRows.some(r => !r.eng_rate)) setShowEngRows(true)
+          if (existing.engineer) setAutoEngRows(new Set(reloadedRows.filter(r => r.studio !== '').map(r => r.id)))
         } else {
           originalStRowsRef.current = rows
           setStRows(rows)
-          if (existing.engineer && rows.some(r => !r.eng_rate)) setShowEngRows(true)
+          if (existing.engineer) setAutoEngRows(new Set(rows.filter(r => r.studio !== '').map(r => r.id)))
         }
       } else {
         // Existing WO has no studio time rows — fresh DB check before insert to prevent race-condition dupes
@@ -596,7 +597,7 @@ export function WorkOrderPopup({
         const reloadedRows2 = (reloaded ?? []).map(normalizeStRow)
         originalStRowsRef.current = reloadedRows2
         setStRows(reloadedRows2)
-        if (existing.engineer && reloadedRows2.some(r => !r.eng_rate)) setShowEngRows(true)
+        if (existing.engineer) setAutoEngRows(new Set(reloadedRows2.filter(r => r.studio !== '').map(r => r.id)))
       }
       if (eq?.length) setEquipRows(eq as EquipRow[])
       if (eqNotes?.length) {
@@ -682,7 +683,7 @@ export function WorkOrderPopup({
         const createdRows = stCreated.map(normalizeStRow)
         originalStRowsRef.current = createdRows
         setStRows(createdRows)
-        if (booking.engineer_name && createdRows.some(r => !r.eng_rate)) setShowEngRows(true)
+        if (booking.engineer_name) setAutoEngRows(new Set(createdRows.filter(r => r.studio !== '').map(r => r.id)))
       }
 
       // Auto-generate equipment condition rows
@@ -1535,7 +1536,7 @@ export function WorkOrderPopup({
                           >Revert</button>
                         </div>
                       )}
-                      {(r.studio === '' || !!r.eng_rate) && !clearedEngRows.has(r.id) && (
+                      {(r.studio === '' || !!r.eng_rate || autoEngRows.has(r.id)) && !clearedEngRows.has(r.id) && (
                         <>
                           <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                             <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
