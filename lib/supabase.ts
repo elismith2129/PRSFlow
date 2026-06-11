@@ -244,6 +244,7 @@ export interface StudioTimeRow {
   sort_order: number
   admin_checked: boolean | null
   admin_locked: boolean | null
+  eng_visible: boolean | null
 }
 
 export interface EquipmentConditionRow {

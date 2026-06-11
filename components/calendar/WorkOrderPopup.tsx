@@ -60,6 +60,7 @@ type StRow = {
   eng_to_time: string
   admin_checked: boolean
   admin_locked: boolean
+  eng_visible: boolean
 }
 
 type EquipRow = {
@@ -235,6 +236,7 @@ function normalizeStRow(d: any): StRow {
     eng_to_time: engToTime,
     admin_checked: d.admin_checked ?? false,
     admin_locked: d.admin_locked ?? false,
+    eng_visible: d.eng_visible ?? true,
   }
 }
 
@@ -282,8 +284,6 @@ export function WorkOrderPopup({
   const [saving, setSaving] = useState(false)
   const [completing, setCompleting] = useState(false)
   const [showEngRows, setShowEngRows] = useState(false)
-  const [clearedEngRows, setClearedEngRows] = useState<Set<string>>(new Set())
-  const [autoEngRows, setAutoEngRows] = useState<Set<string>>(new Set())
   const [confirmDeleteRowId, setConfirmDeleteRowId] = useState<string | null>(null)
   const [confirmClearEngId, setConfirmClearEngId] = useState<string | null>(null)
   const [pendingLockedEdits, setPendingLockedEdits] = useState<Record<string, StRow>>({})
@@ -547,11 +547,9 @@ export function WorkOrderPopup({
           const reloadedRows = (reloaded ?? []).map(normalizeStRow)
           originalStRowsRef.current = reloadedRows
           setStRows(reloadedRows)
-          if (existing.engineer) setAutoEngRows(new Set(reloadedRows.filter(r => r.studio !== '' && !!r.eng_rate).map(r => r.id)))
         } else {
           originalStRowsRef.current = rows
           setStRows(rows)
-          if (existing.engineer) setAutoEngRows(new Set(rows.filter(r => r.studio !== '' && !!r.eng_rate).map(r => r.id)))
         }
       } else {
         // Existing WO has no studio time rows — fresh DB check before insert to prevent race-condition dupes
@@ -597,7 +595,6 @@ export function WorkOrderPopup({
         const reloadedRows2 = (reloaded ?? []).map(normalizeStRow)
         originalStRowsRef.current = reloadedRows2
         setStRows(reloadedRows2)
-        if (existing.engineer) setAutoEngRows(new Set(reloadedRows2.filter(r => r.studio !== '' && !!r.eng_rate).map(r => r.id)))
       }
       if (eq?.length) setEquipRows(eq as EquipRow[])
       if (eqNotes?.length) {
@@ -683,7 +680,6 @@ export function WorkOrderPopup({
         const createdRows = stCreated.map(normalizeStRow)
         originalStRowsRef.current = createdRows
         setStRows(createdRows)
-        if (booking.engineer_name) setAutoEngRows(new Set(createdRows.filter(r => r.studio !== '' && !!r.eng_rate).map(r => r.id)))
       }
 
       // Auto-generate equipment condition rows
@@ -927,6 +923,7 @@ export function WorkOrderPopup({
       eng_charge: null,
       admin_checked: false,
       admin_locked: false,
+      eng_visible: true,
     }
     setStRows(prev => [...prev, newRow])
   }
@@ -942,15 +939,10 @@ export function WorkOrderPopup({
 
   async function clearEngRow(id: string) {
     await supabase.from('studio_time_rows').update({
-      eng_from_time: null, eng_to_time: null, eng_rate: null, eng_hours: null, eng_charge: null,
+      eng_from_time: null, eng_to_time: null, eng_rate: null, eng_hours: null, eng_charge: null, eng_visible: false,
     }).eq('id', id)
-    const updated = stRows.map(r => r.id === id ? { ...r, eng_from_time: '', eng_to_time: '', eng_rate: '', eng_hours: null, eng_charge: null } : r)
-    setStRows(updated)
-    setClearedEngRows(prev => { const s = new Set(prev); s.add(id); return s })
+    setStRows(prev => prev.map(r => r.id === id ? { ...r, eng_from_time: '', eng_to_time: '', eng_rate: '', eng_hours: null, eng_charge: null, eng_visible: false } : r))
     setConfirmClearEngId(null)
-    if (!updated.some(r => r.eng_rate)) {
-      setShowEngRows(false)
-    }
   }
 
   // ── Print with filename ───────────────────────────────────────────────────
@@ -1070,19 +1062,12 @@ export function WorkOrderPopup({
         eng_to_time: r.eng_to_time || null,
         admin_checked: r.admin_checked,
         admin_locked: r.admin_locked,
+        eng_visible: r.eng_visible,
       }
       return originalStIds.has(r.id)
         ? supabase.from('studio_time_rows').update(payload).eq('id', r.id)
         : supabase.from('studio_time_rows').insert({ ...payload, id: r.id, work_order_id: id })
     }))
-
-    // Persist cleared eng fields for manually cleared rows
-    const clearedIds = Array.from(clearedEngRows).filter(id => !id.startsWith('temp-'))
-    if (clearedIds.length) {
-      const { error: clearError } = await supabase.from('studio_time_rows')
-        .update({ eng_rate: null, eng_hours: null, eng_charge: null, eng_from_time: null, eng_to_time: null })
-        .in('id', clearedIds)
-    }
 
     // Upsert rental rows that have content
     const rentToSave = rentRows.filter(r => r.item || r.charge)
@@ -1104,7 +1089,6 @@ export function WorkOrderPopup({
 
     originalStRowsRef.current = stRows
     deletedRowsRef.current = []
-    setClearedEngRows(new Set())
     setSaving(false)
     onSaved?.()
     onClose()
@@ -1139,12 +1123,12 @@ export function WorkOrderPopup({
           eng_to_time: r.eng_to_time || null,
           admin_checked: r.admin_checked,
           admin_locked: r.admin_locked,
+          eng_visible: r.eng_visible,
         })
       ))
       deletedRowsRef.current = []
     }
     setStRows(originalStRowsRef.current)
-    setClearedEngRows(new Set())
     onClose()
   }
 
@@ -1536,7 +1520,7 @@ export function WorkOrderPopup({
                           >Revert</button>
                         </div>
                       )}
-                      {(r.studio === '' || !!r.eng_rate || autoEngRows.has(r.id)) && !clearedEngRows.has(r.id) && (
+                      {(r.studio === '' || !!wo?.engineer || !!r.eng_rate) && r.eng_visible !== false && (
                         <>
                           <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                             <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
