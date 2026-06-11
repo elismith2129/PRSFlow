@@ -88,6 +88,9 @@ function TwoCheckbox({ label, checked, clickable = false, loading = false, onCli
 export function LocationStrip() {
   const today     = getLocalDateStr()
   const yesterday = getLocalDateStr(-1)
+  const retentionCutoff = new Date(today + 'T09:00:00')
+  retentionCutoff.setDate(retentionCutoff.getDate() + 1)
+  const pastRetentionWindow = new Date() >= retentionCutoff
 
   const [summaries, setSummaries]           = useState<Record<string, StudioSummary>>({})
   const [loadingSummary, setLoadingSummary] = useState(true)
@@ -187,10 +190,6 @@ export function LocationStrip() {
     for (const w of yWOs.data ?? []) if (w.booking_id) woMapYest[w.booking_id] = w
 
     // Keep completed WOs in Today until 9am the following morning
-    const now = new Date()
-    const nineAmTomorrow = new Date(today + 'T09:00:00')
-    nineAmTomorrow.setDate(nineAmTomorrow.getDate() + 1)
-    const pastRetentionWindow = now >= nineAmTomorrow
     const activeTodayBkgs = locTodayBkgs.filter(b => {
       const wo = woMapToday[b.id]
       if (!wo) return true
@@ -228,14 +227,24 @@ export function LocationStrip() {
     setSessions([]); setOpsRows([]); setYestSessions([]); setYestOpsRows([])
   }
 
-  async function approveOps(category: string, date: string) {
+  async function approveOps(category: string, date: string, submissionId?: string) {
     if (!selectedLoc) return
+    const nowIso = new Date().toISOString()
+    const patchRow = (r: DailyOpsRow) =>
+      r.category === category ? { ...r, admin_approved_at: nowIso, admin_approved_by: 'admin' } : r
+    if (date === yesterday) setYestOpsRows(prev => prev.map(patchRow))
+    else setOpsRows(prev => prev.map(patchRow))
     const studioKey = category === 'mic_inventory' ? 'global' : selectedLoc.key
-    await supabase.from('daily_ops_submissions').upsert({
-      studio: studioKey, date, category,
-      admin_approved_at: new Date().toISOString(), admin_approved_by: 'admin',
-    }, { onConflict: 'studio,date,category' })
-    if (selectedLoc) await openDrawer(selectedLoc)
+    if (submissionId) {
+      await supabase.from('daily_ops_submissions').update({
+        admin_approved_at: nowIso, admin_approved_by: 'admin',
+      }).eq('id', submissionId)
+    } else {
+      await supabase.from('daily_ops_submissions').upsert({
+        studio: studioKey, date, category,
+        admin_approved_at: nowIso, admin_approved_by: 'admin',
+      }, { onConflict: 'studio,date,category' })
+    }
     await loadSummaries()
   }
 
@@ -361,9 +370,10 @@ export function LocationStrip() {
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', fontFamily: 'Syne' }}>Loading…</div>
             ) : (
               <div style={{ flex: 1, overflowY: 'auto', padding: '22px 26px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: pastRetentionWindow ? '1fr' : '1fr 1fr', gap: 24, alignItems: 'start' }}>
 
                   {/* ── LEFT — Yesterday ── */}
+                  {!pastRetentionWindow && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
                       <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'Syne' }}>Yesterday</span>
@@ -376,11 +386,11 @@ export function LocationStrip() {
                       const unapprovedSessions = yestSessions.filter(({ wo }) =>
                         wo?.status !== 'completed'
                       )
-                      const unapprovedOpsCats = DAILY_CATS.filter(cat => {
+                      const submittedOpsCats = DAILY_CATS.filter(cat => {
                         const row = yestOpsRows.find(o => o.category === cat.key)
-                        return !!(row?.submitted_at && !row?.admin_approved_at)
+                        return !!row?.submitted_at
                       })
-                      const allClear = unapprovedSessions.length === 0 && unapprovedOpsCats.length === 0
+                      const allClear = unapprovedSessions.length === 0 && submittedOpsCats.length === 0
 
                       if (allClear) {
                         return (
@@ -402,9 +412,9 @@ export function LocationStrip() {
                             </div>
                           )}
 
-                          {unapprovedOpsCats.length > 0 && (
+                          {submittedOpsCats.length > 0 && (
                             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-                              {unapprovedOpsCats.map((cat, i) => {
+                              {submittedOpsCats.map((cat, i) => {
                                 const row        = yestOpsRows.find(o => o.category === cat.key)
                                 const runnerDone = !!row?.submitted_at
                                 const adminDone  = !!row?.admin_approved_at
@@ -414,7 +424,7 @@ export function LocationStrip() {
                                     onClick={() => setOpenModal({ category: cat.key, date: yesterday })}
                                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2, #1e2130)')}
                                     onMouseLeave={e => (e.currentTarget.style.background = needsReview ? '#f0a24e08' : 'transparent')}
-                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: needsReview ? '#f0a24e08' : 'transparent', borderBottom: i < unapprovedOpsCats.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.1s' }}
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: needsReview ? '#f0a24e08' : 'transparent', borderBottom: i < submittedOpsCats.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.1s' }}
                                   >
                                     <div>
                                       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -428,8 +438,8 @@ export function LocationStrip() {
                                       )}
                                     </div>
                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                      <TwoCheckbox label="Runner" checked={runnerDone} color={selectedLoc.color} />
-                                      <TwoCheckbox label="Admin"  checked={adminDone}  color={selectedLoc.color} />
+                                      <TwoCheckbox label="Runner" checked={runnerDone} color="#F97316" />
+                                      <TwoCheckbox label="Admin"  checked={adminDone}  color="#14B8A6" />
                                     </div>
                                   </div>
                                 )
@@ -440,6 +450,7 @@ export function LocationStrip() {
                       )
                     })()}
                   </div>
+                  )}
 
                   {/* ── RIGHT — Today ── */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -542,7 +553,7 @@ export function LocationStrip() {
             studioLabel={cat?.label ?? selectedLoc.label}
             submission={submission}
             onClose={() => setOpenModal(null)}
-            onApprove={async () => { await approveOps(category, date); setOpenModal(null) }}
+            onApprove={async () => { await approveOps(category, date, submission?.id ?? undefined); setOpenModal(null) }}
           />
         )
       })()}
