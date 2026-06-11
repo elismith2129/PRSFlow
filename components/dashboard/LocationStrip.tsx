@@ -245,17 +245,20 @@ export function LocationStrip() {
   ))
 
   function SessionCard({ b, wo, isYesterday }: { b: Booking; wo: WO | null; isYesterday?: boolean }) {
-    const runnerDone     = wo?.status === 'completed'
-    const adminDone      = wo?.status === 'completed'
+    const completed      = wo?.status === 'completed'
     const needsAttention = !!(wo?.needs_attention_notes)
-    const col            = selectedLoc!.color
-    const borderColor    = needsAttention ? '#f9731655' : 'var(--border)'
+    const borderColor    = completed ? '#14B8A6' : needsAttention ? '#f9731655' : 'var(--border)'
     return (
-      <div style={{
-        background: 'var(--surface)',
-        border: `1px solid ${borderColor}`,
-        borderRadius: 10, padding: '12px 14px',
-      }}>
+      <div
+        onClick={() => setWoBooking(b)}
+        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface)')}
+        style={{
+          background: 'var(--surface)',
+          border: `1px solid ${borderColor}`,
+          borderRadius: 10, padding: '12px 14px',
+          cursor: 'pointer',
+        }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{b.artist || b.client_name || '—'}</div>
@@ -265,7 +268,9 @@ export function LocationStrip() {
             {needsAttention && (
               <span style={{ fontSize: 9, fontWeight: 700, color: '#f97316', background: '#f9731622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>⚠ Needs Attention</span>
             )}
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: b.status === 'confirmed' ? col : 'var(--text3)', background: (b.status === 'confirmed' ? col : 'var(--text3)') + '22', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>{b.status}</span>
+            {completed && (
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#14B8A6', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>COMPLETED</span>
+            )}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 10 }}>
@@ -274,21 +279,8 @@ export function LocationStrip() {
           {(b as any).engineer_name && <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>Eng: {(b as any).engineer_name}</span>}
           {(b as any).payment_type && <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px' }}>{(b as any).payment_type}</span>}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 9, borderTop: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', minWidth: 22 }}>WO</span>
-            <TwoCheckbox label="Runner" checked={runnerDone} color={col} />
-            <TwoCheckbox label="Admin" checked={!!adminDone} color={col} />
-          </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              onClick={e => { e.stopPropagation(); setWoBooking(b) }}
-              style={{ fontSize: 10, color: col, fontFamily: 'Syne, sans-serif', padding: '4px 9px', border: `1px solid ${col}55`, borderRadius: 6, background: `${col}12`, cursor: 'pointer', fontWeight: 700 }}
-            >
-              View / Edit
-            </button>
-            <a href={wo ? `/wo/${wo.id}/print` : '#'} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Syne, sans-serif', textDecoration: 'none', padding: '4px 9px', border: '1px solid var(--border)', borderRadius: 6 }}>PDF</a>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingTop: 9, borderTop: '1px solid var(--border)' }}>
+          <a href={wo ? `/wo/${wo.id}/print` : '#'} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Syne, sans-serif', textDecoration: 'none', padding: '4px 9px', border: '1px solid var(--border)', borderRadius: 6 }}>PDF</a>
         </div>
       </div>
     )
