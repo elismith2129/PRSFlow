@@ -282,6 +282,7 @@ export function WorkOrderPopup({
   const [saving, setSaving] = useState(false)
   const [completing, setCompleting] = useState(false)
   const [showEngRows, setShowEngRows] = useState(false)
+  const [clearedEngRows, setClearedEngRows] = useState<Set<string>>(new Set())
   const [confirmDeleteRowId, setConfirmDeleteRowId] = useState<string | null>(null)
   const [confirmClearEngId, setConfirmClearEngId] = useState<string | null>(null)
   const [pendingLockedEdits, setPendingLockedEdits] = useState<Record<string, StRow>>({})
@@ -940,6 +941,7 @@ export function WorkOrderPopup({
     }).eq('id', id)
     const updated = stRows.map(r => r.id === id ? { ...r, eng_from_time: '', eng_to_time: '', eng_rate: '', eng_hours: null, eng_charge: null } : r)
     setStRows(updated)
+    setClearedEngRows(prev => new Set([...prev, id]))
     setConfirmClearEngId(null)
     if (!updated.some(r => r.eng_rate)) {
       setShowEngRows(false)
@@ -1089,6 +1091,7 @@ export function WorkOrderPopup({
 
     originalStRowsRef.current = stRows
     deletedRowsRef.current = []
+    setClearedEngRows(new Set())
     setSaving(false)
     onSaved?.()
     onClose()
@@ -1128,6 +1131,7 @@ export function WorkOrderPopup({
       deletedRowsRef.current = []
     }
     setStRows(originalStRowsRef.current)
+    setClearedEngRows(new Set())
     onClose()
   }
 
@@ -1519,7 +1523,7 @@ export function WorkOrderPopup({
                           >Revert</button>
                         </div>
                       )}
-                      {(r.studio === '' || !!r.eng_rate || !!wo?.engineer) && (
+                      {(r.studio === '' || !!r.eng_rate || !!wo?.engineer) && !clearedEngRows.has(r.id) && (
                         <>
                           <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                             <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
