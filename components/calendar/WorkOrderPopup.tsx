@@ -29,9 +29,8 @@ type WO = {
   email: string
   status: string
   session_notes: string
-  legal_signature: string
-  legal_name: string
-  legal_date: string
+  print_name: string
+  signature_data: string
   needs_attention_notes: string
   needs_attention_photos: string[]
 }
@@ -175,9 +174,8 @@ function normalizeWO(d: any): WO {
     email: d.email ?? '',
     status: d.status ?? 'open',
     session_notes: d.session_notes ?? '',
-    legal_signature: d.legal_signature ?? '',
-    legal_name: d.legal_name ?? '',
-    legal_date: d.legal_date ?? '',
+    print_name: d.print_name ?? '',
+    signature_data: d.signature_data ?? '',
     needs_attention_notes: d.needs_attention_notes ?? '',
     needs_attention_photos: d.needs_attention_photos ?? [],
   }
@@ -303,6 +301,9 @@ export function WorkOrderPopup({
   const payIdsInDb = useRef<Set<string>>(new Set())
   const equipNoteFileRef = useRef<HTMLInputElement>(null)
   const pendingNoteKey = useRef<{ key: string; equipment: string; date: string } | null>(null)
+  const adminCanvasRef = useRef<HTMLCanvasElement>(null)
+  const adminIsDrawingRef = useRef(false)
+  const adminInitialSigRef = useRef('')
   const originalStRowsRef = useRef<StRow[]>([])
   const deletedRowsRef = useRef<StRow[]>([])
 
@@ -481,6 +482,7 @@ export function WorkOrderPopup({
         await supabase.from('work_orders').update({ studios }).eq('id', existing.id)
       }
       const seededExisting = applyLiveForm({ ...normalizeWO(existing), studios })
+      adminInitialSigRef.current = seededExisting.signature_data ?? ''
       setWo(seededExisting)
       const [{ data: st }, { data: eq }, { data: rent }, { data: pay }, { data: eqNotes }] = await Promise.all([
         supabase.from('studio_time_rows').select('*').eq('work_order_id', existing.id).order('sort_order'),
@@ -644,6 +646,7 @@ export function WorkOrderPopup({
       woIdRef.current = created.id
       setResolvedWoId(created.id)
       const seededNew = applyLiveForm(normalizeWO(created))
+      adminInitialSigRef.current = seededNew.signature_data ?? ''
       setWo(seededNew)
 
       // Auto-generate studio time rows (one per date)
@@ -694,6 +697,75 @@ export function WorkOrderPopup({
       onStatusChange?.('open')
     }
     setLoading(false)
+  }
+
+  // ── Admin canvas signature ──────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (loading) return
+    const canvas = adminCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.strokeStyle = '#e8eaf2'
+    ctx.lineWidth = 2.5
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    if (adminInitialSigRef.current) {
+      const img = new Image()
+      img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      img.src = adminInitialSigRef.current
+    }
+  }, [loading])
+
+  function getAdminCanvasPos(
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>,
+    canvas: HTMLCanvasElement
+  ) {
+    const rect = canvas.getBoundingClientRect()
+    let clientX: number, clientY: number
+    if ('touches' in e && e.touches.length > 0) {
+      clientX = e.touches[0].clientX; clientY = e.touches[0].clientY
+    } else if ('changedTouches' in e && (e as React.TouchEvent).changedTouches.length > 0) {
+      clientX = (e as React.TouchEvent).changedTouches[0].clientX
+      clientY = (e as React.TouchEvent).changedTouches[0].clientY
+    } else {
+      clientX = (e as React.MouseEvent).clientX; clientY = (e as React.MouseEvent).clientY
+    }
+    return {
+      x: (clientX - rect.left) * (canvas.width / rect.width),
+      y: (clientY - rect.top) * (canvas.height / rect.height),
+    }
+  }
+
+  function startAdminDraw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+    const canvas = adminCanvasRef.current; if (!canvas) return
+    adminIsDrawingRef.current = true
+    const ctx = canvas.getContext('2d')!
+    ctx.strokeStyle = '#e8eaf2'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    const pos = getAdminCanvasPos(e, canvas)
+    ctx.beginPath(); ctx.moveTo(pos.x, pos.y)
+  }
+
+  function continueAdminDraw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+    if (!adminIsDrawingRef.current) return
+    const canvas = adminCanvasRef.current; if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    const pos = getAdminCanvasPos(e, canvas)
+    ctx.lineTo(pos.x, pos.y); ctx.stroke()
+  }
+
+  function endAdminDraw() {
+    if (!adminIsDrawingRef.current) return
+    adminIsDrawingRef.current = false
+    const canvas = adminCanvasRef.current; if (!canvas) return
+    setWo(w => w ? { ...w, signature_data: canvas.toDataURL('image/png') } : w)
+  }
+
+  function clearAdminSignature() {
+    const canvas = adminCanvasRef.current; if (!canvas) return
+    canvas.getContext('2d')!.clearRect(0, 0, canvas.width, canvas.height)
+    setWo(w => w ? { ...w, signature_data: '' } : w)
   }
 
   // ── Studio time row updates ─────────────────────────────────────────────────
@@ -1029,9 +1101,8 @@ export function WorkOrderPopup({
       phone: wo.phone || null,
       email: wo.email || null,
       session_notes: wo.session_notes || null,
-      legal_signature: wo.legal_signature || null,
-      legal_name: wo.legal_name || null,
-      legal_date: wo.legal_date || null,
+      print_name: wo.print_name || null,
+      signature_data: wo.signature_data || null,
       needs_attention_notes: wo.needs_attention_notes || null,
       updated_at: new Date().toISOString(),
     }).eq('id', id)
@@ -1725,19 +1796,43 @@ export function WorkOrderPopup({
                 <textarea value={wo.session_notes} onChange={e => setWo(w => w ? { ...w, session_notes: e.target.value } : w)}
                   style={{ width: '100%', minHeight: 90, background: '#1a1e28', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 5, color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }} />
               </div>
-              <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#4a4f64', lineHeight: 1.8, padding: '10px 12px', background: '#1a1e28', borderRadius: 5, border: '1px solid rgba(255,255,255,0.05)' }}>
-                By signing below, I acknowledge that I am authorized to approve charges for this session. I accept responsibility for all associated costs and understand that payment is due in full at the time of service unless otherwise agreed. I also acknowledge that Paramount Recording is not responsible for any media, personal items, or equipment left behind.
-                <br /><br />
-                <em>No Tapes, CDs, DVDs, Thumb Drives, Computer Drives or other Recording Media will be released until payment in full is received.</em>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {([['Signature', 'legal_signature'], ['Print Name', 'legal_name'], ['Date', 'legal_date']] as [string, keyof WO][]).map(([label, key]) => (
-                  <div key={key} style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
-                    <div style={metaLabel}>{label}</div>
-                    <input value={String(wo[key] ?? '')} onChange={e => setWo(w => w ? { ...w, [key]: e.target.value } : w)} style={{ ...inp, borderBottom: '1px solid rgba(255,255,255,0.2)' }} />
+              {wo.payment_status === 'COD' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#4a4f64', lineHeight: 1.8, padding: '10px 12px', background: '#1a1e28', borderRadius: 5, border: '1px solid rgba(255,255,255,0.05)' }}>
+                    By signing below, I acknowledge that I am authorized to approve charges for this session. I accept responsibility for all associated costs and understand that payment is due in full at the time of service unless otherwise agreed. I also acknowledge that Paramount Recording is not responsible for any media, personal items, or equipment left behind.
+                    <br /><br />
+                    <em>No Tapes, CDs, DVDs, Thumb Drives, Computer Drives or other Recording Media will be released until payment in full is received.</em>
                   </div>
-                ))}
-              </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
+                    <div style={metaLabel}>Date</div>
+                    <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0' }}>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
+                    <div style={metaLabel}>Print Name</div>
+                    <input value={wo.print_name} onChange={e => setWo(w => w ? { ...w, print_name: e.target.value } : w)} style={{ ...inp, borderBottom: '1px solid rgba(255,255,255,0.2)' }} />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <div style={metaLabel}>Signature</div>
+                      <button type="button" onClick={clearAdminSignature} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '2px 8px', color: '#8a8fa0', fontSize: 10, cursor: 'pointer', fontFamily: 'DM Mono' }}>Clear</button>
+                    </div>
+                    <canvas
+                      ref={adminCanvasRef}
+                      width={700}
+                      height={200}
+                      onMouseDown={startAdminDraw}
+                      onMouseMove={continueAdminDraw}
+                      onMouseUp={endAdminDraw}
+                      onMouseLeave={endAdminDraw}
+                      onTouchStart={startAdminDraw}
+                      onTouchMove={continueAdminDraw}
+                      onTouchEnd={endAdminDraw}
+                      style={{ width: '100%', height: 100, background: '#0d0f14', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', display: 'block', touchAction: 'none', cursor: 'crosshair' }}
+                    />
+                    {wo.signature_data && <div style={{ fontSize: 9, color: '#4a4f64', fontFamily: 'DM Mono', marginTop: 4 }}>Signature captured ✓</div>}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right — Payments + Totals */}
