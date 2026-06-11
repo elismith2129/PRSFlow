@@ -822,8 +822,9 @@ export default function RunnerWOPage() {
                               {/* Notes — opens bottom sheet */}
                               <div style={{ ...tdStyle, padding: '4px 3px' }}>
                                 <button
-                                  onClick={() => { notesScrollRef.current = window.scrollY; document.body.style.top = `-${window.scrollY}px`; document.body.style.position = 'fixed'; document.body.style.width = '100%'; setNotesModalRowId(r.id); setNotesModalText(r.session_info || '') }}
-                                  style={{ width: '100%', padding: '3px 4px', border: `1px solid ${hasNotes ? '#c8f04e' : '#3a3f52'}`, borderRadius: 4, background: hasNotes ? 'rgba(200,240,78,0.08)' : 'transparent', color: hasNotes ? '#c8f04e' : '#4a4f64', fontSize: 9, fontFamily: 'Syne', cursor: 'pointer' }}
+                                  onClick={() => { if (r.admin_locked) return; notesScrollRef.current = window.scrollY; document.body.style.top = `-${window.scrollY}px`; document.body.style.position = 'fixed'; document.body.style.width = '100%'; setNotesModalRowId(r.id); setNotesModalText(r.session_info || '') }}
+                                  disabled={!!r.admin_locked}
+                                  style={{ width: '100%', padding: '3px 4px', border: `1px solid ${hasNotes ? '#c8f04e' : '#3a3f52'}`, borderRadius: 4, background: hasNotes ? 'rgba(200,240,78,0.08)' : 'transparent', color: hasNotes ? '#c8f04e' : '#4a4f64', fontSize: 9, fontFamily: 'Syne', cursor: r.admin_locked ? 'default' : 'pointer', opacity: r.admin_locked ? 0.4 : 1 }}
                                 >Notes</button>
                               </div>
                               {/* From / To */}
@@ -876,8 +877,8 @@ export default function RunnerWOPage() {
                                   >{initials}</button>
                                 </div>
                                 <div style={{ ...tdStyle }} />
-                                <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={engLiveFrom} onChange={v => setEngFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSel, color: '#c8f04e' }} /></div>
-                                <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={engLiveTo} onChange={v => setEngToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSel, color: '#c8f04e' }} /></div>
+                                <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={engLiveFrom} onChange={v => setEngFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSel, color: '#c8f04e' }} disabled={!!r.admin_locked} /></div>
+                                <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={engLiveTo} onChange={v => setEngToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSel, color: '#c8f04e' }} disabled={!!r.admin_locked} /></div>
                                 <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>{engLiveHours != null ? `${engLiveHours}h` : '—'}</div>
                                 <div style={{ ...tdStyle }} />
                                 <div style={{ ...tdStyle, color: '#8b90a8', fontSize: 9 }}>{engRateForRow > 0 ? `$${engRateForRow}/hr` : '—'}</div>
