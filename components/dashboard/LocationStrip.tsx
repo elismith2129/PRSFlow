@@ -386,21 +386,6 @@ export function LocationStrip() {
                       const unapprovedSessions = yestSessions.filter(({ wo }) =>
                         wo?.status !== 'completed'
                       )
-                      const submittedOpsCats = DAILY_CATS.filter(cat => {
-                        const row = yestOpsRows.find(o => o.category === cat.key)
-                        return !!row?.submitted_at
-                      })
-                      const allClear = unapprovedSessions.length === 0 && submittedOpsCats.length === 0
-
-                      if (allClear) {
-                        return (
-                          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '28px 16px', textAlign: 'center' }}>
-                            <div style={{ fontSize: 20, marginBottom: 6 }}>✓</div>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: '#4ade80', fontFamily: 'Syne' }}>All clear</div>
-                            <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 4 }}>Nothing pending from yesterday</div>
-                          </div>
-                        )
-                      }
 
                       return (
                         <>
@@ -412,40 +397,38 @@ export function LocationStrip() {
                             </div>
                           )}
 
-                          {submittedOpsCats.length > 0 && (
-                            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-                              {submittedOpsCats.map((cat, i) => {
-                                const row        = yestOpsRows.find(o => o.category === cat.key)
-                                const runnerDone = !!row?.submitted_at
-                                const adminDone  = !!row?.admin_approved_at
-                                const needsReview = runnerDone && !adminDone
-                                return (
-                                  <div key={cat.key}
-                                    onClick={() => setOpenModal({ category: cat.key, date: yesterday })}
-                                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2, #1e2130)')}
-                                    onMouseLeave={e => (e.currentTarget.style.background = needsReview ? '#f0a24e08' : 'transparent')}
-                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: needsReview ? '#f0a24e08' : 'transparent', borderBottom: i < submittedOpsCats.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.1s' }}
-                                  >
-                                    <div>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                                        <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Syne', fontWeight: 600 }}>{cat.label}</span>
-                                        {needsReview && <span style={{ fontSize: 9, fontWeight: 700, color: '#f0a24e', background: '#f0a24e22', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>Review</span>}
+                          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                            {DAILY_CATS.map((cat, i) => {
+                              const row        = yestOpsRows.find(o => o.category === cat.key)
+                              const runnerDone = !!row?.submitted_at
+                              const adminDone  = !!row?.admin_approved_at
+                              const needsReview = runnerDone && !adminDone
+                              return (
+                                <div key={cat.key}
+                                  onClick={() => setOpenModal({ category: cat.key, date: yesterday })}
+                                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2, #1e2130)')}
+                                  onMouseLeave={e => (e.currentTarget.style.background = needsReview ? '#f0a24e08' : 'transparent')}
+                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: needsReview ? '#f0a24e08' : 'transparent', borderBottom: i < DAILY_CATS.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.1s' }}
+                                >
+                                  <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                                      <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Syne', fontWeight: 600 }}>{cat.label}</span>
+                                      {needsReview && <span style={{ fontSize: 9, fontWeight: 700, color: '#f0a24e', background: '#f0a24e22', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>Review</span>}
+                                    </div>
+                                    {row?.staff_name && (
+                                      <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+                                        {row.staff_name}{row.submitted_at && ` · ${new Date(row.submitted_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`}
                                       </div>
-                                      {row?.staff_name && (
-                                        <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
-                                          {row.staff_name}{row.submitted_at && ` · ${new Date(row.submitted_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                      <TwoCheckbox label="Runner" checked={runnerDone} color="#F97316" />
-                                      <TwoCheckbox label="Admin"  checked={adminDone}  color="#14B8A6" />
-                                    </div>
+                                    )}
                                   </div>
-                                )
-                              })}
-                            </div>
-                          )}
+                                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                    <TwoCheckbox label="Runner" checked={runnerDone} color="#F97316" />
+                                    <TwoCheckbox label="Admin"  checked={adminDone}  color="#14B8A6" />
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
                         </>
                       )
                     })()}
