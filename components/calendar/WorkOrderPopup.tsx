@@ -1362,7 +1362,7 @@ export function WorkOrderPopup({
               <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                 {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total', '', ''].map((h, i) => <div key={i} style={thS}>{h}</div>)}
               </div>
-              <div data-st-scroll="" style={{ pointerEvents: isCompleted ? 'none' : undefined, opacity: isCompleted ? 0.65 : 1, maxHeight: 420, overflowY: 'auto' }}>
+              <div data-st-scroll="" style={{ maxHeight: 420, overflowY: 'auto' }}>
                 {stRows.map(r => {
                   const isEngOnly = !r.studio && !r.date
                   const isDayRow = r.row_rate_type === 'day'
@@ -1501,7 +1501,7 @@ export function WorkOrderPopup({
                               </div>
                             </div>
                           ) : (
-                            <button type="button" onClick={() => setConfirmDeleteRowId(r.id)} disabled={isCompleted} style={{ fontSize: 13, fontFamily: 'DM Mono', color: isCompleted ? '#2a2f3a' : '#4a4f60', background: 'none', border: 'none', cursor: isCompleted ? 'default' : 'pointer', padding: 0, lineHeight: 1 }}>×</button>
+                            <button type="button" onClick={() => setConfirmDeleteRowId(r.id)} style={{ fontSize: 13, fontFamily: 'DM Mono', color: '#4a4f60', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
                           )}
                         </div>
                       </div>}
@@ -1524,8 +1524,29 @@ export function WorkOrderPopup({
                         <>
                           <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                             <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
+                            {/* Date picker — uses r.date for eng-only rows; shared with main row for studio rows */}
+                            <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10, position: 'relative', cursor: 'pointer' }}>
+                              <span style={{ pointerEvents: 'none' }}>{isEngOnly ? shortDate(r.date) : shortDate(r.date)}</span>
+                              {isEngOnly && (
+                                <input
+                                  type="date"
+                                  value={r.date || ''}
+                                  onChange={e => {
+                                    const newDate = e.target.value
+                                    setStRows(prev => {
+                                      const sorted = prev
+                                        .map(row => row.id === r.id ? { ...row, date: newDate } : row)
+                                        .sort((a, b) => (a.date || 'zzzz').localeCompare(b.date || 'zzzz'))
+                                        .map((row, i) => ({ ...row, sort_order: i }))
+                                      sorted.forEach(row => { supabase.from('studio_time_rows').update({ date: row.date, sort_order: row.sort_order }).eq('id', row.id) })
+                                      return sorted
+                                    })
+                                  }}
+                                  style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+                                />
+                              )}
+                            </div>
                             <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engName}</div>
-                            <div style={cellS} />
                             <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} style={inp} /></div>
                             <div style={cellS}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} style={inp} /></div>
                             <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engHrs != null ? `${engHrs}h` : '—'}</div>
@@ -1545,7 +1566,7 @@ export function WorkOrderPopup({
                             </div>
                             {/* Eng delete × */}
                             <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto' }}>
-                              <button type="button" onClick={() => setConfirmClearEngId(r.id)} disabled={isCompleted} style={{ fontSize: 13, fontFamily: 'DM Mono', color: isCompleted ? '#2a2f3a' : '#4a4f60', background: 'none', border: 'none', cursor: isCompleted ? 'default' : 'pointer', padding: 0, lineHeight: 1 }}>×</button>
+                              <button type="button" onClick={() => setConfirmClearEngId(r.id)} style={{ fontSize: 13, fontFamily: 'DM Mono', color: '#4a4f60', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
                             </div>
                           </div>
                           {confirmClearEngId === r.id && (
@@ -1563,8 +1584,8 @@ export function WorkOrderPopup({
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: '#1a1e28', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                  <button type="button" onClick={addStRow} disabled={isCompleted} style={{ fontSize: 10, fontFamily: 'DM Mono', color: isCompleted ? '#4a4f60' : '#8a8fa0', background: 'none', border: 'none', cursor: isCompleted ? 'default' : 'pointer', padding: 0 }}>+ Add Studio Time</button>
-                  <button type="button" onClick={addEngRow} disabled={isCompleted} style={{ fontSize: 10, fontFamily: 'DM Mono', color: isCompleted ? '#4a4f60' : '#c8f04e88', background: 'none', border: 'none', cursor: isCompleted ? 'default' : 'pointer', padding: 0 }}>+ Add Eng</button>
+                  <button type="button" onClick={addStRow} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add Studio Time</button>
+                  <button type="button" onClick={addEngRow} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#c8f04e88', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add Eng</button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
                   <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0' }}>Studio: ${stTotal.toFixed(2)}</span>
