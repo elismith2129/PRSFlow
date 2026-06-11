@@ -1514,7 +1514,7 @@ export function WorkOrderPopup({
                           >Revert</button>
                         </div>
                       )}
-                      {(showEngRows || !!engName) && (
+                      {showEngRows && (
                         <>
                           <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
                             <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
