@@ -53,6 +53,7 @@ export default function MicsPage() {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     home: true, other: false, floating: false, odds: false,
   })
+  const [roomPickerOpen, setRoomPickerOpen] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     async function load() {
@@ -81,6 +82,7 @@ export default function MicsPage() {
 
   function setRoom(micId: string, room: string) {
     setCheckins(prev => ({ ...prev, [micId]: { status: 'room', room } }))
+    setRoomPickerOpen(prev => ({ ...prev, [micId]: false }))
   }
 
   function adjustQty(micId: string, delta: number) {
@@ -182,6 +184,7 @@ export default function MicsPage() {
     const isHere    = state.status === 'here'
     const isRoom    = state.status === 'room'
     const isMissing = state.status === 'missing'
+    const pickerOpen = isRoom && !!roomPickerOpen[mic.id]
 
     return (
       <div style={{ borderBottom: '1px solid #2a2e3d' }}>
@@ -194,7 +197,14 @@ export default function MicsPage() {
               style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isHere ? '#4ade80' : '#2a2e3d'}`, background: isHere ? '#4ade8022' : 'transparent', color: isHere ? '#4ade80' : '#8b90a8', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
               HERE
             </button>
-            <button onClick={() => setStatus(mic.id, 'room')}
+            <button onClick={() => {
+              if (!isRoom) {
+                setStatus(mic.id, 'room')
+                setRoomPickerOpen(prev => ({ ...prev, [mic.id]: true }))
+              } else {
+                setRoomPickerOpen(prev => ({ ...prev, [mic.id]: !prev[mic.id] }))
+              }
+            }}
               style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isRoom ? '#4e8ff0' : '#2a2e3d'}`, background: isRoom ? '#4e8ff022' : 'transparent', color: isRoom ? '#4e8ff0' : '#8b90a8', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
               ROOM ▾
             </button>
@@ -204,7 +214,7 @@ export default function MicsPage() {
             </button>
           </div>
         </div>
-        {isRoom && (
+        {pickerOpen && (
           <div style={{ padding: '0 14px 10px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Room:</span>
             {rooms.map(r => (
