@@ -3,129 +3,318 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 
+function getLocalToday(): string {
+  const now = new Date()
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
+  return now.toISOString().slice(0, 10)
+}
+
 const STUDIO_META: Record<string, { label: string; color: string }> = {
   paramount: { label: 'Paramount', color: '#c8f04e' },
   ameraycan: { label: 'Ameraycan', color: '#f04e7a' },
-  encore: { label: 'Encore', color: '#4e8ff0' },
-  track: { label: 'Track', color: '#f0a24e' },
+  encore:    { label: 'Encore',    color: '#4e8ff0' },
+  track:     { label: 'Track',     color: '#f0a24e' },
 }
 
-type MicItem = { id?: string; name: string; serial: string; location: string; condition: 'good' | 'fair' | 'damaged' | ''; notes: string }
+const STUDIO_ROOMS: Record<string, string[]> = {
+  paramount: ['Studio A', 'Studio B', 'Studio C', 'Studio E', 'Studio X'],
+  ameraycan: ['Studio A', 'Studio B'],
+  encore:    ['Studio A', 'Studio B'],
+  track:     ['Studio North', 'Studio South'],
+}
 
-const DEFAULT_MICS = [
-  'Neumann U87',
-  'AKG C414',
-  'Shure SM7B',
-  'Shure SM58',
-  'Rode NT1',
-  'Sennheiser MD421',
-  'AKG D112',
-  'Electrovoice RE20',
-]
+type Mic = {
+  id: string
+  name: string
+  home_studio: string
+  category: string
+  sort_order: number
+}
 
-const CONDITION_COLORS: Record<string, string> = {
-  good: '#4ade80',
-  fair: '#f0a24e',
-  damaged: '#f87171',
-  '': '#8b90a8',
+type CheckinState = {
+  status: 'not_checked' | 'here' | 'room' | 'missing'
+  room: string
 }
 
 export default function MicsPage() {
   const router = useRouter()
   const { studio } = useParams<{ studio: string }>()
-  const meta = STUDIO_META[studio] ?? { label: studio, color: '#c8f04e' }
+  const meta  = STUDIO_META[studio] ?? { label: studio, color: '#c8f04e' }
+  const today = getLocalToday()
+  const rooms = STUDIO_ROOMS[studio] ?? []
 
-  const [mics, setMics] = useState<MicItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [mics, setMics]             = useState<Mic[]>([])
+  const [loading, setLoading]       = useState(true)
+  const [checkins, setCheckins]     = useState<Record<string, CheckinState>>({})
+  const [quantities, setQuantities] = useState<Record<string, number>>({})
+  const [initials, setInitials]     = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted]   = useState(false)
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    home: true, other: false, floating: false, odds: false,
+  })
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from('mic_inventory').select('*').eq('studio', studio).order('name')
-      if (data && data.length > 0) {
-        setMics(data.map((r: any) => ({ id: r.id, name: r.name ?? '', serial: r.serial ?? '', location: r.location ?? '', condition: r.condition ?? '', notes: r.notes ?? '' })))
-      } else {
-        setMics(DEFAULT_MICS.map(name => ({ name, serial: '', location: '', condition: '', notes: '' })))
-      }
+      const { data } = await supabase
+        .from('mics')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order')
+      setMics(data ?? [])
       setLoading(false)
     }
     load()
-  }, [studio])
+  }, [])
 
-  async function save() {
-    setSaving(true)
-    for (const mic of mics) {
-      const payload = { studio, name: mic.name, serial: mic.serial, location: mic.location, condition: mic.condition || null, notes: mic.notes }
-      if (mic.id) {
-        await supabase.from('mic_inventory').update(payload).eq('id', mic.id)
-      } else {
-        const { data } = await supabase.from('mic_inventory').insert(payload).select().single()
-        if (data) mic.id = data.id
-      }
-    }
-    setSaving(false)
-    alert('Mic inventory saved')
+  function toggleSection(key: string) {
+    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
-  if (loading) return <div style={{ minHeight: '100dvh', background: '#0d0f14', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b90a8', fontFamily: 'Syne, sans-serif' }}>Loading…</div>
+  function setStatus(micId: string, status: CheckinState['status']) {
+    setCheckins(prev => {
+      const cur = prev[micId]
+      if (cur?.status === status) return { ...prev, [micId]: { status: 'not_checked', room: '' } }
+      return { ...prev, [micId]: { status, room: cur?.room ?? '' } }
+    })
+  }
 
-  const damagedCount = mics.filter(m => m.condition === 'damaged').length
+  function setRoom(micId: string, room: string) {
+    setCheckins(prev => ({ ...prev, [micId]: { status: 'room', room } }))
+  }
+
+  function adjustQty(micId: string, delta: number) {
+    setQuantities(prev => ({ ...prev, [micId]: Math.max(0, (prev[micId] ?? 0) + delta) }))
+  }
+
+  async function handleSubmit() {
+    if (!initials.trim() || submitting) return
+    setSubmitting(true)
+    const now = new Date().toISOString()
+
+    // 1. mic_checkins — only touched rows
+    const checkinRows = Object.entries(checkins)
+      .filter(([, v]) => v.status !== 'not_checked')
+      .map(([mic_id, v]) => ({ mic_id, studio, date: today, status: v.status, room: v.room || null }))
+    if (checkinRows.length > 0) {
+      await supabase.from('mic_checkins').upsert(checkinRows, { onConflict: 'mic_id,studio,date' })
+    }
+
+    // 2. mic_inventory_quantities — only qty > 0
+    const qtyRows = Object.entries(quantities)
+      .filter(([, q]) => q > 0)
+      .map(([mic_id, quantity]) => ({ mic_id, studio, date: today, quantity }))
+    if (qtyRows.length > 0) {
+      await supabase.from('mic_inventory_quantities').upsert(qtyRows, { onConflict: 'mic_id,studio,date' })
+    }
+
+    // 3. mic_inventory_submissions
+    await supabase.from('mic_inventory_submissions').upsert(
+      { studio, date: today, submitted_at: now, submitted_by: initials.trim() },
+      { onConflict: 'studio,date' }
+    )
+
+    // 4. daily_ops_submissions
+    await supabase.from('daily_ops_submissions').upsert(
+      { studio, date: today, category: 'mic_inventory', submitted_at: now, staff_name: initials.trim() },
+      { onConflict: 'studio,date,category' }
+    )
+
+    setSubmitting(false)
+    setSubmitted(true)
+  }
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100dvh', background: '#0d0f14', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b90a8', fontFamily: 'Syne, sans-serif' }}>
+        Loading…
+      </div>
+    )
+  }
+
+  if (submitted) {
+    return (
+      <div style={{ minHeight: '100dvh', background: '#0d0f14', fontFamily: 'Syne, sans-serif', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '40px 24px', textAlign: 'center' }}>
+        <div style={{ fontSize: 48 }}>✓</div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: meta.color }}>Submitted</div>
+        <div style={{ fontSize: 13, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>
+          Mic Inventory · {meta.label} · {today}
+        </div>
+        <button
+          onClick={() => router.push(`/runner/${studio}`)}
+          style={{ marginTop: 24, padding: '12px 28px', background: meta.color, color: '#0d0f14', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 800, cursor: 'pointer' }}
+        >
+          Back to Hub
+        </button>
+      </div>
+    )
+  }
+
+  const homeMics  = mics.filter(m => m.home_studio === studio && m.category === 'mic')
+  const otherMics = mics.filter(m => m.home_studio !== studio && m.home_studio !== 'floating' && m.category === 'mic')
+  const floatGear = mics.filter(m => m.category === 'floating_gear')
+  const oddsEnds  = mics.filter(m => m.category === 'odds_ends')
+  const canSubmit = initials.trim().length > 0 && !submitting
+
+  function SectionHeader({ sectionKey, label, count }: { sectionKey: string; label: string; count: number }) {
+    const open = openSections[sectionKey]
+    return (
+      <button
+        onClick={() => toggleSection(sectionKey)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: '#161920', border: '1px solid #2a2e3d',
+          borderRadius: open ? '12px 12px 0 0' : 12,
+          padding: '13px 16px', cursor: 'pointer',
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#e8eaf2', fontFamily: 'Syne, sans-serif' }}>{label}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>{count}</span>
+          <span style={{ fontSize: 11, color: '#8b90a8', display: 'inline-block', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+        </div>
+      </button>
+    )
+  }
+
+  function MicRow({ mic }: { mic: Mic }) {
+    const state     = checkins[mic.id] ?? { status: 'not_checked', room: '' }
+    const isHere    = state.status === 'here'
+    const isRoom    = state.status === 'room'
+    const isMissing = state.status === 'missing'
+
+    return (
+      <div style={{ borderBottom: '1px solid #2a2e3d' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', gap: 8 }}>
+          <span style={{ fontSize: 12, color: '#e8eaf2', fontFamily: 'DM Mono, monospace', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {mic.name}
+          </span>
+          <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+            <button onClick={() => setStatus(mic.id, 'here')}
+              style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isHere ? '#4ade80' : '#2a2e3d'}`, background: isHere ? '#4ade8022' : 'transparent', color: isHere ? '#4ade80' : '#8b90a8', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
+              HERE
+            </button>
+            <button onClick={() => setStatus(mic.id, 'room')}
+              style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isRoom ? '#4e8ff0' : '#2a2e3d'}`, background: isRoom ? '#4e8ff022' : 'transparent', color: isRoom ? '#4e8ff0' : '#8b90a8', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
+              ROOM ▾
+            </button>
+            <button onClick={() => setStatus(mic.id, 'missing')}
+              style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isMissing ? '#f87171' : '#2a2e3d'}`, background: isMissing ? '#f8717122' : 'transparent', color: isMissing ? '#f87171' : '#8b90a8', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
+              MISS
+            </button>
+          </div>
+        </div>
+        {isRoom && (
+          <div style={{ padding: '0 14px 10px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Room:</span>
+            {rooms.map(r => (
+              <button key={r} onClick={() => setRoom(mic.id, r)}
+                style={{ padding: '3px 9px', borderRadius: 6, border: `1px solid ${state.room === r ? '#4e8ff0' : '#2a2e3d'}`, background: state.room === r ? '#4e8ff022' : 'transparent', color: state.room === r ? '#4e8ff0' : '#8b90a8', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Mono, monospace', whiteSpace: 'nowrap' }}>
+                {r}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  function OddsRow({ mic }: { mic: Mic }) {
+    const qty = quantities[mic.id] ?? 0
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid #2a2e3d', gap: 8 }}>
+        <span style={{ fontSize: 12, color: '#e8eaf2', fontFamily: 'DM Mono, monospace', flex: 1 }}>{mic.name}</span>
+        <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #2a2e3d', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
+          <button onClick={() => adjustQty(mic.id, -1)}
+            style={{ width: 32, height: 32, background: 'transparent', border: 'none', color: qty === 0 ? '#3a3e4d' : '#e8eaf2', fontSize: 18, cursor: qty === 0 ? 'default' : 'pointer', lineHeight: 1 }}>
+            −
+          </button>
+          <span style={{ minWidth: 28, textAlign: 'center', fontSize: 13, fontWeight: 700, color: qty > 0 ? '#e8eaf2' : '#8b90a8', fontFamily: 'DM Mono, monospace' }}>
+            {qty}
+          </span>
+          <button onClick={() => adjustQty(mic.id, 1)}
+            style={{ width: 32, height: 32, background: 'transparent', border: 'none', color: '#e8eaf2', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>
+            +
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#0d0f14', fontFamily: 'Syne, sans-serif', paddingBottom: 100 }}>
+    <div style={{ minHeight: '100dvh', maxWidth: '100vw', overflowX: 'hidden', background: '#0d0f14', fontFamily: 'Syne, sans-serif', paddingBottom: 120 }}>
+
+      {/* Header */}
       <div style={{ background: '#161920', borderBottom: `3px solid ${meta.color}`, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 }}>
         <button onClick={() => router.push(`/runner/${studio}`)} style={{ background: 'none', border: 'none', color: '#8b90a8', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>←</button>
         <div>
           <div style={{ fontSize: 15, fontWeight: 800, color: '#e8eaf2' }}>Mic Inventory</div>
-          <div style={{ fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>
-            {meta.label}{damagedCount > 0 ? ` · ${damagedCount} damaged` : ''}
-          </div>
+          <div style={{ fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>{meta.label} · {today}</div>
         </div>
       </div>
 
-      <div style={{ padding: '16px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {mics.map((mic, i) => (
-            <div key={i} style={{ background: '#161920', border: `1px solid ${mic.condition === 'damaged' ? '#f8717144' : '#2a2e3d'}`, borderRadius: 12, padding: '12px 14px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#e8eaf2' }}>{mic.name}</span>
-                <select
-                  value={mic.condition}
-                  onChange={e => setMics(prev => prev.map((x, j) => j === i ? { ...x, condition: e.target.value as MicItem['condition'] } : x))}
-                  style={{ background: '#0d0f14', border: `1px solid ${CONDITION_COLORS[mic.condition] ?? '#2a2e3d'}44`, borderRadius: 8, padding: '4px 8px', color: CONDITION_COLORS[mic.condition], fontSize: 11, fontWeight: 700, outline: 'none' }}
-                >
-                  <option value="">Not checked</option>
-                  <option value="good">Good</option>
-                  <option value="fair">Fair</option>
-                  <option value="damaged">Damaged</option>
-                </select>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
-                <input placeholder="Serial #" value={mic.serial} onChange={e => setMics(prev => prev.map((x, j) => j === i ? { ...x, serial: e.target.value } : x))}
-                  style={{ background: '#0d0f14', border: '1px solid #2a2e3d', borderRadius: 8, padding: '6px 8px', color: '#e8eaf2', fontSize: 11, fontFamily: 'DM Mono, monospace', outline: 'none' }} />
-                <input placeholder="Location/stand" value={mic.location} onChange={e => setMics(prev => prev.map((x, j) => j === i ? { ...x, location: e.target.value } : x))}
-                  style={{ background: '#0d0f14', border: '1px solid #2a2e3d', borderRadius: 8, padding: '6px 8px', color: '#e8eaf2', fontSize: 11, fontFamily: 'DM Mono, monospace', outline: 'none' }} />
-              </div>
-              {(mic.condition === 'fair' || mic.condition === 'damaged') && (
-                <input placeholder="Issue notes…" value={mic.notes} onChange={e => setMics(prev => prev.map((x, j) => j === i ? { ...x, notes: e.target.value } : x))}
-                  style={{ width: '100%', boxSizing: 'border-box', background: '#0d0f14', border: '1px solid #2a2e3d', borderRadius: 8, padding: '6px 8px', color: '#e8eaf2', fontSize: 11, fontFamily: 'DM Mono, monospace', outline: 'none' }} />
-              )}
+      {/* Sections */}
+      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+        <div>
+          <SectionHeader sectionKey="home" label={`${meta.label} Mics`} count={homeMics.length} />
+          {openSections.home && (
+            <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
+              {homeMics.map(m => <MicRow key={m.id} mic={m} />)}
             </div>
-          ))}
+          )}
         </div>
+
+        <div>
+          <SectionHeader sectionKey="other" label="Other Studio Mics" count={otherMics.length} />
+          {openSections.other && (
+            <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
+              {otherMics.length === 0
+                ? <div style={{ padding: '16px 14px', fontSize: 12, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>No stray mics to report.</div>
+                : otherMics.map(m => <MicRow key={m.id} mic={m} />)
+              }
+            </div>
+          )}
+        </div>
+
+        <div>
+          <SectionHeader sectionKey="floating" label="Floating Gear" count={floatGear.length} />
+          {openSections.floating && (
+            <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
+              {floatGear.map(m => <MicRow key={m.id} mic={m} />)}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <SectionHeader sectionKey="odds" label="Odds & Ends" count={oddsEnds.length} />
+          {openSections.odds && (
+            <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
+              {oddsEnds.map(m => <OddsRow key={m.id} mic={m} />)}
+            </div>
+          )}
+        </div>
+
+      </div>
+
+      {/* Fixed footer */}
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#161920', borderTop: '1px solid #2a2e3d', padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'center' }}>
+        <input
+          placeholder="Initials"
+          value={initials}
+          onChange={e => setInitials(e.target.value)}
+          maxLength={6}
+          style={{ width: 80, padding: '11px 12px', background: '#0d0f14', border: '1px solid #2a2e3d', borderRadius: 10, color: '#e8eaf2', fontSize: 13, fontFamily: 'DM Mono, monospace', outline: 'none', textTransform: 'uppercase' }}
+        />
         <button
-          onClick={() => setMics(prev => [...prev, { name: '', serial: '', location: '', condition: '', notes: '' }])}
-          style={{ marginTop: 12, width: '100%', padding: '12px', background: '#161920', border: '1px dashed #2a2e3d', borderRadius: 12, color: '#8b90a8', fontSize: 13, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+          style={{ flex: 1, padding: '13px 0', background: canSubmit ? meta.color : '#2a2e3d', color: canSubmit ? '#0d0f14' : '#8b90a8', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: canSubmit ? 'pointer' : 'default', transition: 'background 0.15s', fontFamily: 'Syne, sans-serif' }}
         >
-          + Add Mic
+          {submitting ? 'Submitting…' : 'Submit'}
         </button>
       </div>
 
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: '#0d0f14', borderTop: '1px solid #2a2e3d' }}>
-        <button onClick={save} disabled={saving} style={{ width: '100%', padding: '14px 0', background: meta.color, color: '#0d0f14', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'Syne, sans-serif' }}>
-          {saving ? 'Saving…' : 'Save Mic Inventory'}
-        </button>
-      </div>
     </div>
   )
 }
