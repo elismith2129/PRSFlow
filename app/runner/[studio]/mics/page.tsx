@@ -206,7 +206,7 @@ export default function MicsPage() {
               }
             }}
               style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isRoom ? '#4e8ff0' : '#2a2e3d'}`, background: isRoom ? '#4e8ff022' : 'transparent', color: isRoom ? '#4e8ff0' : '#8b90a8', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
-              ROOM ▾
+              {isRoom && state.room ? state.room.replace('Studio ', '') + ' ▾' : 'ROOM ▾'}
             </button>
             <button onClick={() => setStatus(mic.id, 'missing')}
               style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isMissing ? '#f87171' : '#2a2e3d'}`, background: isMissing ? '#f8717122' : 'transparent', color: isMissing ? '#f87171' : '#8b90a8', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
