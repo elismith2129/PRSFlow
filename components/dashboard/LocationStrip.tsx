@@ -17,8 +17,8 @@ const OPS_CATS = [
   { key: 'opening_checklist', label: 'Opening Checklist', liveDoc: false, global: false },
   { key: 'closing_checklist', label: 'Closing Checklist', liveDoc: false, global: false },
   { key: 'petty_cash',        label: 'Petty Cash',        liveDoc: false, global: false },
-  { key: 'stock_list',        label: 'Stock List',        liveDoc: true,  global: false },
-  { key: 'mic_inventory',     label: 'Mic Inventory',     liveDoc: true,  global: true  },
+  { key: 'stock_list',        label: 'Stock List',        liveDoc: false, global: false },
+  { key: 'mic_inventory',     label: 'Mic Inventory',     liveDoc: false, global: true  },
 ]
 
 const DAILY_CATS = OPS_CATS.filter(c => !c.liveDoc)
