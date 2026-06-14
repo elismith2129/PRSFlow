@@ -6,9 +6,9 @@ import { CHECKLISTS, flattenSections, type ChecklistSection } from '@/lib/checkl
 
 const STUDIO_META: Record<string, { label: string; color: string }> = {
   paramount: { label: 'Paramount', color: '#c8f04e' },
-  ameraycan: { label: 'Ameraycan', color: '#f04e7a' },
+  ameraycan: { label: 'Ameraycan', color: '#EF4444' },
   encore:    { label: 'Encore',    color: '#4e8ff0' },
-  track:     { label: 'Track',     color: '#f0a24e' },
+  track:     { label: 'Track',     color: '#F97316' },
 }
 
 export default function ChecklistPage() {
@@ -213,7 +213,7 @@ export default function ChecklistPage() {
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 15, fontWeight: 800, color: '#e8eaf2' }}>{isOpening ? 'Opening' : 'Closing'} Checklist</span>
-            {isSubmitted && <span style={{ fontSize: 10, color: '#4ade80', fontFamily: 'DM Mono, monospace' }}>● submitted</span>}
+            {isSubmitted && <span style={{ fontSize: 10, color: '#14B8A6', fontFamily: 'DM Mono, monospace' }}>● submitted</span>}
           </div>
           <div style={{ fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>{meta.label} · {completedCount}/{allItems.length} checked</div>
         </div>
@@ -315,7 +315,7 @@ export default function ChecklistPage() {
                   <img src={url} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid #2a2e3d' }} />
                   <button
                     onClick={() => { attentionChangedRef.current = true; setPhotos(prev => prev.filter((_, j) => j !== i)) }}
-                    style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: 9, background: '#f87171', border: 'none', color: '#fff', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}
+                    style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: 9, background: '#EF4444', border: 'none', color: '#fff', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}
                   >✕</button>
                 </div>
               ))}
@@ -327,7 +327,7 @@ export default function ChecklistPage() {
       {/* Fixed footer — submitted state shows back button, not Submit */}
       {isSubmitted ? (
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: '#0d0f14', borderTop: '1px solid #2a2e3d', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ textAlign: 'center', fontSize: 12, color: '#4ade80', fontFamily: 'DM Mono, monospace' }}>
+          <div style={{ textAlign: 'center', fontSize: 12, color: '#14B8A6', fontFamily: 'DM Mono, monospace' }}>
             ✓ Shift complete · {completedCount}/{allItems.length} checked
           </div>
           <button

@@ -18,8 +18,8 @@ const STATUS_COLORS: Record<string, string> = {
   uncontacted: 'var(--uncontacted)', booked: 'var(--booked)', dead: 'var(--text3)'
 }
 
-function leadNameColor(l: { billing?: string | null }): string {
-  return l.billing === 'Billing' ? '#96A9FF' : '#7BBFFF'
+function leadNameColor(_l: { billing?: string | null }): string {
+  return 'var(--text)'
 }
 
 const BOOKING_ICONS: Record<string, string> = {
@@ -31,7 +31,7 @@ type TouchMethod = typeof TOUCH_METHODS[number]
 
 const aBtnStyle = (color: string): React.CSSProperties => ({
   padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)',
-  background: 'transparent', color, fontFamily: 'DM Mono', fontSize: 9,
+  background: 'var(--surface)', color, fontFamily: 'DM Mono', fontSize: 9,
   textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap' as const,
 })
 
@@ -60,12 +60,12 @@ function fmtActivityTime(ts: string) {
 
 function activityColor(note: string): string {
   const n = (note || '').toLowerCase()
-  if (n.includes('call')) return '#f04e7a'
-  if (n.includes('text')) return '#f0a24e'
-  if (n.includes('email')) return '#7BBFFF'
-  if (n.includes('kept hot') || n.includes('keep hot')) return '#f04e7a'
-  if (n.includes('kept warm') || n.includes('keep warm')) return '#f0a24e'
-  if (n.includes('registration returned') || n.includes('reg returned')) return '#4ef0a2'
+  if (n.includes('call')) return '#EF4444'
+  if (n.includes('text')) return '#F97316'
+  if (n.includes('email')) return '#7BA7BC'
+  if (n.includes('kept hot') || n.includes('keep hot')) return '#EF4444'
+  if (n.includes('kept warm') || n.includes('keep warm')) return '#F97316'
+  if (n.includes('registration returned') || n.includes('reg returned')) return '#14B8A6'
   if (n.includes('registration') || n.includes('reg link') || n.includes('reg sent')) return '#c8f04e'
   return '#8b90a8'
 }
@@ -536,9 +536,9 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel }: {
   }
 
   const methodDefs: { m: TouchMethod; color: string; actionHref?: string; actionLabel?: string }[] = [
-    { m: 'Call',  color: '#f04e7a', actionHref: phone ? `tel:${phone.replace(/\D/g, '')}` : undefined,  actionLabel: '→ Dial' },
-    { m: 'Text',  color: '#f0a24e', actionHref: phone ? `sms:${phone.replace(/\D/g, '')}` : undefined,  actionLabel: '→ Text' },
-    { m: 'Email', color: '#7BBFFF', actionHref: email ? `mailto:${email}` : undefined, actionLabel: '→ Mail' },
+    { m: 'Call',  color: '#EF4444', actionHref: phone ? `tel:${phone.replace(/\D/g, '')}` : undefined,  actionLabel: '→ Dial' },
+    { m: 'Text',  color: '#F97316', actionHref: phone ? `sms:${phone.replace(/\D/g, '')}` : undefined,  actionLabel: '→ Text' },
+    { m: 'Email', color: '#8b90a8', actionHref: email ? `mailto:${email}` : undefined, actionLabel: '→ Mail' },
   ]
 
   return (
@@ -603,7 +603,7 @@ function KeepHotPrompt({ leadId, onSubmit, onCancel, label = 'Keep Hot', status 
   const [submitting, setSubmitting] = useState(false)
   const canSubmit = initials.trim().length >= 2
   const color = status === 'warm' ? 'var(--warm)' : 'var(--hot)'
-  const bgTint = status === 'warm' ? 'rgba(240,162,78,0.07)' : 'rgba(240,78,122,0.07)'
+  const bgTint = status === 'warm' ? 'rgba(249,115,22,0.07)' : 'rgba(239,68,68,0.07)'
 
   async function handleSubmit() {
     if (!canSubmit || submitting) return
@@ -715,7 +715,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
   const totalCount = uncontacted.length + hotDue.length + warmDue.length + incompleteLeads.length
 
   const tabs: { key: NeedsActionTab; label: string; color: string; items: Lead[]; type: 'touch' | 'incomplete'; emptyMsg: string }[] = [
-    { key: 'uncontacted', label: 'Uncontacted', color: '#a8d5ff', items: uncontacted, type: 'touch', emptyMsg: 'No fresh uncontacted leads.' },
+    { key: 'uncontacted', label: 'Uncontacted', color: '#7BA7BC', items: uncontacted, type: 'touch', emptyMsg: 'No fresh uncontacted leads.' },
     { key: 'hot', label: 'Hot', color: 'var(--hot)', items: hotDue, type: 'touch', emptyMsg: 'All hot leads are up to date.' },
     { key: 'warm', label: 'Warm', color: 'var(--warm)', items: warmDue, type: 'touch', emptyMsg: 'All warm leads are up to date.' },
     { key: 'incomplete', label: 'Incomplete', color: 'var(--text2)', items: incompleteLeads, type: 'incomplete', emptyMsg: 'All leads have complete info.' },
@@ -778,7 +778,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
           const keepColor = l.status === 'warm' ? 'var(--warm)' : 'var(--hot)'
           return (
             <React.Fragment key={l.id}>
-              <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(78,143,240,0.06)' : 'transparent', transition: 'background 0.15s' }}>
+              <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(200,240,78,0.04)' : 'transparent', transition: 'background 0.15s' }}>
                 <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: STATUS_COLORS[l.status] || 'var(--text3)' }} />
                 <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, background: STATUS_COLORS[l.status] || 'var(--text3)' }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -914,11 +914,11 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
 
   const filterDefs: { key: AllLeadsFilter; label: string; color: string }[] = [
     { key: 'all', label: 'All', color: '#e8eaf2' },
-    { key: 'uncontacted', label: 'Uncontacted', color: '#a8d5ff' },
-    { key: 'hot', label: 'Hot', color: '#f04e7a' },
-    { key: 'warm', label: 'Warm', color: '#f0a24e' },
+    { key: 'uncontacted', label: 'Uncontacted', color: '#7BA7BC' },
+    { key: 'hot', label: 'Hot', color: '#EF4444' },
+    { key: 'warm', label: 'Warm', color: '#F97316' },
     { key: 'cold-dead', label: 'Cold/Dead', color: '#8b90a8' },
-    { key: 'booked', label: 'Booked', color: '#4ef0a2' },
+    { key: 'booked', label: 'Booked', color: '#14B8A6' },
   ]
 
   const activeLeads = filterMap[activeFilter]
@@ -991,7 +991,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                   <span style={{ flex: 1, borderBottom: '1px solid #2a2e3d' }} />
                 </div>
               )}
-              <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(78,143,240,0.06)' : 'transparent', transition: 'background 0.15s' }}>
+              <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(200,240,78,0.04)' : 'transparent', transition: 'background 0.15s' }}>
                 <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: STATUS_COLORS[l.status] || 'var(--text3)' }} />
                 <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, background: STATUS_COLORS[l.status] || 'var(--text3)' }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -1189,7 +1189,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
           { ts: lead.created_at, label: 'Lead Created', color: '#8b90a8' },
         ]
         if (regTokenDates?.created_at) synth.push({ ts: regTokenDates.created_at, label: 'Reg Link Sent', color: '#c8f04e' })
-        if (regTokenDates?.used_at) synth.push({ ts: regTokenDates.used_at, label: 'Registration Returned', color: '#4ef0a2' })
+        if (regTokenDates?.used_at) synth.push({ ts: regTokenDates.used_at, label: 'Registration Returned', color: '#14B8A6' })
         const all = [...items, ...synth].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
         setActivityLog(all)
       })
@@ -1372,7 +1372,7 @@ const khuDays = daysUntilKhu(lead)
             {lead.needs_contact !== false && (
               <button
                 onClick={() => { save('needs_contact', false); onUpdate('needs_contact', false) }}
-                style={{ ...pillBase, flexShrink: 0, background: 'rgba(168,213,255,0.12)', color: '#a8d5ff', border: '1px solid rgba(168,213,255,0.4)' }}
+                style={{ ...pillBase, flexShrink: 0, background: 'rgba(123,167,188,0.12)', color: '#7BA7BC', border: '1px solid rgba(123,167,188,0.4)' }}
               >
                 ● Needs Contact
               </button>
@@ -1380,11 +1380,11 @@ const khuDays = daysUntilKhu(lead)
           </div>
           <div style={{ flexShrink: 0, display: 'flex', gap: 6, alignItems: 'center' }}>
             {lead.billing !== 'Billing' && (regTokenDates?.used_at ? (
-              <button onClick={() => setRegViewOpen(true)} style={{ padding: '4px 8px', background: 'rgba(78,240,162,0.12)', color: 'var(--booked)', border: '1px solid rgba(78,240,162,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
+              <button onClick={() => setRegViewOpen(true)} style={{ padding: '4px 8px', background: 'rgba(20,184,166,0.12)', color: 'var(--booked)', border: '1px solid rgba(20,184,166,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
                 ✓ Registered
               </button>
             ) : existingTokenStr ? (
-              <button onClick={async () => { const done = await refreshRegStatus(); if (!done) setRegPanelOpen(v => !v) }} style={{ padding: '4px 8px', background: regPanelOpen ? 'rgba(240,162,78,0.18)' : 'rgba(240,162,78,0.08)', color: 'var(--warm)', border: '1px solid rgba(240,162,78,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
+              <button onClick={async () => { const done = await refreshRegStatus(); if (!done) setRegPanelOpen(v => !v) }} style={{ padding: '4px 8px', background: regPanelOpen ? 'rgba(249,115,22,0.18)' : 'rgba(249,115,22,0.08)', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
                 Reg Sent
               </button>
             ) : (
@@ -1404,7 +1404,7 @@ const khuDays = daysUntilKhu(lead)
 
       {/* Reg link panel — shown when pending token is expanded */}
       {regPanelOpen && regLinkUrl && !regTokenDates?.used_at && (
-        <div style={{ marginBottom: 8, background: 'var(--surface2)', border: '1px solid rgba(240,162,78,0.3)', borderRadius: 5, padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ marginBottom: 8, background: 'var(--surface2)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 5, padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
               {regLinkUrl}
@@ -1420,7 +1420,7 @@ const khuDays = daysUntilKhu(lead)
             <button onClick={emailRegLink} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
               Email
             </button>
-            <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--warm)', border: '1px solid rgba(240,162,78,0.4)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
+            <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.4)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
               {regLinkGenerating ? '…' : 'Resend'}
             </button>
           </div>
@@ -1431,7 +1431,7 @@ const khuDays = daysUntilKhu(lead)
 
       {/* ─── Missing warning ─────────────────────────────── */}
       {missing.length > 0 && (
-        <div style={{ fontSize: 10, color: 'var(--accent2)', background: 'rgba(78,143,240,0.08)', padding: '6px 10px', borderRadius: 6, marginBottom: 6 }}>
+        <div style={{ fontSize: 10, color: '#F97316', background: 'rgba(249,115,22,0.08)', padding: '6px 10px', borderRadius: 6, marginBottom: 6 }}>
           ⚠ Missing: {missing.join(', ')}
         </div>
       )}
@@ -1473,7 +1473,7 @@ const khuDays = daysUntilKhu(lead)
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
             <button
               onClick={() => { const nb = (local.billing || lead.billing) === 'COD' ? 'Billing' : 'COD'; update('billing', nb); save('billing', nb) }}
-              style={{ ...pillBase, background: (local.billing || lead.billing) === 'COD' ? 'rgba(123,191,255,0.12)' : 'rgba(150,169,255,0.12)', color: (local.billing || lead.billing) === 'COD' ? '#7BBFFF' : '#96A9FF', border: `1px solid ${(local.billing || lead.billing) === 'COD' ? 'rgba(123,191,255,0.3)' : 'rgba(150,169,255,0.3)'}` }}>
+              style={{ ...pillBase, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)' }}>
               {local.billing || lead.billing || 'COD'}
             </button>
             {lead.booking && (
@@ -1482,7 +1482,7 @@ const khuDays = daysUntilKhu(lead)
               </span>
             )}
             {lead.first_time && (
-              <span style={{ ...pillBase, background: 'rgba(78,143,240,0.15)', color: 'var(--accent2)', border: '1px solid rgba(78,143,240,0.4)', cursor: 'default' }}>
+              <span style={{ ...pillBase, background: 'rgba(139,144,168,0.12)', color: 'var(--text3)', border: '1px solid var(--border)', cursor: 'default' }}>
                 ★ First Time
               </span>
             )}
@@ -1501,7 +1501,7 @@ const khuDays = daysUntilKhu(lead)
                 setShowConfirmModal(true)
               }
             }}
-            style={{ padding: '5px 12px', background: 'var(--booked)', color: '#0d0f14', border: 'none', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer', flexShrink: 0, marginTop: 4 }}
+            style={{ padding: '5px 12px', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer', flexShrink: 0, marginTop: 4 }}
           >
             Start Booking
           </button>
@@ -1553,7 +1553,7 @@ const khuDays = daysUntilKhu(lead)
               onFocus={() => setFocusedInput('email')} onBlur={e => { setFocusedInput(null); save('email', e.target.value) }}
               onKeyDown={enterBlur} placeholder="Add email" style={{ ...iStyle('email'), flex: 1, minWidth: 0 }} />
             {local.email && (
-              <a href={`mailto:${local.email}`} style={{ ...aBtnStyle('#7BBFFF'), flexShrink: 0 }}>Email</a>
+              <a href={`mailto:${local.email}`} style={{ ...aBtnStyle('#8b90a8'), flexShrink: 0 }}>Email</a>
             )}
           </div>
         </div>
@@ -1568,8 +1568,8 @@ const khuDays = daysUntilKhu(lead)
               onFocus={() => setFocusedInput('phone')} onBlur={e => { setFocusedInput(null); save('phone', e.target.value) }}
               onKeyDown={enterBlur} placeholder="Add phone" style={{ ...iStyle('phone'), flex: 1, minWidth: 0 }} />
             {local.phone && (<>
-              <a href={`tel:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('var(--booked)'), flexShrink: 0 }}>Call</a>
-              <a href={`sms:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('var(--warm)'), flexShrink: 0 }}>Text</a>
+              <a href={`tel:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('#8b90a8'), flexShrink: 0 }}>Call</a>
+              <a href={`sms:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('#8b90a8'), flexShrink: 0 }}>Text</a>
             </>)}
           </div>
         </div>
@@ -1695,7 +1695,7 @@ const khuDays = daysUntilKhu(lead)
       <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          style={{ background: 'rgba(240,78,122,0.12)', color: 'var(--hot)', border: '1px solid rgba(240,78,122,0.25)', borderRadius: 4, padding: '4px 10px', fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}
+          style={{ background: 'rgba(239,68,68,0.12)', color: 'var(--hot)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 4, padding: '4px 10px', fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}
         >
           Delete Lead
         </button>
@@ -1723,7 +1723,7 @@ const khuDays = daysUntilKhu(lead)
                   onDelete?.()
                 }}
                 disabled={deleting}
-                style={{ background: 'rgba(240,78,122,0.15)', color: 'var(--hot)', border: '1px solid rgba(240,78,122,0.3)', borderRadius: 4, padding: '6px 16px', fontSize: 10, fontFamily: 'DM Mono', cursor: deleting ? 'default' : 'pointer', opacity: deleting ? 0.7 : 1 }}
+                style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--hot)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 4, padding: '6px 16px', fontSize: 10, fontFamily: 'DM Mono', cursor: deleting ? 'default' : 'pointer', opacity: deleting ? 0.7 : 1 }}
               >
                 {deleting ? 'Deleting…' : 'Delete Permanently'}
               </button>
@@ -1831,9 +1831,9 @@ function ConfirmClientModal({ lead, onClose, onCreated }: {
                   flex: 1, padding: '6px 0', borderRadius: 5, fontSize: 10,
                   fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
                   cursor: 'pointer',
-                  background: type === t ? (t === 'label' ? 'rgba(150,169,255,0.12)' : 'rgba(123,191,255,0.12)') : 'var(--surface2)',
-                  color: type === t ? (t === 'label' ? '#96A9FF' : '#7BBFFF') : 'var(--text3)',
-                  border: `1px solid ${type === t ? (t === 'label' ? 'rgba(150,169,255,0.3)' : 'rgba(123,191,255,0.3)') : 'var(--border)'}`,
+                  background: type === t ? 'rgba(139,144,168,0.12)' : 'var(--surface2)',
+                  color: type === t ? 'var(--text)' : 'var(--text3)',
+                  border: '1px solid var(--border)',
                 }}>
                   {t === 'label' ? 'Label / Billing' : 'COD'}
                 </button>
@@ -1888,12 +1888,12 @@ function ConfirmClientModal({ lead, onClose, onCreated }: {
           </div>
 
           {!hasContact && (
-            <div style={{ fontSize: 10, color: 'var(--warm)', fontFamily: 'DM Mono', padding: '6px 10px', background: 'rgba(240,162,78,0.08)', border: '1px solid rgba(240,162,78,0.25)', borderRadius: 4 }}>
+            <div style={{ fontSize: 10, color: 'var(--warm)', fontFamily: 'DM Mono', padding: '6px 10px', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 4 }}>
               Requires at minimum a name and email or phone number.
             </div>
           )}
           {error && (
-            <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'DM Mono', padding: '6px 10px', background: 'rgba(240,78,122,0.08)', border: '1px solid rgba(240,78,122,0.2)', borderRadius: 4 }}>
+            <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'DM Mono', padding: '6px 10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 4 }}>
               {error}
             </div>
           )}
@@ -1910,7 +1910,7 @@ function ConfirmClientModal({ lead, onClose, onCreated }: {
               padding: '7px 18px', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700,
               fontSize: 11, letterSpacing: '0.05em', border: 'none',
               cursor: (valid && !saving) ? 'pointer' : 'default',
-              background: valid ? 'var(--booked)' : 'var(--surface2)',
+              background: valid ? 'var(--accent)' : 'var(--surface2)',
               color: valid ? '#0d0f14' : 'var(--text3)',
             }}
           >
@@ -2247,7 +2247,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
     <div style={{ display: 'flex', justifyContent: 'center' }}>
       <div style={{ display: 'flex', gap: 2, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
         {(['cod', 'label'] as const).map(m => (
-          <button key={m} type="button" onClick={() => setMode(m)} style={{ padding: '7px 28px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 500, background: mode === m ? 'var(--surface2)' : 'transparent', color: mode === m ? (m === 'cod' ? '#7BBFFF' : '#96A9FF') : 'var(--text2)', transition: 'all 0.15s', letterSpacing: '0.04em' }}>
+          <button key={m} type="button" onClick={() => setMode(m)} style={{ padding: '7px 28px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 500, background: mode === m ? 'var(--surface2)' : 'transparent', color: mode === m ? 'var(--text)' : 'var(--text2)', transition: 'all 0.15s', letterSpacing: '0.04em' }}>
             {m === 'cod' ? 'COD' : 'Label/Billing'}
           </button>
         ))}
@@ -2276,7 +2276,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
     <button
       type="button"
       onClick={() => setNeedsContact(nc => !nc)}
-      style={{ alignSelf: 'flex-start', padding: '5px 14px', borderRadius: 20, border: `1px solid ${needsContact ? '#a8d5ff' : 'var(--border)'}`, background: needsContact ? 'rgba(168,213,255,0.12)' : 'transparent', color: needsContact ? '#a8d5ff' : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.15s' }}
+      style={{ alignSelf: 'flex-start', padding: '5px 14px', borderRadius: 20, border: `1px solid ${needsContact ? '#7BA7BC' : 'var(--border)'}`, background: needsContact ? 'rgba(123,167,188,0.12)' : 'transparent', color: needsContact ? '#7BA7BC' : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.15s' }}
     >
       {needsContact ? '● Needs Contact' : '○ Needs Contact'}
     </button>
@@ -2353,12 +2353,12 @@ function NewLeadModal({ leads, onClose, onSave }: {
                     {nameSuggestions.map((item, i) => {
                       const r = item.record; const isClient = item.type === 'client'
                       return (
-                        <div key={`${item.type}-${r.id}`} onMouseDown={() => applyAutofill(item)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i === nameHighlight ? 'var(--surface)' : isClient ? 'rgba(78,240,162,0.04)' : 'transparent' }}>
+                        <div key={`${item.type}-${r.id}`} onMouseDown={() => applyAutofill(item)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i === nameHighlight ? 'var(--surface)' : isClient ? 'rgba(20,184,166,0.04)' : 'transparent' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
                             <span style={{ fontSize: 12, fontWeight: 600, color: isClient ? 'var(--booked)' : 'var(--text)' }}>
                               {isClient ? (r as Client).name || `${r.fname || ''} ${r.lname || ''}`.trim() : `${r.fname} ${r.lname}`}
                             </span>
-                            <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: isClient ? 'rgba(78,240,162,0.15)' : 'rgba(139,144,168,0.12)', color: isClient ? 'var(--booked)' : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                            <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: isClient ? 'rgba(20,184,166,0.15)' : 'rgba(139,144,168,0.12)', color: isClient ? 'var(--booked)' : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                               {isClient ? '★ Client' : 'Prev. Inquiry'}
                             </span>
                           </div>
@@ -2377,7 +2377,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   </div>
                 )}
                 {matchedClientId && (
-                  <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'rgba(78,240,162,0.08)', border: '1px solid rgba(78,240,162,0.2)', borderRadius: 6 }}>
+                  <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.2)', borderRadius: 6 }}>
                     <span style={{ color: 'var(--booked)', fontSize: 12 }}>★</span>
                     <span style={{ fontSize: 11, color: 'var(--booked)', fontFamily: 'DM Mono', flex: 1 }}>Matched to existing client profile</span>
                     <button onMouseDown={() => setMatchedClientId(null)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
@@ -2426,7 +2426,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
                     {labelClientSuggestions.map((c, i) => (
                       <div key={c.id} onMouseDown={() => selectLabelClient(c)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i === labelHighlight ? 'var(--surface)' : 'transparent' }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent2)', marginBottom: 2 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>
                           {c._anrName ? `${c._anrName} — ${c.name}` : c.name}
                         </div>
                         <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
@@ -2437,7 +2437,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   </div>
                 )}
                 {labelClientId && (
-                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--accent2)', fontFamily: 'DM Mono' }}>
+                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--booked)', fontFamily: 'DM Mono' }}>
                     <span>★ Linked to label client</span>
                     <button onMouseDown={() => { setLabelClientId(null); setAnrContactId(null); setSelectedAnr(null); setAnrQuery(''); setAnrHighlight(-1) }} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 0 }}>×</button>
                   </div>
@@ -2531,7 +2531,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
             <div style={{ marginBottom: 8, fontSize: 11, color: 'var(--hot)', fontFamily: 'DM Mono' }}>{bookingError}</div>
           )}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '9px 0', background: temperature === 'booking' ? 'var(--booked)' : mode === 'label' ? '#96A9FF' : '#7BBFFF', color: '#0d0f14', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: saving ? 0.6 : 1 }}>
+            <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '9px 0', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: saving ? 0.6 : 1 }}>
               {saving ? 'Saving…' : temperature === 'booking' ? 'Save & Go to Booking →' : 'Create Lead'}
             </button>
             <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
@@ -2689,7 +2689,7 @@ function AnalyticsView({ leads }: { leads: Lead[] }) {
         {[
           { label: 'Total Leads', value: total.toLocaleString(), color: 'var(--accent)', sub: 'All time' },
           { label: 'Booked', value: booked.toLocaleString(), color: 'var(--accent)', sub: 'Confirmed sessions' },
-          { label: 'Conversion Rate', value: `${convRate}%`, color: 'var(--accent2)', sub: 'Leads to booked' },
+          { label: 'Conversion Rate', value: `${convRate}%`, color: 'var(--accent)', sub: 'Leads to booked' },
         ].map(stat => (
           <div key={stat.label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '18px 20px' }}>
             <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)', marginBottom: 8 }}>{stat.label}</div>

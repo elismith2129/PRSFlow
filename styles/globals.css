@@ -6,20 +6,20 @@
 
 :root {
   --bg: #0d0f14;
-  --surface: #13161e;
-  --surface2: #1a1d27;
+  --surface: #161920;
+  --surface2: #1e2330;
   --border: #2a2e3d;
   --text: #e8eaf2;
   --text2: #8b90a8;
   --text3: #4a4f64;
   --accent: #c8f04e;
   --accent2: #4e8ff0;
-  --hot: #f04e7a;
-  --warm: #f0a24e;
-  --cold: #4e8ff0;
-  --booked: #4ef0a2;
-  --uncontacted: #a8d5ff;
-  --dead: #3a3f52;
+  --hot: #EF4444;
+  --warm: #F97316;
+  --cold: #6B7280;
+  --booked: #14B8A6;
+  --uncontacted: #7BA7BC;
+  --dead: #6B7280;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

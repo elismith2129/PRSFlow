@@ -7,8 +7,8 @@ import { DailyOpsLogSection } from '@/components/admin/DailyOpsLogSection'
 const ROLE_OPTIONS: EngineerRole[] = ['Engineer', 'Assistant', 'Both']
 
 const ROLE_COLORS: Record<EngineerRole, string> = {
-  Engineer: '#f0a24e',
-  Assistant: '#f04e7a',
+  Engineer: '#F97316',
+  Assistant: '#EF4444',
   Both: '#c8f04e',
 }
 
@@ -137,7 +137,7 @@ function EngModal({
           </div>
 
           {error && (
-            <div style={{ fontSize: 10, color: '#f04e7a', fontFamily: 'DM Mono', padding: '4px 8px', background: 'rgba(240,78,122,0.1)', borderRadius: 4, border: '1px solid rgba(240,78,122,0.3)' }}>
+            <div style={{ fontSize: 10, color: '#EF4444', fontFamily: 'DM Mono', padding: '4px 8px', background: 'rgba(239,68,68,0.1)', borderRadius: 4, border: '1px solid rgba(239,68,68,0.3)' }}>
               {error}
             </div>
           )}
@@ -148,7 +148,7 @@ function EngModal({
           <button onClick={onClose} style={{ padding: '6px 16px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', background: '#1a1d27', border: '1px solid #2a2e3d', color: '#8b90a8', cursor: 'pointer' }}>
             Cancel
           </button>
-          <button onClick={handleSave} disabled={saving} style={{ padding: '6px 20px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', background: '#1e40af', border: 'none', color: '#fff', fontWeight: 700, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+          <button onClick={handleSave} disabled={saving} style={{ padding: '6px 20px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', background: 'var(--accent)', border: 'none', color: '#0d0f14', fontWeight: 700, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>
             {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
@@ -345,7 +345,7 @@ export default function AdminPage() {
             </button>
             <button
               onClick={openAdd}
-              style={{ padding: '6px 16px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer', background: '#1e40af', border: 'none', color: '#fff' }}
+              style={{ padding: '6px 16px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer', background: 'var(--accent)', border: 'none', color: '#0d0f14' }}
             >
               + Add
             </button>
@@ -426,7 +426,7 @@ export default function AdminPage() {
 
                   {/* Status */}
                   <div>
-                    <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: eng.active ? '#4ef0a2' : '#4a4f64', background: eng.active ? 'rgba(78,240,162,0.1)' : 'rgba(74,79,100,0.15)', padding: '2px 7px', borderRadius: 3, border: `1px solid ${eng.active ? 'rgba(78,240,162,0.25)' : '#2a2e3d'}` }}>
+                    <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: eng.active ? '#14B8A6' : '#4a4f64', background: eng.active ? 'rgba(20,184,166,0.1)' : 'rgba(74,79,100,0.15)', padding: '2px 7px', borderRadius: 3, border: `1px solid ${eng.active ? 'rgba(20,184,166,0.25)' : '#2a2e3d'}` }}>
                       {eng.active ? 'Active' : 'Inactive'}
                     </span>
                   </div>
@@ -438,7 +438,7 @@ export default function AdminPage() {
                     </button>
                     {confirmDeactivate === eng.id ? (
                       <div style={{ display: 'flex', gap: 4 }}>
-                        <button onClick={() => toggleActive(eng)} style={{ padding: '3px 8px', borderRadius: 3, fontSize: 10, fontFamily: 'DM Mono', background: eng.active ? '#f04e7a' : '#4ef0a2', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>
+                        <button onClick={() => toggleActive(eng)} style={{ padding: '3px 8px', borderRadius: 3, fontSize: 10, fontFamily: 'DM Mono', background: eng.active ? '#EF4444' : '#14B8A6', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>
                           {eng.active ? 'Yes' : 'Yes'}
                         </button>
                         <button onClick={() => setConfirmDeactivate(null)} style={{ padding: '3px 8px', borderRadius: 3, fontSize: 10, fontFamily: 'DM Mono', background: '#1a1d27', border: '1px solid #2a2e3d', color: '#8b90a8', cursor: 'pointer' }}>
@@ -446,7 +446,7 @@ export default function AdminPage() {
                         </button>
                       </div>
                     ) : (
-                      <button onClick={() => setConfirmDeactivate(eng.id)} style={{ padding: '3px 10px', borderRadius: 3, fontSize: 10, fontFamily: 'DM Mono', background: 'transparent', border: `1px solid ${eng.active ? 'rgba(240,78,122,0.3)' : 'rgba(78,240,162,0.3)'}`, color: eng.active ? '#f04e7a' : '#4ef0a2', cursor: 'pointer' }}>
+                      <button onClick={() => setConfirmDeactivate(eng.id)} style={{ padding: '3px 10px', borderRadius: 3, fontSize: 10, fontFamily: 'DM Mono', background: 'transparent', border: `1px solid ${eng.active ? 'rgba(239,68,68,0.3)' : 'rgba(20,184,166,0.3)'}`, color: eng.active ? '#EF4444' : '#14B8A6', cursor: 'pointer' }}>
                         {eng.active ? 'Deactivate' : 'Reactivate'}
                       </button>
                     )}
@@ -477,8 +477,8 @@ export default function AdminPage() {
         }
 
         const STATUS_COLORS: Record<string, string> = {
-          confirmed: '#4ef0a2', tentative: '#f0a24e', cancelled: '#f04e7a',
-          completed: '#7BBFFF', in_progress: '#c8f04e', tour: '#96A9FF', tech: '#a0aec0', open_hours: '#4a4f64',
+          confirmed: '#14B8A6', tentative: '#F97316', cancelled: '#EF4444',
+          completed: 'var(--text2)', in_progress: '#c8f04e', tour: 'var(--text2)', tech: '#a0aec0', open_hours: '#4a4f64',
         }
 
         return (
@@ -546,7 +546,7 @@ export default function AdminPage() {
                           </span>
                         </div>
                         <div>
-                          <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: isEng ? '#f0a24e' : '#f04e7a', background: isEng ? 'rgba(240,162,78,0.12)' : 'rgba(240,78,122,0.12)', padding: '2px 7px', borderRadius: 3, border: `1px solid ${isEng ? 'rgba(240,162,78,0.3)' : 'rgba(240,78,122,0.3)'}` }}>
+                          <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: isEng ? '#F97316' : '#EF4444', background: isEng ? 'rgba(249,115,22,0.12)' : 'rgba(239,68,68,0.12)', padding: '2px 7px', borderRadius: 3, border: `1px solid ${isEng ? 'rgba(249,115,22,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
                             {isEng ? '1st' : '2nd'}
                           </span>
                         </div>
@@ -702,8 +702,8 @@ export default function AdminPage() {
                         style={{
                           padding: '3px 10px', borderRadius: 12, border: 'none', cursor: 'pointer',
                           fontFamily: 'DM Mono', fontSize: 10, fontWeight: 700,
-                          background: entry.paid ? 'rgba(78,240,162,0.12)' : 'rgba(255,59,59,0.12)',
-                          color: entry.paid ? '#4ef0a2' : '#ff3b3b',
+                          background: entry.paid ? 'rgba(20,184,166,0.12)' : 'rgba(239,68,68,0.12)',
+                          color: entry.paid ? '#14B8A6' : '#EF4444',
                         }}
                       >
                         {entry.paid ? 'Paid' : 'Unpaid'}

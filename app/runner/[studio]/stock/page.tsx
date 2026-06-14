@@ -5,9 +5,9 @@ import { useRouter, useParams } from 'next/navigation'
 
 const STUDIO_META: Record<string, { label: string; color: string }> = {
   paramount: { label: 'Paramount', color: '#c8f04e' },
-  ameraycan: { label: 'Ameraycan', color: '#f04e7a' },
+  ameraycan: { label: 'Ameraycan', color: '#EF4444' },
   encore: { label: 'Encore', color: '#4e8ff0' },
-  track: { label: 'Track', color: '#f0a24e' },
+  track: { label: 'Track', color: '#F97316' },
 }
 
 const DEFAULT_ITEMS = [
@@ -79,12 +79,12 @@ export default function StockPage() {
       <div style={{ padding: '16px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {items.map((it, i) => (
-            <div key={i} style={{ background: '#161920', border: `1px solid ${it.low ? '#f0a24e44' : '#2a2e3d'}`, borderRadius: 12, padding: '12px 14px' }}>
+            <div key={i} style={{ background: '#161920', border: `1px solid ${it.low ? 'rgba(249,115,22,0.27)' : '#2a2e3d'}`, borderRadius: 12, padding: '12px 14px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <span style={{ fontSize: 13, color: '#e8eaf2', fontWeight: 600 }}>{it.item}</span>
                 <button
                   onClick={() => setItems(prev => prev.map((x, j) => j === i ? { ...x, low: !x.low } : x))}
-                  style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, border: 'none', cursor: 'pointer', background: it.low ? '#f0a24e22' : '#2a2e3d', color: it.low ? '#f0a24e' : '#8b90a8' }}
+                  style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, border: 'none', cursor: 'pointer', background: it.low ? 'rgba(249,115,22,0.13)' : '#2a2e3d', color: it.low ? '#F97316' : '#8b90a8' }}
                 >
                   {it.low ? '⚠ Low' : 'OK'}
                 </button>

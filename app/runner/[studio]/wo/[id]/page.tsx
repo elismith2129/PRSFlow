@@ -6,9 +6,9 @@ import TimeInput from '@/components/shared/TimeInput'
 
 const STUDIO_META: Record<string, { label: string; abbr: string; color: string }> = {
   paramount: { label: 'Paramount', abbr: 'PRS', color: '#c8f04e' },
-  ameraycan: { label: 'Ameraycan', abbr: 'ARS', color: '#f04e7a' },
+  ameraycan: { label: 'Ameraycan', abbr: 'ARS', color: '#EF4444' },
   encore: { label: 'Encore', abbr: 'ERS', color: '#4e8ff0' },
-  track: { label: 'Track', abbr: 'TRS', color: '#f0a24e' },
+  track: { label: 'Track', abbr: 'TRS', color: '#F97316' },
 }
 
 const EQUIPMENT = ['Speakers', 'Microphone', 'Console']
@@ -1006,11 +1006,11 @@ export default function RunnerWOPage() {
                           const hasNote = !!(equipNotes[key]?.note || (equipNotes[key]?.photo_urls?.length ?? 0) > 0)
                           return (
                             <div key={date} style={{ padding: '6px 4px', borderRight: '1px solid #2a2e3d', display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center' }}>
-                              <button onClick={() => toggleEquip(eq, date, 'ok')} style={{ width: '100%', padding: '4px 0', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 700, fontFamily: 'Syne, sans-serif', background: cond === 'ok' ? '#16a34a33' : '#2a2e3d', color: cond === 'ok' ? '#4ade80' : '#8b90a8' }}>✓ OK</button>
+                              <button onClick={() => toggleEquip(eq, date, 'ok')} style={{ width: '100%', padding: '4px 0', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 700, fontFamily: 'Syne, sans-serif', background: cond === 'ok' ? 'rgba(20,184,166,0.13)' : '#2a2e3d', color: cond === 'ok' ? '#14B8A6' : '#8b90a8' }}>✓ OK</button>
                               <div style={{ display: 'flex', gap: 3, alignItems: 'center', width: '100%' }}>
-                                <button onClick={() => toggleEquip(eq, date, 'not_ok')} style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 700, fontFamily: 'Syne, sans-serif', background: cond === 'not_ok' ? '#dc262633' : '#2a2e3d', color: cond === 'not_ok' ? '#f87171' : '#8b90a8' }}>✗ Not OK</button>
+                                <button onClick={() => toggleEquip(eq, date, 'not_ok')} style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 700, fontFamily: 'Syne, sans-serif', background: cond === 'not_ok' ? 'rgba(239,68,68,0.13)' : '#2a2e3d', color: cond === 'not_ok' ? '#EF4444' : '#8b90a8' }}>✗ Not OK</button>
                                 {cond === 'not_ok' && hasNote && (
-                                  <span style={{ width: 6, height: 6, borderRadius: 3, background: '#f0a24e', flexShrink: 0 }} />
+                                  <span style={{ width: 6, height: 6, borderRadius: 3, background: '#F97316', flexShrink: 0 }} />
                                 )}
                               </div>
                             </div>
@@ -1020,7 +1020,7 @@ export default function RunnerWOPage() {
                       {/* Note expansion — inline below the equipment row */}
                       {openDate && (
                         <div style={{ padding: '10px 12px', background: '#0d0f14', borderBottom: '1px solid #2a2e3d' }}>
-                          <div style={{ fontSize: 9, fontFamily: 'Syne, sans-serif', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: '#f0a24e', marginBottom: 6 }}>
+                          <div style={{ fontSize: 9, fontFamily: 'Syne, sans-serif', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: '#F97316', marginBottom: 6 }}>
                             {eq} — {openDate}
                           </div>
                           <textarea
@@ -1144,8 +1144,8 @@ export default function RunnerWOPage() {
               ...(engTotal > 0 ? [{ label: 'Eng Total', value: engTotal, color: meta.color, bold: false }] : []),
               ...(rentTotal > 0 ? [{ label: 'Rentals Total', value: rentTotal, color: '#e8eaf2', bold: false }] : []),
               { label: 'Grand Total', value: grandTotal, color: '#e8eaf2', bold: true },
-              { label: 'Total Paid', value: totalPaid, color: '#4ade80', bold: false },
-              { label: 'Balance Due', value: balanceDue, color: balanceDue > 0 ? '#f87171' : '#4ade80', bold: true },
+              { label: 'Total Paid', value: totalPaid, color: '#14B8A6', bold: false },
+              { label: 'Balance Due', value: balanceDue, color: balanceDue > 0 ? '#EF4444' : '#14B8A6', bold: true },
             ] as { label: string; value: number; color: string; bold: boolean }[]).map(({ label, value, color, bold }) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', borderTop: '1px solid #2a2e3d' }}>
                 <span style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: '#8b90a8' }}>{label}</span>
@@ -1234,7 +1234,7 @@ export default function RunnerWOPage() {
                   </a>
                   <button
                     onClick={e => { e.preventDefault(); e.stopPropagation(); deleteNAPhoto(url) }}
-                    style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10, background: '#f87171', border: 'none', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: 0 }}
+                    style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10, background: '#EF4444', border: 'none', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: 0 }}
                   >✕</button>
                 </div>
               ))}

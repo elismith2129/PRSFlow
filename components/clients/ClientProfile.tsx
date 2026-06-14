@@ -38,13 +38,13 @@ const ghostBtn: React.CSSProperties = {
   borderRadius: 4, padding: '5px 12px', fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer',
 }
 const dangerBtn: React.CSSProperties = {
-  background: 'rgba(240,78,122,0.15)', color: 'var(--hot)', border: '1px solid rgba(240,78,122,0.3)',
+  background: 'rgba(239,68,68,0.15)', color: 'var(--hot)', border: '1px solid rgba(239,68,68,0.3)',
   borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer',
 }
 
 const aBtn = (color: string): React.CSSProperties => ({
   padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)',
-  background: 'transparent', color, fontFamily: 'DM Mono', fontSize: 9,
+  background: 'var(--surface)', color, fontFamily: 'DM Mono', fontSize: 9,
   textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap' as const,
 })
 
@@ -149,13 +149,13 @@ function ContactRow({ contact, onSave, onDelete }: {
           {contact.email && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
               <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>{contact.email}</span>
-              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('#7BBFFF')}>Email</a>
+              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Email</a>
             </div>
           )}
           {contact.phone && (
             <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--booked)')}>Call</a>
-              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--warm)')}>Text</a>
+              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Call</a>
+              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Text</a>
             </div>
           )}
           {localArtists.length > 0 && (
@@ -289,13 +289,13 @@ function AdminRow({ contact, onSave, onDelete }: {
           {contact.email && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
               <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>{contact.email}</span>
-              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('#7BBFFF')}>Email</a>
+              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Email</a>
             </div>
           )}
           {contact.phone && (
             <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--booked)')}>Call</a>
-              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--warm)')}>Text</a>
+              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Call</a>
+              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Text</a>
             </div>
           )}
         </div>
@@ -380,7 +380,7 @@ function ArtistChip({ name, onRemove }: { name: string; onRemove: () => void }) 
   const [confirming, setConfirming] = useState(false)
   if (confirming) {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontFamily: 'DM Mono', color: 'var(--hot)', background: 'rgba(240,78,122,0.08)', border: '1px solid rgba(240,78,122,0.3)', padding: '2px 7px', borderRadius: 4 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontFamily: 'DM Mono', color: 'var(--hot)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', padding: '2px 7px', borderRadius: 4 }}>
         Remove {name}?
         <button onClick={onRemove} style={{ background: 'none', border: 'none', color: 'var(--hot)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'DM Mono', fontWeight: 700 }}>Yes</button>
         <button onClick={() => setConfirming(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'DM Mono' }}>Cancel</button>
@@ -619,9 +619,9 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   const typeBadgeStyle: React.CSSProperties = {
     fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em',
     padding: '3px 7px', borderRadius: 3,
-    background: isLabel ? 'rgba(150,169,255,0.12)' : 'rgba(123,191,255,0.12)',
-    color: isLabel ? '#96A9FF' : '#7BBFFF',
-    border: `1px solid ${isLabel ? 'rgba(150,169,255,0.3)' : 'rgba(123,191,255,0.3)'}`,
+    background: 'rgba(139,144,168,0.12)',
+    color: 'var(--text2)',
+    border: '1px solid var(--border)',
   }
 
   return (
@@ -651,14 +651,14 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
             <div
               onClick={() => setEditingName(true)}
               title="Click to edit name"
-              style={{ fontFamily: 'DM Serif Display', fontSize: 20, lineHeight: 1.2, cursor: 'text', borderBottom: '1px solid transparent', padding: '0 2px', color: isLabel ? '#96A9FF' : '#7BBFFF' }}
+              style={{ fontFamily: 'DM Serif Display', fontSize: 20, lineHeight: 1.2, cursor: 'text', borderBottom: '1px solid transparent', padding: '0 2px', color: 'var(--text)' }}
             >
               {client.name}
             </div>
           )}
           <button
             onClick={() => router.push(`/calendar?newBooking=1&clientId=${client.id}`)}
-            style={{ ...accentBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0, background: 'var(--booked)', color: '#0d0f14' }}
+            style={{ ...accentBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0, background: 'var(--accent)', color: '#0d0f14' }}
           >
             Start Booking
           </button>
@@ -671,7 +671,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
             </span>
           )}
           {client.registered_at && (
-            <button onClick={() => setRegViewOpen(true)} style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', padding: '3px 7px', borderRadius: 3, background: 'rgba(78,240,162,0.12)', color: 'var(--booked)', border: '1px solid rgba(78,240,162,0.3)', cursor: 'pointer' }}>
+            <button onClick={() => setRegViewOpen(true)} style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', padding: '3px 7px', borderRadius: 3, background: 'rgba(20,184,166,0.12)', color: 'var(--booked)', border: '1px solid rgba(20,184,166,0.3)', cursor: 'pointer' }}>
               ✓ REGISTERED
             </button>
           )}
@@ -749,7 +749,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                 <InlineField label="Email" value={client.email} onSave={v => saveClient({ email: v })} />
                 {client.email && (
                   <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-                    <a href={`mailto:${client.email}`} style={aBtn('#7BBFFF')}>Email</a>
+                    <a href={`mailto:${client.email}`} style={aBtn('#8b90a8')}>Email</a>
                   </div>
                 )}
               </div>
@@ -757,8 +757,8 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                 <PhoneInlineField value={client.phone} onSave={v => saveClient({ phone: v })} />
                 {client.phone && (
                   <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-                    <a href={`tel:${client.phone.replace(/\D/g, '')}`} style={aBtn('var(--booked)')}>Call</a>
-                    <a href={`sms:${client.phone.replace(/\D/g, '')}`} style={aBtn('var(--warm)')}>Text</a>
+                    <a href={`tel:${client.phone.replace(/\D/g, '')}`} style={aBtn('#8b90a8')}>Call</a>
+                    <a href={`sms:${client.phone.replace(/\D/g, '')}`} style={aBtn('#8b90a8')}>Text</a>
                   </div>
                 )}
               </div>
@@ -840,7 +840,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
               <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 8 }}>
                 {rosterArtists.map(name => (
                   removingArtist === name ? (
-                    <span key={name} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontFamily: 'DM Mono', color: 'var(--hot)', background: 'rgba(240,78,122,0.08)', border: '1px solid rgba(240,78,122,0.3)', padding: '2px 7px', borderRadius: 4 }}>
+                    <span key={name} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontFamily: 'DM Mono', color: 'var(--hot)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', padding: '2px 7px', borderRadius: 4 }}>
                       Remove {name}?
                       <button onClick={() => removeRosterArtist(name)} style={{ background: 'none', border: 'none', color: 'var(--hot)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'DM Mono', fontWeight: 700 }}>Yes</button>
                       <button onClick={() => setRemovingArtist(null)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'DM Mono' }}>No</button>

@@ -5,9 +5,9 @@ import { useRouter, useParams } from 'next/navigation'
 
 const STUDIO_META: Record<string, { label: string; color: string }> = {
   paramount: { label: 'Paramount', color: '#c8f04e' },
-  ameraycan: { label: 'Ameraycan', color: '#f04e7a' },
+  ameraycan: { label: 'Ameraycan', color: '#EF4444' },
   encore: { label: 'Encore', color: '#4e8ff0' },
-  track: { label: 'Track', color: '#f0a24e' },
+  track: { label: 'Track', color: '#F97316' },
 }
 
 type Entry = { id?: string; description: string; amount: string; type: 'in' | 'out' }
@@ -101,7 +101,7 @@ export default function PettyCashPage() {
               style={{ width: 80, textAlign: 'right', background: '#2a2e3d', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#e8eaf2', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none' }}
             />
           </div>
-          {[['Cash In', `+$${totalIn.toFixed(2)}`, '#4ade80'], ['Cash Out', `-$${totalOut.toFixed(2)}`, '#f87171'], ['Closing Balance', `$${closing.toFixed(2)}`, meta.color]].map(([l, v, c]) => (
+          {[['Cash In', `+$${totalIn.toFixed(2)}`, '#14B8A6'], ['Cash Out', `-$${totalOut.toFixed(2)}`, '#EF4444'], ['Closing Balance', `$${closing.toFixed(2)}`, meta.color]].map(([l, v, c]) => (
             <div key={String(l)} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
               <span style={{ fontSize: 12, color: '#8b90a8' }}>{l}</span>
               <span style={{ fontSize: 13, fontWeight: 700, color: String(c), fontFamily: 'DM Mono, monospace' }}>{v}</span>
@@ -137,7 +137,7 @@ export default function PettyCashPage() {
                 <select
                   value={e.type}
                   onChange={ev => setEntries(prev => prev.map((x, j) => j === i ? { ...x, type: ev.target.value as 'in' | 'out' } : x))}
-                  style={{ background: '#0d0f14', border: '1px solid #2a2e3d', borderRadius: 8, padding: '7px 8px', color: e.type === 'in' ? '#4ade80' : '#f87171', fontSize: 12, outline: 'none' }}
+                  style={{ background: '#0d0f14', border: '1px solid #2a2e3d', borderRadius: 8, padding: '7px 8px', color: e.type === 'in' ? '#14B8A6' : '#EF4444', fontSize: 12, outline: 'none' }}
                 >
                   <option value="out">Out</option>
                   <option value="in">In</option>

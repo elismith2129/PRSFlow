@@ -1716,10 +1716,10 @@ export function WorkOrderPopup({
                               const hasNote = !!(equipNotes[key]?.note || (equipNotes[key]?.photo_urls?.length ?? 0) > 0)
                               return (
                                 <div key={d} style={{ ...cellS, display: 'flex', gap: 4, alignItems: 'center', borderRight: 'none' }}>
-                                  <button type="button" onClick={() => row && toggleEquip(eq, d, 'ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', border: `1px solid ${cond === 'ok' ? '#4ade80' : 'rgba(255,255,255,0.1)'}`, background: cond === 'ok' ? 'rgba(74,222,128,0.12)' : 'transparent', color: cond === 'ok' ? '#4ade80' : '#8a8fa0' }}>OK</button>
-                                  <button type="button" onClick={() => row && toggleEquip(eq, d, 'not_ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', border: `1px solid ${cond === 'not_ok' ? '#f87171' : 'rgba(255,255,255,0.1)'}`, background: cond === 'not_ok' ? 'rgba(248,113,113,0.12)' : 'transparent', color: cond === 'not_ok' ? '#f87171' : '#8a8fa0' }}>✗</button>
+                                  <button type="button" onClick={() => row && toggleEquip(eq, d, 'ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', border: `1px solid ${cond === 'ok' ? '#14B8A6' : 'rgba(255,255,255,0.1)'}`, background: cond === 'ok' ? 'rgba(20,184,166,0.12)' : 'transparent', color: cond === 'ok' ? '#14B8A6' : '#8a8fa0' }}>OK</button>
+                                  <button type="button" onClick={() => row && toggleEquip(eq, d, 'not_ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', border: `1px solid ${cond === 'not_ok' ? '#EF4444' : 'rgba(255,255,255,0.1)'}`, background: cond === 'not_ok' ? 'rgba(239,68,68,0.12)' : 'transparent', color: cond === 'not_ok' ? '#EF4444' : '#8a8fa0' }}>✗</button>
                                   {cond === 'not_ok' && hasNote && (
-                                    <span style={{ width: 6, height: 6, borderRadius: 3, background: '#f0a24e', display: 'inline-block', flexShrink: 0 }} />
+                                    <span style={{ width: 6, height: 6, borderRadius: 3, background: '#F97316', display: 'inline-block', flexShrink: 0 }} />
                                   )}
                                 </div>
                               )
@@ -1729,7 +1729,7 @@ export function WorkOrderPopup({
                       {/* Note area — inline below the equipment row when a Not OK cell is open */}
                       {openDate && (
                         <div style={{ padding: '8px 12px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                          <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#f0a24e', marginBottom: 6 }}>
+                          <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#F97316', marginBottom: 6 }}>
                             {eq} — {openDate}
                           </div>
                           <textarea
@@ -1884,8 +1884,8 @@ export function WorkOrderPopup({
                   ...(engTotal > 0 ? [{ label: 'Eng Total', value: engTotal, color: '#c8f04e', bold: false }] : []),
                   { label: 'Rentals Total', value: rentTotal, color: '#f0f0f0', bold: false },
                   { label: 'Grand Total', value: grandTotal, color: '#f0f0f0', bold: true },
-                  { label: 'Total Paid', value: totalPaid, color: '#4ade80', bold: false },
-                  { label: 'Balance Due', value: balanceDue, color: balanceDue > 0 ? '#f87171' : '#4ade80', bold: true },
+                  { label: 'Total Paid', value: totalPaid, color: '#14B8A6', bold: false },
+                  { label: 'Balance Due', value: balanceDue, color: balanceDue > 0 ? '#EF4444' : '#14B8A6', bold: true },
                 ].map(({ label, value, color, bold }) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                     <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0' }}>{label}</span>

@@ -11,9 +11,9 @@ function getLocalToday(): string {
 
 const STUDIO_META: Record<string, { label: string; color: string }> = {
   paramount: { label: 'Paramount', color: '#c8f04e' },
-  ameraycan: { label: 'Ameraycan', color: '#f04e7a' },
+  ameraycan: { label: 'Ameraycan', color: '#EF4444' },
   encore:    { label: 'Encore',    color: '#4e8ff0' },
-  track:     { label: 'Track',     color: '#f0a24e' },
+  track:     { label: 'Track',     color: '#F97316' },
 }
 
 const STUDIO_ROOMS: Record<string, string[]> = {
@@ -194,7 +194,7 @@ export default function MicsPage() {
           </span>
           <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
             <button onClick={() => setStatus(mic.id, 'here')}
-              style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isHere ? '#4ade80' : '#2a2e3d'}`, background: isHere ? '#4ade8022' : 'transparent', color: isHere ? '#4ade80' : '#8b90a8', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
+              style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isHere ? '#14B8A6' : '#2a2e3d'}`, background: isHere ? 'rgba(20,184,166,0.13)' : 'transparent', color: isHere ? '#14B8A6' : '#8b90a8', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
               HERE
             </button>
             <button onClick={() => {
@@ -205,11 +205,11 @@ export default function MicsPage() {
                 setRoomPickerOpen(prev => ({ ...prev, [mic.id]: !prev[mic.id] }))
               }
             }}
-              style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isRoom ? '#4e8ff0' : '#2a2e3d'}`, background: isRoom ? '#4e8ff022' : 'transparent', color: isRoom ? '#4e8ff0' : '#8b90a8', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
+              style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isRoom ? '#7BA7BC' : '#2a2e3d'}`, background: isRoom ? 'rgba(123,167,188,0.13)' : 'transparent', color: isRoom ? '#7BA7BC' : '#8b90a8', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
               {isRoom && state.room ? state.room.replace('Studio ', '') + ' ▾' : 'ROOM ▾'}
             </button>
             <button onClick={() => setStatus(mic.id, 'missing')}
-              style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isMissing ? '#f87171' : '#2a2e3d'}`, background: isMissing ? '#f8717122' : 'transparent', color: isMissing ? '#f87171' : '#8b90a8', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
+              style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isMissing ? '#EF4444' : '#2a2e3d'}`, background: isMissing ? 'rgba(239,68,68,0.13)' : 'transparent', color: isMissing ? '#EF4444' : '#8b90a8', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
               MISS
             </button>
           </div>
@@ -219,7 +219,7 @@ export default function MicsPage() {
             <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>Room:</span>
             {rooms.map(r => (
               <button key={r} onClick={() => setRoom(mic.id, r)}
-                style={{ padding: '3px 9px', borderRadius: 6, border: `1px solid ${state.room === r ? '#4e8ff0' : '#2a2e3d'}`, background: state.room === r ? '#4e8ff022' : 'transparent', color: state.room === r ? '#4e8ff0' : '#8b90a8', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Mono, monospace', whiteSpace: 'nowrap' }}>
+                style={{ padding: '3px 9px', borderRadius: 6, border: `1px solid ${state.room === r ? '#7BA7BC' : '#2a2e3d'}`, background: state.room === r ? 'rgba(123,167,188,0.13)' : 'transparent', color: state.room === r ? '#7BA7BC' : '#8b90a8', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Mono, monospace', whiteSpace: 'nowrap' }}>
                 {r}
               </button>
             ))}

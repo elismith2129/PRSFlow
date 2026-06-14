@@ -342,7 +342,7 @@ function RegistrationReviewModal({ regs, onClose, onNavigate }: {
                   <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' as const }}>
                     <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
                       {reg.terms_accepted && (
-                        <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--booked)', background: 'rgba(78,240,162,0.1)', border: '1px solid rgba(78,240,162,0.3)', padding: '2px 6px', borderRadius: 3 }}>
+                        <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--booked)', background: 'rgba(20,184,166,0.1)', border: '1px solid rgba(20,184,166,0.3)', padding: '2px 6px', borderRadius: 3 }}>
                           TERMS ACCEPTED
                         </span>
                       )}
@@ -540,9 +540,9 @@ function NewClientModal({ onClose, onCreated }: {
                     flex: 1, padding: '6px 0', borderRadius: 5, fontSize: 10,
                     fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
                     cursor: 'pointer',
-                    background: type === t ? (t === 'label' ? 'rgba(150,169,255,0.12)' : 'rgba(123,191,255,0.12)') : 'var(--surface2)',
-                    color: type === t ? (t === 'label' ? '#96A9FF' : '#7BBFFF') : 'var(--text3)',
-                    border: `1px solid ${type === t ? (t === 'label' ? 'rgba(150,169,255,0.3)' : 'rgba(123,191,255,0.3)') : 'var(--border)'}`,
+                    background: type === t ? 'rgba(139,144,168,0.12)' : 'var(--surface2)',
+                    color: type === t ? 'var(--text)' : 'var(--text3)',
+                    border: '1px solid var(--border)',
                   }}>
                     {t === 'label' ? 'Label / Billing' : 'COD'}
                   </button>
@@ -617,7 +617,7 @@ function NewClientModal({ onClose, onCreated }: {
 
             {/* Duplicate suggestions */}
             {matches.length > 0 && !forceCreate && (
-              <div style={{ background: 'rgba(240,162,78,0.06)', border: '1px solid rgba(240,162,78,0.25)', borderRadius: 6, padding: '10px 12px' }}>
+              <div style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 6, padding: '10px 12px' }}>
                 <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--warm)', marginBottom: 8 }}>
                   Possible Duplicates
                 </div>
@@ -636,7 +636,7 @@ function NewClientModal({ onClose, onCreated }: {
             )}
 
             {saveError && (
-              <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'DM Mono', padding: '6px 10px', background: 'rgba(240,78,122,0.08)', border: '1px solid rgba(240,78,122,0.2)', borderRadius: 4 }}>
+              <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'DM Mono', padding: '6px 10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 4 }}>
                 {saveError}
               </div>
             )}
