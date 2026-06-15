@@ -28,6 +28,7 @@ export default function StudioDailyOpsPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [woMap, setWoMap] = useState<Record<string, WOStatus>>({})
   const [loading, setLoading] = useState(true)
+  const [submittedCategories, setSubmittedCategories] = useState<Set<string>>(new Set())
 
   // Stable today string — local calendar date matching how bookings are stored
   const today = getLocalToday()
@@ -64,6 +65,18 @@ export default function StudioDailyOpsPage() {
     }
 
     setLoading(false)
+
+    const { data: subData } = await supabase
+      .from('daily_ops_submissions')
+      .select('category, submitted_at')
+      .eq('studio', studio)
+      .eq('date', today)
+    const submitted = new Set(
+      (subData ?? [])
+        .filter((s: { category: string; submitted_at: string | null }) => s.submitted_at !== null)
+        .map((s: { category: string }) => s.category)
+    )
+    setSubmittedCategories(submitted)
   }, [studio, today, meta.abbr]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initial load
@@ -267,18 +280,18 @@ export default function StudioDailyOpsPage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {[
-              { label: 'Opening Checklist', icon: '☑', route: `/runner/${studio}/checklist/opening` },
-              { label: 'Closing Checklist', icon: '☑', route: `/runner/${studio}/checklist/closing` },
-              { label: 'Petty Cash', icon: '$', route: `/runner/${studio}/petty-cash` },
-              { label: 'Stock List', icon: '📦', route: `/runner/${studio}/stock` },
-              { label: 'Mic Inventory', icon: '🎙', route: `/runner/${studio}/mics` },
+              { label: 'Opening Checklist', icon: '☑', route: `/runner/${studio}/checklist/opening`, category: 'opening_checklist' },
+              { label: 'Closing Checklist', icon: '☑', route: `/runner/${studio}/checklist/closing`, category: 'closing_checklist' },
+              { label: 'Petty Cash', icon: '$', route: `/runner/${studio}/petty-cash`, category: 'petty-cash' },
+              { label: 'Stock List', icon: '📦', route: `/runner/${studio}/stock`, category: 'stock' },
+              { label: 'Mic Inventory', icon: '🎙', route: `/runner/${studio}/mics`, category: 'mics' },
             ].map(a => (
               <button
                 key={a.route}
                 onClick={() => router.push(a.route)}
                 style={{
                   background: '#161920',
-                  border: '1px solid #2a2e3d',
+                  border: submittedCategories.has(a.category) ? '1px solid #14B8A6' : '1px solid #2a2e3d',
                   borderRadius: 12,
                   padding: '16px 12px',
                   cursor: 'pointer',
