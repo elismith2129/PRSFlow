@@ -35,6 +35,7 @@ export default function ChecklistPage() {
   const [submitting, setSubmitting]         = useState(false)
   const [isSubmitted, setIsSubmitted]       = useState(false)
   const [pageLoading, setPageLoading]       = useState(true)
+  const [showInitialsHint, setShowInitialsHint] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const completedCount = Object.values(checked).filter(Boolean).length
@@ -149,7 +150,7 @@ export default function ChecklistPage() {
 
   // ── Submit — marks shift complete, form stays editable ──────────────────────
   async function handleSubmit() {
-    if (!staffName.trim()) { alert('Enter your initials first'); return }
+    if (!staffName.trim()) { setShowInitialsHint(true); return }
     setSubmitting(true)
     const now = new Date().toISOString()
     const itemsPayload = allItems.map(i => ({ item: i, checked: checkedRef.current[i] ?? false }))
@@ -350,13 +351,20 @@ export default function ChecklistPage() {
         </div>
       ) : (
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#0d0f14', borderTop: '1px solid #2a2e3d', padding: '12px 20px', display: 'flex', gap: 10, alignItems: 'center' }}>
-          <input
-            value={staffName}
-            onChange={e => setStaffName(e.target.value.toUpperCase())}
-            placeholder="Initials"
-            maxLength={4}
-            style={{ width: 70, padding: '10px 8px', background: '#161920', border: '1px solid #2a2e3d', borderRadius: 8, color: '#e8eaf2', fontSize: 13, fontFamily: 'DM Mono, monospace', textAlign: 'center', outline: 'none', flexShrink: 0 }}
-          />
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <input
+              value={staffName}
+              onChange={e => { setStaffName(e.target.value.toUpperCase()); if (e.target.value.trim()) setShowInitialsHint(false) }}
+              placeholder="Initials"
+              maxLength={4}
+              style={{ width: 70, padding: '10px 8px', background: '#161920', border: '1px solid #2a2e3d', borderRadius: 8, color: '#e8eaf2', fontSize: 13, fontFamily: 'DM Mono, monospace', textAlign: 'center', outline: 'none' }}
+            />
+            {showInitialsHint && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, fontSize: 9, color: '#ef4444', fontFamily: 'DM Mono, monospace', marginTop: 3, whiteSpace: 'nowrap' }}>
+                Required to submit
+              </div>
+            )}
+          </div>
           <button
             onClick={handleSave}
             disabled={submitting}
@@ -365,8 +373,8 @@ export default function ChecklistPage() {
             Save
           </button>
           <button
-            onClick={handleSubmit}
-            disabled={submitting || !staffName.trim()}
+            onClick={() => { if (!staffName.trim()) { setShowInitialsHint(true); return } handleSubmit() }}
+            disabled={submitting}
             style={{ flex: 1, padding: '12px', background: staffName.trim() ? meta.color : '#1e2130', border: 'none', borderRadius: 12, color: staffName.trim() ? '#0d0f14' : '#4b5563', fontSize: 13, fontWeight: 800, cursor: staffName.trim() ? 'pointer' : 'default', fontFamily: 'Syne, sans-serif' }}
           >
             {submitting ? 'Submitting…' : `Submit ${isOpening ? 'Opening' : 'Closing'} Checklist`}

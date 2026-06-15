@@ -49,6 +49,7 @@ export default function MicsPage() {
   const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [initials, setInitials]     = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [showInitialsHint, setShowInitialsHint] = useState(false)
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     home: true, other: false, floating: false, odds: false,
   })
@@ -324,13 +325,20 @@ export default function MicsPage() {
 
       {/* Fixed footer */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#0d0f14', borderTop: '1px solid #1e2130', padding: '12px 20px', display: 'flex', gap: 10, alignItems: 'center' }}>
-        <input
-          value={initials}
-          onChange={e => setInitials(e.target.value.toUpperCase())}
-          placeholder="Initials"
-          maxLength={4}
-          style={{ width: 70, padding: '10px 8px', background: '#161920', border: '1px solid #2a2e3d', borderRadius: 8, color: '#e8eaf2', fontSize: 13, fontFamily: 'DM Mono, monospace', textAlign: 'center', outline: 'none', flexShrink: 0 }}
-        />
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <input
+            value={initials}
+            onChange={e => { setInitials(e.target.value.toUpperCase()); if (e.target.value.trim()) setShowInitialsHint(false) }}
+            placeholder="Initials"
+            maxLength={4}
+            style={{ width: 70, padding: '10px 8px', background: '#161920', border: '1px solid #2a2e3d', borderRadius: 8, color: '#e8eaf2', fontSize: 13, fontFamily: 'DM Mono, monospace', textAlign: 'center', outline: 'none' }}
+          />
+          {showInitialsHint && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, fontSize: 9, color: '#ef4444', fontFamily: 'DM Mono, monospace', marginTop: 3, whiteSpace: 'nowrap' }}>
+              Required to submit
+            </div>
+          )}
+        </div>
         <button
           onClick={handleSave}
           disabled={submitting}
@@ -339,8 +347,8 @@ export default function MicsPage() {
           Save
         </button>
         <button
-          onClick={handleSubmit}
-          disabled={submitting || !initials.trim()}
+          onClick={() => { if (!initials.trim()) { setShowInitialsHint(true); return } handleSubmit() }}
+          disabled={submitting}
           style={{ flex: 1, padding: '12px', background: initials.trim() ? meta.color : '#1e2130', border: 'none', borderRadius: 12, color: initials.trim() ? '#0d0f14' : '#4b5563', fontSize: 13, fontWeight: 800, cursor: initials.trim() ? 'pointer' : 'default', fontFamily: 'Syne, sans-serif' }}
         >
           {submitting ? 'Submitting…' : 'Submit'}
