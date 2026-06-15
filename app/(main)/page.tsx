@@ -127,12 +127,13 @@ export default function DashboardPage() {
     if (!newTaskText.trim() || taskSubmitting) return
     setTaskSubmitting(true)
     const photo_url = newTaskPhoto ? await uploadPhoto(newTaskPhoto) : null
-    await supabase.from('dashboard_tasks').insert({
+    const { data, error } = await supabase.from('dashboard_tasks').insert({
       text: newTaskText.trim(),
       assigned_role: TAB_ROLE[activeTaskTab],
       source: 'manual',
       photo_url,
     })
+    console.log('task insert result:', { data, error })
     setNewTaskText('')
     setNewTaskPhoto(null)
     if (newTaskPhotoRef.current) newTaskPhotoRef.current.value = ''
