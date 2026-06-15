@@ -62,6 +62,26 @@ export default function MicsPage() {
         .eq('is_active', true)
         .order('sort_order')
       setMics(data ?? [])
+
+      const [{ data: savedCheckins }, { data: savedQtys }] = await Promise.all([
+        supabase.from('mic_checkins').select('*').eq('studio', studio).eq('date', today),
+        supabase.from('mic_inventory_quantities').select('*').eq('studio', studio).eq('date', today),
+      ])
+      if (savedCheckins?.length) {
+        const restored: Record<string, CheckinState> = {}
+        for (const c of savedCheckins) {
+          restored[c.mic_id] = { status: c.status, room: c.room ?? '' }
+        }
+        setCheckins(restored)
+      }
+      if (savedQtys?.length) {
+        const restored: Record<string, number> = {}
+        for (const q of savedQtys) {
+          restored[q.mic_id] = q.quantity
+        }
+        setQuantities(restored)
+      }
+
       setLoading(false)
     }
     load()
@@ -86,6 +106,20 @@ export default function MicsPage() {
 
   function adjustQty(micId: string, delta: number) {
     setQuantities(prev => ({ ...prev, [micId]: Math.max(0, (prev[micId] ?? 0) + delta) }))
+  }
+
+  async function handleSave() {
+    const checkinRows = Object.entries(checkins)
+      .filter(([, s]) => s.status !== 'not_checked')
+      .map(([mic_id, s]) => ({ studio, date: today, mic_id, status: s.status, room: s.room || null }))
+    const qtyRows = Object.entries(quantities)
+      .filter(([, qty]) => qty > 0)
+      .map(([mic_id, qty]) => ({ studio, date: today, mic_id, quantity: qty }))
+    await Promise.all([
+      checkinRows.length ? supabase.from('mic_checkins').upsert(checkinRows, { onConflict: 'mic_id,studio,date' }) : Promise.resolve(),
+      qtyRows.length ? supabase.from('mic_inventory_quantities').upsert(qtyRows, { onConflict: 'mic_id,studio,date' }) : Promise.resolve(),
+    ])
+    router.push(`/runner/${studio}`)
   }
 
   async function handleSubmit() {
@@ -289,18 +323,25 @@ export default function MicsPage() {
       </div>
 
       {/* Fixed footer */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#161920', borderTop: '1px solid #2a2e3d', padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'center' }}>
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#0d0f14', borderTop: '1px solid #1e2130', padding: '12px 20px', display: 'flex', gap: 10, alignItems: 'center' }}>
         <input
-          placeholder="Initials"
           value={initials}
-          onChange={e => setInitials(e.target.value)}
-          maxLength={6}
-          style={{ width: 80, padding: '11px 12px', background: '#0d0f14', border: '1px solid #2a2e3d', borderRadius: 10, color: '#e8eaf2', fontSize: 13, fontFamily: 'DM Mono, monospace', outline: 'none', textTransform: 'uppercase' }}
+          onChange={e => setInitials(e.target.value.toUpperCase())}
+          placeholder="Initials"
+          maxLength={4}
+          style={{ width: 70, padding: '10px 8px', background: '#161920', border: '1px solid #2a2e3d', borderRadius: 8, color: '#e8eaf2', fontSize: 13, fontFamily: 'DM Mono, monospace', textAlign: 'center', outline: 'none', flexShrink: 0 }}
         />
         <button
+          onClick={handleSave}
+          disabled={submitting}
+          style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #2a2e3d', borderRadius: 12, color: '#8b90a8', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
+        >
+          Save
+        </button>
+        <button
           onClick={handleSubmit}
-          disabled={!canSubmit}
-          style={{ flex: 1, padding: '13px 0', background: canSubmit ? meta.color : '#2a2e3d', color: canSubmit ? '#0d0f14' : '#8b90a8', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: canSubmit ? 'pointer' : 'default', transition: 'background 0.15s', fontFamily: 'Syne, sans-serif' }}
+          disabled={submitting || !initials.trim()}
+          style={{ flex: 1, padding: '12px', background: initials.trim() ? meta.color : '#1e2130', border: 'none', borderRadius: 12, color: initials.trim() ? '#0d0f14' : '#4b5563', fontSize: 13, fontWeight: 800, cursor: initials.trim() ? 'pointer' : 'default', fontFamily: 'Syne, sans-serif' }}
         >
           {submitting ? 'Submitting…' : 'Submit'}
         </button>

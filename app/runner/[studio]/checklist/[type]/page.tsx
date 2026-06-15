@@ -136,6 +136,17 @@ export default function ChecklistPage() {
     if (fileRef.current) fileRef.current.value = ''
   }
 
+  async function handleSave() {
+    const clId = clIdRef.current
+    if (!clId) return
+    await supabase.from('checklists').update({
+      items: allItems.map(i => ({ item: i, checked: checked[i] ?? false })),
+      notes,
+      photo_urls: photos,
+    }).eq('id', clId)
+    router.push(`/runner/${studio}`)
+  }
+
   // ── Submit — marks shift complete, form stays editable ──────────────────────
   async function handleSubmit() {
     if (!staffName.trim()) { alert('Enter your initials first'); return }
@@ -338,18 +349,25 @@ export default function ChecklistPage() {
           </button>
         </div>
       ) : (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: '#0d0f14', borderTop: '1px solid #2a2e3d', display: 'flex', gap: 10 }}>
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#0d0f14', borderTop: '1px solid #2a2e3d', padding: '12px 20px', display: 'flex', gap: 10, alignItems: 'center' }}>
           <input
-            placeholder="Initials"
             value={staffName}
-            onChange={e => setStaffName(e.target.value)}
-            maxLength={6}
-            style={{ width: 80, background: '#161920', border: '1px solid #2a2e3d', borderRadius: 10, padding: '14px 12px', color: '#e8eaf2', fontSize: 14, fontFamily: 'DM Mono, monospace', outline: 'none', textAlign: 'center', flexShrink: 0 }}
+            onChange={e => setStaffName(e.target.value.toUpperCase())}
+            placeholder="Initials"
+            maxLength={4}
+            style={{ width: 70, padding: '10px 8px', background: '#161920', border: '1px solid #2a2e3d', borderRadius: 8, color: '#e8eaf2', fontSize: 13, fontFamily: 'DM Mono, monospace', textAlign: 'center', outline: 'none', flexShrink: 0 }}
           />
           <button
-            onClick={handleSubmit}
+            onClick={handleSave}
             disabled={submitting}
-            style={{ flex: 1, padding: '14px 0', background: meta.color, color: '#0d0f14', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1, fontFamily: 'Syne, sans-serif' }}
+            style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #2a2e3d', borderRadius: 12, color: '#8b90a8', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
+          >
+            Save
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || !staffName.trim()}
+            style={{ flex: 1, padding: '12px', background: staffName.trim() ? meta.color : '#1e2130', border: 'none', borderRadius: 12, color: staffName.trim() ? '#0d0f14' : '#4b5563', fontSize: 13, fontWeight: 800, cursor: staffName.trim() ? 'pointer' : 'default', fontFamily: 'Syne, sans-serif' }}
           >
             {submitting ? 'Submitting…' : `Submit ${isOpening ? 'Opening' : 'Closing'} Checklist`}
           </button>
