@@ -66,16 +66,26 @@ export default function StudioDailyOpsPage() {
 
     setLoading(false)
 
-    const { data: subData } = await supabase
-      .from('checklists')
-      .select('type, completed_at')
-      .eq('studio', studio)
-      .eq('date', today)
-    const submitted = new Set(
-      (subData ?? [])
+    const [{ data: checklistData }, { data: opsData }] = await Promise.all([
+      supabase
+        .from('checklists')
+        .select('type, completed_at')
+        .eq('studio', studio)
+        .eq('date', today),
+      supabase
+        .from('daily_ops_submissions')
+        .select('category, submitted_at')
+        .eq('studio', studio)
+        .eq('date', today),
+    ])
+    const submitted = new Set([
+      ...(checklistData ?? [])
         .filter((s: { type: string; completed_at: string | null }) => s.completed_at !== null)
-        .map((s: { type: string }) => s.type)
-    )
+        .map((s: { type: string }) => s.type),
+      ...(opsData ?? [])
+        .filter((s: { category: string; submitted_at: string | null }) => s.submitted_at !== null)
+        .map((s: { category: string }) => s.category),
+    ])
     setSubmittedCategories(submitted)
   }, [studio, today, meta.abbr]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -282,9 +292,9 @@ export default function StudioDailyOpsPage() {
             {[
               { label: 'Opening Checklist', icon: '☑', route: `/runner/${studio}/checklist/opening`, category: 'opening' },
               { label: 'Closing Checklist', icon: '☑', route: `/runner/${studio}/checklist/closing`, category: 'closing' },
-              { label: 'Petty Cash', icon: '$', route: `/runner/${studio}/petty-cash`, category: 'petty-cash' },
+              { label: 'Petty Cash', icon: '$', route: `/runner/${studio}/petty-cash`, category: 'petty_cash' },
               { label: 'Stock List', icon: '📦', route: `/runner/${studio}/stock`, category: 'stock' },
-              { label: 'Mic Inventory', icon: '🎙', route: `/runner/${studio}/mics`, category: 'mics' },
+              { label: 'Mic Inventory', icon: '🎙', route: `/runner/${studio}/mics`, category: 'mic_inventory' },
             ].map(a => (
               <button
                 key={a.route}
