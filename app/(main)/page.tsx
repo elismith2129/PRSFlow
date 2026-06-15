@@ -419,7 +419,7 @@ export default function DashboardPage() {
                 >
                   <div style={{
                     width: 6, height: 6, borderRadius: '50%',
-                    background: task.source !== 'manual' ? '#F97316' : '#3b3f52',
+                    background: task.source !== 'manual' ? '#F97316' : '#14B8A6',
                     marginTop: 4, flexShrink: 0,
                   }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
