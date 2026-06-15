@@ -51,6 +51,8 @@ export default function DashboardPage() {
   const [showHistory, setShowHistory] = useState(false)
   const [completedTasks, setCompletedTasks] = useState<DashboardTask[]>([])
   const [historySearch, setHistorySearch] = useState('')
+  const [selectedHistoryTask, setSelectedHistoryTask] = useState<DashboardTask | null>(null)
+  const [historyTaskComments, setHistoryTaskComments] = useState<DashboardTaskComment[]>([])
   const newTaskPhotoRef = useRef<HTMLInputElement>(null)
   const commentPhotoRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -664,7 +666,19 @@ export default function DashboardPage() {
               {completedTasks
                 .filter(t => !historySearch || t.text.toLowerCase().includes(historySearch.toLowerCase()))
                 .map(t => (
-                  <div key={t.id} style={{ padding: '10px 12px', background: 'var(--surface2)', borderRadius: 8, border: '0.5px solid var(--border)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <div
+                    key={t.id}
+                    onClick={async () => {
+                      const { data } = await supabase
+                        .from('dashboard_task_comments')
+                        .select('*')
+                        .eq('task_id', t.id)
+                        .order('created_at', { ascending: true })
+                      setHistoryTaskComments(data || [])
+                      setSelectedHistoryTask(t)
+                    }}
+                    style={{ padding: '10px 12px', background: 'var(--surface2)', borderRadius: 8, border: '0.5px solid var(--border)', display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}
+                  >
                     <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#14B8A6', marginTop: 4, flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
@@ -685,6 +699,57 @@ export default function DashboardPage() {
               }
               {completedTasks.filter(t => !historySearch || t.text.toLowerCase().includes(historySearch.toLowerCase())).length === 0 && (
                 <div style={{ padding: '12px', color: 'var(--text3)', fontSize: 11 }}>No completed tasks found</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedHistoryTask && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={e => { if (e.target === e.currentTarget) { setSelectedHistoryTask(null); setHistoryTaskComments([]) } }}
+        >
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
+              <button
+                onClick={() => { setSelectedHistoryTask(null); setHistoryTaskComments([]) }}
+                style={{ position: 'absolute', top: 14, right: 16, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 18, lineHeight: 1, padding: 0 }}
+              >×</button>
+              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', color: '#14B8A6', textTransform: 'uppercase', marginBottom: 6 }}>COMPLETED</div>
+              <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15, color: 'var(--text)', paddingRight: 24, lineHeight: 1.3 }}>
+                {selectedHistoryTask.text}
+              </div>
+              {selectedHistoryTask.photo_url && (
+                <img src={selectedHistoryTask.photo_url} alt="" style={{ display: 'block', maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover', marginTop: 8 }} />
+              )}
+              {selectedHistoryTask.source !== 'manual' && selectedHistoryTask.source_label && (
+                <div style={{ fontSize: 10, color: 'var(--warm)', marginTop: 4, fontFamily: 'DM Mono' }}>{selectedHistoryTask.source_label}</div>
+              )}
+              {selectedHistoryTask.due_date && (
+                <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2, fontFamily: 'DM Mono' }}>Due {selectedHistoryTask.due_date}</div>
+              )}
+              {selectedHistoryTask.completed_at && (
+                <div style={{ fontSize: 10, color: '#14B8A6', marginTop: 2, fontFamily: 'DM Mono' }}>
+                  Completed {new Date(selectedHistoryTask.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </div>
+              )}
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
+              {historyTaskComments.length === 0 ? (
+                <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>No updates</div>
+              ) : (
+                historyTaskComments.map(c => (
+                  <div key={c.id} style={{ marginBottom: 14 }}>
+                    {c.text && <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>{c.text}</div>}
+                    {c.photo_url && (
+                      <img src={c.photo_url} alt="" style={{ display: 'block', maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover', marginTop: c.text ? 6 : 0 }} />
+                    )}
+                    <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 4, fontFamily: 'DM Mono' }}>
+                      {c.created_by_name && `${c.created_by_name} · `}{fmtTime(c.created_at)}
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>
