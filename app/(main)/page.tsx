@@ -419,7 +419,7 @@ export default function DashboardPage() {
                 >
                   <div style={{
                     width: 6, height: 6, borderRadius: '50%',
-                    background: task.source !== 'manual' ? '#F97316' : '#14B8A6',
+                    background: '#F97316',
                     marginTop: 4, flexShrink: 0,
                   }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -664,18 +664,21 @@ export default function DashboardPage() {
               {completedTasks
                 .filter(t => !historySearch || t.text.toLowerCase().includes(historySearch.toLowerCase()))
                 .map(t => (
-                  <div key={t.id} style={{ padding: '10px 12px', background: 'var(--surface2)', borderRadius: 8, border: '0.5px solid var(--border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                      <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.4, flex: 1 }}>{t.text}</div>
-                      <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'var(--surface)', color: 'var(--text3)', border: '0.5px solid var(--border)', textTransform: 'uppercase', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                        {t.assigned_role.replace('_', ' ')}
+                  <div key={t.id} style={{ padding: '10px 12px', background: 'var(--surface2)', borderRadius: 8, border: '0.5px solid var(--border)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#14B8A6', marginTop: 4, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                        <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.4, flex: 1 }}>{t.text}</div>
+                        <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'var(--surface)', color: 'var(--text3)', border: '0.5px solid var(--border)', textTransform: 'uppercase', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          {t.assigned_role.replace('_', ' ')}
+                        </div>
                       </div>
-                    </div>
-                    {t.source !== 'manual' && t.source_label && (
-                      <div style={{ fontSize: 9, color: 'var(--warm)', marginTop: 3, fontFamily: 'DM Mono' }}>{t.source_label}</div>
-                    )}
-                    <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 4, fontFamily: 'DM Mono' }}>
-                      Completed {t.completed_at ? new Date(t.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                      {t.source !== 'manual' && t.source_label && (
+                        <div style={{ fontSize: 9, color: 'var(--warm)', marginTop: 3, fontFamily: 'DM Mono' }}>{t.source_label}</div>
+                      )}
+                      <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 4, fontFamily: 'DM Mono' }}>
+                        Completed {t.completed_at ? new Date(t.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                      </div>
                     </div>
                   </div>
                 ))
