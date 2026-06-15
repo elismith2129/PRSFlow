@@ -286,3 +286,31 @@ export interface ExpenseRow {
   submitted_by: string | null
   created_at: string
 }
+
+export interface DashboardTask {
+  id: string
+  text: string
+  assigned_role: 'admin' | 'studio_manager' | 'asst_manager' | 'billing'
+  completed: boolean
+  completed_at: string | null
+  completed_note: string | null
+  created_by: string | null
+  source: 'manual' | 'runner_flag' | 'wo_flag'
+  source_id: string | null
+  source_label: string | null
+  due_date: string | null
+  photo_url: string | null
+  sort_order: number
+  deleted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface DashboardTaskComment {
+  id: string
+  task_id: string
+  text: string | null
+  photo_url: string | null
+  created_by_name: string | null
+  created_at: string
+}
