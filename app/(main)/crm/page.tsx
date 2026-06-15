@@ -2396,7 +2396,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                 <div>
                   <label style={labelS}>Booking Type</label>
                   <select value={form.booking} onChange={e => set('booking', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-                    <option value="">—</option><option>Recording Session</option><option>Filming</option><option>Event/Playback</option>
+                    <option value="">—</option><option>Recording Session</option><option>Filming</option><option>Event/Playback</option><option>Long Term/Leasing</option>
                   </select>
                 </div>
               </div>
@@ -2513,7 +2513,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                 <div>
                   <label style={labelS}>Booking Type</label>
                   <select value={form.booking} onChange={e => set('booking', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-                    <option value="">—</option><option>Recording Session</option><option>Filming</option><option>Event/Playback</option>
+                    <option value="">—</option><option>Recording Session</option><option>Filming</option><option>Event/Playback</option><option>Long Term/Leasing</option>
                   </select>
                 </div>
               </div>
