@@ -14,7 +14,7 @@ export default function DashboardPage() {
   const hour = now.getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   const needsActionLeads = leads
-    .filter(l => l.needs_contact === true && l.status !== 'dead' && l.status !== 'booked')
+    .filter(l => l.needs_contact === true && l.status !== 'dead' && l.status !== 'booked' && l.status !== 'cold')
     .slice(0, 5)
   const confirmedSessions = bookings.filter(b => b.status === 'confirmed')
   const tentativeSessions = bookings.filter(b => b.status === 'tentative')
