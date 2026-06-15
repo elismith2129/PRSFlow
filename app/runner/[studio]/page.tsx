@@ -67,14 +67,14 @@ export default function StudioDailyOpsPage() {
     setLoading(false)
 
     const { data: subData } = await supabase
-      .from('daily_ops_submissions')
-      .select('category, submitted_at')
+      .from('checklists')
+      .select('type, completed_at')
       .eq('studio', studio)
       .eq('date', today)
     const submitted = new Set(
       (subData ?? [])
-        .filter((s: { category: string; submitted_at: string | null }) => s.submitted_at !== null)
-        .map((s: { category: string }) => s.category)
+        .filter((s: { type: string; completed_at: string | null }) => s.completed_at !== null)
+        .map((s: { type: string }) => s.type)
     )
     setSubmittedCategories(submitted)
   }, [studio, today, meta.abbr]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -280,8 +280,8 @@ export default function StudioDailyOpsPage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {[
-              { label: 'Opening Checklist', icon: '☑', route: `/runner/${studio}/checklist/opening`, category: 'opening_checklist' },
-              { label: 'Closing Checklist', icon: '☑', route: `/runner/${studio}/checklist/closing`, category: 'closing_checklist' },
+              { label: 'Opening Checklist', icon: '☑', route: `/runner/${studio}/checklist/opening`, category: 'opening' },
+              { label: 'Closing Checklist', icon: '☑', route: `/runner/${studio}/checklist/closing`, category: 'closing' },
               { label: 'Petty Cash', icon: '$', route: `/runner/${studio}/petty-cash`, category: 'petty-cash' },
               { label: 'Stock List', icon: '📦', route: `/runner/${studio}/stock`, category: 'stock' },
               { label: 'Mic Inventory', icon: '🎙', route: `/runner/${studio}/mics`, category: 'mics' },
