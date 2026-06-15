@@ -49,7 +49,6 @@ export default function MicsPage() {
   const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [initials, setInitials]     = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [submitted, setSubmitted]   = useState(false)
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     home: true, other: false, floating: false, odds: false,
   })
@@ -123,31 +122,13 @@ export default function MicsPage() {
     )
 
     setSubmitting(false)
-    setSubmitted(true)
+    router.push(`/runner/${studio}`)
   }
 
   if (loading) {
     return (
       <div style={{ minHeight: '100dvh', background: '#0d0f14', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b90a8', fontFamily: 'Syne, sans-serif' }}>
         Loading…
-      </div>
-    )
-  }
-
-  if (submitted) {
-    return (
-      <div style={{ minHeight: '100dvh', background: '#0d0f14', fontFamily: 'Syne, sans-serif', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '40px 24px', textAlign: 'center' }}>
-        <div style={{ fontSize: 48 }}>✓</div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: meta.color }}>Submitted</div>
-        <div style={{ fontSize: 13, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>
-          Mic Inventory · {meta.label} · {today}
-        </div>
-        <button
-          onClick={() => router.push(`/runner/${studio}`)}
-          style={{ marginTop: 24, padding: '12px 28px', background: meta.color, color: '#0d0f14', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 800, cursor: 'pointer' }}
-        >
-          Back to Hub
-        </button>
       </div>
     )
   }

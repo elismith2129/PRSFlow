@@ -195,7 +195,7 @@ export default function ChecklistPage() {
     }
 
     setSubmitting(false)
-    setIsSubmitted(true)
+    router.push(`/runner/${studio}`)
   }
 
   if (pageLoading) return (

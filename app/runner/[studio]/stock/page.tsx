@@ -29,6 +29,7 @@ export default function StockPage() {
   const router = useRouter()
   const { studio } = useParams<{ studio: string }>()
   const meta = STUDIO_META[studio] ?? { label: studio, color: '#c8f04e' }
+  const today = new Date().toISOString().slice(0, 10)
 
   const [items, setItems] = useState<StockItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -58,8 +59,12 @@ export default function StockPage() {
         if (data) it.id = data.id
       }
     }
+    await supabase.from('daily_ops_submissions').upsert({
+      studio, date: today, category: 'stock',
+      submitted_at: new Date().toISOString(),
+    }, { onConflict: 'studio,date,category' })
     setSaving(false)
-    alert('Stock list saved')
+    router.push(`/runner/${studio}`)
   }
 
   if (loading) return <div style={{ minHeight: '100dvh', background: '#0d0f14', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b90a8', fontFamily: 'Syne, sans-serif' }}>Loading…</div>

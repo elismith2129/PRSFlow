@@ -68,7 +68,7 @@ export default function PettyCashPage() {
       submitted_at: new Date().toISOString(),
     }, { onConflict: 'studio,date,category' })
     setSaving(false)
-    alert('Saved')
+    router.push(`/runner/${studio}`)
   }
 
   const totalIn = entries.filter(e => e.type === 'in').reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)
