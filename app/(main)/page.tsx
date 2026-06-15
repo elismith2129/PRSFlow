@@ -332,11 +332,25 @@ export default function DashboardPage() {
 
         {/* COL 3 — TASKS */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-          <div style={{ padding: '13px 16px 11px', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13 }}>TASKS</div>
+          {/* Header */}
+          <div style={{ padding: '13px 16px 11px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13 }}>TASKS</div>
+              {tasks.length > 0 && (
+                <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#c8f04e', color: '#0d0f14', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {tasks.length}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => {/* completed view — wired in next build */}}
+              style={{ fontSize: 10, color: '#c8f04e', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'DM Mono', letterSpacing: '0.04em' }}
+            >
+              history →
+            </button>
           </div>
           {/* Tab row */}
-          <div style={{ display: 'flex', gap: 4, padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', gap: 3, padding: '6px 8px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', }}>
             {(['me', 'mgr', 'billing', 'asst'] as const).map(tab => {
               const labels = { me: 'Me', mgr: 'Mgr', billing: 'Billing', asst: 'Asst' }
               const isActive = activeTaskTab === tab
@@ -359,33 +373,43 @@ export default function DashboardPage() {
             })}
           </div>
           {/* Task list */}
-          <div style={{ minHeight: 60 }}>
+          <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 60 }}>
             {tasksLoading ? (
-              <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
+              <div style={{ padding: '8px', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
             ) : tasks.length === 0 ? (
-              <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 11 }}>No tasks</div>
+              <div style={{ padding: '8px', color: 'var(--text3)', fontSize: 11 }}>No tasks</div>
             ) : (
               tasks.map(task => (
                 <div
                   key={task.id}
                   onClick={() => handleOpenTask(task)}
                   style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 8,
-                    padding: '8px 12px', borderBottom: '1px solid var(--border)',
+                    display: 'flex', alignItems: 'flex-start', gap: 10,
+                    padding: '10px 12px',
+                    background: 'var(--surface2)',
+                    border: task.source !== 'manual' ? '0.5px solid var(--border)' : '0.5px solid var(--border)',
+                    borderLeft: task.source !== 'manual' ? '2px solid #F97316' : '0.5px solid var(--border)',
+                    borderRadius: task.source !== 'manual' ? '0 8px 8px 0' : 8,
                     cursor: 'pointer',
+                    transition: 'border-color 0.15s',
                   }}
                 >
+                  <div style={{
+                    width: 6, height: 6, borderRadius: '50%',
+                    background: task.source !== 'manual' ? '#F97316' : '#3b3f52',
+                    marginTop: 4, flexShrink: 0,
+                  }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 11, color: 'var(--text)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.4 }}>
                       {task.text}
                     </div>
                     {task.due_date && (
-                      <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2, fontFamily: 'DM Mono' }}>
+                      <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 3, fontFamily: 'DM Mono' }}>
                         Due {task.due_date}
                       </div>
                     )}
                     {task.source !== 'manual' && task.source_label && (
-                      <div style={{ fontSize: 9, color: 'var(--warm)', marginTop: 2, fontFamily: 'DM Mono' }}>
+                      <div style={{ fontSize: 9, color: 'var(--warm)', marginTop: 3, fontFamily: 'DM Mono' }}>
                         {task.source_label}
                       </div>
                     )}
@@ -394,8 +418,8 @@ export default function DashboardPage() {
                     onClick={e => { e.stopPropagation(); handleDeleteTask(task) }}
                     style={{
                       background: 'none', border: 'none', cursor: 'pointer',
-                      color: 'var(--text3)', fontSize: 14, padding: 0,
-                      lineHeight: 1, flexShrink: 0,
+                      color: 'var(--text3)', fontSize: 14, padding: '0 2px',
+                      lineHeight: 1, flexShrink: 0, opacity: 0.4,
                     }}
                   >
                     ×
@@ -405,17 +429,18 @@ export default function DashboardPage() {
             )}
           </div>
           {/* Footer: add task */}
-          <div style={{ padding: '10px 12px', borderTop: '1px solid var(--border)' }}>
+          <div style={{ padding: '8px', borderTop: '1px solid var(--border)' }}>
             {!addingTask ? (
               <button
                 onClick={() => setAddingTask(true)}
                 style={{
-                  width: '100%', padding: '7px', fontSize: 11, fontFamily: 'DM Mono',
-                  color: 'var(--text2)', background: 'transparent',
-                  border: '1px dashed var(--border)', borderRadius: 6, cursor: 'pointer',
+                  width: '100%', padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
+                  color: 'var(--text3)', background: 'transparent', letterSpacing: '0.04em',
+                  border: '1px dashed var(--border)', borderRadius: 8, cursor: 'pointer',
+                  transition: 'all 0.15s',
                 }}
               >
-                + Add task
+                + add task
               </button>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
