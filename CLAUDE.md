@@ -27,7 +27,7 @@ PRSFlow is a single-tenant studio operations app for Paramount Recording Studios
 ### Route structure
 
 **Internal (nav-bearing) routes under `app/(main)/`:**
-- `/` — Dashboard: `LocationStrip` (4 studio cards → drawer with Yesterday/Today sessions + daily ops), `TodoModule`, `QCHomeWidget`
+- `/` — Dashboard: `LocationStrip` (4 studio cards → drawer with Yesterday/Today sessions + daily ops), 3-col grid (Needs Action panel, Today's Sessions panel, Tasks placeholder with Me/Mgr/Billing/Asst tabs)
 - `/crm` — Leads + Clients unified page. LEADS tab: Needs Action, All Leads, Analytics. CLIENTS tab: client list + editable profile panel. Toggle at top of page, defaults to LEADS on every load.
 - `/clients` — Redirects to `/crm` (stub for backward-compat; do not delete)
 - `/calendar` — Week/2-week multi-studio grid calendar with booking form + work order popup
@@ -144,11 +144,12 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 | Payment improvements | Type dropdown (Cash/Zelle/CC/Debit/Check/Other); `memo` field; `last_four` (CC/Debit only); `× remove`; runner payments now editable; `$1,234.56` currency auto-format | ✅ Complete |
 | Mic Inventory UI | Runner mic inventory page (`/runner/[studio]/mics`): collapsible sections, Here/Room/Missing status, qty steppers, submit flow; appears in Yesterday checklists | ✅ Complete |
 | dashboard_tasks table | Supabase migration: per-role task system table with soft delete, `set_updated_at()` trigger, RLS (placeholder until Chunk 9) | ✅ Complete |
+| Dashboard rebuild | 3-col layout: Needs Action (hot/warm/uncontacted, excludes cold/dead/booked, top 5), Today's Sessions (confirmed + tentative with colored left-border rows), Tasks placeholder (Me/Mgr/Billing/Asst tabs, `activeTaskTab` state wired). Removed `TodoModule`, `QCHomeWidget`, `clients` + `qc_reports` fetches. | ✅ Complete |
 
 ## What's Next
 
+- **Dashboard tasks UI** — connect `dashboard_tasks` table to the Tasks column (Me/Mgr/Billing/Asst tabs already wired); replace placeholder body with real task rows + add/complete actions
 - **Calendar drag-and-drop** — drag to move sessions; option+drag to copy to new date
-- **Dashboard tasks UI** — connect `dashboard_tasks` table to the dashboard `TodoModule`
 - **Needs Action rebuild (4.8)** — redesign what "needs action" means vs overdue
 - **Email/webhooks (Chunk 5)** — Squarespace → lead auto-create
 - **Auth (Chunk 9)** — office vs runner roles, RLS

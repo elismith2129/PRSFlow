@@ -942,7 +942,7 @@ Approved sessions drop from the Today column: after loading today's WOs, `fetchD
 
 ---
 
-*Last updated: June 14, 2026 — Mic Inventory UI confirmed complete; dashboard_tasks table migration; CRM session type + Keep Hot fixes.*
+*Last updated: June 14, 2026 — Mic Inventory UI confirmed complete; dashboard_tasks table migration; CRM session type + Keep Hot fixes; dashboard UI rebuild (3-col layout).*
 
 ---
 
@@ -991,3 +991,32 @@ RLS INSERT/UPDATE/DELETE use placeholder `USING (true)` — will be tightened to
 **CRM fixes:**
 - Added `Long Term/Leasing` as a session type option to both booking type dropdowns in the lead card (`crm/page.tsx` lines 2399 + 2516). Not added to the emoji map.
 - Fixed Keep Hot button not appearing in Needs Action tab: condition was checking `activeBucket.key === 'hot'` instead of `l.status === 'hot'` — bucket key is never 'hot' in the Needs Action view.
+
+---
+
+### June 14, 2026 — Dashboard UI rebuild
+
+**Commits: `d148815`, `2e9388a`**
+
+**`app/(main)/page.tsx` rewritten from scratch.** Removed `TodoModule`, `QCHomeWidget`, `clients` fetch, and `qc_reports` fetch entirely.
+
+**New 3-column grid layout (`gridTemplateColumns: '1fr 2fr 1fr'`, `gap: 14`):**
+
+**Col 1 — Needs Action:**
+- Fetches all leads, filters to `needs_contact === true` excluding `dead`, `booked`, and `cold` statuses, shows top 5.
+- Per-row: name, reason string (Follow up now / Follow up due / Never contacted / Needs attention), status badge in `var(--hot)` / `var(--warm)` / `var(--text3)`.
+- Footer: "View all in CRM →" navigates to `/crm`.
+- `cold` exclusion added in follow-up commit `2e9388a` — cold leads were incorrectly appearing in the panel.
+
+**Col 2 — Today's Sessions:**
+- Fetches today's bookings via local-time date correction (`getTimezoneOffset()`) + `lte('start_date', today).gte('end_date', today)`.
+- Confirmed section: `#14B8A6` label + `2px solid #14B8A6` left border + `rgba(20,184,166,0.05)` tint per row.
+- Tentative section: `#F97316` label + matching border/tint.
+- Each row: `b.artist || b.client_name`, `b.session_type` badge, `b.from_time – b.to_time · b.location`.
+- Sections only render when they have items.
+
+**Col 3 — Tasks (placeholder):**
+- Me / Mgr / Billing / Asst tab row; active tab `#c8f04e` bg / `#0d0f14` text.
+- Body: "Tasks coming in next build".
+- Footer: dashed `+ Add task` button (non-functional placeholder).
+- Wired to `activeTaskTab` state; tab switching is live. DB connection to `dashboard_tasks` table is next build.

@@ -258,13 +258,15 @@ Defined in `styles/globals.css`:
 | mic-inventory-ui | `/runner/[studio]/mics` page built; collapsible sections per mic category; Here/Room/Missing condition tracking; qty steppers; submit flow; appears in Yesterday checklists (`liveDoc: false` fix) |
 | **dashboard_tasks table ✅** | **Supabase migration: per-role task system table** |
 | dashboard-tasks-migration | `dashboard_tasks` table: `assigned_role` CHECK ('admin','studio_manager','asst_manager','billing'), `source` CHECK ('manual','runner_flag','wo_flag'), soft delete via `deleted_at`, `set_updated_at()` trigger, RLS enabled with placeholder `USING (true)` on INSERT/UPDATE/DELETE until Chunk 9 auth; SELECT filters `deleted_at IS NULL`; GRANT to `authenticated` |
+| **Dashboard rebuild ✅** | **3-column dashboard layout: Needs Action, Today's Sessions, Tasks placeholder** |
+| dashboard-rebuild | `app/(main)/page.tsx` rewritten; `TodoModule` + `QCHomeWidget` removed; 3-col grid (`1fr 2fr 1fr`). Col 1: Needs Action — top 5 hot/warm/uncontacted leads (`needs_contact=true`, excludes cold/dead/booked), status badge, "View all in CRM →". Col 2: Today's Sessions — confirmed (#14B8A6) + tentative (#F97316) sections with colored left-border rows, `b.artist\|\|b.client_name`, session_type badge, time + location. Col 3: Tasks placeholder — Me/Mgr/Billing/Asst tabs wired to `activeTaskTab` state, DB connection next build. Cold leads exclusion fix in follow-up commit. |
 
 ### Next
 
 | Priority | What's next |
 |---|---|
+| **High** | **Dashboard tasks UI** — connect `dashboard_tasks` table to the Tasks column; replace placeholder with real task rows + add/complete actions (tabs already wired) |
 | **High** | **Calendar drag-and-drop** — drag blocks to move sessions; option+drag to copy to new date |
-| **High** | **Dashboard tasks UI** — connect `dashboard_tasks` table to the dashboard `TodoModule` |
 | Medium | **Needs Action rebuild (4.8)** — redesign what "needs action" means vs overdue |
 | Medium | **4.9b — Duplicate merge flow:** UI to merge two client profiles discovered post-import |
 
