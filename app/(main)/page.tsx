@@ -48,6 +48,9 @@ export default function DashboardPage() {
   const [newTaskPhoto, setNewTaskPhoto] = useState<File | null>(null)
   const [taskSubmitting, setTaskSubmitting] = useState(false)
   const [currentUserEmail, setCurrentUserEmail] = useState<string>('Staff')
+  const [showHistory, setShowHistory] = useState(false)
+  const [completedTasks, setCompletedTasks] = useState<DashboardTask[]>([])
+  const [historySearch, setHistorySearch] = useState('')
   const newTaskPhotoRef = useRef<HTMLInputElement>(null)
   const commentPhotoRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -96,6 +99,26 @@ export default function DashboardPage() {
     setTasksLoading(true)
     setTasks(await fetchTasks(TAB_ROLE[activeTaskTab]))
     setTasksLoading(false)
+  }
+
+  async function fetchCompletedTasks() {
+    const roles = TAB_ROLE[activeTaskTab]
+    const visibleRoles: string[] = roles === 'admin'
+      ? ['admin', 'studio_manager', 'asst_manager', 'billing']
+      : roles === 'studio_manager'
+      ? ['studio_manager', 'asst_manager', 'billing']
+      : roles === 'billing'
+      ? ['billing', 'asst_manager']
+      : ['asst_manager']
+    const { data } = await supabase
+      .from('dashboard_tasks')
+      .select('*')
+      .in('assigned_role', visibleRoles)
+      .eq('completed', true)
+      .is('deleted_at', null)
+      .order('completed_at', { ascending: false })
+      .limit(100)
+    setCompletedTasks(data || [])
   }
 
   async function uploadPhoto(file: File): Promise<string | null> {
@@ -343,7 +366,7 @@ export default function DashboardPage() {
               )}
             </div>
             <button
-              onClick={() => {/* completed view — wired in next build */}}
+              onClick={async () => { await fetchCompletedTasks(); setShowHistory(true) }}
               style={{ fontSize: 10, color: '#c8f04e', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'DM Mono', letterSpacing: '0.04em' }}
             >
               history →
@@ -615,6 +638,52 @@ export default function DashboardPage() {
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {showHistory && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={e => { if (e.target === e.currentTarget) { setShowHistory(false); setHistorySearch('') } }}
+        >
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 520, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15 }}>Completed Tasks</div>
+              <button onClick={() => { setShowHistory(false); setHistorySearch('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 18, lineHeight: 1, padding: 0 }}>×</button>
+            </div>
+            <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--border)' }}>
+              <input
+                value={historySearch}
+                onChange={e => setHistorySearch(e.target.value)}
+                placeholder="Search completed tasks…"
+                style={{ width: '100%', padding: '7px 10px', fontSize: 12, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontFamily: 'DM Mono', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {completedTasks
+                .filter(t => !historySearch || t.text.toLowerCase().includes(historySearch.toLowerCase()))
+                .map(t => (
+                  <div key={t.id} style={{ padding: '10px 12px', background: 'var(--surface2)', borderRadius: 8, border: '0.5px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                      <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.4, flex: 1 }}>{t.text}</div>
+                      <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'var(--surface)', color: 'var(--text3)', border: '0.5px solid var(--border)', textTransform: 'uppercase', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                        {t.assigned_role.replace('_', ' ')}
+                      </div>
+                    </div>
+                    {t.source !== 'manual' && t.source_label && (
+                      <div style={{ fontSize: 9, color: 'var(--warm)', marginTop: 3, fontFamily: 'DM Mono' }}>{t.source_label}</div>
+                    )}
+                    <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 4, fontFamily: 'DM Mono' }}>
+                      Completed {t.completed_at ? new Date(t.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                    </div>
+                  </div>
+                ))
+              }
+              {completedTasks.filter(t => !historySearch || t.text.toLowerCase().includes(historySearch.toLowerCase())).length === 0 && (
+                <div style={{ padding: '12px', color: 'var(--text3)', fontSize: 11 }}>No completed tasks found</div>
+              )}
+            </div>
           </div>
         </div>
       )}
