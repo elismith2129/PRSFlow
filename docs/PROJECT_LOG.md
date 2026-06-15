@@ -942,7 +942,7 @@ Approved sessions drop from the Today column: after loading today's WOs, `fetchD
 
 ---
 
-*Last updated: June 14, 2026 — Mic Inventory UI confirmed complete; dashboard_tasks table migration; CRM session type + Keep Hot fixes; dashboard UI rebuild (3-col layout).*
+*Last updated: June 14, 2026 — Session 3a complete: dashboard_task_comments table, live Tasks panel with ticket modal + comments + photos (commit 350d7fa).*
 
 ---
 
@@ -1015,8 +1015,80 @@ RLS INSERT/UPDATE/DELETE use placeholder `USING (true)` — will be tightened to
 - Each row: `b.artist || b.client_name`, `b.session_type` badge, `b.from_time – b.to_time · b.location`.
 - Sections only render when they have items.
 
-**Col 3 — Tasks (placeholder):**
+**Col 3 — Tasks (placeholder at time of rebuild; wired to live data in Session 3a — see below):**
 - Me / Mgr / Billing / Asst tab row; active tab `#c8f04e` bg / `#0d0f14` text.
-- Body: "Tasks coming in next build".
-- Footer: dashed `+ Add task` button (non-functional placeholder).
-- Wired to `activeTaskTab` state; tab switching is live. DB connection to `dashboard_tasks` table is next build.
+- Body: "Tasks coming in next build" (placeholder only — replaced in Session 3a).
+- Footer: dashed `+ Add task` button (non-functional placeholder — replaced in Session 3a).
+- Wired to `activeTaskTab` state; tab switching was live from this commit.
+
+---
+
+### June 14, 2026 — Session 3a: Dashboard Tasks Panel
+
+**Commit: `350d7fa`**
+
+**Schema additions applied in Supabase SQL editor:**
+
+`dashboard_tasks.photo_url`:
+```sql
+ALTER TABLE dashboard_tasks ADD COLUMN IF NOT EXISTS photo_url text;
+```
+
+`dashboard_task_comments` (new table):
+```sql
+CREATE TABLE IF NOT EXISTS dashboard_task_comments (
+  id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id         uuid        NOT NULL REFERENCES dashboard_tasks(id) ON DELETE CASCADE,
+  text            text,
+  photo_url       text,
+  created_by_name text,
+  created_at      timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT, INSERT ON dashboard_task_comments TO anon;
+GRANT SELECT, INSERT ON dashboard_task_comments TO authenticated;
+ALTER TABLE dashboard_task_comments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "task_comments: anon read" ON dashboard_task_comments FOR SELECT TO anon USING (true);
+CREATE POLICY "task_comments: anon insert" ON dashboard_task_comments FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "task_comments: authenticated read" ON dashboard_task_comments FOR SELECT TO authenticated USING (true);
+CREATE POLICY "task_comments: authenticated insert" ON dashboard_task_comments FOR INSERT TO authenticated WITH CHECK (true);
+```
+
+Anon access also added to `dashboard_tasks` (was `authenticated`-only, but app uses anon key pre-auth):
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE ON dashboard_tasks TO anon;
+CREATE POLICY "dashboard_tasks: anon read" ON dashboard_tasks FOR SELECT TO anon USING (deleted_at IS NULL);
+```
+
+**Tab → role mapping (hardcoded pre-auth, permanent mapping):**
+- Me → `admin`, Mgr → `studio_manager`, Asst → `asst_manager`, Billing → `billing`
+- Defined as `TAB_ROLE` constant above the component in `app/(main)/page.tsx`.
+
+**Tasks panel — Col 3 of dashboard grid (live):**
+- `fetchTasks(role)` defined outside component; called by `useEffect([activeTaskTab])` and by `reloadTasks()` after mutations.
+- Task list: `completed = false`, `deleted_at IS NULL`, ordered `sort_order asc` then `created_at asc`.
+- Rows: truncated task text, optional due date + source label below. Entire row opens modal on click. `×` button calls `handleDeleteTask` (optimistic removal + `UPDATE deleted_at = now()`). `e.stopPropagation()` prevents modal open on `×` click.
+- Empty state: "No tasks". Loading state: "Loading…".
+
+**Add task inline form:**
+- `+ Add task` dashed button expands to: text input (autoFocus, Enter submits) + `+ Photo` label wrapping hidden file input + Cancel + Save buttons.
+- Save: uploads photo to `checklist-photos` bucket at `dashboard-tasks/{timestamp}-{filename}` → inserts row (`text`, `assigned_role`, `source: 'manual'`, `photo_url`) → `reloadTasks()` → collapses form.
+- Cancel: collapses form, clears inputs.
+
+**Task modal (ticket-style):**
+- Overlay: `position: fixed, inset: 0, rgba(0,0,0,0.6), zIndex: 10000`. Click outside card dismisses.
+- Card: `background: var(--surface), borderRadius: 12, maxWidth: 480, maxHeight: 85vh, flex column`.
+- **Header**: task title (Syne 800, 15px), task `photo_url` image if present (`maxHeight: 200`, `borderRadius: 8`, `objectFit: cover`), source label (muted, DM Mono) if `source !== 'manual'`, due date (muted, DM Mono) if present. `×` close button top-right.
+- **Comment thread** (`flex: 1, overflowY: auto`): fetched from `dashboard_task_comments` on `handleOpenTask`. Per-comment: text, photo (`maxHeight: 200`), `created_by_name · fmtTime(created_at)`. Empty: "No updates yet".
+- **Input area**: `<textarea rows={2}` placeholder "Add a note…", `+ Attach photo` label/input (shows filename when selected). Two buttons: Comment (outline) + Complete (accent `#c8f04e`).
+- **Comment action**: uploads photo if selected → `INSERT dashboard_task_comments` → clears inputs → `loadComments()`.
+- **Complete action**: uploads photo → inserts comment if text/photo present → `UPDATE dashboard_tasks SET completed=true, completed_at=now()` → removes task from local list (optimistic) → closes modal.
+- `taskSubmitting` flag gates both buttons during async operations; Complete button shows "Saving…" while in flight.
+
+**`created_by_name` pattern:**
+- `supabase.auth.getUser()` called on mount in a `useEffect([], [])`. Sets `currentUserEmail` state if `data.user.email` is present. Falls back to `'Staff'` (initial state) until Chunk 9 auth lands.
+
+**`lib/supabase.ts` additions:**
+- `DashboardTask.photo_url: string | null` added to interface.
+- New `DashboardTaskComment` interface: `{ id, task_id, text, photo_url, created_by_name, created_at }`.
+
+**`fmtTime(iso)` helper:** Formats `created_at` timestamps as `"Jun 14 · 02:30 PM"` using `toLocaleDateString` + `toLocaleTimeString`. Defined at module level (outside component).

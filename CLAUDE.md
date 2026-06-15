@@ -70,7 +70,8 @@ Tables in use (all with public RLS — auth deferred to Chunk 9):
 - `stock_items` — per-studio stock with qty + low bool
 - `mic_inventory` — global mic list with condition (good/fair/damaged)
 - `expense_rows` — WO expense line items with receipt_url
-- `dashboard_tasks` — per-role task system for the dashboard. `assigned_role` in ('admin','studio_manager','asst_manager','billing'). `source` in ('manual','runner_flag','wo_flag'). Soft delete via `deleted_at`. RLS enabled (placeholder `USING (true)` on INSERT/UPDATE/DELETE until Chunk 9 auth lands; SELECT filters `deleted_at IS NULL`). `set_updated_at()` trigger auto-updates `updated_at`.
+- `dashboard_tasks` — per-role task system for the dashboard. `assigned_role` in ('admin','studio_manager','asst_manager','billing'). `source` in ('manual','runner_flag','wo_flag'). `photo_url text` for optional task attachment. Soft delete via `deleted_at`. RLS enabled (placeholder `USING (true)` on INSERT/UPDATE/DELETE until Chunk 9 auth lands; SELECT filters `deleted_at IS NULL`). `set_updated_at()` trigger auto-updates `updated_at`. Anon key access granted (required since app uses anon key pre-auth).
+- `dashboard_task_comments` — per-task comment/update thread. `task_id` FK → `dashboard_tasks` (CASCADE). `text`, `photo_url`, `created_by_name`, `created_at`. RLS: anon + authenticated SELECT + INSERT (open). No update/delete policies — comments are append-only.
 - `bookings.engineer_rate` — text column; hourly rate for the session engineer (no default — field starts blank)
 - `studio_time_rows.eng_hours` — numeric; hours worked by engineer on that row (auto-populated from `total_hours` or `calcHours(from_time, to_time)` when null on WO open)
 - `studio_time_rows.eng_rate` — text; engineer rate override for that row (blank until set; inherits from `booking.engineer_rate` display-side only, not DB default)
@@ -145,15 +146,21 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 | Mic Inventory UI | Runner mic inventory page (`/runner/[studio]/mics`): collapsible sections, Here/Room/Missing status, qty steppers, submit flow; appears in Yesterday checklists | ✅ Complete |
 | dashboard_tasks table | Supabase migration: per-role task system table with soft delete, `set_updated_at()` trigger, RLS (placeholder until Chunk 9) | ✅ Complete |
 | Dashboard rebuild | 3-col layout: Needs Action (hot/warm/uncontacted, excludes cold/dead/booked, top 5), Today's Sessions (confirmed + tentative with colored left-border rows), Tasks placeholder (Me/Mgr/Billing/Asst tabs, `activeTaskTab` state wired). Removed `TodoModule`, `QCHomeWidget`, `clients` + `qc_reports` fetches. | ✅ Complete |
+| dashboard_task_comments table | New table: per-task comment thread. `task_id` FK → `dashboard_tasks` CASCADE. `text`, `photo_url`, `created_by_name`, `created_at`. Anon + authenticated SELECT + INSERT RLS. Append-only (no update/delete policies). | ✅ Complete |
+| Dashboard Tasks panel (Session 3a) | Col 3 Tasks column live: fetch by tab role (Me=admin, Mgr=studio_manager, Asst=asst_manager, Billing=billing). Task rows clickable → ticket modal; `×` soft-deletes. Inline add task form with optional photo. Task modal: Syne title, task photo, comment thread, textarea + photo attach, Comment + Complete buttons. Photos to `checklist-photos` bucket at `dashboard-tasks/` prefix. `created_by_name` from `supabase.auth.getUser()`, falls back to `'Staff'`. `DashboardTask.photo_url` + `DashboardTaskComment` type added to `lib/supabase.ts`. | ✅ Complete |
 
 ## What's Next
 
-- **Dashboard tasks UI** — connect `dashboard_tasks` table to the Tasks column (Me/Mgr/Billing/Asst tabs already wired); replace placeholder body with real task rows + add/complete actions
-- **Calendar drag-and-drop** — drag to move sessions; option+drag to copy to new date
+- **Session 3b — Dashboard tasks: notifications + runner flag auto-generation** — auto-create `dashboard_tasks` rows when runner submits a checklist with Needs Attention content or flags a WO issue; in-app notification badge on the Tasks column header when new tasks arrive for the active role
+- **Calendar drag-and-drop** — drag blocks to move sessions; option+drag to copy to new date
 - **Needs Action rebuild (4.8)** — redesign what "needs action" means vs overdue
 - **Email/webhooks (Chunk 5)** — Squarespace → lead auto-create
-- **Auth (Chunk 9)** — office vs runner roles, RLS
+- **Auth (Chunk 9)** — office vs runner roles, RLS; `created_by_name` on task comments switches from email fallback to real display name
 - **Supabase Realtime on new tables** — any new table added going forward needs `ALTER PUBLICATION supabase_realtime ADD TABLE <name>` + `ALTER TABLE <name> REPLICA IDENTITY FULL` before subscriptions will fire
+
+**Horizon / ideas (not yet sequenced):**
+- **WO→Calendar sync** — audit and harden the WO Close & Save → booking sync path; ensure all fields round-trip correctly when WO is edited after booking form has unsaved changes
+- **Dashboard activity log** — recent studio activity feed (session starts, WO completions, runner checklist submissions, task completions) as a fourth panel or sidebar widget
 
 ## Environment Variables
 

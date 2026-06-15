@@ -257,18 +257,22 @@ Defined in `styles/globals.css`:
 | **Mic Inventory UI ✅** | **Runner mic inventory page with collapsible sections, Here/Room/Missing status, qty steppers, submit flow** |
 | mic-inventory-ui | `/runner/[studio]/mics` page built; collapsible sections per mic category; Here/Room/Missing condition tracking; qty steppers; submit flow; appears in Yesterday checklists (`liveDoc: false` fix) |
 | **dashboard_tasks table ✅** | **Supabase migration: per-role task system table** |
-| dashboard-tasks-migration | `dashboard_tasks` table: `assigned_role` CHECK ('admin','studio_manager','asst_manager','billing'), `source` CHECK ('manual','runner_flag','wo_flag'), soft delete via `deleted_at`, `set_updated_at()` trigger, RLS enabled with placeholder `USING (true)` on INSERT/UPDATE/DELETE until Chunk 9 auth; SELECT filters `deleted_at IS NULL`; GRANT to `authenticated` |
+| dashboard-tasks-migration | `dashboard_tasks` table: `assigned_role` CHECK ('admin','studio_manager','asst_manager','billing'), `source` CHECK ('manual','runner_flag','wo_flag'), `photo_url text`, soft delete via `deleted_at`, `set_updated_at()` trigger, RLS enabled with placeholder `USING (true)` on INSERT/UPDATE/DELETE until Chunk 9 auth; SELECT filters `deleted_at IS NULL`; GRANT to `authenticated` + `anon` (anon grant added Session 3a — app uses anon key pre-auth) |
 | **Dashboard rebuild ✅** | **3-column dashboard layout: Needs Action, Today's Sessions, Tasks placeholder** |
-| dashboard-rebuild | `app/(main)/page.tsx` rewritten; `TodoModule` + `QCHomeWidget` removed; 3-col grid (`1fr 2fr 1fr`). Col 1: Needs Action — top 5 hot/warm/uncontacted leads (`needs_contact=true`, excludes cold/dead/booked), status badge, "View all in CRM →". Col 2: Today's Sessions — confirmed (#14B8A6) + tentative (#F97316) sections with colored left-border rows, `b.artist\|\|b.client_name`, session_type badge, time + location. Col 3: Tasks placeholder — Me/Mgr/Billing/Asst tabs wired to `activeTaskTab` state, DB connection next build. Cold leads exclusion fix in follow-up commit. |
+| dashboard-rebuild | `app/(main)/page.tsx` rewritten; `TodoModule` + `QCHomeWidget` removed; 3-col grid (`1fr 2fr 1fr`). Col 1: Needs Action — top 5 hot/warm/uncontacted leads (`needs_contact=true`, excludes cold/dead/booked), status badge, "View all in CRM →". Col 2: Today's Sessions — confirmed (#14B8A6) + tentative (#F97316) sections with colored left-border rows, `b.artist\|\|b.client_name`, session_type badge, time + location. Col 3: Tasks placeholder (replaced by live Tasks panel in Session 3a). Cold leads exclusion fix in follow-up commit. |
+| **Dashboard Tasks panel ✅** | **Session 3a: live ticket-style task system wired to dashboard Col 3** |
+| dashboard-tasks-session-3a | `dashboard_task_comments` table (per-task comment thread, append-only, anon+authenticated INSERT/SELECT). `dashboard_tasks.photo_url` column added. Tab→role mapping: Me=admin, Mgr=studio_manager, Asst=asst_manager, Billing=billing. Task list fetches by role, rows clickable. Inline add task form with optional photo (to `checklist-photos` bucket). Task modal: title, task photo, comment thread with photos + timestamps, textarea + attach photo, Comment + Complete buttons. `created_by_name` from `supabase.auth.getUser()`, falls back to `'Staff'`. `DashboardTaskComment` type + `DashboardTask.photo_url` added to `lib/supabase.ts`. |
 
 ### Next
 
 | Priority | What's next |
 |---|---|
-| **High** | **Dashboard tasks UI** — connect `dashboard_tasks` table to the Tasks column; replace placeholder with real task rows + add/complete actions (tabs already wired) |
+| **High** | **Session 3b — Dashboard tasks: notifications + runner flag auto-generation** — auto-create `dashboard_tasks` rows from runner checklist NA flags and WO flags; in-app notification badge on Tasks column when new tasks arrive |
 | **High** | **Calendar drag-and-drop** — drag blocks to move sessions; option+drag to copy to new date |
 | Medium | **Needs Action rebuild (4.8)** — redesign what "needs action" means vs overdue |
 | Medium | **4.9b — Duplicate merge flow:** UI to merge two client profiles discovered post-import |
+| Horizon | **WO→Calendar sync** — audit and harden WO Close & Save → booking field sync |
+| Horizon | **Dashboard activity log** — recent studio activity feed (session starts, WO completions, task completions) |
 
 ### Deprioritized
 
