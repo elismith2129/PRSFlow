@@ -803,7 +803,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                 <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, border: '1px solid var(--border)', color: 'var(--text3)', flexShrink: 0, whiteSpace: 'nowrap' }}>
                   {BOOKING_ICONS[l.booking] || ''} {l.booking || '—'}
                 </span>
-                {(activeBucket.key === 'hot' || activeBucket.key === 'warm') && daysUntilKhu(l) !== null && (daysUntilKhu(l) as number) <= 1 && (
+                {(l.status === 'hot' || l.status === 'warm') && daysUntilKhu(l) !== null && (daysUntilKhu(l) as number) <= 1 && (
                   <button
                     onClick={e => {
                       e.stopPropagation()
