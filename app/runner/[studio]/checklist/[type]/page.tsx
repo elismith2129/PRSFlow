@@ -16,7 +16,7 @@ export default function ChecklistPage() {
   const { studio, type } = useParams<{ studio: string; type: string }>()
   const meta       = STUDIO_META[studio] ?? { label: studio, color: '#c8f04e' }
   const isOpening  = type === 'opening'
-  const today      = new Date().toISOString().slice(0, 10)
+  const today      = (() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10) })()
 
   const sections: ChecklistSection[] = CHECKLISTS[studio]?.[type as 'opening' | 'closing'] ?? CHECKLISTS.paramount[type as 'opening' | 'closing']
   const allItems = flattenSections(sections)
