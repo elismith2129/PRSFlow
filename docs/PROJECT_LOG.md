@@ -942,4 +942,52 @@ Approved sessions drop from the Today column: after loading today's WOs, `fetchD
 
 ---
 
-*Last updated: June 10, 2026 — WO Hub, Studio Time local-first refactor, eng_visible/admin_locked columns, WO open/completed toggle, TimeInput smart-parse rewrite, runner WO bottom sections rebuild, canvas signature pad (COD-only, admin + runner aligned), payment type dropdown + memo + last_four, payment amount currency format.*
+*Last updated: June 14, 2026 — Mic Inventory UI confirmed complete; dashboard_tasks table migration; CRM session type + Keep Hot fixes.*
+
+---
+
+### June 14, 2026 — Mic Inventory UI, dashboard_tasks migration, CRM fixes
+
+**Mic Inventory UI (confirmed complete):**
+- `/runner/[studio]/mics` page was built but not yet reflected in the docs. Features: collapsible sections per mic category, Here/Room/Missing condition tracking, qty steppers, submit flow.
+- `liveDoc: false` fix: `stock_list` and `mic_inventory` now appear correctly in Yesterday checklists.
+
+**dashboard_tasks migration (run in Supabase SQL editor):**
+
+```sql
+CREATE TABLE IF NOT EXISTS dashboard_tasks (
+  id             uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  text           text        NOT NULL,
+  assigned_role  text        NOT NULL CHECK (assigned_role IN ('admin', 'studio_manager', 'asst_manager', 'billing')),
+  completed      boolean     NOT NULL DEFAULT false,
+  completed_at   timestamptz,
+  completed_note text,
+  created_by     uuid        REFERENCES auth.users(id),
+  source         text        NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'runner_flag', 'wo_flag')),
+  source_id      uuid,
+  source_label   text,
+  due_date       date,
+  sort_order     integer     NOT NULL DEFAULT 0,
+  deleted_at     timestamptz,
+  created_at     timestamptz NOT NULL DEFAULT now(),
+  updated_at     timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT, INSERT, UPDATE, DELETE ON dashboard_tasks TO authenticated;
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN NEW.updated_at = now(); RETURN NEW; END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER dashboard_tasks_set_updated_at
+  BEFORE UPDATE ON dashboard_tasks FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+ALTER TABLE dashboard_tasks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "dashboard_tasks: authenticated read" ON dashboard_tasks FOR SELECT TO authenticated USING (deleted_at IS NULL);
+CREATE POLICY "dashboard_tasks: authenticated insert" ON dashboard_tasks FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "dashboard_tasks: authenticated update" ON dashboard_tasks FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "dashboard_tasks: authenticated delete" ON dashboard_tasks FOR DELETE TO authenticated USING (true);
+```
+
+RLS INSERT/UPDATE/DELETE use placeholder `USING (true)` — will be tightened to `auth.jwt() ->> 'app_role'` claims when Chunk 9 auth lands.
+
+**CRM fixes:**
+- Added `Long Term/Leasing` as a session type option to both booking type dropdowns in the lead card (`crm/page.tsx` lines 2399 + 2516). Not added to the emoji map.
+- Fixed Keep Hot button not appearing in Needs Action tab: condition was checking `activeBucket.key === 'hot'` instead of `l.status === 'hot'` — bucket key is never 'hot' in the Needs Action view.

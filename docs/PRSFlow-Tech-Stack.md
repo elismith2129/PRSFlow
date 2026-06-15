@@ -254,13 +254,17 @@ Defined in `styles/globals.css`:
 | **Canvas signature pad + payment improvements ✅** | **COD-only legal section; payment type dropdown + memo + last_four; currency auto-format** |
 | canvas-signature | `work_orders.print_name` + `work_orders.signature_data` (base64 PNG) replace `legal_signature/legal_name/legal_date`; COD-only guard; `touchAction:none` on canvas; `initialSigRef` pattern for reloading existing sig; both admin WO + runner WO aligned |
 | payment-improvements | Payment type dropdown (Cash/Zelle/Credit Card/Debit Card/Check/Other); `memo` text field; `last_four` text field (Credit/Debit only); `× remove` per row; runner payment section now editable; `formatCurrency`/`stripCurrency` helpers; `$`/`,` stripped before DB write |
+| **Mic Inventory UI ✅** | **Runner mic inventory page with collapsible sections, Here/Room/Missing status, qty steppers, submit flow** |
+| mic-inventory-ui | `/runner/[studio]/mics` page built; collapsible sections per mic category; Here/Room/Missing condition tracking; qty steppers; submit flow; appears in Yesterday checklists (`liveDoc: false` fix) |
+| **dashboard_tasks table ✅** | **Supabase migration: per-role task system table** |
+| dashboard-tasks-migration | `dashboard_tasks` table: `assigned_role` CHECK ('admin','studio_manager','asst_manager','billing'), `source` CHECK ('manual','runner_flag','wo_flag'), soft delete via `deleted_at`, `set_updated_at()` trigger, RLS enabled with placeholder `USING (true)` on INSERT/UPDATE/DELETE until Chunk 9 auth; SELECT filters `deleted_at IS NULL`; GRANT to `authenticated` |
 
 ### Next
 
 | Priority | What's next |
 |---|---|
 | **High** | **Calendar drag-and-drop** — drag blocks to move sessions; option+drag to copy to new date |
-| **High** | **Mic Inventory UI** — runner + admin UI for `mic_inventory` table (table exists, UI not built) |
+| **High** | **Dashboard tasks UI** — connect `dashboard_tasks` table to the dashboard `TodoModule` |
 | Medium | **Needs Action rebuild (4.8)** — redesign what "needs action" means vs overdue |
 | Medium | **4.9b — Duplicate merge flow:** UI to merge two client profiles discovered post-import |
 

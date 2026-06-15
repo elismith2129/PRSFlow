@@ -70,6 +70,7 @@ Tables in use (all with public RLS — auth deferred to Chunk 9):
 - `stock_items` — per-studio stock with qty + low bool
 - `mic_inventory` — global mic list with condition (good/fair/damaged)
 - `expense_rows` — WO expense line items with receipt_url
+- `dashboard_tasks` — per-role task system for the dashboard. `assigned_role` in ('admin','studio_manager','asst_manager','billing'). `source` in ('manual','runner_flag','wo_flag'). Soft delete via `deleted_at`. RLS enabled (placeholder `USING (true)` on INSERT/UPDATE/DELETE until Chunk 9 auth lands; SELECT filters `deleted_at IS NULL`). `set_updated_at()` trigger auto-updates `updated_at`.
 - `bookings.engineer_rate` — text column; hourly rate for the session engineer (no default — field starts blank)
 - `studio_time_rows.eng_hours` — numeric; hours worked by engineer on that row (auto-populated from `total_hours` or `calcHours(from_time, to_time)` when null on WO open)
 - `studio_time_rows.eng_rate` — text; engineer rate override for that row (blank until set; inherits from `booking.engineer_rate` display-side only, not DB default)
@@ -98,7 +99,7 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 - **`TimeInput` is a smart-parse text `<input>` with auto-format on blur.** Accepts `10a`→`10:00 AM`, `930p`→`9:30 PM`, `1430`→`2:30 PM` (24h), bare `8`→`8:00 AM`. Enter commits. Click/focus selects all. Used in booking form and WO Studio Time From/To cells. (Was briefly a 30-min `<select>` June 5–10, 2026 — reverted for mobile usability.)
 - **iOS Safari scroll lock: use `body.position=fixed` + `top=-scrollY`, not `overflow:hidden`.** `overflow:hidden` on body does not block scroll on iOS. Correct pattern: save `scrollY`, set `body.style.top=\`-${scrollY}px\`, position=fixed, width=100%` on open; clear all three and call `window.scrollTo({ top: savedScrollY, behavior: 'instant' })` on close.
 
-## What's Built (as of June 10, 2026)
+## What's Built (as of June 14, 2026)
 
 | Chunk | Feature | Status |
 |-------|---------|--------|
@@ -141,11 +142,13 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 | Runner WO bottom sections | Notes floating card, equipment horizontal scroll, expenses inline; Session QC removed from nav | ✅ Complete |
 | Canvas signature pad | COD-only canvas finger-draw pad in runner WO + admin WO; `work_orders.print_name` + `signature_data`; replaces `legal_signature/legal_name/legal_date` | ✅ Complete |
 | Payment improvements | Type dropdown (Cash/Zelle/CC/Debit/Check/Other); `memo` field; `last_four` (CC/Debit only); `× remove`; runner payments now editable; `$1,234.56` currency auto-format | ✅ Complete |
+| Mic Inventory UI | Runner mic inventory page (`/runner/[studio]/mics`): collapsible sections, Here/Room/Missing status, qty steppers, submit flow; appears in Yesterday checklists | ✅ Complete |
+| dashboard_tasks table | Supabase migration: per-role task system table with soft delete, `set_updated_at()` trigger, RLS (placeholder until Chunk 9) | ✅ Complete |
 
 ## What's Next
 
 - **Calendar drag-and-drop** — drag to move sessions; option+drag to copy to new date
-- **Mic Inventory UI** — runner + admin UI for mic_inventory table (tables exist, UI not built)
+- **Dashboard tasks UI** — connect `dashboard_tasks` table to the dashboard `TodoModule`
 - **Needs Action rebuild (4.8)** — redesign what "needs action" means vs overdue
 - **Email/webhooks (Chunk 5)** — Squarespace → lead auto-create
 - **Auth (Chunk 9)** — office vs runner roles, RLS
