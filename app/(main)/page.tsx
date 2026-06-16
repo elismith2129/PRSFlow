@@ -681,7 +681,7 @@ export default function DashboardPage() {
           </button>
         </div>
         {addingFlag && (
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 480 }}>
             <div style={{ display: 'flex', gap: 8 }}>
               <select
                 value={newFlagStudio}
@@ -1037,14 +1037,8 @@ export default function DashboardPage() {
           <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
             {/* Modal header */}
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
-              <button
-                onClick={() => setSelectedFlag(null)}
-                style={{ position: 'absolute', top: 14, right: 16, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 18, lineHeight: 1, padding: 0 }}
-              >
-                ×
-              </button>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, paddingRight: 24 }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                 <span style={{
                   fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em',
                   textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4,
@@ -1056,6 +1050,21 @@ export default function DashboardPage() {
                 <span style={{ fontSize: 10, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   {selectedFlag.studio}
                 </span>
+                {selectedFlag.status === 'acknowledged' && (
+                  <button
+                    onClick={handleResolveFlag}
+                    disabled={flagSubmitting}
+                    style={{ marginLeft: 'auto', fontSize: 10, fontFamily: 'DM Mono', background: '#14B8A6', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}
+                  >
+                    {flagSubmitting ? 'Saving…' : 'Resolve'}
+                  </button>
+                )}
+                <button
+                  onClick={() => setSelectedFlag(null)}
+                  style={{ marginLeft: selectedFlag.status === 'acknowledged' ? 0 : 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 18, lineHeight: 1, padding: 0 }}
+                >
+                  ×
+                </button>
               </div>
               {selectedFlag.source_label && (
                 <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
@@ -1216,19 +1225,6 @@ export default function DashboardPage() {
                     </button>
                   )
                 })()}
-                {selectedFlag.status === 'acknowledged' && (
-                  <button
-                    onClick={handleResolveFlag}
-                    disabled={flagSubmitting}
-                    style={{
-                      flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
-                      background: '#14B8A6', color: '#fff',
-                      border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600,
-                    }}
-                  >
-                    {flagSubmitting ? 'Saving…' : 'Resolve'}
-                  </button>
-                )}
               </div>
             </div>
 
