@@ -321,6 +321,18 @@ export function FlagsLogSection() {
                 <span style={{ fontSize: 10, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   {selectedFlag.studio}
                 </span>
+                {selectedFlag.category && (() => {
+                  const catConf = CATEGORY_CONFIG[selectedFlag.category]
+                  return catConf ? (
+                    <span style={{
+                      fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em',
+                      textTransform: 'uppercase', padding: '2px 6px', borderRadius: 4,
+                      color: catConf.color, background: catConf.bg,
+                    }}>
+                      {catConf.label}
+                    </span>
+                  ) : null
+                })()}
                 {selectedFlag.status === 'acknowledged' && (
                   <button
                     onClick={() => setShowResolveModal(true)}

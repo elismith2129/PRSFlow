@@ -1133,6 +1133,23 @@ export default function DashboardPage() {
                 <span style={{ fontSize: 10, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   {selectedFlag.studio}
                 </span>
+                {selectedFlag.category && (() => {
+                  const catConf: Record<string, { label: string; color: string; bg: string }> = {
+                    facility_general: { label: 'Facility / General', color: 'var(--text3)', bg: 'var(--surface2)' },
+                    gear_equipment:   { label: 'Gear / Equipment',   color: '#F59E0B',       bg: 'rgba(245,158,11,0.12)' },
+                    client_billing:   { label: 'Client / Billing',   color: '#60A5FA',       bg: 'rgba(96,165,250,0.12)' },
+                  }
+                  const c = catConf[selectedFlag.category!]
+                  return c ? (
+                    <span style={{
+                      fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em',
+                      textTransform: 'uppercase', padding: '2px 6px', borderRadius: 4,
+                      color: c.color, background: c.bg,
+                    }}>
+                      {c.label}
+                    </span>
+                  ) : null
+                })()}
                 {selectedFlag.status === 'acknowledged' && (
                   <button
                     onClick={() => setShowResolveModal(true)}
