@@ -166,6 +166,18 @@ export function FlagsLogSection() {
     setFlagSubmitting(false)
   }
 
+  async function handleSaveFlag() {
+    if (!selectedFlag || flagSubmitting || !flagCommentText.trim()) return
+    setFlagSubmitting(true)
+    const { data: updatedData } = await supabase.from('flags').update({
+      acknowledged_note: flagCommentText.trim(),
+    }).eq('id', selectedFlag.id).select().single()
+    if (updatedData) setSelectedFlag(updatedData)
+    setFlagCommentText('')
+    await loadFlags()
+    setFlagSubmitting(false)
+  }
+
   return (
     <div>
 
@@ -486,9 +498,9 @@ export function FlagsLogSection() {
                           style={{
                             flex: 1, padding: '5px 4px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700,
                             letterSpacing: '0.04em', textTransform: 'uppercase',
-                            color: isSelected ? catConf.color : 'var(--text3)',
-                            background: isSelected ? catConf.bg : 'transparent',
-                            border: isSelected ? `1px solid ${catConf.color}` : '1px solid var(--border)',
+                            color: isSelected ? '#0d0f14' : 'var(--text3)',
+                            background: isSelected ? '#c8f04e' : 'transparent',
+                            border: isSelected ? '1px solid #c8f04e' : '1px solid var(--border)',
                             borderRadius: 6, cursor: 'pointer',
                           }}
                         >
@@ -532,6 +544,22 @@ export function FlagsLogSection() {
                     </button>
                   )
                 })()}
+                {selectedFlag.status === 'acknowledged' && (
+                  <button
+                    onClick={handleSaveFlag}
+                    disabled={flagSubmitting || !flagCommentText.trim()}
+                    style={{
+                      flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
+                      background: flagCommentText.trim() ? '#c8f04e' : 'var(--surface2)',
+                      color: flagCommentText.trim() ? '#0d0f14' : 'var(--text3)',
+                      border: 'none', borderRadius: 6,
+                      cursor: flagCommentText.trim() ? 'pointer' : 'default',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {flagSubmitting ? 'Saving…' : 'Save'}
+                  </button>
+                )}
               </div>
             </div>
 
