@@ -3,318 +3,461 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
-import { DailyOpsModal, type DailyOpsSubmission } from '@/components/dashboard/DailyOpsModal'
 
-const STUDIO_LABELS: Record<string, string> = {
-  paramount: 'Paramount', ameraycan: 'Ameraycan',
-  encore: 'Encore', track: 'Track',
+const STUDIO_META: Record<string, { label: string; abbr: string; color: string }> = {
+  paramount: { label: 'Paramount', abbr: 'PRS', color: '#c8f04e' },
+  encore:    { label: 'Encore',    abbr: 'ERS', color: '#4e8ff0' },
+  ameraycan: { label: 'Ameraycan', abbr: 'ARS', color: '#f04e7a' },
+  track:     { label: 'Track',     abbr: 'TRS', color: '#f0a24e' },
 }
-const STUDIO_COLORS: Record<string, string> = {
-  paramount: '#c8f04e', ameraycan: '#f04e7a',
-  encore: '#4e8ff0', track: '#f0a24e',
-}
-const CAT_LABELS: Record<string, string> = {
-  opening_checklist: 'Opening Checklist',
-  closing_checklist: 'Closing Checklist',
-  petty_cash: 'Petty Cash',
-  stock_list: 'Stock List',
-  mic_inventory: 'Mic Inventory',
-}
-const STUDIO_OPTIONS = [
-  { key: 'all', label: 'All Studios' },
-  { key: 'paramount', label: 'Paramount' },
-  { key: 'ameraycan', label: 'Ameraycan' },
-  { key: 'encore', label: 'Encore' },
-  { key: 'track', label: 'Track' },
-]
-const TYPE_OPTIONS = [
-  { key: 'all', label: 'All Types' },
-  { key: 'wo', label: 'Work Order' },
+
+const OPS_CATS = [
   { key: 'opening_checklist', label: 'Opening Checklist' },
   { key: 'closing_checklist', label: 'Closing Checklist' },
-  { key: 'petty_cash', label: 'Petty Cash' },
-  { key: 'stock_list', label: 'Stock List' },
-  { key: 'mic_inventory', label: 'Mic Inventory' },
+  { key: 'petty_cash',        label: 'Petty Cash' },
+  { key: 'stock',             label: 'Stock List' },
+  { key: 'mic_inventory',     label: 'Mic Inventory' },
 ]
 
-function studioKeyFromLocation(loc: string | null): string {
-  const l = (loc ?? '').toLowerCase()
-  if (l.includes('paramount')) return 'paramount'
-  if (l.includes('ameraycan')) return 'ameraycan'
-  if (l.includes('encore')) return 'encore'
-  if (l.includes('track')) return 'track'
-  return ''
+const SESSION_TYPE_LABELS: Record<string, string> = {
+  recording:      'Recording',
+  filming:        'Filming',
+  event_playback: 'Event/Playback',
 }
 
-type LogRow = {
-  key: string
-  date: string
-  studioKey: string
-  type: string
-  typeLabel: string
-  runnerName: string | null
-  approvedAt: string | null
-  approvedBy: string | null
-  needsAttention: boolean
-  clientName: string | null
-  artistName: string | null
-  engineerName: string | null
-  invoiceNum: string | null
-  booking?: Booking
-  opsCategory?: string
-  opsStudio?: string
-  opsDate?: string
-  submission?: DailyOpsSubmission
+function fmtDate(date: string): string {
+  return new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+  })
 }
 
-function fmtTime(iso: string | null) {
+function fmtTime(iso: string | null): string {
   if (!iso) return ''
   return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 }
 
+function StatusDot({ status }: { status: 'all' | 'partial' | 'none' }) {
+  const color = status === 'all' ? '#14B8A6' : status === 'partial' ? '#F97316' : '#6B7280'
+  return (
+    <div style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
+  )
+}
+
+function CheckBox({ label, checked, color = '#14B8A6' }: { label: string; checked: boolean; color?: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+      <div style={{
+        width: 11, height: 11, borderRadius: 3, flexShrink: 0,
+        border: `1.5px solid ${checked ? color : '#6B7280'}`,
+        background: checked ? color : 'transparent',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {checked && <span style={{ fontSize: 7, color: '#0d0f14', fontWeight: 900, lineHeight: 1 }}>✓</span>}
+      </div>
+      <span style={{
+        fontSize: 9, fontFamily: 'DM Mono, monospace', fontWeight: 700,
+        letterSpacing: '0.05em', color: checked ? color : '#6B7280',
+      }}>
+        {label}
+      </span>
+    </div>
+  )
+}
+
 export function DailyOpsLogSection() {
-  const [rows, setRows] = useState<LogRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [filterStudio, setFilterStudio] = useState('all')
-  const [filterType, setFilterType] = useState('all')
-  const [filterFrom, setFilterFrom] = useState('')
-  const [filterTo, setFilterTo] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
+  const [activeStudio, setActiveStudio] = useState<'paramount' | 'encore' | 'ameraycan' | 'track'>('paramount')
+  const [dates, setDates] = useState<string[]>([])
+  const [datesLoading, setDatesLoading] = useState(true)
+  const [visibleCount, setVisibleCount] = useState(25)
+  const [statusMap, setStatusMap] = useState<Record<string, 'all' | 'partial' | 'none'>>({})
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [dayData, setDayData] = useState<{ bookings: Booking[]; wos: any[]; opsRows: any[]; checklists: any[] } | null>(null)
+  const [dayLoading, setDayLoading] = useState(false)
   const [woBooking, setWoBooking] = useState<Booking | null>(null)
-  const [opsDetail, setOpsDetail] = useState<LogRow | null>(null)
 
-  useEffect(() => { fetchLog() }, [])
+  useEffect(() => {
+    fetchDates()
+  }, [activeStudio]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function fetchLog() {
-    setLoading(true)
-    const [{ data: wos }, { data: ops }] = await Promise.all([
-      supabase.from('work_orders').select('*')
-        .eq('status', 'completed')
-        .order('admin_approved_at', { ascending: false, nullsFirst: false })
-        .limit(500),
-      supabase.from('daily_ops_submissions').select('*')
-        .not('admin_approved_at', 'is', null)
-        .order('admin_approved_at', { ascending: false })
-        .limit(500),
+  useEffect(() => {
+    if (selectedDate) fetchDayData(selectedDate)
+  }, [selectedDate]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function fetchDates() {
+    setDatesLoading(true)
+    const meta = STUDIO_META[activeStudio]
+    const [{ data: bookingDates }, { data: opsDates }, { data: checklistDates }] = await Promise.all([
+      supabase.from('bookings').select('start_date').eq('status', 'confirmed'),
+      supabase.from('daily_ops_submissions').select('date').eq('studio', activeStudio),
+      supabase.from('checklists').select('date').eq('studio', activeStudio),
     ])
-
-    const bookingIds = (wos ?? []).map((w: any) => w.booking_id).filter(Boolean)
-    let bookings: any[] = []
-    if (bookingIds.length > 0) {
-      const { data: bData } = await supabase.from('bookings').select('*').in('id', bookingIds)
-      bookings = bData ?? []
+    const loc = activeStudio
+    const abbr = meta.abbr.toLowerCase()
+    const filteredBookingDates = (bookingDates ?? [])
+      .filter((b: any) => (b.location ?? '').toLowerCase().includes(loc) || (b.location ?? '').toLowerCase().includes(abbr))
+      .map((b: any) => b.start_date)
+    const allDates = new Set([
+      ...filteredBookingDates,
+      ...(opsDates ?? []).map((o: any) => o.date),
+      ...(checklistDates ?? []).map((c: any) => c.date),
+    ])
+    const sorted = Array.from(allDates).sort((a, b) => b.localeCompare(a))
+    setDates(sorted)
+    if (sorted.length === 0) {
+      setStatusMap({})
+      setDatesLoading(false)
+      return
     }
-    const bookingMap: Record<string, Booking> = {}
-    for (const b of bookings) bookingMap[b.id] = b as Booking
-
-    const woRows: LogRow[] = (wos ?? []).map((w: any) => {
-      const booking = w.booking_id ? bookingMap[w.booking_id] : undefined
-      return {
-        key: `wo-${w.id}`,
-        date: w.session_date ?? w.created_at?.slice(0, 10) ?? '',
-        studioKey: studioKeyFromLocation(booking?.location ?? null),
-        type: 'wo',
-        typeLabel: 'Work Order',
-        runnerName: w.submitted_by ?? null,
-        approvedAt: w.admin_approved_at ?? w.approved_at ?? null,
-        approvedBy: w.approved_by ?? null,
-        needsAttention: !!(w.needs_attention_notes),
-        clientName: w.client ?? (booking as any)?.client_name ?? null,
-        artistName: (booking as any)?.artist ?? null,
-        engineerName: (booking as any)?.engineer_name ?? null,
-        invoiceNum: w.invoice_number ?? null,
-        booking,
-      }
-    })
-
-    const opsRows: LogRow[] = (ops ?? []).map((o: any) => ({
-      key: `ops-${o.id}`,
-      date: o.date ?? '',
-      studioKey: o.studio ?? '',
-      type: o.category ?? '',
-      typeLabel: CAT_LABELS[o.category] ?? o.category ?? '',
-      runnerName: o.staff_name ?? null,
-      approvedAt: o.admin_approved_at ?? null,
-      approvedBy: o.admin_approved_by ?? null,
-      needsAttention: !!(o.needs_attention),
-      clientName: null,
-      artistName: null,
-      engineerName: null,
-      invoiceNum: null,
-      opsCategory: o.category,
-      opsStudio: o.studio,
-      opsDate: o.date,
-      submission: {
-        id: o.id, studio: o.studio, category: o.category, date: o.date,
-        staff_name: o.staff_name, submitted_at: o.submitted_at,
-        admin_approved_at: o.admin_approved_at, admin_approved_by: o.admin_approved_by,
-      },
-    }))
-
-    const all = [...woRows, ...opsRows].sort((a, b) =>
-      (b.approvedAt ?? '').localeCompare(a.approvedAt ?? '')
-    )
-    setRows(all)
-    setLoading(false)
+    const { data: allOps } = await supabase
+      .from('daily_ops_submissions')
+      .select('date, category, submitted_at, admin_approved_at')
+      .eq('studio', activeStudio)
+      .in('date', sorted)
+    const map: Record<string, 'all' | 'partial' | 'none'> = {}
+    for (const date of sorted) {
+      const rows = (allOps ?? []).filter((o: any) => o.date === date)
+      const approvedCount = rows.filter((o: any) => o.admin_approved_at).length
+      if (approvedCount >= OPS_CATS.length) map[date] = 'all'
+      else if (rows.some((o: any) => o.submitted_at)) map[date] = 'partial'
+      else map[date] = 'none'
+    }
+    setStatusMap(map)
+    setDatesLoading(false)
   }
 
-  const filtered = rows.filter(r => {
-    if (filterStudio !== 'all' && r.studioKey !== filterStudio) return false
-    if (filterType !== 'all' && r.type !== filterType) return false
-    if (filterFrom && r.date < filterFrom) return false
-    if (filterTo && r.date > filterTo) return false
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase()
-      const searchable = [r.clientName, r.artistName, STUDIO_LABELS[r.studioKey] ?? r.studioKey, r.engineerName, r.invoiceNum]
-        .filter(Boolean).join(' ').toLowerCase()
-      if (!searchable.includes(q)) return false
-    }
-    return true
-  })
-
-  const hasFilters = filterStudio !== 'all' || filterType !== 'all' || !!filterFrom || !!filterTo || !!searchQuery.trim()
-
-  const inp: React.CSSProperties = {
-    background: 'var(--surface)', border: '1px solid var(--border)',
-    borderRadius: 6, padding: '6px 10px', color: 'var(--text)',
-    fontFamily: 'DM Mono, monospace', fontSize: 11, outline: 'none',
+  async function fetchDayData(date: string) {
+    setDayLoading(true)
+    const meta = STUDIO_META[activeStudio]
+    const loc = activeStudio
+    const abbr = meta.abbr.toLowerCase()
+    const [{ data: bData }, { data: opsData }, { data: clData }] = await Promise.all([
+      supabase.from('bookings').select('*').lte('start_date', date).gte('end_date', date).eq('status', 'confirmed'),
+      supabase.from('daily_ops_submissions').select('*').eq('studio', activeStudio).eq('date', date),
+      supabase.from('checklists').select('*').eq('studio', activeStudio).eq('date', date),
+    ])
+    const bookings = (bData ?? []).filter((b: any) =>
+      (b.location ?? '').toLowerCase().includes(loc) || (b.location ?? '').toLowerCase().includes(abbr)
+    ) as Booking[]
+    const bookingIds = bookings.map((b: any) => b.id)
+    const { data: woData } = bookingIds.length
+      ? await supabase.from('work_orders').select('*').in('booking_id', bookingIds)
+      : { data: [] as any[] }
+    setDayData({ bookings, wos: woData ?? [], opsRows: opsData ?? [], checklists: clData ?? [] })
+    setDayLoading(false)
   }
+
+  const meta = STUDIO_META[activeStudio]
+  const visibleDates = dates.slice(0, visibleCount)
 
   return (
     <>
       {/* Section header */}
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 16, color: 'var(--text)', marginBottom: 4 }}>Daily Ops Log</div>
-        <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>Approved work orders and daily task submissions</div>
-      </div>
-
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20, alignItems: 'center' }}>
-        <input
-          type="text"
-          placeholder="Search client, artist, studio, engineer, invoice…"
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          style={{ ...inp, width: 280 }}
-        />
-        <select value={filterStudio} onChange={e => setFilterStudio(e.target.value)} style={inp}>
-          {STUDIO_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
-        </select>
-        <select value={filterType} onChange={e => setFilterType(e.target.value)} style={inp}>
-          {TYPE_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
-        </select>
-        <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} style={{ ...inp, colorScheme: 'dark' }} />
-        <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>→</span>
-        <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} style={{ ...inp, colorScheme: 'dark' }} />
-        {hasFilters && (
-          <button
-            onClick={() => { setFilterStudio('all'); setFilterType('all'); setFilterFrom(''); setFilterTo(''); setSearchQuery('') }}
-            style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 12px', color: 'var(--text3)', fontSize: 11, fontFamily: 'DM Mono, monospace', cursor: 'pointer' }}
-          >
-            Clear
-          </button>
-        )}
-        <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
-          {loading ? 'Loading…' : `${filtered.length} record${filtered.length !== 1 ? 's' : ''}`}
-        </span>
-      </div>
-
-      {/* Table */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-        <div style={{
-          display: 'grid', gridTemplateColumns: '88px 110px 170px 1fr 150px 110px 24px',
-          background: 'var(--surface2)', borderBottom: '1px solid var(--border)',
-          padding: '8px 16px', gap: 8,
-        }}>
-          {['Date', 'Studio', 'Type', 'Client / Runner', 'Approved', 'By', ''].map(h => (
-            <span key={h} style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'Syne' }}>{h}</span>
-          ))}
+        <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 16, color: 'var(--text)', marginBottom: 4 }}>
+          Daily Ops Log
         </div>
+        <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
+          Historical daily operations by studio
+        </div>
+      </div>
 
-        {loading ? (
-          <div style={{ padding: '40px 16px', textAlign: 'center', fontSize: 12, color: 'var(--text3)', fontFamily: 'Syne' }}>Loading…</div>
-        ) : filtered.length === 0 ? (
-          <div style={{ padding: '40px 16px', textAlign: 'center' }}>
-            <div style={{ fontSize: 13, color: 'var(--text2)', fontFamily: 'Syne', marginBottom: 6 }}>
-              {hasFilters ? 'No records match the current filters.' : 'No approved records yet.'}
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
-              Records appear here after admin approval in the daily ops panel.
-            </div>
+      {/* Studio tabs */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+        {Object.entries(STUDIO_META).map(([key, m]) => {
+          const active = activeStudio === key
+          return (
+            <button
+              key={key}
+              onClick={() => {
+                if (activeStudio === key) return
+                setActiveStudio(key as 'paramount' | 'encore' | 'ameraycan' | 'track')
+                setDates([])
+                setVisibleCount(25)
+                setStatusMap({})
+                setSelectedDate(null)
+                setDayData(null)
+              }}
+              style={{
+                padding: '6px 18px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.05em',
+                background: active ? m.color : 'var(--surface)',
+                color: active ? '#0d0f14' : 'var(--text3)',
+                transition: 'background 0.12s, color 0.12s',
+              }}
+            >
+              {m.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Date list */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+        {datesLoading ? (
+          <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: 12, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
+            Loading…
+          </div>
+        ) : dates.length === 0 ? (
+          <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: 12, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
+            No activity found for {meta.label}
           </div>
         ) : (
-          filtered.map((r, i) => {
-            const color = STUDIO_COLORS[r.studioKey] ?? 'var(--text3)'
-            const isWO  = r.type === 'wo'
-            const canOpen = isWO ? !!r.booking : !!r.submission
-            return (
-              <div
-                key={r.key}
-                onClick={() => {
-                  if (isWO && r.booking) setWoBooking(r.booking)
-                  else if (!isWO && r.submission) setOpsDetail(r)
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = canOpen ? 'var(--surface2)' : 'transparent')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                style={{
-                  display: 'grid', gridTemplateColumns: '88px 110px 170px 1fr 150px 110px 24px',
-                  padding: '11px 16px', gap: 8,
-                  cursor: canOpen ? 'pointer' : 'default',
-                  transition: 'background 0.1s', background: 'transparent',
-                  borderBottom: i < filtered.length - 1 ? '1px solid var(--border)' : 'none',
-                }}
-              >
-                <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono, monospace', alignSelf: 'center' }}>{r.date || '—'}</span>
-                <span style={{ fontSize: 11, color, fontFamily: 'DM Mono, monospace', fontWeight: 700, alignSelf: 'center' }}>
-                  {STUDIO_LABELS[r.studioKey] ?? (r.studioKey || '—')}
-                </span>
-                <div style={{ alignSelf: 'center' }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, fontFamily: 'DM Mono, monospace', padding: '2px 7px', borderRadius: 4, color: isWO ? '#c8f04e' : 'var(--text2)', background: isWO ? '#c8f04e22' : 'var(--surface2)' }}>
-                    {r.typeLabel}
-                  </span>
+          <>
+            {visibleDates.map((date, i) => {
+              const status = statusMap[date] ?? 'none'
+              return (
+                <div
+                  key={date}
+                  onClick={() => setSelectedDate(date)}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '12px 18px', cursor: 'pointer', transition: 'background 0.1s',
+                    background: 'transparent',
+                    borderBottom: i < visibleDates.length - 1 ? '1px solid var(--border)' : 'none',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <StatusDot status={status} />
+                    <span style={{ fontSize: 13, fontFamily: 'DM Mono, monospace', color: 'var(--text)' }}>
+                      {fmtDate(date)}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 14, color: 'var(--text3)' }}>›</span>
                 </div>
-                <div style={{ alignSelf: 'center', overflow: 'hidden' }}>
-                  {r.clientName && (
-                    <div style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Syne', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.clientName}</div>
-                  )}
-                  {r.runnerName && (
-                    <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: r.clientName ? 1 : 0 }}>
-                      {r.clientName ? `Runner: ${r.runnerName}` : r.runnerName}
-                    </div>
-                  )}
-                  {!r.clientName && !r.runnerName && <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>—</span>}
-                </div>
-                <div style={{ alignSelf: 'center' }}>
-                  <div style={{ fontSize: 10, color: '#4ade80', fontFamily: 'DM Mono, monospace' }}>✓ {r.approvedAt ? fmtTime(r.approvedAt) : 'Approved'}</div>
-                  {r.approvedAt && <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 1 }}>{r.approvedAt.slice(0, 10)}</div>}
-                </div>
-                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', alignSelf: 'center' }}>{r.approvedBy ?? '—'}</span>
-                <span style={{ alignSelf: 'center', textAlign: 'center' }}>
-                  {r.needsAttention && <span style={{ fontSize: 13, color: '#f97316' }} title="Needs Attention">⚠</span>}
-                </span>
+              )
+            })}
+            {dates.length > visibleCount && (
+              <div style={{ borderTop: '1px solid var(--border)', padding: '12px 18px', textAlign: 'center' }}>
+                <button
+                  onClick={() => setVisibleCount(v => v + 25)}
+                  style={{
+                    background: 'none', border: '1px solid var(--border)', borderRadius: 6,
+                    padding: '6px 20px', color: 'var(--text3)', fontSize: 11,
+                    fontFamily: 'DM Mono, monospace', cursor: 'pointer',
+                  }}
+                >
+                  Load More ({dates.length - visibleCount} remaining)
+                </button>
               </div>
-            )
-          })
+            )}
+          </>
         )}
       </div>
 
+      {/* Day modal */}
+      {selectedDate && (
+        <div
+          onClick={e => e.target === e.currentTarget && setSelectedDate(null)}
+          style={{
+            position: 'fixed', inset: 0, background: '#000000cc', zIndex: 10000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 20px',
+          }}
+        >
+          <div style={{
+            background: 'var(--bg)', width: '100%', maxWidth: 760,
+            maxHeight: '88dvh', borderRadius: 16, overflow: 'hidden',
+            display: 'flex', flexDirection: 'column',
+            boxShadow: '0 32px 96px #0009',
+            border: `1px solid ${meta.color}33`,
+          }}>
+            {/* Accent bar */}
+            <div style={{ height: 3, background: meta.color, flexShrink: 0 }} />
+
+            {/* Modal header */}
+            <div style={{
+              padding: '18px 26px 14px', borderBottom: '1px solid var(--border)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0,
+            }}>
+              <div>
+                <div style={{ fontFamily: 'Syne', fontWeight: 900, fontSize: 18, color: meta.color }}>
+                  {meta.label}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+                  {fmtDate(selectedDate)} · Daily Ops
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedDate(null)}
+                style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '4px 8px' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal body */}
+            {dayLoading ? (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', fontFamily: 'Syne' }}>
+                Loading…
+              </div>
+            ) : (
+              <div style={{ flex: 1, overflowY: 'auto', padding: '22px 26px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+                {/* Sessions / WO cards */}
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 10 }}>
+                    Sessions
+                  </div>
+                  {dayData && dayData.bookings.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {dayData.bookings.map(booking => {
+                        const wo = dayData.wos.find((w: any) => w.booking_id === booking.id) ?? null
+                        const completed = wo?.status === 'completed'
+                        const needsAttn = !!(wo?.needs_attention_notes)
+                        const borderColor = completed ? '#14B8A6' : needsAttn ? '#F97316' : 'var(--border)'
+                        return (
+                          <div
+                            key={booking.id}
+                            onClick={() => setWoBooking(booking)}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface)')}
+                            style={{
+                              background: 'var(--surface)',
+                              border: `1px solid ${borderColor}`,
+                              borderRadius: 10, padding: '12px 14px',
+                              cursor: 'pointer', transition: 'background 0.1s',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                              <div>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne' }}>
+                                  {booking.artist || booking.client_name || '—'}
+                                </div>
+                                {booking.artist && booking.client_name && (
+                                  <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1, fontFamily: 'DM Mono, monospace' }}>
+                                    {booking.client_name}
+                                  </div>
+                                )}
+                              </div>
+                              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                {needsAttn && (
+                                  <span style={{ fontSize: 9, fontWeight: 700, color: '#F97316', background: '#F9731622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>
+                                    ⚠ Needs Attention
+                                  </span>
+                                )}
+                                {completed ? (
+                                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#14B8A6', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>
+                                    COMPLETED
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6B7280', background: '#6B728022', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>
+                                    OPEN
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 10 }}>
+                              {booking.from_time && (
+                                <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>
+                                  {booking.from_time}–{booking.to_time ?? '?'}
+                                </span>
+                              )}
+                              {booking.studio && (
+                                <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>
+                                  Studio {booking.studio}
+                                </span>
+                              )}
+                              {booking.session_type && (
+                                <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px' }}>
+                                  {SESSION_TYPE_LABELS[booking.session_type] ?? booking.session_type}
+                                </span>
+                              )}
+                              {booking.engineer_name && (
+                                <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>
+                                  Eng: {booking.engineer_name}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingTop: 9, borderTop: '1px solid var(--border)' }}>
+                              {wo && (
+                                <a
+                                  href={`/wo/${wo.id}/print`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  onClick={e => e.stopPropagation()}
+                                  style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Syne, sans-serif', textDecoration: 'none', padding: '4px 9px', border: '1px solid var(--border)', borderRadius: 6 }}
+                                >
+                                  PDF
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', padding: '8px 0' }}>
+                      No confirmed sessions for this date.
+                    </div>
+                  )}
+                </div>
+
+                {/* Divider */}
+                <div style={{ height: 1, background: 'var(--border)', flexShrink: 0 }} />
+
+                {/* Daily tasks checklist rows */}
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 10 }}>
+                    Daily Tasks
+                  </div>
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                    {OPS_CATS.map((cat, i) => {
+                      const row = dayData?.opsRows.find((o: any) => o.category === cat.key) ?? null
+                      const clType = cat.key.replace('_checklist', '')
+                      const cl = dayData?.checklists.find((c: any) => c.type === clType) ?? null
+                      const runnerDone = !!row?.submitted_at
+                      const adminDone = !!row?.admin_approved_at
+                      const isChecklist = cat.key === 'opening_checklist' || cat.key === 'closing_checklist'
+                      const items: any[] = cl?.items ?? []
+                      const checkedCount = items.filter((it: any) => it.checked).length
+                      const totalCount = items.length
+                      return (
+                        <div
+                          key={cat.key}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '12px 16px',
+                            borderBottom: i < OPS_CATS.length - 1 ? '1px solid var(--border)' : 'none',
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Syne', fontWeight: 600 }}>
+                              {cat.label}
+                            </div>
+                            {isChecklist && totalCount > 0 && (
+                              <div style={{ fontSize: 9, color: runnerDone ? '#4ade80' : 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+                                {checkedCount}/{totalCount} checked
+                              </div>
+                            )}
+                            {row?.staff_name && (
+                              <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+                                {row.staff_name}{row.submitted_at ? ` · ${fmtTime(row.submitted_at)}` : ''}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <CheckBox label="Runner" checked={runnerDone} color={meta.color} />
+                            <CheckBox label="Admin" checked={adminDone} color="#14B8A6" />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* WO popup */}
       {woBooking && (
         <WorkOrderPopup
           booking={woBooking}
           onClose={() => setWoBooking(null)}
-          onSaved={() => { setWoBooking(null); fetchLog() }}
-        />
-      )}
-      {opsDetail?.submission && (
-        <DailyOpsModal
-          category={opsDetail.opsCategory ?? ''}
-          studio={opsDetail.opsStudio ?? ''}
-          today={opsDetail.opsDate ?? ''}
-          color={STUDIO_COLORS[opsDetail.studioKey] ?? '#c8f04e'}
-          studioLabel={STUDIO_LABELS[opsDetail.studioKey] ?? opsDetail.studioKey}
-          submission={opsDetail.submission}
-          onClose={() => setOpsDetail(null)}
-          onApprove={async () => {}}
+          onSaved={() => setWoBooking(null)}
         />
       )}
     </>
