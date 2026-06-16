@@ -180,9 +180,7 @@ export default function ChecklistPage() {
     await supabase.from('daily_ops_submissions').upsert({
       studio, date: today, category: `${type}_checklist`,
       staff_name: staffName.trim(), submitted_at: now,
-      needs_attention: hasAttention,
-      attention_notes: notes.trim() || null,
-      photo_urls: photos.length > 0 ? photos : null,
+      notes: notes.trim() || null,
     }, { onConflict: 'studio,date,category' })
 
     // Create or update a tasks row for this checklist if attention content exists
