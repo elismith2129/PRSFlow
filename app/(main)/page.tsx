@@ -339,17 +339,6 @@ export default function DashboardPage() {
     setFlagSubmitting(false)
   }
 
-  async function handleSaveFlag() {
-    if (!selectedFlag || flagSubmitting || !flagCommentText.trim()) return
-    setFlagSubmitting(true)
-    const note = flagCommentText.trim()
-    await supabase.from('flags').update({ acknowledged_note: note }).eq('id', selectedFlag.id)
-    setFlags(prev => prev.map(f => f.id === selectedFlag.id ? { ...f, acknowledged_note: note } : f))
-    setSelectedFlag(prev => prev ? { ...prev, acknowledged_note: note } : null)
-    setFlagCommentText('')
-    setFlagSubmitting(false)
-  }
-
   async function handleCreateFlag() {
     if (!newFlagText.trim() || !newFlagCategory) return
     setFlagSubmitting(true)
@@ -1343,26 +1332,10 @@ export default function DashboardPage() {
                         fontWeight: 600,
                       }}
                     >
-                      {flagSubmitting ? 'Saving…' : 'Save'}
+                      {flagSubmitting ? 'Saving…' : 'Acknowledge'}
                     </button>
                   )
                 })()}
-                {selectedFlag.status === 'acknowledged' && (
-                  <button
-                    onClick={handleSaveFlag}
-                    disabled={flagSubmitting || !flagCommentText.trim()}
-                    style={{
-                      flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
-                      background: flagCommentText.trim() ? '#c8f04e' : 'var(--surface2)',
-                      color: flagCommentText.trim() ? '#0d0f14' : 'var(--text3)',
-                      border: 'none', borderRadius: 6,
-                      cursor: flagCommentText.trim() ? 'pointer' : 'default',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {flagSubmitting ? 'Saving…' : 'Save'}
-                  </button>
-                )}
               </div>
             </div>
 
