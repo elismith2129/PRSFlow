@@ -1199,6 +1199,41 @@ export default function DashboardPage() {
                 </div>
               )}
 
+              {/* Category picker — only shown when flag has no category and is still pending */}
+              {selectedFlag.category === null && selectedFlag.status === 'pending' && (
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
+                    Category
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {(['facility_general', 'gear_equipment', 'client_billing'] as const).map(catKey => {
+                      const catConfig = {
+                        facility_general: { label: 'Facility / General', activeColor: '#0d0f14', activeBg: '#c8f04e', activeBorder: '#c8f04e' },
+                        gear_equipment: { label: 'Gear / Equipment', activeColor: '#0d0f14', activeBg: '#c8f04e', activeBorder: '#c8f04e' },
+                        client_billing: { label: 'Client / Billing', activeColor: '#0d0f14', activeBg: '#c8f04e', activeBorder: '#c8f04e' },
+                      }[catKey]
+                      const isSelected = pendingCategory === catKey
+                      return (
+                        <button
+                          key={catKey}
+                          onClick={() => setPendingCategory(catKey)}
+                          style={{
+                            flex: 1, padding: '5px 4px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700,
+                            letterSpacing: '0.04em', textTransform: 'uppercase',
+                            color: isSelected ? catConfig.activeColor : 'var(--text3)',
+                            background: isSelected ? catConfig.activeBg : 'transparent',
+                            border: isSelected ? `1px solid ${catConfig.activeBorder}` : '1px solid var(--border)',
+                            borderRadius: 6, cursor: 'pointer',
+                          }}
+                        >
+                          {catConfig.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Acknowledged box */}
               {selectedFlag.acknowledged_at && (
                 <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 8, padding: '10px 12px' }}>
@@ -1296,41 +1331,6 @@ export default function DashboardPage() {
                   onChange={e => setFlagCommentPhoto(e.target.files?.[0] ?? null)}
                 />
               </label>
-
-              {/* Category picker — only shown when flag has no category and is still pending */}
-              {selectedFlag.category === null && selectedFlag.status === 'pending' && (
-                <div style={{ marginBottom: 10 }}>
-                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
-                    Category
-                  </div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    {(['facility_general', 'gear_equipment', 'client_billing'] as const).map(catKey => {
-                      const catConfig = {
-                        facility_general: { label: 'Facility / General', activeColor: '#0d0f14', activeBg: '#c8f04e', activeBorder: '#c8f04e' },
-                        gear_equipment: { label: 'Gear / Equipment', activeColor: '#0d0f14', activeBg: '#c8f04e', activeBorder: '#c8f04e' },
-                        client_billing: { label: 'Client / Billing', activeColor: '#0d0f14', activeBg: '#c8f04e', activeBorder: '#c8f04e' },
-                      }[catKey]
-                      const isSelected = pendingCategory === catKey
-                      return (
-                        <button
-                          key={catKey}
-                          onClick={() => setPendingCategory(catKey)}
-                          style={{
-                            flex: 1, padding: '5px 4px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700,
-                            letterSpacing: '0.04em', textTransform: 'uppercase',
-                            color: isSelected ? catConfig.activeColor : 'var(--text3)',
-                            background: isSelected ? catConfig.activeBg : 'transparent',
-                            border: isSelected ? `1px solid ${catConfig.activeBorder}` : '1px solid var(--border)',
-                            borderRadius: 6, cursor: 'pointer',
-                          }}
-                        >
-                          {catConfig.label}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
 
               {/* Action buttons */}
               <div style={{ display: 'flex', gap: 8 }}>
