@@ -121,7 +121,7 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 | `app/(main)/daily-ops-log/page.tsx` | Daily Ops Log route — wraps `DailyOpsLogSection`; also embedded as Admin sidebar tab |
 | `app/runner/[studio]/wo/[id]/page.tsx` | Runner WO form — studio time table, equipment condition, expenses, eng hours, receipt OCR, canvas signature pad (COD-only), payment rows (editable), Save/Finish footer |
 | `app/(main)/wo-hub/page.tsx` | WO Hub — all work orders list, filterable by studio/date/status; linked from nav |
-| `components/admin/DailyOpsLogSection.tsx` | Approved WOs + ops submissions log; studio/type/date filters + search; click-to-open WO or ops modal |
+| `components/admin/DailyOpsLogSection.tsx` | Date-based historical ops log per studio; studio tabs, date list with status dots, day modal (WO cards + 5 checklist rows with Runner/Admin checkboxes); click WO card → WorkOrderPopup |
 | `components/dashboard/LocationStrip.tsx` | 4-studio dashboard strip; drawer with Yesterday/Today sessions + daily ops rows; real-time subscriptions |
 | `lib/checklist-items.ts` | Per-studio opening/closing checklist items; `CHECKLISTS[studio][type]`, `getChecklistSections()`, `flattenSections()` |
 | `public/sop.html` | Self-contained interactive training guide. Replace file to update content; no code change needed. |
@@ -272,16 +272,26 @@ Defined in `styles/globals.css`:
 | runner-save-submit | Checklist and mics pages: Save persists to `checklists`/`mic_checkins`/`mic_inventory_quantities` without writing `submitted_at`; Submit writes `submitted_at` to `daily_ops_submissions`. Mics page restores prior checkin/quantity from DB on load. Red "Required to submit" hint anchored below initials input on Submit with empty field. |
 | **Runner daily ops submission fixes ✅** | **Local date, OPS_CATS key, immutable save, column schema** |
 | runner-daily-ops-fixes | UTC→local date fix on checklist, stock, petty-cash `daily_ops_submissions` writes. LocationStrip OPS_CATS `'stock_list'` → `'stock'` key fix. Immutable save pattern for stock and petty-cash (eliminates duplicate inserts from direct React state mutation). Removed non-existent columns from checklist `daily_ops_submissions` upsert that were causing silent 400 errors. |
+| **Daily ops Today/Yesterday view fixes ✅** | **Approved items and completed WOs no longer disappear from wrong column** |
+| daily-ops-view-fixes | Today column no longer filters out approved ops rows (approval doesn't hide them until the day advances). Yesterday column no longer filters out completed WOs — `pastRetentionWindow` guard scoped to Today's `activeTodayBkgs` only. |
+| **Petty cash running ledger ✅** | **All-time ledger, most-recent balance, In/Out toggle, admin always visible** |
+| petty-cash-ledger | Loads all prior entries for the studio (not just today); most-recent `petty_cash_balances` row for opening balance; In/Out tap-to-toggle replaces `<select>`; save errors surfaced inline; admin balance view unblocked from runner submission state. |
+| **Daily Ops Log rebuilt ✅** | **Date-based historical view with studio tabs, status dots, day modal — replaces flat mixed table** |
+| daily-ops-log-rebuild | Studio tabs (Paramount/Encore/Ameraycan/Track); date list sorted most-recent first with teal/amber/grey status dots; Load More (25 at a time); day modal shows WO cards + 5 checklist rows with Runner/Admin checkboxes; WO card click opens WorkOrderPopup. |
 
 ### Next
 
 | Priority | What's next |
 |---|---|
-| **High** | **Session 3b — Dashboard tasks: notifications + runner flag auto-generation** — auto-create `dashboard_tasks` rows from runner checklist NA flags and WO flags; in-app notification badge on Tasks column when new tasks arrive |
-| **High** | **Calendar drag-and-drop** — drag blocks to move sessions; option+drag to copy to new date |
+| **High** | **Flags system** — runner Needs Attention submissions → structured issues log under Admin tab; manager acknowledgment flow; may absorb or replace Session 3b auto-generation (TBD) |
+| **High** | **Session 3b — runner flag auto-generation** — auto-create `dashboard_tasks` rows from runner checklist NA flags and WO flags; in-app notification badge on Tasks column when new tasks arrive (may be superseded by Flags system) |
+| **High** | **WO → Calendar sync** — audit and harden WO Close & Save → booking field sync; all fields must round-trip correctly |
+| Medium | **Activity log on session form and WO** — per-booking/per-WO feed of field changes, status transitions, runner submissions, admin approvals |
+| Medium | **Combine WOs** — merge multiple work orders for a single booking into one consolidated WO |
+| Medium | **Mobile pass** — full mobile UX review and fixes across non-runner pages (calendar, CRM, admin) |
+| Medium | **Calendar drag-and-drop** — drag blocks to move sessions; option+drag to copy |
 | Medium | **Needs Action rebuild (4.8)** — redesign what "needs action" means vs overdue |
 | Medium | **4.9b — Duplicate merge flow:** UI to merge two client profiles discovered post-import |
-| Horizon | **WO→Calendar sync** — audit and harden WO Close & Save → booking field sync |
 | Horizon | **Dashboard activity log** — recent studio activity feed (session starts, WO completions, task completions) |
 
 ### Deprioritized

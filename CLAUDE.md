@@ -63,7 +63,7 @@ Tables in use (all with public RLS — auth deferred to Chunk 9):
 - `registration_tokens` — public client registration flow
 
 **Runner Hub / Daily Ops (added via migration):**
-- `daily_ops_submissions` — one row per studio+date+category. Tracks `submitted_at`, `admin_approved_at`, `needs_attention`. UNIQUE(studio, date, category)
+- `daily_ops_submissions` — one row per studio+date+category. Tracks `submitted_at`, `admin_approved_at`. Columns `needs_attention`, `attention_notes`, `photo_urls` do NOT exist on this table — those live on `checklists`. UNIQUE(studio, date, category)
 - `checklists` — actual item check data. `items` is jsonb `[{item, checked}]`. One row per studio+type+date
 - `petty_cash_entries` — in/out transactions per studio+date
 - `petty_cash_balances` — opening balance per studio+date. UNIQUE(studio, date)
@@ -100,7 +100,7 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 - **`TimeInput` is a smart-parse text `<input>` with auto-format on blur.** Accepts `10a`→`10:00 AM`, `930p`→`9:30 PM`, `1430`→`2:30 PM` (24h), bare `8`→`8:00 AM`. Enter commits. Click/focus selects all. Used in booking form and WO Studio Time From/To cells. (Was briefly a 30-min `<select>` June 5–10, 2026 — reverted for mobile usability.)
 - **iOS Safari scroll lock: use `body.position=fixed` + `top=-scrollY`, not `overflow:hidden`.** `overflow:hidden` on body does not block scroll on iOS. Correct pattern: save `scrollY`, set `body.style.top=\`-${scrollY}px\`, position=fixed, width=100%` on open; clear all three and call `window.scrollTo({ top: savedScrollY, behavior: 'instant' })` on close.
 
-## What's Built (as of June 14, 2026)
+## What's Built (as of June 15, 2026)
 
 | Chunk | Feature | Status |
 |-------|---------|--------|
@@ -148,10 +148,18 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 | Dashboard rebuild | 3-col layout: Needs Action (hot/warm/uncontacted, excludes cold/dead/booked, top 5), Today's Sessions (confirmed + tentative with colored left-border rows), Tasks placeholder (Me/Mgr/Billing/Asst tabs, `activeTaskTab` state wired). Removed `TodoModule`, `QCHomeWidget`, `clients` + `qc_reports` fetches. | ✅ Complete |
 | dashboard_task_comments table | New table: per-task comment thread. `task_id` FK → `dashboard_tasks` CASCADE. `text`, `photo_url`, `created_by_name`, `created_at`. Anon + authenticated SELECT + INSERT RLS. Append-only (no update/delete policies). | ✅ Complete |
 | Dashboard Tasks panel (Session 3a) | Col 3 Tasks column live: fetch by tab role (Me=admin, Mgr=studio_manager, Asst=asst_manager, Billing=billing). Task rows clickable → ticket modal; `×` soft-deletes. Inline add task form with optional photo. Task modal: Syne title, task photo, comment thread, textarea + photo attach, Comment + Complete buttons. Photos to `checklist-photos` bucket at `dashboard-tasks/` prefix. `created_by_name` from `supabase.auth.getUser()`, falls back to `'Staff'`. `DashboardTask.photo_url` + `DashboardTaskComment` type added to `lib/supabase.ts`. | ✅ Complete |
+| Daily ops Today/Yesterday view fixes | Approved checklist items no longer disappear from Today column; completed WOs no longer disappear from Yesterday column; `pastRetentionWindow` guard scoped to Today only | ✅ Complete |
+| Petty cash running ledger | All-time entry ledger with most-recent balance; In/Out tap-to-toggle button; admin view unblocked from submission state; save errors surfaced inline | ✅ Complete |
+| Daily Ops Log rebuilt | `DailyOpsLogSection` rebuilt as date-based historical view: studio tabs (Paramount/Encore/Ameraycan/Track), date list with status dots (teal/amber/grey), Load More pagination, day modal (WO cards + 5 checklist rows with Runner/Admin checkboxes); replaces old flat mixed table | ✅ Complete |
 
 ## What's Next
 
-- **Session 3b — Dashboard tasks: notifications + runner flag auto-generation** — auto-create `dashboard_tasks` rows when runner submits a checklist with Needs Attention content or flags a WO issue; in-app notification badge on the Tasks column header when new tasks arrive for the active role
+- **Flags system** — runner Needs Attention submissions feed a structured issues log under an Admin tab; manager must acknowledge each flag; replaces or absorbs Session 3b auto-generation into dashboard_tasks (TBD which model wins)
+- **Session 3b — runner flag auto-generation** — auto-create `dashboard_tasks` rows when runner submits a checklist with Needs Attention content or flags a WO issue; in-app notification badge on the Tasks column header when new tasks arrive for the active role (may be superseded by Flags system above)
+- **WO → Calendar sync** — audit and harden the WO Close & Save → booking field sync path; ensure all fields round-trip correctly when WO is edited after booking form has unsaved changes
+- **Activity log on session form and WO** — per-booking/per-WO activity feed showing field changes, status transitions, runner submissions, and admin approvals
+- **Combine WOs** — merge multiple work orders for a single booking into one consolidated WO
+- **Mobile pass** — full mobile UX review and fixes across all non-runner pages (calendar, CRM, admin)
 - **Calendar drag-and-drop** — drag blocks to move sessions; option+drag to copy to new date
 - **Needs Action rebuild (4.8)** — redesign what "needs action" means vs overdue
 - **Email/webhooks (Chunk 5)** — Squarespace → lead auto-create
@@ -159,7 +167,6 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 - **Supabase Realtime on new tables** — any new table added going forward needs `ALTER PUBLICATION supabase_realtime ADD TABLE <name>` + `ALTER TABLE <name> REPLICA IDENTITY FULL` before subscriptions will fire
 
 **Horizon / ideas (not yet sequenced):**
-- **WO→Calendar sync** — audit and harden the WO Close & Save → booking sync path; ensure all fields round-trip correctly when WO is edited after booking form has unsaved changes
 - **Dashboard activity log** — recent studio activity feed (session starts, WO completions, runner checklist submissions, task completions) as a fourth panel or sidebar widget
 
 ## Environment Variables

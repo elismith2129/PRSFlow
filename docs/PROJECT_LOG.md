@@ -194,7 +194,7 @@ This applies to all new tables going forward. Existing tables are unaffected unt
 
 ---
 
-*Last updated: June 10, 2026 — WO Hub, Studio Time local-first refactor, eng_visible/admin_locked columns, WO open/completed toggle, TimeInput smart-parse rewrite, runner WO bottom sections rebuild, canvas signature pad (COD-only, admin+runner aligned), payment type dropdown + memo + last_four, payment amount currency auto-format.*
+*Last updated: June 15, 2026 — Daily ops Today/Yesterday view fixes, petty cash running ledger, Daily Ops Log rebuilt as date-based historical view per studio.*
 
 ---
 
@@ -945,7 +945,7 @@ Approved sessions drop from the Today column: after loading today's WOs, `fetchD
 
 ---
 
-*Last updated: June 15, 2026 — Runner Save + Submit pattern, daily_ops_submissions column fix, quick action card submitted state, Tasks panel polish (commits 79f0632 through c3c4d48).*
+*Last updated: June 15, 2026 — Daily ops Today/Yesterday view fixes, petty cash running ledger, Daily Ops Log rebuilt as date-based historical view per studio (commits 315aa98 through e4ed5c5).*
 
 ---
 
@@ -1186,3 +1186,33 @@ CREATE POLICY "dashboard_tasks: anon read" ON dashboard_tasks FOR SELECT TO anon
 - The checklist `handleSubmit` was sending `attention_notes`, `needs_attention`, and `photo_urls` in the `daily_ops_submissions` upsert. These columns don't exist in that table — they live on `checklists` rows. The upsert was silently returning a 400 Bad Request from Supabase, meaning the submission was never recorded.
 - Fix: removed the three non-existent columns. Now only sends `studio, date, category, staff_name, submitted_at, notes` (all valid columns).
 - Root cause: the table schema was drafted with those columns in the initial briefing but they were never created in the actual DB migration.
+
+---
+
+### June 15, 2026 — Daily ops view fixes, petty cash ledger, Daily Ops Log rebuild
+
+**Commits: `315aa98`, `7ee137c`, `02724ce`, `03a9f28`, `49253ca`, `e4ed5c5`**
+
+**Approved checklist items no longer disappear from Today view (`315aa98`):**
+- Checklist rows with `admin_approved_at` set were being filtered out of the Today column in the LocationStrip drawer immediately on approval. The approved-state filter was incorrectly hiding approved ops rows from the current-day view alongside the Yesterday view.
+- Fix: Today ops rows now show all submissions regardless of approval state. Only the Yesterday column drops approved items.
+
+**Completed WOs no longer disappear from Yesterday view (`7ee137c`):**
+- Work orders with `status = 'completed'` were being dropped from the Yesterday session list in the LocationStrip drawer. The `pastRetentionWindow` guard that hides completed WOs from Today after 9am was incorrectly applying to Yesterday as well.
+- Fix: `pastRetentionWindow` guard applied only to the Today column's `activeTodayBkgs` filter. Yesterday always shows all sessions regardless of WO status.
+
+**Petty cash converted to running ledger (`02724ce`, `03a9f28`, `49253ca`):**
+- `/runner/[studio]/petty-cash` page rebuilt from scratch:
+  - **Running ledger** — page loads ALL prior petty cash entries for the studio (not just today's), sorted chronologically. Each entry shows description, amount, In/Out indicator, and timestamp.
+  - **Most-recent balance** — opening balance fetched as the most recent `petty_cash_balances` row for the studio (was previously date-keyed to today only, so historical balance never appeared when returning on a new day).
+  - **In/Out tap-to-toggle** — type selector changed from a `<select>` dropdown to a tap-toggle button cycling between In and Out. Cleaner on mobile.
+  - **Save error surfacing** — Supabase insert errors now surface inline rather than failing silently.
+  - **Admin view unblocked** — admin balance/entries view was previously gated behind `submitted_at` being set on the day's submission. Gate removed; admin view always shows current data regardless of runner submission state.
+
+**Daily Ops Log rebuilt as date-based historical view (`e4ed5c5`):**
+- `components/admin/DailyOpsLogSection.tsx` completely rewritten. The old flat mixed table (WOs + submissions, search/filter row) is replaced by a date-based historical log per studio.
+- **Studio tabs** — Paramount | Encore | Ameraycan | Track. Switching resets the date list and refetches.
+- **Date list** — all dates with any confirmed booking, checklist, or ops submission activity for the selected studio, sorted most-recent first. Status dot per date: teal = all 5 OPS_CATS admin-approved, amber = at least one runner-submitted awaiting approval, grey = no ops activity.
+- **Load More** — dates paginate 25 at a time with a "Load More (N remaining)" button.
+- **Day modal** — clicking a date opens a modal styled identically to the LocationStrip daily ops drawer: session/WO cards on top (completed teal border, needs-attention orange border, open grey), 5 checklist rows below with Runner/Admin checkboxes, staff name and submitted time per row. WO card click opens `WorkOrderPopup`.
+- Old search bar and studio/type/date filter controls removed entirely. Status dot on each date row replaces the old per-row approved indicator.
