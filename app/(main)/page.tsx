@@ -680,54 +680,6 @@ export default function DashboardPage() {
             + Flag
           </button>
         </div>
-        {addingFlag && (
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 480 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <select
-                value={newFlagStudio}
-                onChange={e => setNewFlagStudio(e.target.value)}
-                style={{ padding: '6px 8px', fontSize: 11, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono', outline: 'none', flex: 1 }}
-              >
-                <option value="paramount">Paramount</option>
-                <option value="encore">Encore</option>
-                <option value="ameraycan">Ameraycan</option>
-                <option value="track">Track</option>
-              </select>
-              <select
-                value={newFlagCategory ?? ''}
-                onChange={e => setNewFlagCategory(e.target.value as 'facility_general' | 'gear_equipment' | 'client_billing')}
-                style={{ padding: '6px 8px', fontSize: 11, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, color: newFlagCategory ? 'var(--text)' : 'var(--text3)', fontFamily: 'DM Mono', outline: 'none', flex: 1 }}
-              >
-                <option value="" disabled>Category…</option>
-                <option value="facility_general">Facility / General</option>
-                <option value="gear_equipment">Gear / Equipment</option>
-                <option value="client_billing">Client / Billing</option>
-              </select>
-            </div>
-            <textarea
-              value={newFlagText}
-              onChange={e => setNewFlagText(e.target.value)}
-              placeholder="Describe the issue…"
-              rows={2}
-              style={{ width: '100%', padding: '8px', fontSize: 11, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono', outline: 'none', resize: 'none', boxSizing: 'border-box' }}
-            />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => { setAddingFlag(false); setNewFlagText(''); setNewFlagCategory(null); setNewFlagStudio('paramount') }}
-                style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text3)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateFlag}
-                disabled={flagSubmitting || !newFlagText.trim() || !newFlagCategory}
-                style={{ fontSize: 10, fontFamily: 'DM Mono', background: newFlagText.trim() && newFlagCategory ? '#c8f04e' : 'var(--surface)', color: newFlagText.trim() && newFlagCategory ? '#0d0f14' : 'var(--text3)', border: 'none', borderRadius: 6, padding: '5px 12px', cursor: newFlagText.trim() && newFlagCategory ? 'pointer' : 'default', fontWeight: 600 }}
-              >
-                {flagSubmitting ? 'Creating…' : 'Create Flag'}
-              </button>
-            </div>
-          </div>
-        )}
         {flagsLoading ? (
           <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
         ) : flags.length === 0 ? (
@@ -1024,6 +976,128 @@ export default function DashboardPage() {
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE FLAG MODAL */}
+      {addingFlag && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={e => { if (e.target === e.currentTarget) { setAddingFlag(false); setNewFlagText(''); setNewFlagCategory(null); setNewFlagStudio('paramount') } }}
+        >
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+            {/* Header */}
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: '#e8eaf2' }}>New Flag</span>
+                <button
+                  onClick={() => { setAddingFlag(false); setNewFlagText(''); setNewFlagCategory(null); setNewFlagStudio('paramount') }}
+                  style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 18, lineHeight: 1, padding: 0 }}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+              {/* Studio */}
+              <div>
+                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
+                  Studio
+                </div>
+                <select
+                  value={newFlagStudio}
+                  onChange={e => setNewFlagStudio(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', fontSize: 11, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono', outline: 'none' }}
+                >
+                  <option value="paramount">Paramount</option>
+                  <option value="encore">Encore</option>
+                  <option value="ameraycan">Ameraycan</option>
+                  <option value="track">Track</option>
+                </select>
+              </div>
+
+              {/* Category */}
+              <div>
+                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
+                  Category
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {(['facility_general', 'gear_equipment', 'client_billing'] as const).map(catKey => {
+                    const catConfig = {
+                      facility_general: { label: 'Facility / General', activeColor: 'var(--text3)', activeBg: 'var(--surface2)', activeBorder: 'var(--text3)' },
+                      gear_equipment: { label: 'Gear / Equipment', activeColor: '#F59E0B', activeBg: 'rgba(245,158,11,0.15)', activeBorder: '#F59E0B' },
+                      client_billing: { label: 'Client / Billing', activeColor: '#60A5FA', activeBg: 'rgba(96,165,250,0.15)', activeBorder: '#60A5FA' },
+                    }[catKey]
+                    const isSelected = newFlagCategory === catKey
+                    return (
+                      <button
+                        key={catKey}
+                        onClick={() => setNewFlagCategory(catKey)}
+                        style={{
+                          flex: 1, padding: '6px 4px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700,
+                          letterSpacing: '0.04em', textTransform: 'uppercase',
+                          color: isSelected ? catConfig.activeColor : 'var(--text3)',
+                          background: isSelected ? catConfig.activeBg : 'transparent',
+                          border: isSelected ? `1px solid ${catConfig.activeBorder}` : '1px solid var(--border)',
+                          borderRadius: 6, cursor: 'pointer',
+                        }}
+                      >
+                        {catConfig.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Note */}
+              <div>
+                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
+                  Note
+                </div>
+                <textarea
+                  value={newFlagText}
+                  onChange={e => setNewFlagText(e.target.value)}
+                  placeholder="Describe the issue…"
+                  rows={3}
+                  autoFocus
+                  style={{ width: '100%', padding: '8px', fontSize: 11, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono', outline: 'none', resize: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+
+            </div>
+
+            {/* Divider */}
+            <div style={{ borderTop: '1px solid var(--border)' }} />
+
+            {/* Footer */}
+            <div style={{ padding: '12px 20px', display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => { setAddingFlag(false); setNewFlagText(''); setNewFlagCategory(null); setNewFlagStudio('paramount') }}
+                style={{ flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono', background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--text2)' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateFlag}
+                disabled={flagSubmitting || !newFlagText.trim() || !newFlagCategory}
+                style={{
+                  flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
+                  background: newFlagText.trim() && newFlagCategory ? '#c8f04e' : 'var(--surface2)',
+                  color: newFlagText.trim() && newFlagCategory ? '#0d0f14' : 'var(--text3)',
+                  border: 'none', borderRadius: 6,
+                  cursor: newFlagText.trim() && newFlagCategory ? 'pointer' : 'default',
+                  fontWeight: 600,
+                }}
+              >
+                {flagSubmitting ? 'Creating…' : 'Create Flag'}
+              </button>
+            </div>
+
           </div>
         </div>
       )}
