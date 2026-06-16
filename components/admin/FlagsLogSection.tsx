@@ -109,15 +109,6 @@ export function FlagsLogSection() {
   async function handleAcknowledgeFlag() {
     if (!selectedFlag || flagSubmitting) return
     setFlagSubmitting(true)
-    const photo_url = flagCommentPhoto ? await uploadPhoto(flagCommentPhoto) : null
-    if (flagCommentText.trim() || photo_url) {
-      await supabase.from('flag_comments').insert({
-        flag_id: selectedFlag.id,
-        text: flagCommentText.trim() || null,
-        photo_url,
-        created_by_name: 'Staff',
-      })
-    }
     const { data: updatedData } = await supabase.from('flags').update({
       status: 'acknowledged',
       acknowledged_by: 'Staff',
@@ -345,7 +336,7 @@ export function FlagsLogSection() {
                           <button
                             onClick={() => setShowResolveModal(true)}
                             disabled={flagSubmitting}
-                            style={{ fontSize: 10, fontFamily: 'DM Mono', background: '#14B8A6', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}
+                            style={{ fontSize: 10, fontFamily: 'DM Mono', background: 'transparent', color: '#14B8A6', border: '1px solid #14B8A6', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}
                           >
                             {flagSubmitting ? 'Saving…' : 'Resolve'}
                           </button>
@@ -359,8 +350,8 @@ export function FlagsLogSection() {
                       </div>
                     </div>
                     {/* Row 2: studio name */}
-                    <div style={{ fontSize: 16, fontWeight: 800, fontFamily: 'Syne', color: STUDIO_COLORS[selectedFlag.studio] ?? 'var(--text)' }}>
-                      {selectedFlag.studio}
+                    <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Syne', color: STUDIO_COLORS[selectedFlag.studio] ?? 'var(--text)' }}>
+                      {selectedFlag.studio.charAt(0).toUpperCase() + selectedFlag.studio.slice(1)}
                     </div>
                     {/* Row 3: category label */}
                     {selectedFlag.category && (() => {
