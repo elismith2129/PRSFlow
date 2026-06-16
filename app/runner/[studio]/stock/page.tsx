@@ -59,6 +59,7 @@ export default function StockPage() {
         if (data) it.id = data.id
       }
     }
+    setItems([...items])
     await supabase.from('daily_ops_submissions').upsert({
       studio, date: today, category: 'stock',
       submitted_at: new Date().toISOString(),
