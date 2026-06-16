@@ -314,3 +314,32 @@ export interface DashboardTaskComment {
   created_by_name: string | null
   created_at: string
 }
+
+export interface Flag {
+  id: string
+  studio: string
+  source: 'runner_flag' | 'wo_flag' | 'manual'
+  source_id: string | null
+  source_label: string | null
+  runner_note: string | null
+  category: 'facility_general' | 'gear_equipment' | 'client_billing' | null
+  status: 'pending' | 'acknowledged' | 'resolved'
+  acknowledged_by: string | null
+  acknowledged_at: string | null
+  acknowledged_note: string | null
+  resolved_by: string | null
+  resolved_at: string | null
+  resolved_note: string | null
+  deleted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface FlagComment {
+  id: string
+  flag_id: string
+  text: string | null
+  photo_url: string | null
+  created_by_name: string | null
+  created_at: string
+}

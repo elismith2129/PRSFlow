@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { supabase, Lead, Booking, DashboardTask, DashboardTaskComment } from '@/lib/supabase'
+import { supabase, Lead, Booking, DashboardTask, DashboardTaskComment, Flag, FlagComment } from '@/lib/supabase'
 import { LocationStrip } from '@/components/dashboard/LocationStrip'
 import { useRouter } from 'next/navigation'
 
@@ -53,8 +53,18 @@ export default function DashboardPage() {
   const [historySearch, setHistorySearch] = useState('')
   const [selectedHistoryTask, setSelectedHistoryTask] = useState<DashboardTask | null>(null)
   const [historyTaskComments, setHistoryTaskComments] = useState<DashboardTaskComment[]>([])
+  const [flags, setFlags] = useState<Flag[]>([])
+  const [flagsLoading, setFlagsLoading] = useState(true)
+  const [selectedFlag, setSelectedFlag] = useState<Flag | null>(null)
+  const [flagComments, setFlagComments] = useState<FlagComment[]>([])
+  const [flagCommentText, setFlagCommentText] = useState('')
+  const [flagCommentPhoto, setFlagCommentPhoto] = useState<File | null>(null)
+  const [flagSubmitting, setFlagSubmitting] = useState(false)
+  const [currentUserName, setCurrentUserName] = useState<string>('Staff')
+  const [pendingCategory, setPendingCategory] = useState<'facility_general' | 'gear_equipment' | 'client_billing' | null>(null)
   const newTaskPhotoRef = useRef<HTMLInputElement>(null)
   const commentPhotoRef = useRef<HTMLInputElement>(null)
+  const flagCommentPhotoRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
   const now = new Date()
@@ -71,13 +81,16 @@ export default function DashboardPage() {
       const d = new Date()
       d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
       const today = d.toISOString().slice(0, 10)
-      const [{ data: leadsData }, { data: bookingsData }] = await Promise.all([
+      const [{ data: leadsData }, { data: bookingsData }, { data: flagsData }] = await Promise.all([
         supabase.from('leads').select('*').order('created_at', { ascending: false }),
         supabase.from('bookings').select('*').lte('start_date', today).gte('end_date', today).order('from_time', { ascending: true }),
+        supabase.from('flags').select('*').in('status', ['pending', 'acknowledged']).is('deleted_at', null).order('created_at', { ascending: false }),
       ])
       setLeads(leadsData || [])
       setBookings(bookingsData || [])
+      setFlags(flagsData || [])
       setLoading(false)
+      setFlagsLoading(false)
     }
     load()
   }, [])
@@ -211,6 +224,98 @@ export default function DashboardPage() {
     setCommentText('')
     setCommentPhoto(null)
     setTaskSubmitting(false)
+  }
+
+  async function loadFlagComments(flagId: string) {
+    const { data } = await supabase
+      .from('flag_comments')
+      .select('*')
+      .eq('flag_id', flagId)
+      .order('created_at', { ascending: true })
+    setFlagComments(data || [])
+  }
+
+  async function handleOpenFlag(flag: Flag) {
+    setSelectedFlag(flag)
+    setFlagCommentText('')
+    setFlagCommentPhoto(null)
+    setPendingCategory(null)
+    if (flagCommentPhotoRef.current) flagCommentPhotoRef.current.value = ''
+    await loadFlagComments(flag.id)
+  }
+
+  async function handleFlagComment() {
+    if (!selectedFlag || flagSubmitting) return
+    if (!flagCommentText.trim() && !flagCommentPhoto) return
+    setFlagSubmitting(true)
+    const photo_url = flagCommentPhoto ? await uploadPhoto(flagCommentPhoto) : null
+    await supabase.from('flag_comments').insert({
+      flag_id: selectedFlag.id,
+      text: flagCommentText.trim() || null,
+      photo_url,
+      created_by_name: currentUserEmail,
+    })
+    setFlagCommentText('')
+    setFlagCommentPhoto(null)
+    if (flagCommentPhotoRef.current) flagCommentPhotoRef.current.value = ''
+    await loadFlagComments(selectedFlag.id)
+    setFlagSubmitting(false)
+  }
+
+  async function handleAcknowledgeFlag() {
+    if (!selectedFlag || flagSubmitting) return
+    setFlagSubmitting(true)
+    const photo_url = flagCommentPhoto ? await uploadPhoto(flagCommentPhoto) : null
+    if (flagCommentText.trim() || photo_url) {
+      await supabase.from('flag_comments').insert({
+        flag_id: selectedFlag.id,
+        text: flagCommentText.trim() || null,
+        photo_url,
+        created_by_name: currentUserEmail,
+      })
+    }
+    const updated = await supabase.from('flags').update({
+      status: 'acknowledged',
+      acknowledged_by: currentUserEmail,
+      acknowledged_at: new Date().toISOString(),
+      acknowledged_note: flagCommentText.trim() || null,
+      ...(pendingCategory ? { category: pendingCategory } : {}),
+    }).eq('id', selectedFlag.id).select().single()
+    if (updated.data) {
+      setFlags(prev => prev.map(f => f.id === selectedFlag.id ? updated.data : f))
+      setSelectedFlag(updated.data)
+    }
+    setFlagCommentText('')
+    setFlagCommentPhoto(null)
+    if (flagCommentPhotoRef.current) flagCommentPhotoRef.current.value = ''
+    setPendingCategory(null)
+    setFlagSubmitting(false)
+  }
+
+  async function handleResolveFlag() {
+    if (!selectedFlag || flagSubmitting) return
+    setFlagSubmitting(true)
+    const photo_url = flagCommentPhoto ? await uploadPhoto(flagCommentPhoto) : null
+    if (flagCommentText.trim() || photo_url) {
+      await supabase.from('flag_comments').insert({
+        flag_id: selectedFlag.id,
+        text: flagCommentText.trim() || null,
+        photo_url,
+        created_by_name: currentUserEmail,
+      })
+    }
+    await supabase.from('flags').update({
+      status: 'resolved',
+      resolved_by: currentUserEmail,
+      resolved_at: new Date().toISOString(),
+      resolved_note: flagCommentText.trim() || null,
+    }).eq('id', selectedFlag.id)
+    setFlags(prev => prev.filter(f => f.id !== selectedFlag.id))
+    setSelectedFlag(null)
+    setFlagCommentText('')
+    setFlagCommentPhoto(null)
+    if (flagCommentPhotoRef.current) flagCommentPhotoRef.current.value = ''
+    setFlagSubmitting(false)
   }
 
   return (
@@ -524,6 +629,89 @@ export default function DashboardPage() {
 
       </div>
 
+      {/* FLAGS PANEL */}
+      <div style={{ marginTop: 14, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ padding: '13px 16px 11px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13 }}>FLAGS</div>
+          {flags.filter(f => f.status === 'pending').length > 0 && (
+            <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#c8f04e', color: '#0d0f14', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {flags.filter(f => f.status === 'pending').length}
+            </div>
+          )}
+          {flags.filter(f => f.status === 'acknowledged').length > 0 && (
+            <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#F97316', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {flags.filter(f => f.status === 'acknowledged').length}
+            </div>
+          )}
+        </div>
+        {flagsLoading ? (
+          <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
+        ) : flags.length === 0 ? (
+          <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 11 }}>No open flags</div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10, padding: 12 }}>
+            {flags.map(flag => {
+              const isPending = flag.status === 'pending'
+              const borderColor = isPending ? '#F97316' : '#14B8A6'
+              const statusColor = isPending ? '#F97316' : '#14B8A6'
+              const categoryConfig: Record<string, { label: string; color: string; bg: string }> = {
+                facility_general: { label: 'Facility / General', color: 'var(--text3)', bg: 'var(--surface2)' },
+                gear_equipment: { label: 'Gear / Equipment', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
+                client_billing: { label: 'Client / Billing', color: '#60A5FA', bg: 'rgba(96,165,250,0.12)' },
+              }
+              const catInfo = flag.category ? categoryConfig[flag.category] : null
+              return (
+                <div
+                  key={flag.id}
+                  onClick={() => handleOpenFlag(flag)}
+                  style={{
+                    padding: '10px 12px',
+                    background: 'var(--surface2)',
+                    border: '0.5px solid var(--border)',
+                    borderLeft: `2px solid ${borderColor}`,
+                    borderRadius: '0 8px 8px 0',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text3)', textTransform: 'uppercase', background: 'var(--surface)', padding: '2px 6px', borderRadius: 4, border: '0.5px solid var(--border)' }}>
+                        {flag.studio}
+                      </span>
+                      {catInfo && (
+                        <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', color: catInfo.color, background: catInfo.bg, padding: '2px 6px', borderRadius: 4, textTransform: 'uppercase' }}>
+                          {catInfo.label}
+                        </span>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: statusColor, textTransform: 'uppercase', flexShrink: 0 }}>
+                      {flag.status}
+                    </span>
+                  </div>
+                  {flag.runner_note && (
+                    <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.4, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                      {flag.runner_note}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, gap: 8 }}>
+                    {flag.source_label ? (
+                      <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+                        {flag.source_label}
+                      </div>
+                    ) : (
+                      <div style={{ flex: 1 }} />
+                    )}
+                    <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      {new Date(flag.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
       {/* TASK MODAL */}
       {selectedTask && (
         <div
@@ -752,6 +940,214 @@ export default function DashboardPage() {
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* FLAG MODAL */}
+      {selectedFlag && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={e => { if (e.target === e.currentTarget) setSelectedFlag(null) }}
+        >
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+            {/* Modal header */}
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
+              <button
+                onClick={() => setSelectedFlag(null)}
+                style={{ position: 'absolute', top: 14, right: 16, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 18, lineHeight: 1, padding: 0 }}
+              >
+                ×
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, paddingRight: 24 }}>
+                <span style={{
+                  fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em',
+                  textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4,
+                  color: selectedFlag.status === 'pending' ? '#F97316' : '#14B8A6',
+                  background: selectedFlag.status === 'pending' ? 'rgba(249,115,22,0.12)' : 'rgba(20,184,166,0.12)',
+                }}>
+                  {selectedFlag.status}
+                </span>
+                <span style={{ fontSize: 10, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  {selectedFlag.studio}
+                </span>
+              </div>
+              {selectedFlag.source_label && (
+                <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+                  {selectedFlag.source_label}
+                </div>
+              )}
+            </div>
+
+            {/* Scrollable body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+              {/* Runner note — read only */}
+              {selectedFlag.runner_note && (
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
+                    Runner Note
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.5, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
+                    {selectedFlag.runner_note}
+                  </div>
+                </div>
+              )}
+
+              {/* Acknowledged box */}
+              {selectedFlag.status === 'acknowledged' && (
+                <div style={{ background: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.25)', borderRadius: 8, padding: '10px 12px' }}>
+                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#14B8A6', marginBottom: 4 }}>
+                    Acknowledged
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>
+                    {selectedFlag.acknowledged_by}
+                    {selectedFlag.acknowledged_at && ` · ${new Date(selectedFlag.acknowledged_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
+                  </div>
+                  {selectedFlag.acknowledged_note && (
+                    <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 6, lineHeight: 1.5 }}>
+                      {selectedFlag.acknowledged_note}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Comment thread */}
+              {flagComments.length === 0 ? (
+                <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>No updates yet</div>
+              ) : (
+                flagComments.map(c => (
+                  <div key={c.id} style={{ marginBottom: 2 }}>
+                    {c.text && (
+                      <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>{c.text}</div>
+                    )}
+                    {c.photo_url && (
+                      <img
+                        src={c.photo_url}
+                        alt=""
+                        style={{ display: 'block', maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover', marginTop: c.text ? 6 : 0 }}
+                      />
+                    )}
+                    <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 4, fontFamily: 'DM Mono' }}>
+                      {c.created_by_name && `${c.created_by_name} · `}{fmtTime(c.created_at)}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Divider */}
+            <div style={{ borderTop: '1px solid var(--border)' }} />
+
+            {/* Input area */}
+            <div style={{ padding: '12px 20px' }}>
+              <textarea
+                value={flagCommentText}
+                onChange={e => setFlagCommentText(e.target.value)}
+                placeholder="Add a note…"
+                rows={2}
+                style={{
+                  width: '100%', padding: '8px', fontSize: 11,
+                  background: 'var(--surface2)', border: '1px solid var(--border)',
+                  borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono',
+                  outline: 'none', resize: 'none', boxSizing: 'border-box',
+                }}
+              />
+              <label style={{ display: 'block', fontSize: 10, color: 'var(--text3)', cursor: 'pointer', fontFamily: 'DM Mono', marginTop: 6, marginBottom: 8 }}>
+                {flagCommentPhoto ? flagCommentPhoto.name : '+ Attach photo'}
+                <input
+                  ref={flagCommentPhotoRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={e => setFlagCommentPhoto(e.target.files?.[0] ?? null)}
+                />
+              </label>
+
+              {/* Category picker — only shown when flag has no category */}
+              {selectedFlag.category === null && (
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
+                    Category
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {(['facility_general', 'gear_equipment', 'client_billing'] as const).map(catKey => {
+                      const catConfig = {
+                        facility_general: { label: 'Facility / General', activeColor: 'var(--text3)', activeBg: 'var(--surface2)', activeBorder: 'var(--text3)' },
+                        gear_equipment: { label: 'Gear / Equipment', activeColor: '#F59E0B', activeBg: 'rgba(245,158,11,0.15)', activeBorder: '#F59E0B' },
+                        client_billing: { label: 'Client / Billing', activeColor: '#60A5FA', activeBg: 'rgba(96,165,250,0.15)', activeBorder: '#60A5FA' },
+                      }[catKey]
+                      const isSelected = pendingCategory === catKey
+                      return (
+                        <button
+                          key={catKey}
+                          onClick={() => setPendingCategory(catKey)}
+                          style={{
+                            flex: 1, padding: '5px 4px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700,
+                            letterSpacing: '0.04em', textTransform: 'uppercase',
+                            color: isSelected ? catConfig.activeColor : 'var(--text3)',
+                            background: isSelected ? catConfig.activeBg : 'transparent',
+                            border: isSelected ? `1px solid ${catConfig.activeBorder}` : '1px solid var(--border)',
+                            borderRadius: 6, cursor: 'pointer',
+                          }}
+                        >
+                          {catConfig.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={handleFlagComment}
+                  disabled={flagSubmitting || (!flagCommentText.trim() && !flagCommentPhoto)}
+                  style={{
+                    flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
+                    background: 'transparent', border: '1px solid var(--border)',
+                    borderRadius: 6, cursor: 'pointer', color: 'var(--text2)',
+                  }}
+                >
+                  Comment
+                </button>
+                {selectedFlag.status === 'pending' && (() => {
+                  const canAck = selectedFlag.category !== null || pendingCategory !== null
+                  return (
+                    <button
+                      onClick={handleAcknowledgeFlag}
+                      disabled={flagSubmitting || !canAck}
+                      style={{
+                        flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
+                        background: canAck ? '#c8f04e' : 'var(--surface2)',
+                        color: canAck ? '#0d0f14' : 'var(--text3)',
+                        border: 'none', borderRadius: 6,
+                        cursor: canAck ? 'pointer' : 'default',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {flagSubmitting ? 'Saving…' : 'Acknowledge'}
+                    </button>
+                  )
+                })()}
+                {selectedFlag.status === 'acknowledged' && (
+                  <button
+                    onClick={handleResolveFlag}
+                    disabled={flagSubmitting}
+                    style={{
+                      flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
+                      background: '#14B8A6', color: '#fff',
+                      border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600,
+                    }}
+                  >
+                    {flagSubmitting ? 'Saving…' : 'Resolve'}
+                  </button>
+                )}
+              </div>
+            </div>
+
           </div>
         </div>
       )}
