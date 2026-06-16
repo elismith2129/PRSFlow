@@ -580,6 +580,48 @@ export default function RunnerWOPage() {
       signature_data: signatureData || null,
     }).eq('id', woRef.current)
 
+    const woId = woRef.current
+    if (needsAttentionNotes.trim()) {
+      const artistPart = booking?.artist || wo?.artist || ''
+      const clientPart = booking?.client_name || wo?.client || booking?.label || wo?.label || ''
+      const sessionParts = [artistPart, clientPart].filter(Boolean).join(' / ')
+      const sourceLabel = sessionParts ? `${meta.label} · ${sessionParts}` : meta.label
+      const { data: existingFlag } = await supabase
+        .from('flags')
+        .select('id')
+        .eq('source_id', woId)
+        .eq('source', 'wo_flag')
+        .maybeSingle()
+      if (existingFlag) {
+        await supabase.from('flags').update({
+          runner_note: needsAttentionNotes.trim(),
+          status: 'pending',
+        }).eq('id', existingFlag.id)
+      } else {
+        await supabase.from('flags').insert({
+          studio,
+          source: 'wo_flag',
+          source_id: woId,
+          source_label: sourceLabel,
+          runner_note: needsAttentionNotes.trim(),
+          status: 'pending',
+        })
+      }
+    } else {
+      const { data: existingFlag } = await supabase
+        .from('flags')
+        .select('id')
+        .eq('source_id', woId)
+        .eq('source', 'wo_flag')
+        .maybeSingle()
+      if (existingFlag) {
+        await supabase.from('flags').update({
+          status: 'resolved',
+          resolved_note: 'Needs attention cleared by runner',
+        }).eq('id', existingFlag.id)
+      }
+    }
+
     // Save time/hours/charge for all rows (per-row row_rate_type)
     const hasEngineer = !!(wo?.engineer || booking?.engineer_name)
     if (stRows.length > 0) {
