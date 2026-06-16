@@ -330,6 +330,8 @@ export interface Flag {
   resolved_by: string | null
   resolved_at: string | null
   resolved_note: string | null
+  resolved_vendor: string | null
+  resolved_cost: number | null
   deleted_at: string | null
   created_at: string
   updated_at: string

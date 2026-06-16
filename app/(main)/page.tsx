@@ -73,6 +73,10 @@ export default function DashboardPage() {
   const [newFlagText, setNewFlagText] = useState('')
   const [newFlagStudio, setNewFlagStudio] = useState<string>('paramount')
   const [newFlagCategory, setNewFlagCategory] = useState<'facility_general' | 'gear_equipment' | 'client_billing' | null>(null)
+  const [showResolveModal, setShowResolveModal] = useState(false)
+  const [resolveNote, setResolveNote] = useState('')
+  const [resolveVendor, setResolveVendor] = useState('')
+  const [resolveCost, setResolveCost] = useState('')
   const newTaskPhotoRef = useRef<HTMLInputElement>(null)
   const commentPhotoRef = useRef<HTMLInputElement>(null)
   const flagCommentPhotoRef = useRef<HTMLInputElement>(null)
@@ -319,13 +323,19 @@ export default function DashboardPage() {
       status: 'resolved',
       resolved_by: currentUserEmail,
       resolved_at: new Date().toISOString(),
-      resolved_note: flagCommentText.trim() || null,
+      resolved_note: resolveNote.trim() || null,
+      resolved_vendor: resolveVendor.trim() || null,
+      resolved_cost: resolveCost ? parseFloat(resolveCost) : null,
     }).eq('id', selectedFlag.id)
     setFlags(prev => prev.filter(f => f.id !== selectedFlag.id))
     setSelectedFlag(null)
     setFlagCommentText('')
     setFlagCommentPhoto(null)
     if (flagCommentPhotoRef.current) flagCommentPhotoRef.current.value = ''
+    setShowResolveModal(false)
+    setResolveNote('')
+    setResolveVendor('')
+    setResolveCost('')
     setFlagSubmitting(false)
   }
 
@@ -1125,7 +1135,7 @@ export default function DashboardPage() {
                 </span>
                 {selectedFlag.status === 'acknowledged' && (
                   <button
-                    onClick={handleResolveFlag}
+                    onClick={() => setShowResolveModal(true)}
                     disabled={flagSubmitting}
                     style={{ marginLeft: 'auto', fontSize: 10, fontFamily: 'DM Mono', background: '#14B8A6', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}
                   >
@@ -1162,7 +1172,7 @@ export default function DashboardPage() {
               )}
 
               {/* Acknowledged box */}
-              {selectedFlag.status === 'acknowledged' && (
+              {selectedFlag.acknowledged_at && (
                 <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 8, padding: '10px 12px' }}>
                   <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#F97316', marginBottom: 4 }}>
                     Acknowledged
@@ -1174,6 +1184,34 @@ export default function DashboardPage() {
                   {selectedFlag.acknowledged_note && (
                     <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 6, lineHeight: 1.5 }}>
                       {selectedFlag.acknowledged_note}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Resolved box */}
+              {selectedFlag.resolved_at && (
+                <div style={{ background: 'rgba(20,184,166,0.06)', border: '1px solid rgba(20,184,166,0.2)', borderRadius: 8, padding: '10px 12px' }}>
+                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#14B8A6', marginBottom: 4 }}>
+                    Resolved
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>
+                    {selectedFlag.resolved_by}
+                    {selectedFlag.resolved_at && ` · ${new Date(selectedFlag.resolved_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
+                  </div>
+                  {selectedFlag.resolved_note && (
+                    <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 6, lineHeight: 1.5 }}>
+                      {selectedFlag.resolved_note}
+                    </div>
+                  )}
+                  {selectedFlag.resolved_vendor && (
+                    <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 4 }}>
+                      Vendor: {selectedFlag.resolved_vendor}
+                    </div>
+                  )}
+                  {selectedFlag.resolved_cost != null && (
+                    <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 2 }}>
+                      Cost: ${selectedFlag.resolved_cost}
                     </div>
                   )}
                 </div>
@@ -1301,6 +1339,108 @@ export default function DashboardPage() {
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* RESOLVE MODAL */}
+      {showResolveModal && selectedFlag && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={e => { if (e.target === e.currentTarget) setShowResolveModal(false) }}
+        >
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 420, margin: '0 20px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>
+              <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>Resolve Flag</span>
+              <button
+                onClick={() => setShowResolveModal(false)}
+                style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 18, lineHeight: 1, padding: 0 }}
+              >
+                ×
+              </button>
+            </div>
+            <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
+                  Resolution Notes <span style={{ color: '#EF4444' }}>*</span>
+                </div>
+                <textarea
+                  value={resolveNote}
+                  onChange={e => setResolveNote(e.target.value)}
+                  placeholder="Describe what was done…"
+                  rows={3}
+                  style={{
+                    width: '100%', padding: '8px', fontSize: 11,
+                    background: 'var(--surface2)', border: '1px solid var(--border)',
+                    borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono',
+                    outline: 'none', resize: 'none', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
+                  Vendor / Person
+                </div>
+                <input
+                  type="text"
+                  value={resolveVendor}
+                  onChange={e => setResolveVendor(e.target.value)}
+                  placeholder="Vendor or person who fixed it…"
+                  style={{
+                    width: '100%', padding: '8px', fontSize: 11,
+                    background: 'var(--surface2)', border: '1px solid var(--border)',
+                    borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono',
+                    outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
+                  Cost
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'DM Mono' }}>$</span>
+                  <input
+                    type="number"
+                    value={resolveCost}
+                    onChange={e => setResolveCost(e.target.value)}
+                    placeholder="0.00"
+                    style={{
+                      flex: 1, padding: '8px', fontSize: 11,
+                      background: 'var(--surface2)', border: '1px solid var(--border)',
+                      borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono',
+                      outline: 'none', boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <button
+                  onClick={() => setShowResolveModal(false)}
+                  style={{
+                    flex: 1, padding: '9px', fontSize: 11, fontFamily: 'DM Mono',
+                    background: 'transparent', border: '1px solid var(--border)',
+                    borderRadius: 6, cursor: 'pointer', color: 'var(--text2)',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleResolveFlag}
+                  disabled={flagSubmitting || !resolveNote.trim()}
+                  style={{
+                    flex: 1, padding: '9px', fontSize: 11, fontFamily: 'DM Mono',
+                    background: resolveNote.trim() ? '#c8f04e' : 'var(--surface2)',
+                    color: resolveNote.trim() ? '#0d0f14' : 'var(--text3)',
+                    border: 'none', borderRadius: 6,
+                    cursor: resolveNote.trim() ? 'pointer' : 'default',
+                    fontWeight: 600,
+                  }}
+                >
+                  {flagSubmitting ? 'Saving…' : 'Confirm Resolve'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
