@@ -153,14 +153,13 @@ export default function PettyCashPage() {
                   onChange={ev => setEntries(prev => prev.map((x, j) => j === i ? { ...x, amount: ev.target.value } : x))}
                   style={{ width: 70, background: '#0d0f14', border: '1px solid #2a2e3d', borderRadius: 8, padding: '7px 8px', color: '#e8eaf2', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none' }}
                 />
-                <select
-                  value={e.type}
-                  onChange={ev => setEntries(prev => prev.map((x, j) => j === i ? { ...x, type: ev.target.value as 'in' | 'out' } : x))}
-                  style={{ background: '#0d0f14', border: '1px solid #2a2e3d', borderRadius: 8, padding: '7px 8px', color: e.type === 'in' ? '#14B8A6' : '#EF4444', fontSize: 12, outline: 'none' }}
+                <button
+                  type="button"
+                  onClick={() => setEntries(prev => prev.map((x, j) => j === i ? { ...x, type: x.type === 'in' ? 'out' : 'in' } : x))}
+                  style={{ background: '#0d0f14', border: `1px solid ${e.type === 'in' ? '#14B8A6' : '#EF4444'}`, borderRadius: 8, padding: '7px 10px', color: e.type === 'in' ? '#14B8A6' : '#EF4444', fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', cursor: 'pointer', minWidth: 44 }}
                 >
-                  <option value="out">Out</option>
-                  <option value="in">In</option>
-                </select>
+                  {e.type === 'in' ? 'In' : 'Out'}
+                </button>
               </div>
             </div>
           ))}
