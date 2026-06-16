@@ -22,6 +22,7 @@ export default function PettyCashPage() {
   const [openingBalance, setOpeningBalance] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -48,10 +49,17 @@ export default function PettyCashPage() {
 
   async function save() {
     setSaving(true)
+    setSaveError(null)
+
     // Save opening balance
     if (openingBalance) {
-      await supabase.from('petty_cash_balances').upsert({ studio, date: today, amount: parseFloat(openingBalance) || 0 }, { onConflict: 'studio,date' })
+      const { error: balErr } = await supabase.from('petty_cash_balances').upsert(
+        { studio, date: today, amount: parseFloat(openingBalance) || 0 },
+        { onConflict: 'studio,date' }
+      )
+      if (balErr) { setSaveError(`Balance save failed: ${balErr.message}`); setSaving(false); return }
     }
+
     // Save entries
     const updated = entries.map(e => ({ ...e }))
     for (let i = 0; i < updated.length; i++) {
@@ -59,17 +67,25 @@ export default function PettyCashPage() {
       const amt = parseFloat(e.amount) || 0
       if (!e.description && !amt) continue
       if (e.id) {
-        await supabase.from('petty_cash_entries').update({ description: e.description, amount: amt, type: e.type }).eq('id', e.id)
+        const { error } = await supabase.from('petty_cash_entries')
+          .update({ description: e.description, amount: amt, type: e.type }).eq('id', e.id)
+        if (error) { setSaveError(`Entry save failed: ${error.message}`); setSaving(false); return }
       } else {
-        const { data } = await supabase.from('petty_cash_entries').insert({ studio, date: today, description: e.description, amount: amt, type: e.type }).select().single()
+        const { data, error } = await supabase.from('petty_cash_entries')
+          .insert({ studio, date: today, description: e.description, amount: amt, type: e.type })
+          .select().single()
+        if (error) { setSaveError(`Entry save failed: ${error.message}`); setSaving(false); return }
         if (data) updated[i] = { ...e, id: data.id }
       }
     }
     setEntries(updated)
-    await supabase.from('daily_ops_submissions').upsert({
-      studio, date: today, category: 'petty_cash',
-      submitted_at: new Date().toISOString(),
-    }, { onConflict: 'studio,date,category' })
+
+    const { error: subErr } = await supabase.from('daily_ops_submissions').upsert(
+      { studio, date: today, category: 'petty_cash', submitted_at: new Date().toISOString() },
+      { onConflict: 'studio,date,category' }
+    )
+    if (subErr) { setSaveError(`Submission record failed: ${subErr.message}`); setSaving(false); return }
+
     setSaving(false)
     router.push(`/runner/${studio}`)
   }
@@ -152,6 +168,11 @@ export default function PettyCashPage() {
       </div>
 
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: '#0d0f14', borderTop: '1px solid #2a2e3d' }}>
+        {saveError && (
+          <div style={{ fontSize: 11, color: '#f87171', fontFamily: 'DM Mono, monospace', textAlign: 'center', marginBottom: 8, padding: '6px 10px', background: '#f8717122', borderRadius: 8 }}>
+            {saveError}
+          </div>
+        )}
         <button onClick={save} disabled={saving} style={{ width: '100%', padding: '14px 0', background: meta.color, color: '#0d0f14', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'Syne, sans-serif' }}>
           {saving ? 'Saving…' : 'Save'}
         </button>

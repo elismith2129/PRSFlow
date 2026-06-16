@@ -495,8 +495,8 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
 
   // ─── Render ───────────────────────────────────────────────────────────────────
 
-  // Checklists, Stock and Mic Inventory always show content (live — no submission gate)
-  const alwaysShowContent = category === 'stock_list' || category === 'mic_inventory' || category === 'opening_checklist' || category === 'closing_checklist'
+  // Petty cash, Checklists, Stock and Mic Inventory always show content (live — no submission gate)
+  const alwaysShowContent = category === 'petty_cash' || category === 'stock_list' || category === 'mic_inventory' || category === 'opening_checklist' || category === 'closing_checklist'
   const isChecklist = category === 'opening_checklist' || category === 'closing_checklist'
   const hasLiveProgress = isChecklist && !!checklistData
 
