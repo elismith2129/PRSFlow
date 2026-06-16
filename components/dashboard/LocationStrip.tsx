@@ -383,15 +383,11 @@ export function LocationStrip() {
                     </div>
 
                     {(() => {
-                      const unapprovedSessions = yestSessions.filter(({ wo }) =>
-                        wo?.status !== 'completed'
-                      )
-
                       return (
                         <>
-                          {unapprovedSessions.length > 0 && (
+                          {yestSessions.length > 0 && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                              {unapprovedSessions.map(({ booking: b, wo }) => (
+                              {yestSessions.map(({ booking: b, wo }) => (
                                 <SessionCard key={b.id} b={b} wo={wo} isYesterday />
                               ))}
                             </div>
