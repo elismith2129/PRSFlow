@@ -349,22 +349,26 @@ export function FlagsLogSection() {
                         </button>
                       </div>
                     </div>
-                    {/* Row 2: studio name */}
-                    <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Syne', color: STUDIO_COLORS[selectedFlag.studio] ?? 'var(--text)' }}>
-                      {selectedFlag.studio.charAt(0).toUpperCase() + selectedFlag.studio.slice(1)}
+                    {/* Row 2: studio name · category */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Syne', textTransform: 'uppercase', color: STUDIO_COLORS[selectedFlag.studio] ?? 'var(--text)' }}>
+                        {selectedFlag.studio.charAt(0).toUpperCase() + selectedFlag.studio.slice(1)}
+                      </span>
+                      {selectedFlag.category && (() => {
+                        const catConf = CATEGORY_CONFIG[selectedFlag.category]
+                        return catConf ? (
+                          <>
+                            <span style={{ color: 'var(--text3)', fontSize: 11 }}>·</span>
+                            <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+                              {catConf.label}
+                            </span>
+                          </>
+                        ) : null
+                      })()}
                     </div>
-                    {/* Row 3: category label */}
-                    {selectedFlag.category && (() => {
-                      const catConf = CATEGORY_CONFIG[selectedFlag.category]
-                      return catConf ? (
-                        <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 2 }}>
-                          {catConf.label}
-                        </div>
-                      ) : null
-                    })()}
-                    {/* Row 4: source label */}
+                    {/* Row 3: source label */}
                     {selectedFlag.source_label && (
-                      <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 2, opacity: 0.7 }}>
+                      <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 2, opacity: 0.6 }}>
                         {selectedFlag.source_label}
                       </div>
                     )}
