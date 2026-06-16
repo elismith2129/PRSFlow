@@ -29,7 +29,7 @@ export default function StockPage() {
   const router = useRouter()
   const { studio } = useParams<{ studio: string }>()
   const meta = STUDIO_META[studio] ?? { label: studio, color: '#c8f04e' }
-  const today = new Date().toISOString().slice(0, 10)
+  const today = (() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10) })()
 
   const [items, setItems] = useState<StockItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,16 +50,18 @@ export default function StockPage() {
 
   async function save() {
     setSaving(true)
-    for (const it of items) {
+    const updated = items.map(it => ({ ...it }))
+    for (let i = 0; i < updated.length; i++) {
+      const it = updated[i]
       const payload = { studio, item: it.item, qty: parseInt(it.qty) || 0, notes: it.notes, low: it.low }
       if (it.id) {
         await supabase.from('stock_items').update(payload).eq('id', it.id)
       } else {
         const { data } = await supabase.from('stock_items').insert(payload).select().single()
-        if (data) it.id = data.id
+        if (data) updated[i] = { ...it, id: data.id }
       }
     }
-    setItems([...items])
+    setItems(updated)
     await supabase.from('daily_ops_submissions').upsert({
       studio, date: today, category: 'stock',
       submitted_at: new Date().toISOString(),

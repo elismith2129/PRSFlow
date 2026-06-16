@@ -16,7 +16,7 @@ export default function PettyCashPage() {
   const router = useRouter()
   const { studio } = useParams<{ studio: string }>()
   const meta = STUDIO_META[studio] ?? { label: studio, color: '#c8f04e' }
-  const today = new Date().toISOString().slice(0, 10)
+  const today = (() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10) })()
 
   const [entries, setEntries] = useState<Entry[]>([])
   const [openingBalance, setOpeningBalance] = useState('')
@@ -53,16 +53,19 @@ export default function PettyCashPage() {
       await supabase.from('petty_cash_balances').upsert({ studio, date: today, amount: parseFloat(openingBalance) || 0 }, { onConflict: 'studio,date' })
     }
     // Save entries
-    for (const e of entries) {
+    const updated = entries.map(e => ({ ...e }))
+    for (let i = 0; i < updated.length; i++) {
+      const e = updated[i]
       const amt = parseFloat(e.amount) || 0
       if (!e.description && !amt) continue
       if (e.id) {
         await supabase.from('petty_cash_entries').update({ description: e.description, amount: amt, type: e.type }).eq('id', e.id)
       } else {
         const { data } = await supabase.from('petty_cash_entries').insert({ studio, date: today, description: e.description, amount: amt, type: e.type }).select().single()
-        if (data) e.id = data.id
+        if (data) updated[i] = { ...e, id: data.id }
       }
     }
+    setEntries(updated)
     await supabase.from('daily_ops_submissions').upsert({
       studio, date: today, category: 'petty_cash',
       submitted_at: new Date().toISOString(),
