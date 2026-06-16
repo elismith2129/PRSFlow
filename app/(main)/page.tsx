@@ -11,6 +11,13 @@ const TAB_ROLE: Record<string, 'admin' | 'studio_manager' | 'asst_manager' | 'bi
   billing: 'billing',
 }
 
+const STUDIO_COLORS: Record<string, string> = {
+  paramount: '#c8f04e',
+  ameraycan: '#f04e7a',
+  encore: '#4e8ff0',
+  track: '#F97316',
+}
+
 async function fetchTasks(role: string): Promise<DashboardTask[]> {
   const { data } = await supabase
     .from('dashboard_tasks')
@@ -634,13 +641,8 @@ export default function DashboardPage() {
         <div style={{ padding: '13px 16px 11px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13 }}>FLAGS</div>
           {flags.filter(f => f.status === 'pending').length > 0 && (
-            <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#c8f04e', color: '#0d0f14', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {flags.filter(f => f.status === 'pending').length}
-            </div>
-          )}
-          {flags.filter(f => f.status === 'acknowledged').length > 0 && (
             <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#F97316', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {flags.filter(f => f.status === 'acknowledged').length}
+              {flags.filter(f => f.status === 'pending').length}
             </div>
           )}
         </div>
@@ -675,7 +677,7 @@ export default function DashboardPage() {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text3)', textTransform: 'uppercase', background: 'var(--surface)', padding: '2px 6px', borderRadius: 4, border: '0.5px solid var(--border)' }}>
+                      <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', color: STUDIO_COLORS[flag.studio] ?? 'var(--text3)', textTransform: 'uppercase', background: (STUDIO_COLORS[flag.studio] ?? '#888888') + '1f', padding: '2px 6px', borderRadius: 4, border: '0.5px solid var(--border)' }}>
                         {flag.studio}
                       </span>
                       {catInfo && (
