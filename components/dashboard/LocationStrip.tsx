@@ -37,7 +37,7 @@ type DailyOpsRow = {
   needs_attention?: boolean | null
 }
 
-type ChecklistProgress = { checked: number; total: number }
+type ChecklistProgress = { checked: number; total: number; needsAttention: boolean }
 
 type SessionRow = { booking: Booking; wo: WO | null }
 type StudioSummary = { sessionCount: number; pendingCount: number }
@@ -181,7 +181,7 @@ export function LocationStrip() {
       supabase.from('daily_ops_submissions').select('*').eq('studio', loc.key).eq('date', today),
       yestBkgIds.length > 0  ? supabase.from('work_orders').select('*').in('booking_id', yestBkgIds)  : Promise.resolve({ data: [] as any[] }),
       supabase.from('daily_ops_submissions').select('*').eq('studio', loc.key).eq('date', yesterday),
-      supabase.from('checklists').select('type, items').eq('studio', loc.key).eq('date', today),
+      supabase.from('checklists').select('type, items, needs_attention').eq('studio', loc.key).eq('date', today),
     ])
 
     const woMapToday: Record<string, WO> = {}
@@ -205,7 +205,7 @@ export function LocationStrip() {
       const secs = studioChecklists[row.type as 'opening' | 'closing'] ?? []
       const total = flattenSections(secs).length
       const done  = (row.items ?? []).filter((it: any) => it.checked).length
-      clProgress[catKey] = { checked: done, total }
+      clProgress[catKey] = { checked: done, total, needsAttention: !!(row.needs_attention) }
     }
 
     setSessions(activeTodayBkgs.map(b => ({ booking: b as Booking, wo: woMapToday[b.id] ?? null })))
@@ -472,7 +472,7 @@ export function LocationStrip() {
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Syne', fontWeight: 600 }}>{cat.label}</span>
-                                {row?.needs_attention && !adminDone && (
+                                {isChecklist && checklistProgress[cat.key]?.needsAttention && !adminDone && (
                                   <span style={{ fontSize: 9, fontWeight: 700, color: '#f0a24e', background: '#f0a24e22', padding: '2px 6px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>⚠</span>
                                 )}
                               </div>

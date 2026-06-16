@@ -183,23 +183,25 @@ export default function ChecklistPage() {
       notes: notes.trim() || null,
     }, { onConflict: 'studio,date,category' })
 
-    // Create or update a tasks row for this checklist if attention content exists
     if (hasAttention && clIdRef.current) {
-      const { data: existingTask } = await supabase
-        .from('tasks').select('id')
-        .eq('source_id', clIdRef.current).maybeSingle()
-      if (existingTask) {
-        await supabase.from('tasks').update({
-          notes: notes.trim() || null,
-          photo_urls: photos.length > 0 ? photos : null,
-        }).eq('id', existingTask.id)
+      const { data: existingFlag } = await supabase
+        .from('flags')
+        .select('id')
+        .eq('source_id', clIdRef.current)
+        .maybeSingle()
+      if (existingFlag) {
+        await supabase.from('flags').update({
+          runner_note: notes.trim() || null,
+          status: 'pending',
+        }).eq('id', existingFlag.id)
       } else {
-        await supabase.from('tasks').insert({
-          studio: studio as string,
-          source_type: `${type}_checklist`,
+        await supabase.from('flags').insert({
+          studio,
+          source: 'runner_flag',
           source_id: clIdRef.current,
-          notes: notes.trim() || null,
-          photo_urls: photos.length > 0 ? photos : null,
+          source_label: `${meta.label} · ${type === 'opening' ? 'Opening' : 'Closing'} Checklist`,
+          runner_note: notes.trim() || null,
+          status: 'pending',
         })
       }
     }
