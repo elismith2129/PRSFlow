@@ -46,6 +46,7 @@ export function FlagsLogSection() {
   const [flagSubmitting, setFlagSubmitting] = useState(false)
   const [pendingCategory, setPendingCategory] = useState<'facility_general' | 'gear_equipment' | 'client_billing' | null>(null)
   const [showResolveModal, setShowResolveModal] = useState(false)
+  const [confirmDeleteFlag, setConfirmDeleteFlag] = useState(false)
   const [resolveNote, setResolveNote] = useState('')
   const [resolveVendor, setResolveVendor] = useState('')
   const [resolveCost, setResolveCost] = useState('')
@@ -167,6 +168,14 @@ export function FlagsLogSection() {
     setFlagCommentText('')
     await loadFlags()
     setFlagSubmitting(false)
+  }
+
+  async function handleDeleteFlag() {
+    if (!selectedFlag) return
+    await supabase.from('flags').update({ deleted_at: new Date().toISOString() }).eq('id', selectedFlag.id)
+    await loadFlags()
+    setSelectedFlag(null)
+    setConfirmDeleteFlag(false)
   }
 
   return (
@@ -295,16 +304,6 @@ export function FlagsLogSection() {
                 <div style={{ fontSize: 10, color: '#4a4f64', fontFamily: 'DM Mono', whiteSpace: 'nowrap', flexShrink: 0 }}>
                   {new Date(flag.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </div>
-                <button
-                  onClick={async (e) => {
-                    e.stopPropagation()
-                    await supabase.from('flags').update({ deleted_at: new Date().toISOString() }).eq('id', flag.id)
-                    await loadFlags()
-                  }}
-                  style={{ fontSize: 12, color: 'var(--text3)', opacity: 0.4, background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1, padding: 0, flexShrink: 0 }}
-                >
-                  ×
-                </button>
               </div>
             )
             })}
@@ -316,7 +315,7 @@ export function FlagsLogSection() {
       {selectedFlag && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={e => { if (e.target === e.currentTarget) setSelectedFlag(null) }}
+          onClick={e => { if (e.target === e.currentTarget) { setSelectedFlag(null); setConfirmDeleteFlag(false) } }}
         >
           <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
@@ -352,7 +351,7 @@ export function FlagsLogSection() {
                           </button>
                         )}
                         <button
-                          onClick={() => setSelectedFlag(null)}
+                          onClick={() => { setSelectedFlag(null); setConfirmDeleteFlag(false) }}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 18, lineHeight: 1, padding: 0 }}
                         >
                           ×
@@ -532,53 +531,70 @@ export function FlagsLogSection() {
               </label>
 
               {/* Action buttons */}
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  onClick={handleFlagComment}
-                  disabled={flagSubmitting || (!flagCommentText.trim() && !flagCommentPhoto)}
-                  style={{
-                    flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
-                    background: 'transparent', border: '1px solid var(--border)',
-                    borderRadius: 6, cursor: 'pointer', color: 'var(--text2)',
-                  }}
-                >
-                  Comment
-                </button>
-                {selectedFlag.status === 'pending' && (() => {
-                  const canAck = selectedFlag.category !== null || pendingCategory !== null
-                  return (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                {/* Delete flow — left side */}
+                {confirmDeleteFlag ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono' }}>Confirm delete?</span>
                     <button
-                      onClick={handleAcknowledgeFlag}
-                      disabled={flagSubmitting || !canAck}
+                      onClick={handleDeleteFlag}
+                      style={{ padding: '6px 12px', fontSize: 11, fontFamily: 'DM Mono', background: '#EF4444', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                    >
+                      Yes, delete
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteFlag(false)}
+                      style={{ padding: '6px 12px', fontSize: 11, fontFamily: 'DM Mono', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDeleteFlag(true)}
+                    style={{ padding: '6px 12px', fontSize: 11, fontFamily: 'DM Mono', background: 'transparent', color: '#EF4444', border: '1px solid #EF4444', borderRadius: 6, cursor: 'pointer' }}
+                  >
+                    Delete
+                  </button>
+                )}
+                {/* Right side: Acknowledge or Save */}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {selectedFlag.status === 'pending' && (() => {
+                    const canAck = selectedFlag.category !== null || pendingCategory !== null
+                    return (
+                      <button
+                        onClick={handleAcknowledgeFlag}
+                        disabled={flagSubmitting || !canAck}
+                        style={{
+                          padding: '8px 16px', fontSize: 11, fontFamily: 'DM Mono',
+                          background: canAck ? '#c8f04e' : 'var(--surface2)',
+                          color: canAck ? '#0d0f14' : 'var(--text3)',
+                          border: 'none', borderRadius: 6,
+                          cursor: canAck ? 'pointer' : 'default',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {flagSubmitting ? 'Saving…' : 'Acknowledge'}
+                      </button>
+                    )
+                  })()}
+                  {selectedFlag.status === 'acknowledged' && (
+                    <button
+                      onClick={handleSaveFlag}
+                      disabled={flagSubmitting || !flagCommentText.trim()}
                       style={{
-                        flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
-                        background: canAck ? '#c8f04e' : 'var(--surface2)',
-                        color: canAck ? '#0d0f14' : 'var(--text3)',
+                        padding: '8px 16px', fontSize: 11, fontFamily: 'DM Mono',
+                        background: flagCommentText.trim() ? '#c8f04e' : 'var(--surface2)',
+                        color: flagCommentText.trim() ? '#0d0f14' : 'var(--text3)',
                         border: 'none', borderRadius: 6,
-                        cursor: canAck ? 'pointer' : 'default',
+                        cursor: flagCommentText.trim() ? 'pointer' : 'default',
                         fontWeight: 600,
                       }}
                     >
-                      {flagSubmitting ? 'Saving…' : 'Acknowledge'}
+                      {flagSubmitting ? 'Saving…' : 'Save'}
                     </button>
-                  )
-                })()}
-                {selectedFlag.status === 'acknowledged' && (
-                  <button
-                    onClick={handleSaveFlag}
-                    disabled={flagSubmitting || !flagCommentText.trim()}
-                    style={{
-                      flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
-                      background: flagCommentText.trim() ? '#c8f04e' : 'var(--surface2)',
-                      color: flagCommentText.trim() ? '#0d0f14' : 'var(--text3)',
-                      border: 'none', borderRadius: 6,
-                      cursor: flagCommentText.trim() ? 'pointer' : 'default',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {flagSubmitting ? 'Saving…' : 'Save'}
-                  </button>
-                )}
+                  )}
+                </div>
               </div>
             </div>
 
