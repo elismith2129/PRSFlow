@@ -731,9 +731,21 @@ export default function DashboardPage() {
                         </span>
                       )}
                     </div>
-                    <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: statusColor, textTransform: 'uppercase', flexShrink: 0 }}>
-                      {flag.status}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: statusColor, textTransform: 'uppercase' }}>
+                        {flag.status}
+                      </span>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation()
+                          await supabase.from('flags').update({ deleted_at: new Date().toISOString() }).eq('id', flag.id)
+                          setFlags(prev => prev.filter(f => f.id !== flag.id))
+                        }}
+                        style={{ fontSize: 12, color: 'var(--text3)', opacity: 0.4, background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1, padding: 0 }}
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
                   {flag.runner_note && (
                     <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.4, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>

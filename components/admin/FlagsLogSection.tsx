@@ -295,6 +295,16 @@ export function FlagsLogSection() {
                 <div style={{ fontSize: 10, color: '#4a4f64', fontFamily: 'DM Mono', whiteSpace: 'nowrap', flexShrink: 0 }}>
                   {new Date(flag.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </div>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    await supabase.from('flags').update({ deleted_at: new Date().toISOString() }).eq('id', flag.id)
+                    await loadFlags()
+                  }}
+                  style={{ fontSize: 12, color: 'var(--text3)', opacity: 0.4, background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1, padding: 0, flexShrink: 0 }}
+                >
+                  ×
+                </button>
               </div>
             )
             })}
