@@ -1132,7 +1132,8 @@ export default function DashboardPage() {
 
             {/* Modal header */}
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              {/* Row 1: status badge + resolve + × */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <span style={{
                   fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em',
                   textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4,
@@ -1141,44 +1142,45 @@ export default function DashboardPage() {
                 }}>
                   {selectedFlag.status}
                 </span>
-                <span style={{ fontSize: 10, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  {selectedFlag.studio}
-                </span>
-                {selectedFlag.category && (() => {
-                  const catConf: Record<string, { label: string; color: string; bg: string }> = {
-                    facility_general: { label: 'Facility / General', color: 'var(--text3)', bg: 'var(--surface2)' },
-                    gear_equipment:   { label: 'Gear / Equipment',   color: '#F59E0B',       bg: 'rgba(245,158,11,0.12)' },
-                    client_billing:   { label: 'Client / Billing',   color: '#60A5FA',       bg: 'rgba(96,165,250,0.12)' },
-                  }
-                  const c = catConf[selectedFlag.category!]
-                  return c ? (
-                    <span style={{
-                      fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em',
-                      textTransform: 'uppercase', padding: '2px 6px', borderRadius: 4,
-                      color: c.color, background: c.bg,
-                    }}>
-                      {c.label}
-                    </span>
-                  ) : null
-                })()}
-                {selectedFlag.status === 'acknowledged' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {selectedFlag.status === 'acknowledged' && (
+                    <button
+                      onClick={() => setShowResolveModal(true)}
+                      disabled={flagSubmitting}
+                      style={{ fontSize: 10, fontFamily: 'DM Mono', background: '#14B8A6', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}
+                    >
+                      {flagSubmitting ? 'Saving…' : 'Resolve'}
+                    </button>
+                  )}
                   <button
-                    onClick={() => setShowResolveModal(true)}
-                    disabled={flagSubmitting}
-                    style={{ marginLeft: 'auto', fontSize: 10, fontFamily: 'DM Mono', background: '#14B8A6', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}
+                    onClick={() => setSelectedFlag(null)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 18, lineHeight: 1, padding: 0 }}
                   >
-                    {flagSubmitting ? 'Saving…' : 'Resolve'}
+                    ×
                   </button>
-                )}
-                <button
-                  onClick={() => setSelectedFlag(null)}
-                  style={{ marginLeft: selectedFlag.status === 'acknowledged' ? 0 : 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 18, lineHeight: 1, padding: 0 }}
-                >
-                  ×
-                </button>
+                </div>
               </div>
+              {/* Row 2: studio name */}
+              <div style={{ fontSize: 16, fontWeight: 800, fontFamily: 'Syne', color: STUDIO_COLORS[selectedFlag.studio] ?? 'var(--text)' }}>
+                {selectedFlag.studio}
+              </div>
+              {/* Row 3: category label */}
+              {selectedFlag.category && (() => {
+                const catConf: Record<string, { label: string }> = {
+                  facility_general: { label: 'Facility / General' },
+                  gear_equipment:   { label: 'Gear / Equipment' },
+                  client_billing:   { label: 'Client / Billing' },
+                }
+                const c = catConf[selectedFlag.category!]
+                return c ? (
+                  <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 2 }}>
+                    {c.label}
+                  </div>
+                ) : null
+              })()}
+              {/* Row 4: source label */}
               {selectedFlag.source_label && (
-                <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+                <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 2, opacity: 0.7 }}>
                   {selectedFlag.source_label}
                 </div>
               )}

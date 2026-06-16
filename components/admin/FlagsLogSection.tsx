@@ -321,51 +321,65 @@ export function FlagsLogSection() {
 
             {/* Modal header */}
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <span style={{
-                  fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em',
-                  textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4,
-                  color: selectedFlag.status === 'pending' ? '#EF4444' : selectedFlag.status === 'acknowledged' ? '#F97316' : '#14B8A6',
-                  background: selectedFlag.status === 'pending' ? 'rgba(239,68,68,0.12)' : selectedFlag.status === 'acknowledged' ? 'rgba(249,115,22,0.12)' : 'rgba(20,184,166,0.12)',
-                }}>
-                  {selectedFlag.status}
-                </span>
-                <span style={{ fontSize: 10, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  {selectedFlag.studio}
-                </span>
-                {selectedFlag.category && (() => {
-                  const catConf = CATEGORY_CONFIG[selectedFlag.category]
-                  return catConf ? (
-                    <span style={{
-                      fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em',
-                      textTransform: 'uppercase', padding: '2px 6px', borderRadius: 4,
-                      color: catConf.color, background: catConf.bg,
-                    }}>
-                      {catConf.label}
-                    </span>
-                  ) : null
-                })()}
-                {selectedFlag.status === 'acknowledged' && (
-                  <button
-                    onClick={() => setShowResolveModal(true)}
-                    disabled={flagSubmitting}
-                    style={{ marginLeft: 'auto', fontSize: 10, fontFamily: 'DM Mono', background: '#14B8A6', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}
-                  >
-                    {flagSubmitting ? 'Saving…' : 'Resolve'}
-                  </button>
-                )}
-                <button
-                  onClick={() => setSelectedFlag(null)}
-                  style={{ marginLeft: selectedFlag.status === 'acknowledged' ? 0 : 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 18, lineHeight: 1, padding: 0 }}
-                >
-                  ×
-                </button>
-              </div>
-              {selectedFlag.source_label && (
-                <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
-                  {selectedFlag.source_label}
-                </div>
-              )}
+              {(() => {
+                const STUDIO_COLORS: Record<string, string> = {
+                  paramount: '#c8f04e',
+                  ameraycan: '#f04e7a',
+                  encore: '#4e8ff0',
+                  track: '#F97316',
+                }
+                return (
+                  <>
+                    {/* Row 1: status badge + resolve + × */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <span style={{
+                        fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em',
+                        textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4,
+                        color: selectedFlag.status === 'pending' ? '#EF4444' : selectedFlag.status === 'acknowledged' ? '#F97316' : '#14B8A6',
+                        background: selectedFlag.status === 'pending' ? 'rgba(239,68,68,0.12)' : selectedFlag.status === 'acknowledged' ? 'rgba(249,115,22,0.12)' : 'rgba(20,184,166,0.12)',
+                      }}>
+                        {selectedFlag.status}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {selectedFlag.status === 'acknowledged' && (
+                          <button
+                            onClick={() => setShowResolveModal(true)}
+                            disabled={flagSubmitting}
+                            style={{ fontSize: 10, fontFamily: 'DM Mono', background: '#14B8A6', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}
+                          >
+                            {flagSubmitting ? 'Saving…' : 'Resolve'}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setSelectedFlag(null)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 18, lineHeight: 1, padding: 0 }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                    {/* Row 2: studio name */}
+                    <div style={{ fontSize: 16, fontWeight: 800, fontFamily: 'Syne', color: STUDIO_COLORS[selectedFlag.studio] ?? 'var(--text)' }}>
+                      {selectedFlag.studio}
+                    </div>
+                    {/* Row 3: category label */}
+                    {selectedFlag.category && (() => {
+                      const catConf = CATEGORY_CONFIG[selectedFlag.category]
+                      return catConf ? (
+                        <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 2 }}>
+                          {catConf.label}
+                        </div>
+                      ) : null
+                    })()}
+                    {/* Row 4: source label */}
+                    {selectedFlag.source_label && (
+                      <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 2, opacity: 0.7 }}>
+                        {selectedFlag.source_label}
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
             </div>
 
             {/* Scrollable body */}
