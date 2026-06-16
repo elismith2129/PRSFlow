@@ -669,7 +669,7 @@ export default function DashboardPage() {
         <div style={{ padding: '13px 16px 11px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13 }}>FLAGS</div>
           {flags.filter(f => f.status === 'pending').length > 0 && (
-            <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#F97316', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#EF4444', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {flags.filter(f => f.status === 'pending').length}
             </div>
           )}
@@ -687,9 +687,8 @@ export default function DashboardPage() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10, padding: 12 }}>
             {flags.map(flag => {
-              const isPending = flag.status === 'pending'
-              const borderColor = isPending ? '#F97316' : '#14B8A6'
-              const statusColor = isPending ? '#F97316' : '#14B8A6'
+              const statusColor = flag.status === 'pending' ? '#EF4444' : flag.status === 'acknowledged' ? '#F97316' : '#22C55E'
+              const borderColor = statusColor
               const categoryConfig: Record<string, { label: string; color: string; bg: string }> = {
                 facility_general: { label: 'Facility / General', color: 'var(--text3)', bg: 'var(--surface2)' },
                 gear_equipment: { label: 'Gear / Equipment', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
@@ -1116,8 +1115,8 @@ export default function DashboardPage() {
                 <span style={{
                   fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em',
                   textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4,
-                  color: selectedFlag.status === 'pending' ? '#F97316' : '#14B8A6',
-                  background: selectedFlag.status === 'pending' ? 'rgba(249,115,22,0.12)' : 'rgba(20,184,166,0.12)',
+                  color: selectedFlag.status === 'pending' ? '#EF4444' : selectedFlag.status === 'acknowledged' ? '#F97316' : '#22C55E',
+                  background: selectedFlag.status === 'pending' ? 'rgba(239,68,68,0.12)' : selectedFlag.status === 'acknowledged' ? 'rgba(249,115,22,0.12)' : 'rgba(34,197,94,0.12)',
                 }}>
                   {selectedFlag.status}
                 </span>
@@ -1128,7 +1127,7 @@ export default function DashboardPage() {
                   <button
                     onClick={handleResolveFlag}
                     disabled={flagSubmitting}
-                    style={{ marginLeft: 'auto', fontSize: 10, fontFamily: 'DM Mono', background: '#14B8A6', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}
+                    style={{ marginLeft: 'auto', fontSize: 10, fontFamily: 'DM Mono', background: '#22C55E', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}
                   >
                     {flagSubmitting ? 'Saving…' : 'Resolve'}
                   </button>
@@ -1164,8 +1163,8 @@ export default function DashboardPage() {
 
               {/* Acknowledged box */}
               {selectedFlag.status === 'acknowledged' && (
-                <div style={{ background: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.25)', borderRadius: 8, padding: '10px 12px' }}>
-                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#14B8A6', marginBottom: 4 }}>
+                <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 8, padding: '10px 12px' }}>
+                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#F97316', marginBottom: 4 }}>
                     Acknowledged
                   </div>
                   <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>

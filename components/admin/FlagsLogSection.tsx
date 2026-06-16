@@ -213,7 +213,7 @@ export function FlagsLogSection() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {flags.map(flag => {
-            const statusDotColor = flag.status === 'pending' ? '#F97316' : flag.status === 'acknowledged' ? '#14B8A6' : '#8b90a8'
+            const statusDotColor = flag.status === 'pending' ? '#EF4444' : flag.status === 'acknowledged' ? '#F97316' : '#22C55E'
             const studioColor = STUDIO_COLORS[flag.studio] ?? '#8b90a8'
             const catConf = flag.category ? CATEGORY_CONFIG[flag.category] : null
             return (
@@ -281,8 +281,8 @@ export function FlagsLogSection() {
                 <span style={{
                   fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em',
                   textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4,
-                  color: selectedFlag.status === 'pending' ? '#F97316' : selectedFlag.status === 'acknowledged' ? '#14B8A6' : '#8b90a8',
-                  background: selectedFlag.status === 'pending' ? 'rgba(249,115,22,0.12)' : selectedFlag.status === 'acknowledged' ? 'rgba(20,184,166,0.12)' : 'rgba(139,144,168,0.12)',
+                  color: selectedFlag.status === 'pending' ? '#EF4444' : selectedFlag.status === 'acknowledged' ? '#F97316' : '#22C55E',
+                  background: selectedFlag.status === 'pending' ? 'rgba(239,68,68,0.12)' : selectedFlag.status === 'acknowledged' ? 'rgba(249,115,22,0.12)' : 'rgba(34,197,94,0.12)',
                 }}>
                   {selectedFlag.status}
                 </span>
@@ -314,8 +314,8 @@ export function FlagsLogSection() {
 
               {/* Acknowledged box — shown whenever acknowledged_at is set, including after resolve */}
               {selectedFlag.acknowledged_at && (
-                <div style={{ background: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.25)', borderRadius: 8, padding: '10px 12px' }}>
-                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#14B8A6', marginBottom: 4 }}>
+                <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 8, padding: '10px 12px' }}>
+                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#F97316', marginBottom: 4 }}>
                     Acknowledged
                   </div>
                   <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>
@@ -332,8 +332,8 @@ export function FlagsLogSection() {
 
               {/* Resolved box */}
               {selectedFlag.status === 'resolved' && selectedFlag.resolved_at && (
-                <div style={{ background: 'rgba(20,184,166,0.06)', border: '1px solid rgba(20,184,166,0.2)', borderRadius: 8, padding: '10px 12px' }}>
-                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#14B8A6', marginBottom: 4 }}>
+                <div style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 8, padding: '10px 12px' }}>
+                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#22C55E', marginBottom: 4 }}>
                     Resolved
                   </div>
                   <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>
@@ -469,7 +469,7 @@ export function FlagsLogSection() {
                     disabled={flagSubmitting}
                     style={{
                       flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
-                      background: '#14B8A6', color: '#fff',
+                      background: '#22C55E', color: '#fff',
                       border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600,
                     }}
                   >
