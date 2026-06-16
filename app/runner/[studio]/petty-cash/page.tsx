@@ -30,13 +30,13 @@ export default function PettyCashPage() {
         .from('petty_cash_entries')
         .select('*')
         .eq('studio', studio)
-        .eq('date', today)
+        .order('date')
         .order('created_at')
       setEntries((data ?? []).map((e: any) => ({
         id: e.id, description: e.description ?? '', amount: e.amount != null ? String(e.amount) : '', type: e.type ?? 'out',
       })))
       // Check opening balance
-      const { data: ob } = await supabase.from('petty_cash_balances').select('amount').eq('studio', studio).eq('date', today).maybeSingle()
+      const { data: ob } = await supabase.from('petty_cash_balances').select('amount').eq('studio', studio).order('date', { ascending: false }).limit(1).maybeSingle()
       setOpeningBalance(ob?.amount != null ? String(ob.amount) : '')
       setLoading(false)
     }
@@ -102,7 +102,7 @@ export default function PettyCashPage() {
         <button onClick={() => router.push(`/runner/${studio}`)} style={{ background: 'none', border: 'none', color: '#8b90a8', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>←</button>
         <div>
           <div style={{ fontSize: 15, fontWeight: 800, color: '#e8eaf2' }}>Petty Cash</div>
-          <div style={{ fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>{meta.label} · {today}</div>
+          <div style={{ fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>{meta.label} · Running Ledger</div>
         </div>
       </div>
 
