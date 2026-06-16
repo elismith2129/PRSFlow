@@ -1029,9 +1029,9 @@ export default function DashboardPage() {
                 <div style={{ display: 'flex', gap: 6 }}>
                   {(['facility_general', 'gear_equipment', 'client_billing'] as const).map(catKey => {
                     const catConfig = {
-                      facility_general: { label: 'Facility / General', activeColor: 'var(--text3)', activeBg: 'var(--surface2)', activeBorder: 'var(--text3)' },
-                      gear_equipment: { label: 'Gear / Equipment', activeColor: '#F59E0B', activeBg: 'rgba(245,158,11,0.15)', activeBorder: '#F59E0B' },
-                      client_billing: { label: 'Client / Billing', activeColor: '#60A5FA', activeBg: 'rgba(96,165,250,0.15)', activeBorder: '#60A5FA' },
+                      facility_general: { label: 'Facility / General', activeColor: '#0d0f14', activeBg: '#c8f04e', activeBorder: '#c8f04e' },
+                      gear_equipment: { label: 'Gear / Equipment', activeColor: '#0d0f14', activeBg: '#c8f04e', activeBorder: '#c8f04e' },
+                      client_billing: { label: 'Client / Billing', activeColor: '#0d0f14', activeBg: '#c8f04e', activeBorder: '#c8f04e' },
                     }[catKey]
                     const isSelected = newFlagCategory === catKey
                     return (
@@ -1241,9 +1241,9 @@ export default function DashboardPage() {
                   <div style={{ display: 'flex', gap: 6 }}>
                     {(['facility_general', 'gear_equipment', 'client_billing'] as const).map(catKey => {
                       const catConfig = {
-                        facility_general: { label: 'Facility / General', activeColor: 'var(--text3)', activeBg: 'var(--surface2)', activeBorder: 'var(--text3)' },
-                        gear_equipment: { label: 'Gear / Equipment', activeColor: '#F59E0B', activeBg: 'rgba(245,158,11,0.15)', activeBorder: '#F59E0B' },
-                        client_billing: { label: 'Client / Billing', activeColor: '#60A5FA', activeBg: 'rgba(96,165,250,0.15)', activeBorder: '#60A5FA' },
+                        facility_general: { label: 'Facility / General', activeColor: '#0d0f14', activeBg: '#c8f04e', activeBorder: '#c8f04e' },
+                        gear_equipment: { label: 'Gear / Equipment', activeColor: '#0d0f14', activeBg: '#c8f04e', activeBorder: '#c8f04e' },
+                        client_billing: { label: 'Client / Billing', activeColor: '#0d0f14', activeBg: '#c8f04e', activeBorder: '#c8f04e' },
                       }[catKey]
                       const isSelected = pendingCategory === catKey
                       return (
