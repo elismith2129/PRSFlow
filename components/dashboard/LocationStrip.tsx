@@ -458,14 +458,9 @@ export function LocationStrip() {
                     })()}
 
                     {(() => {
-                      const activeCats = OPS_CATS.filter(cat => {
-                        const row = opsRows.find(o => o.category === cat.key)
-                        return !row?.admin_approved_at
-                      })
-                      if (activeCats.length === 0) return null
                       return (
                       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-                      {activeCats.map((cat, i) => {
+                      {OPS_CATS.map((cat, i) => {
                         const row         = opsRows.find(o => o.category === cat.key)
                         const runnerDone  = !!row?.submitted_at
                         const adminDone   = !!row?.admin_approved_at
@@ -476,7 +471,7 @@ export function LocationStrip() {
                             onClick={() => setOpenModal({ category: cat.key, date: today })}
                             onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2, #1e2130)')}
                             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', borderBottom: i < activeCats.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.1s' }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', borderBottom: i < OPS_CATS.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.1s' }}
                           >
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
