@@ -71,6 +71,9 @@ This applies to all new tables going forward. Existing tables are unaffected unt
 - **`handleFinish()` and `handleApprove()` scope to today's rows only.** `handleFinish()` (runner WO) updates rows where `date === getLocalToday()`. `handleApprove()` (admin WorkOrderPopup) updates rows where `date === getLocalToday() && status !== 'approved'`. Future-date rows are never prematurely submitted or approved. The Approve button's `disabled` prop only gates on the `approving` in-flight state — it is always clickable (no count-based gate).
 - **Dashboard badge (`pendingCount`) driven by `studio_time_rows.status`.** `loadSummaries()` in LocationStrip adds a fifth parallel query for today's stRows with `status = 'submitted'`, maps them to WO IDs, and counts matching WOs per studio. A third RT channel (`daily-ops-strows`, UPDATE on `studio_time_rows`) keeps the badge live when runner submits or admin approves. `studio_time_rows` must be in the `supabase_realtime` publication with `REPLICA IDENTITY FULL` for these events to fire.
 - **Approved sessions drop from the Today drawer column.** `fetchDrawerData()` queries today's stRow statuses after loading WOs; bookings where all today's stRows are `approved` are excluded from `activeTodayBkgs` and disappear from the drawer without a page refresh.
+- **Runner checklist pages: Save vs Submit distinction.** `handleSave()` persists checklist item state and notes to the `checklists` table (and mic_checkins + quantities for mics) WITHOUT writing `submitted_at` to `daily_ops_submissions`. `handleSubmit()` writes `submitted_at` to `daily_ops_submissions` and marks the shift complete for the admin view. Runners can tap Save to preserve progress between sessions without flagging the task as done. Mics page also restores prior checkin/quantity state from DB on load.
+- **`daily_ops_submissions` table columns — canonical list.** The table has exactly these columns: `id, studio, date, category, staff_name, notes, submitted_at, admin_approved_at, admin_approved_by, created_at`. Columns `attention_notes`, `needs_attention`, and `photo_urls` do NOT exist on this table — those fields live on `checklists` rows. Any upsert to `daily_ops_submissions` must only include the correct columns; sending extra columns causes a silent 400 Bad Request from Supabase.
+- **OPS_CATS `category` key values must match DB writes exactly.** LocationStrip's `OPS_CATS` array maps display labels to category keys used to look up `daily_ops_submissions` rows. Keys must match exactly what runner pages write as the `category` field. Correct values: `opening_checklist`, `closing_checklist`, `petty_cash`, `stock`, `mic_inventory`. The stock page writes `category: 'stock'` — not `'stock_list'`. Mismatch causes the Runner checkmark to never show for that row.
 
 ### UI patterns
 - **Clients page = unified two-column view.** List on left, full editable profile in right panel. No separate `/clients/[id]` route. URL uses query param `/clients?id=<uuid>` for shareability.
@@ -942,7 +945,7 @@ Approved sessions drop from the Today column: after loading today's WOs, `fetchD
 
 ---
 
-*Last updated: June 14, 2026 — Session 3a complete: dashboard_task_comments table, live Tasks panel with ticket modal + comments + photos (commit 350d7fa).*
+*Last updated: June 15, 2026 — Runner Save + Submit pattern, daily_ops_submissions column fix, quick action card submitted state, Tasks panel polish (commits 79f0632 through c3c4d48).*
 
 ---
 
@@ -1092,3 +1095,94 @@ CREATE POLICY "dashboard_tasks: anon read" ON dashboard_tasks FOR SELECT TO anon
 - New `DashboardTaskComment` interface: `{ id, task_id, text, photo_url, created_by_name, created_at }`.
 
 **`fmtTime(iso)` helper:** Formats `created_at` timestamps as `"Jun 14 · 02:30 PM"` using `toLocaleDateString` + `toLocaleTimeString`. Defined at module level (outside component).
+
+---
+
+### June 14, 2026 — Yesterday Checklist Rows + Site Color Pass
+
+**Commits: `dcbee2a`, `5837182`, `9eeae65`**
+
+**Yesterday checklist rows in LocationStrip drawer (`dcbee2a`, `5837182`):**
+- Yesterday ops rows now always render in the drawer even when no submission exists for a category (previously rows were missing if the runner hadn't started them).
+- Rows with no submission show grey state (no checkmark, no progress).
+- Rows with a submission show color-coded state: green = approved, orange = submitted (awaiting admin), grey = in-progress.
+- Approve button on each Yesterday ops row triggers `admin_approved_at` update on `daily_ops_submissions` and refetches; approved rows disappear from the Yesterday column immediately.
+- 8am reset rule: Yesterday section only shows for the operational-day window (before 8am, "Yesterday" shows the prior day; after 8am, it clears). Driven by `getLocalDateStr(-1)`.
+- All ops submission rows are fetched and shown, not just those with `needs_attention`.
+
+**Site-wide color system pass (`9eeae65`):**
+- CSS variable color audit across all pages. Ensured consistent use of `var(--hot)`, `var(--warm)`, `var(--booked)`, `var(--accent)`, `var(--text3)` etc. rather than hardcoded hex values in non-runner pages.
+
+---
+
+### June 14, 2026 — Dashboard Tasks Panel Polish
+
+**Commits: `5119412`, `695eef3`, `111fd0a`, `2415332`, `1831a68`, `fc7a72d`**
+
+**Tasks panel restyled — card-row layout (`695eef3`):**
+- Task list rows changed from plain text to styled cards — each row has a subtle border, task text, optional `source_label` + `due_date` pills below.
+- Count badge: task tab header shows active (incomplete, non-deleted) task count as a pill.
+- History link: `"X completed →"` at the bottom of the panel navigates to the history modal.
+- Runner flag accent: tasks with `source = 'runner_flag'` or `source = 'wo_flag'` display a colored left-border accent to visually distinguish auto-generated tasks from manual ones.
+
+**Completed tasks history modal (`111fd0a`, `fc7a72d`):**
+- Clicking the history link opens a full-screen modal showing all completed tasks for the current role tab.
+- Search bar: case-insensitive live filter by task text, source label, or completed date.
+- History rows are clickable and open the task modal in a read-only view (no comment input, no Complete button — view only since the task is already done).
+
+**Dot color fixes (`2415332`, `1831a68`):**
+- Task list: open (incomplete) tasks show an orange dot `#fb923c`.
+- History modal: completed tasks show a teal dot `#14B8A6`.
+- Consistent with the status dot convention used elsewhere (orange = pending, teal/green = done).
+
+---
+
+### June 14–15, 2026 — Runner Quick Action Card Submitted State
+
+**Commits: `5fe5735`, `e81769c`, `69cbe66`, `c9c131b`**
+
+**Green border on submitted quick action cards (`5fe5735`):**
+- Quick action tiles on the runner studio hub (`/runner/[studio]`) now show a green `#4ef0a2` left border when that category has been submitted today.
+- Visual cue lets runners quickly see which daily ops tasks are done without opening each one.
+
+**Submitted state query fixes (`e81769c`, `69cbe66`):**
+- Initial implementation queried only `daily_ops_submissions` for submitted state. But checklists only write to `daily_ops_submissions` on full Submit; in-progress saves don't write there. Fix: quick action cards now query BOTH `checklists` (for opening/closing checklist types — checks `completed_at IS NOT NULL`) AND `daily_ops_submissions` (for all categories — checks `submitted_at IS NOT NULL`). Both sources are merged to determine the green-border state.
+
+**Auto-navigate after save/submit + stock daily_ops_submissions (`c9c131b`):**
+- All runner pages (checklist, mics, stock, petty-cash) now navigate to the studio hub immediately on both Save and Submit.
+- Stock page (`/runner/[studio]/stock`) was not writing to `daily_ops_submissions` on save. Added the same upsert pattern as petty-cash — writes `category: 'stock'`, `submitted_at` on save.
+
+---
+
+### June 15, 2026 — Runner Save + Submit Pattern + Daily Ops Fixes
+
+**Commits: `c3c4d48`, `92579b6`, `80aad84`, `e81a015`, `64d375c`, `79f0632`**
+
+**Save + Submit pattern on checklists and mics (`c3c4d48`):**
+- Both `/runner/[studio]/checklist/[type]` and `/runner/[studio]/mics` pages gained a Save button alongside the existing Submit button.
+- **Save** persists progress to the `checklists` table (or `mic_checkins` + `mic_inventory_quantities` for mics) without writing `submitted_at` to `daily_ops_submissions`. Navigation returns to studio hub.
+- **Submit** writes `submitted_at` to `daily_ops_submissions`, marking the category done for the admin view, then navigates to hub.
+- Mics page now fetches and restores prior checkin status and quantity from DB on load — runners can leave and return without losing progress.
+
+**Initials required hint on submit (`92579b6`):**
+- Both checklist and mic pages show `"Required to submit"` in red (`#ef4444`, 9px) immediately below the initials input when Submit is tapped with an empty initials field.
+- Hint clears when the user starts typing. Submit button color is disabled-state grey until initials are present.
+- Uses `showInitialsHint` state; `position: absolute; top: 100%` anchors it below the input without shifting layout.
+
+**Admin Runner checkmark regression fix — local date (`80aad84`):**
+- Root cause: checklist `handleSubmit` was using `new Date().toISOString().slice(0, 10)` (UTC date) to write the `date` field to `daily_ops_submissions`. LocationStrip queries using `getLocalDateStr()` (local timezone). After 5 PM PDT these diverge — the runner submits for "tomorrow's" UTC date, LocationStrip looks for today's local date, and the submission is never found.
+- Fix: replaced with the local timezone IIFE: `(() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10) })()`.
+- Same fix applied earlier to stock and petty-cash pages.
+
+**Stock list OPS_CATS key mismatch + save mutation bug (`e81a015`):**
+- **Key mismatch**: LocationStrip `OPS_CATS` array had `key: 'stock_list'` but the stock runner page writes `category: 'stock'` to `daily_ops_submissions`. Fixed key to `'stock'`.
+- **Save mutation bug**: The `save()` function in `stock/page.tsx` was looping over `items` with a `for...of` loop and doing `it.id = data.id` after insert — mutating React state objects directly without calling `setItems`. On a second save, the already-inserted items still showed `id: undefined`, causing duplicate DB inserts. Fixed with an immutable pattern: `const updated = items.map(it => ({ ...it }))` + index-based ID assignment + `setItems(updated)` after the loop.
+
+**Local date fix and ID mutation fix for stock and petty-cash (`64d375c`):**
+- Both `stock/page.tsx` and `petty-cash/page.tsx` had the same UTC-vs-local date bug (using `toISOString().slice(0,10)` instead of local IIFE). Fixed both.
+- `petty-cash/page.tsx` had the same `for...of` + direct mutation bug in its entries save loop. Fixed with the same immutable pattern.
+
+**Remove non-existent columns from daily_ops_submissions upsert (`79f0632`):**
+- The checklist `handleSubmit` was sending `attention_notes`, `needs_attention`, and `photo_urls` in the `daily_ops_submissions` upsert. These columns don't exist in that table — they live on `checklists` rows. The upsert was silently returning a 400 Bad Request from Supabase, meaning the submission was never recorded.
+- Fix: removed the three non-existent columns. Now only sends `studio, date, category, staff_name, submitted_at, notes` (all valid columns).
+- Root cause: the table schema was drafted with those columns in the initial briefing but they were never created in the actual DB migration.

@@ -1,6 +1,6 @@
 # PRSFlow — Tech Stack & Roadmap
 
-*Last updated: June 10, 2026*
+*Last updated: June 15, 2026*
 
 ---
 
@@ -262,6 +262,16 @@ Defined in `styles/globals.css`:
 | dashboard-rebuild | `app/(main)/page.tsx` rewritten; `TodoModule` + `QCHomeWidget` removed; 3-col grid (`1fr 2fr 1fr`). Col 1: Needs Action — top 5 hot/warm/uncontacted leads (`needs_contact=true`, excludes cold/dead/booked), status badge, "View all in CRM →". Col 2: Today's Sessions — confirmed (#14B8A6) + tentative (#F97316) sections with colored left-border rows, `b.artist\|\|b.client_name`, session_type badge, time + location. Col 3: Tasks placeholder (replaced by live Tasks panel in Session 3a). Cold leads exclusion fix in follow-up commit. |
 | **Dashboard Tasks panel ✅** | **Session 3a: live ticket-style task system wired to dashboard Col 3** |
 | dashboard-tasks-session-3a | `dashboard_task_comments` table (per-task comment thread, append-only, anon+authenticated INSERT/SELECT). `dashboard_tasks.photo_url` column added. Tab→role mapping: Me=admin, Mgr=studio_manager, Asst=asst_manager, Billing=billing. Task list fetches by role, rows clickable. Inline add task form with optional photo (to `checklist-photos` bucket). Task modal: title, task photo, comment thread with photos + timestamps, textarea + attach photo, Comment + Complete buttons. `created_by_name` from `supabase.auth.getUser()`, falls back to `'Staff'`. `DashboardTaskComment` type + `DashboardTask.photo_url` added to `lib/supabase.ts`. |
+| **Yesterday checklist rows ✅** | **Color-coded state, approve flow, 8am reset** |
+| yesterday-checklist-rows | LocationStrip drawer Yesterday ops rows always render (grey when no submission). Color states: green=approved, orange=submitted, grey=in-progress. Approve button on each row updates `admin_approved_at` + removes row from Yesterday column immediately. |
+| **Dashboard Tasks panel polish ✅** | **Card-row layout, count badge, history modal, runner flag accent** |
+| dashboard-tasks-polish | Task rows restyled as cards with border + source pills. Count badge on tab header. "X completed →" history link opens completed-tasks modal with search. History rows clickable → read-only ticket modal. Runner flag orange left-border accent on auto-generated tasks. Dot colors: orange = open, teal = completed in history. |
+| **Runner quick action card submitted state ✅** | **Green border when submitted today; fixed submitted state queries** |
+| runner-quick-action-state | Quick action tiles on runner studio hub show green `#4ef0a2` left border when submitted today. Submitted state queries both `checklists.completed_at` (checklist types) and `daily_ops_submissions.submitted_at` (all categories). Stock page now writes to `daily_ops_submissions` on save. All runner pages auto-navigate to hub after Save or Submit. |
+| **Runner Save + Submit pattern ✅** | **Save preserves progress; Submit marks complete; initials required hint** |
+| runner-save-submit | Checklist and mics pages: Save persists to `checklists`/`mic_checkins`/`mic_inventory_quantities` without writing `submitted_at`; Submit writes `submitted_at` to `daily_ops_submissions`. Mics page restores prior checkin/quantity from DB on load. Red "Required to submit" hint anchored below initials input on Submit with empty field. |
+| **Runner daily ops submission fixes ✅** | **Local date, OPS_CATS key, immutable save, column schema** |
+| runner-daily-ops-fixes | UTC→local date fix on checklist, stock, petty-cash `daily_ops_submissions` writes. LocationStrip OPS_CATS `'stock_list'` → `'stock'` key fix. Immutable save pattern for stock and petty-cash (eliminates duplicate inserts from direct React state mutation). Removed non-existent columns from checklist `daily_ops_submissions` upsert that were causing silent 400 errors. |
 
 ### Next
 
