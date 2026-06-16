@@ -470,7 +470,7 @@ export function FlagsLogSection() {
                   outline: 'none', resize: 'none', boxSizing: 'border-box',
                 }}
               />
-              <label style={{ display: 'block', fontSize: 10, color: 'var(--text3)', cursor: 'pointer', fontFamily: 'DM Mono', marginTop: 6, marginBottom: 8 }}>
+              <label style={{ display: 'inline-block', fontSize: 10, color: 'var(--text3)', cursor: 'pointer', fontFamily: 'DM Mono', marginTop: 6, marginBottom: 8 }}>
                 {flagCommentPhoto ? flagCommentPhoto.name : '+ Attach photo'}
                 <input
                   ref={flagCommentPhotoRef}
