@@ -372,6 +372,7 @@ export default function DashboardPage() {
       .in('status', ['pending', 'acknowledged'])
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
+      .limit(5)
     setFlags(data || [])
     setNewFlagText('')
     setNewFlagCategory(null)
