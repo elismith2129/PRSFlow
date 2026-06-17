@@ -278,20 +278,20 @@ Defined in `styles/globals.css`:
 | petty-cash-ledger | Loads all prior entries for the studio (not just today); most-recent `petty_cash_balances` row for opening balance; In/Out tap-to-toggle replaces `<select>`; save errors surfaced inline; admin balance view unblocked from runner submission state. |
 | **Daily Ops Log rebuilt ✅** | **Date-based historical view with studio tabs, status dots, day modal — replaces flat mixed table** |
 | daily-ops-log-rebuild | Studio tabs (Paramount/Encore/Ameraycan/Track); date list sorted most-recent first with teal/amber/grey status dots; Load More (25 at a time); day modal shows WO cards + 5 checklist rows with Runner/Admin checkboxes; WO card click opens WorkOrderPopup. |
+| **Flags system ✅** | **Structured issues log: dashboard panel, flag modal, acknowledge/resolve, runner/WO auto-flag, Admin log** |
+| flags-system | `flags` table (id, studio, source manual/runner_flag/wo_flag, runner_note, category facility_general/gear_equipment/client_billing, status pending/acknowledged/resolved, deleted_at soft delete). `flag_comments` table (flag_id FK CASCADE, text, photo_url, created_by_name, created_at; append-only). `Flag` + `FlagComment` types in `lib/supabase.ts`. Dashboard panel: 4 cards, studio pill, category badge, runner note snippet, lime "View all flags →". Flag modal: comment thread, Acknowledge (+ category reassignment dropdown), Resolve sub-modal (resolution note / vendor / cost → appended as flag_comment + status=resolved). Soft delete with inline confirmation on card (×) and inside modal. Runner checklist NA submissions and WO NA submissions auto-insert flags with source=runner_flag/wo_flag respectively. Admin Flags Log tab (searchable by note/studio/category, per-row soft delete). |
+| **Dashboard room grid ✅** | **Col 2 replaced with fixed 11-room grid and day navigation** |
+| dashboard-room-grid | `ROOMS` constant (11 rooms: Paramount A/B/C/E/X, Ameraycan A/B, Encore A/B, Track North/South). `calDate` state + `‹`/`›` prev/next day buttons in panel header. `useEffect` dep `[calDate]`, bookings fetch uses `new Date(calDate)`. Grid: `gridTemplateColumns: '1fr 1fr 1fr'`, `gap: 4`, panel `height: 556`. Room match: `b.location === room.venue && b.studio === room.studio` (booking.location = bare venue name, not combined string). Booked card: teal `#14B8A6` or orange `#F97316` top border, DM Serif artist name (`var(--text)`), label sub-line (DM Mono, muted), compact time via `fmtSessionTime()`, `1ST-XX`/`2ND-XX` engineer+assistant initials bottom-right (teal=confirmed, amber=hold). Module-level helpers: `engInitials(name)` + `fmtSessionTime(t)`. |
 
 ### Next
 
 | Priority | What's next |
 |---|---|
-| **High** | **Flags system** — runner Needs Attention submissions → structured issues log under Admin tab; manager acknowledgment flow; may absorb or replace Session 3b auto-generation (TBD) |
-| **High** | **Session 3b — runner flag auto-generation** — auto-create `dashboard_tasks` rows from runner checklist NA flags and WO flags; in-app notification badge on Tasks column when new tasks arrive (may be superseded by Flags system) |
 | **High** | **WO → Calendar sync** — audit and harden WO Close & Save → booking field sync; all fields must round-trip correctly |
 | Medium | **Activity log on session form and WO** — per-booking/per-WO feed of field changes, status transitions, runner submissions, admin approvals |
 | Medium | **Combine WOs** — merge multiple work orders for a single booking into one consolidated WO |
 | Medium | **Mobile pass** — full mobile UX review and fixes across non-runner pages (calendar, CRM, admin) |
-| Medium | **Calendar drag-and-drop** — drag blocks to move sessions; option+drag to copy |
-| Medium | **Needs Action rebuild (4.8)** — redesign what "needs action" means vs overdue |
-| Medium | **4.9b — Duplicate merge flow:** UI to merge two client profiles discovered post-import |
+| Horizon | **TV display** — read-only studio status board for wall-mounted screen; shows today's sessions per room in real time |
 | Horizon | **Dashboard activity log** — recent studio activity feed (session starts, WO completions, task completions) |
 
 ### Deprioritized

@@ -100,7 +100,7 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 - **`TimeInput` is a smart-parse text `<input>` with auto-format on blur.** Accepts `10a`→`10:00 AM`, `930p`→`9:30 PM`, `1430`→`2:30 PM` (24h), bare `8`→`8:00 AM`. Enter commits. Click/focus selects all. Used in booking form and WO Studio Time From/To cells. (Was briefly a 30-min `<select>` June 5–10, 2026 — reverted for mobile usability.)
 - **iOS Safari scroll lock: use `body.position=fixed` + `top=-scrollY`, not `overflow:hidden`.** `overflow:hidden` on body does not block scroll on iOS. Correct pattern: save `scrollY`, set `body.style.top=\`-${scrollY}px\`, position=fixed, width=100%` on open; clear all three and call `window.scrollTo({ top: savedScrollY, behavior: 'instant' })` on close.
 
-## What's Built (as of June 15, 2026)
+## What's Built (as of June 16, 2026)
 
 | Chunk | Feature | Status |
 |-------|---------|--------|
@@ -151,20 +151,16 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 | Daily ops Today/Yesterday view fixes | Approved checklist items no longer disappear from Today column; completed WOs no longer disappear from Yesterday column; `pastRetentionWindow` guard scoped to Today only | ✅ Complete |
 | Petty cash running ledger | All-time entry ledger with most-recent balance; In/Out tap-to-toggle button; admin view unblocked from submission state; save errors surfaced inline | ✅ Complete |
 | Daily Ops Log rebuilt | `DailyOpsLogSection` rebuilt as date-based historical view: studio tabs (Paramount/Encore/Ameraycan/Track), date list with status dots (teal/amber/grey), Load More pagination, day modal (WO cards + 5 checklist rows with Runner/Admin checkboxes); replaces old flat mixed table | ✅ Complete |
+| Flags system | `flags` + `flag_comments` tables. Dashboard panel (4 cards, studio pill, category badge, runner note, lime "View all" link). Flag modal: comment thread, Acknowledge (+ category reassignment), Resolve sub-modal (resolution note / vendor / cost), soft-delete with confirmation. Runner checklist NA + WO NA submissions auto-insert `runner_flag`/`wo_flag` rows. Admin Flags Log tab (searchable, per-row delete). | ✅ Complete |
+| Dashboard room grid | Col 2 replaced with fixed 11-room grid (`ROOMS` constant). `calDate` state + `‹`/`›` day navigation. 3-col grid (`1fr 1fr 1fr`), `height: 556`. Room matched via `b.location === venue && b.studio === room`. Booked card: teal/orange top border, DM Serif artist name (`var(--text)`), label sub-line, compact time, `1ST-XX`/`2ND-XX` initials (teal=confirmed, amber=hold). `engInitials()` + `fmtSessionTime()` helpers. | ✅ Complete |
 
 ## What's Next
 
-- **Flags system** — runner Needs Attention submissions feed a structured issues log under an Admin tab; manager must acknowledge each flag; replaces or absorbs Session 3b auto-generation into dashboard_tasks (TBD which model wins)
-- **Session 3b — runner flag auto-generation** — auto-create `dashboard_tasks` rows when runner submits a checklist with Needs Attention content or flags a WO issue; in-app notification badge on the Tasks column header when new tasks arrive for the active role (may be superseded by Flags system above)
 - **WO → Calendar sync** — audit and harden the WO Close & Save → booking field sync path; ensure all fields round-trip correctly when WO is edited after booking form has unsaved changes
 - **Activity log on session form and WO** — per-booking/per-WO activity feed showing field changes, status transitions, runner submissions, and admin approvals
 - **Combine WOs** — merge multiple work orders for a single booking into one consolidated WO
 - **Mobile pass** — full mobile UX review and fixes across all non-runner pages (calendar, CRM, admin)
-- **Calendar drag-and-drop** — drag blocks to move sessions; option+drag to copy to new date
-- **Needs Action rebuild (4.8)** — redesign what "needs action" means vs overdue
-- **Email/webhooks (Chunk 5)** — Squarespace → lead auto-create
-- **Auth (Chunk 9)** — office vs runner roles, RLS; `created_by_name` on task comments switches from email fallback to real display name
-- **Supabase Realtime on new tables** — any new table added going forward needs `ALTER PUBLICATION supabase_realtime ADD TABLE <name>` + `ALTER TABLE <name> REPLICA IDENTITY FULL` before subscriptions will fire
+- **TV display** — read-only studio status board for wall-mounted screen; shows today's sessions per room in real time (last)
 
 **Horizon / ideas (not yet sequenced):**
 - **Dashboard activity log** — recent studio activity feed (session starts, WO completions, runner checklist submissions, task completions) as a fourth panel or sidebar widget

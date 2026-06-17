@@ -194,7 +194,7 @@ This applies to all new tables going forward. Existing tables are unaffected unt
 
 ---
 
-*Last updated: June 15, 2026 — Daily ops Today/Yesterday view fixes, petty cash running ledger, Daily Ops Log rebuilt as date-based historical view per studio.*
+*Last updated: June 16, 2026 — Flags system (panel, modal, acknowledge/resolve with vendor/cost, auto-flag from runner/WO, Admin log), dashboard room grid with day navigation.*
 
 ---
 
@@ -1216,3 +1216,98 @@ CREATE POLICY "dashboard_tasks: anon read" ON dashboard_tasks FOR SELECT TO anon
 - **Load More** — dates paginate 25 at a time with a "Load More (N remaining)" button.
 - **Day modal** — clicking a date opens a modal styled identically to the LocationStrip daily ops drawer: session/WO cards on top (completed teal border, needs-attention orange border, open grey), 5 checklist rows below with Runner/Admin checkboxes, staff name and submitted time per row. WO card click opens `WorkOrderPopup`.
 - Old search bar and studio/type/date filter controls removed entirely. Status dot on each date row replaces the old per-row approved indicator.
+
+---
+
+### June 16, 2026 — Flags system + Dashboard room grid
+
+**Key commits:** `a4465f9`, `10c1f6a`, `27a1818`, `9a7f3b5`, `7770d08`, `5888b16`, `981cac3`, `49874c5`, `488c3f5`, `60d613a`
+
+---
+
+#### Flags system
+
+A structured issues log surfacing studio problems flagged by runners, WO submissions, or managers. Replaces the tentative Session 3b runner-flag-auto-generation concept — flags feed a dedicated panel and Admin log rather than `dashboard_tasks`.
+
+**New database tables:**
+
+`flags`:
+- `id` (uuid), `studio` (text), `source` (`manual` / `runner_flag` / `wo_flag`), `runner_note` (text), `category` (`facility_general` / `gear_equipment` / `client_billing`), `status` (`pending` / `acknowledged` / `resolved`), `deleted_at` (timestamptz, soft delete), `created_at` (timestamptz)
+- RLS: GRANT SELECT/INSERT/UPDATE/DELETE to `anon` + `authenticated` (app uses anon key pre-auth)
+
+`flag_comments`:
+- `id` (uuid), `flag_id` FK → `flags` (CASCADE), `text` (text), `photo_url` (text), `created_by_name` (text), `created_at` (timestamptz)
+- Append-only — no UPDATE/DELETE policies. Anon + authenticated SELECT + INSERT.
+
+`Flag` + `FlagComment` types added to `lib/supabase.ts`.
+
+**Dashboard flags panel (`app/(main)/page.tsx`):**
+- Fetches flags with `status IN ('pending','acknowledged')` and `deleted_at IS NULL`, ordered newest-first, limited to 4 cards.
+- Card layout: studio pill, category badge (facility_general = grey, gear_equipment = amber, client_billing = hot/red), runner note snippet, created time.
+- "View all flags →" link (lime `#c8f04e`) navigates to Admin flags log tab.
+- Manual flag creation form below cards: studio picker (defaults to `paramount`), category dropdown (required), freetext note, outlined Submit button.
+- `handleCreateFlag` and initial fetch both limited to 4.
+
+**Flag modal:**
+- Opens on card click. Shows full runner note, runner photo (when `source = 'runner_flag'` and a photo was attached), and a `flag_comments` thread.
+- New comments via textarea + Send button; Enter key also submits. Photo attach supported. Thread appends optimistically.
+- **Acknowledge**: sets `status = 'acknowledged'`. Acknowledged flags show a category reassignment dropdown in the modal so category can be corrected after review.
+- **Resolve sub-modal**: inline modal with Resolution Note (textarea), Vendor (text input), Cost (text input). On confirm: sets `status = 'resolved'` and appends a `flag_comments` entry with the resolution details. Resolved flags disappear from the dashboard panel.
+- **Delete**: soft-delete button with inline confirmation dialog; writes `deleted_at = now()` to DB. Available on flag cards (× button) and inside the modal. Debugging note: initial implementation failed silently because `error` was not captured from the Supabase response — fixed by destructuring `const { error } = await supabase...` and adding `console.log('handleDeleteFlag:', { id, error })`.
+- Enter/Send shortcut in the comment textarea (Shift+Enter for newline).
+
+**Flags log in Admin (`components/admin/FlagsLogSection.tsx`):**
+- Tab in the Admin sidebar alongside Ops Log.
+- Shows all non-deleted flags, searchable by runner note / studio / category. Soft-delete button on each log row.
+
+**Runner/WO auto-flag generation:**
+- Checklist submissions with `needs_attention = true` auto-insert a `flags` row with `source = 'runner_flag'`, the attention notes as `runner_note`, and the runner's submitted photo URL.
+- WO-level Needs Attention submissions auto-insert with `source = 'wo_flag'`.
+- Auto-generated flags appear alongside manually created ones in the dashboard panel and Admin log.
+
+---
+
+#### Dashboard room grid
+
+**Col 2 (Today's Sessions) replaced with a fixed 11-room grid showing every studio room.**
+
+**`ROOMS` constant (module-level in `app/(main)/page.tsx`):**
+```ts
+const ROOMS = [
+  { venue: 'Paramount', studio: 'Studio A', label: 'Paramount A' },
+  { venue: 'Paramount', studio: 'Studio B', label: 'Paramount B' },
+  { venue: 'Paramount', studio: 'Studio C', label: 'Paramount C' },
+  { venue: 'Paramount', studio: 'Studio E', label: 'Paramount E' },
+  { venue: 'Paramount', studio: 'Studio X', label: 'Paramount X' },
+  { venue: 'Ameraycan', studio: 'Studio A', label: 'Ameraycan A' },
+  { venue: 'Ameraycan', studio: 'Studio B', label: 'Ameraycan B' },
+  { venue: 'Encore', studio: 'Studio A', label: 'Encore A' },
+  { venue: 'Encore', studio: 'Studio B', label: 'Encore B' },
+  { venue: 'Track', studio: 'North', label: 'Track North' },
+  { venue: 'Track', studio: 'South', label: 'Track South' },
+]
+```
+
+**`calDate` state + day navigation:**
+- `const [calDate, setCalDate] = useState(new Date())` added to `DashboardPage`.
+- Panel header shows `‹` / `›` arrow buttons alongside `calDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })`.
+- Arrow handlers advance/retreat `calDate` by one day via `setDate(n.getDate() ± 1)`.
+- `useEffect` dep array changed from `[]` to `[calDate]`; bookings fetch uses `new Date(calDate)`.
+
+**Grid layout:**
+- `gridTemplateColumns: '1fr 1fr 1fr'`, `gap: 4`, `padding: 8`.
+- Panel fixed `height: 556px` (header ~48px + 4 rows × 120px cards + 3 × 4px gaps + 16px padding).
+
+**Room matching:** `b.location === room.venue && b.studio === room.studio` — direct field comparison. `booking.location` stores the bare venue name (`'Paramount'`, `'Encore'`, etc.); `booking.studio` stores the room name (`'Studio A'`, `'North'`, etc.). The combined `'Venue · Studio'` string only appears in `leads.location`; `parseLocation()` is NOT used here.
+
+**Booked room card:**
+- Top border: `2px solid #14B8A6` (confirmed) or `2px solid #F97316` (tentative).
+- Background: `#0d0f14` (booked); `rgba(0,0,0,0.2)` (empty).
+- Primary name (DM Serif Display 13px, `var(--text)`): billing session → `artist || label || client_name`; COD → `client_name`.
+- Label sub-line (DM Mono 9px, `rgba(255,255,255,0.45)`) shown only on billing sessions when label differs from primary name.
+- Time string (DM Mono 9px, `rgba(255,255,255,0.75)`) formatted via `fmtSessionTime()`.
+- Engineer `1ST-XX` + assistant `2ND-XX` initials stacked bottom-right; teal `#4ef0a2` if confirmed, amber `#f0a24e` if hold.
+
+**Module-level helpers added:**
+- `engInitials(name)` — mirrors calendar's `initials()`: first+last initials, or first 2 chars for a single-word name.
+- `fmtSessionTime(t)` — compact time format matching calendar's `fmtTime()`: `10A`, `2:30P`.
