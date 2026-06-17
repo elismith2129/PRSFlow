@@ -495,7 +495,7 @@ export default function DashboardPage() {
         </div>
 
         {/* COL 2 — TODAY'S SESSIONS */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', height: 496 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', height: 556 }}>
           <div style={{ padding: '13px 16px 11px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13 }}>TODAY'S SESSIONS</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
