@@ -334,29 +334,17 @@ export default function DashboardPage() {
   async function handleSaveFlag() {
     if (!selectedFlag || flagSubmitting) return
     setFlagSubmitting(true)
-    const photo_url = flagCommentPhoto ? await uploadPhoto(flagCommentPhoto) : null
-    if (flagCommentText.trim() || photo_url) {
-      await supabase.from('flag_comments').insert({
-        flag_id: selectedFlag.id,
-        text: flagCommentText.trim() || null,
-        photo_url,
-        created_by_name: currentUserEmail,
-      })
-      await loadFlagComments(selectedFlag.id)
-    }
     if (pendingCategory && pendingCategory !== selectedFlag.category) {
       const { data: updatedData } = await supabase.from('flags')
         .update({ category: pendingCategory })
         .eq('id', selectedFlag.id).select().single()
       if (updatedData) {
-        setSelectedFlag(updatedData)
         setFlags(prev => prev.map(f => f.id === selectedFlag.id ? updatedData : f))
       }
     }
-    setFlagCommentText('')
-    setFlagCommentPhoto(null)
-    if (flagCommentPhotoRef.current) flagCommentPhotoRef.current.value = ''
     setFlagSubmitting(false)
+    setSelectedFlag(null)
+    setConfirmDeleteFlag(false)
   }
 
   async function handleDeleteFlag() {
@@ -747,7 +735,7 @@ export default function DashboardPage() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                       <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', color: STUDIO_COLORS[flag.studio] ?? 'var(--text3)', textTransform: 'uppercase', background: (STUDIO_COLORS[flag.studio] ?? '#888888') + '1f', padding: '2px 6px', borderRadius: 4, border: '0.5px solid var(--border)' }}>
                         {flag.studio}
                       </span>
@@ -1346,6 +1334,12 @@ export default function DashboardPage() {
               <textarea
                 value={flagCommentText}
                 onChange={e => setFlagCommentText(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    handleFlagComment()
+                  }
+                }}
                 placeholder="Add a note…"
                 rows={2}
                 style={{
@@ -1355,16 +1349,27 @@ export default function DashboardPage() {
                   outline: 'none', resize: 'none', boxSizing: 'border-box',
                 }}
               />
-              <label style={{ display: 'inline-block', fontSize: 10, color: 'var(--text3)', cursor: 'pointer', fontFamily: 'DM Mono', marginTop: 6, marginBottom: 8 }}>
-                {flagCommentPhoto ? flagCommentPhoto.name : '+ Attach photo'}
-                <input
-                  ref={flagCommentPhotoRef}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={e => setFlagCommentPhoto(e.target.files?.[0] ?? null)}
-                />
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, marginBottom: 8 }}>
+                <label style={{ display: 'inline-block', fontSize: 10, color: 'var(--text3)', cursor: 'pointer', fontFamily: 'DM Mono' }}>
+                  {flagCommentPhoto ? flagCommentPhoto.name : '+ Attach photo'}
+                  <input
+                    ref={flagCommentPhotoRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={e => setFlagCommentPhoto(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+                {(flagCommentText.trim() || flagCommentPhoto) && (
+                  <button
+                    onClick={handleFlagComment}
+                    disabled={flagSubmitting}
+                    style={{ fontSize: 10, fontFamily: 'DM Mono', padding: '4px 10px', background: '#c8f04e', color: '#0d0f14', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                  >
+                    Send
+                  </button>
+                )}
+              </div>
 
               {/* Action buttons */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
@@ -1427,7 +1432,7 @@ export default function DashboardPage() {
                         fontWeight: 600,
                       }}
                     >
-                      {flagSubmitting ? 'Saving…' : 'Save'}
+                      {flagSubmitting ? 'Saving…' : 'Save & Close'}
                     </button>
                   )}
                 </div>
