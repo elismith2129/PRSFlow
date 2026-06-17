@@ -137,6 +137,7 @@ export default function DashboardPage() {
       ])
       setLeads(leadsData || [])
       setBookings(bookingsData || [])
+      console.log('bookings locations:', (bookingsData || []).map((b: any) => b.location))
       setFlags(flagsData || [])
       setLoading(false)
       setFlagsLoading(false)
@@ -496,7 +497,7 @@ export default function DashboardPage() {
         </div>
 
         {/* COL 2 — TODAY'S SESSIONS */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', height: 496 }}>
           <div style={{ padding: '13px 16px 11px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13 }}>TODAY'S SESSIONS</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -516,7 +517,7 @@ export default function DashboardPage() {
           {loading ? (
             <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, padding: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, padding: 8 }}>
               {ROOMS.map(room => {
                 const booking = bookings.find(b => {
                   const loc = parseLocation(b.location || '')
