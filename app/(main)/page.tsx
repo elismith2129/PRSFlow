@@ -534,6 +534,10 @@ export default function DashboardPage() {
                 const engColor = booking?.engineer_status === 'confirmed' ? '#4ef0a2'
                   : booking?.engineer_status === 'hold' ? '#f0a24e'
                   : 'rgba(255,255,255,0.4)'
+                const asst = booking?.assistant_name ? engInitials(booking.assistant_name) : ''
+                const asstColor = booking?.assistant_status === 'confirmed' ? '#4ef0a2'
+                  : booking?.assistant_status === 'hold' ? '#f0a24e'
+                  : 'rgba(255,255,255,0.4)'
                 return (
                   <div
                     key={room.label}
@@ -576,9 +580,10 @@ export default function DashboardPage() {
                             {timeStr}
                           </div>
                         )}
-                        {eng && (
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'auto' }}>
-                            <div style={{ fontSize: 8, fontFamily: 'DM Mono', color: engColor }}>1ST-{eng}</div>
+                        {(eng || asst) && (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginTop: 'auto' }}>
+                            {eng && <div style={{ fontSize: 8, fontFamily: 'DM Mono', color: engColor, whiteSpace: 'nowrap' }}>1ST-{eng}</div>}
+                            {asst && <div style={{ fontSize: 8, fontFamily: 'DM Mono', color: asstColor, whiteSpace: 'nowrap' }}>2ND-{asst}</div>}
                           </div>
                         )}
                       </>
