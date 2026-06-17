@@ -349,7 +349,8 @@ export default function DashboardPage() {
 
   async function handleDeleteFlag() {
     if (!selectedFlag) return
-    await supabase.from('flags').update({ deleted_at: new Date().toISOString() }).eq('id', selectedFlag.id)
+    const { error } = await supabase.from('flags').update({ deleted_at: new Date().toISOString() }).eq('id', selectedFlag.id)
+    console.log('handleDeleteFlag:', { id: selectedFlag.id, error })
     setFlags(prev => prev.filter(f => f.id !== selectedFlag.id))
     setSelectedFlag(null)
     setConfirmDeleteFlag(false)
