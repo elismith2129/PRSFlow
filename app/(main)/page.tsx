@@ -2,7 +2,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase, Lead, Booking, DashboardTask, DashboardTaskComment, Flag, FlagComment } from '@/lib/supabase'
 import { LocationStrip } from '@/components/dashboard/LocationStrip'
-import { parseLocation } from '@/lib/studios'
 import { useRouter } from 'next/navigation'
 
 const TAB_ROLE: Record<string, 'admin' | 'studio_manager' | 'asst_manager' | 'billing'> = {
@@ -137,7 +136,6 @@ export default function DashboardPage() {
       ])
       setLeads(leadsData || [])
       setBookings(bookingsData || [])
-      console.log('bookings locations:', (bookingsData || []).map((b: any) => b.location))
       setFlags(flagsData || [])
       setLoading(false)
       setFlagsLoading(false)
@@ -519,10 +517,9 @@ export default function DashboardPage() {
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, padding: 8 }}>
               {ROOMS.map(room => {
-                const booking = bookings.find(b => {
-                  const loc = parseLocation(b.location || '')
-                  return loc.venue === room.venue && loc.studio === room.studio
-                })
+                const booking = bookings.find(b =>
+                  b.location === room.venue && b.studio === room.studio
+                )
                 const isBilling = booking?.payment_type === 'billing'
                 const venueColor = STUDIO_COLORS[room.venue.toLowerCase()] || 'var(--text)'
                 const topColor = booking?.status === 'confirmed' ? '#14B8A6' : booking?.status === 'tentative' ? '#F97316' : null
