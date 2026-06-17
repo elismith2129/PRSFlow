@@ -159,14 +159,30 @@ export function FlagsLogSection() {
   }
 
   async function handleSaveFlag() {
-    if (!selectedFlag || flagSubmitting || !flagCommentText.trim()) return
+    if (!selectedFlag || flagSubmitting) return
     setFlagSubmitting(true)
-    const { data: updatedData } = await supabase.from('flags').update({
-      acknowledged_note: flagCommentText.trim(),
-    }).eq('id', selectedFlag.id).select().single()
-    if (updatedData) setSelectedFlag(updatedData)
+    const photo_url = flagCommentPhoto ? await uploadPhoto(flagCommentPhoto) : null
+    if (flagCommentText.trim() || photo_url) {
+      await supabase.from('flag_comments').insert({
+        flag_id: selectedFlag.id,
+        text: flagCommentText.trim() || null,
+        photo_url,
+        created_by_name: 'Staff',
+      })
+      await loadFlagComments(selectedFlag.id)
+    }
+    if (pendingCategory && pendingCategory !== selectedFlag.category) {
+      const { data: updatedData } = await supabase.from('flags')
+        .update({ category: pendingCategory })
+        .eq('id', selectedFlag.id).select().single()
+      if (updatedData) {
+        setSelectedFlag(updatedData)
+        await loadFlags()
+      }
+    }
     setFlagCommentText('')
-    await loadFlags()
+    setFlagCommentPhoto(null)
+    if (flagCommentPhotoRef.current) flagCommentPhotoRef.current.value = ''
     setFlagSubmitting(false)
   }
 
@@ -401,7 +417,7 @@ export function FlagsLogSection() {
                 </div>
               )}
 
-              {/* Category picker — only shown when flag has no category and is still pending */}
+              {/* Category picker — pill buttons for pending/no category; dropdown for acknowledged */}
               {selectedFlag.category === null && selectedFlag.status === 'pending' && (
                 <div style={{ marginBottom: 10 }}>
                   <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
@@ -430,6 +446,17 @@ export function FlagsLogSection() {
                     })}
                   </div>
                 </div>
+              )}
+              {selectedFlag.status === 'acknowledged' && (
+                <select
+                  value={pendingCategory ?? selectedFlag.category ?? ''}
+                  onChange={e => setPendingCategory(e.target.value as 'facility_general' | 'gear_equipment' | 'client_billing')}
+                  style={{ width: '100%', padding: '7px 8px', fontSize: 11, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono', outline: 'none', marginBottom: 8 }}
+                >
+                  <option value="facility_general">Facility / General</option>
+                  <option value="gear_equipment">Gear / Equipment</option>
+                  <option value="client_billing">Client / Billing</option>
+                </select>
               )}
 
               {/* Acknowledged box — shown whenever acknowledged_at is set, including after resolve */}
@@ -581,13 +608,13 @@ export function FlagsLogSection() {
                   {selectedFlag.status === 'acknowledged' && (
                     <button
                       onClick={handleSaveFlag}
-                      disabled={flagSubmitting || !flagCommentText.trim()}
+                      disabled={flagSubmitting}
                       style={{
                         padding: '8px 16px', fontSize: 11, fontFamily: 'DM Mono',
-                        background: flagCommentText.trim() ? '#c8f04e' : 'var(--surface2)',
-                        color: flagCommentText.trim() ? '#0d0f14' : 'var(--text3)',
+                        background: '#c8f04e',
+                        color: '#0d0f14',
                         border: 'none', borderRadius: 6,
-                        cursor: flagCommentText.trim() ? 'pointer' : 'default',
+                        cursor: 'pointer',
                         fontWeight: 600,
                       }}
                     >

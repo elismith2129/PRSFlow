@@ -192,6 +192,7 @@ export default function ChecklistPage() {
       if (existingFlag) {
         await supabase.from('flags').update({
           runner_note: notes.trim() || null,
+          photo_url: photos.length > 0 ? photos[0] : null,
           status: 'pending',
         }).eq('id', existingFlag.id)
       } else {
@@ -201,6 +202,7 @@ export default function ChecklistPage() {
           source_id: clIdRef.current,
           source_label: `${meta.label} · ${type === 'opening' ? 'Opening' : 'Closing'} Checklist`,
           runner_note: notes.trim() || null,
+          photo_url: photos.length > 0 ? photos[0] : null,
           status: 'pending',
         })
       }
