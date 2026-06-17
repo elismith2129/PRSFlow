@@ -558,7 +558,7 @@ export default function DashboardPage() {
                     {booking && (
                       <>
                         <div style={{
-                          fontSize: 13, fontFamily: 'DM Serif Display', lineHeight: 1.2, color: venueColor,
+                          fontSize: 13, fontFamily: 'DM Serif Display', lineHeight: 1.2, color: 'var(--text)',
                           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                         }}>
                           {primaryName}
