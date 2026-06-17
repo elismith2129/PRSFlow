@@ -100,7 +100,7 @@ export default function DashboardPage() {
       const [{ data: leadsData }, { data: bookingsData }, { data: flagsData }] = await Promise.all([
         supabase.from('leads').select('*').order('created_at', { ascending: false }),
         supabase.from('bookings').select('*').lte('start_date', today).gte('end_date', today).order('from_time', { ascending: true }),
-        supabase.from('flags').select('*').in('status', ['pending', 'acknowledged']).is('deleted_at', null).order('created_at', { ascending: false }),
+        supabase.from('flags').select('*').in('status', ['pending', 'acknowledged']).is('deleted_at', null).order('created_at', { ascending: false }).limit(5),
       ])
       setLeads(leadsData || [])
       setBookings(bookingsData || [])
@@ -740,7 +740,7 @@ export default function DashboardPage() {
                         {flag.studio}
                       </span>
                       {catInfo && (
-                        <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', color: catInfo.color, background: catInfo.bg, padding: '2px 6px', borderRadius: 4, textTransform: 'uppercase' }}>
+                        <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text3)', background: 'var(--surface2)', padding: '2px 6px', borderRadius: 4, textTransform: 'uppercase', border: '0.5px solid var(--border)' }}>
                           {catInfo.label}
                         </span>
                       )}
@@ -771,6 +771,14 @@ export default function DashboardPage() {
             })}
           </div>
         )}
+        <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', textAlign: 'right' }}>
+          <button
+            onClick={() => router.push('/admin')}
+            style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            View all flags →
+          </button>
+        </div>
       </div>
 
       {/* TASK MODAL */}
@@ -1256,23 +1264,6 @@ export default function DashboardPage() {
                 </select>
               )}
 
-              {/* Acknowledged box */}
-              {selectedFlag.acknowledged_at && (
-                <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 8, padding: '10px 12px' }}>
-                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#F97316', marginBottom: 4 }}>
-                    Acknowledged
-                  </div>
-                  <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>
-                    {selectedFlag.acknowledged_by}
-                    {selectedFlag.acknowledged_at && ` · ${new Date(selectedFlag.acknowledged_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
-                  </div>
-                  {selectedFlag.acknowledged_note && (
-                    <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 6, lineHeight: 1.5 }}>
-                      {selectedFlag.acknowledged_note}
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Resolved box */}
               {selectedFlag.resolved_at && (
@@ -1364,9 +1355,9 @@ export default function DashboardPage() {
                   <button
                     onClick={handleFlagComment}
                     disabled={flagSubmitting}
-                    style={{ fontSize: 10, fontFamily: 'DM Mono', padding: '4px 10px', background: '#c8f04e', color: '#0d0f14', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                    style={{ fontSize: 10, fontFamily: 'DM Mono', padding: '4px 10px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}
                   >
-                    Send
+                    Submit
                   </button>
                 )}
               </div>
