@@ -100,7 +100,7 @@ export default function DashboardPage() {
       const [{ data: leadsData }, { data: bookingsData }, { data: flagsData }] = await Promise.all([
         supabase.from('leads').select('*').order('created_at', { ascending: false }),
         supabase.from('bookings').select('*').lte('start_date', today).gte('end_date', today).order('from_time', { ascending: true }),
-        supabase.from('flags').select('*').in('status', ['pending', 'acknowledged']).is('deleted_at', null).order('created_at', { ascending: false }).limit(5),
+        supabase.from('flags').select('*').in('status', ['pending', 'acknowledged']).is('deleted_at', null).order('created_at', { ascending: false }).limit(4),
       ])
       setLeads(leadsData || [])
       setBookings(bookingsData || [])
@@ -372,7 +372,7 @@ export default function DashboardPage() {
       .in('status', ['pending', 'acknowledged'])
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
-      .limit(5)
+      .limit(4)
     setFlags(data || [])
     setNewFlagText('')
     setNewFlagCategory(null)
@@ -776,7 +776,7 @@ export default function DashboardPage() {
         <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', textAlign: 'right' }}>
           <button
             onClick={() => router.push('/admin')}
-            style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#c8f04e', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
           >
             View all flags →
           </button>
