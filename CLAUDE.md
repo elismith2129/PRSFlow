@@ -94,7 +94,7 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 - TypeScript `"strict": false` and `target: "es5"`
 - **Styling is inline `style={{ ... }}` JSX, not Tailwind.** CSS variables from `styles/globals.css`: `--bg`, `--surface`, `--surface2`, `--border`, `--text`/`--text2`/`--text3`, `--accent`, `--hot`/`--warm`/`--cold`/`--booked`/`--uncontacted`/`--dead`
 - Fonts (DM Serif Display, DM Mono, Syne) loaded via Google Fonts `@import` in `styles/globals.css`
-- **z-index ladder:** Nav = 9999. LocationStrip dialog = 10001. DailyOpsModal = 10002. RegViewModal = 10003. All modals must sit above 9999
+- **z-index ladder:** Nav = 99999 (always topmost — above all modals). LocationStrip dialog = 10001. DailyOpsModal = 10002. RegViewModal = 10003. BookingForm overlay = 1000. Modals sit below Nav.
 - **Runner pages** use `minHeight: '100dvh'`, `paddingBottom: 120` for the fixed footer, no nav import
 - **Real-time checklist saves:** Items save on tap via `clIdRef` + `creatingRef` pattern. Notes debounce 800ms. Needs-attention upserts `daily_ops_submissions` without `submitted_at` immediately for dashboard badge
 - **`TimeInput` is a smart-parse text `<input>` with auto-format on blur.** Accepts `10a`→`10:00 AM`, `930p`→`9:30 PM`, `1430`→`2:30 PM` (24h), bare `8`→`8:00 AM`. Enter commits. Click/focus selects all. Used in booking form and WO Studio Time From/To cells. (Was briefly a 30-min `<select>` June 5–10, 2026 — reverted for mobile usability.)

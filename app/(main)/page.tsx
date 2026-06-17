@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase, Lead, Booking, DashboardTask, DashboardTaskComment, Flag, FlagComment } from '@/lib/supabase'
 import { LocationStrip } from '@/components/dashboard/LocationStrip'
 import { useRouter } from 'next/navigation'
+import { BookingForm, type FormData, bookingToForm, emptyForm } from '@/components/calendar/BookingForm'
 
 const TAB_ROLE: Record<string, 'admin' | 'studio_manager' | 'asst_manager' | 'billing'> = {
   me:      'admin',
@@ -117,6 +118,9 @@ export default function DashboardPage() {
   const flagCommentPhotoRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const [calDate, setCalDate] = useState(new Date())
+  const [dashBkFormOpen, setDashBkFormOpen] = useState(false)
+  const [dashEditBooking, setDashEditBooking] = useState<Booking | null>(null)
+  const [dashFormInitial, setDashFormInitial] = useState<FormData>(() => emptyForm())
 
   const now = new Date()
   const hour = now.getHours()
@@ -162,6 +166,48 @@ export default function DashboardPage() {
     setTasksLoading(true)
     setTasks(await fetchTasks(TAB_ROLE[activeTaskTab]))
     setTasksLoading(false)
+  }
+
+  function openBookingEdit(bk: Booking) {
+    setDashEditBooking(bk)
+    setDashFormInitial(bookingToForm(bk))
+    setDashBkFormOpen(true)
+  }
+
+  async function handleDashSave(data: FormData) {
+    if (!dashEditBooking) return
+    await supabase.from('bookings').update({
+      status: data.status, session_type: data.session_type,
+      payment_type: data.payment_type, cod_method: data.cod_method,
+      location: data.location, studio: data.studio,
+      start_date: data.start_date, end_date: data.end_date,
+      from_time: data.from_time, to_time: data.to_time,
+      rate: data.rate, rate_daily: data.rate_daily,
+      invoice_num: data.invoice_num,
+      client_name: data.client_name, artist: data.artist, label: data.label,
+      ordered_by: data.ordered_by, phone: data.phone, email: data.email,
+      po: data.po, producer: data.producer,
+      food_budget: data.food_budget, food_amount: data.food_amount,
+      engineer_name: data.engineer_name, engineer_rate: data.engineer_rate, engineer_status: data.engineer_status,
+      assistant_name: data.assistant_name, assistant_status: data.assistant_status,
+      notes: data.notes, client_id: data.client_db_id, is_srs: data.is_srs,
+      anr_contact_id: data.anr_contact_id, anr_admin_contact_id: data.anr_admin_contact_id,
+    }).eq('id', dashEditBooking.id)
+    const d = new Date(calDate)
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+    const today = d.toISOString().slice(0, 10)
+    const { data: refreshed } = await supabase.from('bookings').select('*').lte('start_date', today).gte('end_date', today).order('from_time', { ascending: true })
+    setBookings(refreshed || [])
+  }
+
+  async function handleDashDelete() {
+    if (!dashEditBooking) return
+    await supabase.from('bookings').delete().eq('id', dashEditBooking.id)
+    const d = new Date(calDate)
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+    const today = d.toISOString().slice(0, 10)
+    const { data: refreshed } = await supabase.from('bookings').select('*').lte('start_date', today).gte('end_date', today).order('from_time', { ascending: true })
+    setBookings(refreshed || [])
   }
 
   async function fetchCompletedTasks() {
@@ -541,6 +587,7 @@ export default function DashboardPage() {
                 return (
                   <div
                     key={room.label}
+                    onClick={() => booking && openBookingEdit(booking)}
                     style={{
                       height: 120,
                       borderRadius: 6,
@@ -554,6 +601,7 @@ export default function DashboardPage() {
                       flexDirection: 'column',
                       overflow: 'hidden',
                       boxSizing: 'border-box',
+                      cursor: booking ? 'pointer' : 'default',
                     }}
                   >
                     <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)', letterSpacing: '0.04em', opacity: booking ? 0.7 : 0.5, marginBottom: booking ? 4 : 0 }}>
@@ -1608,6 +1656,19 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* BOOKING FORM MODAL */}
+      {dashBkFormOpen && dashEditBooking && (
+        <BookingForm
+          bookingId={dashEditBooking.id}
+          booking={dashEditBooking}
+          initial={dashFormInitial}
+          onSave={handleDashSave}
+          onDelete={handleDashDelete}
+          onClose={() => { setDashBkFormOpen(false); setDashEditBooking(null) }}
+          onSaved={undefined}
+        />
       )}
 
     </div>

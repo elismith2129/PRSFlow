@@ -1747,7 +1747,7 @@ const khuDays = daysUntilKhu(lead)
             setShowConfirmModal(false)
             onUpdate('client_id', clientId)
             onUpdate('status', 'booked')
-            leadRouter.push(`/clients?id=${clientId}`)
+            leadRouter.push(`/calendar?newBooking=1&clientId=${clientId}&leadId=${lead.id}`)
           }}
         />
       )}
