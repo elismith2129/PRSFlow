@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase, Lead, Booking, DashboardTask, DashboardTaskComment, Flag, FlagComment } from '@/lib/supabase'
 import { LocationStrip } from '@/components/dashboard/LocationStrip'
+import { parseLocation } from '@/lib/studios'
 import { useRouter } from 'next/navigation'
 
 const TAB_ROLE: Record<string, 'admin' | 'studio_manager' | 'asst_manager' | 'billing'> = {
@@ -16,6 +17,40 @@ const STUDIO_COLORS: Record<string, string> = {
   ameraycan: '#f04e7a',
   encore: '#4e8ff0',
   track: '#F97316',
+}
+
+const ROOMS = [
+  { venue: 'Paramount', studio: 'Studio A', label: 'Paramount A' },
+  { venue: 'Paramount', studio: 'Studio B', label: 'Paramount B' },
+  { venue: 'Paramount', studio: 'Studio C', label: 'Paramount C' },
+  { venue: 'Paramount', studio: 'Studio E', label: 'Paramount E' },
+  { venue: 'Paramount', studio: 'Studio X', label: 'Paramount X' },
+  { venue: 'Ameraycan', studio: 'Studio A', label: 'Ameraycan A' },
+  { venue: 'Ameraycan', studio: 'Studio B', label: 'Ameraycan B' },
+  { venue: 'Encore', studio: 'Studio A', label: 'Encore A' },
+  { venue: 'Encore', studio: 'Studio B', label: 'Encore B' },
+  { venue: 'Track', studio: 'North', label: 'Track North' },
+  { venue: 'Track', studio: 'South', label: 'Track South' },
+]
+
+function engInitials(name: string | null): string {
+  if (!name?.trim()) return ''
+  const p = name.trim().split(/\s+/)
+  return p.length === 1 ? p[0].slice(0, 2).toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase()
+}
+
+function fmtSessionTime(t: string): string {
+  if (!t) return ''
+  const m = t.match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i)
+  if (!m) return t
+  let h = parseInt(m[1])
+  const min = m[2]
+  const ap = m[3]?.toUpperCase()
+  if (ap) return `${h}${min !== '00' ? ':' + min : ''}${ap === 'AM' ? 'A' : 'P'}`
+  const suf = h >= 12 ? 'P' : 'A'
+  if (h > 12) h -= 12
+  if (h === 0) h = 12
+  return `${h}${min !== '00' ? ':' + min : ''}${suf}`
 }
 
 async function fetchTasks(role: string): Promise<DashboardTask[]> {
@@ -82,6 +117,7 @@ export default function DashboardPage() {
   const commentPhotoRef = useRef<HTMLInputElement>(null)
   const flagCommentPhotoRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+  const [calDate, setCalDate] = useState(new Date())
 
   const now = new Date()
   const hour = now.getHours()
@@ -89,12 +125,9 @@ export default function DashboardPage() {
   const needsActionLeads = leads
     .filter(l => l.needs_contact === true && l.status !== 'dead' && l.status !== 'booked' && l.status !== 'cold')
     .slice(0, 5)
-  const confirmedSessions = bookings.filter(b => b.status === 'confirmed')
-  const tentativeSessions = bookings.filter(b => b.status === 'tentative')
-
   useEffect(() => {
     async function load() {
-      const d = new Date()
+      const d = new Date(calDate)
       d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
       const today = d.toISOString().slice(0, 10)
       const [{ data: leadsData }, { data: bookingsData }, { data: flagsData }] = await Promise.all([
@@ -109,7 +142,7 @@ export default function DashboardPage() {
       setFlagsLoading(false)
     }
     load()
-  }, [])
+  }, [calDate])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -464,63 +497,99 @@ export default function DashboardPage() {
 
         {/* COL 2 — TODAY'S SESSIONS */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-          <div style={{ padding: '13px 16px 11px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ padding: '13px 16px 11px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13 }}>TODAY'S SESSIONS</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() - 1); return n })}
+                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text2)', cursor: 'pointer', padding: '2px 7px', fontSize: 13, lineHeight: 1 }}
+              >‹</button>
+              <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
+                {calDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              </div>
+              <button
+                onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() + 1); return n })}
+                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text2)', cursor: 'pointer', padding: '2px 7px', fontSize: 13, lineHeight: 1 }}
+              >›</button>
+            </div>
           </div>
-          <div style={{ padding: '10px 0' }}>
-            {loading ? (
-              <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
-            ) : confirmedSessions.length === 0 && tentativeSessions.length === 0 ? (
-              <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 11 }}>No sessions today</div>
-            ) : (
-              <>
-                {confirmedSessions.length > 0 && (
-                  <div style={{ marginBottom: tentativeSessions.length > 0 ? 10 : 0 }}>
-                    <div style={{ padding: '2px 16px 6px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', color: '#14B8A6', textTransform: 'uppercase' }}>
-                      Confirmed
+          {loading ? (
+            <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, padding: 8 }}>
+              {ROOMS.map(room => {
+                const booking = bookings.find(b => {
+                  const loc = parseLocation(b.location || '')
+                  return loc.venue === room.venue && loc.studio === room.studio
+                })
+                const isBilling = booking?.payment_type === 'billing'
+                const venueColor = STUDIO_COLORS[room.venue.toLowerCase()] || 'var(--text)'
+                const topColor = booking?.status === 'confirmed' ? '#14B8A6' : booking?.status === 'tentative' ? '#F97316' : null
+                const primaryName = booking
+                  ? (isBilling ? (booking.artist || booking.label || booking.client_name || '') : (booking.client_name || ''))
+                  : ''
+                const labelLine = booking && isBilling && booking.label && booking.label !== primaryName ? booking.label : ''
+                const timeStr = booking?.from_time && booking?.to_time
+                  ? `${fmtSessionTime(booking.from_time)}–${fmtSessionTime(booking.to_time)}`
+                  : booking?.from_time ? fmtSessionTime(booking.from_time) : ''
+                const eng = booking?.engineer_name ? engInitials(booking.engineer_name) : ''
+                const engColor = booking?.engineer_status === 'confirmed' ? '#4ef0a2'
+                  : booking?.engineer_status === 'hold' ? '#f0a24e'
+                  : 'rgba(255,255,255,0.4)'
+                return (
+                  <div
+                    key={room.label}
+                    style={{
+                      height: 120,
+                      borderRadius: 6,
+                      borderTop: topColor ? `2px solid ${topColor}` : `1px solid ${booking ? 'rgba(255,255,255,0.08)' : 'var(--border)'}`,
+                      borderLeft: `1px solid ${booking ? 'rgba(255,255,255,0.08)' : 'var(--border)'}`,
+                      borderRight: `1px solid ${booking ? 'rgba(255,255,255,0.08)' : 'var(--border)'}`,
+                      borderBottom: `1px solid ${booking ? 'rgba(255,255,255,0.08)' : 'var(--border)'}`,
+                      background: booking ? '#0d0f14' : 'rgba(0,0,0,0.2)',
+                      padding: '7px 9px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      overflow: 'hidden',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)', letterSpacing: '0.04em', opacity: booking ? 0.7 : 0.5, marginBottom: booking ? 4 : 0 }}>
+                      {room.label}
                     </div>
-                    {confirmedSessions.map(b => (
-                      <div key={b.id} style={{ margin: '0 16px 6px 16px', padding: '8px 12px', borderLeft: '2px solid #14B8A6', background: 'rgba(20,184,166,0.05)', borderRadius: '0 6px 6px 0' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {b.artist || b.client_name || '—'}
-                          </div>
-                          <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text3)', textTransform: 'uppercase', background: 'var(--surface2)', padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                            {b.session_type}
-                          </div>
+                    {booking && (
+                      <>
+                        <div style={{
+                          fontSize: 13, fontFamily: 'DM Serif Display', lineHeight: 1.2, color: venueColor,
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>
+                          {primaryName}
                         </div>
-                        <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 3 }}>
-                          {b.from_time || '—'} – {b.to_time || '—'} · {b.location}
-                        </div>
-                      </div>
-                    ))}
+                        {labelLine && (
+                          <div style={{
+                            fontSize: 9, fontFamily: 'DM Mono', color: 'rgba(255,255,255,0.45)', lineHeight: 1.2, marginTop: 2,
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          }}>
+                            {labelLine}
+                          </div>
+                        )}
+                        {timeStr && (
+                          <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'rgba(255,255,255,0.75)', lineHeight: 1.2, marginTop: 2 }}>
+                            {timeStr}
+                          </div>
+                        )}
+                        {eng && (
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'auto' }}>
+                            <div style={{ fontSize: 8, fontFamily: 'DM Mono', color: engColor }}>1ST-{eng}</div>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
-                )}
-                {tentativeSessions.length > 0 && (
-                  <div>
-                    <div style={{ padding: '2px 16px 6px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', color: '#F97316', textTransform: 'uppercase' }}>
-                      Tentative
-                    </div>
-                    {tentativeSessions.map(b => (
-                      <div key={b.id} style={{ margin: '0 16px 6px 16px', padding: '8px 12px', borderLeft: '2px solid #F97316', background: 'rgba(249,115,22,0.05)', borderRadius: '0 6px 6px 0' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {b.artist || b.client_name || '—'}
-                          </div>
-                          <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text3)', textTransform: 'uppercase', background: 'var(--surface2)', padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                            {b.session_type}
-                          </div>
-                        </div>
-                        <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 3 }}>
-                          {b.from_time || '—'} – {b.to_time || '—'} · {b.location}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* COL 3 — TASKS */}
