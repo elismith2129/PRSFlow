@@ -561,7 +561,7 @@ export function BookingForm({
     return () => clearTimeout(t)
   }, [asstQuery, asstOn])
 
-  function applyClientAutofill(s: typeof clientSuggestions[0]) {
+  async function applyClientAutofill(s: typeof clientSuggestions[0]) {
     skipNameSearch.current = true
     const r = s.record
     // If record has _anrFname it came from client_contacts — use those details
@@ -592,6 +592,34 @@ export function BookingForm({
     setClientEdits({})
     setEditingCard(false)
     setCardSnapshot(null)
+
+    // For artist matches, find the A&R contact whose artists array includes this artist
+    if (r._artistMatch) {
+      const { data: contacts } = await supabase
+        .from('client_contacts')
+        .select('*')
+        .eq('client_id', r.id)
+        .neq('contact_type', 'admin')
+      const artistLower = (r._artistMatch as string).toLowerCase()
+      const matched = ((contacts as ClientContact[]) || []).find(c =>
+        Array.isArray(c.artists) && c.artists.some(a => a.toLowerCase() === artistLower)
+      )
+      if (matched) {
+        const nm = `${matched.fname || ''} ${matched.lname || ''}`.trim()
+        setAnrQuery(nm)
+        setAnrContact(matched)
+        setAnrEmail(matched.email || '')
+        setAnrPhone(matched.phone || '')
+        setForm(f => ({
+          ...f,
+          client_name: nm,
+          ordered_by: nm,
+          anr_contact_id: matched.id,
+          email: matched.email || f.email,
+          phone: matched.phone || f.phone,
+        }))
+      }
+    }
   }
 
   function clearClient() {
