@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { UnifiedSessionForm } from '@/components/unified/UnifiedSessionForm'
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
@@ -19,8 +18,6 @@ export function Nav() {
   const [time, setTime] = useState('')
   const [unreviewedRegs, setUnreviewedRegs] = useState(0)
   const [tentativeCount, setTentativeCount] = useState(0)
-  const [showUnifiedForm, setShowUnifiedForm] = useState(false)
-  const userRole = 'owner'
 
   useEffect(() => {
     const tick = () => setTime(new Date().toLocaleTimeString('en-US', {
@@ -117,19 +114,9 @@ export function Nav() {
         })}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {userRole === 'owner' && (
-          <button
-            type="button"
-            onClick={() => setShowUnifiedForm(true)}
-            style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(200,240,78,0.4)', color: 'rgba(200,240,78,0.8)' }}
-          >⚡ New Form</button>
-        )}
-        <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
-          {time}
-        </div>
+      <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+        {time}
       </div>
-      {showUnifiedForm && <UnifiedSessionForm bookingId={null} onClose={() => setShowUnifiedForm(false)} />}
     </nav>
   )
 }
