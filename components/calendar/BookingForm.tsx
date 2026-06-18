@@ -440,7 +440,7 @@ export function BookingForm({
     clearTimeout(nameDebounce.current)
     nameDebounce.current = setTimeout(async () => {
       // Search clients (both individual by name and label clients by name)
-      const [{ data: cd }, { data: ctd }] = await Promise.all([
+      const [{ data: cd }, { data: ctd }, { data: ald }] = await Promise.all([
         supabase
           .from('clients')
           .select('id,type,name,fname,lname,email,phone,artists,srs_client')
@@ -452,6 +452,12 @@ export function BookingForm({
           .select('id,client_id,fname,lname,email,phone,clients(id,name,type,srs_client)')
           .or(`fname.ilike.%${q}%,lname.ilike.%${q}%`)
           .limit(20),
+        // Fetch all label clients to match against their artist arrays client-side
+        supabase
+          .from('clients')
+          .select('id,type,name,fname,lname,email,phone,artists,srs_client')
+          .eq('type', 'label')
+          .limit(50),
       ])
 
       const seen = new Set<string>()
@@ -490,6 +496,25 @@ export function BookingForm({
           isLabel: c.type === 'label',
           record: c,
         })
+      }
+
+      // Artist matches — filter label clients whose artist array contains the query
+      for (const c of (ald || []) as any[]) {
+        if (!Array.isArray(c.artists)) continue
+        for (const artistName of c.artists as string[]) {
+          if (typeof artistName !== 'string') continue
+          if (!artistName.toLowerCase().includes(q.toLowerCase())) continue
+          const key = `artist-${c.id}-${artistName}`
+          if (seen.has(key)) continue
+          seen.add(key)
+          results.push({
+            id: c.id,
+            label: artistName,
+            sub: c.name,
+            isLabel: true,
+            record: { ...c, _artistMatch: artistName },
+          })
+        }
       }
 
       setClientSuggestions(results)
@@ -557,7 +582,7 @@ export function BookingForm({
       phone: phone || f.phone,
       email: email || f.email,
       payment_type: labelName ? 'billing' : f.payment_type,
-      artist: labelName ? '' : ((r.artists && r.artists.length > 0 ? r.artists[0] : f.artist) || f.artist),
+      artist: r._artistMatch ? r._artistMatch : (labelName ? '' : ((r.artists && r.artists.length > 0 ? r.artists[0] : f.artist) || f.artist)),
       is_srs: r.srs_client === true ? true : f.is_srs,
     }))
     setAnrQuery(labelName ? clientName : '')
@@ -1188,7 +1213,7 @@ export function BookingForm({
                   {!hasClient && (
                     <div style={{ position: 'relative' }}>
                       <input
-                        placeholder={isBilling ? 'Search label or client name…' : 'Search client name…'}
+                        placeholder={isBilling ? 'Search client, A&R, or artist…' : 'Search client name…'}
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                         onFocus={() => searchQuery.trim().length >= 2 && setShowClientDD(true)}
