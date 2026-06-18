@@ -597,6 +597,14 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
   // ── Draft timer ──────────────────────────────────────────────────────────
   const draftTimer = useRef<ReturnType<typeof setTimeout>>()
 
+  // ── Seeder state ─────────────────────────────────────────────────────────
+  const [seederStart, setSeederStart] = useState('')
+  const [seederEnd, setSeederEnd] = useState('')
+  const [seederStudio, setSeederStudio] = useState('')
+  const [seederEng, setSeederEng] = useState('')
+  const [seederFromTime, setSeederFromTime] = useState('')
+  const [seederToTime, setSeederToTime] = useState('')
+
   // ─── Effects ────────────────────────────────────────────────────────────────
 
   // Load booking + WO data when bookingId is provided
@@ -1117,6 +1125,106 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
     setStRows(prev => prev.map(r => r.id === id ? { ...r, eng_visible: !r.eng_visible } : r))
   }
 
+  function addEngRow() {
+    const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
+    const lastEng = [...stRows].reverse().find(r => r.eng_rate || (r.eng_hours ?? 0) > 0 || r.eng_from_time) || stRows[stRows.length - 1]
+    const newRow: StRow = {
+      id: crypto.randomUUID(), studio: '', date: '', session_info: '',
+      from_time: '', to_time: '', total_hours: null,
+      rate: '', rate_daily: '', row_rate_type: 'hour', ot_rate: '', ot_hours: '', ot_charge: null,
+      charge: null, sort_order: maxOrder + 1, day_count: null,
+      eng_from_time: lastEng?.eng_from_time || '', eng_to_time: lastEng?.eng_to_time || '',
+      eng_rate: lastEng?.eng_rate || '', eng_hours: null, eng_charge: null,
+      admin_checked: false, admin_locked: false, eng_visible: true,
+    }
+    setStRows(prev => [...prev, newRow])
+  }
+
+  function toggleRowRateType(id: string) {
+    setStRows(prev => prev.map(r => {
+      if (r.id !== id) return r
+      if (r.row_rate_type === 'hour') {
+        const rateNum = parseFloat(r.rate.replace(/[^0-9.]/g, '')) || 0
+        const existingDailyNum = parseFloat(r.rate_daily.replace(/[^0-9.]/g, '')) || 0
+        const autoDaily = rateNum > 0 ? parseFloat((rateNum * 10).toFixed(2)) : 0
+        const finalDaily = (!existingDailyNum || Math.abs(existingDailyNum - autoDaily) < 0.01)
+          ? (autoDaily > 0 ? String(autoDaily) : r.rate_daily) : r.rate_daily
+        const dailyNum = parseFloat(finalDaily.replace(/[^0-9.]/g, '')) || 0
+        const otRate = r.ot_rate || (dailyNum > 0 ? String(parseFloat((dailyNum / 10).toFixed(2))) : '')
+        const otRateNum = parseFloat(otRate.replace(/[^0-9.]/g, '')) || 0
+        const actual = calcHours(r.from_time, r.to_time) ?? 0
+        const otHrs = Math.max(0, parseFloat(actual.toFixed(2)) - 12)
+        return { ...r, row_rate_type: 'day' as const, rate_daily: finalDaily, charge: dailyNum > 0 ? dailyNum : null, ot_hours: String(otHrs), ot_rate: otRate, ot_charge: otHrs > 0 && otRateNum > 0 ? parseFloat((otHrs * otRateNum).toFixed(2)) : null }
+      } else {
+        const dailyNum = parseFloat(r.rate_daily.replace(/[^0-9.]/g, '')) || 0
+        const autoRate = dailyNum > 0 ? parseFloat((dailyNum / 10).toFixed(2)) : 0
+        const existingRateNum = parseFloat(r.rate.replace(/[^0-9.]/g, '')) || 0
+        const finalRate = (!existingRateNum || Math.abs(existingRateNum - autoRate) < 0.01)
+          ? (autoRate > 0 ? String(autoRate) : r.rate) : r.rate
+        const finalRateNum = parseFloat(finalRate.replace(/[^0-9.]/g, '')) || 0
+        const hrs = r.total_hours ?? calcHours(r.from_time, r.to_time) ?? null
+        return { ...r, row_rate_type: 'hour' as const, rate: finalRate, charge: hrs != null && hrs > 0 && finalRateNum > 0 ? parseFloat((hrs * finalRateNum).toFixed(2)) : null, ot_hours: '0', ot_charge: null }
+      }
+    }))
+  }
+
+  async function handleToggleLock(rowId: string, currentLocked: boolean) {
+    const newLocked = !currentLocked
+    await supabase.from('studio_time_rows').update({ admin_checked: newLocked, admin_locked: newLocked }).eq('id', rowId)
+    setStRows(prev => prev.map(r => r.id === rowId ? { ...r, admin_checked: newLocked, admin_locked: newLocked } : r))
+    if (!newLocked) setPendingLockedEdits(p => { const n = { ...p }; delete n[rowId]; return n })
+  }
+
+  async function clearEngRow(id: string) {
+    await supabase.from('studio_time_rows').update({
+      eng_from_time: null, eng_to_time: null, eng_rate: null, eng_hours: null, eng_charge: null, eng_visible: false,
+    }).eq('id', id)
+    setStRows(prev => prev.map(r => r.id === id ? { ...r, eng_from_time: '', eng_to_time: '', eng_rate: '', eng_hours: null, eng_charge: null, eng_visible: false } : r))
+    setConfirmClearEngId(null)
+  }
+
+  async function upsertEquipNote(key: string, equipment: string, date: string, updates: { note?: string; photo_urls?: string[] }) {
+    const woId = woIdRef.current
+    if (!woId) return
+    const current = equipNotes[key]
+    const merged = { note: current?.note ?? '', photo_urls: current?.photo_urls ?? [], ...updates }
+    if (current?.id) {
+      await supabase.from('equipment_condition_notes').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', current.id)
+      setEquipNotes(prev => ({ ...prev, [key]: { ...prev[key], ...updates } }))
+    } else {
+      const { data } = await supabase.from('equipment_condition_notes').insert({
+        work_order_id: woId, equipment, date, note: merged.note, photo_urls: merged.photo_urls,
+      }).select('id').single()
+      if (data) setEquipNotes(prev => ({ ...prev, [key]: { id: data.id, note: merged.note, photo_urls: merged.photo_urls } }))
+    }
+  }
+
+  async function uploadEquipNotePhoto(file: File) {
+    const pending = pendingNoteKey.current
+    if (!pending || !woIdRef.current) return
+    setNoteUploading(true)
+    const ext = file.name.split('.').pop() ?? 'jpg'
+    const path = `equip-notes/${woIdRef.current}/${pending.equipment.toLowerCase()}_${pending.date}_${Date.now()}.${ext}`
+    const { data, error } = await supabase.storage.from('checklist-photos').upload(path, file, { upsert: true })
+    if (!error && data) {
+      const { data: { publicUrl } } = supabase.storage.from('checklist-photos').getPublicUrl(data.path)
+      const currentPhotos = equipNotes[pending.key]?.photo_urls ?? []
+      await upsertEquipNote(pending.key, pending.equipment, pending.date, { photo_urls: [...currentPhotos, publicUrl] })
+    }
+    setNoteUploading(false)
+    if (equipNoteFileRef.current) equipNoteFileRef.current.value = ''
+    pendingNoteKey.current = null
+  }
+
+  async function handleComplete() {
+    if (!resolvedWoId) return
+    setCompleting(true)
+    const newStatus = woStatus === 'completed' ? 'open' : 'completed'
+    await supabase.from('work_orders').update({ status: newStatus }).eq('id', resolvedWoId)
+    setWoStatus(newStatus)
+    setCompleting(false)
+  }
+
   // ─── Equipment handlers ───────────────────────────────────────────────────────
 
   function handleEquipChange(equipment: string, date: string, cond: 'ok' | 'not_ok') {
@@ -1375,15 +1483,981 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
     onClose()
   }
 
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: 'var(--surface)', borderRadius: 8, padding: 24, color: 'var(--text)', fontFamily: 'DM Mono' }}>
-        UnifiedSessionForm placeholder
-        <br />
-        bookingId: {bookingId ?? '(none)'}
-        <br />
-        <button onClick={onClose} style={{ marginTop: 16, padding: '6px 16px', borderRadius: 4, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer' }}>Close</button>
+  // Escape to close
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
+  // ── Derived totals ───────────────────────────────────────────────────────────
+  const stTotal = stRows.reduce((s, r) => s + (r.charge ?? 0) + (r.ot_charge ?? 0), 0)
+  const engTotal = stRows.reduce((s, r) => {
+    const engRateDisplay = r.eng_rate || form.engineer_rate || ''
+    const rate = parseFloat(engRateDisplay.replace(/[^0-9.]/g, '')) || 0
+    if (!rate) return s
+    const engHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time) ?? r.eng_hours ?? 0
+    return s + (engHrs > 0 ? parseFloat((engHrs * rate).toFixed(2)) : 0)
+  }, 0)
+  const rentTotal = rentRows.reduce((s, r) => s + (parseFloat(r.charge) || 0), 0)
+  const grandTotal = stTotal + engTotal + rentTotal
+  const totalPaid = payRows.reduce((s, r) => s + (stripCurrency(r.amount) ?? 0), 0)
+  const balanceDue = grandTotal - totalPaid
+  const sessionDates = Array.from(new Set(stRows.map(r => r.date).filter(Boolean))).sort()
+  const isCompleted = woStatus === 'completed'
+
+  // Layout constants
+  const fL: React.CSSProperties = {
+    fontSize: 9, color: 'var(--text3)', letterSpacing: '0.08em',
+    textTransform: 'uppercase', marginBottom: 3, display: 'block',
+  }
+  const inp: React.CSSProperties = {
+    background: 'var(--surface2)', border: '1px solid var(--border)',
+    color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11,
+    padding: '4px 8px', borderRadius: 4, width: '100%', outline: 'none',
+  }
+  const sectionHead: React.CSSProperties = {
+    fontSize: 9, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text3)',
+    letterSpacing: '0.08em', textTransform: 'uppercase',
+    borderBottom: '1px solid var(--border)', paddingBottom: 7, marginBottom: 12,
+  }
+  const sectionTitle: React.CSSProperties = {
+    fontFamily: 'Syne', fontWeight: 700, fontSize: 10, color: '#8a8fa0',
+    letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10,
+  }
+  const tInp: React.CSSProperties = {
+    background: 'transparent', border: 'none',
+    color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 11,
+    padding: '1px 0', outline: 'none', width: '100%', lineHeight: 1.4,
+  }
+  const cellS: React.CSSProperties = {
+    padding: '4px 8px', fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0',
+    display: 'flex', alignItems: 'center',
+  }
+  const thS: React.CSSProperties = {
+    padding: '4px 8px', fontSize: 8, fontFamily: 'Syne', fontWeight: 700,
+    letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a8fa0',
+  }
+  const metaLabel: React.CSSProperties = {
+    fontSize: 9, fontFamily: 'Syne', fontWeight: 700,
+    letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a8fa0',
+  }
+
+  const headerNameColor = form.payment_type === 'COD' ? '#7D8FD7' : '#96A9FF'
+
+  return createPortal(
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onClick={onClose}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ width: '100%', maxWidth: 900, maxHeight: '90vh', overflowY: 'auto', background: '#0d0f14', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)' }}
+      >
+        {/* ── Header ── */}
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, background: '#0d0f14', zIndex: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 22, lineHeight: 1.2, color: headerNameColor, wordBreak: 'break-word' }}>
+              {form.payment_type === 'billing'
+                ? (form.artist || form.label || form.client_name || 'New Session')
+                : (form.client_name || 'New Session')}
+            </div>
+            {form.payment_type === 'billing' && form.client_name && (
+              <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text2)', marginTop: 2 }}>{form.client_name}</div>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            {woStatus && (
+              <span style={{
+                fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em',
+                padding: '4px 10px', borderRadius: 4,
+                background: woStatus === 'open' ? 'rgba(249,115,22,0.15)' : 'rgba(20,184,166,0.15)',
+                color: woStatus === 'open' ? '#F97316' : '#14B8A6',
+                border: `1px solid ${woStatus === 'open' ? 'rgba(249,115,22,0.4)' : 'rgba(20,184,166,0.4)'}`,
+              }}>
+                {woStatus === 'open' ? 'OPEN' : 'COMPLETED'}
+              </span>
+            )}
+            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text3)', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
+          </div>
+        </div>
+
+        {/* ── Status chips ── */}
+        <div style={{ padding: '8px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {Object.entries(STATUS_LABELS).map(([s, label]) => (
+            <button key={s} onClick={() => set('status', s)} style={{
+              padding: '4px 14px', borderRadius: 20, fontSize: 10, fontFamily: 'DM Mono',
+              fontWeight: 600, cursor: 'pointer', border: 'none', transition: 'all 0.1s',
+              background: form.status === s ? STATUS_TOP_COLORS[s] : 'var(--surface2)',
+              color: form.status === s ? '#fff' : 'var(--text2)',
+              outline: form.status === s ? `2px solid ${STATUS_TOP_COLORS[s]}66` : 'none',
+            }}>{label}</button>
+          ))}
+        </div>
+
+        {/* ── Body ── */}
+        <div style={{ padding: '18px 20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 240px', gap: 24 }}>
+
+            {/* LEFT — Client card */}
+            {(() => {
+              const isBilling = form.payment_type === 'billing'
+              const hasClient = isBilling ? !!(form.label || form.client_name) : !!form.client_name
+              const cardNameColor = isBilling ? '#96A9FF' : '#7BBFFF'
+              const badgeBg = isBilling ? 'rgba(150,169,255,0.12)' : 'rgba(123,191,255,0.12)'
+              const badgeColor = isBilling ? '#96A9FF' : '#7BBFFF'
+              const badgeBorder = isBilling ? 'rgba(150,169,255,0.3)' : 'rgba(123,191,255,0.3)'
+              const badgeLabel = isBilling ? 'LABEL/BILLING' : 'COD'
+              const displayName = isBilling ? (form.client_name || form.label) : form.client_name
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+                  <div style={sectionHead}>Client</div>
+
+                  {/* SRS + COD/Label toggle */}
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => { if (!form.is_srs) setShowSrsModal(true); else set('is_srs', false) }}
+                      style={{
+                        padding: '7px 16px', borderRadius: 6,
+                        border: form.is_srs ? '1px solid rgba(255,59,59,0.4)' : '1px solid rgba(255,255,255,0.12)',
+                        cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700,
+                        background: form.is_srs ? 'rgba(255,59,59,0.12)' : 'transparent',
+                        color: form.is_srs ? '#ff3b3b' : '#6b7280',
+                        letterSpacing: '0.08em', transition: 'all 0.15s',
+                      }}
+                    >SRS</button>
+                    <div style={{ display: 'flex', gap: 2, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
+                      {(['COD', 'billing'] as const).map(m => (
+                        <button key={m} type="button" onClick={() => { if (m !== form.payment_type) clearClient(); set('payment_type', m) }} style={{
+                          padding: '7px 28px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                          fontFamily: 'DM Mono', fontSize: 11, fontWeight: 500,
+                          background: form.payment_type === m ? 'var(--surface2)' : 'transparent',
+                          color: form.payment_type === m ? (m === 'COD' ? '#7BBFFF' : '#96A9FF') : 'var(--text2)',
+                          transition: 'all 0.15s', letterSpacing: '0.04em',
+                        }}>{m === 'COD' ? 'COD' : 'Label/Billing'}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* SRS modal */}
+                  {showSrsModal && (
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 20000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ background: '#13161d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '28px 32px', width: 380, maxWidth: '90vw', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
+                        <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: '#e8eaf0', marginBottom: 10 }}>SRS Referral</div>
+                        <div style={{ fontFamily: 'DM Mono', fontSize: 12, color: '#8b90a8', lineHeight: 1.6, marginBottom: 24 }}>
+                          Apply this to the client&apos;s profile so all future bookings are automatically flagged as SRS?
+                        </div>
+                        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                          <button type="button" onClick={() => { set('is_srs', true); setShowSrsModal(false) }} style={{ padding: '8px 18px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, background: 'transparent', color: '#8b90a8' }}>Just this session</button>
+                          <button type="button" onClick={async () => { set('is_srs', true); if (form.client_db_id) await supabase.from('clients').update({ srs_client: true }).eq('id', form.client_db_id); setShowSrsModal(false) }} style={{ padding: '8px 18px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700, background: '#c8f04e', color: '#0d0f14' }}>Apply to profile</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Search input — no client attached */}
+                  {!hasClient && (
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        placeholder={isBilling ? 'Search label or client name…' : 'Search client name…'}
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        onFocus={() => searchQuery.trim().length >= 2 && setShowClientDD(true)}
+                        onBlur={() => setTimeout(() => setShowClientDD(false), 150)}
+                        onKeyDown={e => {
+                          if (!showClientDD) return
+                          if (e.key === 'ArrowDown') { e.preventDefault(); setClientHighlight(h => Math.min(h + 1, clientSuggestions.length - 1)) }
+                          if (e.key === 'ArrowUp') { e.preventDefault(); setClientHighlight(h => Math.max(h - 1, 0)) }
+                          if (e.key === 'Enter' && clientHighlight >= 0) { e.preventDefault(); applyClientAutofill(clientSuggestions[clientHighlight]) }
+                          if (e.key === 'Escape') setShowClientDD(false)
+                        }}
+                        style={{ ...inp, padding: '8px 12px', fontSize: 11 }}
+                        autoComplete="off"
+                      />
+                      {showClientDD && clientSuggestions.length > 0 && (
+                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
+                          {clientSuggestions.map((s, i) => (
+                            <div key={i} onMouseDown={() => applyClientAutofill(s)} style={{ padding: '8px 12px', cursor: 'pointer', background: i === clientHighlight ? 'var(--surface2)' : 'transparent', borderBottom: i < clientSuggestions.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                              <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)' }}>{s.label}</div>
+                              {s.sub && <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#96A9FF', marginTop: 1 }}>{s.sub}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Client card — client is attached */}
+                  {hasClient && (
+                    <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                      {/* Card header */}
+                      <div style={{ padding: '12px 14px 10px', borderBottom: '1px solid var(--border)' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontFamily: 'DM Serif Display', fontSize: 17, lineHeight: 1.2, color: cardNameColor, wordBreak: 'break-word' }}>{displayName}</div>
+                            {form.label && form.label !== displayName && (
+                              <div style={{ fontSize: 12, fontFamily: 'DM Mono', color: cardNameColor, marginTop: 3, opacity: 0.75 }}>{form.label}</div>
+                            )}
+                          </div>
+                          <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', padding: '3px 7px', borderRadius: 3, flexShrink: 0, marginTop: 2, background: badgeBg, color: badgeColor, border: `1px solid ${badgeBorder}` }}>{badgeLabel}</span>
+                        </div>
+                      </div>
+
+                      {/* Card fields */}
+                      <div style={{ padding: '10px 14px 12px' }}>
+                        {isBilling ? (
+                          <>
+                            {/* Artist */}
+                            <div style={{ marginBottom: 8, position: 'relative' }}>
+                              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Artist</div>
+                              <input
+                                value={form.artist}
+                                onChange={e => { set('artist', e.target.value); setShowArtistDD(true) }}
+                                onFocus={() => setShowArtistDD(true)}
+                                onBlur={() => setTimeout(() => setShowArtistDD(false), 150)}
+                                placeholder="—"
+                                style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                              />
+                              {showArtistDD && (clientArtists.filter(a => !form.artist || a.toLowerCase().includes(form.artist.toLowerCase())).length > 0 || form.artist.trim().length >= 2) && (
+                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
+                                  {clientArtists.filter(a => !form.artist || a.toLowerCase().includes(form.artist.toLowerCase())).map((a, i) => (
+                                    <div key={i} onMouseDown={e => { e.preventDefault(); set('artist', a); setShowArtistDD(false) }}
+                                      style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent' }}
+                                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
+                                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                    >{a}</div>
+                                  ))}
+                                  {form.artist.trim().length >= 2 && !clientArtists.some(a => a.toLowerCase() === form.artist.trim().toLowerCase()) && form.client_db_id && (() => {
+                                    const clientId = form.client_db_id
+                                    return (
+                                      <div onMouseDown={async e => { e.preventDefault(); const updated = await addArtistToLabel(clientId, form.artist.trim(), clientArtists); setClientArtists(updated); setShowArtistDD(false) }}
+                                        style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: clientArtists.filter(a => !form.artist || a.toLowerCase().includes(form.artist.toLowerCase())).length > 0 ? '1px solid var(--border)' : undefined, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this artist? Add &ldquo;{form.artist.trim()}&rdquo;
+                                      </div>
+                                    )
+                                  })()}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* A&R */}
+                            {(() => {
+                              const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 10, padding: '1px 0' }
+                              const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)', background: 'transparent', color, fontFamily: 'DM Mono', fontSize: 9, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' as const })
+                              const anrPh = anrPhone.replace(/\D/g, '')
+                              return (
+                                <div style={{ marginBottom: 10 }}>
+                                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>A&amp;R</div>
+                                  <div style={{ position: 'relative' }}>
+                                    <input
+                                      value={anrQuery}
+                                      onChange={e => { setAnrQuery(e.target.value); set('ordered_by', e.target.value); set('anr_contact_id', null); setAnrContact(null); setShowAnrDD(true) }}
+                                      onFocus={() => setShowAnrDD(true)}
+                                      onBlur={() => { setTimeout(() => setShowAnrDD(false), 150); set('ordered_by', anrQuery) }}
+                                      placeholder="—"
+                                      style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                                    />
+                                    {showAnrDD && (labelContacts.filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase())).length > 0 || anrQuery.trim().length >= 2) && (
+                                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
+                                        {labelContacts.filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase())).map((c, i) => {
+                                          const name = `${c.fname || ''} ${c.lname || ''}`.trim()
+                                          return (
+                                            <div key={c.id} onMouseDown={e => { e.preventDefault(); setAnrQuery(name); set('ordered_by', name); set('client_name', name); set('anr_contact_id', c.id); setAnrContact(c); setAnrEmail(c.email || ''); setAnrPhone(c.phone || ''); set('email', c.email || ''); set('phone', c.phone || ''); setShowAnrDD(false) }}
+                                              style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent', borderBottom: i < labelContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
+                                              onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
+                                              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                            >
+                                              <div>{name}</div>
+                                              {c.email && <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 1 }}>{c.email}</div>}
+                                            </div>
+                                          )
+                                        })}
+                                        {anrQuery.trim().length >= 2 && !labelContacts.some(c => `${c.fname || ''} ${c.lname || ''}`.trim().toLowerCase() === anrQuery.trim().toLowerCase()) && (() => {
+                                          const clientId = form.client_db_id
+                                          return (
+                                            <div onMouseDown={async e => {
+                                              e.preventDefault(); if (!clientId) return
+                                              const parts = anrQuery.trim().split(/\s+/)
+                                              const fname = parts[0] || '', lname = parts.slice(1).join(' ')
+                                              const { data } = await supabase.from('client_contacts').insert({ client_id: clientId, fname, lname: lname || null, contact_type: 'anr', artists: [] }).select().single()
+                                              if (data) { const contact = data as ClientContact; setLabelContacts(prev => [...prev, contact]); const nm = `${fname} ${lname}`.trim(); setAnrQuery(nm); set('ordered_by', nm); set('client_name', nm); set('anr_contact_id', contact.id); setAnrContact(contact); setAnrEmail(''); setAnrPhone('') }
+                                              setShowAnrDD(false)
+                                            }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this A&R? Add &ldquo;{anrQuery.trim()}&rdquo;
+                                            </div>
+                                          )
+                                        })()}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
+                                    <input value={anrEmail} onChange={e => setAnrEmail(e.target.value)} onBlur={() => { set('email', anrEmail); if (anrContact?.id && anrEmail !== (anrContact.email || '')) { const cid = anrContact.id; setContactUpdatePrompt({ contactId: cid, column: 'email', value: anrEmail, onUpdate: () => { setAnrContact(p => p ? { ...p, email: anrEmail } : p); setLabelContacts(p => p.map(c => c.id === cid ? { ...c, email: anrEmail } : c)) } }) } }} placeholder="Email" style={cInpStyle} />
+                                    <a href={anrEmail ? `mailto:${anrEmail}` : undefined} onClick={!anrEmail ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--booked)', !!anrEmail)}>Email</a>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                                    <input value={anrPhone} onChange={e => setAnrPhone(e.target.value)} onBlur={() => { set('phone', anrPhone); if (anrContact?.id && anrPhone !== (anrContact.phone || '')) { const cid = anrContact.id; setContactUpdatePrompt({ contactId: cid, column: 'phone', value: anrPhone, onUpdate: () => { setAnrContact(p => p ? { ...p, phone: anrPhone } : p); setLabelContacts(p => p.map(c => c.id === cid ? { ...c, phone: anrPhone } : c)) } }) } }} placeholder="Phone" style={cInpStyle} />
+                                    <a href={anrPh ? `tel:${anrPh}` : undefined} onClick={!anrPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--booked)', !!anrPh)}>Call</a>
+                                    <a href={anrPh ? `sms:${anrPh}` : undefined} onClick={!anrPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--warm)', !!anrPh)}>Text</a>
+                                  </div>
+                                </div>
+                              )
+                            })()}
+
+                            {/* Admin */}
+                            {(() => {
+                              const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 10, padding: '1px 0' }
+                              const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)', background: 'transparent', color, fontFamily: 'DM Mono', fontSize: 9, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' as const })
+                              const adminPh = adminPhone.replace(/\D/g, '')
+                              return (
+                                <div style={{ marginBottom: 8 }}>
+                                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Admin</div>
+                                  <div style={{ position: 'relative' }}>
+                                    <input
+                                      value={adminQuery}
+                                      onChange={e => { setAdminQuery(e.target.value); set('anr_admin_contact_id', null); setAdminContact(null); setShowAdminDD(true) }}
+                                      onFocus={() => setShowAdminDD(true)}
+                                      onBlur={() => setTimeout(() => setShowAdminDD(false), 150)}
+                                      placeholder="—"
+                                      style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                                    />
+                                    {showAdminDD && (labelAdminContacts.filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase())).length > 0 || adminQuery.trim().length >= 2) && (
+                                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
+                                        {labelAdminContacts.filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase())).map((c, i) => {
+                                          const name = `${c.fname || ''} ${c.lname || ''}`.trim()
+                                          return (
+                                            <div key={c.id} onMouseDown={e => { e.preventDefault(); setAdminQuery(name); set('anr_admin_contact_id', c.id); setAdminContact(c); setAdminEmail(c.email || ''); setAdminPhone(c.phone || ''); setShowAdminDD(false) }}
+                                              style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent', borderBottom: i < labelAdminContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
+                                              onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
+                                              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                            >
+                                              <div>{name}</div>
+                                              {c.role && <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 1 }}>{c.role}</div>}
+                                            </div>
+                                          )
+                                        })}
+                                        {adminQuery.trim().length >= 2 && !labelAdminContacts.some(c => `${c.fname || ''} ${c.lname || ''}`.trim().toLowerCase() === adminQuery.trim().toLowerCase()) && (() => {
+                                          const clientId = form.client_db_id
+                                          return (
+                                            <div onMouseDown={async e => {
+                                              e.preventDefault(); if (!clientId) return
+                                              const parts = adminQuery.trim().split(/\s+/)
+                                              const fname = parts[0] || '', lname = parts.slice(1).join(' ')
+                                              const { data } = await supabase.from('client_contacts').insert({ client_id: clientId, fname, lname: lname || null, contact_type: 'admin' }).select().single()
+                                              if (data) { const contact = data as ClientContact; setLabelAdminContacts(prev => [...prev, contact]); setAdminQuery(adminQuery.trim()); set('anr_admin_contact_id', contact.id); setAdminContact(contact); setAdminEmail(''); setAdminPhone('') }
+                                              setShowAdminDD(false)
+                                            }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this admin? Add &ldquo;{adminQuery.trim()}&rdquo;
+                                            </div>
+                                          )
+                                        })()}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
+                                    <input value={adminEmail} onChange={e => setAdminEmail(e.target.value)} onBlur={() => { if (adminContact?.id && adminEmail !== (adminContact.email || '')) { const cid = adminContact.id; setContactUpdatePrompt({ contactId: cid, column: 'email', value: adminEmail, onUpdate: () => { setAdminContact(p => p ? { ...p, email: adminEmail } : p); setLabelAdminContacts(p => p.map(c => c.id === cid ? { ...c, email: adminEmail } : c)) } }) } }} placeholder="Email" style={cInpStyle} />
+                                    <a href={adminEmail ? `mailto:${adminEmail}` : undefined} onClick={!adminEmail ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--booked)', !!adminEmail)}>Email</a>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                                    <input value={adminPhone} onChange={e => setAdminPhone(e.target.value)} onBlur={() => { if (adminContact?.id && adminPhone !== (adminContact.phone || '')) { const cid = adminContact.id; setContactUpdatePrompt({ contactId: cid, column: 'phone', value: adminPhone, onUpdate: () => { setAdminContact(p => p ? { ...p, phone: adminPhone } : p); setLabelAdminContacts(p => p.map(c => c.id === cid ? { ...c, phone: adminPhone } : c)) } }) } }} placeholder="Phone" style={cInpStyle} />
+                                    <a href={adminPh ? `tel:${adminPh}` : undefined} onClick={!adminPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--booked)', !!adminPh)}>Call</a>
+                                    <a href={adminPh ? `sms:${adminPh}` : undefined} onClick={!adminPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--warm)', !!adminPh)}>Text</a>
+                                  </div>
+                                </div>
+                              )
+                            })()}
+
+                            {/* Contact update prompt */}
+                            {contactUpdatePrompt && (
+                              <div style={{ position: 'fixed', inset: 0, zIndex: 40000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ background: '#13161d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '24px 28px', width: 340, maxWidth: '90vw', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
+                                  <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: '#e8eaf0', marginBottom: 8 }}>Update client profile or just this session?</div>
+                                  <div style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#8b90a8', lineHeight: 1.6, marginBottom: 20 }}>Save the new {contactUpdatePrompt.column} back to the contact record, or keep it for this booking only.</div>
+                                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                    <button type="button" onClick={() => setContactUpdatePrompt(null)} style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, background: 'transparent', color: '#8b90a8' }}>Just this session</button>
+                                    <button type="button" onClick={async () => { await supabase.from('client_contacts').update({ [contactUpdatePrompt.column]: contactUpdatePrompt.value }).eq('id', contactUpdatePrompt.contactId); contactUpdatePrompt.onUpdate(); setContactUpdatePrompt(null) }} style={{ padding: '7px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700, background: 'var(--accent)', color: '#0d0f14' }}>Update profile</button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <ClientCardField label="Email" value={form.email} fieldKey="email" onEdit={handleClientFieldEdit as (k: string, v: string) => void} editing={true} />
+                            <ClientCardField label="Phone" value={form.phone} fieldKey="phone" onEdit={handleClientFieldEdit as (k: string, v: string) => void} editing={true} />
+                          </>
+                        )}
+
+                        {/* View full profile */}
+                        <button
+                          onClick={() => form.client_db_id && setShowProfile(true)}
+                          style={{ marginTop: 10, width: '100%', padding: '6px 10px', borderRadius: 4, background: 'transparent', border: '1px solid var(--border)', color: form.client_db_id ? 'var(--text2)' : 'var(--text3)', fontFamily: 'DM Mono', fontSize: 10, cursor: form.client_db_id ? 'pointer' : 'default', textAlign: 'center' }}
+                        >
+                          {form.client_db_id ? 'View full profile →' : 'No profile linked'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* COD method */}
+                  {form.payment_type === 'COD' && (
+                    <div>
+                      <label style={fL}>COD Payment Method</label>
+                      <select value={form.cod_method} onChange={e => set('cod_method', e.target.value)} style={inp}>
+                        <option value="">Select method...</option>
+                        {COD_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
+            {/* RIGHT — Invoice # */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+              <div style={sectionHead}>Invoice</div>
+              <div>
+                <label style={fL}>Invoice #</label>
+                <input value={form.invoice_num} onChange={e => set('invoice_num', e.target.value)} placeholder="—" style={inp} />
+              </div>
+            </div>
+          </div>
+
+          {/* ── SEEDER BAR ── */}
+          {!['tour', 'tech', 'open_hours'].includes(form.session_type) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '10px 0', marginTop: 16, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', flexShrink: 0 }}>Seed Rows</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)' }}>From</span>
+                <input type="date" value={seederStart} onChange={e => setSeederStart(e.target.value)} style={{ ...inp, width: 110 }} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)' }}>To</span>
+                <input type="date" value={seederEnd} onChange={e => setSeederEnd(e.target.value)} style={{ ...inp, width: 110 }} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)' }}>Studio</span>
+                <select value={seederStudio} onChange={e => setSeederStudio(e.target.value)} style={{ ...inp, width: 60 }}>
+                  <option value="">—</option>
+                  {STUDIO_LETTERS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)' }}>Eng</span>
+                <input value={seederEng} onChange={e => setSeederEng(e.target.value)} placeholder="name" style={{ ...inp, width: 90 }} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)' }}>From</span>
+                <TimeInput value={seederFromTime} onChange={v => setSeederFromTime(v)} style={{ ...inp, width: 80 }} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)' }}>To</span>
+                <TimeInput value={seederToTime} onChange={v => setSeederToTime(v)} style={{ ...inp, width: 80 }} />
+              </div>
+              <button
+                type="button"
+                onClick={() => handleSeedRows(seederStart, seederEnd, seederStudio, seederFromTime, seederToTime, seederEng)}
+                disabled={!seederStart}
+                style={{ padding: '5px 14px', borderRadius: 5, border: 'none', cursor: seederStart ? 'pointer' : 'default', background: seederStart ? '#c8f04e' : 'rgba(200,240,78,0.3)', color: '#0d0f14', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, flexShrink: 0 }}
+              >+ Seed Rows</button>
+            </div>
+          )}
+
+          {/* ── STUDIO TIME TABLE ── */}
+          {!['tour', 'tech', 'open_hours'].includes(form.session_type) && (
+            <div style={{ marginTop: 20 }}>
+              <div style={sectionTitle}>Studio Time</div>
+              <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                  {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total', '', ''].map((h, i) => <div key={i} style={thS}>{h}</div>)}
+                </div>
+                <div style={{ maxHeight: 420, overflowY: 'auto' }}>
+                  {stRows.map(r => {
+                    const isEngOnly = r.studio === ''
+                    const isDayRow = r.row_rate_type === 'day'
+                    const engName = form.engineer_name || ''
+                    const engRateDisplay = r.eng_rate || form.engineer_rate || ''
+                    const engRateNum = parseFloat((engRateDisplay ?? '').replace(/[^0-9.]/g, '')) || 0
+                    const engHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
+                    const engCharge = engHrs != null && engHrs > 0 && engRateNum > 0 ? parseFloat((engHrs * engRateNum).toFixed(2)) : null
+                    const rowTotal = (r.charge ?? 0) + (r.ot_charge ?? 0)
+                    const toggleStyle = (active: boolean): React.CSSProperties => ({
+                      fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, padding: '2px 5px',
+                      borderRadius: 3, border: 'none', cursor: 'pointer',
+                      background: active ? '#c8f04e' : 'rgba(255,255,255,0.06)',
+                      color: active ? '#0d0f14' : '#8a8fa0',
+                    })
+                    const rowHrs = r.total_hours ?? calcHours(r.from_time, r.to_time)
+                    const otHrsNum = parseFloat(r.ot_hours ?? '0') || 0
+                    return (
+                      <div key={r.id}>
+                        {!isEngOnly && <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: r.admin_locked ? 'rgba(20,184,166,0.04)' : undefined }}>
+                          <div style={cellS}><input value={r.studio} onChange={e => handleStRowChange(r.id, { studio: e.target.value })} style={tInp} placeholder="—" /></div>
+                          <div key={r.id + '-date'} style={{ ...cellS, color: '#8a8fa0', fontSize: 10, position: 'relative', cursor: 'pointer' }}>
+                            <span style={{ pointerEvents: 'none' }}>{shortDate(r.date)}</span>
+                            <input
+                              type="date"
+                              value={r.date || ''}
+                              onChange={e => {
+                                const newDate = e.target.value
+                                setStRows(prev => prev
+                                  .map(row => row.id === r.id ? { ...row, date: newDate } : row)
+                                  .sort((a, b) => (a.date || 'zzzz').localeCompare(b.date || 'zzzz'))
+                                  .map((row, i) => ({ ...row, sort_order: i }))
+                                )
+                              }}
+                              style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+                            />
+                          </div>
+                          <div
+                            style={{ ...cellS, cursor: 'pointer', overflow: 'hidden' }}
+                            onClick={e => {
+                              e.stopPropagation()
+                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                              setSiPopoverRowId(r.id)
+                              setSiPopoverText(r.session_info || '')
+                              setSiPopoverPos({ top: rect.bottom + 4, left: rect.left })
+                            }}
+                          >
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', color: r.session_info ? '#f0f0f0' : '#4a4f60', fontSize: 11 }}>
+                              {r.session_info || '—'}
+                            </span>
+                          </div>
+                          {siPopoverRowId === r.id && siPopoverPos && (
+                            <>
+                              <div style={{ position: 'fixed', inset: 0, zIndex: 199 }} onClick={() => setSiPopoverRowId(null)} />
+                              <div style={{ position: 'fixed', top: siPopoverPos.top, left: siPopoverPos.left, width: 280, zIndex: 200, background: '#1a1e28', border: '1px solid #c8f04e', borderRadius: 8, padding: 12 }} onClick={e => e.stopPropagation()}>
+                                <textarea
+                                  value={siPopoverText}
+                                  onChange={e => setSiPopoverText(e.target.value)}
+                                  autoFocus
+                                  rows={4}
+                                  style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'vertical', color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 11, lineHeight: 1.5, marginBottom: 8, boxSizing: 'border-box' }}
+                                  placeholder="Session notes…"
+                                />
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                  <button onClick={() => { handleStRowChange(r.id, { session_info: siPopoverText }); setSiPopoverRowId(null) }} style={{ flex: 1, background: '#c8f04e', color: '#0d0f14', border: 'none', borderRadius: 5, padding: '5px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Save</button>
+                                  <button onClick={() => setSiPopoverRowId(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', color: '#8a8fa0', border: 'none', borderRadius: 5, padding: '5px 0', fontFamily: 'Syne', fontSize: 11, cursor: 'pointer' }}>Close</button>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                          <div style={cellS}><TimeInput value={r.from_time} onChange={v => handleStRowChange(r.id, { from_time: v })} style={tInp} /></div>
+                          <div style={cellS}><TimeInput value={r.to_time} onChange={v => handleStRowChange(r.id, { to_time: v })} style={tInp} /></div>
+                          <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{rowHrs != null ? `${rowHrs}h` : '—'}</div>
+                          <div style={{ ...cellS, gap: 2, padding: '3px 4px' }}>
+                            <button style={toggleStyle(isDayRow)} onClick={() => !isDayRow && toggleRowRateType(r.id)}>Day</button>
+                            <button style={toggleStyle(!isDayRow)} onClick={() => isDayRow && toggleRowRateType(r.id)}>Hr</button>
+                          </div>
+                          <div style={cellS}>
+                            {isDayRow
+                              ? <input value={r.rate_daily} onChange={e => handleStRowChange(r.id, { rate_daily: e.target.value })} style={tInp} placeholder="$0/day" />
+                              : <input value={r.rate} onChange={e => handleStRowChange(r.id, { rate: e.target.value })} style={tInp} placeholder="$0/hr" />
+                            }
+                          </div>
+                          <div style={cellS}>
+                            {isDayRow
+                              ? <span style={{ fontSize: 10, color: '#8a8fa0' }}>{otHrsNum > 0 ? `${otHrsNum}h` : '—'}</span>
+                              : <input value={r.ot_hours ?? ''} onChange={e => handleStRowChange(r.id, { ot_hours: e.target.value })} style={tInp} placeholder="0" />
+                            }
+                          </div>
+                          <div style={cellS}>
+                            <input value={r.ot_rate ?? ''} onChange={e => handleStRowChange(r.id, { ot_rate: e.target.value })} style={tInp} placeholder="$0" />
+                          </div>
+                          <div style={{ ...cellS, color: (r.ot_charge ?? 0) > 0 ? '#c8f04e' : '#8a8fa0', fontSize: 10 }}>
+                            {(r.ot_charge ?? 0) > 0 ? `$${r.ot_charge!.toFixed(2)}` : '—'}
+                          </div>
+                          <div style={{ ...cellS, color: rowTotal > 0 ? '#c8f04e' : '#8a8fa0', fontWeight: rowTotal > 0 ? 600 : 400 }}>
+                            {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : '—'}
+                          </div>
+                          <div style={{ ...cellS, justifyContent: 'center', padding: '3px 4px', pointerEvents: 'auto' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleLock(r.id, r.admin_locked)}
+                              style={{ fontSize: 8, fontFamily: 'DM Mono', fontWeight: 700, padding: '2px 5px', borderRadius: 3, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', background: r.admin_locked ? '#14B8A6' : 'rgba(255,255,255,0.06)', color: r.admin_locked ? '#0d0f14' : '#6B7280' }}
+                            >{r.admin_locked ? '🔒' : '✓'}</button>
+                          </div>
+                          <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto' }}>
+                            {confirmDeleteRowId === r.id ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                                <span style={{ fontSize: 7, color: '#f97316', fontFamily: 'DM Mono', whiteSpace: 'nowrap' }}>Del?</span>
+                                <div style={{ display: 'flex', gap: 3 }}>
+                                  <button type="button" onClick={() => handleDeleteStRow(r.id)} style={{ fontSize: 8, fontFamily: 'DM Mono', color: '#f97316', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 700 }}>Y</button>
+                                  <button type="button" onClick={() => setConfirmDeleteRowId(null)} style={{ fontSize: 8, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>N</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button type="button" onClick={() => setConfirmDeleteRowId(r.id)} style={{ fontSize: 13, fontFamily: 'DM Mono', color: '#4a4f60', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
+                            )}
+                          </div>
+                        </div>}
+                        {!isEngOnly && pendingLockedEdits[r.id] && (
+                          <div style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.08)', borderBottom: '1px solid rgba(20,184,166,0.2)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'DM Mono', color: '#14B8A6' }}>
+                            <span>Editing a locked row —</span>
+                            <button type="button" onClick={() => { handleToggleLock(r.id, true); setPendingLockedEdits(p => { const n = { ...p }; delete n[r.id]; return n }) }} style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid #14B8A6', background: 'rgba(20,184,166,0.15)', color: '#14B8A6', fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer' }}>Update</button>
+                            <button type="button" onClick={() => { const orig = pendingLockedEdits[r.id]; setStRows(prev => prev.map(row => row.id === r.id ? orig : row)); setPendingLockedEdits(p => { const n = { ...p }; delete n[r.id]; return n }) }} style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: '#8a8fa0', fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}>Revert</button>
+                          </div>
+                        )}
+                        {(r.studio === '' || !!form.engineer_name || !!r.eng_rate) && r.eng_visible !== false && (
+                          <>
+                            <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
+                              <div style={{ ...cellS, color: '#8a8fa0', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
+                              <div key={r.id + '-eng-date'} style={{ ...cellS, color: '#8a8fa0', fontSize: 10, position: 'relative', cursor: isEngOnly ? 'pointer' : 'default' }}>
+                                <span style={{ pointerEvents: 'none' }}>{shortDate(r.date)}</span>
+                                {isEngOnly && (
+                                  <input
+                                    type="date"
+                                    value={r.date || ''}
+                                    onChange={e => {
+                                      const newDate = e.target.value
+                                      setStRows(prev => prev
+                                        .map(row => row.id === r.id ? { ...row, date: newDate } : row)
+                                        .sort((a, b) => (a.date || 'zzzz').localeCompare(b.date || 'zzzz'))
+                                        .map((row, i) => ({ ...row, sort_order: i }))
+                                      )
+                                    }}
+                                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+                                  />
+                                )}
+                              </div>
+                              <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engName}</div>
+                              <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => handleStRowChange(r.id, { eng_from_time: v })} style={tInp} /></div>
+                              <div style={cellS}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => handleStRowChange(r.id, { eng_to_time: v })} style={tInp} /></div>
+                              <div style={{ ...cellS, color: '#8a8fa0', fontSize: 10 }}>{engHrs != null ? `${engHrs}h` : '—'}</div>
+                              <div style={cellS} />
+                              <div style={cellS}>
+                                <input value={r.eng_rate || engRateDisplay} onChange={e => handleStRowChange(r.id, { eng_rate: e.target.value })} style={{ ...tInp, width: 64 }} />
+                              </div>
+                              <div style={cellS} />
+                              <div style={cellS} />
+                              <div style={cellS} />
+                              <div style={{ ...cellS, color: engCharge != null ? '#c8f04e' : '#8a8fa0', fontWeight: engCharge != null ? 600 : 400 }}>
+                                {engCharge != null ? `$${engCharge.toFixed(2)}` : '—'}
+                              </div>
+                              <div style={{ ...cellS, justifyContent: 'center', padding: '3px 4px', pointerEvents: 'auto' }}>
+                                <button type="button" onClick={() => handleToggleLock(r.id, r.admin_locked)} style={{ fontSize: 8, fontFamily: 'DM Mono', fontWeight: 700, padding: '2px 5px', borderRadius: 3, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', background: r.admin_locked ? '#14B8A6' : 'rgba(255,255,255,0.06)', color: r.admin_locked ? '#0d0f14' : '#6B7280' }}>{r.admin_locked ? '🔒' : '✓'}</button>
+                              </div>
+                              <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto' }}>
+                                <button type="button" onClick={() => setConfirmClearEngId(r.id)} style={{ fontSize: 13, fontFamily: 'DM Mono', color: '#4a4f60', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
+                              </div>
+                            </div>
+                            {confirmClearEngId === r.id && (
+                              <div style={{ padding: '5px 12px', background: 'rgba(249,115,22,0.08)', borderBottom: '1px solid rgba(249,115,22,0.2)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'DM Mono', color: '#f97316' }}>
+                                <span>Delete engineer row?</span>
+                                <button type="button" onClick={() => isEngOnly ? handleDeleteStRow(r.id) : clearEngRow(r.id)} style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid #f97316', background: 'rgba(249,115,22,0.15)', color: '#f97316', fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer' }}>Y</button>
+                                <button type="button" onClick={() => setConfirmClearEngId(null)} style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: '#8a8fa0', fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}>N</button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: '#1a1e28', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                    <button type="button" onClick={handleAddStRow} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add Studio Time</button>
+                    <button type="button" onClick={addEngRow} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#c8f04e88', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add Eng</button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                    <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0' }}>Studio: ${stTotal.toFixed(2)}</span>
+                    {engTotal > 0 && <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#c8f04e' }}>Eng: ${engTotal.toFixed(2)}</span>}
+                    {engTotal > 0 && <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0', fontWeight: 700 }}>Total: ${(stTotal + engTotal).toFixed(2)}</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── EQUIPMENT CONDITION ── */}
+          {!['tour', 'tech', 'open_hours'].includes(form.session_type) && (
+            <div data-no-print="" style={{ marginTop: 20 }}>
+              <div style={sectionTitle}>Equipment Condition</div>
+              <input ref={equipNoteFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) uploadEquipNotePhoto(f) }} />
+              <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflowX: 'auto' }}>
+                <div style={{ minWidth: `${130 + Math.max(sessionDates.length, 1) * 90}px` }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                    <div style={{ ...thS, position: 'sticky', left: 0, background: '#1a1e28', zIndex: 1 }}>Equipment</div>
+                    {sessionDates.length > 0
+                      ? sessionDates.map(d => <div key={d} style={thS}>{fmtDate(d)}</div>)
+                      : <div style={thS}>—</div>}
+                  </div>
+                  {EQUIPMENT_ITEMS.map(eq => {
+                    const openDate = openNoteKey?.startsWith(`${eq}||`) ? openNoteKey.split('||')[1] : null
+                    return (
+                      <div key={eq}>
+                        <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                          <div style={{ ...cellS, color: '#f0f0f0', fontWeight: 500, position: 'sticky', left: 0, background: '#1a1e28', zIndex: 1 }}>{eq}</div>
+                          {sessionDates.length > 0
+                            ? sessionDates.map(d => {
+                                const key = `${eq}||${d}`
+                                const row = equipRows.find(r => r.equipment === eq && r.date === d)
+                                const cond = row?.condition ?? null
+                                const hasNote = !!(equipNotes[key]?.note || (equipNotes[key]?.photo_urls?.length ?? 0) > 0)
+                                return (
+                                  <div key={d} style={{ ...cellS, display: 'flex', gap: 4, alignItems: 'center' }}>
+                                    <button type="button" onClick={() => row && handleEquipChange(eq, d, 'ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', border: `1px solid ${cond === 'ok' ? '#14B8A6' : 'rgba(255,255,255,0.1)'}`, background: cond === 'ok' ? 'rgba(20,184,166,0.12)' : 'transparent', color: cond === 'ok' ? '#14B8A6' : '#8a8fa0' }}>OK</button>
+                                    <button type="button" onClick={() => row && handleEquipChange(eq, d, 'not_ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', border: `1px solid ${cond === 'not_ok' ? '#EF4444' : 'rgba(255,255,255,0.1)'}`, background: cond === 'not_ok' ? 'rgba(239,68,68,0.12)' : 'transparent', color: cond === 'not_ok' ? '#EF4444' : '#8a8fa0' }}>✗</button>
+                                    {cond === 'not_ok' && hasNote && <span style={{ width: 6, height: 6, borderRadius: 3, background: '#F97316', display: 'inline-block', flexShrink: 0 }} />}
+                                  </div>
+                                )
+                              })
+                            : <div style={{ ...cellS, color: '#4a4f64' }}>—</div>}
+                        </div>
+                        {openDate && (
+                          <div style={{ padding: '8px 12px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                            <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#F97316', marginBottom: 6 }}>{eq} — {openDate}</div>
+                            <textarea
+                              value={equipNotes[`${eq}||${openDate}`]?.note ?? ''}
+                              onChange={e => {
+                                const k = `${eq}||${openDate}`
+                                setEquipNotes(prev => ({ ...prev, [k]: { ...(prev[k] ?? { id: '', photo_urls: [] }), note: e.target.value } }))
+                              }}
+                              onBlur={e => upsertEquipNote(`${eq}||${openDate}`, eq, openDate, { note: e.target.value })}
+                              placeholder="Note about this issue…"
+                              style={{ width: '100%', background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 10, padding: '5px 7px', resize: 'none', outline: 'none', boxSizing: 'border-box', minHeight: 56 }}
+                            />
+                            {(equipNotes[`${eq}||${openDate}`]?.photo_urls?.length ?? 0) > 0 && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+                                {equipNotes[`${eq}||${openDate}`].photo_urls.map((url, i) => (
+                                  <a key={i} href={url} target="_blank" rel="noreferrer">
+                                    <img src={url} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)', display: 'block' }} />
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                            <button type="button" disabled={noteUploading} onClick={() => { pendingNoteKey.current = { key: `${eq}||${openDate}`, equipment: eq, date: openDate }; equipNoteFileRef.current?.click() }} style={{ marginTop: 6, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, color: noteUploading ? '#4a4f64' : '#8a8fa0', background: 'none', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, cursor: noteUploading ? 'not-allowed' : 'pointer', padding: '3px 10px' }}>
+                              {noteUploading ? 'Uploading…' : '+ Photo'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── RENTALS ── */}
+          {!['tour', 'tech', 'open_hours'].includes(form.session_type) && (
+            <div style={{ marginTop: 20 }}>
+              <div style={sectionTitle}>Rentals</div>
+              <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                  {['Qty', 'Item', 'Supplier', 'Date(s) Used', 'Rate', 'Charge', ''].map(h => <div key={h} style={thS}>{h}</div>)}
+                </div>
+                {rentRows.map((r, idx) => (
+                  <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', borderBottom: idx < rentRows.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                    <div style={cellS}><input value={r.qty} onChange={e => handleRentChange(r.id, { qty: e.target.value })} style={tInp} /></div>
+                    <div style={cellS}><input value={r.item} onChange={e => handleRentChange(r.id, { item: e.target.value })} style={tInp} /></div>
+                    <div style={cellS}><input value={r.supplier} onChange={e => handleRentChange(r.id, { supplier: e.target.value })} style={tInp} /></div>
+                    <div style={cellS}><input value={r.dates_used} onChange={e => handleRentChange(r.id, { dates_used: e.target.value })} style={tInp} /></div>
+                    <div style={cellS}><input value={r.rate} onChange={e => handleRentChange(r.id, { rate: e.target.value })} style={tInp} /></div>
+                    <div style={cellS}><input value={r.charge} onChange={e => handleRentChange(r.id, { charge: e.target.value })} placeholder="$0.00" style={tInp} /></div>
+                    <div style={{ ...cellS, padding: '6px 4px' }}>
+                      <button type="button" onClick={() => handleRentDelete(r.id)} style={{ background: 'none', border: 'none', color: '#4a4f64', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                    </div>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: '#1a1e28', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <button type="button" onClick={handleAddRent} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button>
+                  <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0', fontWeight: 700 }}>Total: ${rentTotal.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── PAYMENTS + NOTES (2-col) ── */}
+          {!['tour', 'tech', 'open_hours'].includes(form.session_type) && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28, marginTop: 20 }}>
+
+              {/* Left — Session Notes + COD signature */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <div style={sectionTitle}>Session Notes</div>
+                  <textarea value={form.session_notes} onChange={e => set('session_notes', e.target.value)}
+                    style={{ width: '100%', minHeight: 90, background: '#1a1e28', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 5, color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }} />
+                </div>
+                {form.payment_type === 'COD' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#4a4f64', lineHeight: 1.8, padding: '10px 12px', background: '#1a1e28', borderRadius: 5, border: '1px solid rgba(255,255,255,0.05)' }}>
+                      By signing below, I acknowledge that I am authorized to approve charges for this session. I accept responsibility for all associated costs and understand that payment is due in full at the time of service unless otherwise agreed. I also acknowledge that Paramount Recording is not responsible for any media, personal items, or equipment left behind.
+                      <br /><br />
+                      <em>No Tapes, CDs, DVDs, Thumb Drives, Computer Drives or other Recording Media will be released until payment in full is received.</em>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
+                      <div style={metaLabel}>Date</div>
+                      <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0' }}>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
+                      <div style={metaLabel}>Print Name</div>
+                      <input value={form.print_name} onChange={e => set('print_name', e.target.value)} style={{ ...tInp, borderBottom: '1px solid rgba(255,255,255,0.2)' }} />
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <div style={metaLabel}>Signature</div>
+                        <button type="button" onClick={clearAdminSignature} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '2px 8px', color: '#8a8fa0', fontSize: 10, cursor: 'pointer', fontFamily: 'DM Mono' }}>Clear</button>
+                      </div>
+                      <canvas
+                        ref={adminCanvasRef}
+                        width={700}
+                        height={200}
+                        onMouseDown={startAdminDraw}
+                        onMouseMove={continueAdminDraw}
+                        onMouseUp={endAdminDraw}
+                        onMouseLeave={endAdminDraw}
+                        onTouchStart={startAdminDraw}
+                        onTouchMove={continueAdminDraw}
+                        onTouchEnd={endAdminDraw}
+                        style={{ width: '100%', height: 100, background: '#0d0f14', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', display: 'block', touchAction: 'none', cursor: 'crosshair' }}
+                      />
+                      {form.signature_data && <div style={{ fontSize: 9, color: '#4a4f64', fontFamily: 'DM Mono', marginTop: 4 }}>Signature captured ✓</div>}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Right — Payments + Totals */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <div style={sectionTitle}>Payments</div>
+                  <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
+                    {payRows.map((p, idx) => {
+                      const needsLast4 = p.payment_type === 'Credit Card' || p.payment_type === 'Debit Card'
+                      return (
+                        <div key={p.id} style={{ display: 'grid', gridTemplateColumns: needsLast4 ? '130px 80px 1fr 70px 24px' : '130px 80px 1fr 24px', borderBottom: idx < payRows.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none', alignItems: 'center' }}>
+                          <div style={cellS}>
+                            <select value={p.payment_type} onChange={e => handlePayChange(p.id, { payment_type: e.target.value, last_four: '' })} style={{ ...tInp, background: 'transparent', cursor: 'pointer' }}>
+                              <option value="">— type —</option>
+                              {['Cash', 'Zelle', 'Credit Card', 'Debit Card', 'Check', 'Other'].map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                          </div>
+                          <div style={cellS}><input value={p.amount} onChange={e => handlePayChange(p.id, { amount: e.target.value })} onBlur={e => handlePayChange(p.id, { amount: formatCurrency(e.target.value) })} placeholder="0.00" style={tInp} /></div>
+                          <div style={cellS}><input value={p.memo} onChange={e => handlePayChange(p.id, { memo: e.target.value })} placeholder="memo" style={tInp} /></div>
+                          {needsLast4 && (
+                            <div style={cellS}><input value={p.last_four} onChange={e => handlePayChange(p.id, { last_four: e.target.value.replace(/\D/g, '').slice(0, 4) })} placeholder="last 4" maxLength={4} style={tInp} /></div>
+                          )}
+                          <div style={{ ...cellS, padding: '6px 4px' }}>
+                            <button type="button" onClick={() => handlePayDelete(p.id)} style={{ background: 'none', border: 'none', color: '#4a4f64', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                    <div style={{ padding: '7px 10px' }}>
+                      <button type="button" onClick={handleAddPay} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add payment</button>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
+                  {[
+                    { label: 'Studio Total', value: stTotal, color: '#f0f0f0', bold: false },
+                    ...(engTotal > 0 ? [{ label: 'Eng Total', value: engTotal, color: '#c8f04e', bold: false }] : []),
+                    { label: 'Rentals Total', value: rentTotal, color: '#f0f0f0', bold: false },
+                    { label: 'Grand Total', value: grandTotal, color: '#f0f0f0', bold: true },
+                    { label: 'Total Paid', value: totalPaid, color: '#14B8A6', bold: false },
+                    { label: 'Balance Due', value: balanceDue, color: balanceDue > 0 ? '#EF4444' : '#14B8A6', bold: true },
+                  ].map(({ label, value, color, bold }) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0' }}>{label}</span>
+                      <span style={{ fontSize: bold ? 13 : 11, fontFamily: 'DM Mono', color, fontWeight: bold ? 700 : 400 }}>${value.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── NEEDS ATTENTION / RUNNER NOTES ── */}
+          {!['tour', 'tech', 'open_hours'].includes(form.session_type) && (
+            <div data-no-print="" style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 20, marginTop: 20 }}>
+              <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 10, color: '#f97316', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
+                Needs Attention / Runner Notes
+              </div>
+              <textarea
+                value={form.needs_attention_notes}
+                onChange={e => set('needs_attention_notes', e.target.value)}
+                placeholder="Internal notes only — never appears on the PDF export…"
+                style={{ width: '100%', minHeight: 80, background: '#1a1e28', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 5, color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }}
+              />
+              {form.needs_attention_photos?.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                  {form.needs_attention_photos.map((url, i) => (
+                    <a key={i} href={url} target="_blank" rel="noreferrer" style={{ display: 'block', flexShrink: 0 }}>
+                      <img src={url} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, border: '2px solid rgba(249,115,22,0.4)', display: 'block' }} />
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>{/* end body */}
+
+        {/* ── FOOTER ── */}
+        <div style={{ position: 'sticky', bottom: 0, background: '#0d0f14', borderTop: '1px solid rgba(255,255,255,0.08)', padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 }}>
+          {/* Left — Delete */}
+          <div>
+            {bookingId && (
+              <button
+                type="button"
+                onClick={() => { if (confirmDelete) handleDelete(); else setConfirmDelete(true) }}
+                style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', cursor: 'pointer', border: `1px solid ${confirmDelete ? 'transparent' : 'rgba(239,68,68,0.5)'}`, background: confirmDelete ? '#EF4444' : 'transparent', color: confirmDelete ? '#fff' : '#EF4444' }}
+              >
+                {confirmDelete ? 'Confirm Delete' : 'Delete'}
+              </button>
+            )}
+          </div>
+          {/* Right — actions */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button type="button" onClick={printWithFilename} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
+              Export PDF
+            </button>
+            <button type="button" onClick={printWithFilename} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
+              Print
+            </button>
+            <button type="button" onClick={onClose} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
+              Cancel
+            </button>
+            {isCompleted && (
+              <button type="button" onClick={handleComplete} disabled={completing} style={{ padding: '7px 18px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: completing ? 'default' : 'pointer', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0', opacity: completing ? 0.7 : 1 }}>
+                {completing ? 'Re-opening…' : 'Re-open WO'}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: saving ? 0.7 : 1 }}
+            >
+              {saving ? 'Saving…' : 'Close & Save'}
+            </button>
+          </div>
+        </div>
+
       </div>
-    </div>
+
+      {/* Client profile popup */}
+      {showProfile && form.client_db_id && (
+        <ClientProfilePopup clientId={form.client_db_id} onClose={() => setShowProfile(false)} />
+      )}
+
+      {/* Profile update dialog */}
+      {showProfileUpdate && (
+        <div onClick={e => { e.stopPropagation(); exitCardEditMode() }} style={{ position: 'fixed', inset: 0, zIndex: 30000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '20px 24px', maxWidth: 360, width: '100%' }}>
+            <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Update client profile?</div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono', lineHeight: 1.6, marginBottom: 18 }}>You edited contact details on this booking. Save those changes to the full client profile too?</div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => exitCardEditMode()} style={{ padding: '6px 14px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer' }}>Just this session</button>
+              <button onClick={async () => { if (form.client_db_id) { for (const [col, val] of Object.entries(clientEdits)) { await supabase.from('clients').update({ [col]: val }).eq('id', form.client_db_id) } } exitCardEditMode() }} style={{ padding: '6px 14px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', background: '#1e40af', border: 'none', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>Update profile</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>,
+    document.body
   )
 }
