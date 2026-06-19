@@ -604,6 +604,7 @@ export function BookingForm({
       const matched = ((contacts as ClientContact[]) || []).find(c =>
         Array.isArray(c.artists) && c.artists.some(a => a.toLowerCase() === artistLower)
       )
+      console.log('artist lookup', { clientId: r.id, artistMatch: r._artistMatch, contacts, matched })
       if (matched) {
         const nm = `${matched.fname || ''} ${matched.lname || ''}`.trim()
         setAnrQuery(nm)
