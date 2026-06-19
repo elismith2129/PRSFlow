@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
 import TimeInput from '@/components/shared/TimeInput'
@@ -1272,11 +1271,10 @@ export function WorkOrderPopup({
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  if (loading) return createPortal(
+  if (loading) return (
     <div style={{ position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 12 }}>Loading work order…</div>
-    </div>,
-    document.body
+    </div>
   )
 
   if (!wo) return null
@@ -1284,7 +1282,7 @@ export function WorkOrderPopup({
   const woId = woIdRef.current
   const isCompleted = wo.status === 'completed'
 
-  return createPortal(
+  return (
     <div
       data-wo-portal=""
       style={{ position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.75)', overflowY: 'auto' }}
@@ -1942,7 +1940,6 @@ export function WorkOrderPopup({
 
       </div>
       </div>
-    </div>,
-    document.body
+    </div>
   )
 }
