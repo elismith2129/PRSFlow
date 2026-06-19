@@ -1180,6 +1180,27 @@ export function WorkOrderPopup({
         : supabase.from('payment_rows').insert(payload)
     }))
 
+    // ── Additive: sync date range + studio back to bookings for calendar ──
+    if (booking.id) {
+      try {
+        const datedRows = stRows.filter(r => r.date)
+        if (datedRows.length > 0) {
+          const sorted = [...datedRows].sort((a, b) => a.date.localeCompare(b.date))
+          const earliest = sorted[0]
+          const latest = sorted[sorted.length - 1]
+          await supabase.from('bookings').update({
+            start_date: earliest.date,
+            end_date: latest.date,
+            from_time: earliest.from_time || null,
+            to_time: earliest.to_time || null,
+            studio: stRows[0]?.studio || null,
+          }).eq('id', booking.id)
+        }
+      } catch (err) {
+        console.error('WO→booking calendar sync failed:', err)
+      }
+    }
+
     originalStRowsRef.current = stRows
     deletedRowsRef.current = []
     setSaving(false)
