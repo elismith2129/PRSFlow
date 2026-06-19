@@ -1533,7 +1533,7 @@ function CalendarPageInner() {
           onDraftChange={(data) => {
             try { sessionStorage.setItem('cal_form_draft', JSON.stringify({ editBooking, formData: data })) } catch {}
           }}
-          onSaved={undefined}
+          onSaved={() => loadRef.current()}
         />
       )}
     </div>
