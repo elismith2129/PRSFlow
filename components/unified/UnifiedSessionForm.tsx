@@ -485,27 +485,27 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
   }
 
   return createPortal(
-    <>
-      {/* The real Work Order — renders its own full-screen overlay (z 10010). Our
-          control banner below sits above it (z 10020) and covers the WO letterhead. */}
-      <WorkOrderPopup
-        booking={booking}
-        liveForm={liveForm}
-        onClose={onClose}
-        onStatusChange={setWoStatus}
-        onFormSync={handleFormSync}
-        onSaved={onClose}
-      />
+    <div
+      style={{ position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.75)', overflowY: 'auto' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      {/* Scope WorkOrderPopup's fixed root to flow inline inside this modal only.
+          Targets only WO's root via [data-wo-portal] under .usf-inline — calendar /
+          BookingForm keep the full-screen overlay; WO's own inner popups are untouched. */}
+      <style>{`.usf-inline [data-wo-portal]{ position: static; inset: auto; z-index: auto; background: transparent; overflow: visible; }`}</style>
 
-      {/* Unified control banner — our header + status chips + client card. Fixed to
-          the top, above the WO, replacing the WO's own letterhead header. */}
-      <div style={{
-        position: 'fixed', top: 52, left: 0, right: 0, zIndex: 10020,
-        maxHeight: 'calc(100dvh - 52px)', overflowY: 'auto',
-        background: 'var(--surface)', borderBottom: '1px solid var(--border)',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.55)',
-      }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', width: '100%' }}>
+      {/* Outer modal card — the scrollable wrapper is the overlay above; content here
+          flows in natural order: header → status chips → client card → work order. */}
+      <div
+        className="usf-inline"
+        onClick={e => e.stopPropagation()}
+        style={{
+          maxWidth: 960, margin: '20px auto', width: '100%',
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          borderRadius: 10, overflow: 'hidden',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.55)',
+        }}
+      >
 
           {/* HEADER */}
           <div style={{
@@ -1007,15 +1007,23 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                     </div>
                   )}
 
-                  <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)', textAlign: 'center', paddingTop: 4 }}>
-                    Work Order below ↓
-                  </div>
                 </div>
               )
             })()}
           </div>
+
+          {/* WORK ORDER — flows inline below the client card (root un-fixed via .usf-inline) */}
+          <div style={{ borderTop: '1px solid var(--border)' }}>
+            <WorkOrderPopup
+              booking={booking}
+              liveForm={liveForm}
+              onClose={onClose}
+              onStatusChange={setWoStatus}
+              onFormSync={handleFormSync}
+              onSaved={onClose}
+            />
+          </div>
         </div>
-      </div>
 
       {/* Profile update dialog — appears when user saves card edits */}
       {showProfileUpdate && (
@@ -1052,7 +1060,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
       {showProfile && form.client_db_id && (
         <ClientProfilePopup clientId={form.client_db_id} onClose={() => setShowProfile(false)} />
       )}
-    </>,
+    </div>,
     document.body,
   )
 }
