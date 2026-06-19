@@ -503,7 +503,11 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   }, [client, rosterArtists])
 
   const saveContact = useCallback(async (contactId: string, data: Partial<ClientContact>) => {
-    await supabase.from('client_contacts').update(data).eq('id', contactId)
+    console.log('saveContact data', { contactId, data })
+    try {
+      const { error } = await supabase.from('client_contacts').update(data).eq('id', contactId)
+      if (error) console.log('saveContact error', error)
+    } catch (e) { console.log('saveContact exception', e) }
     // Sync any new artists to clients.artists[] (the label-level roster)
     if (client && data.artists && data.artists.length > 0) {
       const current = (client.artists as string[]) || []
