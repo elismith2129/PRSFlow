@@ -272,6 +272,7 @@ export function WorkOrderPopup({
   onStatusChange,
   onFormSync,
   onSaved,
+  inline,
 }: {
   booking: Booking
   liveForm?: WOFormSync
@@ -279,6 +280,7 @@ export function WorkOrderPopup({
   onStatusChange?: (status: string) => void
   onFormSync?: (updates: Partial<WOFormSync>) => void
   onSaved?: () => void
+  inline?: boolean
 }) {
   const [wo, setWo] = useState<WO | null>(null)
   const [stRows, setStRows] = useState<StRow[]>([])
@@ -1272,7 +1274,9 @@ export function WorkOrderPopup({
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (loading) return (
-    <div style={{ position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={inline
+      ? { position: 'static', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }
+      : { position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 12 }}>Loading work order…</div>
     </div>
   )
@@ -1285,12 +1289,14 @@ export function WorkOrderPopup({
   return (
     <div
       data-wo-portal=""
-      style={{ position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.75)', overflowY: 'auto' }}
-      onClick={e => { if (e.target === e.currentTarget) handleClose() }}
+      style={inline
+        ? { position: 'static', background: 'transparent' }
+        : { position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.75)', overflowY: 'auto' }}
+      onClick={inline ? undefined : e => { if (e.target === e.currentTarget) handleClose() }}
     >
       <div
         style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '100%', padding: '20px 16px', boxSizing: 'border-box' }}
-        onClick={e => { if (e.target === e.currentTarget) handleClose() }}
+        onClick={inline ? undefined : e => { if (e.target === e.currentTarget) handleClose() }}
       >
       <div
         style={{ background: '#13161d', border: '1px solid rgba(255,255,255,0.13)', borderRadius: 10, width: '100%', maxWidth: 920, minWidth: 780, marginBottom: 20, alignSelf: 'flex-start' }}

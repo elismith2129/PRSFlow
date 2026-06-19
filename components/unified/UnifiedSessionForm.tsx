@@ -489,15 +489,10 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
       style={{ position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.75)', overflowY: 'auto' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      {/* Scope WorkOrderPopup's fixed root to flow inline inside this modal only.
-          Targets only WO's root via [data-wo-portal] under .usf-inline — calendar /
-          BookingForm keep the full-screen overlay; WO's own inner popups are untouched. */}
-      <style>{`.usf-inline [data-wo-portal]{ position: static; inset: auto; z-index: auto; background: transparent; overflow: visible; }`}</style>
-
       {/* Outer modal card — the scrollable wrapper is the overlay above; content here
-          flows in natural order: header → status chips → client card → work order. */}
+          flows in natural order: header → status chips → client card → work order.
+          WorkOrderPopup is rendered with inline so its root flows in normal flow. */}
       <div
-        className="usf-inline"
         onClick={e => e.stopPropagation()}
         style={{
           maxWidth: 960, margin: '20px auto', width: '100%',
@@ -1012,7 +1007,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
             })()}
           </div>
 
-          {/* WORK ORDER — flows inline below the client card (root un-fixed via .usf-inline) */}
+          {/* WORK ORDER — flows inline below the client card via the inline prop */}
           <div style={{ borderTop: '1px solid var(--border)' }}>
             <WorkOrderPopup
               booking={booking}
@@ -1021,6 +1016,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
               onStatusChange={setWoStatus}
               onFormSync={handleFormSync}
               onSaved={onClose}
+              inline
             />
           </div>
         </div>
