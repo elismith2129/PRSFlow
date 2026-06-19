@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { UnifiedSessionForm } from '@/components/unified/UnifiedSessionForm'
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
@@ -18,6 +19,14 @@ export function Nav() {
   const [time, setTime] = useState('')
   const [unreviewedRegs, setUnreviewedRegs] = useState(0)
   const [tentativeCount, setTentativeCount] = useState(0)
+  const [isOwner, setIsOwner] = useState(false)
+  const [showUSF, setShowUSF] = useState(false)
+
+  // Temp owner-only gate for the parallel UnifiedSessionForm build.
+  // No auth yet (Chunk 9) — read role from localStorage.
+  useEffect(() => {
+    setIsOwner(localStorage.getItem('userRole') === 'owner')
+  }, [])
 
   useEffect(() => {
     const tick = () => setTime(new Date().toLocaleTimeString('en-US', {
@@ -112,11 +121,29 @@ export function Nav() {
             </Link>
           )
         })}
+        {isOwner && (
+          <button
+            onClick={() => setShowUSF(true)}
+            style={{
+              display: 'inline-block', marginLeft: 6,
+              padding: '6px 16px', borderRadius: 6, fontSize: 11,
+              fontFamily: 'DM Mono', fontWeight: 500, cursor: 'pointer',
+              background: 'rgba(200,240,78,0.12)', color: 'var(--accent)',
+              border: '1px solid rgba(200,240,78,0.4)',
+            }}
+          >
+            ⚡ USF
+          </button>
+        )}
       </div>
 
       <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
         {time}
       </div>
+
+      {showUSF && (
+        <UnifiedSessionForm bookingId={null} onClose={() => setShowUSF(false)} />
+      )}
     </nav>
   )
 }
