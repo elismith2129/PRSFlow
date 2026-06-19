@@ -599,7 +599,7 @@ export function BookingForm({
         .from('client_contacts')
         .select('*')
         .eq('client_id', r.id)
-        .eq('contact_type', 'anr')
+        .neq('contact_type', 'admin')
       const artistLower = (r._artistMatch as string).toLowerCase()
       const matched = ((contacts as ClientContact[]) || []).find(c =>
         Array.isArray(c.artists) && c.artists.some(a => a.toLowerCase() === artistLower)
