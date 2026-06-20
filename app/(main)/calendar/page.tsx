@@ -349,11 +349,13 @@ function DayView({
   setDayViewDate,
   locFilter,
   onOpenEdit,
+  reloadKey,
 }: {
   dayViewDate: Date
   setDayViewDate: (d: Date) => void
   locFilter: string
   onOpenEdit: (b: Booking) => void
+  reloadKey: number
 }) {
   const [dayBookings, setDayBookings] = useState<Booking[]>([])
   const [miniMonthStart, setMiniMonthStart] = useState(
@@ -368,7 +370,7 @@ function DayView({
       .lte('start_date', dateStr)
       .gte('end_date', dateStr)
       .then(({ data }) => setDayBookings(data ?? []))
-  }, [dateStr])
+  }, [dateStr, reloadKey])
 
   // Sync mini calendar month when day nav crosses a month boundary
   const monthKey = `${dayViewDate.getFullYear()}-${dayViewDate.getMonth()}`
@@ -565,10 +567,12 @@ function StudioView({
   locFilter,
   onOpenEdit,
   onOpenNew,
+  reloadKey,
 }: {
   locFilter: string
   onOpenEdit: (b: Booking) => void
   onOpenNew: (location?: string, studio?: string, date?: string) => void
+  reloadKey: number
 }) {
   const [loc, room] = locFilter.includes('|') ? locFilter.split('|') : ['', '']
   const [monthStart, setMonthStart] = useState(() => {
@@ -590,7 +594,7 @@ function StudioView({
       .lte('start_date', end)
       .gte('end_date', start)
       .then(({ data }) => setStudioBookings(data ?? []))
-  }, [year, month, loc, room])
+  }, [year, month, loc, room, reloadKey])
 
   // Build month grid cells
   const firstWeekday = new Date(year, month, 1).getDay()
@@ -773,6 +777,7 @@ function CalendarPageInner() {
   const [collapsedRooms, setCollapsedRooms] = useState<Set<string>>(() => new Set())
   const [locFilter, setLocFilter] = useState('All')
   const [dayViewDate, setDayViewDate] = useState<Date>(() => new Date())
+  const [reloadKey, setReloadKey] = useState(0)
   const [zoomLevel, setZoomLevel] = useState(0) // 0 = fit-all; 1–6 = ZOOM_FIXED steps
   const [gridH, setGridH] = useState(700)
   const [gridW, setGridW] = useState(1200)
@@ -1510,6 +1515,7 @@ function CalendarPageInner() {
           setDayViewDate={setDayViewDate}
           locFilter={locFilter}
           onOpenEdit={openEdit}
+          reloadKey={reloadKey}
         />
       )}
 
@@ -1518,6 +1524,7 @@ function CalendarPageInner() {
           locFilter={locFilter}
           onOpenEdit={openEdit}
           onOpenNew={openNew}
+          reloadKey={reloadKey}
         />
       )}
 
@@ -1533,7 +1540,7 @@ function CalendarPageInner() {
           onDraftChange={(data) => {
             try { sessionStorage.setItem('cal_form_draft', JSON.stringify({ editBooking, formData: data })) } catch {}
           }}
-          onSaved={() => loadRef.current()}
+          onSaved={() => { loadRef.current(); setReloadKey(k => k + 1) }}
         />
       )}
     </div>
