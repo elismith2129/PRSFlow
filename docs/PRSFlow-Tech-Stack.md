@@ -1,6 +1,6 @@
 # PRSFlow — Tech Stack & Roadmap
 
-*Last updated: June 15, 2026*
+*Last updated: June 22, 2026*
 
 ---
 
@@ -115,7 +115,8 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 | `lib/studios.ts` | `STUDIO_LOCATIONS` array + `parseLocation()` / `combineLocation()` for the "Venue · Studio" string format |
 | `lib/roster.ts` | Label artist array helpers: `addArtistToLabel`, `removeArtistFromLabel`, `getArtistsForLabel` |
 | `components/shared/RegViewModal.tsx` | Registration record view modal (used by CRM lead card + Clients profile). Fetches client data + signed ID photo URL on open; Export PDF button opens print route. |
-| `components/calendar/WorkOrderPopup.tsx` | Full Work Order modal. Studio time table, equipment, rentals, payments, notes, signature. Writes to `work_orders` + `bookings` on Close & Save. Fires `onSaved` after all writes complete. |
+| `components/calendar/WorkOrderPopup.tsx` | Full Work Order modal. Studio time table, equipment, rentals, payments, notes, signature. Writes to `work_orders` + `bookings` on Close & Save (syncs `start_date`/`end_date`/`from_time`/`to_time` from dated `studio_time_rows`; does NOT sync `studio`). Fires `onSaved` after all writes complete. Accepts an `inline?: boolean` prop — when set, renders in normal document flow (no fixed overlay/backdrop) for embedding inside `UnifiedSessionForm`. |
+| `components/unified/UnifiedSessionForm.tsx` | **Experimental** single-surface session form (client card + Work Order in one natural-flow modal); renders `WorkOrderPopup` inline. Owner-gated via a temp "⚡ USF" Nav button (`localStorage.userRole === 'owner'`). Parallel to — not a replacement for — the production `BookingForm` + portaled `WorkOrderPopup` flow. |
 | `app/register/view/[clientId]/page.tsx` | Print route for registration PDF. Server component; generates signed ID photo URL server-side. `PrintTrigger` fires `window.print()` after 800ms. |
 | `app/(main)/sop/page.tsx` | SOP / Training tab — full-viewport iframe pointing to `/sop.html` |
 | `app/(main)/daily-ops-log/page.tsx` | Daily Ops Log route — wraps `DailyOpsLogSection`; also embedded as Admin sidebar tab |
@@ -283,11 +284,19 @@ Defined in `styles/globals.css`:
 | **Dashboard room grid ✅** | **Col 2 replaced with fixed 11-room grid and day navigation** |
 | dashboard-room-grid | `ROOMS` constant (11 rooms: Paramount A/B/C/E/X, Ameraycan A/B, Encore A/B, Track North/South). `calDate` state + `‹`/`›` prev/next day buttons in panel header. `useEffect` dep `[calDate]`, bookings fetch uses `new Date(calDate)`. Grid: `gridTemplateColumns: '1fr 1fr 1fr'`, `gap: 4`, panel `height: 556`. Room match: `b.location === room.venue && b.studio === room.studio` (booking.location = bare venue name, not combined string). Booked card: teal `#14B8A6` or orange `#F97316` top border, DM Serif artist name (`var(--text)`), label sub-line (DM Mono, muted), compact time via `fmtSessionTime()`, `1ST-XX`/`2ND-XX` engineer+assistant initials bottom-right (teal=confirmed, amber=hold). Module-level helpers: `engInitials(name)` + `fmtSessionTime(t)`. |
 
+| **Dashboard room grid → booking modal ✅** | **Booked cards open the booking form from the dashboard** |
+| dashboard-room-grid-modal | Booked cards in the dashboard 11-room grid are clickable → open the booking form modal directly. Nav z-index reaffirmed (99999) above the modal. |
+| **Booking form artist search + A&R autoselect ✅** | **Search matches artist names; picking one auto-resolves the A&R** |
+| booking-artist-search | Client search returns client/label name, A&R name, and artist-name matches (filters label clients whose `clients.artists[]` includes the query, client-side). Artist pick auto-selects the A&R via `client_contacts` where `contact_type != 'admin'` (matching the contact whose `artists[]` holds the artist), filling `ordered_by`/`anr_contact_id`/email/phone. A&R filter is `!= 'admin'` so legacy null-`contact_type` rows count. `ClientProfile.saveContact` strips `id`+`client_id` from the `client_contacts` update payload. |
+| **UnifiedSessionForm (experimental) 🧪** | **Parallel single-surface session form; owner-gated** |
+| unified-session-form | `components/unified/UnifiedSessionForm.tsx` combines client card + Work Order in one natural-flow modal (header → status chips → client card → work order). Renders the real `WorkOrderPopup` inline via a new `inline?: boolean` prop (normal flow, no fixed overlay/backdrop). Launched only from a temp "⚡ USF" Nav button shown when `localStorage.userRole === 'owner'` (no auth yet — Chunk 9). Does NOT replace the production `BookingForm` + portaled `WorkOrderPopup`; both coexist. First scaffold reverted, rebuilt as v2 against the real WorkOrderPopup. |
+| **WO → Calendar sync ✅** | **Schedule round-trips WO↔booking; WO owns dates/times once it has real data** |
+| wo-calendar-sync | WO Close & Save (`WorkOrderPopup.handleClose`) syncs `start_date`/`end_date` (earliest/latest dated `studio_time_row`) + `from_time`/`to_time` (earliest dated row) back to `bookings`. Calendar refetches via `onSaved={() => { loadRef.current(); setReloadKey(k+1) }}` (2wk/week grid reads `bookings`; DayView/StudioView read `reloadKey`). **Bugfix:** stopped syncing `studio` — `studio_time_rows.studio` is a bare letter (`'A'`) while the calendar filters full labels (`'Studio A'`), so synced bookings matched no room and blocks vanished (`3361fdb`); also removed stray `WorkOrderPopup 2.tsx`. **Ownership gating (`ce3194d`):** `calendar/page.tsx handleSave` strips the four schedule fields from the `bookings` update and skips day-rate stRow reconciliation when the booking's WO has ≥1 dated row (`woOwnsSchedule`) — the WO becomes the sole authoritative schedule writer; no-WO/empty-WO bookings still own + bootstrap. |
+
 ### Next
 
 | Priority | What's next |
 |---|---|
-| **High** | **WO → Calendar sync** — audit and harden WO Close & Save → booking field sync; all fields must round-trip correctly |
 | Medium | **Activity log on session form and WO** — per-booking/per-WO feed of field changes, status transitions, runner submissions, admin approvals |
 | Medium | **Combine WOs** — merge multiple work orders for a single booking into one consolidated WO |
 | Medium | **Mobile pass** — full mobile UX review and fixes across non-runner pages (calendar, CRM, admin) |

@@ -97,7 +97,13 @@ This applies to all new tables going forward. Existing tables are unaffected unt
 - **SOP/Training tab serves a static HTML file.** `/sop.html` lives in `public/` and is served directly by Next.js static file hosting. The `/sop` route renders a full-viewport `<iframe src="/sop.html">`. No nav-gating — visible to all roles. To update the guide, replace `public/sop.html`; no code change needed.
 - **RegViewModal is a shared component.** Lives at `components/shared/RegViewModal.tsx`. Used by both the CRM lead card (✓ Registered button) and the Clients page profile (REGISTERED header badge + Verification section). Fetches the full client record and generates a 1-hour signed URL for the ID photo on open.
 - **Registration print route at `/register/view/[clientId]`.** Server component (uses anon key). Fetches client data + generates signed ID photo URL server-side. `PrintTrigger` client component fires `window.print()` after 800ms so images load before the dialog opens. Layout: Paramount header, client name in Syne display type, all fields, ID photo, confidential footer.
-- **WO→Booking sync writes to both tables; does NOT remount the booking form.** Close & Save writes synced fields to both `work_orders` and `bookings`. `onSaved` is set to `{undefined}` in the calendar page — the booking form is NOT remounted from the DB after WO save. This preserves any unsaved booking form edits (changed dates, rate, etc.) that the user made while the WO was open. WO status updates flow back via the `onStatusChange` prop. *(The earlier approach — `onSaved` refetched the booking by ID and reopened the form with fresh data — was wiping unsaved form state. Changed in `7d676c7`, June 4, 2026.)*
+- **WO→Booking sync writes to both tables; does NOT remount the booking form.** Close & Save writes synced fields to both `work_orders` and `bookings`. The booking form is NOT remounted/reopened from the DB after WO save, which preserves any unsaved booking form edits (changed rate, etc.) that the user made while the WO was open. WO status updates flow back via the `onStatusChange` prop. *(The earlier approach — `onSaved` refetched the booking by ID and reopened the form with fresh data — was wiping unsaved form state. Changed in `7d676c7`, June 4, 2026.)*
+  - **Update (June 22, 2026):** `onSaved` is no longer `{undefined}`. The calendar page now passes `onSaved={() => { loadRef.current(); setReloadKey(k => k + 1) }}` — this refetches the `bookings` array (so the 2-week/week grid blocks repaint) and bumps `reloadKey` (so DayView/StudioView re-fetch). It refreshes the *underlying calendar data*, not the open form — the form is still never remounted. See the June 16–22 session note for the WO→Calendar sync work and the two bugs fixed along the way (bare-letter studio mismatch; WO-owns-schedule gating).
+- **The Work Order owns the booking's schedule once it has real data (June 22, 2026).** A WO "owns" `start_date` / `end_date` / `from_time` / `to_time` as soon as it has **at least one `studio_time_row` with a non-null, non-empty `date`**. While that's true: (1) WO Close & Save (`WorkOrderPopup.handleClose`) syncs `start_date`/`end_date` (earliest/latest dated stRow) and `from_time`/`to_time` (earliest dated stRow) back to `bookings`; and (2) the booking form's `handleSave` (`calendar/page.tsx`) strips those four fields from its `bookings` update **and** skips the day-rate stRow date-range reconciliation — so the form can no longer clobber WO-edited times/dates. Bookings with no WO, or a WO that has no dated rows yet, still own and *bootstrap* their schedule normally (the form seeds the WO's rows). This makes the WO the single authoritative writer of the schedule once it holds real data, and resolves the round-trip corruption where reopening the booking form overwrote WO times.
+- **`bookings.studio` is authoritative from the booking form and is NEVER synced from `studio_time_rows`.** `studio_time_rows.studio` stores the **bare letter** (`'A'`, `'B'`, …) via `toStudioLetter()`, while the calendar grid filters rooms on the **full label** (`'Studio A'`). An earlier WO→booking sync wrote `stRows[0].studio` (a bare letter) into `bookings.studio`, after which the booking matched no room and its calendar block vanished. The sync no longer touches `studio` (commit `3361fdb`, June 22, 2026). The `StudioSelect`-backed booking form is the only writer of `bookings.studio`. *(Track's `'North'`/`'South'` were unaffected because `toStudioLetter` returns them unchanged.)*
+- **`UnifiedSessionForm` (USF) is a parallel, owner-gated experimental build — it does NOT replace the existing booking flow.** `components/unified/UnifiedSessionForm.tsx` is a single full-screen modal combining the booking/client card and the Work Order in one natural-flow document (header → status chips → client card → work order). It renders the real `WorkOrderPopup` **inline** (in normal flow, no fixed overlay / no backdrop-dismiss) via a new `inline?: boolean` prop on `WorkOrderPopup`. It's launched only from a temp "⚡ USF" button in the Nav, shown when `localStorage.getItem('userRole') === 'owner'` (no auth yet — Chunk 9). The legacy `BookingForm` + portaled `WorkOrderPopup` flow remains the production path; both coexist. First scaffold was reverted, then rebuilt as v2 against the real WorkOrderPopup.
+- **Booking form client search matches label artist names and auto-selects the A&R.** The client search in `BookingForm` (and USF) returns three match kinds: client/label name, A&R contact name, and **artist name** (filters label clients whose `clients.artists[]` includes the query, matched client-side). Picking an artist match auto-resolves the A&R: it queries `client_contacts` for that label where `contact_type !== 'admin'`, finds the contact whose `artists[]` contains the artist (case-insensitive), and populates `ordered_by` / `anr_contact_id` / email / phone. The A&R filter is `contact_type !== 'admin'` (NOT `=== 'anr'`) so legacy rows with a null `contact_type` still count as A&Rs.
+- **`client_contacts` updates must strip `id` and `client_id` from the payload.** `ClientProfile.saveContact` destructures `const { id: _id, client_id: _cid, ...updateData } = data` before `supabase.from('client_contacts').update(updateData)`. Writing the PK/FK back in an UPDATE was causing the save to fail; stripping them fixed it (commit `4d36b27`).
 - **`initWO` uses `.order('created_at', { ascending: false }).limit(1)` instead of `.maybeSingle()`.** `.maybeSingle()` silently returns `null` when multiple rows match — it was causing `initWO` to always hit the "create new WO" branch, accumulating hundreds of duplicate work_orders per booking. The `.limit(1)` approach tolerates duplicates and always picks the most recent row. 299 duplicate WO rows were cleaned up via REST API batch delete (June 2, 2026).
 - **`liveForm` is memoized in `BookingForm` with `useMemo`.** Passing an inline object literal `liveForm={{ ... }}` to `WorkOrderPopup` caused a new reference on every parent render, which remounted `WorkOrderPopup` (and re-ran `initWO`) constantly. `useMemo` with all form field dependencies prevents spurious remounts.
 - **Engineer edit-in-place uses a ref (`engEditingRef`) alongside state (`engEditing`).** React `useState` has stale closure issues in blur `setTimeout` callbacks — the `onBlur` handler captures `engEditing` from the render it was created in, not the latest value. `engEditingRef.current` is always current in the closure. The Escape handler sets `engApplied.current = true` (not `engEditingRef = false`) so the subsequent blur from unmount skips calling `applyEng` — the blur handler is the single place that clears `engEditingRef`.
@@ -194,7 +200,7 @@ This applies to all new tables going forward. Existing tables are unaffected unt
 
 ---
 
-*Last updated: June 16, 2026 — Flags system (panel, modal, acknowledge/resolve with vendor/cost, auto-flag from runner/WO, Admin log), dashboard room grid with day navigation.*
+*Last updated: June 22, 2026 — WO→Calendar sync (schedule round-trip, studio-format bugfix, WO-owns-schedule gating), UnifiedSessionForm experimental build (owner-gated, inline WorkOrderPopup), booking-form artist search + A&R autoselect, dashboard room-grid → booking modal. Earlier: June 16 flags system + dashboard room grid.*
 
 ---
 
@@ -1311,3 +1317,61 @@ const ROOMS = [
 **Module-level helpers added:**
 - `engInitials(name)` — mirrors calendar's `initials()`: first+last initials, or first 2 chars for a single-word name.
 - `fmtSessionTime(t)` — compact time format matching calendar's `fmtTime()`: `10A`, `2:30P`.
+
+---
+
+### June 16–22, 2026 — Dashboard room-grid modal, booking-form artist search, UnifiedSessionForm (experimental), WO→Calendar sync
+
+**Key commits:** `f19e740` (room-grid modal), `2d01302` `0445476` `c82fa27` `5270c43` (booking-form artist search + A&R autoselect), `4d36b27` (client_contacts update fix), `e12322e` `271411b` `6acae60` `4524cda` `2e67ec0` `f76949b` `412fcc9` (UnifiedSessionForm), `8d67d6b` `3248232` `763e749` `3361fdb` `ce3194d` (WO→Calendar sync)
+
+This note covers everything committed after the June 16 docs commit (`7c51cbf`). Pure `debug:` commits (`3bdc9b6`, `268d824`, `311c0b7`) and the trivial `next-env.d.ts` chore (`e79a9ca`) are folded in below rather than listed.
+
+---
+
+#### Dashboard room grid → booking form modal (`f19e740`)
+
+- The booked room cards in the dashboard's 11-room grid (Col 2) are now clickable and open the booking form modal directly from the dashboard (previously read-only).
+- Nav `zIndex` reaffirmed at `99999` so it stays above the booking modal opened from the dashboard.
+
+---
+
+#### Booking form client search — artist matches + A&R autoselect (`2d01302`, `0445476`, `c82fa27`, `5270c43`)
+
+- **Client search now returns three match kinds** in `BookingForm` (and `UnifiedSessionForm`): client/label name, A&R contact name, and **artist name**. Artist matches are produced by fetching all label clients and filtering those whose `clients.artists[]` includes the query (matched client-side, case-insensitive). Each artist suggestion carries `record._artistMatch` and shows the label as its sub-line.
+- **Auto-select A&R on artist pick (`applyClientAutofill`):** when an artist match is chosen, the form queries `client_contacts` for that label where `contact_type !== 'admin'`, finds the contact whose `artists[]` contains the matched artist (case-insensitive `===`), and sets `client_name` / `ordered_by` / `anr_contact_id` / `email` / `phone` from that A&R. Payment type flips to `billing` for label picks.
+- **contact_type filter convention (resolved after churn):** A&Rs = `contact_type !== 'admin'`; admins = `contact_type === 'admin'`. `c82fa27` briefly scoped the artist→A&R lookup to `contact_type = 'anr'`, which dropped legacy rows that have a null `contact_type`; `5270c43` reverted it to `!= 'admin'` so those rows are included.
+- **Known leftover:** a debug `console.log('artist lookup', { … })` remains at `BookingForm.tsx:567`-ish (inside the artist→A&R lookup). Harmless; flagged for cleanup.
+
+---
+
+#### `client_contacts` update payload fix (`4d36b27`)
+
+- `ClientProfile.saveContact` now strips the primary key and foreign key from the update body: `const { id: _id, client_id: _cid, ...updateData } = data` before `supabase.from('client_contacts').update(updateData).eq('id', contactId)`. Sending `id`/`client_id` in the UPDATE was causing the contact save to fail.
+- **Known leftover:** debug `console.log` calls remain in `saveContact` (`ClientProfile.tsx:506`/`510`/`511`). Harmless; flagged for cleanup.
+
+---
+
+#### UnifiedSessionForm (USF) — parallel experimental build (`e12322e`, `271411b`, `6acae60`, `4524cda`, `2e67ec0`, `f76949b`, `412fcc9`)
+
+A new single-surface "session form" that merges the booking/client card and the Work Order into one full-screen, natural-flow modal. **This is a parallel experiment — it does not replace the existing `BookingForm` + portaled `WorkOrderPopup` production flow. Both coexist.**
+
+- **File:** `components/unified/UnifiedSessionForm.tsx` (~1,060 lines). Layout flows top-to-bottom: header → status chips → client card → work order. Reuses the booking-form client-search/autofill logic (including the artist-match + A&R autoselect above) and a `ClientProfilePopup` overlay.
+- **Renders the real `WorkOrderPopup` inline.** A new `inline?: boolean` prop on `WorkOrderPopup` makes it render in normal document flow — no `position: fixed` overlay, no backdrop, and backdrop click-to-close is disabled (`onClick={inline ? undefined : …}`). USF passes `inline` and mounts it below the client card; `onSaved={onClose}`.
+- **Owner-gated launch.** `Nav.tsx` reads `localStorage.getItem('userRole') === 'owner'` into `isOwner` (no auth yet — Chunk 9) and, when true, renders a temp "⚡ USF" button that opens `<UnifiedSessionForm bookingId={null} … />`. Not in the main nav item list.
+- **History:** the first scaffold (`e12322e`, `271411b`, with a temp nav button) was reverted wholesale (`6acae60`), then rebuilt as "v2" (`4524cda`) wired to the real WorkOrderPopup, refactored from a `document.body` portal to inline rendering (`2e67ec0`, `f76949b`), and finalized with the `inline` prop (`412fcc9`).
+
+---
+
+#### WO → Calendar sync (`8d67d6b`, `3248232`, `763e749`, `3361fdb`, `ce3194d`)
+
+Hardening the "What's Next: WO → Calendar sync" item so a WO edited after the booking form has unsaved changes round-trips correctly.
+
+- **`8d67d6b` — WO Close & Save syncs schedule back to `bookings`.** In `WorkOrderPopup.handleClose`, after writing WO rows, an additive block writes `start_date`/`end_date` (earliest/latest dated `studio_time_row`) and `from_time`/`to_time` (earliest dated row) to the booking. *(This commit also wrote `studio` — removed two commits later; see below.)*
+- **`3248232` + `763e749` — calendar refetches after WO save.** The calendar passes `onSaved={() => { loadRef.current(); setReloadKey(k => k + 1) }}`. `loadRef.current()` refetches the `bookings` array that drives the 2-week/week grid; `setReloadKey` bumps the `reloadKey` prop that `DayView` and `StudioView` depend on, so all three calendar views repaint with the synced data.
+- **`3361fdb` — BUG: calendar block vanishes after WO save (studio format mismatch).** The sync from `8d67d6b` wrote `stRows[0].studio` into `bookings.studio`. `studio_time_rows.studio` stores a **bare letter** (`'A'`) via `toStudioLetter()`, but the calendar grid filters rooms on the **full label** (`bookings.filter(b => b.studio === 'Studio A')`). After a save the booking matched no room and its block disappeared — even though the grid state held the correct record. **Fix:** removed `studio` from the WO→booking sync; the `StudioSelect`-backed booking form is the authoritative writer of `bookings.studio`. Also deleted a stray `components/calendar/WorkOrderPopup 2.tsx` duplicate. *(Diagnosed via temporary `[CAL load]` / `[CAL renderGrid]` instrumentation, since removed — the data was correct in render but the room filter excluded it. Track's `'North'`/`'South'` were never affected.)*
+- **`ce3194d` — booking form stops overwriting dates/times once a WO owns the schedule.** `calendar/page.tsx handleSave` now looks up the booking's newest WO and checks whether it has **≥1 `studio_time_row` with a non-null, non-empty `date`** (`woOwnsSchedule`). When true: `start_date`/`end_date`/`from_time`/`to_time` are deleted from the `bookings` update payload, **and** the day-rate stRow date-range reconciliation block is skipped (now gated `if (woId && !woOwnsSchedule && rate_type === 'day')`, reusing the single WO lookup). No-WO / empty-WO bookings still own and bootstrap their schedule. This makes the WO the sole authoritative writer once it holds real data. See the Decisions Log entries "The Work Order owns the booking's schedule…" and "`bookings.studio` is authoritative…".
+
+| Booking state | Form writes dates/times to `bookings`? | Form seeds/reshapes WO rows? |
+|---|---|---|
+| No WO, or WO with no dated rows | Yes (form owns + bootstraps) | Yes (day-rate) |
+| WO with ≥1 dated `studio_time_row` | No — WO is authoritative | No |
