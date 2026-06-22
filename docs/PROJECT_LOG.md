@@ -1340,14 +1340,14 @@ This note covers everything committed after the June 16 docs commit (`7c51cbf`).
 - **Client search now returns three match kinds** in `BookingForm` (and `UnifiedSessionForm`): client/label name, A&R contact name, and **artist name**. Artist matches are produced by fetching all label clients and filtering those whose `clients.artists[]` includes the query (matched client-side, case-insensitive). Each artist suggestion carries `record._artistMatch` and shows the label as its sub-line.
 - **Auto-select A&R on artist pick (`applyClientAutofill`):** when an artist match is chosen, the form queries `client_contacts` for that label where `contact_type !== 'admin'`, finds the contact whose `artists[]` contains the matched artist (case-insensitive `===`), and sets `client_name` / `ordered_by` / `anr_contact_id` / `email` / `phone` from that A&R. Payment type flips to `billing` for label picks.
 - **contact_type filter convention (resolved after churn):** A&Rs = `contact_type !== 'admin'`; admins = `contact_type === 'admin'`. `c82fa27` briefly scoped the artist→A&R lookup to `contact_type = 'anr'`, which dropped legacy rows that have a null `contact_type`; `5270c43` reverted it to `!= 'admin'` so those rows are included.
-- **Known leftover:** a debug `console.log('artist lookup', { … })` remains at `BookingForm.tsx:567`-ish (inside the artist→A&R lookup). Harmless; flagged for cleanup.
+- **Cleanup (June 22, 2026):** the debug `console.log('artist lookup', …)` inside the artist→A&R lookup was removed.
 
 ---
 
 #### `client_contacts` update payload fix (`4d36b27`)
 
 - `ClientProfile.saveContact` now strips the primary key and foreign key from the update body: `const { id: _id, client_id: _cid, ...updateData } = data` before `supabase.from('client_contacts').update(updateData).eq('id', contactId)`. Sending `id`/`client_id` in the UPDATE was causing the contact save to fail.
-- **Known leftover:** debug `console.log` calls remain in `saveContact` (`ClientProfile.tsx:506`/`510`/`511`). Harmless; flagged for cleanup.
+- **Cleanup (June 22, 2026):** the debug `console.log` calls in `saveContact` were removed; the Supabase response is now checked for `error` and surfaced via `console.error` on failure (matches the project's error-surfacing convention).
 
 ---
 
