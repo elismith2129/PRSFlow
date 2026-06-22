@@ -1193,7 +1193,9 @@ export function WorkOrderPopup({
             end_date: latest.date,
             from_time: earliest.from_time || null,
             to_time: earliest.to_time || null,
-            studio: stRows[0]?.studio || null,
+            // Do NOT sync studio: studio_time_rows store the bare letter ('A')
+            // while the calendar filters on the full label ('Studio A'), and the
+            // booking form already owns the authoritative studio value.
           }).eq('id', booking.id)
         }
       } catch (err) {
