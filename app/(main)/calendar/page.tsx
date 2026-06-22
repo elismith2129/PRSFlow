@@ -1096,7 +1096,29 @@ function CalendarPageInner() {
       throw new Error([error.message, error.details].filter(Boolean).join(' — '))
     }
     if (editBooking) {
-      const { error } = await supabase.from('bookings').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editBooking.id)
+      // A WO "owns" the booking's schedule (dates/times) once it has at least one
+      // dated studio_time_row. While it does, the booking form must not overwrite
+      // start_date/end_date/from_time/to_time, nor reshape the WO's rows from the
+      // form's date range — the WO Close & Save is then the authoritative writer.
+      const { data: woRows } = await supabase.from('work_orders').select('id')
+        .eq('booking_id', editBooking.id).order('created_at', { ascending: false }).limit(1)
+      const woId = woRows?.[0]?.id
+      let woOwnsSchedule = false
+      if (woId) {
+        const { data: datedRows } = await supabase.from('studio_time_rows')
+          .select('id').eq('work_order_id', woId)
+          .not('date', 'is', null).neq('date', '').limit(1)
+        woOwnsSchedule = (datedRows?.length ?? 0) > 0
+      }
+
+      const updatePayload: any = { ...payload, updated_at: new Date().toISOString() }
+      if (woOwnsSchedule) {
+        delete updatePayload.start_date
+        delete updatePayload.end_date
+        delete updatePayload.from_time
+        delete updatePayload.to_time
+      }
+      const { error } = await supabase.from('bookings').update(updatePayload).eq('id', editBooking.id)
       throwIfError(error)
       // Create srs_log entry if this booking is newly flagged as SRS (wasn't before)
       if (data.is_srs && !editBooking.is_srs) {
@@ -1106,12 +1128,10 @@ function CalendarPageInner() {
       if (!data.is_srs && editBooking.is_srs) {
         await supabase.from('srs_log').delete().eq('booking_id', editBooking.id)
       }
-      // Sync studio_time_rows when booking is saved (date range and rate)
+      // Sync studio_time_rows date range when booking is saved — only while no WO
+      // yet owns the schedule (otherwise the WO is authoritative over its own rows).
       {
-        const { data: woRows } = await supabase.from('work_orders').select('id')
-          .eq('booking_id', editBooking.id).order('created_at', { ascending: false }).limit(1)
-        const woId = woRows?.[0]?.id
-        if (woId) {
+        if (woId && !woOwnsSchedule) {
           // Day-rate only: sync date range (add/remove rows)
           if (payload.rate_type === 'day') {
             const newDates = dateRange(data.start_date, data.end_date)
