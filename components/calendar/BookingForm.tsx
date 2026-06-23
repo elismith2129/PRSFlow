@@ -452,12 +452,12 @@ export function BookingForm({
           .select('id,client_id,fname,lname,email,phone,clients(id,name,type,srs_client)')
           .or(`fname.ilike.%${q}%,lname.ilike.%${q}%`)
           .limit(20),
-        // Fetch all label clients to match against their artist arrays client-side
+        // Fetch A&R contacts with their artist arrays + parent client; match client-side
         supabase
-          .from('clients')
-          .select('id,type,name,fname,lname,email,phone,artists,srs_client')
-          .eq('type', 'label')
-          .limit(50),
+          .from('client_contacts')
+          .select('id,client_id,fname,lname,email,phone,artists,contact_type,clients(id,name,type,srs_client)')
+          .neq('artists', '{}')
+          .limit(100),
       ])
 
       const seen = new Set<string>()
@@ -498,21 +498,24 @@ export function BookingForm({
         })
       }
 
-      // Artist matches — filter label clients whose artist array contains the query
-      for (const c of (ald || []) as any[]) {
-        if (!Array.isArray(c.artists)) continue
-        for (const artistName of c.artists as string[]) {
+      // Artist matches — A&R contacts whose artist array contains the query
+      for (const ct of (ald || []) as any[]) {
+        const parentClient = ct.clients as any
+        if (!parentClient) continue
+        if (ct.contact_type === 'admin') continue
+        if (!Array.isArray(ct.artists)) continue
+        for (const artistName of ct.artists as string[]) {
           if (typeof artistName !== 'string') continue
           if (!artistName.toLowerCase().includes(q.toLowerCase())) continue
-          const key = `artist-${c.id}-${artistName}`
+          const key = `artist-${ct.id}-${artistName}`
           if (seen.has(key)) continue
           seen.add(key)
           results.push({
-            id: c.id,
+            id: parentClient.id,
             label: artistName,
-            sub: c.name,
-            isLabel: true,
-            record: { ...c, _artistMatch: artistName },
+            sub: parentClient.name,
+            isLabel: parentClient.type === 'label',
+            record: { ...parentClient, _artistMatch: artistName },
           })
         }
       }
@@ -599,7 +602,7 @@ export function BookingForm({
         .from('client_contacts')
         .select('*')
         .eq('client_id', r.id)
-        .neq('contact_type', 'admin')
+        .or('contact_type.eq.anr,contact_type.is.null')
       const artistLower = (r._artistMatch as string).toLowerCase()
       const matched = ((contacts as ClientContact[]) || []).find(c =>
         Array.isArray(c.artists) && c.artists.some(a => a.toLowerCase() === artistLower)
