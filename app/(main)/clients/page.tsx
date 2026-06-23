@@ -61,7 +61,7 @@ export function ClientsPageInner({ initialClientId, embedded }: { initialClientI
       { data: regData },
     ] = await Promise.all([
       supabase.from('clients').select('*').order('name'),
-      supabase.from('client_contacts').select('id, client_id, fname, lname, email, phone, instagram, role, notes'),
+      supabase.from('client_contacts').select('id, client_id, fname, lname, email, phone, instagram, role, notes, artists, contact_type'),
       supabase.from('leads').select('client_id').not('client_id', 'is', null),
       supabase.from('clients')
         .select('id, name, email, phone, instagram, how_heard, address_street, address_street2, address_city, address_state, address_zip, registered_at, id_file_url, terms_accepted')
