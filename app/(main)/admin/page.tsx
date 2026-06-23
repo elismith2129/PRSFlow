@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import type { Engineer, EngineerRole, Booking } from '@/lib/supabase'
 import { DailyOpsLogSection } from '@/components/admin/DailyOpsLogSection'
 import { FlagsLogSection } from '@/components/admin/FlagsLogSection'
+import { MicInventorySection } from '@/components/admin/MicInventorySection'
 
 const ROLE_OPTIONS: EngineerRole[] = ['Engineer', 'Assistant', 'Both']
 
@@ -158,13 +159,14 @@ function EngModal({
   )
 }
 
-type AdminSection = 'engineers' | 'srs_log' | 'daily_ops_log' | 'flags_log'
+type AdminSection = 'engineers' | 'srs_log' | 'daily_ops_log' | 'flags_log' | 'mic_inventory'
 
 const ADMIN_NAV: { key: AdminSection; label: string }[] = [
   { key: 'engineers', label: 'Engineers' },
   { key: 'srs_log', label: 'SRS Log' },
   { key: 'daily_ops_log', label: 'Ops Log' },
   { key: 'flags_log', label: 'Flags' },
+  { key: 'mic_inventory', label: 'Mic Inventory' },
 ]
 
 type SrsEntry = {
@@ -721,6 +723,7 @@ export default function AdminPage() {
 
       {section === 'daily_ops_log' && <DailyOpsLogSection />}
       {section === 'flags_log' && <FlagsLogSection />}
+      {section === 'mic_inventory' && <MicInventorySection />}
 
       {/* Modal */}
       {modalOpen && (
