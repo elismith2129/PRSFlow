@@ -92,8 +92,6 @@ export function Nav() {
           const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
           const badge = item.href === '/crm' && unreviewedRegs > 0
             ? unreviewedRegs
-            : item.href === '/calendar' && tentativeCount > 0
-            ? tentativeCount
             : 0
           return (
             <Link
