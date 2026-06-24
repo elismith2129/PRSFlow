@@ -314,7 +314,7 @@ export function MicInventorySection() {
     setDraftRoom(c?.room ?? '')
     const q = resolveQty(group, mic)
     setDraftQty(q != null ? String(q) : '')
-    setDraftBy(c?.source === 'admin' ? (c?.amended_by || amendedBy) : amendedBy)
+    setDraftBy(c?.source === 'admin' && c?.amended_by ? c.amended_by : '')
     setEditingMicId(mic.id)
   }
 
