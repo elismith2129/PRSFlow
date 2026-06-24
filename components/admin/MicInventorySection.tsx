@@ -104,6 +104,8 @@ const inputS: React.CSSProperties = {
 
 // 7-column table grid: Mic | Status | Room | Qty | Submitted By | Date | Edit
 const GRID_COLS = '1fr 88px 84px 52px 116px 116px 40px'
+// Same column widths while editing, but a wider action column for Save/Cancel.
+const EDIT_GRID_COLS = '1fr 88px 84px 52px 116px 116px 132px'
 
 // Small teal "ADMIN" badge for admin-amended checkins.
 function AdminBadge() {
@@ -135,6 +137,8 @@ export function MicInventorySection() {
   const [editingMicId, setEditingMicId] = useState<string | null>(null)
   const [draftStatus, setDraftStatus] = useState<'here' | 'room' | 'missing'>('here')
   const [draftRoom, setDraftRoom] = useState('')
+  const [draftQty, setDraftQty] = useState('')
+  const [draftBy, setDraftBy] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
 
   // Manage Mics modal.
@@ -300,6 +304,9 @@ export function MicInventorySection() {
     const c = resolveStatus(group, mic)
     setDraftStatus((c?.status as 'here' | 'room' | 'missing') || 'here')
     setDraftRoom(c?.room ?? '')
+    const q = resolveQty(group, mic)
+    setDraftQty(q != null ? String(q) : '')
+    setDraftBy(c?.source === 'admin' ? (c?.amended_by || amendedBy) : amendedBy)
     setEditingMicId(mic.id)
   }
 
@@ -311,16 +318,26 @@ export function MicInventorySection() {
     const studioKey = group.isStudio
       ? group.key
       : (resolveStatus(group, mic)?.studio || mic.home_studio)
+    const today = getLocalToday()
     const row = {
       mic_id: mic.id,
       studio: studioKey,
-      date: getLocalToday(),
+      date: today,
       status: draftStatus,
       room: draftStatus === 'room' ? (draftRoom.trim() || null) : null,
       source: 'admin',
-      amended_by: amendedBy || null,
+      amended_by: draftBy.trim() || amendedBy || null,
     }
     await supabase.from('mic_checkins').upsert(row, { onConflict: 'mic_id,studio,date' })
+    // Qty cell is editable now → persist a changed value to mic_inventory_quantities.
+    const prevQty = resolveQty(group, mic)
+    const trimmed = draftQty.trim()
+    if (trimmed !== '' && Number(trimmed) !== prevQty) {
+      await supabase.from('mic_inventory_quantities').upsert(
+        { mic_id: mic.id, studio: studioKey, date: today, quantity: Number(trimmed) },
+        { onConflict: 'mic_id,studio,date' }
+      )
+    }
     setEditingMicId(null)
     setSavingEdit(false)
     await loadData()
@@ -538,8 +555,8 @@ export function MicInventorySection() {
                   return (
                     <div key={mic.id} style={{ borderBottom: idx < sorted.length - 1 ? '1px solid #2a2e3d' : 'none' }}>
                       <div style={{
-                        display: 'grid', gridTemplateColumns: GRID_COLS, gap: 12,
-                        padding: '9px 16px', alignItems: 'center',
+                        display: 'grid', gridTemplateColumns: isEditing ? EDIT_GRID_COLS : GRID_COLS, gap: 12,
+                        padding: isEditing ? '7px 16px' : '9px 16px', alignItems: 'center',
                         borderLeft: isMissing ? '3px solid #ef4444' : '3px solid transparent',
                         background: isMissing ? 'rgba(239,68,68,0.06)' : 'transparent',
                       }}>
@@ -547,7 +564,17 @@ export function MicInventorySection() {
                         <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#e8eaf2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mic.name}</div>
                         {/* Status */}
                         <div>
-                          {statusMeta ? (
+                          {isEditing ? (
+                            <select
+                              value={draftStatus}
+                              onChange={e => setDraftStatus(e.target.value as 'here' | 'room' | 'missing')}
+                              style={{ ...inputS, padding: '4px 4px' }}
+                            >
+                              <option value="here">Here</option>
+                              <option value="room">Room</option>
+                              <option value="missing">Missing</option>
+                            </select>
+                          ) : statusMeta ? (
                             <span style={{ fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, color: statusMeta.color, background: statusMeta.color + '18', border: `1px solid ${statusMeta.color}33`, borderRadius: 3, padding: '2px 7px', textTransform: 'uppercase' }}>
                               {statusMeta.label}
                             </span>
@@ -557,69 +584,85 @@ export function MicInventorySection() {
                         </div>
                         {/* Room */}
                         <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: c?.room ? '#8b90a8' : NONE_COLOR }}>
-                          {c?.status === 'room' && c.room ? c.room.replace('Studio ', '') : '—'}
+                          {isEditing ? (
+                            draftStatus === 'room' ? (
+                              <input
+                                value={draftRoom}
+                                onChange={e => setDraftRoom(e.target.value)}
+                                placeholder="Room"
+                                style={{ ...inputS, padding: '4px 6px' }}
+                              />
+                            ) : (
+                              <span style={{ color: NONE_COLOR }}>—</span>
+                            )
+                          ) : (
+                            c?.status === 'room' && c.room ? c.room.replace('Studio ', '') : '—'
+                          )}
                         </div>
                         {/* Qty */}
                         <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: qty != null ? '#e8eaf2' : NONE_COLOR }}>
-                          {qty != null ? qty : '—'}
+                          {isEditing ? (
+                            <input
+                              value={draftQty}
+                              onChange={e => setDraftQty(e.target.value.replace(/[^0-9]/g, ''))}
+                              inputMode="numeric"
+                              placeholder="—"
+                              style={{ ...inputS, padding: '4px 6px' }}
+                            />
+                          ) : (
+                            qty != null ? qty : '—'
+                          )}
                         </div>
                         {/* Submitted by */}
                         <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: byName !== '—' ? '#8b90a8' : NONE_COLOR, display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{byName}</span>
-                          {isAdmin && <AdminBadge />}
+                          {isEditing ? (
+                            <input
+                              value={draftBy}
+                              onChange={e => setDraftBy(e.target.value)}
+                              placeholder="Initials"
+                              style={{ ...inputS, padding: '4px 6px' }}
+                            />
+                          ) : (
+                            <>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{byName}</span>
+                              {isAdmin && <AdminBadge />}
+                            </>
+                          )}
                         </div>
                         {/* Date */}
                         <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: c?.date ? '#8b90a8' : NONE_COLOR }}>
                           {c?.date ? fmtDate(c.date) : '—'}
                         </div>
-                        {/* Edit */}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                          <button
-                            onClick={() => (isEditing ? setEditingMicId(null) : startEdit(group, mic))}
-                            title="Edit status"
-                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: isEditing ? '#c8f04e' : '#6b7280', fontSize: 12, padding: '2px 4px', lineHeight: 1 }}
-                          >
-                            ✎
-                          </button>
+                        {/* Edit / actions */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                          {isEditing ? (
+                            <>
+                              <button
+                                onClick={() => saveInlineEdit(group, mic)}
+                                disabled={savingEdit}
+                                style={{ padding: '5px 9px', borderRadius: 6, fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer', background: '#c8f04e', border: 'none', color: '#0d0f14' }}
+                              >
+                                {savingEdit ? '…' : 'Save'}
+                              </button>
+                              <button
+                                onClick={() => setEditingMicId(null)}
+                                disabled={savingEdit}
+                                style={{ padding: '5px 9px', borderRadius: 6, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer', background: 'transparent', border: '1px solid #2a2e3d', color: '#8b90a8' }}
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => startEdit(group, mic)}
+                              title="Edit status"
+                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: 12, padding: '2px 4px', lineHeight: 1 }}
+                            >
+                              ✎
+                            </button>
+                          )}
                         </div>
                       </div>
-
-                      {/* Inline edit panel */}
-                      {isEditing && (
-                        <div style={{ padding: '4px 16px 14px 32px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                          <select
-                            value={draftStatus}
-                            onChange={e => setDraftStatus(e.target.value as 'here' | 'room' | 'missing')}
-                            style={{ ...inputS, width: 120 }}
-                          >
-                            <option value="here">Here</option>
-                            <option value="room">Room</option>
-                            <option value="missing">Missing</option>
-                          </select>
-                          {draftStatus === 'room' && (
-                            <input
-                              value={draftRoom}
-                              onChange={e => setDraftRoom(e.target.value)}
-                              placeholder="Room (e.g. Studio A)"
-                              style={{ ...inputS, width: 180 }}
-                            />
-                          )}
-                          <button
-                            onClick={() => saveInlineEdit(group, mic)}
-                            disabled={savingEdit}
-                            style={{ padding: '6px 14px', borderRadius: 6, fontSize: 10, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer', background: '#c8f04e', border: 'none', color: '#0d0f14' }}
-                          >
-                            {savingEdit ? 'Saving…' : 'Save'}
-                          </button>
-                          <button
-                            onClick={() => setEditingMicId(null)}
-                            disabled={savingEdit}
-                            style={{ padding: '6px 14px', borderRadius: 6, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', background: 'transparent', border: '1px solid #2a2e3d', color: '#8b90a8' }}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      )}
 
                       {/* History sub-rows (studio groups only) */}
                       {showHistory && group.isStudio && (
