@@ -110,10 +110,10 @@ const inputS: React.CSSProperties = {
   outline: 'none', width: '100%', boxSizing: 'border-box',
 }
 
-// 7-column table grid: Mic | Status | Room | Qty | Submitted By | Date | Edit
-const GRID_COLS = '1fr 88px 84px 52px 116px 116px 40px'
-// Same column widths while editing, but a wider action column for Save/Cancel.
-const EDIT_GRID_COLS = '1fr 88px 84px 52px 116px 116px 132px'
+// 7-column table grid: Mic | Status | Room | Qty | Submitted By | Date | Edit.
+// One template for header + every row (editing or not) so cells always align
+// under their headers; the action column is wide enough to hold Save/Cancel.
+const GRID_COLS = '1fr 88px 84px 52px 116px 116px 124px'
 
 // Small teal "ADMIN" badge for admin-amended checkins.
 function AdminBadge() {
@@ -563,10 +563,10 @@ export function MicInventorySection() {
                   return (
                     <div key={mic.id} style={{ borderBottom: idx < sorted.length - 1 ? '1px solid #2a2e3d' : 'none' }}>
                       <div style={{
-                        display: 'grid', gridTemplateColumns: isEditing ? EDIT_GRID_COLS : GRID_COLS, gap: 12,
+                        display: 'grid', gridTemplateColumns: GRID_COLS, gap: 12,
                         padding: isEditing ? '7px 16px' : '9px 16px', alignItems: 'center',
-                        borderLeft: isMissing ? '3px solid #ef4444' : '3px solid transparent',
-                        background: isMissing ? 'rgba(239,68,68,0.06)' : 'transparent',
+                        borderLeft: isMissing ? '3px solid #ef4444' : isEditing ? '3px solid #c8f04e' : '3px solid transparent',
+                        background: isEditing ? 'rgba(200,240,78,0.05)' : isMissing ? 'rgba(239,68,68,0.06)' : 'transparent',
                       }}>
                         {/* Mic name */}
                         <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#e8eaf2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mic.name}</div>
