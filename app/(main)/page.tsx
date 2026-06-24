@@ -565,6 +565,14 @@ export default function DashboardPage() {
                 const isBilling = booking?.payment_type === 'billing'
                 const venueColor = STUDIO_COLORS[room.venue.toLowerCase()] || 'var(--text)'
                 const topColor = booking?.status === 'confirmed' ? '#14B8A6' : booking?.status === 'tentative' ? '#F97316' : null
+                // Card state accent: orange (attention) takes priority over teal (occupied); null = empty
+                const cardAccent = topColor === '#F97316' ? '#F97316' : booking ? '#14B8A6' : null
+                const cardBorder = cardAccent === '#F97316' ? 'rgba(249, 115, 22, 0.35)'
+                  : cardAccent === '#14B8A6' ? 'rgba(20, 184, 166, 0.35)'
+                  : 'rgba(255, 255, 255, 0.08)'
+                const cardGlow = cardAccent === '#F97316' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
+                  : cardAccent === '#14B8A6' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
+                  : 'none'
                 const primaryName = booking
                   ? (isBilling ? (booking.artist || booking.label || booking.client_name || '') : (booking.client_name || ''))
                   : ''
@@ -585,12 +593,11 @@ export default function DashboardPage() {
                     key={room.label}
                     onClick={() => booking && openBookingEdit(booking)}
                     style={{
+                      position: 'relative',
                       height: 120,
                       borderRadius: 6,
-                      borderTop: topColor ? `2px solid ${topColor}` : `1px solid ${booking ? 'rgba(255,255,255,0.08)' : 'var(--border)'}`,
-                      borderLeft: `1px solid ${booking ? 'rgba(255,255,255,0.08)' : 'var(--border)'}`,
-                      borderRight: `1px solid ${booking ? 'rgba(255,255,255,0.08)' : 'var(--border)'}`,
-                      borderBottom: `1px solid ${booking ? 'rgba(255,255,255,0.08)' : 'var(--border)'}`,
+                      border: `1px solid ${cardBorder}`,
+                      boxShadow: cardGlow,
                       background: booking ? '#0d0f14' : 'rgba(0,0,0,0.2)',
                       padding: '7px 9px',
                       display: 'flex',
@@ -600,6 +607,9 @@ export default function DashboardPage() {
                       cursor: booking ? 'pointer' : 'default',
                     }}
                   >
+                    {cardAccent && (
+                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: cardAccent }} />
+                    )}
                     <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)', letterSpacing: '0.04em', opacity: booking ? 0.7 : 0.5, marginBottom: booking ? 4 : 0 }}>
                       {room.label}
                     </div>

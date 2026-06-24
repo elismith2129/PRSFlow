@@ -13,7 +13,7 @@ const LOCATIONS = STUDIO_LOCATIONS
 // ─── COLOR TOKENS ────────────────────────────────────────────────────────────
 
 const STATUS_TOP_COLORS: Record<string, string> = {
-  confirmed:  '#22c55e',
+  confirmed:  '#14B8A6',
   tentative:  '#f97316',
   cancelled:  '#ef4444',
   tour:       '#a855f7',
@@ -196,6 +196,13 @@ function BookingBlock({
   const nameColor = isBilling ? COLOR_LABEL : COLOR_COD
   const topColor = STATUS_TOP_COLORS[booking.status] ?? STATUS_TOP_COLORS.confirmed
   const sessionBorder = booking.session_type !== 'recording'
+  // Chip glow: orange (open WO / attention) or teal (confirmed); subtle, no layout impact
+  const chipGlowBorder = topColor === '#f97316' ? 'rgba(249, 115, 22, 0.4)'
+    : topColor === '#14B8A6' ? 'rgba(20, 184, 166, 0.4)'
+    : 'rgba(255,255,255,0.08)'
+  const chipGlow = topColor === '#f97316' ? '0 0 8px rgba(249, 115, 22, 0.15)'
+    : topColor === '#14B8A6' ? '0 0 8px rgba(20, 184, 166, 0.15)'
+    : 'none'
 
   // Line 1: artist (billing) or client name (COD)
   const primaryName = isBilling
@@ -234,10 +241,11 @@ function BookingBlock({
         left: `calc(${left}% + 2px)`, width: `calc(${width}% - 4px)`,
         background: '#0d0f14', boxSizing: 'border-box',
         borderTop: `${micro ? 3 : 4}px solid ${topColor}`,
-        borderLeft: sessionBorder ? '2px solid rgba(200,240,78,0.7)' : '1px solid rgba(255,255,255,0.08)',
-        borderRight: sessionBorder ? '2px solid rgba(200,240,78,0.7)' : '1px solid rgba(255,255,255,0.08)',
-        borderBottom: sessionBorder ? '2px solid rgba(200,240,78,0.7)' : '1px solid rgba(255,255,255,0.08)',
+        borderLeft: sessionBorder ? '2px solid rgba(200,240,78,0.7)' : `1px solid ${chipGlowBorder}`,
+        borderRight: sessionBorder ? '2px solid rgba(200,240,78,0.7)' : `1px solid ${chipGlowBorder}`,
+        borderBottom: sessionBorder ? '2px solid rgba(200,240,78,0.7)' : `1px solid ${chipGlowBorder}`,
         borderRadius: 4,
+        boxShadow: chipGlow,
         padding: micro ? '1px 4px' : compact ? '3px 5px' : '4px 6px',
         cursor: 'pointer', overflow: 'hidden',
         display: 'flex', flexDirection: micro ? 'row' : 'column',
@@ -505,15 +513,23 @@ function DayView({
                     const asst = b.assistant_name ? `2ND-${initials(b.assistant_name)}` : ''
                     const codLabel = !isBilling && b.cod_method ? `COD ${b.cod_method.toUpperCase()}` : null
                     const hasSessionBorder = b.session_type !== 'recording'
+                    const topColor = STATUS_TOP_COLORS[b.status] ?? STATUS_TOP_COLORS.confirmed
+                    const chipGlowBorder = topColor === '#f97316' ? 'rgba(249, 115, 22, 0.4)'
+                      : topColor === '#14B8A6' ? 'rgba(20, 184, 166, 0.4)'
+                      : 'rgba(255,255,255,0.08)'
+                    const chipGlow = topColor === '#f97316' ? '0 0 8px rgba(249, 115, 22, 0.15)'
+                      : topColor === '#14B8A6' ? '0 0 8px rgba(20, 184, 166, 0.15)'
+                      : 'none'
 
                     return (
                       <div key={b.id} onClick={() => onOpenEdit(b)} style={{
                         padding: '7px 10px', cursor: 'pointer',
                         background: '#0d0f14',
-                        borderTop: `3px solid ${STATUS_TOP_COLORS[b.status] ?? STATUS_TOP_COLORS.confirmed}`,
-                        borderLeft: hasSessionBorder ? '3px solid rgba(200,240,78,0.7)' : '1px solid rgba(255,255,255,0.08)',
-                        borderRight: '1px solid rgba(255,255,255,0.08)',
-                        borderBottom: '1px solid rgba(255,255,255,0.08)',
+                        borderTop: `3px solid ${topColor}`,
+                        borderLeft: hasSessionBorder ? '3px solid rgba(200,240,78,0.7)' : `1px solid ${chipGlowBorder}`,
+                        borderRight: `1px solid ${chipGlowBorder}`,
+                        borderBottom: `1px solid ${chipGlowBorder}`,
+                        boxShadow: chipGlow,
                       }}>
                         {/* Name */}
                         <div style={{ fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700, color: nameColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -709,6 +725,13 @@ function StudioView({
                   : b.engineer_status === 'hold' ? '#f0a24e' : 'rgba(255,255,255,0.4)'
                 const asstColor = b.assistant_status === 'confirmed' ? '#4ef0a2'
                   : b.assistant_status === 'hold' ? '#f0a24e' : 'rgba(255,255,255,0.4)'
+                const topColor = STATUS_TOP_COLORS[b.status] ?? STATUS_TOP_COLORS.confirmed
+                const chipGlowBorder = topColor === '#f97316' ? 'rgba(249, 115, 22, 0.4)'
+                  : topColor === '#14B8A6' ? 'rgba(20, 184, 166, 0.4)'
+                  : 'rgba(255,255,255,0.08)'
+                const chipGlow = topColor === '#f97316' ? '0 0 8px rgba(249, 115, 22, 0.15)'
+                  : topColor === '#14B8A6' ? '0 0 8px rgba(20, 184, 166, 0.15)'
+                  : 'none'
                 return (
                   <div
                     key={b.id}
@@ -717,10 +740,11 @@ function StudioView({
                       marginBottom: 3, padding: '5px 7px', borderRadius: 3,
                       background: '#0d0f14',
                       cursor: 'pointer',
-                      borderTop: `3px solid ${STATUS_TOP_COLORS[b.status] ?? STATUS_TOP_COLORS.confirmed}`,
-                      borderLeft: b.session_type !== 'recording' ? '2px solid rgba(200,240,78,0.7)' : '1px solid rgba(255,255,255,0.08)',
-                      borderRight: '1px solid rgba(255,255,255,0.08)',
-                      borderBottom: '1px solid rgba(255,255,255,0.08)',
+                      borderTop: `3px solid ${topColor}`,
+                      borderLeft: b.session_type !== 'recording' ? '2px solid rgba(200,240,78,0.7)' : `1px solid ${chipGlowBorder}`,
+                      borderRight: `1px solid ${chipGlowBorder}`,
+                      borderBottom: `1px solid ${chipGlowBorder}`,
+                      boxShadow: chipGlow,
                     }}
                   >
                     {/* Name */}

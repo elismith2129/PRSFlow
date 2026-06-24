@@ -11,7 +11,7 @@ import { addArtistToLabel } from '@/lib/roster'
 // ─── COLOR TOKENS ────────────────────────────────────────────────────────────
 
 const STATUS_TOP_COLORS: Record<string, string> = {
-  confirmed:  '#22c55e',
+  confirmed:  '#14B8A6',
   tentative:  '#f97316',
   cancelled:  '#ef4444',
   tour:       '#a855f7',
