@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { SectionHeader } from '@/components/ui/SectionHeader'
 
 const STUDIO_META: Record<string, { label: string; color: string }> = {
   paramount: { label: 'Paramount', color: '#c8f04e' },
@@ -425,8 +426,8 @@ export function MicInventorySection() {
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 14, color: '#e8eaf2' }}>Mic Inventory</div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
+        <SectionHeader title="Mic Inventory" />
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#4a4f64' }}>
             {activeMics.length} active{missingList.length > 0 ? ` · ${missingList.length} missing` : ''}

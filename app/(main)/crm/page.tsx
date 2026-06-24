@@ -12,6 +12,7 @@ import { RegViewModal, RegField } from '@/components/shared/RegViewModal'
 import { combineLocation, parseLocation } from '@/lib/studios'
 import { addArtistToLabel } from '@/lib/roster'
 import { ClientsPageInner } from '@/app/(main)/clients/page'
+import { SectionHeader } from '@/components/ui/SectionHeader'
 
 const STATUS_COLORS: Record<string, string> = {
   hot: 'var(--hot)', warm: 'var(--warm)', cold: 'var(--cold)',
@@ -736,11 +737,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
     <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
       {/* Header */}
       <div style={{ padding: '12px 16px 0', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-        <div style={{ marginBottom: 10 }}>
-          <span style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15, letterSpacing: -0.3 }}>
-            Needs Action{totalCount > 0 ? <span style={{ color: 'var(--text3)', fontWeight: 600, fontSize: 13 }}> ({totalCount})</span> : null}
-          </span>
-        </div>
+        <SectionHeader title="Needs Action" count={totalCount > 0 ? totalCount : undefined} />
         {/* Tab bar */}
         <div style={{ display: 'flex', gap: 0 }}>
           {tabs.map(tab => {
@@ -1064,7 +1061,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
 
 // ─── Section helpers ──────────────────────────────────────────────────────────
 
-function SectionHeader({ label, mt }: { label: string; mt?: number }) {
+function FieldGroupLabel({ label, mt }: { label: string; mt?: number }) {
   return (
     <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 4, marginTop: mt ?? 8 }}>
       {label}
@@ -1544,7 +1541,7 @@ const khuDays = daysUntilKhu(lead)
       </div>
 
       {/* ─── Contact — 3-col grid ─────────────────────────────── */}
-      <SectionHeader label="Contact" />
+      <FieldGroupLabel label="Contact" />
       <div style={{ marginTop: 4, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 48px' }}>
         <div>
           <div style={fieldLabelStyle}>Email</div>
@@ -1576,7 +1573,7 @@ const khuDays = daysUntilKhu(lead)
       </div>
 
       {/* ─── Session & Quote ─────────────────────────────── */}
-      <SectionHeader label="Session & Quote" mt={8} />
+      <FieldGroupLabel label="Session & Quote" mt={8} />
       <div style={{ marginTop: 4, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 48px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div>
@@ -1660,7 +1657,7 @@ const khuDays = daysUntilKhu(lead)
       </div>
 
       {/* ─── Activity Log ──────────────────────────────── */}
-      <SectionHeader label="Activity Log" mt={8} />
+      <FieldGroupLabel label="Activity Log" mt={8} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 4 }}>
         {activityLog.length === 0 ? (
           <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', padding: '4px 0' }}>No activity yet</div>
@@ -1676,7 +1673,7 @@ const khuDays = daysUntilKhu(lead)
       </div>
 
       {/* ─── Session Notes ─────────────────────────────── */}
-      <SectionHeader label="Session Notes" mt={8} />
+      <FieldGroupLabel label="Session Notes" mt={8} />
       <textarea
         value={notesVal}
         onChange={e => setNotesVal(e.target.value)}

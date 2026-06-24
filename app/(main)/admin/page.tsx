@@ -6,6 +6,7 @@ import { DailyOpsLogSection } from '@/components/admin/DailyOpsLogSection'
 import { FlagsLogSection } from '@/components/admin/FlagsLogSection'
 import { MicInventorySection } from '@/components/admin/MicInventorySection'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { SectionHeader } from '@/components/ui/SectionHeader'
 
 const ROLE_OPTIONS: EngineerRole[] = ['Engineer', 'Assistant', 'Both']
 
@@ -339,8 +340,8 @@ export default function AdminPage() {
       <div style={{ flex: 1, padding: '28px 32px', minWidth: 0 }}>
 
       {section === 'engineers' && !selectedEng && <div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 14, color: '#e8eaf2' }}>Engineers & Assistants</div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+          <SectionHeader title="Engineers & Assistants" />
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button
               onClick={() => setShowInactive(v => !v)}
@@ -593,8 +594,8 @@ export default function AdminPage() {
       {section === 'srs_log' && (
         <div>
           {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-            <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 14, color: '#e8eaf2' }}>SRS Log</div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+            <SectionHeader title="SRS Log" />
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               {/* Month filter */}
               <select

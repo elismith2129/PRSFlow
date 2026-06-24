@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Flag, FlagComment } from '@/lib/supabase'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { SectionHeader } from '@/components/ui/SectionHeader'
 
 const STUDIO_COLORS: Record<string, string> = {
   paramount: '#c8f04e',
@@ -199,9 +200,7 @@ export function FlagsLogSection() {
     <div>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 14, color: '#e8eaf2' }}>Flags Log</div>
-      </div>
+      <SectionHeader title="Flags Log" />
 
       {/* Search */}
       <input

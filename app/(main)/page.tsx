@@ -5,6 +5,7 @@ import { LocationStrip } from '@/components/dashboard/LocationStrip'
 import { useRouter } from 'next/navigation'
 import { BookingForm, type FormData, bookingToForm, emptyForm } from '@/components/calendar/BookingForm'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { SectionHeader } from '@/components/ui/SectionHeader'
 
 const TAB_ROLE: Record<string, 'admin' | 'studio_manager' | 'asst_manager' | 'billing'> = {
   me:      'admin',
@@ -489,8 +490,8 @@ export default function DashboardPage() {
 
         {/* COL 1 — NEEDS ACTION */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-          <div style={{ padding: '13px 16px 11px', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13 }}>NEEDS ACTION</div>
+          <div style={{ padding: '13px 16px 0', borderBottom: '1px solid var(--border)' }}>
+            <SectionHeader title="NEEDS ACTION" />
           </div>
           <div style={{ borderBottom: '1px solid var(--border)' }}>
             {loading ? (
@@ -537,8 +538,8 @@ export default function DashboardPage() {
 
         {/* COL 2 — TODAY'S SESSIONS */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', height: 556 }}>
-          <div style={{ padding: '13px 16px 11px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13 }}>TODAY'S SESSIONS</div>
+          <div style={{ padding: '13px 16px 0', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <SectionHeader title="TODAY'S SESSIONS" />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
                 onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() - 1); return n })}
@@ -641,21 +642,12 @@ export default function DashboardPage() {
         {/* COL 3 — TASKS */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
           {/* Header */}
-          <div style={{ padding: '13px 16px 11px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13 }}>TASKS</div>
-              {tasks.length > 0 && (
-                <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#c8f04e', color: '#0d0f14', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {tasks.length}
-                </div>
-              )}
-            </div>
-            <button
-              onClick={async () => { await fetchCompletedTasks(); setShowHistory(true) }}
-              style={{ fontSize: 10, color: '#c8f04e', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'DM Mono', letterSpacing: '0.04em' }}
-            >
-              history →
-            </button>
+          <div style={{ padding: '13px 16px 0', borderBottom: '1px solid var(--border)' }}>
+            <SectionHeader
+              title="TASKS"
+              count={tasks.length > 0 ? tasks.length : undefined}
+              action={{ label: 'history →', onClick: async () => { await fetchCompletedTasks(); setShowHistory(true) } }}
+            />
           </div>
           {/* Tab row */}
           <div style={{ display: 'flex', gap: 3, padding: '6px 8px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', }}>
@@ -809,19 +801,13 @@ export default function DashboardPage() {
 
       {/* FLAGS PANEL */}
       <div style={{ marginTop: 14, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-        <div style={{ padding: '13px 16px 11px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13 }}>FLAGS</div>
-          {flags.filter(f => f.status === 'pending').length > 0 && (
-            <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#EF4444', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {flags.filter(f => f.status === 'pending').length}
-            </div>
-          )}
-          <button
-            onClick={() => setAddingFlag(true)}
-            style={{ marginLeft: 'auto', fontSize: 10, fontFamily: 'DM Mono', color: '#c8f04e', background: 'none', border: '1px solid #c8f04e', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}
-          >
-            + Flag
-          </button>
+        <div style={{ padding: '13px 16px 0', borderBottom: '1px solid var(--border)' }}>
+          <SectionHeader
+            title="FLAGS"
+            count={flags.filter(f => f.status === 'pending').length > 0 ? flags.filter(f => f.status === 'pending').length : undefined}
+            countColor="orange"
+            action={{ label: '+ Flag', onClick: () => setAddingFlag(true) }}
+          />
         </div>
         {flagsLoading ? (
           <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>

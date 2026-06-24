@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
+import { SectionHeader } from '@/components/ui/SectionHeader'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 
 const STUDIO_META: Record<string, { label: string; abbr: string; color: string }> = {
@@ -296,9 +297,7 @@ export function DailyOpsLogSection() {
 
                 {/* Sessions / WO cards */}
                 <div>
-                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 10 }}>
-                    Sessions
-                  </div>
+                  <SectionHeader title="Sessions" />
                   {dayData && dayData.bookings.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {dayData.bookings.map(booking => {
@@ -398,9 +397,7 @@ export function DailyOpsLogSection() {
 
                 {/* Daily tasks checklist rows */}
                 <div>
-                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 10 }}>
-                    Daily Tasks
-                  </div>
+                  <SectionHeader title="Daily Tasks" />
                   <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
                     {OPS_CATS.map((cat, i) => {
                       const row = dayData?.opsRows.find((o: any) => o.category === cat.key) ?? null

@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
 import TimeInput from '@/components/shared/TimeInput'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { SectionHeader } from '@/components/ui/SectionHeader'
 
 // ─── Local types (editable UI state, strings for all inputs) ─────────────────
 
@@ -1286,10 +1287,6 @@ export function WorkOrderPopup({
     if (parts.length < 3) return d
     return `${parseInt(parts[1], 10)}-${parseInt(parts[2], 10)}`
   }
-  const sectionTitle: React.CSSProperties = {
-    fontFamily: 'Syne', fontWeight: 700, fontSize: 10, color: '#8a8fa0',
-    letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10,
-  }
   const metaLabel: React.CSSProperties = {
     fontSize: 9, fontFamily: 'Syne', fontWeight: 700,
     letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a8fa0',
@@ -1472,7 +1469,7 @@ export function WorkOrderPopup({
 
           {/* STUDIO TIME TABLE — unified per-row Day/Hr toggle */}
           <div>
-            <div style={sectionTitle}>Studio Time</div>
+            <SectionHeader title="Studio Time" />
             <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
               {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock | Del */}
               <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
@@ -1712,7 +1709,7 @@ export function WorkOrderPopup({
 
           {/* EQUIPMENT CONDITION — excluded from PDF via data-no-print */}
           <div data-no-print="">
-            <div style={sectionTitle}>Equipment Condition</div>
+            <SectionHeader title="Equipment Condition" />
             {/* hidden file input for note photos */}
             <input ref={equipNoteFileRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={e => { const f = e.target.files?.[0]; if (f) uploadEquipNotePhoto(f) }} />
@@ -1794,7 +1791,7 @@ export function WorkOrderPopup({
 
           {/* RENTALS */}
           <div>
-            <div style={sectionTitle}>Rentals</div>
+            <SectionHeader title="Rentals" />
             <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                 {['Qty', 'Item', 'Supplier', "Date(s) Used", 'Rate', 'Charge', ''].map(h => <div key={h} style={thS}>{h}</div>)}
@@ -1827,7 +1824,7 @@ export function WorkOrderPopup({
             {/* Left — Notes + Legal */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
-                <div style={sectionTitle}>Session Notes</div>
+                <SectionHeader title="Session Notes" />
                 <textarea value={wo.session_notes} onChange={e => setWo(w => w ? { ...w, session_notes: e.target.value } : w)}
                   style={{ width: '100%', minHeight: 90, background: '#1a1e28', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 5, color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }} />
               </div>
@@ -1873,7 +1870,7 @@ export function WorkOrderPopup({
             {/* Right — Payments + Totals */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
-                <div style={sectionTitle}>Payments</div>
+                <SectionHeader title="Payments" />
                 <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
                   {payRows.map((p, idx) => {
                     const needsLast4 = p.payment_type === 'Credit Card' || p.payment_type === 'Debit Card'
