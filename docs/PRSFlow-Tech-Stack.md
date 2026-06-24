@@ -1,6 +1,6 @@
 # PRSFlow — Tech Stack & Roadmap
 
-*Last updated: June 22, 2026*
+*Last updated: June 23, 2026*
 
 ---
 
@@ -123,6 +123,8 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 | `app/runner/[studio]/wo/[id]/page.tsx` | Runner WO form — studio time table, equipment condition, expenses, eng hours, receipt OCR, canvas signature pad (COD-only), payment rows (editable), Save/Finish footer |
 | `app/(main)/wo-hub/page.tsx` | WO Hub — all work orders list, filterable by studio/date/status; linked from nav |
 | `components/admin/DailyOpsLogSection.tsx` | Date-based historical ops log per studio; studio tabs, date list with status dots, day modal (WO cards + 5 checklist rows with Runner/Admin checkboxes); click WO card → WorkOrderPopup |
+| `components/admin/MicInventorySection.tsx` | Admin "Mic Inventory" sidebar tab. Read-only consolidated cross-studio mic view: full-width missing-mic banner, horizontal studio tabs (Paramount/Ameraycan/Encore/Track/Floating Gear), status-colored table (Here/Room/Missing), per-tab Show History (last 7 nights). Reads `mics`/`mic_checkins`/`mic_inventory_quantities`/`mic_inventory_submissions`, reduced client-side to latest-per-(studio,mic); no new tables. |
+| `app/runner/[studio]/mics/page.tsx` | Runner mic inventory — collapsible sections (home/other/floating/odds & ends), Here/Room/Missing per mic with room picker, qty steppers for odds & ends, Save (progress) + Submit (initials-gated) writing `mic_checkins`/`mic_inventory_quantities`/`mic_inventory_submissions` + `daily_ops_submissions` |
 | `components/dashboard/LocationStrip.tsx` | 4-studio dashboard strip; drawer with Yesterday/Today sessions + daily ops rows; real-time subscriptions |
 | `lib/checklist-items.ts` | Per-studio opening/closing checklist items; `CHECKLISTS[studio][type]`, `getChecklistSections()`, `flattenSections()` |
 | `public/sop.html` | Self-contained interactive training guide. Replace file to update content; no code change needed. |
@@ -295,6 +297,8 @@ Defined in `styles/globals.css`:
 | **A&R artist persistence + artist-search rework ✅** | **Found the real persistence bug; routed artist search through A&R contacts** |
 | ar-artist-persistence | **(`af957e8`)** A&R `client_contacts.artists[]` weren't persisting. Real cause: `app/(main)/clients/page.tsx` `load()` refetched `client_contacts` without `artists`/`contact_type`, so `onRefresh()` reset `ContactRow.localArtists` to `[]` (UI reverted) and the next save wrote `[]` back (DB wiped). Fix: added `artists, contact_type` to the select. DB write path was always healthy (direct PATCH persists, 204). Also repaired the A&R/Admin filter split that depends on `contact_type`. Corrects the earlier "strip `id`/`client_id` fixed the save" framing — the strip is correct practice but was not the persistence fix. |
 | artist-search-thru-contacts | **(`d7c8e82`)** Booking-form artist search reworked: the third parallel query now fetches `client_contacts` (each A&R's own `artists[]` + `contact_type` + joined parent `clients`), pre-filtered `.neq('artists','{}')`, matched client-side — instead of scanning the label record's `clients.artists[]`. Result `record` is the parent client + `_artistMatch`; admins excluded via `ct.contact_type === 'admin'` continue (null-type kept). The `_artistMatch` autofill re-query changed from `.neq('contact_type','admin')` to `.or('contact_type.eq.anr,contact_type.is.null')` because PostgREST `.neq` drops NULL-type rows (most A&Rs). |
+| **Admin Mic Inventory tab ✅** | **Read-only consolidated cross-studio mic view with missing-mic alerts** |
+| admin-mic-inventory | **(`8529b8b`, `eefd6c1`)** `components/admin/MicInventorySection.tsx` added as a fifth Admin sidebar tab (`mic_inventory`). Full-width dismissable missing-mic banner (every mic whose latest checkin across any studio is `missing`). Horizontal studio tabs (Paramount/Ameraycan/Encore/Track/Floating Gear) with mic count + red missing badge + active-tab color underline. Table: Mic Name \| Status \| Room \| Qty \| Last Submitted By \| Date; Here `#14B8A6` / Room `#F97316` / Missing `#ef4444`; missing rows red left border + tint; sort missing→room→here→none then `sort_order`. Per-tab Show History (last 7 checkin nights per mic). Reads `mics`/`mic_checkins`/`mic_inventory_quantities`/`mic_inventory_submissions`, reduced client-side to latest-per-(studio,mic); studio tabs resolve by home studio, Floating + banner resolve across any studio. No new tables, read-only. Tab started as collapsible vertical sections (`8529b8b`), refactored to horizontal tabs (`eefd6c1`). |
 
 ### Next
 
