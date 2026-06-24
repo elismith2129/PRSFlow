@@ -28,5 +28,8 @@ Thumbs.db
 # Claude Code auto-memory
 memory/
 
+# Claude Code agent worktrees (scratch, not project code)
+.claude/worktrees/
+
 # Service account keys — never commit credentials
 Google Service Account Key/
