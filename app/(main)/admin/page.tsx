@@ -376,7 +376,7 @@ export default function AdminPage() {
         ) : (
           <div style={{ border: '1px solid #2a2e3d', borderRadius: 6, overflow: 'hidden' }}>
             {/* Table header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr 100px 140px 140px 80px 80px', background: '#1a1d27', borderBottom: '1px solid #2a2e3d', padding: '6px 16px', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr 100px 140px 140px 80px 180px', background: '#1a1d27', borderBottom: '1px solid #2a2e3d', padding: '6px 16px', gap: 12 }}>
               {['', 'Name', 'Role', 'Email', 'Phone', 'Status', ''].map((h, i) => (
                 <div key={i} style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#4a4f64' }}>{h}</div>
               ))}
@@ -390,7 +390,7 @@ export default function AdminPage() {
                   key={eng.id}
                   onClick={() => openEngSessions(eng)}
                   style={{
-                    display: 'grid', gridTemplateColumns: '44px 1fr 100px 140px 140px 80px 80px',
+                    display: 'grid', gridTemplateColumns: '44px 1fr 100px 140px 140px 80px 180px',
                     padding: '10px 16px', gap: 12, alignItems: 'center',
                     borderBottom: idx < filtered.length - 1 ? '1px solid #2a2e3d' : 'none',
                     background: eng.active ? 'transparent' : 'rgba(0,0,0,0.15)',
