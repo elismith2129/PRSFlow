@@ -87,7 +87,7 @@ export function Nav() {
         }}>STUDIO OS</span>
       </div>
 
-      <div style={{ display: 'flex', gap: 2 }}>
+      <div style={{ display: 'flex', gap: 2, height: '100%', alignItems: 'center' }}>
         {navItems.map(item => {
           const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
           const badge = item.href === '/crm' && unreviewedRegs > 0
@@ -96,15 +96,22 @@ export function Nav() {
             ? tentativeCount
             : 0
           return (
-            <Link key={item.href} href={item.href} style={{
-              position: 'relative', display: 'inline-block',
-              padding: '6px 16px', borderRadius: 6, fontSize: 11,
-              fontFamily: 'DM Mono', fontWeight: 500,
-              background: active ? 'var(--surface2)' : 'transparent',
-              color: active ? 'var(--accent)' : 'var(--text2)',
-              border: active ? '1px solid var(--border)' : '1px solid transparent',
-              textDecoration: 'none', transition: 'all 0.15s',
-            }}>
+            <Link
+              key={item.href}
+              href={item.href}
+              onMouseEnter={active ? undefined : (e) => { e.currentTarget.style.color = '#9ca3af' }}
+              onMouseLeave={active ? undefined : (e) => { e.currentTarget.style.color = '#6B7280' }}
+              style={{
+                position: 'relative', display: 'flex', alignItems: 'center', height: '100%',
+                padding: '0 10px', fontSize: 11,
+                fontFamily: 'DM Mono', fontWeight: 500, letterSpacing: '0.04em',
+                background: 'transparent',
+                color: active ? '#e8eaf0' : '#6B7280',
+                borderBottom: active ? '2px solid #c8f04e' : 'none',
+                borderRadius: 0,
+                textDecoration: 'none', transition: 'color 0.15s ease',
+              }}
+            >
               {item.label}
               {badge > 0 && (
                 <span style={{
