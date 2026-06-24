@@ -16,6 +16,14 @@ const FLOATING_KEY = 'floating'
 // Studio keys offered in the Manage Mics selects (catalog home_studio values).
 const STUDIO_OPTIONS = ['paramount', 'ameraycan', 'encore', 'track', 'floating'] as const
 
+// Per-studio room options (matches the runner mics page).
+const STUDIO_ROOMS: Record<string, string[]> = {
+  paramount: ['Studio A', 'Studio B', 'Studio C', 'Studio E', 'Studio X'],
+  ameraycan: ['Studio A', 'Studio B'],
+  encore:    ['Studio A', 'Studio B'],
+  track:     ['Studio North', 'Studio South'],
+}
+
 const STATUS_META: Record<string, { label: string; color: string }> = {
   here:    { label: 'Here',    color: '#14B8A6' },
   room:    { label: 'Room',    color: '#F97316' },
@@ -585,14 +593,27 @@ export function MicInventorySection() {
                         {/* Room */}
                         <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: c?.room ? '#8b90a8' : NONE_COLOR }}>
                           {isEditing ? (
-                            draftStatus === 'room' ? (
-                              <input
-                                value={draftRoom}
-                                onChange={e => setDraftRoom(e.target.value)}
-                                placeholder="Room"
-                                style={{ ...inputS, padding: '4px 6px' }}
-                              />
-                            ) : (
+                            draftStatus === 'room' ? (() => {
+                              const rStudio = group.isStudio ? group.key : (resolveStatus(group, mic)?.studio || mic.home_studio)
+                              const roomOpts = STUDIO_ROOMS[rStudio] ?? []
+                              return roomOpts.length > 0 ? (
+                                <select
+                                  value={draftRoom}
+                                  onChange={e => setDraftRoom(e.target.value)}
+                                  style={{ ...inputS, padding: '4px 4px' }}
+                                >
+                                  <option value="">Room…</option>
+                                  {roomOpts.map(r => <option key={r} value={r}>{r.replace('Studio ', '')}</option>)}
+                                </select>
+                              ) : (
+                                <input
+                                  value={draftRoom}
+                                  onChange={e => setDraftRoom(e.target.value)}
+                                  placeholder="Room"
+                                  style={{ ...inputS, padding: '4px 6px' }}
+                                />
+                              )
+                            })() : (
                               <span style={{ color: NONE_COLOR }}>—</span>
                             )
                           ) : (
