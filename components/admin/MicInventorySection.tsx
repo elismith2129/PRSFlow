@@ -90,8 +90,8 @@ export function MicInventorySection() {
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([])
   const [loading, setLoading] = useState(true)
   const [bannerDismissed, setBannerDismissed] = useState(false)
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
-  const [historyOn, setHistoryOn] = useState<Record<string, boolean>>({})
+  const [activeTab, setActiveTab] = useState<string>(STUDIO_ORDER[0])
+  const [showHistory, setShowHistory] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -191,7 +191,7 @@ export function MicInventorySection() {
     }))
     const floating = {
       key: FLOATING_KEY,
-      label: 'Floating Gear / Odds & Ends',
+      label: 'Floating Gear',
       color: '#8b90a8',
       isStudio: false,
       mics: mics.filter(
@@ -222,14 +222,6 @@ export function MicInventorySection() {
   function resolveQty(group: { key: string; isStudio: boolean }, mic: Mic): number | null {
     const q = group.isStudio ? qtyByStudioMic[`${group.key}|${mic.id}`] : qtyAnyByMic[mic.id]
     return q ? q.quantity : null
-  }
-
-  function toggleSection(key: string) {
-    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }))
-  }
-
-  function toggleHistory(key: string) {
-    setHistoryOn(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
   if (loading) {
@@ -281,148 +273,154 @@ export function MicInventorySection() {
         </div>
       )}
 
-      {/* ── Consolidated studio sections ─────────────────────────── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* ── Studio tabs ──────────────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #2a2e3d', marginBottom: 16, flexWrap: 'wrap' }}>
         {groups.map(group => {
-          const open = openSections[group.key]
-          const showHist = historyOn[group.key]
-          const groupMissing = group.mics.filter(m => resolveStatus(group, m)?.status === 'missing').length
-
-          // Sort within group: missing → room → here → none, then sort_order.
-          const sorted = [...group.mics].sort((a, b) => {
-            const ra = statusRank(resolveStatus(group, a)?.status)
-            const rb = statusRank(resolveStatus(group, b)?.status)
-            if (ra !== rb) return ra - rb
-            return (a.sort_order ?? 0) - (b.sort_order ?? 0)
-          })
-
+          const active = activeTab === group.key
+          const tabMissing = group.mics.filter(m => resolveStatus(group, m)?.status === 'missing').length
           return (
-            <div key={group.key} style={{ border: '1px solid #2a2e3d', borderRadius: 6, overflow: 'hidden' }}>
-              {/* Section header */}
-              <div
-                onClick={() => toggleSection(group.key)}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  background: '#1a1d27', padding: '10px 16px', cursor: 'pointer',
-                  borderLeft: `3px solid ${group.color}`,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 11, color: '#8b90a8', display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>▸</span>
-                  <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 12, color: '#e8eaf2', letterSpacing: '0.03em' }}>{group.label}</span>
-                  <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#4a4f64' }}>{group.mics.length}</span>
-                  {groupMissing > 0 && (
-                    <span style={{ fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 3, padding: '1px 6px' }}>
-                      {groupMissing} missing
-                    </span>
-                  )}
-                </div>
-                {open && (
-                  <button
-                    onClick={e => { e.stopPropagation(); toggleHistory(group.key) }}
-                    style={{ padding: '3px 10px', borderRadius: 4, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer', background: showHist ? '#c8f04e' : 'transparent', border: `1px solid ${showHist ? '#c8f04e' : '#2a2e3d'}`, color: showHist ? '#0d0f14' : '#8b90a8', fontWeight: showHist ? 700 : 400 }}
-                  >
-                    {showHist ? 'Hide History' : 'Show History'}
-                  </button>
-                )}
-              </div>
-
-              {/* Section body */}
-              {open && (
-                group.mics.length === 0 ? (
-                  <div style={{ padding: '16px', fontSize: 11, color: '#4a4f64', fontFamily: 'DM Mono' }}>No mics in this group.</div>
-                ) : (
-                  <div>
-                    {/* Column header */}
-                    <div style={{ display: 'grid', gridTemplateColumns: GRID_COLS, gap: 12, padding: '6px 16px', background: '#13161e', borderBottom: '1px solid #2a2e3d' }}>
-                      {['Mic Name', 'Status', 'Room', 'Qty', 'Last Submitted By', 'Date'].map(h => (
-                        <div key={h} style={labelS}>{h}</div>
-                      ))}
-                    </div>
-
-                    {/* Rows */}
-                    {sorted.map((mic, idx) => {
-                      const c = resolveStatus(group, mic)
-                      const status = c?.status
-                      const statusMeta = status ? STATUS_META[status] : null
-                      const qty = resolveQty(group, mic)
-                      const sub = c ? submitterBy[`${c.studio}|${c.date}`] : undefined
-                      const isMissing = status === 'missing'
-                      const histKey = group.isStudio ? `${group.key}|${mic.id}` : null
-                      const hist = histKey ? (historyByStudioMic[histKey] ?? []).slice(0, 7) : []
-
-                      return (
-                        <div key={mic.id} style={{ borderBottom: idx < sorted.length - 1 ? '1px solid #2a2e3d' : 'none' }}>
-                          <div style={{
-                            display: 'grid', gridTemplateColumns: GRID_COLS, gap: 12,
-                            padding: '9px 16px', alignItems: 'center',
-                            borderLeft: isMissing ? '3px solid #ef4444' : '3px solid transparent',
-                            background: isMissing ? 'rgba(239,68,68,0.06)' : 'transparent',
-                          }}>
-                            {/* Mic name */}
-                            <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#e8eaf2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mic.name}</div>
-                            {/* Status */}
-                            <div>
-                              {statusMeta ? (
-                                <span style={{ fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, color: statusMeta.color, background: statusMeta.color + '18', border: `1px solid ${statusMeta.color}33`, borderRadius: 3, padding: '2px 7px', textTransform: 'uppercase' }}>
-                                  {statusMeta.label}
-                                </span>
-                              ) : (
-                                <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: NONE_COLOR }}>—</span>
-                              )}
-                            </div>
-                            {/* Room */}
-                            <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: c?.room ? '#8b90a8' : NONE_COLOR }}>
-                              {c?.status === 'room' && c.room ? c.room.replace('Studio ', '') : '—'}
-                            </div>
-                            {/* Qty */}
-                            <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: qty != null ? '#e8eaf2' : NONE_COLOR }}>
-                              {qty != null ? qty : '—'}
-                            </div>
-                            {/* Submitted by */}
-                            <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: sub?.by ? '#8b90a8' : NONE_COLOR, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {sub?.by || '—'}
-                            </div>
-                            {/* Date */}
-                            <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: c?.date ? '#8b90a8' : NONE_COLOR }}>
-                              {c?.date ? fmtDate(c.date) : '—'}
-                            </div>
-                          </div>
-
-                          {/* History sub-rows (studio groups only) */}
-                          {showHist && group.isStudio && (
-                            <div style={{ padding: '2px 16px 10px 32px', display: 'flex', flexDirection: 'column', gap: 3 }}>
-                              {hist.length === 0 ? (
-                                <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: NONE_COLOR }}>No history</div>
-                              ) : (
-                                hist.map((h, hi) => {
-                                  const hm = STATUS_META[h.status]
-                                  const hsub = submitterBy[`${h.studio}|${h.date}`]
-                                  return (
-                                    <div key={hi} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                      <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#6b7280', width: 56 }}>{fmtShort(h.date)}</span>
-                                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: hm?.color ?? NONE_COLOR, flexShrink: 0 }} />
-                                      <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: hm?.color ?? NONE_COLOR, width: 52 }}>{hm?.label ?? '—'}</span>
-                                      {h.status === 'room' && h.room && (
-                                        <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#6b7280' }}>{h.room.replace('Studio ', '')}</span>
-                                      )}
-                                      <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#4a4f64', marginLeft: 'auto' }}>{hsub?.by || '—'}</span>
-                                    </div>
-                                  )
-                                })
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )
+            <button
+              key={group.key}
+              onClick={() => setActiveTab(group.key)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 7,
+                padding: '8px 14px', border: 'none', cursor: 'pointer', background: 'transparent',
+                fontFamily: 'Syne', fontWeight: 700, fontSize: 12, letterSpacing: '0.03em',
+                color: active ? '#e8eaf2' : '#8b90a8',
+                borderBottom: `2px solid ${active ? group.color : 'transparent'}`,
+                marginBottom: -1,
+              }}
+            >
+              <span>{group.label}</span>
+              <span style={{ fontSize: 10, fontFamily: 'DM Mono', fontWeight: 400, color: '#4a4f64' }}>{group.mics.length}</span>
+              {tabMissing > 0 && (
+                <span style={{ fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 3, padding: '1px 6px' }}>
+                  {tabMissing}
+                </span>
               )}
-            </div>
+            </button>
           )
         })}
       </div>
+
+      {/* ── Active studio table ──────────────────────────────────── */}
+      {(() => {
+        const group = groups.find(g => g.key === activeTab) ?? groups[0]
+
+        // Sort within group: missing → room → here → none, then sort_order.
+        const sorted = [...group.mics].sort((a, b) => {
+          const ra = statusRank(resolveStatus(group, a)?.status)
+          const rb = statusRank(resolveStatus(group, b)?.status)
+          if (ra !== rb) return ra - rb
+          return (a.sort_order ?? 0) - (b.sort_order ?? 0)
+        })
+
+        return (
+          <div>
+            {/* Toolbar */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 10 }}>
+              {group.isStudio && (
+                <button
+                  onClick={() => setShowHistory(v => !v)}
+                  style={{ padding: '4px 12px', borderRadius: 4, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer', background: showHistory ? '#c8f04e' : 'transparent', border: `1px solid ${showHistory ? '#c8f04e' : '#2a2e3d'}`, color: showHistory ? '#0d0f14' : '#8b90a8', fontWeight: showHistory ? 700 : 400 }}
+                >
+                  {showHistory ? 'Hide History' : 'Show History'}
+                </button>
+              )}
+            </div>
+
+            {group.mics.length === 0 ? (
+              <div style={{ border: '1px solid #2a2e3d', borderRadius: 6, padding: '24px 16px', fontSize: 11, color: '#4a4f64', fontFamily: 'DM Mono' }}>No mics in this group.</div>
+            ) : (
+              <div style={{ border: '1px solid #2a2e3d', borderRadius: 6, overflow: 'hidden' }}>
+                {/* Column header */}
+                <div style={{ display: 'grid', gridTemplateColumns: GRID_COLS, gap: 12, padding: '6px 16px', background: '#1a1d27', borderBottom: '1px solid #2a2e3d' }}>
+                  {['Mic Name', 'Status', 'Room', 'Qty', 'Last Submitted By', 'Date'].map(h => (
+                    <div key={h} style={labelS}>{h}</div>
+                  ))}
+                </div>
+
+                {/* Rows */}
+                {sorted.map((mic, idx) => {
+                  const c = resolveStatus(group, mic)
+                  const status = c?.status
+                  const statusMeta = status ? STATUS_META[status] : null
+                  const qty = resolveQty(group, mic)
+                  const sub = c ? submitterBy[`${c.studio}|${c.date}`] : undefined
+                  const isMissing = status === 'missing'
+                  const histKey = group.isStudio ? `${group.key}|${mic.id}` : null
+                  const hist = histKey ? (historyByStudioMic[histKey] ?? []).slice(0, 7) : []
+
+                  return (
+                    <div key={mic.id} style={{ borderBottom: idx < sorted.length - 1 ? '1px solid #2a2e3d' : 'none' }}>
+                      <div style={{
+                        display: 'grid', gridTemplateColumns: GRID_COLS, gap: 12,
+                        padding: '9px 16px', alignItems: 'center',
+                        borderLeft: isMissing ? '3px solid #ef4444' : '3px solid transparent',
+                        background: isMissing ? 'rgba(239,68,68,0.06)' : 'transparent',
+                      }}>
+                        {/* Mic name */}
+                        <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#e8eaf2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mic.name}</div>
+                        {/* Status */}
+                        <div>
+                          {statusMeta ? (
+                            <span style={{ fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, color: statusMeta.color, background: statusMeta.color + '18', border: `1px solid ${statusMeta.color}33`, borderRadius: 3, padding: '2px 7px', textTransform: 'uppercase' }}>
+                              {statusMeta.label}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: NONE_COLOR }}>—</span>
+                          )}
+                        </div>
+                        {/* Room */}
+                        <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: c?.room ? '#8b90a8' : NONE_COLOR }}>
+                          {c?.status === 'room' && c.room ? c.room.replace('Studio ', '') : '—'}
+                        </div>
+                        {/* Qty */}
+                        <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: qty != null ? '#e8eaf2' : NONE_COLOR }}>
+                          {qty != null ? qty : '—'}
+                        </div>
+                        {/* Submitted by */}
+                        <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: sub?.by ? '#8b90a8' : NONE_COLOR, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {sub?.by || '—'}
+                        </div>
+                        {/* Date */}
+                        <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: c?.date ? '#8b90a8' : NONE_COLOR }}>
+                          {c?.date ? fmtDate(c.date) : '—'}
+                        </div>
+                      </div>
+
+                      {/* History sub-rows (studio groups only) */}
+                      {showHistory && group.isStudio && (
+                        <div style={{ padding: '2px 16px 10px 32px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          {hist.length === 0 ? (
+                            <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: NONE_COLOR }}>No history</div>
+                          ) : (
+                            hist.map((h, hi) => {
+                              const hm = STATUS_META[h.status]
+                              const hsub = submitterBy[`${h.studio}|${h.date}`]
+                              return (
+                                <div key={hi} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#6b7280', width: 56 }}>{fmtShort(h.date)}</span>
+                                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: hm?.color ?? NONE_COLOR, flexShrink: 0 }} />
+                                  <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: hm?.color ?? NONE_COLOR, width: 52 }}>{hm?.label ?? '—'}</span>
+                                  {h.status === 'room' && h.room && (
+                                    <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#6b7280' }}>{h.room.replace('Studio ', '')}</span>
+                                  )}
+                                  <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#4a4f64', marginLeft: 'auto' }}>{hsub?.by || '—'}</span>
+                                </div>
+                              )
+                            })
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }
