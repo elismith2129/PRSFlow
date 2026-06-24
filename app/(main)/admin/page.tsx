@@ -5,6 +5,7 @@ import type { Engineer, EngineerRole, Booking } from '@/lib/supabase'
 import { DailyOpsLogSection } from '@/components/admin/DailyOpsLogSection'
 import { FlagsLogSection } from '@/components/admin/FlagsLogSection'
 import { MicInventorySection } from '@/components/admin/MicInventorySection'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 
 const ROLE_OPTIONS: EngineerRole[] = ['Engineer', 'Assistant', 'Both']
 
@@ -480,11 +481,6 @@ export default function AdminPage() {
           return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
         }
 
-        const STATUS_COLORS: Record<string, string> = {
-          confirmed: '#14B8A6', tentative: '#F97316', cancelled: '#EF4444',
-          completed: 'var(--text2)', in_progress: '#c8f04e', tour: 'var(--text2)', tech: '#a0aec0', open_hours: '#4a4f64',
-        }
-
         return (
           <div>
             {/* Back + header */}
@@ -524,7 +520,6 @@ export default function AdminPage() {
 
                   {pageSlice.map((bk, idx) => {
                     const isEng = bk.engineer_name === fullName
-                    const statusColor = STATUS_COLORS[bk.status] ?? '#8b90a8'
                     const timeStr = bk.from_time && bk.to_time ? `${bk.from_time}–${bk.to_time}` : bk.from_time ?? '—'
                     return (
                       <div
@@ -545,9 +540,7 @@ export default function AdminPage() {
                           {bk.artist && <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bk.artist}</div>}
                         </div>
                         <div>
-                          <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: statusColor, background: statusColor + '18', padding: '2px 7px', borderRadius: 3, border: `1px solid ${statusColor}33`, textTransform: 'uppercase' }}>
-                            {bk.status}
-                          </span>
+                          <StatusBadge status={bk.status} />
                         </div>
                         <div>
                           <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: isEng ? '#F97316' : '#EF4444', background: isEng ? 'rgba(249,115,22,0.12)' : 'rgba(239,68,68,0.12)', padding: '2px 7px', borderRadius: 3, border: `1px solid ${isEng ? 'rgba(249,115,22,0.3)' : 'rgba(239,68,68,0.3)'}` }}>

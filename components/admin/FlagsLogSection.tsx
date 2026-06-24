@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Flag, FlagComment } from '@/lib/supabase'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 
 const STUDIO_COLORS: Record<string, string> = {
   paramount: '#c8f04e',
@@ -348,14 +349,7 @@ export function FlagsLogSection() {
                   <>
                     {/* Row 1: status badge + resolve + × */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      <span style={{
-                        fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em',
-                        textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4,
-                        color: selectedFlag.status === 'pending' ? '#EF4444' : selectedFlag.status === 'acknowledged' ? '#F97316' : '#14B8A6',
-                        background: selectedFlag.status === 'pending' ? 'rgba(239,68,68,0.12)' : selectedFlag.status === 'acknowledged' ? 'rgba(249,115,22,0.12)' : 'rgba(20,184,166,0.12)',
-                      }}>
-                        {selectedFlag.status}
-                      </span>
+                      <StatusBadge status={selectedFlag.status} />
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {selectedFlag.status === 'acknowledged' && (
                           <button

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -23,15 +24,6 @@ const STATUS_COLORS: Record<WoStatus, string> = {
   completed: '#14B8A6',
 }
 
-const STATUS_BG: Record<WoStatus, string> = {
-  open:      'rgba(107,114,128,0.13)',
-  completed: 'rgba(20,184,166,0.13)',
-}
-
-const STATUS_LABELS: Record<WoStatus, string> = {
-  open:      'OPEN',
-  completed: 'COMPLETED',
-}
 
 const STUDIO_PILLS = ['ALL', 'PRS', 'ARS', 'ERS', 'TRK'] as const
 const STATUS_PILLS  = ['ALL', 'OPEN', 'COMPLETED'] as const
@@ -297,16 +289,7 @@ export default function WoHubPage() {
                 }}>
                   {/* Status pill — left side */}
                   <div style={{ flexShrink: 0, marginRight: 12 }}>
-                    <div style={{
-                      fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
-                      letterSpacing: '0.08em',
-                      background: STATUS_BG[e.status],
-                      color: STATUS_COLORS[e.status],
-                      border: `1px solid ${STATUS_COLORS[e.status]}`,
-                      borderRadius: 4, padding: '2px 7px',
-                    }}>
-                      {STATUS_LABELS[e.status]}
-                    </div>
+                    <StatusBadge status={e.status} />
                   </div>
 
                   {/* Client + artist — flexible, takes remaining space */}

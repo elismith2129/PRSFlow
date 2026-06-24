@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
 import TimeInput from '@/components/shared/TimeInput'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 
 // ─── Local types (editable UI state, strings for all inputs) ─────────────────
 
@@ -1332,11 +1333,7 @@ export function WorkOrderPopup({
             <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: '#f0f0f0' }}>
               Work Order{wo.invoice_number ? ` — #${wo.invoice_number}` : ''}
             </span>
-            <span style={{
-              fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 10,
-              background: wo.status === 'completed' ? 'rgba(20,184,166,0.15)' : 'rgba(138,143,160,0.12)',
-              color: wo.status === 'completed' ? '#14B8A6' : '#8a8fa0',
-            }}>{wo.status}</span>
+            <StatusBadge status={wo.status} />
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             {woId && (

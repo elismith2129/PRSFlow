@@ -4,6 +4,7 @@ import { supabase, Lead, Booking, DashboardTask, DashboardTaskComment, Flag, Fla
 import { LocationStrip } from '@/components/dashboard/LocationStrip'
 import { useRouter } from 'next/navigation'
 import { BookingForm, type FormData, bookingToForm, emptyForm } from '@/components/calendar/BookingForm'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 
 const TAB_ROLE: Record<string, 'admin' | 'studio_manager' | 'asst_manager' | 'billing'> = {
   me:      'admin',
@@ -498,10 +499,6 @@ export default function DashboardPage() {
               <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 11 }}>✓ All clear</div>
             ) : (
               needsActionLeads.map((l, i) => {
-                const statusColor =
-                  l.status === 'hot' ? 'var(--hot)' :
-                  l.status === 'warm' ? 'var(--warm)' :
-                  'var(--text3)'
                 const reason =
                   l.status === 'hot' ? 'Follow up now' :
                   l.status === 'warm' ? 'Follow up due' :
@@ -522,9 +519,7 @@ export default function DashboardPage() {
                       <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{l.fname} {l.lname}</div>
                       <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>{reason}</div>
                     </div>
-                    <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: statusColor, textTransform: 'uppercase' }}>
-                      {l.status}
-                    </div>
+                    <StatusBadge status={l.status} />
                   </div>
                 )
               })
@@ -867,9 +862,7 @@ export default function DashboardPage() {
                         </span>
                       )}
                     </div>
-                    <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: statusColor, textTransform: 'uppercase', flexShrink: 0 }}>
-                      {flag.status}
-                    </span>
+                    <StatusBadge status={flag.status} />
                   </div>
                   {flag.runner_note && (
                     <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.4, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
@@ -1269,14 +1262,7 @@ export default function DashboardPage() {
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
               {/* Row 1: status badge + resolve + × */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{
-                  fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em',
-                  textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4,
-                  color: selectedFlag.status === 'pending' ? '#EF4444' : selectedFlag.status === 'acknowledged' ? '#F97316' : '#14B8A6',
-                  background: selectedFlag.status === 'pending' ? 'rgba(239,68,68,0.12)' : selectedFlag.status === 'acknowledged' ? 'rgba(249,115,22,0.12)' : 'rgba(20,184,166,0.12)',
-                }}>
-                  {selectedFlag.status}
-                </span>
+                <StatusBadge status={selectedFlag.status} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {selectedFlag.status === 'acknowledged' && (
                     <button
