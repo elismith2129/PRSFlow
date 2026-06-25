@@ -322,7 +322,7 @@ export interface UserProfile {
   auth_user_id: string | null
   email: string
   display_name: string
-  role: 'owner' | 'manager' | 'asst_manager' | 'staff'
+  role: 'owner' | 'manager' | 'billing' | 'asst_manager' | 'tech'
   created_at: string
   updated_at: string | null
   deleted_at: string | null

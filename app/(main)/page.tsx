@@ -8,13 +8,43 @@ import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useUserProfile } from '@/hooks/useUserProfile'
 
-type TaskTab = 'me' | 'mgr' | 'billing' | 'asst'
+// Task panel tabs. Each tab resolves to a set of user_profiles by display_name
+// (looked up dynamically — no hardcoded UUIDs). A tab shows tasks whose
+// assigned_to is one of those users' ids.
+type TabDef = { key: string; label: string; names: string[] }
+const TAB_DEFS: TabDef[] = [
+  { key: 'eli',       label: 'Eli',       names: ['Eli'] },
+  { key: 'adam_mike', label: 'Adam-Mike', names: ['Adam-Mike'] },
+  { key: 'fernando',  label: 'Fernando',  names: ['Fernando'] },
+  { key: 'aaron',     label: 'Aaron',     names: ['Aaron'] },
+  { key: 'asst',      label: 'Asst Mgr',  names: ['Quinn', 'Isaac'] },
+  { key: 'tech',      label: 'Tech',      names: ['Sierra', 'Tom'] },
+]
 
-const TAB_ROLE: Record<string, 'admin' | 'studio_manager' | 'asst_manager' | 'billing'> = {
-  me:      'admin',
-  mgr:     'studio_manager',
-  asst:    'asst_manager',
-  billing: 'billing',
+// Role-grouped options for the "Assign to" dropdown, in display order.
+const ROLE_GROUPS: { role: UserProfile['role']; label: string }[] = [
+  { role: 'owner',        label: 'Owner' },
+  { role: 'manager',      label: 'Manager' },
+  { role: 'billing',      label: 'Billing' },
+  { role: 'asst_manager', label: 'Asst Manager' },
+  { role: 'tech',         label: 'Tech' },
+]
+
+// owner / manager / billing see every tab and can assign to anyone;
+// asst_manager sees only the Asst Mgr tab, tech sees only the Tech tab.
+function visibleTabsForRole(role: UserProfile['role'] | null | undefined): TabDef[] {
+  if (role === 'asst_manager') return TAB_DEFS.filter(t => t.key === 'asst')
+  if (role === 'tech') return TAB_DEFS.filter(t => t.key === 'tech')
+  return TAB_DEFS
+}
+
+// Resolve a tab's display_names to user_profiles ids (case-insensitive).
+function idsForTab(tabKey: string, profiles: UserProfile[]): string[] {
+  const def = TAB_DEFS.find(t => t.key === tabKey)
+  if (!def) return []
+  const byName: Record<string, string> = {}
+  profiles.forEach(p => { if (p.display_name) byName[p.display_name.toLowerCase()] = p.id })
+  return def.names.map(n => byName[n.toLowerCase()]).filter(Boolean) as string[]
 }
 
 const STUDIO_COLORS: Record<string, string> = {
@@ -58,29 +88,14 @@ function fmtSessionTime(t: string): string {
   return `${h}${min !== '00' ? ':' + min : ''}${suf}`
 }
 
-async function fetchTasks(tab: TaskTab, profileId: string | null): Promise<DashboardTask[]> {
-  let query = supabase
+async function fetchTasks(ids: string[]): Promise<DashboardTask[]> {
+  if (ids.length === 0) return []
+  const { data } = await supabase
     .from('dashboard_tasks')
     .select('*')
+    .in('assigned_to', ids)
     .eq('completed', false)
     .is('deleted_at', null)
-
-  if (tab === 'me') {
-    // Personal tab: tasks assigned to me, plus the legacy unassigned/admin bucket
-    // (assigned_to IS NULL AND assigned_role = 'admin'). This keeps other users'
-    // personally-assigned tasks out of my list and never leaks unassigned
-    // role-bucket tasks (mgr/billing/asst) into the personal tab.
-    if (profileId) {
-      query = query.or(`assigned_to.eq.${profileId},and(assigned_to.is.null,assigned_role.eq.admin)`)
-    } else {
-      query = query.is('assigned_to', null).eq('assigned_role', 'admin')
-    }
-  } else {
-    // Role tabs are role-based, not personal — unchanged behavior.
-    query = query.eq('assigned_role', TAB_ROLE[tab])
-  }
-
-  const { data } = await query
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true })
   return data || []
@@ -100,10 +115,13 @@ export default function DashboardPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const { profile, loading: profileLoading } = useUserProfile()
-  const isOwner = profile?.role === 'owner'
+  const canAssign = !!profile && (profile.role === 'owner' || profile.role === 'manager' || profile.role === 'billing')
+  const visibleTabs = visibleTabsForRole(profile?.role)
   const [allProfiles, setAllProfiles] = useState<UserProfile[]>([])
   const [newTaskAssignTo, setNewTaskAssignTo] = useState<string>('')
-  const [activeTaskTab, setActiveTaskTab] = useState<TaskTab>('me')
+  const [activeTaskTab, setActiveTaskTab] = useState<string>('eli')
+  const defaultTabSetRef = useRef(false)
+  const [tabReady, setTabReady] = useState(false)
   const [tasks, setTasks] = useState<DashboardTask[]>([])
   const [tasksLoading, setTasksLoading] = useState(true)
   const [selectedTask, setSelectedTask] = useState<DashboardTask | null>(null)
@@ -181,32 +199,48 @@ export default function DashboardPage() {
     })
   }, [])
 
+  // Fetch the full user_profiles list once on mount — used to resolve tab ids
+  // and to populate the Assign to dropdown.
   useEffect(() => {
-    // Wait for the profile to resolve so the ME tab can filter by profile id
-    // without an initial flicker of the wrong result set.
-    if (profileLoading) return
-    async function load() {
-      setTasksLoading(true)
-      setTasks(await fetchTasks(activeTaskTab, profile?.id ?? null))
-      setTasksLoading(false)
-    }
-    load()
-  }, [activeTaskTab, profile?.id, profileLoading])
-
-  // Owner-only: load all profiles for the "Assign to" dropdown.
-  useEffect(() => {
-    if (!isOwner) return
     supabase
       .from('user_profiles')
       .select('*')
       .is('deleted_at', null)
       .order('display_name', { ascending: true })
       .then(({ data }) => setAllProfiles((data as UserProfile[]) || []))
-  }, [isOwner])
+  }, [])
+
+  // Once the profile + profiles are loaded, default the active tab to the user's
+  // own tab when it's visible, otherwise the first visible tab. Runs once.
+  useEffect(() => {
+    if (profileLoading || defaultTabSetRef.current || allProfiles.length === 0) return
+    defaultTabSetRef.current = true
+    const tabs = visibleTabsForRole(profile?.role)
+    let initial = tabs.length > 0 ? tabs[0].key : 'eli'
+    const name = profile?.display_name?.toLowerCase()
+    if (name) {
+      const own = tabs.find(t => t.names.some(n => n.toLowerCase() === name))
+      if (own) initial = own.key
+    }
+    setActiveTaskTab(initial)
+    setTabReady(true)
+  }, [profileLoading, profile, allProfiles])
+
+  useEffect(() => {
+    // Hold the first fetch until the default tab is settled, so a restricted user
+    // (asst_manager / tech) never momentarily loads another tab's tasks.
+    if (profileLoading || !tabReady) return
+    async function load() {
+      setTasksLoading(true)
+      setTasks(await fetchTasks(idsForTab(activeTaskTab, allProfiles)))
+      setTasksLoading(false)
+    }
+    load()
+  }, [activeTaskTab, allProfiles, profileLoading, tabReady])
 
   async function reloadTasks() {
     setTasksLoading(true)
-    setTasks(await fetchTasks(activeTaskTab, profile?.id ?? null))
+    setTasks(await fetchTasks(idsForTab(activeTaskTab, allProfiles)))
     setTasksLoading(false)
   }
 
@@ -253,18 +287,12 @@ export default function DashboardPage() {
   }
 
   async function fetchCompletedTasks() {
-    const roles = TAB_ROLE[activeTaskTab]
-    const visibleRoles: string[] = roles === 'admin'
-      ? ['admin', 'studio_manager', 'asst_manager', 'billing']
-      : roles === 'studio_manager'
-      ? ['studio_manager', 'asst_manager', 'billing']
-      : roles === 'billing'
-      ? ['billing', 'asst_manager']
-      : ['asst_manager']
+    const ids = idsForTab(activeTaskTab, allProfiles)
+    if (ids.length === 0) { setCompletedTasks([]); return }
     const { data } = await supabase
       .from('dashboard_tasks')
       .select('*')
-      .in('assigned_role', visibleRoles)
+      .in('assigned_to', ids)
       .eq('completed', true)
       .is('deleted_at', null)
       .order('completed_at', { ascending: false })
@@ -297,17 +325,44 @@ export default function DashboardPage() {
     await loadComments(task.id)
   }
 
+  function openAddTask() {
+    // Default the assignee: for assigners, prefer the active tab's user when the
+    // tab maps to exactly one person, otherwise the current user. Non-assigners
+    // (asst_manager / tech) don't see the dropdown and auto-assign to themselves.
+    let defaultAssignee = profile?.id ?? ''
+    if (canAssign) {
+      const def = TAB_DEFS.find(t => t.key === activeTaskTab)
+      if (def && def.names.length === 1) {
+        const id = idsForTab(activeTaskTab, allProfiles)[0]
+        if (id) defaultAssignee = id
+      }
+    }
+    setNewTaskAssignTo(defaultAssignee)
+    setAddingTask(true)
+  }
+
+  function closeAddTask() {
+    setAddingTask(false)
+    setNewTaskText('')
+    setNewTaskPhoto(null)
+    setNewTaskAssignTo('')
+    if (newTaskPhotoRef.current) newTaskPhotoRef.current.value = ''
+  }
+
   async function handleAddTask() {
     if (!newTaskText.trim() || taskSubmitting) return
     setTaskSubmitting(true)
     const photo_url = newTaskPhoto ? await uploadPhoto(newTaskPhoto) : null
-    // Owners may target a specific user via the Assign to dropdown; everyone else
-    // (and the unassigned default) leaves assigned_to null. assigned_by records
-    // who created the task — the current user's profile id when available.
-    const assigned_to = isOwner && newTaskAssignTo ? newTaskAssignTo : null
+    // owner/manager/billing assign via the dropdown (falling back to self if left
+    // blank); asst_manager/tech always assign to their own profile. assigned_by is
+    // always the creating user. assigned_role is a vestigial NOT NULL column —
+    // tab membership is driven entirely by assigned_to now.
+    const assigned_to = canAssign
+      ? (newTaskAssignTo || profile?.id || null)
+      : (profile?.id || null)
     const { data, error } = await supabase.from('dashboard_tasks').insert({
       text: newTaskText.trim(),
-      assigned_role: TAB_ROLE[activeTaskTab],
+      assigned_role: 'admin',
       assigned_to,
       assigned_by: profile?.id ?? null,
       source: 'manual',
@@ -700,24 +755,23 @@ export default function DashboardPage() {
             />
           </div>
           {/* Tab row */}
-          <div style={{ display: 'flex', gap: 3, padding: '6px 8px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', }}>
-            {(['me', 'mgr', 'billing', 'asst'] as const).map(tab => {
-              const labels = { me: 'Me', mgr: 'Mgr', billing: 'Billing', asst: 'Asst' }
-              const isActive = activeTaskTab === tab
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, padding: '6px 8px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', }}>
+            {visibleTabs.map(tab => {
+              const isActive = activeTaskTab === tab.key
               return (
                 <button
-                  key={tab}
-                  onClick={() => setActiveTaskTab(tab)}
+                  key={tab.key}
+                  onClick={() => setActiveTaskTab(tab.key)}
                   style={{
-                    flex: 1, padding: '5px 4px', fontSize: 10, fontFamily: 'Syne',
+                    flex: 1, minWidth: 0, padding: '5px 4px', fontSize: 10, fontFamily: 'Syne',
                     fontWeight: isActive ? 600 : 400,
                     color: isActive ? '#0d0f14' : 'var(--text3)',
                     background: isActive ? '#c8f04e' : 'transparent',
-                    border: 'none', cursor: 'pointer', borderRadius: 6,
+                    border: 'none', cursor: 'pointer', borderRadius: 6, whiteSpace: 'nowrap',
                     textTransform: 'uppercase', letterSpacing: '0.06em', transition: 'all 0.1s',
                   }}
                 >
-                  {labels[tab]}
+                  {tab.label}
                 </button>
               )
             })}
@@ -778,90 +832,19 @@ export default function DashboardPage() {
               ))
             )}
           </div>
-          {/* Footer: add task */}
+          {/* Footer: add task — opens the full modal */}
           <div style={{ padding: '8px', borderTop: '1px solid var(--border)' }}>
-            {!addingTask ? (
-              <button
-                onClick={() => setAddingTask(true)}
-                style={{
-                  width: '100%', padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
-                  color: 'var(--text3)', background: 'transparent', letterSpacing: '0.04em',
-                  border: '1px dashed var(--border)', borderRadius: 8, cursor: 'pointer',
-                  transition: 'all 0.15s',
-                }}
-              >
-                + add task
-              </button>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <input
-                  autoFocus
-                  value={newTaskText}
-                  onChange={e => setNewTaskText(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleAddTask()}
-                  placeholder="Task description…"
-                  style={{
-                    padding: '6px 8px', fontSize: 11, background: 'var(--surface2)',
-                    border: '1px solid var(--border)', borderRadius: 6,
-                    color: 'var(--text)', fontFamily: 'DM Mono', outline: 'none',
-                  }}
-                />
-                {isOwner && (
-                  <select
-                    value={newTaskAssignTo}
-                    onChange={e => setNewTaskAssignTo(e.target.value)}
-                    style={{
-                      padding: '6px 8px', fontSize: 11, background: 'var(--surface2)',
-                      border: '1px solid var(--border)', borderRadius: 6,
-                      color: 'var(--text)', fontFamily: 'DM Mono', outline: 'none',
-                    }}
-                  >
-                    <option value="">Unassigned</option>
-                    {allProfiles.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.display_name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <label style={{ fontSize: 10, color: 'var(--text3)', cursor: 'pointer', fontFamily: 'DM Mono', whiteSpace: 'nowrap' }}>
-                    {newTaskPhoto ? newTaskPhoto.name : '+ Photo'}
-                    <input
-                      ref={newTaskPhotoRef}
-                      type="file"
-                      accept="image/*"
-                      style={{ display: 'none' }}
-                      onChange={e => setNewTaskPhoto(e.target.files?.[0] ?? null)}
-                    />
-                  </label>
-                  <div style={{ flex: 1 }} />
-                  <button
-                    onClick={() => { setAddingTask(false); setNewTaskText(''); setNewTaskPhoto(null); setNewTaskAssignTo(''); if (newTaskPhotoRef.current) newTaskPhotoRef.current.value = '' }}
-                    style={{
-                      padding: '5px 10px', fontSize: 10, fontFamily: 'DM Mono',
-                      background: 'transparent', border: '1px solid var(--border)',
-                      borderRadius: 6, cursor: 'pointer', color: 'var(--text3)',
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleAddTask}
-                    disabled={taskSubmitting || !newTaskText.trim()}
-                    style={{
-                      padding: '5px 10px', fontSize: 10, fontFamily: 'DM Mono',
-                      background: newTaskText.trim() ? '#c8f04e' : 'var(--surface2)',
-                      color: newTaskText.trim() ? '#0d0f14' : 'var(--text3)',
-                      border: 'none', borderRadius: 6,
-                      cursor: newTaskText.trim() ? 'pointer' : 'default',
-                    }}
-                  >
-                    {taskSubmitting ? 'Saving…' : 'Save'}
-                  </button>
-                </div>
-              </div>
-            )}
+            <button
+              onClick={openAddTask}
+              style={{
+                width: '100%', padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
+                color: 'var(--text3)', background: 'transparent', letterSpacing: '0.04em',
+                border: '1px dashed var(--border)', borderRadius: 8, cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              + add task
+            </button>
           </div>
         </div>
 
@@ -1592,6 +1575,118 @@ export default function DashboardPage() {
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ADD TASK MODAL */}
+      {addingTask && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={e => { if (e.target === e.currentTarget) closeAddTask() }}
+        >
+          <div style={{ background: '#161920', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, width: '100%', maxWidth: 600, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>
+              <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>New Task</span>
+              <button
+                onClick={closeAddTask}
+                style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 20, lineHeight: 1, padding: 0 }}
+              >
+                ×
+              </button>
+            </div>
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 18, overflowY: 'auto' }}>
+              <div>
+                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
+                  Task Description <span style={{ color: '#EF4444' }}>*</span>
+                </div>
+                <textarea
+                  autoFocus
+                  value={newTaskText}
+                  onChange={e => setNewTaskText(e.target.value)}
+                  placeholder="What needs to be done?"
+                  rows={5}
+                  style={{
+                    width: '100%', padding: '10px 12px', fontSize: 13,
+                    background: 'var(--surface2)', border: '1px solid var(--border)',
+                    borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono',
+                    outline: 'none', resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.5,
+                  }}
+                />
+              </div>
+              {canAssign && (
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
+                    Assign To
+                  </div>
+                  <select
+                    value={newTaskAssignTo}
+                    onChange={e => setNewTaskAssignTo(e.target.value)}
+                    style={{
+                      width: '100%', padding: '10px 12px', fontSize: 13,
+                      background: 'var(--surface2)', border: '1px solid var(--border)',
+                      borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono',
+                      outline: 'none', boxSizing: 'border-box',
+                    }}
+                  >
+                    {ROLE_GROUPS.map(group => {
+                      const members = allProfiles.filter(p => p.role === group.role)
+                      if (members.length === 0) return null
+                      return (
+                        <optgroup key={group.role} label={group.label}>
+                          {members.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.display_name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )
+                    })}
+                  </select>
+                </div>
+              )}
+              <div>
+                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
+                  Photo
+                </div>
+                <label style={{ display: 'inline-block', fontSize: 11, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'DM Mono', padding: '9px 14px', border: '1px dashed var(--border)', borderRadius: 6 }}>
+                  {newTaskPhoto ? newTaskPhoto.name : '+ Add Photo'}
+                  <input
+                    ref={newTaskPhotoRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={e => setNewTaskPhoto(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <button
+                  onClick={closeAddTask}
+                  style={{
+                    flex: 1, padding: '11px', fontSize: 12, fontFamily: 'DM Mono',
+                    background: 'transparent', border: '1px solid var(--border)',
+                    borderRadius: 6, cursor: 'pointer', color: 'var(--text2)',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddTask}
+                  disabled={taskSubmitting || !newTaskText.trim()}
+                  style={{
+                    flex: 1, padding: '11px', fontSize: 12, fontFamily: 'DM Mono',
+                    background: newTaskText.trim() ? '#c8f04e' : 'var(--surface2)',
+                    color: newTaskText.trim() ? '#0d0f14' : 'var(--text3)',
+                    border: 'none', borderRadius: 6,
+                    cursor: newTaskText.trim() ? 'pointer' : 'default',
+                    fontWeight: 600,
+                  }}
+                >
+                  {taskSubmitting ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
