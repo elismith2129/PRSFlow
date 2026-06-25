@@ -149,7 +149,7 @@ export function Nav() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+        <div style={{ fontSize: 12, fontWeight: 500, color: '#e8eaf0', fontFamily: 'DM Mono' }}>
           {time}
         </div>
         <button
@@ -157,7 +157,9 @@ export function Nav() {
           onMouseEnter={(e) => { e.currentTarget.style.color = '#e8eaf0' }}
           onMouseLeave={(e) => { e.currentTarget.style.color = '#6B7280' }}
           style={{
-            background: 'transparent', border: 'none', padding: 0,
+            background: 'transparent', border: 'none',
+            borderLeft: '1px solid rgba(255,255,255,0.08)',
+            padding: 0, paddingLeft: 12, marginLeft: 8,
             fontFamily: 'DM Mono', fontSize: 10, fontWeight: 500,
             letterSpacing: '0.08em', textTransform: 'uppercase',
             color: '#6B7280', cursor: 'pointer', transition: 'color 0.15s ease',

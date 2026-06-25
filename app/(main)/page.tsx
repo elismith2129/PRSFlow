@@ -473,13 +473,6 @@ export default function DashboardPage() {
             Paramount <em style={{ fontStyle: 'italic', color: 'var(--accent)' }}>Recording Studios</em>
           </h1>
         </div>
-        <div style={{ textAlign: 'right', fontSize: 10, color: 'var(--text2)', lineHeight: 1.8 }}>
-          {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          <br />
-          <span style={{ color: 'var(--text3)' }}>
-            {now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-          </span>
-        </div>
       </div>
 
       {/* Location strip */}
