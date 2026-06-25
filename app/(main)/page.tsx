@@ -1,11 +1,14 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { supabase, Lead, Booking, DashboardTask, DashboardTaskComment, Flag, FlagComment } from '@/lib/supabase'
+import { supabase, Lead, Booking, DashboardTask, DashboardTaskComment, Flag, FlagComment, UserProfile } from '@/lib/supabase'
 import { LocationStrip } from '@/components/dashboard/LocationStrip'
 import { useRouter } from 'next/navigation'
 import { BookingForm, type FormData, bookingToForm, emptyForm } from '@/components/calendar/BookingForm'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
+import { useUserProfile } from '@/hooks/useUserProfile'
+
+type TaskTab = 'me' | 'mgr' | 'billing' | 'asst'
 
 const TAB_ROLE: Record<string, 'admin' | 'studio_manager' | 'asst_manager' | 'billing'> = {
   me:      'admin',
@@ -55,13 +58,29 @@ function fmtSessionTime(t: string): string {
   return `${h}${min !== '00' ? ':' + min : ''}${suf}`
 }
 
-async function fetchTasks(role: string): Promise<DashboardTask[]> {
-  const { data } = await supabase
+async function fetchTasks(tab: TaskTab, profileId: string | null): Promise<DashboardTask[]> {
+  let query = supabase
     .from('dashboard_tasks')
     .select('*')
-    .eq('assigned_role', role)
     .eq('completed', false)
     .is('deleted_at', null)
+
+  if (tab === 'me') {
+    // Personal tab: tasks assigned to me, plus the legacy unassigned/admin bucket
+    // (assigned_to IS NULL AND assigned_role = 'admin'). This keeps other users'
+    // personally-assigned tasks out of my list and never leaks unassigned
+    // role-bucket tasks (mgr/billing/asst) into the personal tab.
+    if (profileId) {
+      query = query.or(`assigned_to.eq.${profileId},and(assigned_to.is.null,assigned_role.eq.admin)`)
+    } else {
+      query = query.is('assigned_to', null).eq('assigned_role', 'admin')
+    }
+  } else {
+    // Role tabs are role-based, not personal — unchanged behavior.
+    query = query.eq('assigned_role', TAB_ROLE[tab])
+  }
+
+  const { data } = await query
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true })
   return data || []
@@ -80,7 +99,11 @@ export default function DashboardPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTaskTab, setActiveTaskTab] = useState<'me' | 'mgr' | 'billing' | 'asst'>('me')
+  const { profile, loading: profileLoading } = useUserProfile()
+  const isOwner = profile?.role === 'owner'
+  const [allProfiles, setAllProfiles] = useState<UserProfile[]>([])
+  const [newTaskAssignTo, setNewTaskAssignTo] = useState<string>('')
+  const [activeTaskTab, setActiveTaskTab] = useState<TaskTab>('me')
   const [tasks, setTasks] = useState<DashboardTask[]>([])
   const [tasksLoading, setTasksLoading] = useState(true)
   const [selectedTask, setSelectedTask] = useState<DashboardTask | null>(null)
@@ -127,6 +150,9 @@ export default function DashboardPage() {
   const now = new Date()
   const hour = now.getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  // Personalized: append the display name once the profile resolves; while loading
+  // or when no profile is found, fall back to the bare time-of-day greeting.
+  const greetingName = profile?.display_name ? ` ${profile.display_name}` : ''
   const needsActionLeads = leads
     .filter(l => l.needs_contact === true && l.status !== 'dead' && l.status !== 'booked' && l.status !== 'cold')
     .slice(0, 5)
@@ -156,17 +182,31 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
+    // Wait for the profile to resolve so the ME tab can filter by profile id
+    // without an initial flicker of the wrong result set.
+    if (profileLoading) return
     async function load() {
       setTasksLoading(true)
-      setTasks(await fetchTasks(TAB_ROLE[activeTaskTab]))
+      setTasks(await fetchTasks(activeTaskTab, profile?.id ?? null))
       setTasksLoading(false)
     }
     load()
-  }, [activeTaskTab])
+  }, [activeTaskTab, profile?.id, profileLoading])
+
+  // Owner-only: load all profiles for the "Assign to" dropdown.
+  useEffect(() => {
+    if (!isOwner) return
+    supabase
+      .from('user_profiles')
+      .select('*')
+      .is('deleted_at', null)
+      .order('display_name', { ascending: true })
+      .then(({ data }) => setAllProfiles((data as UserProfile[]) || []))
+  }, [isOwner])
 
   async function reloadTasks() {
     setTasksLoading(true)
-    setTasks(await fetchTasks(TAB_ROLE[activeTaskTab]))
+    setTasks(await fetchTasks(activeTaskTab, profile?.id ?? null))
     setTasksLoading(false)
   }
 
@@ -261,15 +301,22 @@ export default function DashboardPage() {
     if (!newTaskText.trim() || taskSubmitting) return
     setTaskSubmitting(true)
     const photo_url = newTaskPhoto ? await uploadPhoto(newTaskPhoto) : null
+    // Owners may target a specific user via the Assign to dropdown; everyone else
+    // (and the unassigned default) leaves assigned_to null. assigned_by records
+    // who created the task — the current user's profile id when available.
+    const assigned_to = isOwner && newTaskAssignTo ? newTaskAssignTo : null
     const { data, error } = await supabase.from('dashboard_tasks').insert({
       text: newTaskText.trim(),
       assigned_role: TAB_ROLE[activeTaskTab],
+      assigned_to,
+      assigned_by: profile?.id ?? null,
       source: 'manual',
       photo_url,
     })
     console.log('task insert result:', { data, error })
     setNewTaskText('')
     setNewTaskPhoto(null)
+    setNewTaskAssignTo('')
     if (newTaskPhotoRef.current) newTaskPhotoRef.current.value = ''
     setAddingTask(false)
     setTaskSubmitting(false)
@@ -467,7 +514,7 @@ export default function DashboardPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div>
           <div style={{ fontFamily: 'Syne', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 4 }}>
-            {greeting} — here's your briefing
+            {greeting}{greetingName} — here's your briefing
           </div>
           <h1 style={{ fontFamily: 'DM Serif Display', fontSize: 32, letterSpacing: -1, lineHeight: 1.05 }}>
             Paramount <em style={{ fontStyle: 'italic', color: 'var(--accent)' }}>Recording Studios</em>
@@ -759,6 +806,24 @@ export default function DashboardPage() {
                     color: 'var(--text)', fontFamily: 'DM Mono', outline: 'none',
                   }}
                 />
+                {isOwner && (
+                  <select
+                    value={newTaskAssignTo}
+                    onChange={e => setNewTaskAssignTo(e.target.value)}
+                    style={{
+                      padding: '6px 8px', fontSize: 11, background: 'var(--surface2)',
+                      border: '1px solid var(--border)', borderRadius: 6,
+                      color: 'var(--text)', fontFamily: 'DM Mono', outline: 'none',
+                    }}
+                  >
+                    <option value="">Unassigned</option>
+                    {allProfiles.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.display_name}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   <label style={{ fontSize: 10, color: 'var(--text3)', cursor: 'pointer', fontFamily: 'DM Mono', whiteSpace: 'nowrap' }}>
                     {newTaskPhoto ? newTaskPhoto.name : '+ Photo'}
@@ -772,7 +837,7 @@ export default function DashboardPage() {
                   </label>
                   <div style={{ flex: 1 }} />
                   <button
-                    onClick={() => { setAddingTask(false); setNewTaskText(''); setNewTaskPhoto(null); if (newTaskPhotoRef.current) newTaskPhotoRef.current.value = '' }}
+                    onClick={() => { setAddingTask(false); setNewTaskText(''); setNewTaskPhoto(null); setNewTaskAssignTo(''); if (newTaskPhotoRef.current) newTaskPhotoRef.current.value = '' }}
                     style={{
                       padding: '5px 10px', fontSize: 10, fontFamily: 'DM Mono',
                       background: 'transparent', border: '1px solid var(--border)',

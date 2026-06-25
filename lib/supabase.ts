@@ -291,6 +291,8 @@ export interface DashboardTask {
   id: string
   text: string
   assigned_role: 'admin' | 'studio_manager' | 'asst_manager' | 'billing'
+  assigned_to: string | null
+  assigned_by: string | null
   completed: boolean
   completed_at: string | null
   completed_note: string | null
@@ -313,6 +315,17 @@ export interface DashboardTaskComment {
   photo_url: string | null
   created_by_name: string | null
   created_at: string
+}
+
+export interface UserProfile {
+  id: string
+  auth_user_id: string | null
+  email: string
+  display_name: string
+  role: 'owner' | 'manager' | 'asst_manager' | 'staff'
+  created_at: string
+  updated_at: string | null
+  deleted_at: string | null
 }
 
 export interface Flag {
