@@ -31,6 +31,10 @@ export default function TasksPage() {
   const [activeTasks, setActiveTasks] = useState<DashboardTask[]>([])
   const [completedTasks, setCompletedTasks] = useState<DashboardTask[]>([])
   const [loading, setLoading] = useState(true)
+  // Completed section is collapsed by default; a non-empty search overrides the
+  // collapse so search always finds completed matches.
+  const [showCompleted, setShowCompleted] = useState(false)
+  const [search, setSearch] = useState('')
 
   const [selectedTask, setSelectedTask] = useState<DashboardTask | null>(null)
   const [taskComments, setTaskComments] = useState<DashboardTaskComment[]>([])
@@ -236,6 +240,12 @@ export default function TasksPage() {
     )
   }
 
+  const q = search.trim().toLowerCase()
+  const activeFiltered = q ? activeTasks.filter(t => t.text.toLowerCase().includes(q)) : activeTasks
+  const completedFiltered = q ? completedTasks.filter(t => t.text.toLowerCase().includes(q)) : completedTasks
+  // Rows show when expanded OR while searching (search overrides collapse).
+  const completedVisible = showCompleted || q.length > 0
+
   return (
     <div>
       {/* Header */}
@@ -279,36 +289,53 @@ export default function TasksPage() {
         })}
       </div>
 
+      {/* Search */}
+      <input
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        placeholder="Search tasks…"
+        style={{
+          width: '100%', padding: '9px 12px', fontSize: 12, fontFamily: 'DM Mono',
+          background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8,
+          color: 'var(--text)', outline: 'none', boxSizing: 'border-box', marginBottom: 14,
+        }}
+      />
+
       {/* ACTIVE */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
         <div style={{ padding: '13px 16px 0', borderBottom: '1px solid var(--border)' }}>
-          <SectionHeader title="ACTIVE" count={activeTasks.length > 0 ? activeTasks.length : undefined} />
+          <SectionHeader title="ACTIVE" count={activeFiltered.length > 0 ? activeFiltered.length : undefined} />
         </div>
         <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {loading ? (
             <div style={{ padding: '4px', color: 'var(--text3)', fontSize: 12 }}>Loading…</div>
-          ) : activeTasks.length === 0 ? (
+          ) : activeFiltered.length === 0 ? (
             <div style={{ padding: '4px', color: 'var(--text3)', fontSize: 12 }}>No active tasks</div>
           ) : (
-            activeTasks.map(task => <TaskRow key={task.id} task={task} />)
+            activeFiltered.map(task => <TaskRow key={task.id} task={task} />)
           )}
         </div>
       </div>
 
-      {/* COMPLETED */}
+      {/* COMPLETED — collapsed by default; header toggles open/closed */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-        <div style={{ padding: '13px 16px 0', borderBottom: '1px solid var(--border)' }}>
-          <SectionHeader title="COMPLETED" count={completedTasks.length > 0 ? completedTasks.length : undefined} countColor="teal" />
+        <div
+          onClick={() => setShowCompleted(v => !v)}
+          style={{ padding: '13px 16px 0', borderBottom: completedVisible ? '1px solid var(--border)' : 'none', cursor: 'pointer' }}
+        >
+          <SectionHeader title={`COMPLETED (${completedFiltered.length}) ${completedVisible ? '▲' : '▼'}`} />
         </div>
-        <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {loading ? (
-            <div style={{ padding: '4px', color: 'var(--text3)', fontSize: 12 }}>Loading…</div>
-          ) : completedTasks.length === 0 ? (
-            <div style={{ padding: '4px', color: 'var(--text3)', fontSize: 12 }}>No completed tasks</div>
-          ) : (
-            completedTasks.map(task => <TaskRow key={task.id} task={task} />)
-          )}
-        </div>
+        {completedVisible && (
+          <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {loading ? (
+              <div style={{ padding: '4px', color: 'var(--text3)', fontSize: 12 }}>Loading…</div>
+            ) : completedFiltered.length === 0 ? (
+              <div style={{ padding: '4px', color: 'var(--text3)', fontSize: 12 }}>No completed tasks</div>
+            ) : (
+              completedFiltered.map(task => <TaskRow key={task.id} task={task} />)
+            )}
+          </div>
+        )}
       </div>
 
       {/* TASK MODAL */}
