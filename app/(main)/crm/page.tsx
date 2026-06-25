@@ -13,7 +13,6 @@ import { combineLocation, parseLocation } from '@/lib/studios'
 import { addArtistToLabel } from '@/lib/roster'
 import { ClientsPageInner } from '@/app/(main)/clients/page'
 import { SectionHeader } from '@/components/ui/SectionHeader'
-import { StatusBadge } from '@/components/ui/StatusBadge'
 
 const STATUS_COLORS: Record<string, string> = {
   hot: 'var(--hot)', warm: 'var(--warm)', cold: 'var(--cold)',
@@ -762,69 +761,66 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
         </div>
       </div>
       {/* Content */}
-      <div style={{ overflowY: 'auto', flex: 1, padding: '10px 12px' }}>
+      <div style={{ overflowY: 'auto', flex: 1 }}>
         {loading ? (
           <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
         ) : activeBucket.items.length === 0 ? (
           <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11 }}>{activeBucket.emptyMsg}</div>
         ) : activeBucket.items.map(l => {
+          const missing = getMissing(l)
+          const touch = latestTouches[l.id]
           const isTouchPrompting = touchPromptId === l.id
           const isKeepHotPrompting = keepHotPromptId === l.id
           const isPrompting = isTouchPrompting || isKeepHotPrompting
           const keepColor = l.status === 'warm' ? 'var(--warm)' : 'var(--hot)'
           return (
             <React.Fragment key={l.id}>
-              <div
-                onClick={() => onSelect(l.id)}
-                onMouseEnter={e => { if (selectedId !== l.id) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)' }}
-                onMouseLeave={e => { if (selectedId !== l.id) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-                  background: '#161920',
-                  border: `1px solid ${selectedId === l.id ? '#c8f04e' : 'rgba(255,255,255,0.08)'}`,
-                  borderRadius: 7,
-                  padding: '12px 14px',
-                  marginBottom: isPrompting ? 0 : 6,
-                  cursor: 'pointer',
-                  transition: 'border-color 0.15s',
-                }}
-              >
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 13, fontFamily: 'DM Mono', fontWeight: 600, color: '#e8eaf0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(200,240,78,0.04)' : 'transparent', transition: 'background 0.15s' }}>
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: STATUS_COLORS[l.status] || 'var(--text3)' }} />
+                <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, background: STATUS_COLORS[l.status] || 'var(--text3)' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
                     {l.label && l.artist_name
                       ? <>{l.label} <span style={{ color: 'var(--text3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--text3)' }}>/</span> {l.artist_name}</>
                       : <>{l.fname} {l.lname}</>}
                   </div>
                   {fmtSessionLine(l) && (
-                    <div style={{ fontSize: 11, fontWeight: 400, color: '#9ca3af', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {fmtSessionLine(l)}
                     </div>
                   )}
+                  <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
+                    {activeBucket.type === 'incomplete'
+                      ? <span style={{ color: 'var(--accent2)' }}>missing: {missing.join(', ')}</span>
+                      : activeBucket.key === 'uncontacted'
+                        ? <span style={{ color: 'var(--text3)' }}>never contacted · added {fmtDate(l.created_at)}</span>
+                        : <>{daysSince(l.last_contact || l.created_at)}d ago{touch?.initials && <span style={{ color: 'var(--text2)' }}> · {touch.initials}{touch.method ? ` via ${touch.method}` : ''}</span>}</>}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                  <StatusBadge status={l.status} />
-                  {(l.status === 'hot' || l.status === 'warm') && daysUntilKhu(l) !== null && (daysUntilKhu(l) as number) <= 1 && (
-                    <button
-                      onClick={e => {
-                        e.stopPropagation()
-                        setTouchPromptId(null)
-                        setKeepHotPromptId(isKeepHotPrompting ? null : l.id)
-                      }}
-                      style={{ flexShrink: 0, padding: '4px 9px', background: 'transparent', border: `1px solid ${isKeepHotPrompting ? 'var(--border)' : keepColor}`, color: isKeepHotPrompting ? 'var(--text3)' : keepColor, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                      {isKeepHotPrompting ? 'Cancel' : activeBucket.key === 'warm' ? 'Keep Warm?' : 'Keep Hot?'}
-                    </button>
-                  )}
+                <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, border: '1px solid var(--border)', color: 'var(--text3)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                  {BOOKING_ICONS[l.booking] || ''} {l.booking || '—'}
+                </span>
+                {(l.status === 'hot' || l.status === 'warm') && daysUntilKhu(l) !== null && (daysUntilKhu(l) as number) <= 1 && (
                   <button
                     onClick={e => {
                       e.stopPropagation()
-                      setKeepHotPromptId(null)
-                      setTouchPromptId(isTouchPrompting ? null : l.id)
-                      if (!isTouchPrompting) onSelect(l.id)
+                      setTouchPromptId(null)
+                      setKeepHotPromptId(isKeepHotPrompting ? null : l.id)
                     }}
-                    style={{ flexShrink: 0, padding: '5px 12px', background: 'transparent', border: `1px solid ${isTouchPrompting ? 'var(--border)' : '#c8f04e'}`, color: isTouchPrompting ? 'var(--text3)' : '#c8f04e', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                    {isTouchPrompting ? 'Cancel' : 'Contact'}
+                    style={{ flexShrink: 0, padding: '4px 9px', background: 'transparent', border: `1px solid ${isKeepHotPrompting ? 'var(--border)' : keepColor}`, color: isKeepHotPrompting ? 'var(--text3)' : keepColor, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                    {isKeepHotPrompting ? 'Cancel' : activeBucket.key === 'warm' ? 'Keep Warm?' : 'Keep Hot?'}
                   </button>
-                </div>
+                )}
+                <button
+                  onClick={e => {
+                    e.stopPropagation()
+                    setKeepHotPromptId(null)
+                    setTouchPromptId(isTouchPrompting ? null : l.id)
+                    if (!isTouchPrompting) onSelect(l.id)
+                  }}
+                  style={{ flexShrink: 0, padding: '4px 10px', background: 'transparent', border: `1px solid ${isTouchPrompting ? 'var(--border)' : 'var(--accent)'}`, color: isTouchPrompting ? 'var(--text3)' : 'var(--accent)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  {isTouchPrompting ? 'Cancel' : 'Contact'}
+                </button>
               </div>
               {isTouchPrompting && (
                 <TouchPrompt
@@ -965,7 +961,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
       </div>
 
       {/* Lead list */}
-      <div style={{ overflowY: 'auto', flex: 1, padding: '10px 12px' }}>
+      <div style={{ overflowY: 'auto', flex: 1 }}>
         {loading ? (
           <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
         ) : filtered.length === 0 ? (
@@ -973,6 +969,8 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
             {search ? 'No leads match.' : 'No leads.'}
           </div>
         ) : paginated.map((l, idx) => {
+          const touch = latestTouches[l.id]
+          const missing = getMissing(l)
           const isTouchPrompting = touchPromptId === l.id
           const isKeepHotPrompting = keepHotPromptId === l.id
           const isPrompting = isTouchPrompting || isKeepHotPrompting
@@ -984,52 +982,43 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
           return (
             <React.Fragment key={l.id}>
               {showDateSep && (
-                <div style={{ display: 'flex', alignItems: 'center', margin: '14px 2px 8px', color: '#4a4f64', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', margin: '16px 16px 0', color: '#4a4f64', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   <span style={{ flex: 1, borderBottom: '1px solid #2a2e3d' }} />
                   <span style={{ margin: '0 12px' }}>{dateSepLabel(l.created_at)}</span>
                   <span style={{ flex: 1, borderBottom: '1px solid #2a2e3d' }} />
                 </div>
               )}
-              <div
-                onClick={() => onSelect(l.id)}
-                onMouseEnter={e => { if (selectedId !== l.id) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)' }}
-                onMouseLeave={e => { if (selectedId !== l.id) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-                  background: '#161920',
-                  border: `1px solid ${selectedId === l.id ? '#c8f04e' : 'rgba(255,255,255,0.08)'}`,
-                  borderRadius: 7,
-                  padding: '12px 14px',
-                  marginBottom: isPrompting ? 0 : 6,
-                  cursor: 'pointer',
-                  transition: 'border-color 0.15s',
-                }}
-              >
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 13, fontFamily: 'DM Mono', fontWeight: 600, color: '#e8eaf0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(200,240,78,0.04)' : 'transparent', transition: 'background 0.15s' }}>
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: STATUS_COLORS[l.status] || 'var(--text3)' }} />
+                <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, background: STATUS_COLORS[l.status] || 'var(--text3)' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
                     {l.label && l.artist_name
                       ? <>{l.label} <span style={{ color: 'var(--text3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--text3)' }}>/</span> {l.artist_name}</>
                       : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--text3)', fontWeight: 400 }}> · {l.company}</span>}</>}
                   </div>
                   {fmtSessionLine(l) && (
-                    <div style={{ fontSize: 11, fontWeight: 400, color: '#9ca3af', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {fmtSessionLine(l)}
                     </div>
                   )}
+                  <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {l.booking && <span>{BOOKING_ICONS[l.booking] || ''} {l.booking} · </span>}
+                    {l.last_contact ? `${daysSince(l.last_contact)}d ago` : `added ${fmtDate(l.created_at)}`}
+                    {touch?.initials && <span style={{ color: 'var(--text3)' }}> · {touch.initials}{touch.method ? ` via ${touch.method}` : ''}</span>}
+                    {missing.length > 0 && <span style={{ color: 'var(--accent2)' }}> · missing: {missing.join(', ')}</span>}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                  <StatusBadge status={l.status} />
-                  {showKeepHot && (
-                    <button onClick={e => { e.stopPropagation(); setTouchPromptId(null); setKeepHotPromptId(isKeepHotPrompting ? null : l.id) }}
-                      style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: `1px solid ${isKeepHotPrompting ? 'var(--border)' : keepColor}`, color: isKeepHotPrompting ? 'var(--text3)' : keepColor, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                      {isKeepHotPrompting ? 'Cancel' : keepLabel}
-                    </button>
-                  )}
-                  <button onClick={e => { e.stopPropagation(); setKeepHotPromptId(null); setTouchPromptId(isTouchPrompting ? null : l.id); if (!isTouchPrompting) onSelect(l.id) }}
-                    style={{ flexShrink: 0, padding: '5px 12px', background: 'transparent', border: `1px solid ${isTouchPrompting ? 'var(--border)' : '#c8f04e'}`, color: isTouchPrompting ? 'var(--text3)' : '#c8f04e', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                    {isTouchPrompting ? 'Cancel' : 'Contact'}
+                {showKeepHot && (
+                  <button onClick={e => { e.stopPropagation(); setTouchPromptId(null); setKeepHotPromptId(isKeepHotPrompting ? null : l.id) }}
+                    style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: `1px solid ${isKeepHotPrompting ? 'var(--border)' : keepColor}`, color: isKeepHotPrompting ? 'var(--text3)' : keepColor, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                    {isKeepHotPrompting ? 'Cancel' : keepLabel}
                   </button>
-                </div>
+                )}
+                <button onClick={e => { e.stopPropagation(); setKeepHotPromptId(null); setTouchPromptId(isTouchPrompting ? null : l.id); if (!isTouchPrompting) onSelect(l.id) }}
+                  style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: `1px solid ${isTouchPrompting ? 'var(--border)' : 'var(--accent)'}`, color: isTouchPrompting ? 'var(--text3)' : 'var(--accent)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  {isTouchPrompting ? 'Cancel' : 'Contact'}
+                </button>
               </div>
               {isTouchPrompting && (
                 <TouchPrompt leadId={l.id}
