@@ -153,6 +153,7 @@ export default function DashboardPage() {
   const [addingTask, setAddingTask] = useState(false)
   const [newTaskText, setNewTaskText] = useState('')
   const [newTaskPhoto, setNewTaskPhoto] = useState<File | null>(null)
+  const [newTaskPhotoPreview, setNewTaskPhotoPreview] = useState<string | null>(null)
   const [taskSubmitting, setTaskSubmitting] = useState(false)
   const [currentUserEmail, setCurrentUserEmail] = useState<string>('Staff')
   const [showHistory, setShowHistory] = useState(false)
@@ -359,12 +360,30 @@ export default function DashboardPage() {
     setAddingTask(true)
   }
 
+  // Set the selected add-task photo and its object-URL preview, revoking any prior
+  // preview URL to avoid leaks.
+  function pickNewTaskPhoto(file: File | null) {
+    setNewTaskPhoto(file)
+    setNewTaskPhotoPreview(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return file ? URL.createObjectURL(file) : null
+    })
+  }
+
+  function clearNewTaskPhoto() {
+    setNewTaskPhoto(null)
+    setNewTaskPhotoPreview(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+    if (newTaskPhotoRef.current) newTaskPhotoRef.current.value = ''
+  }
+
   function closeAddTask() {
     setAddingTask(false)
     setNewTaskText('')
-    setNewTaskPhoto(null)
     setNewTaskAssignTo('')
-    if (newTaskPhotoRef.current) newTaskPhotoRef.current.value = ''
+    clearNewTaskPhoto()
   }
 
   async function handleAddTask() {
@@ -386,12 +405,12 @@ export default function DashboardPage() {
       assigned_by: profile?.id ?? null,
       source: 'manual',
       photo_url,
-    })
-    console.log('task insert result:', { data, error })
+    }).select()
+    if (error) console.error('task insert failed:', error)
+    else console.log('task insert result:', { data })
     setNewTaskText('')
-    setNewTaskPhoto(null)
     setNewTaskAssignTo('')
-    if (newTaskPhotoRef.current) newTaskPhotoRef.current.value = ''
+    clearNewTaskPhoto()
     setAddingTask(false)
     setTaskSubmitting(false)
     await reloadTasks()
@@ -1713,6 +1732,13 @@ export default function DashboardPage() {
                 <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
                   Photo
                 </div>
+                {newTaskPhotoPreview && (
+                  <img
+                    src={newTaskPhotoPreview}
+                    alt=""
+                    style={{ display: 'block', maxHeight: 80, borderRadius: 4, objectFit: 'cover', marginBottom: 8 }}
+                  />
+                )}
                 <label style={{ display: 'inline-block', fontSize: 11, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'DM Mono', padding: '9px 14px', border: '1px dashed var(--border)', borderRadius: 6 }}>
                   {newTaskPhoto ? newTaskPhoto.name : '+ Add Photo'}
                   <input
@@ -1720,7 +1746,7 @@ export default function DashboardPage() {
                     type="file"
                     accept="image/*"
                     style={{ display: 'none' }}
-                    onChange={e => setNewTaskPhoto(e.target.files?.[0] ?? null)}
+                    onChange={e => pickNewTaskPhoto(e.target.files?.[0] ?? null)}
                   />
                 </label>
               </div>
