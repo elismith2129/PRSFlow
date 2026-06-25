@@ -112,6 +112,7 @@ export default function DashboardPage() {
   const flagCommentPhotoRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const [calDate, setCalDate] = useState(new Date())
+  const [hoverRoom, setHoverRoom] = useState<string | null>(null)
   const [dashBkFormOpen, setDashBkFormOpen] = useState(false)
   const [dashEditBooking, setDashEditBooking] = useState<Booking | null>(null)
   const [dashFormInitial, setDashFormInitial] = useState<FormData>(() => emptyForm())
@@ -199,6 +200,17 @@ export default function DashboardPage() {
     setDashEditBooking(bk)
     setDashFormInitial(bookingToForm(bk))
     setDashBkFormOpen(true)
+  }
+
+  // Empty room card → open the calendar's new-booking form pre-filled with this
+  // room and the viewed day. Reuses the calendar's existing new-booking flow
+  // (openNew + handleSave) via query params rather than duplicating the form.
+  function openNewRoomBooking(room: { venue: string; studio: string }) {
+    const d = new Date(calDate)
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+    const date = d.toISOString().slice(0, 10)
+    const params = new URLSearchParams({ newBooking: '1', location: room.venue, studio: room.studio, date })
+    router.push(`/calendar?${params.toString()}`)
   }
 
   async function handleDashSave(data: FormData) {
@@ -693,15 +705,20 @@ export default function DashboardPage() {
                 const asstColor = booking?.assistant_status === 'confirmed' ? '#4ef0a2'
                   : booking?.assistant_status === 'hold' ? '#f0a24e'
                   : 'rgba(255,255,255,0.4)'
+                const isEmpty = !booking
+                // Empty cards hint they're clickable with a lime border tint on hover.
+                const effectiveBorder = isEmpty && hoverRoom === room.label ? 'rgba(200, 240, 78, 0.2)' : cardBorder
                 return (
                   <div
                     key={room.label}
-                    onClick={() => booking && openBookingEdit(booking)}
+                    onClick={() => booking ? openBookingEdit(booking) : openNewRoomBooking(room)}
+                    onMouseEnter={isEmpty ? () => setHoverRoom(room.label) : undefined}
+                    onMouseLeave={isEmpty ? () => setHoverRoom(null) : undefined}
                     style={{
                       position: 'relative',
                       height: 120,
                       borderRadius: 6,
-                      border: `1px solid ${cardBorder}`,
+                      border: `1px solid ${effectiveBorder}`,
                       boxShadow: cardGlow,
                       background: booking ? '#0d0f14' : 'rgba(0,0,0,0.2)',
                       padding: '7px 9px',
@@ -709,7 +726,7 @@ export default function DashboardPage() {
                       flexDirection: 'column',
                       overflow: 'hidden',
                       boxSizing: 'border-box',
-                      cursor: booking ? 'pointer' : 'default',
+                      cursor: 'pointer',
                     }}
                   >
                     {cardAccent && (

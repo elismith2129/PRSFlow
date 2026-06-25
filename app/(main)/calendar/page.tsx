@@ -1059,6 +1059,19 @@ function CalendarPageInner() {
     })
   }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-open a blank booking form pre-filled with a room when navigated from the
+  // dashboard empty-room cards: /calendar?newBooking=1&location=&studio=&date=
+  // (the clientId-based newBooking flow above handles the Start Booking path).
+  useEffect(() => {
+    if (!searchParams.get('newBooking') || searchParams.get('clientId')) return
+    const location = searchParams.get('location') || undefined
+    const studio = searchParams.get('studio') || undefined
+    const date = searchParams.get('date') || undefined
+    if (!location && !studio) return
+    router.replace('/calendar')
+    openNew(location, studio, date)
+  }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
+
   function openNew(location?: string, studio?: string, date?: string) {
     const initial = emptyForm({ location, studio, start_date: date, end_date: date })
     setEditBooking(null)
