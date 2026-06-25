@@ -1,6 +1,6 @@
 # PRSFlow — Tech Stack & Roadmap
 
-*Last updated: June 24, 2026*
+*Last updated: June 25, 2026*
 
 ---
 
@@ -11,7 +11,7 @@
 | Framework | Next.js 14 (App Router) | `"next": "^16.2.6"` in package.json; all pages are `'use client'` |
 | Database | Supabase (Postgres) | Direct browser queries via anon key; no API layer |
 | Storage | Supabase Storage | Private `client-ids` bucket for ID file uploads |
-| Auth | Deferred to Chunk 9 | No RLS yet; tables are open with public access policies |
+| Auth | Supabase Auth (login live June 25, 2026); RLS deferred to Chunk 9 | Login + client-side `AuthGuard` on `(main)` routes. **UX gating only** — no RLS yet, anon key keeps full table access. Sessions in localStorage (no SSR middleware). |
 | Hosting | Vercel | Auto-deploys from GitHub `main`; Vercel Cron for auto-demotion job |
 | Language | TypeScript | `strict: false`, `target: es5` |
 | Styling | Plain CSS + CSS variables | No Tailwind (installed but unused); all inline `style={{}}` JSX |
@@ -99,7 +99,13 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 | Path | Purpose |
 |---|---|
 | `app/layout.tsx` | Root layout; font loading, global CSS |
-| `app/(main)/` | Route group for internal nav-bearing pages |
+| `app/(main)/` | Route group for internal nav-bearing pages (gated by `AuthGuard`) |
+| `app/(auth)/login/page.tsx` | Styled login — `signInWithPassword`; "Forgot password?" → `resetPasswordForEmail` |
+| `app/(auth)/reset-password/page.tsx` | New-password page — `updateUser({ password })` |
+| `components/auth/AuthGuard.tsx` | Client-side route guard wrapping `app/(main)/layout.tsx`; redirects unauthenticated users to `/login` (localStorage sessions; no SSR middleware) |
+| `hooks/useUserProfile.ts` | `{ profile, loading }` — resolves the logged-in user's `user_profiles` row by session email. Single source of profile-fetch logic |
+| `supabase/user_profiles.sql` | Migration: `user_profiles` table + seed (run manually in Supabase SQL editor) |
+| `supabase/dashboard-tasks-assignment.sql` | Migration: `dashboard_tasks.assigned_to` / `assigned_by` uuid FK → `user_profiles.id` |
 | `app/crm/page.tsx` | CRM — canonical pattern reference for all new pages |
 | `app/clients/page.tsx` | Clients list + detail panel |
 | `app/register/[token]/page.tsx` | Public registration form (no nav) |
@@ -308,10 +314,20 @@ Defined in `styles/globals.css`:
 | **UI polish pass ✅** | **Shared StatusBadge + SectionHeader primitives, nav tab underline, room-grid/chip glow** |
 | ui-polish | **(`052819d`, `288947b`, `62ad623`, `d628449`, `1810e53`)** `components/ui/StatusBadge.tsx` + `components/ui/SectionHeader.tsx` replace ad-hoc status text and section headings across dashboard, CRM, admin, wo-hub, flags, and WorkOrderPopup (CRM's local `SectionHeader` field-label helper renamed `FieldGroupLabel`). Nav tabs restyled to a bottom-border underline (active 2px `#c8f04e` + `#e8eaf0`, inactive `#6B7280`/hover `#9ca3af`, full-height DM Mono 11px tabs); calendar tab count badge removed (`tentativeCount` state/fetch kept). Dashboard room-grid cards get teal/orange state glow + 2px top bar; calendar booking chips recolored confirmed `#22c55e`→`#14B8A6` (all three `STATUS_TOP_COLORS` maps) + subtle glow on BookingBlock/DayView/StudioView — "open-WO" orange maps to the existing `tentative` signal (no WO data fetched on those surfaces). CRM lead-row card redesign (`f934716`) was reverted (`3df8016`), not shipped. |
 
+| **Auth — login + route protection ✅** | **Supabase Auth login, forgot/reset password, client-side guard** |
+| auth-login | `app/(auth)/login` (`signInWithPassword` → `/`; `resetPasswordForEmail`) + `app/(auth)/reset-password` (`updateUser`); `components/auth/AuthGuard.tsx` wraps `(main)` layout (checks `getSession`, redirects to `/login`, `onAuthStateChange`); login bounces authed users to `/`. Client guard (no `@supabase/ssr`/middleware; localStorage sessions); `(main)` routes only — runner/register/auth public. Nav Sign Out button. UX gating, not data security (RLS off). Also: nav clock upgraded (12px/`#e8eaf0`/500) + redundant dashboard date/time block removed. |
+| **Schema — user_profiles + task assignment ✅** | **`user_profiles` table + `dashboard_tasks.assigned_to`/`assigned_by`** |
+| user-profiles | `supabase/user_profiles.sql` (surrogate `id` PK, nullable `auth_user_id` FK→auth.users, `email` unique lookup key, role `owner/manager/billing/asst_manager/tech`, soft delete; seed 6→8 staff; run manually in SQL editor — Claude has no DDL access). `supabase/dashboard-tasks-assignment.sql` adds `assigned_to`/`assigned_by` uuid FK→`user_profiles.id`. Role set + roster changed in the live DB after the migration. |
+| **Personalized greeting + task panel rebuild ✅** | **`useUserProfile` hook; 6 per-user task tabs; add-task + detail modals** |
+| task-panel-rebuild | `hooks/useUserProfile.ts` (resolve profile by session email); greeting shows `display_name`. Dashboard task tabs rebuilt to 6 per-user tabs (Eli/Adam-Mike/Fernando/Aaron/Asst Mgr/Tech) resolved by display_name (no hardcoded UUIDs), driven by `assigned_to`; visibility by role (owner/manager/billing all; asst_manager→Asst Mgr; tech→Tech); horizontally scrollable tab bar (`.hide-scrollbar`). Full add-task modal with flat Assign-to dropdown (Asst Mgr→Quinn's id, Tech→Sierra's id; owner/manager/billing only). Task detail modal redesigned (Complete header button; description + assigned meta + UPDATES thread + comment Submit; footer Delete[canAssign]/Cancel/Save&Close); task rows single-line truncated. `assigned_role` vestigial (new tasks set `'admin'`). |
+| **Add-task photo 🚧** | **"Photo not saving" — under investigation (resume June 26, 2026)** |
+| add-task-photo | Probes confirm `dashboard_tasks.photo_url` exists, insert persists it, `uploadPhoto` returns a valid URL — recent NULL rows were tasks saved without a photo attached. Added thumbnail preview (`URL.createObjectURL`) + `.select()` insert-error logging (`056aa79`). Next: reproduce, read console error, check bucket anon INSERT policy + filename sanitization. |
+
 ### Next
 
 | Priority | What's next |
 |---|---|
+| **🚧 In progress** | **Add-task photo not saving** — finish debugging (June 26): reproduce with the new thumbnail preview, capture any console error, check `checklist-photos` bucket anon INSERT policy + filename sanitization |
 | Medium | **Activity log on session form and WO** — per-booking/per-WO feed of field changes, status transitions, runner submissions, admin approvals |
 | Medium | **Combine WOs** — merge multiple work orders for a single booking into one consolidated WO |
 | Medium | **Mobile pass** — full mobile UX review and fixes across non-runner pages (calendar, CRM, admin) |
