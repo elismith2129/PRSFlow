@@ -150,6 +150,7 @@ export default function DashboardPage() {
   const [taskComments, setTaskComments] = useState<DashboardTaskComment[]>([])
   const [commentText, setCommentText] = useState('')
   const [commentPhoto, setCommentPhoto] = useState<File | null>(null)
+  const [commentPhotoPreview, setCommentPhotoPreview] = useState<string | null>(null)
   const [addingTask, setAddingTask] = useState(false)
   const [newTaskText, setNewTaskText] = useState('')
   const [newTaskPhoto, setNewTaskPhoto] = useState<File | null>(null)
@@ -347,8 +348,7 @@ export default function DashboardPage() {
   async function handleOpenTask(task: DashboardTask) {
     setSelectedTask(task)
     setCommentText('')
-    setCommentPhoto(null)
-    if (commentPhotoRef.current) commentPhotoRef.current.value = ''
+    clearCommentPhoto()
     await loadComments(task.id)
   }
 
@@ -377,6 +377,25 @@ export default function DashboardPage() {
       return null
     })
     if (newTaskPhotoRef.current) newTaskPhotoRef.current.value = ''
+  }
+
+  // Set the selected comment photo and its object-URL preview, revoking any prior
+  // preview URL to avoid leaks.
+  function pickCommentPhoto(file: File | null) {
+    setCommentPhoto(file)
+    setCommentPhotoPreview(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return file ? URL.createObjectURL(file) : null
+    })
+  }
+
+  function clearCommentPhoto() {
+    setCommentPhoto(null)
+    setCommentPhotoPreview(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+    if (commentPhotoRef.current) commentPhotoRef.current.value = ''
   }
 
   function closeAddTask() {
@@ -433,8 +452,7 @@ export default function DashboardPage() {
       created_by_name: currentUserEmail,
     })
     setCommentText('')
-    setCommentPhoto(null)
-    if (commentPhotoRef.current) commentPhotoRef.current.value = ''
+    clearCommentPhoto()
     await loadComments(selectedTask.id)
     setTaskSubmitting(false)
   }
@@ -458,16 +476,14 @@ export default function DashboardPage() {
     setTasks(prev => prev.filter(t => t.id !== selectedTask.id))
     setSelectedTask(null)
     setCommentText('')
-    setCommentPhoto(null)
-    if (commentPhotoRef.current) commentPhotoRef.current.value = ''
+    clearCommentPhoto()
     setTaskSubmitting(false)
   }
 
   function handleCancelTaskModal() {
     setSelectedTask(null)
     setCommentText('')
-    setCommentPhoto(null)
-    if (commentPhotoRef.current) commentPhotoRef.current.value = ''
+    clearCommentPhoto()
   }
 
   async function handleSaveAndCloseTask() {
@@ -478,8 +494,7 @@ export default function DashboardPage() {
     }
     setSelectedTask(null)
     setCommentText('')
-    setCommentPhoto(null)
-    if (commentPhotoRef.current) commentPhotoRef.current.value = ''
+    clearCommentPhoto()
   }
 
   async function handleDeleteSelectedTask() {
@@ -487,8 +502,7 @@ export default function DashboardPage() {
     await handleDeleteTask(selectedTask)
     setSelectedTask(null)
     setCommentText('')
-    setCommentPhoto(null)
-    if (commentPhotoRef.current) commentPhotoRef.current.value = ''
+    clearCommentPhoto()
   }
 
   async function loadFlagComments(flagId: string) {
@@ -1080,6 +1094,13 @@ export default function DashboardPage() {
                   outline: 'none', resize: 'none', boxSizing: 'border-box', marginTop: 16,
                 }}
               />
+              {commentPhotoPreview && (
+                <img
+                  src={commentPhotoPreview}
+                  alt=""
+                  style={{ display: 'block', maxHeight: 80, borderRadius: 4, marginBottom: 8, marginTop: 8 }}
+                />
+              )}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
                 <label style={{ fontSize: 11, color: '#9ca3af', cursor: 'pointer', fontFamily: 'DM Mono' }}>
                   {commentPhoto ? commentPhoto.name : '+ Attach photo'}
@@ -1088,7 +1109,7 @@ export default function DashboardPage() {
                     type="file"
                     accept="image/*"
                     style={{ display: 'none' }}
-                    onChange={e => setCommentPhoto(e.target.files?.[0] ?? null)}
+                    onChange={e => pickCommentPhoto(e.target.files?.[0] ?? null)}
                   />
                 </label>
                 <button
