@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { UnifiedSessionForm } from '@/components/unified/UnifiedSessionForm'
@@ -16,6 +16,7 @@ const navItems = [
 
 export function Nav() {
   const pathname = usePathname()
+  const router = useRouter()
   const [time, setTime] = useState('')
   const [unreviewedRegs, setUnreviewedRegs] = useState(0)
   const [tentativeCount, setTentativeCount] = useState(0)
@@ -54,6 +55,11 @@ export function Nav() {
     const id = setInterval(fetchCount, 60_000)
     return () => clearInterval(id)
   }, [])
+
+  async function handleSignOut() {
+    await supabase.auth.signOut()
+    router.replace('/login')
+  }
 
   useEffect(() => {
     async function fetchTentative() {
@@ -142,8 +148,23 @@ export function Nav() {
         )}
       </div>
 
-      <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
-        {time}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+          {time}
+        </div>
+        <button
+          onClick={handleSignOut}
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#e8eaf0' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = '#6B7280' }}
+          style={{
+            background: 'transparent', border: 'none', padding: 0,
+            fontFamily: 'DM Mono', fontSize: 10, fontWeight: 500,
+            letterSpacing: '0.08em', textTransform: 'uppercase',
+            color: '#6B7280', cursor: 'pointer', transition: 'color 0.15s ease',
+          }}
+        >
+          Sign Out
+        </button>
       </div>
 
       {showUSF && (
