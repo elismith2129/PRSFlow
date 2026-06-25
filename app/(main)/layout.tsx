@@ -1,4 +1,5 @@
 import { Nav } from '@/components/layout/Nav'
+import { AuthGuard } from '@/components/auth/AuthGuard'
 
 export default function MainLayout({
   children,
@@ -6,11 +7,11 @@ export default function MainLayout({
   children: React.ReactNode
 }) {
   return (
-    <>
+    <AuthGuard>
       <Nav />
       <main style={{ padding: '24px 32px' }}>
         {children}
       </main>
-    </>
+    </AuthGuard>
   )
 }
