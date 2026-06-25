@@ -38,6 +38,10 @@ html, body {
 ::-webkit-scrollbar-track { background: var(--surface); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
+/* Visually hide the scrollbar while keeping the element scrollable */
+.hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+
 select {
   color-scheme: dark;
   -webkit-appearance: none;

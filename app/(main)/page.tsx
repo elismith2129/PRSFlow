@@ -21,14 +21,29 @@ const TAB_DEFS: TabDef[] = [
   { key: 'tech',      label: 'Tech',      names: ['Sierra', 'Tom'] },
 ]
 
-// Role-grouped options for the "Assign to" dropdown, in display order.
-const ROLE_GROUPS: { role: UserProfile['role']; label: string }[] = [
-  { role: 'owner',        label: 'Owner' },
-  { role: 'manager',      label: 'Manager' },
-  { role: 'billing',      label: 'Billing' },
-  { role: 'asst_manager', label: 'Asst Manager' },
-  { role: 'tech',         label: 'Tech' },
+// Flat "Assign to" dropdown options, in exact display order. Individual people
+// (Adam-Mike / Eli / Fernando / Aaron) map to their own profile; the Asst Mgr and
+// Tech options represent a pair and assign to the primary member's id (Quinn /
+// Sierra), which lands the task in the corresponding member-based tab. The option
+// keys intentionally match the TAB_DEFS keys so the dropdown can default to the
+// active tab. `primaryName` is resolved to an id at save time via resolveAssignTo.
+const ASSIGN_OPTIONS: { key: string; label: string; primaryName: string }[] = [
+  { key: 'adam_mike', label: 'Adam-Mike', primaryName: 'Adam-Mike' },
+  { key: 'eli',       label: 'Eli',       primaryName: 'Eli' },
+  { key: 'fernando',  label: 'Fernando',  primaryName: 'Fernando' },
+  { key: 'aaron',     label: 'Aaron',     primaryName: 'Aaron' },
+  { key: 'asst',      label: 'Asst Mgr',  primaryName: 'Quinn' },
+  { key: 'tech',      label: 'Tech',      primaryName: 'Sierra' },
 ]
+
+// Resolve a dropdown option key to the assigned_to user id (its primary member),
+// looked up by display_name (case-insensitive). No hardcoded UUIDs.
+function resolveAssignTo(optionKey: string, profiles: UserProfile[]): string | null {
+  const opt = ASSIGN_OPTIONS.find(o => o.key === optionKey)
+  if (!opt) return null
+  const match = profiles.find(p => p.display_name?.toLowerCase() === opt.primaryName.toLowerCase())
+  return match ? match.id : null
+}
 
 // owner / manager / billing see every tab and can assign to anyone;
 // asst_manager sees only the Asst Mgr tab, tech sees only the Tech tab.
@@ -326,18 +341,10 @@ export default function DashboardPage() {
   }
 
   function openAddTask() {
-    // Default the assignee: for assigners, prefer the active tab's user when the
-    // tab maps to exactly one person, otherwise the current user. Non-assigners
-    // (asst_manager / tech) don't see the dropdown and auto-assign to themselves.
-    let defaultAssignee = profile?.id ?? ''
-    if (canAssign) {
-      const def = TAB_DEFS.find(t => t.key === activeTaskTab)
-      if (def && def.names.length === 1) {
-        const id = idsForTab(activeTaskTab, allProfiles)[0]
-        if (id) defaultAssignee = id
-      }
-    }
-    setNewTaskAssignTo(defaultAssignee)
+    // Default the dropdown to the option matching the active tab — option keys
+    // share the TAB_DEFS key space. Non-assigners (asst_manager / tech) don't see
+    // the dropdown and auto-assign to themselves.
+    setNewTaskAssignTo(canAssign ? activeTaskTab : '')
     setAddingTask(true)
   }
 
@@ -353,12 +360,13 @@ export default function DashboardPage() {
     if (!newTaskText.trim() || taskSubmitting) return
     setTaskSubmitting(true)
     const photo_url = newTaskPhoto ? await uploadPhoto(newTaskPhoto) : null
-    // owner/manager/billing assign via the dropdown (falling back to self if left
-    // blank); asst_manager/tech always assign to their own profile. assigned_by is
-    // always the creating user. assigned_role is a vestigial NOT NULL column —
-    // tab membership is driven entirely by assigned_to now.
+    // owner/manager/billing assign via the dropdown (the selected option resolves
+    // to a member id — Asst Mgr → Quinn, Tech → Sierra); asst_manager/tech always
+    // assign to their own profile. assigned_by is always the creating user.
+    // assigned_role stays a vestigial NOT NULL column — tab membership is driven
+    // entirely by assigned_to.
     const assigned_to = canAssign
-      ? (newTaskAssignTo || profile?.id || null)
+      ? (resolveAssignTo(newTaskAssignTo, allProfiles) || profile?.id || null)
       : (profile?.id || null)
     const { data, error } = await supabase.from('dashboard_tasks').insert({
       text: newTaskText.trim(),
@@ -754,8 +762,8 @@ export default function DashboardPage() {
               action={{ label: 'history →', onClick: async () => { await fetchCompletedTasks(); setShowHistory(true) } }}
             />
           </div>
-          {/* Tab row */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, padding: '6px 8px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', }}>
+          {/* Tab row — horizontally scrollable, scrollbar hidden */}
+          <div className="hide-scrollbar" style={{ display: 'flex', gap: 3, padding: '6px 8px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', overflowX: 'auto', whiteSpace: 'nowrap' }}>
             {visibleTabs.map(tab => {
               const isActive = activeTaskTab === tab.key
               return (
@@ -763,7 +771,7 @@ export default function DashboardPage() {
                   key={tab.key}
                   onClick={() => setActiveTaskTab(tab.key)}
                   style={{
-                    flex: 1, minWidth: 0, padding: '5px 4px', fontSize: 10, fontFamily: 'Syne',
+                    flexShrink: 0, padding: '0 6px', fontSize: 10, fontFamily: 'Syne',
                     fontWeight: isActive ? 600 : 400,
                     color: isActive ? '#0d0f14' : 'var(--text3)',
                     background: isActive ? '#c8f04e' : 'transparent',
@@ -1629,19 +1637,11 @@ export default function DashboardPage() {
                       outline: 'none', boxSizing: 'border-box',
                     }}
                   >
-                    {ROLE_GROUPS.map(group => {
-                      const members = allProfiles.filter(p => p.role === group.role)
-                      if (members.length === 0) return null
-                      return (
-                        <optgroup key={group.role} label={group.label}>
-                          {members.map(p => (
-                            <option key={p.id} value={p.id}>
-                              {p.display_name}
-                            </option>
-                          ))}
-                        </optgroup>
-                      )
-                    })}
+                    {ASSIGN_OPTIONS.map(opt => (
+                      <option key={opt.key} value={opt.key}>
+                        {opt.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               )}
