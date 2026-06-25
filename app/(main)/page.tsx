@@ -45,6 +45,13 @@ function resolveAssignTo(optionKey: string, profiles: UserProfile[]): string | n
   return match ? match.id : null
 }
 
+// Resolve a user id to a display name (for the assigned-to / assigned-by meta line).
+function nameForId(id: string | null, profiles: UserProfile[]): string {
+  if (!id) return 'Unassigned'
+  const p = profiles.find(x => x.id === id)
+  return p?.display_name || 'Unknown'
+}
+
 // owner / manager / billing see every tab and can assign to anyone;
 // asst_manager sees only the Asst Mgr tab, tech sees only the Tech tab.
 function visibleTabsForRole(role: UserProfile['role'] | null | undefined): TabDef[] {
@@ -318,7 +325,11 @@ export default function DashboardPage() {
   async function uploadPhoto(file: File): Promise<string | null> {
     const path = `dashboard-tasks/${Date.now()}-${file.name.replace(/\s+/g, '_')}`
     const { data, error } = await supabase.storage.from('checklist-photos').upload(path, file, { upsert: true })
-    if (!data || error) return null
+    if (!data || error) {
+      // Surface storage failures instead of silently saving a record with no photo.
+      console.error('photo upload failed:', error)
+      return null
+    }
     const { data: { publicUrl } } = supabase.storage.from('checklist-photos').getPublicUrl(data.path)
     return publicUrl
   }
@@ -429,7 +440,36 @@ export default function DashboardPage() {
     setSelectedTask(null)
     setCommentText('')
     setCommentPhoto(null)
+    if (commentPhotoRef.current) commentPhotoRef.current.value = ''
     setTaskSubmitting(false)
+  }
+
+  function handleCancelTaskModal() {
+    setSelectedTask(null)
+    setCommentText('')
+    setCommentPhoto(null)
+    if (commentPhotoRef.current) commentPhotoRef.current.value = ''
+  }
+
+  async function handleSaveAndCloseTask() {
+    if (!selectedTask || taskSubmitting) return
+    // Persist any unsent note/photo, then close.
+    if (commentText.trim() || commentPhoto) {
+      await handleComment()
+    }
+    setSelectedTask(null)
+    setCommentText('')
+    setCommentPhoto(null)
+    if (commentPhotoRef.current) commentPhotoRef.current.value = ''
+  }
+
+  async function handleDeleteSelectedTask() {
+    if (!selectedTask) return
+    await handleDeleteTask(selectedTask)
+    setSelectedTask(null)
+    setCommentText('')
+    setCommentPhoto(null)
+    if (commentPhotoRef.current) commentPhotoRef.current.value = ''
   }
 
   async function loadFlagComments(flagId: string) {
@@ -812,7 +852,7 @@ export default function DashboardPage() {
                     marginTop: 4, flexShrink: 0,
                   }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.4 }}>
+                    <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {task.text}
                     </div>
                     {task.due_date && (
@@ -945,49 +985,58 @@ export default function DashboardPage() {
       {selectedTask && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={e => { if (e.target === e.currentTarget) setSelectedTask(null) }}
+          onClick={e => { if (e.target === e.currentTarget) handleCancelTaskModal() }}
         >
           <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-            {/* Modal header */}
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
+            {/* Header — Complete button only, right aligned */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <button
-                onClick={() => setSelectedTask(null)}
-                style={{ position: 'absolute', top: 14, right: 16, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 18, lineHeight: 1, padding: 0 }}
+                onClick={handleCompleteTask}
+                disabled={taskSubmitting}
+                style={{
+                  border: '1px solid #14B8A6', background: 'transparent', color: '#14B8A6',
+                  fontSize: 10, fontFamily: 'DM Mono', fontWeight: 700, textTransform: 'uppercase',
+                  padding: '5px 12px', borderRadius: 4, cursor: 'pointer', letterSpacing: '0.04em',
+                }}
               >
-                ×
+                Complete
               </button>
-              <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15, color: 'var(--text)', paddingRight: 24, lineHeight: 1.3 }}>
-                {selectedTask.text}
-              </div>
-              {selectedTask.photo_url && (
-                <img
-                  src={selectedTask.photo_url}
-                  alt=""
-                  style={{ display: 'block', maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover', marginTop: 8 }}
-                />
-              )}
-              {selectedTask.source !== 'manual' && selectedTask.source_label && (
-                <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4, fontFamily: 'DM Mono' }}>
-                  {selectedTask.source_label}
-                </div>
-              )}
-              {selectedTask.due_date && (
-                <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2, fontFamily: 'DM Mono' }}>
-                  Due {selectedTask.due_date}
-                </div>
-              )}
             </div>
 
-            {/* Comment thread */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
+            {/* Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+              {/* Description */}
+              <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                {selectedTask.text}
+                {selectedTask.photo_url && (
+                  <img
+                    src={selectedTask.photo_url}
+                    alt=""
+                    style={{ display: 'block', maxWidth: '100%', maxHeight: 220, borderRadius: 8, objectFit: 'cover', marginTop: 10 }}
+                  />
+                )}
+              </div>
+
+              {/* Assigned meta */}
+              <div style={{ fontSize: 10, color: '#6B7280', fontFamily: 'DM Mono', marginTop: 12 }}>
+                Assigned to: {nameForId(selectedTask.assigned_to, allProfiles)} · by {nameForId(selectedTask.assigned_by, allProfiles)} · {new Date(selectedTask.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </div>
+
+              {/* Updates */}
+              <div style={{ fontSize: 10, color: '#6B7280', fontFamily: 'DM Mono', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 18, marginBottom: 10 }}>
+                Updates
+              </div>
               {taskComments.length === 0 ? (
-                <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>No updates yet</div>
+                <div style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic' }}>No updates yet</div>
               ) : (
                 taskComments.map(c => (
                   <div key={c.id} style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 10, color: '#6B7280', fontFamily: 'DM Mono', marginBottom: 3 }}>
+                      {c.created_by_name && `${c.created_by_name} · `}{fmtTime(c.created_at)}
+                    </div>
                     {c.text && (
-                      <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>{c.text}</div>
+                      <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.5 }}>{c.text}</div>
                     )}
                     {c.photo_url && (
                       <img
@@ -996,65 +1045,80 @@ export default function DashboardPage() {
                         style={{ display: 'block', maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover', marginTop: c.text ? 6 : 0 }}
                       />
                     )}
-                    <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 4, fontFamily: 'DM Mono' }}>
-                      {c.created_by_name && `${c.created_by_name} · `}{fmtTime(c.created_at)}
-                    </div>
                   </div>
                 ))
               )}
-            </div>
 
-            {/* Divider */}
-            <div style={{ borderTop: '1px solid var(--border)' }} />
-
-            {/* Input area */}
-            <div style={{ padding: '12px 20px' }}>
+              {/* Comment input */}
               <textarea
                 value={commentText}
                 onChange={e => setCommentText(e.target.value)}
-                placeholder="Add a note…"
-                rows={2}
+                placeholder="Add a note..."
                 style={{
-                  width: '100%', padding: '8px', fontSize: 11,
-                  background: 'var(--surface2)', border: '1px solid var(--border)',
+                  width: '100%', height: 72, padding: '10px 12px', fontSize: 12,
+                  background: '#0d0f14', border: '1px solid rgba(255,255,255,0.08)',
                   borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono',
-                  outline: 'none', resize: 'none', boxSizing: 'border-box',
+                  outline: 'none', resize: 'none', boxSizing: 'border-box', marginTop: 16,
                 }}
               />
-              <label style={{ display: 'block', fontSize: 10, color: 'var(--text3)', cursor: 'pointer', fontFamily: 'DM Mono', marginTop: 6, marginBottom: 8 }}>
-                {commentPhoto ? commentPhoto.name : '+ Attach photo'}
-                <input
-                  ref={commentPhotoRef}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={e => setCommentPhoto(e.target.files?.[0] ?? null)}
-                />
-              </label>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+                <label style={{ fontSize: 11, color: '#9ca3af', cursor: 'pointer', fontFamily: 'DM Mono' }}>
+                  {commentPhoto ? commentPhoto.name : '+ Attach photo'}
+                  <input
+                    ref={commentPhotoRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={e => setCommentPhoto(e.target.files?.[0] ?? null)}
+                  />
+                </label>
                 <button
                   onClick={handleComment}
                   disabled={taskSubmitting || (!commentText.trim() && !commentPhoto)}
                   style={{
-                    flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
-                    background: 'transparent', border: '1px solid var(--border)',
-                    borderRadius: 6, cursor: 'pointer', color: 'var(--text2)',
+                    border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: '#9ca3af',
+                    fontSize: 11, fontFamily: 'DM Mono', padding: '6px 14px', borderRadius: 6,
+                    cursor: (commentText.trim() || commentPhoto) ? 'pointer' : 'default',
                   }}
                 >
-                  Comment
-                </button>
-                <button
-                  onClick={handleCompleteTask}
-                  disabled={taskSubmitting}
-                  style={{
-                    flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
-                    background: '#c8f04e', color: '#0d0f14',
-                    border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600,
-                  }}
-                >
-                  {taskSubmitting ? 'Saving…' : 'Complete'}
+                  {taskSubmitting ? 'Saving…' : 'Submit'}
                 </button>
               </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 20px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              {canAssign && (
+                <button
+                  onClick={handleDeleteSelectedTask}
+                  style={{
+                    border: '1px solid rgba(239,68,68,0.4)', background: 'transparent', color: '#ef4444',
+                    fontSize: 11, fontFamily: 'DM Mono', padding: '8px 14px', borderRadius: 6, cursor: 'pointer',
+                  }}
+                >
+                  Delete
+                </button>
+              )}
+              <div style={{ flex: 1 }} />
+              <button
+                onClick={handleCancelTaskModal}
+                style={{
+                  border: '1px solid var(--border)', background: 'transparent', color: 'var(--text2)',
+                  fontSize: 11, fontFamily: 'DM Mono', padding: '8px 14px', borderRadius: 6, cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveAndCloseTask}
+                disabled={taskSubmitting}
+                style={{
+                  background: '#c8f04e', color: '#0d0f14', border: 'none',
+                  fontSize: 11, fontFamily: 'DM Mono', fontWeight: 600, padding: '8px 14px', borderRadius: 6, cursor: 'pointer',
+                }}
+              >
+                Save &amp; Close
+              </button>
             </div>
 
           </div>
