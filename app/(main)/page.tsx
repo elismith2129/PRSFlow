@@ -611,12 +611,14 @@ export default function DashboardPage() {
                 return (
                   <div
                     key={l.id}
+                    onClick={() => router.push(`/crm?lead=${l.id}`)}
                     style={{
                       padding: '9px 16px',
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       borderBottom: i < needsActionLeads.length - 1 ? '1px solid var(--border)' : 'none',
+                      cursor: 'pointer',
                     }}
                   >
                     <div>

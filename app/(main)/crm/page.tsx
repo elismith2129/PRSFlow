@@ -272,6 +272,27 @@ export default function CRMPage() {
   useEffect(() => { load() }, [load])
 
   const hasAutoSelected = useRef(false)
+  // Pre-select a lead passed via ?lead= (e.g. from the dashboard Needs Action panel).
+  // Runs once after leads load; marks hasAutoSelected so the default Needs Action
+  // auto-select below doesn't override it. Same window.location pattern as the
+  // ?clientId=/?id= handling above (avoids a useSearchParams Suspense boundary).
+  const leadParamHandled = useRef(false)
+  useEffect(() => {
+    if (loading || leadParamHandled.current || leads.length === 0) return
+    leadParamHandled.current = true
+    try {
+      const leadParam = new URLSearchParams(window.location.search).get('lead')
+      if (!leadParam) return
+      const lead = leads.find(l => l.id === Number(leadParam))
+      if (lead) {
+        setTab('leads')
+        // The detail panel only renders in a list view, so move off analytics.
+        setView(v => v === 'analytics' ? 'needs-action' : v)
+        setSelectedId(lead.id)
+        hasAutoSelected.current = true
+      }
+    } catch {}
+  }, [loading, leads])
   useEffect(() => {
     if (loading || hasAutoSelected.current || leads.length === 0) return
     const uncontacted = leads.filter(l => l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead'].includes(l.status)))
