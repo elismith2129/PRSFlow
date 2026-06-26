@@ -5,6 +5,7 @@ import type { Booking } from '@/lib/supabase'
 import { DailyOpsModal, type DailyOpsSubmission } from '@/components/dashboard/DailyOpsModal'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 import { CHECKLISTS, flattenSections } from '@/lib/checklist-items'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 const LOCATIONS = [
   { label: 'Paramount', key: 'paramount', abbr: 'PRS', color: '#c8f04e' },
@@ -86,6 +87,7 @@ function TwoCheckbox({ label, checked, clickable = false, loading = false, onCli
 }
 
 export function LocationStrip() {
+  const isMobile  = useIsMobile()
   const today     = getLocalDateStr()
   const yesterday = getLocalDateStr(-1)
   const retentionCutoff = new Date(today + 'T09:00:00')
@@ -311,7 +313,7 @@ export function LocationStrip() {
   return (
     <>
       {/* ── Strip ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 10, marginBottom: 18 }}>
         {LOCATIONS.map(loc => {
           const s        = summaries[loc.key]
           const sessCount = s?.sessionCount ?? 0
@@ -341,12 +343,13 @@ export function LocationStrip() {
       {/* ── Centered Dialog — zIndex above nav (9999) ── */}
       {selectedLoc && (
         <div
-          style={{ position: 'fixed', inset: 0, background: '#000000cc', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 20px' }}
+          style={{ position: 'fixed', inset: 0, background: '#000000cc', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? 0 : '24px 20px' }}
           onClick={e => e.target === e.currentTarget && closeDrawer()}
         >
           <div style={{
-            background: 'var(--bg)', width: '100%', maxWidth: 920,
-            maxHeight: '88dvh', borderRadius: 16, overflow: 'hidden',
+            background: 'var(--bg)', width: '100%', maxWidth: isMobile ? '100vw' : 920,
+            maxHeight: isMobile ? '100dvh' : '88dvh', height: isMobile ? '100dvh' : undefined,
+            borderRadius: isMobile ? 0 : 16, overflow: 'hidden',
             display: 'flex', flexDirection: 'column',
             boxShadow: '0 32px 96px #0009',
             border: `1px solid ${selectedLoc.color}33`,
@@ -370,7 +373,7 @@ export function LocationStrip() {
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', fontFamily: 'Syne' }}>Loading…</div>
             ) : (
               <div style={{ flex: 1, overflowY: 'auto', padding: '22px 26px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: pastRetentionWindow ? '1fr' : '1fr 1fr', gap: 24, alignItems: 'start' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: (isMobile || pastRetentionWindow) ? '1fr' : '1fr 1fr', gap: 24, alignItems: 'start' }}>
 
                   {/* ── LEFT — Yesterday ── */}
                   {!pastRetentionWindow && (

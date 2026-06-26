@@ -42,6 +42,16 @@ html, body {
 .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 
+/* ── Mobile (≤768px) ──────────────────────────────────────────────────────
+   Tighten the shared (main) page gutter so content has room on a phone, and
+   guard against any element forcing a horizontal scroll. Desktop is untouched
+   — these only apply below the breakpoint. The !important on padding is needed
+   to beat the inline style on the <main> element. */
+@media (max-width: 768px) {
+  html, body { overflow-x: hidden; max-width: 100vw; }
+  .page-main { padding: 16px 12px !important; }
+}
+
 select {
   color-scheme: dark;
   -webkit-appearance: none;

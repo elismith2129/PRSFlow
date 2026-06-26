@@ -7,7 +7,18 @@ import { BookingForm, type FormData, bookingToForm, emptyForm } from '@/componen
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { ASSIGN_OPTIONS, resolveAssignTo, nameForId, visibleTabsForRole, idsForTab, fetchTasks } from '@/lib/tasks'
+
+// Mobile-only override spread for modal cards: full-screen sheet (100vw × 100dvh,
+// no rounding, flush to the edges). Spread LAST into a card's style object so it
+// wins over the desktop width/maxWidth/margin/maxHeight/borderRadius values.
+// Returns {} on desktop, leaving the existing layout untouched.
+function fullscreenCardOnMobile(isMobile: boolean): React.CSSProperties {
+  return isMobile
+    ? { width: '100vw', maxWidth: '100vw', height: '100dvh', maxHeight: '100dvh', margin: 0, borderRadius: 0 }
+    : {}
+}
 
 const STUDIO_COLORS: Record<string, string> = {
   paramount: '#c8f04e',
@@ -64,6 +75,7 @@ export default function DashboardPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const { profile, loading: profileLoading } = useUserProfile()
+  const isMobile = useIsMobile()
   const canAssign = !!profile && (profile.role === 'owner' || profile.role === 'manager' || profile.role === 'billing')
   const visibleTabs = visibleTabsForRole(profile?.role)
   const [allProfiles, setAllProfiles] = useState<UserProfile[]>([])
@@ -600,11 +612,12 @@ export default function DashboardPage() {
       {/* Location strip */}
       <LocationStrip />
 
-      {/* 3-column grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: 14, alignItems: 'start', marginTop: 14 }}>
+      {/* 3-column grid — single column on mobile, reordered so Today's Sessions
+          leads, then Needs Action, then Tasks (via the `order` overrides below). */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr 1fr', gap: 14, alignItems: 'start', marginTop: 14 }}>
 
         {/* COL 1 — NEEDS ACTION */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', order: isMobile ? 2 : 0 }}>
           <div style={{ padding: '13px 16px 0', borderBottom: '1px solid var(--border)' }}>
             <SectionHeader title="NEEDS ACTION" />
           </div>
@@ -654,27 +667,27 @@ export default function DashboardPage() {
         </div>
 
         {/* COL 2 — TODAY'S SESSIONS */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', height: 556 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', height: isMobile ? 'auto' : 556, order: isMobile ? 1 : 0 }}>
           <div style={{ padding: '13px 16px 0', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <SectionHeader title="TODAY'S SESSIONS" />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
                 onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() - 1); return n })}
-                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text2)', cursor: 'pointer', padding: '2px 7px', fontSize: 13, lineHeight: 1 }}
+                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text2)', cursor: 'pointer', padding: '2px 7px', fontSize: 13, lineHeight: 1, minWidth: isMobile ? 44 : undefined, minHeight: isMobile ? 44 : undefined }}
               >‹</button>
-              <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: isMobile ? 11 : 10, fontFamily: 'DM Mono', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
                 {calDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
               </div>
               <button
                 onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() + 1); return n })}
-                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text2)', cursor: 'pointer', padding: '2px 7px', fontSize: 13, lineHeight: 1 }}
+                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text2)', cursor: 'pointer', padding: '2px 7px', fontSize: 13, lineHeight: 1, minWidth: isMobile ? 44 : undefined, minHeight: isMobile ? 44 : undefined }}
               >›</button>
             </div>
           </div>
           {loading ? (
             <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, padding: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 4, padding: 8 }}>
               {ROOMS.map(room => {
                 const booking = bookings.find(b =>
                   b.location === room.venue && b.studio === room.studio
@@ -772,7 +785,7 @@ export default function DashboardPage() {
         </div>
 
         {/* COL 3 — TASKS */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', order: isMobile ? 3 : 0 }}>
           {/* Header */}
           <div style={{ padding: '13px 16px 0', borderBottom: '1px solid var(--border)' }}>
             <SectionHeader
@@ -790,11 +803,12 @@ export default function DashboardPage() {
                   key={tab.key}
                   onClick={() => setActiveTaskTab(tab.key)}
                   style={{
-                    flexShrink: 0, padding: '0 6px', fontSize: 10, fontFamily: 'Syne',
+                    flexShrink: 0, padding: isMobile ? '0 12px' : '0 6px', fontSize: isMobile ? 11 : 10, fontFamily: 'Syne',
                     fontWeight: isActive ? 600 : 400,
                     color: isActive ? '#0d0f14' : 'var(--text3)',
                     background: isActive ? '#c8f04e' : 'transparent',
                     border: 'none', cursor: 'pointer', borderRadius: 6, whiteSpace: 'nowrap',
+                    minHeight: isMobile ? 40 : undefined,
                     textTransform: 'uppercase', letterSpacing: '0.06em', transition: 'all 0.1s',
                   }}
                 >
@@ -849,8 +863,9 @@ export default function DashboardPage() {
                     onClick={e => { e.stopPropagation(); handleDeleteTask(task) }}
                     style={{
                       background: 'none', border: 'none', cursor: 'pointer',
-                      color: 'var(--text3)', fontSize: 14, padding: '0 2px',
+                      color: 'var(--text3)', fontSize: isMobile ? 18 : 14, padding: '0 2px',
                       lineHeight: 1, flexShrink: 0, opacity: 0.4,
+                      minWidth: isMobile ? 44 : undefined, minHeight: isMobile ? 44 : undefined,
                     }}
                   >
                     ×
@@ -872,9 +887,10 @@ export default function DashboardPage() {
             <button
               onClick={openAddTask}
               style={{
-                width: '100%', padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
+                width: '100%', padding: isMobile ? '13px' : '8px', fontSize: 11, fontFamily: 'DM Mono',
                 color: 'var(--text3)', background: 'transparent', letterSpacing: '0.04em',
                 border: '1px dashed var(--border)', borderRadius: 8, cursor: 'pointer',
+                minHeight: isMobile ? 44 : undefined,
                 transition: 'all 0.15s',
               }}
             >
@@ -900,7 +916,7 @@ export default function DashboardPage() {
         ) : flags.length === 0 ? (
           <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 11 }}>No open flags</div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10, padding: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10, padding: 12 }}>
             {flags.map(flag => {
               const statusColor = flag.status === 'pending' ? '#EF4444' : flag.status === 'acknowledged' ? '#F97316' : '#14B8A6'
               const borderColor = statusColor
@@ -974,7 +990,7 @@ export default function DashboardPage() {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) handleCancelTaskModal() }}
         >
-          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile) }}>
 
             {/* Header — Complete button only, right aligned */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
@@ -1124,7 +1140,7 @@ export default function DashboardPage() {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) { setShowHistory(false); setHistorySearch('') } }}
         >
-          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 520, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 520, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile) }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15 }}>Completed Tasks</div>
               <button onClick={() => { setShowHistory(false); setHistorySearch('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 18, lineHeight: 1, padding: 0 }}>×</button>
@@ -1185,7 +1201,7 @@ export default function DashboardPage() {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) { setSelectedHistoryTask(null); setHistoryTaskComments([]) } }}
         >
-          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile) }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
               <button
                 onClick={() => { setSelectedHistoryTask(null); setHistoryTaskComments([]) }}
@@ -1237,7 +1253,7 @@ export default function DashboardPage() {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) { setAddingFlag(false); setNewFlagText(''); setNewFlagCategory(null); setNewFlagStudio('paramount') } }}
         >
-          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile) }}>
 
             {/* Header */}
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
@@ -1359,7 +1375,7 @@ export default function DashboardPage() {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) { setSelectedFlag(null); setConfirmDeleteFlag(false) } }}
         >
-          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile) }}>
 
             {/* Modal header */}
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
@@ -1651,7 +1667,7 @@ export default function DashboardPage() {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) closeAddTask() }}
         >
-          <div style={{ background: '#161920', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, width: '100%', maxWidth: 600, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ background: '#161920', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, width: '100%', maxWidth: 600, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile) }}>
             <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>
               <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>New Task</span>
               <button
@@ -1762,7 +1778,7 @@ export default function DashboardPage() {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) setShowResolveModal(false) }}
         >
-          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 420, margin: '0 20px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 420, margin: '0 20px', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile) }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>
               <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>Resolve Flag</span>
               <button

@@ -9,7 +9,7 @@ export default function MainLayout({
   return (
     <AuthGuard>
       <Nav />
-      <main style={{ padding: '24px 32px' }}>
+      <main className="page-main" style={{ padding: '24px 32px' }}>
         {children}
       </main>
     </AuthGuard>
