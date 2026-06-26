@@ -32,10 +32,10 @@ const TABLES = [
   'dashboard_tasks',
   'user_profiles',
   'flags',
-  'mic_inventory',
-  'srs_referrals',
+  'mic_inventory_quantities',
+  'srs_log',
   'engineers',
-  'daily_ops_log',
+  'daily_ops_submissions',
 ];
 
 const PAGE_SIZE = 1000;
@@ -195,7 +195,17 @@ async function main() {
     console.log(`✓ Uploaded ${uploaded.name} to Drive (id: ${uploaded.id})`);
   } catch (err) {
     // Upload failure is fatal — exit non-zero so GitHub Actions marks the run failed.
-    console.error(`✗ Drive upload failed: ${err.message}`);
+    const status = err.code ?? err.status ?? err.response?.status;
+    const is404 = status === 404 || /not\s*found/i.test(err.message || '');
+    if (is404) {
+      // A 404 on the parent folder almost always means the service account can't
+      // see it — it must be shared (Editor) with the service account's email.
+      const saEmail = serviceAccount.client_email || '(client_email missing from GOOGLE_SERVICE_ACCOUNT_JSON)';
+      console.error(`✗ Drive upload failed: folder ${DRIVE_FOLDER_ID} not found (404).`);
+      console.error(`  Check that the Drive folder is shared with the service account email (Editor access): ${saEmail}`);
+    } else {
+      console.error(`✗ Drive upload failed: ${err.message}`);
+    }
     process.exit(1);
   }
 
