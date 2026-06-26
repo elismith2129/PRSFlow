@@ -22,7 +22,7 @@ import { Readable } from 'node:stream';
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
-const DRIVE_FOLDER_ID = '1y4O31OCCNNAc9FJvEr2S5mBFtAo45JWG';
+const DRIVE_FOLDER_ID = '11pu8jRYh9_IeowMB8flYOQZJd-QvdErR';
 
 const TABLES = [
   'bookings',
