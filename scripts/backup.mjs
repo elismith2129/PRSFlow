@@ -22,7 +22,7 @@ import { Readable } from 'node:stream';
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
-const DRIVE_FOLDER_ID = '11pu8jRYh9_IeowMB8flYOQZJd-QvdErR';
+const DRIVE_FOLDER_ID = '1SjhWdOP9_Rf3GDkNXU3sRk8CU8bgXk-Q';
 
 const TABLES = [
   'bookings',
@@ -150,8 +150,10 @@ async function uploadToDrive(fileName, jsonString) {
   const drive = google.drive({ version: 'v3', auth });
 
   const res = await drive.files.create({
+    supportsAllDrives: true,
     requestBody: {
       name: fileName,
+      mimeType: 'application/json',
       parents: [DRIVE_FOLDER_ID],
     },
     media: {
@@ -159,7 +161,6 @@ async function uploadToDrive(fileName, jsonString) {
       body: Readable.from(jsonString),
     },
     fields: 'id, name',
-    supportsAllDrives: true,
   });
 
   return res.data;
