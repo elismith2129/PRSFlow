@@ -188,6 +188,16 @@ export default function DashboardPage() {
     setContentReady(true)
   }, [])
 
+  // Once the welcome check has resolved and the splash is gone, undo the inline
+  // script's pre-paint visibility:hidden on the content wrapper. Harmless when the
+  // script never ran (no flag) — it just confirms the wrapper is visible.
+  useEffect(() => {
+    if (contentReady && !showWelcome) {
+      const el = document.getElementById('dashboard-content')
+      if (el) el.style.visibility = 'visible'
+    }
+  }, [contentReady, showWelcome])
+
   // Fetch the full user_profiles list once on mount — used to resolve tab ids
   // and to populate the Assign to dropdown.
   useEffect(() => {
@@ -622,6 +632,16 @@ export default function DashboardPage() {
 
   return (
     <>
+      {/* Synchronously hide the dashboard content before first paint when a fresh
+          login is flagged, so it can never flash before the splash mounts. The
+          restore effect (and the opacity fallback) reveal it once the splash is
+          dismissed. */}
+      <script dangerouslySetInnerHTML={{ __html: `
+  if (sessionStorage.getItem('showWelcome')) {
+    document.getElementById('dashboard-content') &&
+    (document.getElementById('dashboard-content').style.visibility = 'hidden');
+  }
+` }} />
       {/* One-time post-login welcome splash */}
       {showWelcome && (
         <div
@@ -650,7 +670,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div style={{ opacity: contentReady && !showWelcome ? 1 : 0, transition: 'opacity 0.3s ease' }}>
+      <div id="dashboard-content" style={{ opacity: contentReady && !showWelcome ? 1 : 0, transition: 'opacity 0.3s ease' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div>
