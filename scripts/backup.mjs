@@ -27,15 +27,21 @@ const DRIVE_FOLDER_ID = '1y4O31OCCNNAc9FJvEr2S5mBFtAo45JWG';
 const TABLES = [
   'bookings',
   'work_orders',
+  'studio_time_rows',
+  'rental_rows',
+  'payment_rows',
   'clients',
   'leads',
   'dashboard_tasks',
+  'dashboard_task_comments',
   'user_profiles',
   'flags',
+  'flag_comments',
   'mic_inventory_quantities',
   'srs_log',
   'engineers',
   'daily_ops_submissions',
+  'petty_cash_entries',
 ];
 
 const PAGE_SIZE = 1000;
