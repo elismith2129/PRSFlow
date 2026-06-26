@@ -3,6 +3,11 @@
 // Runs in Node.js (NOT the browser) — no Next.js / React imports. Invoked by
 // .github/workflows/daily-backup.yml on a daily cron, or manually.
 //
+// Talks to the Supabase REST (PostgREST) API directly with fetch() rather than
+// @supabase/supabase-js — the JS client initializes a realtime WebSocket client,
+// which fails under Node 20 ("Node.js 20 detected without native WebSocket
+// support") unless the `ws` package is present. Plain fetch avoids that entirely.
+//
 // Required environment variables:
 //   NEXT_PUBLIC_SUPABASE_URL        — Supabase project URL
 //   NEXT_PUBLIC_SUPABASE_ANON_KEY   — Supabase anon key (RLS is off, full read access)
@@ -11,7 +16,6 @@
 // Local run:
 //   node --env-file=.env.local scripts/backup.mjs   (Node 20.6+)
 
-import { createClient } from '@supabase/supabase-js';
 import { google } from 'googleapis';
 import { Readable } from 'node:stream';
 
@@ -60,40 +64,70 @@ try {
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// PostgREST base URL + auth headers (anon key as both apikey and bearer token).
+const REST_URL = SUPABASE_URL.replace(/\/+$/, '') + '/rest/v1/';
+const REST_HEADERS = {
+  apikey: SUPABASE_ANON_KEY,
+  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  'Content-Type': 'application/json',
+};
 
 // ---------------------------------------------------------------------------
-// Fetch one table, paginated, excluding soft-deleted rows.
+// Fetch one page of a table from the REST API.
 //
-// Not every table has a `deleted_at` column. We attempt the query with the
-// `deleted_at IS NULL` filter first; if PostgREST reports the column does not
-// exist (code 42703), we transparently retry that page without the filter.
+// `withDeletedFilter` adds `deleted_at=is.null` to exclude soft-deleted rows.
+// Returns { rows } on success, or { missingDeletedAt: true } when PostgREST
+// rejects the query because the table has no `deleted_at` column (so the caller
+// can retry without the filter).
+// ---------------------------------------------------------------------------
+async function fetchPage(table, offset, withDeletedFilter) {
+  const params = new URLSearchParams();
+  params.set('select', '*');
+  if (withDeletedFilter) params.set('deleted_at', 'is.null');
+  params.set('limit', String(PAGE_SIZE));
+  params.set('offset', String(offset));
+
+  const res = await fetch(`${REST_URL}${table}?${params.toString()}`, {
+    headers: REST_HEADERS,
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    // 42703 = undefined_column; the table has no deleted_at column.
+    if (withDeletedFilter && (/42703/.test(body) || /deleted_at/i.test(body))) {
+      return { missingDeletedAt: true };
+    }
+    throw new Error(`HTTP ${res.status} ${res.statusText}: ${body}`);
+  }
+
+  const rows = await res.json();
+  return { rows };
+}
+
+// ---------------------------------------------------------------------------
+// Fetch one table fully, paginated, excluding soft-deleted rows.
+//
+// Not every table has a `deleted_at` column. We attempt with the
+// `deleted_at=is.null` filter first; if PostgREST reports the column does not
+// exist, we transparently retry without the filter.
 // ---------------------------------------------------------------------------
 async function fetchTable(table) {
   const rows = [];
-  let from = 0;
-  let useDeletedFilter = true;
+  let offset = 0;
+  let withDeletedFilter = true;
 
   while (true) {
-    let query = supabase.from(table).select('*').range(from, from + PAGE_SIZE - 1);
-    if (useDeletedFilter) query = query.is('deleted_at', null);
+    const page = await fetchPage(table, offset, withDeletedFilter);
 
-    const { data, error } = await query;
-
-    if (error) {
-      const missingDeletedAt =
-        error.code === '42703' || /deleted_at/i.test(error.message || '');
-      if (useDeletedFilter && missingDeletedAt) {
-        // This table has no deleted_at column — back up every row instead.
-        useDeletedFilter = false;
-        continue;
-      }
-      throw new Error(error.message || JSON.stringify(error));
+    if (page.missingDeletedAt) {
+      // This table has no deleted_at column — back up every row instead.
+      withDeletedFilter = false;
+      continue;
     }
 
-    rows.push(...(data || []));
-    if (!data || data.length < PAGE_SIZE) break;
-    from += PAGE_SIZE;
+    rows.push(...page.rows);
+    if (page.rows.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
   }
 
   return rows;
