@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { UnifiedSessionForm } from '@/components/unified/UnifiedSessionForm'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
@@ -22,6 +23,8 @@ export function Nav() {
   const [tentativeCount, setTentativeCount] = useState(0)
   const [isOwner, setIsOwner] = useState(false)
   const [showUSF, setShowUSF] = useState(false)
+  const isMobile = useIsMobile()
+  const [menuOpen, setMenuOpen] = useState(false)
 
   // Temp owner-only gate for the parallel UnifiedSessionForm build.
   // No auth yet (Chunk 9) — read role from localStorage.
@@ -86,13 +89,16 @@ export function Nav() {
           <span style={{ color: 'var(--accent)' }}>PRS</span>
           <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flow</span>
         </div>
-        <span style={{
-          fontSize: 8, fontFamily: 'DM Mono', color: 'var(--text3)',
-          border: '1px solid var(--border)', borderRadius: 3,
-          padding: '2px 6px', letterSpacing: '0.1em'
-        }}>STUDIO OS</span>
+        {!isMobile && (
+          <span style={{
+            fontSize: 8, fontFamily: 'DM Mono', color: 'var(--text3)',
+            border: '1px solid var(--border)', borderRadius: 3,
+            padding: '2px 6px', letterSpacing: '0.1em'
+          }}>STUDIO OS</span>
+        )}
       </div>
 
+      {!isMobile && (
       <div style={{ display: 'flex', gap: 2, height: '100%', alignItems: 'center' }}>
         {navItems.map(item => {
           const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
@@ -147,7 +153,9 @@ export function Nav() {
           </button>
         )}
       </div>
+      )}
 
+      {!isMobile && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <div style={{ fontSize: 12, fontWeight: 500, color: '#e8eaf0', fontFamily: 'DM Mono' }}>
           {time}
@@ -168,6 +176,67 @@ export function Nav() {
           Sign Out
         </button>
       </div>
+      )}
+
+      {/* Mobile: hamburger button (far right). Tap toggles the dropdown menu. */}
+      {isMobile && (
+        <button
+          onClick={() => setMenuOpen(o => !o)}
+          aria-label="Menu"
+          style={{
+            width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            color: '#e8eaf0', fontSize: 24, lineHeight: 1, padding: 0,
+          }}
+        >
+          ≡
+        </button>
+      )}
+
+      {/* Mobile: full-width dropdown menu + outside-tap overlay */}
+      {isMobile && menuOpen && (
+        <>
+          <div
+            onClick={() => setMenuOpen(false)}
+            style={{ position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, background: 'transparent', zIndex: 1 }}
+          />
+          <div style={{
+            position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 2,
+            background: '#161920', borderBottom: '1px solid rgba(255,255,255,0.1)',
+            display: 'flex', flexDirection: 'column',
+          }}>
+            {navItems.map(item => {
+              const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMenuOpen(false)}
+                  style={{
+                    display: 'flex', alignItems: 'center', height: 48, paddingLeft: 16,
+                    fontFamily: 'DM Mono', fontSize: 13, textDecoration: 'none',
+                    color: active ? '#e8eaf0' : '#9ca3af',
+                    borderLeft: active ? '2px solid #c8f04e' : '2px solid transparent',
+                  }}
+                >
+                  {item.label}
+                </Link>
+              )
+            })}
+            <button
+              onClick={async () => { setMenuOpen(false); await handleSignOut() }}
+              style={{
+                display: 'flex', alignItems: 'center', height: 48, width: '100%', paddingLeft: 16,
+                fontFamily: 'DM Mono', fontSize: 13, color: '#ef4444',
+                background: 'transparent', border: 'none', borderTop: '1px solid rgba(255,255,255,0.06)',
+                cursor: 'pointer', textAlign: 'left',
+              }}
+            >
+              Sign Out
+            </button>
+          </div>
+        </>
+      )}
 
       {showUSF && (
         <UnifiedSessionForm bookingId={null} onClose={() => setShowUSF(false)} />
