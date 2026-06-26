@@ -830,8 +830,8 @@ export default function DashboardPage() {
                   key={task.id}
                   onClick={() => handleOpenTask(task)}
                   style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 10,
-                    padding: '10px 12px',
+                    display: 'flex', alignItems: isMobile ? 'center' : 'flex-start', gap: 10,
+                    padding: isMobile ? '8px 10px' : '10px 12px',
                     background: 'var(--surface2)',
                     border: task.source !== 'manual' ? '0.5px solid var(--border)' : '0.5px solid var(--border)',
                     borderLeft: task.source !== 'manual' ? '2px solid #F97316' : '0.5px solid var(--border)',
@@ -843,7 +843,7 @@ export default function DashboardPage() {
                   <div style={{
                     width: 6, height: 6, borderRadius: '50%',
                     background: '#F97316',
-                    marginTop: 4, flexShrink: 0,
+                    marginTop: isMobile ? 0 : 4, flexShrink: 0,
                   }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
