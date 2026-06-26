@@ -128,6 +128,10 @@ export default function DashboardPage() {
   const [dashBkFormOpen, setDashBkFormOpen] = useState(false)
   const [dashEditBooking, setDashEditBooking] = useState<Booking | null>(null)
   const [dashFormInitial, setDashFormInitial] = useState<FormData>(() => emptyForm())
+  // One-time post-login welcome splash (set by the login page in sessionStorage).
+  const [showWelcome, setShowWelcome] = useState(false)
+  const [welcomeFading, setWelcomeFading] = useState(false)
+  const welcomeInit = useRef(false)
 
   const now = new Date()
   const hour = now.getHours()
@@ -161,6 +165,22 @@ export default function DashboardPage() {
     supabase.auth.getUser().then(({ data }) => {
       if (data?.user?.email) setCurrentUserEmail(data.user.email)
     })
+  }, [])
+
+  // Welcome splash: only when the login page flagged a fresh sign-in. Remove the
+  // flag immediately so refresh / navigation never re-triggers it. Hold ~2s, then
+  // fade out over 0.5s and reveal the dashboard. The ref guard makes this run once
+  // (e.g. under React StrictMode's double-invoke in dev) so the timers aren't lost.
+  useEffect(() => {
+    if (welcomeInit.current) return
+    welcomeInit.current = true
+    if (typeof window === 'undefined') return
+    if (sessionStorage.getItem('showWelcome') === 'true') {
+      sessionStorage.removeItem('showWelcome')
+      setShowWelcome(true)
+      setTimeout(() => setWelcomeFading(true), 2000)
+      setTimeout(() => setShowWelcome(false), 2500)
+    }
   }, [])
 
   // Fetch the full user_profiles list once on mount — used to resolve tab ids
@@ -596,7 +616,36 @@ export default function DashboardPage() {
   }
 
   return (
-    <div>
+    <>
+      {/* One-time post-login welcome splash */}
+      {showWelcome && (
+        <div
+          style={{
+            // Above the Nav (99999) so the splash fully covers the viewport — a
+            // 9999 overlay would sit under the sticky nav bar and look broken.
+            position: 'fixed', inset: 0, zIndex: 100000,
+            background: '#0d0f14',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            opacity: welcomeFading ? 0 : 1,
+            transition: 'opacity 0.5s ease',
+            animation: welcomeFading ? undefined : 'welcomeFadeIn 0.3s ease',
+          }}
+        >
+          <div style={{ fontFamily: 'DM Mono', fontSize: 13, letterSpacing: '0.2em', color: '#6B7280', textTransform: 'uppercase' }}>
+            {greeting.toUpperCase()}
+          </div>
+          {/* nbsp fallback reserves the line height so the name appearing causes no layout shift */}
+          <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: isMobile ? 48 : 64, color: '#e8eaf0', lineHeight: 1.1, marginTop: 14, textAlign: 'center' }}>
+            {profile?.display_name || ' '}
+          </div>
+          <div style={{ position: 'absolute', bottom: 40, left: 0, right: 0, textAlign: 'center', fontFamily: 'DM Mono', fontSize: 11, letterSpacing: '0.2em', color: '#6B7280' }}>
+            PARAMOUNT RECORDING GROUP
+          </div>
+        </div>
+      )}
+
+      <div style={{ opacity: showWelcome ? 0 : 1, transition: 'opacity 0.3s ease' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div>
@@ -1888,6 +1937,7 @@ export default function DashboardPage() {
         />
       )}
 
-    </div>
+      </div>
+    </>
   )
 }

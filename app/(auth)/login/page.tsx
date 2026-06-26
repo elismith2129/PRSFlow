@@ -30,6 +30,9 @@ export default function LoginPage() {
       setError('Invalid email or password')
       return
     }
+    // Flag a fresh login so the dashboard shows the one-time welcome splash.
+    // Cleared by the dashboard on mount, so refresh/navigation never re-triggers it.
+    sessionStorage.setItem('showWelcome', 'true')
     router.replace('/')
   }
 
