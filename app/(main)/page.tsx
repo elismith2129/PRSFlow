@@ -729,12 +729,13 @@ export default function DashboardPage() {
                     onMouseLeave={isEmpty ? () => setHoverRoom(null) : undefined}
                     style={{
                       position: 'relative',
-                      height: 120,
+                      height: isMobile ? undefined : 120,
+                      minHeight: isMobile ? 72 : undefined,
                       borderRadius: 6,
                       border: `1px solid ${effectiveBorder}`,
                       boxShadow: cardGlow,
                       background: booking ? '#0d0f14' : 'rgba(0,0,0,0.2)',
-                      padding: '7px 9px',
+                      padding: isMobile ? '8px 10px' : '7px 9px',
                       display: 'flex',
                       flexDirection: 'column',
                       overflow: 'hidden',
@@ -751,7 +752,7 @@ export default function DashboardPage() {
                     {booking && (
                       <>
                         <div style={{
-                          fontSize: 13, fontFamily: 'DM Serif Display', lineHeight: 1.2, color: 'var(--text)',
+                          fontSize: isMobile ? 12 : 13, fontWeight: isMobile ? 600 : undefined, fontFamily: 'DM Serif Display', lineHeight: 1.2, color: 'var(--text)',
                           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                         }}>
                           {primaryName}
@@ -765,14 +766,14 @@ export default function DashboardPage() {
                           </div>
                         )}
                         {timeStr && (
-                          <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'rgba(255,255,255,0.75)', lineHeight: 1.2, marginTop: 2 }}>
+                          <div style={{ fontSize: isMobile ? 10 : 9, fontFamily: 'DM Mono', color: 'rgba(255,255,255,0.75)', lineHeight: 1.2, marginTop: 2 }}>
                             {timeStr}
                           </div>
                         )}
                         {(eng || asst) && (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginTop: 'auto' }}>
-                            {eng && <div style={{ fontSize: 8, fontFamily: 'DM Mono', color: engColor, whiteSpace: 'nowrap' }}>1ST-{eng}</div>}
-                            {asst && <div style={{ fontSize: 8, fontFamily: 'DM Mono', color: asstColor, whiteSpace: 'nowrap' }}>2ND-{asst}</div>}
+                            {eng && <div style={{ fontSize: isMobile ? 10 : 8, fontFamily: 'DM Mono', color: engColor, whiteSpace: 'nowrap' }}>1ST-{eng}</div>}
+                            {asst && <div style={{ fontSize: isMobile ? 10 : 8, fontFamily: 'DM Mono', color: asstColor, whiteSpace: 'nowrap' }}>2ND-{asst}</div>}
                           </div>
                         )}
                       </>
