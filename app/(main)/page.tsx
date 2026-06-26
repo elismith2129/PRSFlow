@@ -831,7 +831,7 @@ export default function DashboardPage() {
                   onClick={() => handleOpenTask(task)}
                   style={{
                     display: 'flex', alignItems: isMobile ? 'center' : 'flex-start', gap: 10,
-                    padding: isMobile ? '8px 10px' : '10px 12px',
+                    padding: isMobile ? '6px 10px' : '10px 12px',
                     background: 'var(--surface2)',
                     border: task.source !== 'manual' ? '0.5px solid var(--border)' : '0.5px solid var(--border)',
                     borderLeft: task.source !== 'manual' ? '2px solid #F97316' : '0.5px solid var(--border)',
@@ -846,7 +846,7 @@ export default function DashboardPage() {
                     marginTop: isMobile ? 0 : 4, flexShrink: 0,
                   }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: isMobile ? 11 : 12, color: 'var(--text)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {task.text}
                     </div>
                     {task.due_date && (
@@ -866,7 +866,7 @@ export default function DashboardPage() {
                       background: 'none', border: 'none', cursor: 'pointer',
                       color: 'var(--text3)', fontSize: isMobile ? 18 : 14, padding: '0 2px',
                       lineHeight: 1, flexShrink: 0, opacity: 0.4,
-                      minWidth: isMobile ? 44 : undefined, minHeight: isMobile ? 44 : undefined,
+                      minWidth: isMobile ? 44 : undefined,
                     }}
                   >
                     ×

@@ -85,10 +85,12 @@ export function Nav() {
       position: 'sticky', top: 0, zIndex: 99999,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 20, letterSpacing: -0.5 }}>
-          <span style={{ color: 'var(--accent)' }}>PRS</span>
-          <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flow</span>
-        </div>
+        <Link href="/" style={{ textDecoration: 'none' }}>
+          <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 20, letterSpacing: -0.5, cursor: 'pointer' }}>
+            <span style={{ color: 'var(--accent)' }}>PRS</span>
+            <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flow</span>
+          </div>
+        </Link>
         {!isMobile && (
           <span style={{
             fontSize: 8, fontFamily: 'DM Mono', color: 'var(--text3)',
