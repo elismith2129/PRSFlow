@@ -603,7 +603,7 @@ export default function DashboardPage() {
           <div style={{ fontFamily: 'Syne', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 4 }}>
             {greeting}{greetingName} — here's your briefing
           </div>
-          <h1 style={{ fontFamily: 'DM Serif Display', fontSize: 32, letterSpacing: -1, lineHeight: 1.05 }}>
+          <h1 style={{ fontFamily: 'DM Serif Display', fontSize: isMobile ? 26 : 32, letterSpacing: -1, lineHeight: 1.05, whiteSpace: isMobile ? 'nowrap' : undefined }}>
             Paramount <em style={{ fontStyle: 'italic', color: 'var(--accent)' }}>Recording Studios</em>
           </h1>
         </div>
