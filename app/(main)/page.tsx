@@ -131,6 +131,9 @@ export default function DashboardPage() {
   // One-time post-login welcome splash (set by the login page in sessionStorage).
   const [showWelcome, setShowWelcome] = useState(false)
   const [welcomeFading, setWelcomeFading] = useState(false)
+  // Content starts hidden until the welcome check resolves, so the dashboard
+  // never flashes at full opacity for a frame before the splash mounts.
+  const [contentReady, setContentReady] = useState(false)
   const welcomeInit = useRef(false)
 
   const now = new Date()
@@ -174,13 +177,15 @@ export default function DashboardPage() {
   useEffect(() => {
     if (welcomeInit.current) return
     welcomeInit.current = true
-    if (typeof window === 'undefined') return
-    if (sessionStorage.getItem('showWelcome') === 'true') {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('showWelcome') === 'true') {
       sessionStorage.removeItem('showWelcome')
       setShowWelcome(true)
       setTimeout(() => setWelcomeFading(true), 2000)
       setTimeout(() => setShowWelcome(false), 2500)
     }
+    // Mark the content ready whether or not the splash showed, so the wrapper can
+    // transition in. Until this runs, the wrapper stays at opacity 0 (no flash).
+    setContentReady(true)
   }, [])
 
   // Fetch the full user_profiles list once on mount — used to resolve tab ids
@@ -645,7 +650,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div style={{ opacity: showWelcome ? 0 : 1, transition: 'opacity 0.3s ease' }}>
+      <div style={{ opacity: contentReady && !showWelcome ? 1 : 0, transition: 'opacity 0.3s ease' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div>
