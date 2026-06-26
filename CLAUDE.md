@@ -36,12 +36,13 @@ Supabase Auth login is now live, but it is **UX gating, not data security** — 
 ### Route structure
 
 **Internal (nav-bearing) routes under `app/(main)/`:**
-- `/` — Dashboard: `LocationStrip` (4 studio cards → drawer with Yesterday/Today sessions + daily ops), 3-col grid (Needs Action panel, Today's Sessions panel, Tasks placeholder with Me/Mgr/Billing/Asst tabs)
+- `/` — Dashboard: `LocationStrip` (4 studio cards → drawer with Yesterday/Today sessions + daily ops), 3-col grid (Needs Action panel → clickable rows deep-link to `/crm?lead=`; Today's-Sessions 11-room day grid → empty cards open the booking modal, booked cards open the booking; live Tasks panel with 6 per-user tabs, capped at 9 + "show all tasks →" to `/tasks`), plus a Flags panel below
 - `/crm` — Leads + Clients unified page. LEADS tab: Needs Action, All Leads, Analytics. CLIENTS tab: client list + editable profile panel. Toggle at top of page, defaults to LEADS on every load.
 - `/clients` — Redirects to `/crm` (stub for backward-compat; do not delete)
 - `/calendar` — Week/2-week multi-studio grid calendar with booking form + work order popup
 - `/admin` — Daily ops admin view (WO approval, staff submissions)
 - `/wo-hub` — All work orders list, filterable by studio/date/status
+- `/tasks` — Full task list (the dashboard Tasks panel's "show all tasks →" target). Same 6 per-user tabs + role visibility as the dashboard panel; Active (incomplete) + Completed (collapsible) sections, no cap; search box filters both. **Not in the nav** — only reachable from the dashboard.
 
 **Runner routes (phone-first, no nav):**
 - `/runner` — Studio select landing
@@ -63,7 +64,9 @@ Tables in use (all with public RLS — auth deferred to Chunk 9):
 **Core:**
 - `leads` — sales pipeline. Status: `hot | warm | cold | uncontacted | booked | dead`
 - `clients` — booked customers. `clients.lead_id` refs originating lead. `artists` is a jsonb array
-- `work_orders` — invoices. References `clients`. `studio_rows`, `rental_rows`, `payment_rows` are jsonb arrays
+- `work_orders` — invoices. References `clients`/`bookings`. **The line items are now separate tables, not jsonb arrays.** The legacy `WorkOrderLegacy` model stored `studio_rows`/`rental_rows`/`payment_rows` as jsonb on the WO row; the live `WorkOrder` model (`lib/supabase.ts`) has none of those columns — instead `studio_time_rows`, `rental_rows`, and `payment_rows` are their own tables keyed by `work_order_id` (queried directly by `WorkOrderPopup`, the runner WO page, and the WO print route). See the `studio_time_rows` / `rental_rows` / `payment_rows` entries below.
+- `rental_rows` — WO equipment-rental line items. One row per rental, FK `work_order_id`; `sort_order`. Read/written by `WorkOrderPopup`, runner WO, and `/wo/[id]/print`.
+- `payment_rows` — WO payment line items. One row per payment, FK `work_order_id`; `type` (Cash/Zelle/Credit Card/Debit Card/Check/Other), `amount`, `memo`, `last_four` (CC/Debit only), `recorded_at`. Read/written by `WorkOrderPopup` and the runner WO page (editable on both).
 - `qc_reports` — post-session quality checks. `id` is text (generated client-side)
 - `contact_log` — cooldown tracking for CRM touch prompts
 - `lead_activity` — touch log entries per lead
@@ -104,6 +107,7 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 - `components/ui/StatusBadge.tsx` — unified status pill (5px dot + uppercase label, translucent tinted bg/border). Use everywhere a record status is rendered. Color map: `uncontacted`/`open`/`dead`→gray, `hot`/`pending`/`tentative`→orange, `warm`→yellow, `cold`→blue, `booked`/`completed`/`resolved`/`confirmed`→teal, `needs_action`/`in_progress`→lime, `cancelled`→red; unknown→gray fallback.
 - `components/ui/SectionHeader.tsx` — unified section heading: uppercase DM Mono 11px title (`#9ca3af`) + optional count pill (`lime`/`orange`/`teal`) + optional right-aligned action link (`{label, href?|onClick?}`), `margin-bottom: 12`. Use for section/panel headings (not page titles, tabs, or field-group labels — CRM keeps its own `FieldGroupLabel` for those).
 - `hooks/useUserProfile.ts` — `{ profile, loading }`. Resolves the logged-in user's `user_profiles` row by matching the auth session email. **Single source of profile-fetching logic — reuse it; don't re-query `user_profiles` inline.** `profile` is null when there's no session or no matching row.
+- `lib/tasks.ts` — shared dashboard-task helpers, the single source of truth for the task tab/roster logic (extracted so the dashboard panel and `/tasks` page can't drift): `TAB_DEFS`, `ASSIGN_OPTIONS`, `resolveAssignTo`, `nameForId`, `visibleTabsForRole`, `idsForTab`, `fetchTasks` (active), `fetchCompletedTasks`, `fmtTaskTime`, `uploadTaskPhoto` (→ `checklist-photos/dashboard-tasks/`). The dashboard's own `page.tsx` keeps local `fmtTime`/`uploadPhoto` copies (also used by the flags code) so the flag handlers weren't touched in the extraction.
 - `components/auth/AuthGuard.tsx` — client-side route guard wrapping `app/(main)/layout.tsx` (see Architecture → Auth).
 
 ### Conventions
@@ -118,7 +122,7 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 - **`TimeInput` is a smart-parse text `<input>` with auto-format on blur.** Accepts `10a`→`10:00 AM`, `930p`→`9:30 PM`, `1430`→`2:30 PM` (24h), bare `8`→`8:00 AM`. Enter commits. Click/focus selects all. Used in booking form and WO Studio Time From/To cells. (Was briefly a 30-min `<select>` June 5–10, 2026 — reverted for mobile usability.)
 - **iOS Safari scroll lock: use `body.position=fixed` + `top=-scrollY`, not `overflow:hidden`.** `overflow:hidden` on body does not block scroll on iOS. Correct pattern: save `scrollY`, set `body.style.top=\`-${scrollY}px\`, position=fixed, width=100%` on open; clear all three and call `window.scrollTo({ top: savedScrollY, behavior: 'instant' })` on close.
 
-## What's Built (as of June 25, 2026)
+## What's Built (as of June 26, 2026)
 
 | Chunk | Feature | Status |
 |-------|---------|--------|
@@ -192,11 +196,18 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 | Personalized greeting + task filtering | `useUserProfile` hook; greeting shows `display_name`; dashboard tasks filtered by user/role. | ✅ Complete |
 | Dashboard task panel rebuild | 6 per-user tabs (Eli, Adam-Mike, Fernando, Aaron, Asst Mgr, Tech) resolved from `user_profiles` by display_name (no hardcoded UUIDs); tab visibility by role (owner/manager/billing see all; asst_manager → Asst Mgr only; tech → Tech only); tabs horizontally scrollable (`.hide-scrollbar`). Full add-task modal (flat Assign-to dropdown — Asst Mgr→Quinn's id, Tech→Sierra's id; visible to owner/manager/billing only). Membership driven by `assigned_to`. | ✅ Complete |
 | Task detail modal redesign | Header = right-aligned Complete button only; body = description + "Assigned to: … · by … · date" meta + UPDATES thread + comment input (Submit) + footer (Delete [owner/manager/billing only] / Cancel / Save & Close). Task list rows single-line truncated. | ✅ Complete |
-| Add-task photo (🚧 in progress) | Verified live: `dashboard_tasks.photo_url` column exists, insert persists it, `uploadPhoto` returns a valid URL — recent NULL rows were tasks saved without an attached photo. Added thumbnail preview (`URL.createObjectURL`) + `.select()` insert-error logging. **User still debugging "photo not saving" (resume June 26, 2026).** | 🚧 In progress |
+| Add-task photo | `dashboard_tasks.photo_url` column exists, insert persists it, `uploadPhoto` returns a valid URL — the "NULL rows" were tasks saved with no photo attached, not a bug. Add-task modal shows a thumbnail preview (`URL.createObjectURL`) + `.select()` insert-error logging (`056aa79`); the task-detail **comment** section got the same preview (`6211d17`). Save path confirmed healthy; closed (not a defect). | ✅ Complete |
+| Task comment photo preview | Task-detail modal comment section shows an `<img>` thumbnail the moment a photo is picked (max-height 80, 4px radius), mirroring the add-task modal. `pickCommentPhoto`/`clearCommentPhoto` create+revoke the object URL; all reset sites (open/comment/complete/cancel/save&close/delete) revoke via `clearCommentPhoto`. (`6211d17`) | ✅ Complete |
+| Task panel cap + show-all + `/tasks` page | Dashboard Tasks panel caps the visible list at 9 (`.slice(0,9)`) with a muted "+ N more" link; header link changed `history →` → `show all tasks →` (routes to `/tasks`). New `app/(main)/tasks/page.tsx`: same 6 tabs + role visibility, Active + Completed sections (each a count-pilled `SectionHeader`), wider rows showing `assigned_by` + `created_at`, replicated task-detail modal. Roster/tab logic extracted to `lib/tasks.ts` (single source of truth, imported by both surfaces). The dashboard's old completed-tasks history modal is now unreachable (left in place, dead). (`f999fd4`) | ✅ Complete |
+| `/tasks` completed collapsed + search | Completed section collapsed by default; header is a click toggle showing `COMPLETED (n) ▼`/`▲`. Added a "Search tasks…" box that filters both Active and Completed (case-insensitive); a non-empty query overrides the collapse so search always finds completed matches. (`e102447d`) | ✅ Complete |
+| Dashboard lead → CRM deep-link | Clicking a Needs Action lead row on the dashboard navigates to `/crm?lead=<id>` (cursor pointer; no conflicting handlers on that row). CRM reads the `lead` param on mount (via `window.location.search`, matching the existing `?clientId=`/`?id=` pattern — avoids a `useSearchParams` Suspense restructure), finds the lead, opens it in the detail panel, nudges off the `analytics` view, and blocks the default Needs Action auto-select so the deep-linked lead wins. (`8260fd4`) | ✅ Complete |
+| Dashboard empty room → booking modal | Empty room-grid cards are clickable (lime border tint `rgba(200,240,78,0.2)` on hover, pointer cursor, no added text) → navigate to `/calendar?newBooking=1&location=&studio=&date=`. The calendar gained an effect that, when `newBooking` is present **without** a `clientId`, reuses its existing `openNew(location, studio, date)` (real `BookingForm` + `handleSave` insert — no duplication). Occupied cards keep their existing open-booking behavior (kept per explicit decision; spec's "non-clickable" was declined to avoid regressing a shipped feature). (`418ebfb`) | ✅ Complete |
+| Daily Google Drive backup | `scripts/backup.mjs` + `.github/workflows/daily-backup.yml` (cron `0 8 * * *` + `workflow_dispatch`, Node 24). Backs up 17 tables to a Drive folder via `googleapis`, auth from `GOOGLE_SERVICE_ACCOUNT_JSON`. Talks to Supabase **REST** with `fetch()` (NOT `@supabase/supabase-js`, whose realtime client crashes under Node 20+ without `ws`); paginates 1000/page by `offset`; excludes `deleted_at IS NOT NULL` with an auto-fallback for tables that lack the column. Per-table success/failure logging; failed table is noted + skipped; `process.exit(1)` only on Drive upload failure (a 404 prints "share the folder with the service account email" + the `client_email`). Shared-Drive supported (`supportsAllDrives:true`). (`295401f`…`ca8038a`) | ✅ Complete |
 
 ## What's Next
 
-- 🚧 **Add-task photo not saving (debugging, resume June 26, 2026)** — files reach storage (`checklist-photos/dashboard-tasks/`) but some recent `dashboard_tasks` rows have `photo_url = NULL`. Verified via anon-key probes that the column exists, the insert persists `photo_url`, and `uploadPhoto` returns a valid URL — so the save path itself works; recent NULL rows appear to have been saved with no photo attached. A thumbnail preview (`URL.createObjectURL`) + `.select()` insert-error logging were added (`056aa79`) to make attachment state obvious and surface any real failure in the console. Next: reproduce with the preview, read the console error if any, and check the `checklist-photos` bucket's anon INSERT policy / filename sanitization (path only strips whitespace).
+- ~~**Add-task photo "not saving"**~~ — ✅ resolved/closed (June 26, 2026, not a defect). The save path was always healthy — `dashboard_tasks.photo_url` exists, the insert persists it, and `uploadPhoto` returns a valid URL; the NULL rows were test tasks saved with no photo attached. Thumbnail previews now exist in both the add-task modal (`056aa79`) and the comment section (`6211d17`), so attachment state is unambiguous. No further action.
+- **Daily backup — operational prerequisites (verify before relying on the cron).** The backup code is shipped, but two things live outside the repo: (1) the three GitHub secrets (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `GOOGLE_SERVICE_ACCOUNT_JSON`) must be set; (2) the target Drive must be a **Shared Drive with the service account added as a member** (or a folder shared to the service account's `client_email`) — a service account has no personal Drive storage quota. Trigger the workflow manually (Actions → Daily Backup → Run workflow) to confirm end-to-end before trusting the 8am-UTC schedule.
 - ~~**WO → Calendar sync**~~ — ✅ done (June 22, 2026). Close & Save syncs `start_date`/`end_date`/`from_time`/`to_time` back to `bookings`; calendar refetches all three views; `studio` deliberately not synced (format mismatch); WO owns the schedule once it has dated rows, so the booking form no longer clobbers WO times. See the June 16–22 session note + Decisions Log. *(Remaining polish: rentals/payments/totals don't round-trip to any booking column — they live only on the WO, which is by design.)*
 - **Activity log on session form and WO** — per-booking/per-WO activity feed showing field changes, status transitions, runner submissions, and admin approvals
 - **Combine WOs** — merge multiple work orders for a single booking into one consolidated WO
@@ -216,3 +227,9 @@ Most date/time fields stored as `text`. Money fields stored as `text`.
 - `NEXT_PUBLIC_BASE_URL` (e.g. `https://prs-flow.vercel.app`) — used to construct registration links sent to clients. Falls back to `window.location.origin` if unset (produces localhost URLs in dev).
 
 All must be set in Vercel for Production, Preview, and Development environments.
+
+**GitHub Actions secrets (separate from Vercel)** — used only by `.github/workflows/daily-backup.yml` (the daily Google Drive backup), set under repo Settings → Secrets and variables → Actions:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `GOOGLE_SERVICE_ACCOUNT_JSON` — the full Google service-account JSON, parsed at runtime by `scripts/backup.mjs`.

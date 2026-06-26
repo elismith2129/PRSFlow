@@ -1,6 +1,6 @@
 # PRSFlow — Tech Stack & Roadmap
 
-*Last updated: June 25, 2026*
+*Last updated: June 26, 2026*
 
 ---
 
@@ -13,6 +13,7 @@
 | Storage | Supabase Storage | Private `client-ids` bucket for ID file uploads |
 | Auth | Supabase Auth (login live June 25, 2026); RLS deferred to Chunk 9 | Login + client-side `AuthGuard` on `(main)` routes. **UX gating only** — no RLS yet, anon key keeps full table access. Sessions in localStorage (no SSR middleware). |
 | Hosting | Vercel | Auto-deploys from GitHub `main`; Vercel Cron for auto-demotion job |
+| Backups | GitHub Actions → Google Drive (`googleapis`) | Daily cron backs up 17 Supabase tables (via REST `fetch()`) to a Shared Drive folder. Separate from Vercel; uses its own GitHub secrets. See `scripts/backup.mjs` |
 | Language | TypeScript | `strict: false`, `target: es5` |
 | Styling | Plain CSS + CSS variables | No Tailwind (installed but unused); all inline `style={{}}` JSX |
 | Fonts | Google Fonts via CSS `@import` | Syne (headings), DM Serif Display (display), DM Mono (body/data) |
@@ -136,6 +137,11 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 | `public/sop.html` | Self-contained interactive training guide. Replace file to update content; no code change needed. |
 | `components/ui/StatusBadge.tsx` | Unified status pill (5px dot + uppercase label, translucent tinted bg/border). Canonical renderer for record statuses. Color map: gray (uncontacted/open/dead), orange (hot/pending/tentative), yellow (warm), blue (cold), teal (booked/completed/resolved/confirmed), lime (needs_action/in_progress), red (cancelled); unknown→gray. |
 | `components/ui/SectionHeader.tsx` | Unified section heading: uppercase DM Mono 11px title (`#9ca3af`) + optional count pill (`lime`/`orange`/`teal`) + optional right-aligned action link (`{label, href?\|onClick?}`), `margin-bottom: 12`. For section/panel headings only — not page titles, tabs, or field-group labels. |
+| `lib/tasks.ts` | Shared dashboard-task helpers — single source of truth for the task tab/roster logic, imported by both the dashboard Tasks panel and `/tasks` (`TAB_DEFS`, `ASSIGN_OPTIONS`, `resolveAssignTo`, `nameForId`, `visibleTabsForRole`, `idsForTab`, `fetchTasks`, `fetchCompletedTasks`, `fmtTaskTime`, `uploadTaskPhoto`) |
+| `app/(main)/tasks/page.tsx` | Full task list (dashboard "show all tasks →" target; not in nav). 6 per-user tabs + role visibility, Active + Completed (collapsible) sections, search box, replicated task-detail modal |
+| `scripts/backup.mjs` | Daily backup — Node ESM (no Next/React). Reads 17 Supabase tables via REST `fetch()` (not `@supabase/supabase-js` — avoids the Node WebSocket crash), paginates by `offset`, excludes soft-deleted rows, uploads `prsflow-backup-YYYY-MM-DD.json` to Drive via `googleapis` (`GOOGLE_SERVICE_ACCOUNT_JSON`). Run locally with `node --env-file=.env.local scripts/backup.mjs` |
+| `.github/workflows/daily-backup.yml` | GitHub Actions: daily backup. Cron `0 8 * * *` (8am UTC) + `workflow_dispatch`, Node 24, `checkout → npm ci → node scripts/backup.mjs`. Secrets: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `GOOGLE_SERVICE_ACCOUNT_JSON` |
+| `scripts/importCalendar.mjs` | One-off (run-once) calendar import script; uses the service-role key. Kept for reference |
 | `schema.sql` | Full database schema — run in Supabase SQL editor to recreate |
 
 ---
@@ -152,6 +158,14 @@ All must be set for **all three Vercel environments** (Production, Preview, Deve
 | `CRON_SECRET` | Cron endpoint auth header |
 | `NEXT_PUBLIC_BASE_URL` | Registration link URL base (e.g. `https://prs-flow.vercel.app`). Falls back to `window.location.origin` if unset, which produces `localhost` URLs in dev — fine for testing but wrong for links sent to clients. Set this in Production and Preview. |
 | `ANTHROPIC_API_KEY` | `/api/ocr-receipt` receipt OCR (server-side) |
+
+**GitHub Actions secrets** (separate from Vercel — repo Settings → Secrets and variables → Actions), used only by `.github/workflows/daily-backup.yml`:
+
+| Secret | Used by |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | `scripts/backup.mjs` (Supabase REST) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `scripts/backup.mjs` (Supabase REST) |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | `scripts/backup.mjs` (Drive upload — full service-account JSON, parsed at runtime). The target Drive must be a Shared Drive with the service account added as a member (service accounts have no personal Drive quota). |
 
 ---
 
@@ -320,14 +334,25 @@ Defined in `styles/globals.css`:
 | user-profiles | `supabase/user_profiles.sql` (surrogate `id` PK, nullable `auth_user_id` FK→auth.users, `email` unique lookup key, role `owner/manager/billing/asst_manager/tech`, soft delete; seed 6→8 staff; run manually in SQL editor — Claude has no DDL access). `supabase/dashboard-tasks-assignment.sql` adds `assigned_to`/`assigned_by` uuid FK→`user_profiles.id`. Role set + roster changed in the live DB after the migration. |
 | **Personalized greeting + task panel rebuild ✅** | **`useUserProfile` hook; 6 per-user task tabs; add-task + detail modals** |
 | task-panel-rebuild | `hooks/useUserProfile.ts` (resolve profile by session email); greeting shows `display_name`. Dashboard task tabs rebuilt to 6 per-user tabs (Eli/Adam-Mike/Fernando/Aaron/Asst Mgr/Tech) resolved by display_name (no hardcoded UUIDs), driven by `assigned_to`; visibility by role (owner/manager/billing all; asst_manager→Asst Mgr; tech→Tech); horizontally scrollable tab bar (`.hide-scrollbar`). Full add-task modal with flat Assign-to dropdown (Asst Mgr→Quinn's id, Tech→Sierra's id; owner/manager/billing only). Task detail modal redesigned (Complete header button; description + assigned meta + UPDATES thread + comment Submit; footer Delete[canAssign]/Cancel/Save&Close); task rows single-line truncated. `assigned_role` vestigial (new tasks set `'admin'`). |
-| **Add-task photo 🚧** | **"Photo not saving" — under investigation (resume June 26, 2026)** |
-| add-task-photo | Probes confirm `dashboard_tasks.photo_url` exists, insert persists it, `uploadPhoto` returns a valid URL — recent NULL rows were tasks saved without a photo attached. Added thumbnail preview (`URL.createObjectURL`) + `.select()` insert-error logging (`056aa79`). Next: reproduce, read console error, check bucket anon INSERT policy + filename sanitization. |
+| **Add-task photo ✅** | **Resolved June 26 — not a defect; previews added for clarity** |
+| add-task-photo | `dashboard_tasks.photo_url` exists, insert persists it, `uploadPhoto` returns a valid URL — the NULL rows were test tasks saved with no photo attached, not a bug. Thumbnail preview + `.select()` insert-error logging in the add-task modal (`056aa79`); same preview added to the task-detail **comment** section (`6211d17`). Closed — no bucket-policy/sanitization change needed. |
+| **Task comment photo preview ✅** | **`<img>` thumbnail on file-pick in the task-detail comment section** |
+| task-comment-photo | **(`6211d17`)** Comment section in the task-detail modal shows an `<img>` thumbnail the moment a photo is picked (max-height 80, 4px radius, above "+ Attach photo"). `commentPhotoPreview` state + `pickCommentPhoto`/`clearCommentPhoto` (create+revoke object URL); all reset paths (open/comment/complete/cancel/save&close/delete) revoke via `clearCommentPhoto`. Mirrors the add-task modal. |
+| **Task panel cap + `/tasks` page ✅** | **Dashboard panel caps at 9 + "show all tasks →"; full `/tasks` page; `lib/tasks.ts` extraction** |
+| tasks-page | **(`f999fd4`)** Dashboard Tasks panel renders `tasks.slice(0,9)` + muted "+ N more" link; header link `history →` → `show all tasks →` (→ `/tasks`). New `app/(main)/tasks/page.tsx`: same 6 tabs + role visibility, Active + Completed count-pilled `SectionHeader` sections, wider rows with `assigned_by` + `created_at`, replicated task-detail modal; **not in nav** (dashboard-only). Shared task tab/roster helpers extracted to `lib/tasks.ts` (`TAB_DEFS`, `ASSIGN_OPTIONS`, `resolveAssignTo`, `nameForId`, `visibleTabsForRole`, `idsForTab`, `fetchTasks`, `fetchCompletedTasks`, `fmtTaskTime`, `uploadTaskPhoto`) and imported by both surfaces. Dashboard's old history modal now dead/unreachable, left in place. |
+| **`/tasks` completed collapsed + search ✅** | **Completed collapsed by default with header toggle + search-overrides-collapse** |
+| tasks-collapse-search | **(`e102447d`)** Completed section collapsed by default; header toggle renders `COMPLETED (n) ▼`/`▲`. Added a "Search tasks…" box filtering both sections (case-insensitive on `text`); a non-empty query overrides the collapse so search always reaches completed. Literal `(n)` format meant inlining the count in the title (no teal count pill on Completed). |
+| **Dashboard lead → CRM deep-link ✅** | **Needs Action lead click opens the lead in CRM** |
+| dashboard-lead-crm | **(`8260fd4`)** Needs Action lead rows click → `/crm?lead=<id>`. CRM reads the param in a mount effect via `window.location.search` (matching its `?clientId=`/`?id=` pattern — chosen over `useSearchParams` to avoid a page-level `<Suspense>` restructure the static build would require); opens the lead in the detail panel, switches off `analytics`, and sets `hasAutoSelected` so the default auto-select doesn't override it. |
+| **Dashboard empty room → booking modal ✅** | **Empty room-grid card opens the calendar's new-booking form pre-filled** |
+| dashboard-room-newbooking | **(`418ebfb`)** Empty room cards: pointer + lime hover border `rgba(200,240,78,0.2)` (no added text) → `/calendar?newBooking=1&location=&studio=&date=`. Calendar effect fires when `newBooking` is present without a `clientId` (no collision with Start Booking) and reuses the existing `openNew(location, studio, date)` — real `BookingForm` + `handleSave`, no duplication. Occupied cards stay clickable (kept the shipped open-booking behavior, declining the spec's "non-clickable"). |
+| **Daily Google Drive backup ✅** | **GitHub Actions cron → Supabase REST → Drive via googleapis** |
+| daily-backup | **(`295401f` + `2d78713`/`12bad5b`/`2623d88`/`d933fce`/`c18b983`/`a6a027f`/`ca8038a`)** `scripts/backup.mjs` + `.github/workflows/daily-backup.yml` (cron `0 8 * * *` + `workflow_dispatch`, Node 24). Backs up 17 tables to a Shared Drive folder via `googleapis` (`supportsAllDrives:true`), auth from `GOOGLE_SERVICE_ACCOUNT_JSON`. Uses Supabase **REST** with `fetch()` — not `@supabase/supabase-js`, whose realtime client crashes under Node 20+ without `ws`. Paginates 1000/page by `offset`; `deleted_at IS NULL` filter with auto-fallback for tables lacking the column. Table names verified against live `.from()` usage. Per-table logging; failed table skipped; `process.exit(1)` only on upload failure (404 → "share folder with service account email" + `client_email`). `googleapis` added to deps (lockfile updated for `npm ci`). |
 
 ### Next
 
 | Priority | What's next |
 |---|---|
-| **🚧 In progress** | **Add-task photo not saving** — finish debugging (June 26): reproduce with the new thumbnail preview, capture any console error, check `checklist-photos` bucket anon INSERT policy + filename sanitization |
 | Medium | **Activity log on session form and WO** — per-booking/per-WO feed of field changes, status transitions, runner submissions, admin approvals |
 | Medium | **Combine WOs** — merge multiple work orders for a single booking into one consolidated WO |
 | Medium | **Mobile pass** — full mobile UX review and fixes across non-runner pages (calendar, CRM, admin) |
