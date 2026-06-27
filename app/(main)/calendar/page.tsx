@@ -30,9 +30,6 @@ const STATUS_TOP_COLORS: Record<string, string> = {
   open_hours: '#e2e8f0',
 }
 
-const COLOR_COD = '#7BBFFF'
-const COLOR_LABEL = '#96A9FF'
-
 // ─── LAYOUT CONSTANTS ────────────────────────────────────────────────────────
 
 const LABEL_W = 148
@@ -203,7 +200,7 @@ function BookingBlock({
   const width = (dur / totalDays) * 100
 
   const isBilling = booking.payment_type === 'billing'
-  const nameColor = isBilling ? COLOR_LABEL : COLOR_COD
+  const nameColor = '#e8eaf0' // chip name text — white regardless of payment type
   const topColor = STATUS_TOP_COLORS[booking.status] ?? STATUS_TOP_COLORS.confirmed
   const sessionBorder = booking.session_type !== 'recording'
   // Chip glow: orange (open WO / attention) or teal (confirmed); subtle, no layout impact
@@ -229,12 +226,8 @@ function BookingBlock({
 
   const eng = initials(booking.engineer_name)
   const asst = initials(booking.assistant_name)
-  const engColor = booking.engineer_status === 'confirmed' ? '#4ef0a2'
-    : booking.engineer_status === 'hold' ? '#f0a24e'
-    : 'rgba(255,255,255,0.4)'
-  const asstColor = booking.assistant_status === 'confirmed' ? '#4ef0a2'
-    : booking.assistant_status === 'hold' ? '#f0a24e'
-    : 'rgba(255,255,255,0.4)'
+  const engColor = '#6B7280' // chip engineer initials — muted
+  const asstColor = '#6B7280' // chip assistant initials — muted
 
   const slotH = rowH / numLanes
   const blockTop = lane * slotH + 2
@@ -272,7 +265,7 @@ function BookingBlock({
             {primaryName}
           </div>
           {timeStr && (
-            <div style={{ fontSize: 7, fontFamily: 'DM Mono', color: 'rgba(255,255,255,0.85)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <div style={{ fontSize: 7, fontFamily: 'DM Mono', color: '#6B7280', whiteSpace: 'nowrap', flexShrink: 0 }}>
               {timeStr}
             </div>
           )}
@@ -297,7 +290,7 @@ function BookingBlock({
           </div>
           {/* Row 2: time + eng/asst */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', overflow: 'hidden' }}>
-            <div style={{ fontSize: 8, fontFamily: 'DM Mono', color: 'rgba(255,255,255,0.85)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 8, fontFamily: 'DM Mono', color: '#6B7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
               {timeStr}
             </div>
             {(eng || asst) && (
@@ -319,14 +312,14 @@ function BookingBlock({
           {labelLine && (
             <div style={{
               fontSize: 10, fontFamily: 'DM Mono', lineHeight: 1.2, marginTop: 1,
-              color: 'rgba(255,255,255,0.45)',
+              color: '#9ca3af',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>
               {labelLine}
             </div>
           )}
           {timeStr && (
-            <div style={{ fontSize: 9, fontFamily: 'DM Mono', lineHeight: 1.2, marginTop: 2, color: 'rgba(255,255,255,0.85)' }}>
+            <div style={{ fontSize: 9, fontFamily: 'DM Mono', lineHeight: 1.2, marginTop: 2, color: '#6B7280' }}>
               {timeStr}
             </div>
           )}
@@ -519,7 +512,7 @@ function DayView({
                   {/* Booking blocks */}
                   {cards.map(b => {
                     const isBilling = b.payment_type === 'billing'
-                    const nameColor = isBilling ? '#96A9FF' : '#7BBFFF'
+                    const nameColor = '#e8eaf0' // chip name text — white regardless of payment type
                     const displayName = isBilling
                       ? (b.artist && b.label ? `${b.label} / ${b.artist}` : b.artist || b.label || b.client_name || '')
                       : (b.client_name || '')
@@ -554,7 +547,7 @@ function DayView({
                         </div>
                         {/* Time */}
                         {timeStr && (
-                          <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
+                          <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: '#6B7280', marginTop: 2 }}>
                             {timeStr}
                           </div>
                         )}
@@ -576,7 +569,7 @@ function DayView({
                             <span style={{ fontFamily: 'DM Mono', fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>
                               {b.invoice_num ? `#${b.invoice_num}` : ''}
                             </span>
-                            <span style={{ fontFamily: 'DM Mono', fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>
+                            <span style={{ fontFamily: 'DM Mono', fontSize: 9, color: '#6B7280' }}>
                               {[eng, asst].filter(Boolean).join(' ')}
                             </span>
                           </div>
@@ -726,7 +719,7 @@ function StudioView({
               {/* Booking blocks */}
               {cellBookings.map(b => {
                 const isBilling = b.payment_type === 'billing'
-                const nameColor = isBilling ? '#96A9FF' : '#7BBFFF'
+                const nameColor = '#e8eaf0' // chip name text — white regardless of payment type
                 const displayName = isBilling
                   ? (b.artist && b.label ? `${b.label} / ${b.artist}` : b.artist || b.label || b.client_name || '')
                   : (b.client_name || '')
@@ -738,10 +731,8 @@ function StudioView({
                   : null
                 const eng = b.engineer_name ? `1ST-${initials(b.engineer_name)}` : ''
                 const asst = b.assistant_name ? `2ND-${initials(b.assistant_name)}` : ''
-                const engColor = b.engineer_status === 'confirmed' ? '#4ef0a2'
-                  : b.engineer_status === 'hold' ? '#f0a24e' : 'rgba(255,255,255,0.4)'
-                const asstColor = b.assistant_status === 'confirmed' ? '#4ef0a2'
-                  : b.assistant_status === 'hold' ? '#f0a24e' : 'rgba(255,255,255,0.4)'
+                const engColor = '#6B7280' // chip engineer initials — muted
+                const asstColor = '#6B7280' // chip assistant initials — muted
                 const topColor = STATUS_TOP_COLORS[b.status] ?? STATUS_TOP_COLORS.confirmed
                 const chipGlowBorder = topColor === '#f97316' ? 'rgba(249, 115, 22, 0.4)'
                   : topColor === '#14B8A6' ? 'rgba(20, 184, 166, 0.4)'
@@ -770,7 +761,7 @@ function StudioView({
                     </div>
                     {/* Time */}
                     {timeStr && (
-                      <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
+                      <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: '#6B7280', marginTop: 2 }}>
                         {timeStr}
                       </div>
                     )}
