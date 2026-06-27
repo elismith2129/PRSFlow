@@ -105,6 +105,8 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 | `app/(auth)/reset-password/page.tsx` | New-password page — `updateUser({ password })` |
 | `components/auth/AuthGuard.tsx` | Client-side route guard wrapping `app/(main)/layout.tsx`; redirects unauthenticated users to `/login` (localStorage sessions; no SSR middleware) |
 | `hooks/useUserProfile.ts` | `{ profile, loading }` — resolves the logged-in user's `user_profiles` row by session email. Single source of profile-fetch logic |
+| `hooks/useIsMobile.ts` | `useIsMobile(breakpoint = 768)` — `matchMedia` hook, desktop-first (`false` on first render, flips on mount). The single mobile breakpoint; gates every responsive layout (dashboard, Nav, CRM, calendar, BookingForm, WorkOrderPopup, LocationStrip) |
+| `components/layout/NavGate.tsx` | Wraps `<Nav>`; hides the nav on first paint during the fresh-login welcome splash (`showWelcome` flag) and reveals it on the `welcomeDone` event (3s fallback). `layout.tsx` renders this instead of `<Nav>` directly |
 | `supabase/user_profiles.sql` | Migration: `user_profiles` table + seed (run manually in Supabase SQL editor) |
 | `supabase/dashboard-tasks-assignment.sql` | Migration: `dashboard_tasks.assigned_to` / `assigned_by` uuid FK → `user_profiles.id` |
 | `app/crm/page.tsx` | CRM — canonical pattern reference for all new pages |
@@ -114,8 +116,8 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 | `lib/supabase.ts` | Supabase client + all entity types (`Lead`, `Client`, etc.) |
 | `lib/settings.ts` | Timer constants (COOL_DOWN_DAYS, TOUCH_INTERVAL_DAYS) |
 | `lib/terms.ts` | T&Cs content as structured array — update here without touching form |
-| `styles/globals.css` | CSS variable definitions + Google Fonts import |
-| `components/layout/Nav.tsx` | App nav (only renders inside `(main)` route group) |
+| `styles/globals.css` | CSS variable definitions + Google Fonts import; `@media (max-width: 768px)` rules (`overflow-x: hidden` guard + `.page-main` gutter `16px 12px !important`) and the `welcomeFadeIn` keyframe |
+| `components/layout/Nav.tsx` | App nav (only inside `(main)`). Desktop: logo (links to `/`) + tabs + Sign Out. Mobile (≤768px): logo + 44px `≡` hamburger → full-width dropdown (nav items + Sign Out). The live clock and the experimental "⚡ USF" button were both removed from the nav |
 | `components/shared/StudioSelect.tsx` | Single flat dropdown for "Venue · Studio" selection; used across CRM and calendar |
 | `components/shared/TimeInput.tsx` | Smart-parse text `<input>` with auto-format on blur. Accepts `10a`→`10:00 AM`, `930p`→`9:30 PM`, `1430`→`2:30 PM`, bare `8`→`8:00 AM`. Enter commits. Used in booking form and WO Studio Time From/To cells. (Was briefly a 30-min `<select>` June 5–10, 2026 — reverted; select was harder to use on mobile.) |
 | `components/shared/` | Reusable pickers: `ContactPicker`, `ArtistPicker`, `StudioSelect`, `TimeInput` |
@@ -348,6 +350,12 @@ Defined in `styles/globals.css`:
 | dashboard-room-newbooking | **(`418ebfb`)** Empty room cards: pointer + lime hover border `rgba(200,240,78,0.2)` (no added text) → `/calendar?newBooking=1&location=&studio=&date=`. Calendar effect fires when `newBooking` is present without a `clientId` (no collision with Start Booking) and reuses the existing `openNew(location, studio, date)` — real `BookingForm` + `handleSave`, no duplication. Occupied cards stay clickable (kept the shipped open-booking behavior, declining the spec's "non-clickable"). |
 | **Daily Google Drive backup ✅** | **GitHub Actions cron → Supabase REST → Drive via googleapis** |
 | daily-backup | **(`295401f` + `2d78713`/`12bad5b`/`2623d88`/`d933fce`/`c18b983`/`a6a027f`/`ca8038a`)** `scripts/backup.mjs` + `.github/workflows/daily-backup.yml` (cron `0 8 * * *` + `workflow_dispatch`, Node 24). Backs up 17 tables to a Shared Drive folder via `googleapis` (`supportsAllDrives:true`), auth from `GOOGLE_SERVICE_ACCOUNT_JSON`. Uses Supabase **REST** with `fetch()` — not `@supabase/supabase-js`, whose realtime client crashes under Node 20+ without `ws`. Paginates 1000/page by `offset`; `deleted_at IS NULL` filter with auto-fallback for tables lacking the column. Table names verified against live `.from()` usage. Per-table logging; failed table skipped; `process.exit(1)` only on upload failure (404 → "share folder with service account email" + `client_email`). `googleapis` added to deps (lockfile updated for `npm ci`). |
+| **Mobile responsiveness pass ✅** | **`useIsMobile` standard; dashboard, CRM, calendar, WO popup, booking form, nav all phone-usable; desktop unchanged** |
+| mobile-pass | **(June 26 eve: `898f34c`/`a794517`/`d2bdedc`/`c6d7e51`/`8ecf9dc`/`8e2c25e`/`4120cda`/`b913832`/`41ea3cf`/`35af433`/`eb9011e`/`48b07a4`/`2eba354`/`f90ca0c`/`c51680a`/`ef284a3`/`0a047d1`/`3395f27`)** New `hooks/useIsMobile.ts` (768px, desktop-first) gates every change; `globals.css` adds the mobile gutter + overflow-x guard. **Dashboard:** 3-col → single column reordered (Sessions/Needs Action/Tasks via CSS `order`), smaller room cards, compact task rows, one-line hero, `fullscreenCardOnMobile()` for modals. **Nav:** 44px `≡` hamburger → full-width dropdown; STUDIO OS badge + clock + USF removed; logo links home. **CRM:** single-panel (list ↔ full-screen detail with "← Leads"), mobile auto-select suppressed. **Calendar:** defaults to Day view (responsive DayView — sidebar hidden, rooms single-column), two-row controls bar, full-width lime New Booking, 80px room labels, location codes PRS/ARS/ERS/TRS, month corner label, tappable date-input overlay, window-filtered chips; **no swipe** (tried + removed). **WO popup + BookingForm:** full-screen `100dvh` flex sheets; WO popup mirrors the Runner WO page (section cards, read-only SESSION INFO, META/branding hidden, two-button footer, Complete WO in body, horizontal-scroll tables); BookingForm fixed header/footer via `minHeight:0`. **Chips:** text recolored white/muted (`#e8eaf0`/`#9ca3af`/`#6B7280`) regardless of payment type. |
+| **Welcome splash + dashboard hero clock ✅** | **One-time fresh-login splash with no-flash hold; live clock moved nav → hero** |
+| welcome-splash-clock | **(`4c0d2a0`/`47f333f`/`dbf1229`/`372c7f4`/`08e57f3`/`ae908d5`/`8ade55f`/`45beda2`)** Login sets `sessionStorage 'showWelcome'`; dashboard shows a one-time full-screen splash (greeting + `display_name` + PRG footer, `zIndex 100000`), clears the flag on mount, dispatches `welcomeDone`. No-flash hold: `AuthGuard` renders a `#0d0f14` full-screen div while the session resolves when the flag is set; `NavGate` hides the nav until `welcomeDone` (3s fallback). The live clock was removed from the Nav and moved to the dashboard hero (desktop only, DM Serif Display, date `#c8f04e` + time `#e8eaf0` inline). |
+| **USF removed from nav ✅** | **Experimental UnifiedSessionForm no longer launchable** |
+| usf-removed | **(`9e65fcb`)** The owner-gated "⚡ USF" Nav button + `localStorage.userRole === 'owner'` gate removed from `Nav.tsx`. `components/unified/UnifiedSessionForm.tsx` and `WorkOrderPopup`'s `inline` prop remain in the repo but are now dead (nothing launches USF). Production flow is `BookingForm` + portaled `WorkOrderPopup`. |
 
 ### Next
 
@@ -355,7 +363,7 @@ Defined in `styles/globals.css`:
 |---|---|
 | Medium | **Activity log on session form and WO** — per-booking/per-WO feed of field changes, status transitions, runner submissions, admin approvals |
 | Medium | **Combine WOs** — merge multiple work orders for a single booking into one consolidated WO |
-| Medium | **Mobile pass** — full mobile UX review and fixes across non-runner pages (calendar, CRM, admin) |
+| Low | **Mobile pass — remainder** — dashboard, CRM, calendar, WO popup, and booking form shipped June 26 (see "Mobile responsiveness pass" in Done). Still to do: the **Admin** page (`/admin`, sidebar tabs) and `/wo-hub` mobile review. |
 | Horizon | **TV display** — read-only studio status board for wall-mounted screen; shows today's sessions per room in real time |
 | Horizon | **Dashboard activity log** — recent studio activity feed (session starts, WO completions, task completions) |
 
