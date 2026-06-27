@@ -1413,8 +1413,36 @@ export function WorkOrderPopup({
           ? { padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 20, flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }
           : { padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-          {/* BRANDING */}
-          <div style={{ textAlign: 'center', paddingBottom: 20, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          {/* SESSION INFO — mobile only, read-only (mirrors the Runner WO card).
+              The editable booking-form fields live in the META section below,
+              which is hidden on mobile. */}
+          {isMobile && (() => {
+            const sessionRows: [string, any][] = [
+              [wo.payment_status === 'Billing' ? 'Label / A&R' : 'Client',
+                wo.payment_status === 'Billing'
+                  ? [booking.label || wo.label, booking.client_name || wo.client].filter(Boolean).join(' / ')
+                  : (booking.client_name || wo.client)],
+              ['Artist', booking.artist || wo.artist],
+              ['Engineer', booking.engineer_name || wo.engineer],
+              ['Date', booking.start_date || wo.session_date],
+              ['Time', [booking.from_time, booking.to_time].filter(Boolean).join(' – ')],
+              ['Studio', booking.studio || (wo.studios ?? []).join(', ')],
+            ]
+            return (
+              <div style={mCard}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', marginBottom: 10 }}>Session Info</div>
+                {sessionRows.filter(([, v]) => v).map(([l, v]) => (
+                  <div key={l} style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
+                    <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace', minWidth: 60 }}>{l}</span>
+                    <span style={{ fontSize: 11, color: '#e8eaf2', fontFamily: 'DM Mono, monospace' }}>{v}</span>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
+
+          {/* BRANDING — hidden on mobile (letterhead; not part of the runner layout) */}
+          <div style={{ textAlign: 'center', paddingBottom: 20, borderBottom: '1px solid rgba(255,255,255,0.07)', display: isMobile ? 'none' : 'block' }}>
             <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15, color: '#f0f0f0', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Paramount Recording Group</div>
             <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: '#8a8fa0', marginTop: 3 }}>Paramount · Encore · Ameraycan · Wilder · Track · Enterprise</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
@@ -1426,9 +1454,11 @@ export function WorkOrderPopup({
             </div>
           </div>
 
-          {/* META — two columns */}
+          {/* META — two columns of booking-form fields. Hidden on mobile (lives in
+              DOM so desktop + save logic are untouched); the read-only SESSION INFO
+              card above replaces it on mobile. */}
           <div style={isMobile
-            ? { display: 'grid', gridTemplateColumns: '1fr', gap: 14, ...mCard }
+            ? { display: 'none' }
             : { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
 
             {/* Left column */}
@@ -1985,24 +2015,36 @@ export function WorkOrderPopup({
             )}
           </div>
 
+          {/* COMPLETE WO — mobile secondary action (the footer is Cancel/Save only
+              on mobile; the footer Complete button is hidden there). */}
+          {isMobile && (
+            <button
+              onClick={handleComplete}
+              disabled={completing}
+              style={{ width: '100%', minHeight: 48, borderRadius: 12, padding: '13px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 13, letterSpacing: '0.02em', textTransform: 'uppercase', cursor: completing ? 'default' : 'pointer', background: isCompleted ? 'rgba(255,255,255,0.06)' : completing ? 'rgba(20,184,166,0.5)' : '#14B8A6', border: isCompleted ? '1px solid #2a2e3d' : 'none', color: isCompleted ? '#8b90a8' : '#0d0f14', opacity: completing ? 0.7 : 1 }}
+            >
+              {completing ? (isCompleted ? 'Re-opening…' : 'Completing…') : isCompleted ? 'Re-open WO' : 'Complete WO'}
+            </button>
+          )}
+
         </div>{/* end body */}
 
         {/* ── FOOTER ───────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 8 : 10, padding: isMobile ? '12px 16px calc(12px + env(safe-area-inset-bottom)) 16px' : '14px 20px', borderTop: isMobile ? '1px solid #2a2e3d' : '1px solid rgba(255,255,255,0.07)', flexShrink: 0, background: isMobile ? '#0d0f14' : '#13161d' }}>
-          <button onClick={() => printWithFilename()} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0', ...(isMobile ? { flex: '1 1 45%', minHeight: 48, fontSize: 13, borderRadius: 12, padding: '13px 0', background: '#1e2130', border: '1px solid #2a2e3d', color: '#e8eaf2', letterSpacing: '0.02em' } : {}) }}>
+          <button onClick={() => printWithFilename()} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0', ...(isMobile ? { display: 'none' } : {}) }}>
             Export PDF
           </button>
-          <button onClick={() => handleCancel()} disabled={saving} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0', ...(isMobile ? { flex: '1 1 45%', minHeight: 48, fontSize: 13, borderRadius: 12, padding: '13px 0', background: '#1e2130', border: '1px solid #2a2e3d', color: '#e8eaf2', letterSpacing: '0.02em' } : {}) }}>
+          <button onClick={() => handleCancel()} disabled={saving} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0', ...(isMobile ? { flex: '1 1 0', minHeight: 48, fontSize: 13, borderRadius: 12, padding: '13px 0', background: '#1e2130', border: '1px solid #2a2e3d', color: '#e8eaf2', letterSpacing: '0.02em' } : {}) }}>
             Cancel
           </button>
           <button
             onClick={handleComplete}
             disabled={completing}
-            style={{ padding: '7px 18px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: completing ? 'default' : 'pointer', background: isCompleted ? 'rgba(255,255,255,0.08)' : completing ? 'rgba(20,184,166,0.5)' : '#14B8A6', border: isCompleted ? '1px solid rgba(255,255,255,0.12)' : 'none', color: isCompleted ? '#8a8fa0' : '#0d0f14', opacity: completing ? 0.7 : 1, ...(isMobile ? { flex: '1 1 100%', minHeight: 48, fontSize: 13, borderRadius: 12, padding: '13px 0', letterSpacing: '0.02em' } : {}) }}
+            style={{ padding: '7px 18px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: completing ? 'default' : 'pointer', background: isCompleted ? 'rgba(255,255,255,0.08)' : completing ? 'rgba(20,184,166,0.5)' : '#14B8A6', border: isCompleted ? '1px solid rgba(255,255,255,0.12)' : 'none', color: isCompleted ? '#8a8fa0' : '#0d0f14', opacity: completing ? 0.7 : 1, ...(isMobile ? { display: 'none' } : {}) }}
           >
             {completing ? (isCompleted ? 'Re-opening…' : 'Completing…') : isCompleted ? 'Re-open WO' : 'Complete WO'}
           </button>
-          <button onClick={handleClose} disabled={saving} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '1 1 100%', minHeight: 48, fontSize: 13, fontWeight: 800, borderRadius: 12, padding: '13px 0', letterSpacing: '0.02em' } : {}) }}>
+          <button onClick={handleClose} disabled={saving} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '2 1 0', minHeight: 48, fontSize: 13, fontWeight: 800, borderRadius: 12, padding: '13px 0', letterSpacing: '0.02em' } : {}) }}>
             {saving ? 'Saving…' : 'Close & Save'}
           </button>
         </div>
