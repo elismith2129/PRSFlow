@@ -693,7 +693,7 @@ export default function DashboardPage() {
         {/* Desktop-only live clock — date + time on one line, bottom-aligned with
             the heading, matching its Syne ExtraBold weight */}
         {!isMobile && (
-          <div style={{ flexShrink: 0, paddingLeft: 24, textAlign: 'right', fontFamily: 'Syne', fontWeight: 800, fontSize: 28, letterSpacing: '0.02em', lineHeight: 1.05, whiteSpace: 'nowrap' }}>
+          <div style={{ flexShrink: 0, paddingLeft: 24, textAlign: 'right', fontFamily: 'DM Serif Display', fontSize: 28, letterSpacing: '0.02em', lineHeight: 1.05, whiteSpace: 'nowrap' }}>
             <span style={{ color: '#c8f04e' }}>{clockDate.toUpperCase()}</span>
             <span style={{ marginLeft: 12, color: '#e8eaf0' }}>{clockTime}</span>
           </div>
