@@ -18,7 +18,6 @@ const navItems = [
 export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean } = {}) {
   const pathname = usePathname()
   const router = useRouter()
-  const [time, setTime] = useState('')
   const [unreviewedRegs, setUnreviewedRegs] = useState(0)
   const [tentativeCount, setTentativeCount] = useState(0)
   const [isOwner, setIsOwner] = useState(false)
@@ -30,16 +29,6 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
   // No auth yet (Chunk 9) — read role from localStorage.
   useEffect(() => {
     setIsOwner(localStorage.getItem('userRole') === 'owner')
-  }, [])
-
-  useEffect(() => {
-    const tick = () => setTime(new Date().toLocaleTimeString('en-US', {
-      month: 'short', day: 'numeric',
-      hour: '2-digit', minute: '2-digit', second: '2-digit'
-    }))
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
   }, [])
 
   useEffect(() => {
@@ -164,9 +153,6 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
 
       {!isMobile && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 500, color: '#e8eaf0', fontFamily: 'DM Mono' }}>
-          {time}
-        </div>
         <button
           onClick={handleSignOut}
           onMouseEnter={(e) => { e.currentTarget.style.color = '#e8eaf0' }}

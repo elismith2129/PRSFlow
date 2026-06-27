@@ -140,6 +140,8 @@ export default function DashboardPage() {
   // never flashes at full opacity for a frame before the splash mounts.
   const [contentReady, setContentReady] = useState(false)
   const welcomeInit = useRef(false)
+  // Live clock for the dashboard hero (desktop only); ticks every second.
+  const [clockNow, setClockNow] = useState(() => new Date())
 
   const now = new Date()
   const hour = now.getHours()
@@ -147,6 +149,8 @@ export default function DashboardPage() {
   // Personalized: append the display name once the profile resolves; while loading
   // or when no profile is found, fall back to the bare time-of-day greeting.
   const greetingName = profile?.display_name ? ` ${profile.display_name}` : ''
+  const clockDate = clockNow.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  const clockTime = clockNow.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
   const needsActionLeads = leads
     .filter(l => l.needs_contact === true && l.status !== 'dead' && l.status !== 'booked' && l.status !== 'cold')
     .slice(0, 5)
@@ -206,6 +210,12 @@ export default function DashboardPage() {
       if (el) el.style.visibility = 'visible'
     }
   }, [contentReady, showWelcome])
+
+  // Tick the dashboard hero clock once a second; cleaned up on unmount.
+  useEffect(() => {
+    const id = setInterval(() => setClockNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
 
   // Fetch the full user_profiles list once on mount — used to resolve tab ids
   // and to populate the Assign to dropdown.
@@ -671,7 +681,7 @@ export default function DashboardPage() {
 
       <div id="dashboard-content" style={{ opacity: contentReady && !showWelcome ? 1 : 0, transition: 'opacity 0.3s ease' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'flex-end', marginBottom: 20 }}>
         <div>
           <div style={{ fontFamily: 'Syne', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 4 }}>
             {greeting}{greetingName} — here's your briefing
@@ -680,6 +690,17 @@ export default function DashboardPage() {
             Paramount <em style={{ fontStyle: 'italic', color: 'var(--accent)' }}>Recording Studios</em>
           </h1>
         </div>
+        {/* Desktop-only live clock, aligned to the bottom of the heading */}
+        {!isMobile && (
+          <div style={{ flexShrink: 0, paddingLeft: 24 }}>
+            <span style={{ display: 'block', textAlign: 'right', fontFamily: 'DM Mono', fontSize: 11, color: '#6B7280' }}>
+              {clockDate}
+            </span>
+            <span style={{ display: 'block', textAlign: 'right', fontFamily: 'DM Mono', fontSize: 24, fontWeight: 600, color: '#e8eaf0' }}>
+              {clockTime}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Location strip */}
