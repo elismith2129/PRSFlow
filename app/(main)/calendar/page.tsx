@@ -500,9 +500,10 @@ function DayView({
               return (
                 <div key={`${loc}|${room}`} style={{
                   position: 'relative',
-                  background: 'var(--surface)', borderRadius: 6, overflow: 'hidden',
-                  border: cards.length > 0 ? '1px solid rgba(20, 184, 166, 0.5)' : '1px solid rgba(255,255,255,0.08)',
-                  boxShadow: cards.length > 0 ? 'inset 0 0 24px rgba(20, 184, 166, 0.12)' : 'none',
+                  background: cards.length > 0 ? 'linear-gradient(135deg, rgba(20, 184, 166, 0.05) 0%, transparent 60%)' : 'var(--surface)',
+                  borderRadius: 6, overflow: 'hidden',
+                  border: cards.length > 0 ? '1px solid rgba(20, 184, 166, 0.2)' : '1px solid rgba(255,255,255,0.08)',
+                  boxShadow: cards.length > 0 ? 'inset 0 0 30px rgba(20, 184, 166, 0.15)' : 'none',
                 }}>
                   {cards.length > 0 && (
                     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: '#14B8A6' }} />
