@@ -40,6 +40,12 @@ const COL_W = 120  // minimum day-column width; forces horizontal scroll when co
 const ZOOM_FIXED = [60, 80, 88, 110, 132] // zoom levels 1–5; level 0 = fit-all (≈44px)
 const BUFFER_WEEKS = 2 // weeks of buffer rendered on each side for endless horizontal scroll
 
+// Transient swipe-start coordinates for mobile grid navigation. Module-scoped so
+// they survive any re-render between touchstart and touchend (the calendar is a
+// single-instance page), keeping the touch handlers ref-free and useEffect-free.
+let swipeStartX = 0
+let swipeStartY = 0
+
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
 function getMonday(d: Date): Date {
@@ -828,7 +834,6 @@ function CalendarPageInner() {
   const lastWheelStep = useRef(0)
   const scrollCorrectionRef = useRef<number | null>(null)
   const shiftingRef = useRef(false)
-  const dateHeaderRef = useRef<HTMLDivElement>(null)
   const isMobile = useIsMobile()
   // Narrower room-label column on mobile so day columns keep usable width
   const labelW = isMobile ? 80 : LABEL_W
@@ -988,48 +993,15 @@ function CalendarPageInner() {
     }
   }, [startDate, view]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Mobile swipe navigation — bound ONLY to the date header row (a narrow strip
-  // that isn't a vertical-scroll surface), so it can't interfere with the grid's
-  // vertical scrolling or the sticky room-label column. A deliberate horizontal
-  // swipe (>50px, more horizontal than vertical) jumps one week; smaller moves
-  // fall through as taps. preventDefault is called only while the gesture is
-  // clearly horizontal (deltaX > deltaY * 2) so vertical scroll is never blocked.
-  // Native listeners (not React's onTouch*) are used because React registers
-  // touchmove as passive, which would make preventDefault a no-op.
-  useEffect(() => {
-    const el = dateHeaderRef.current
-    if (!el || !isMobile) return
-    let startX = 0
-    let startY = 0
-    function onStart(e: TouchEvent) {
-      const t = e.touches[0]
-      startX = t.clientX
-      startY = t.clientY
-    }
-    function onMove(e: TouchEvent) {
-      const t = e.touches[0]
-      const dx = Math.abs(t.clientX - startX)
-      const dy = Math.abs(t.clientY - startY)
-      if (dx > dy * 2) e.preventDefault()
-    }
-    function onEnd(e: TouchEvent) {
-      const t = e.changedTouches[0]
-      const dx = t.clientX - startX
-      const dy = t.clientY - startY
-      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
-        if (dx < 0) setStartDate(d => addDays(d, 7))   // swipe left → next week
-        else setStartDate(d => addDays(d, -7))          // swipe right → previous week
-      }
-    }
-    el.addEventListener('touchstart', onStart, { passive: true })
-    el.addEventListener('touchmove', onMove, { passive: false })
-    el.addEventListener('touchend', onEnd, { passive: true })
-    return () => {
-      el.removeEventListener('touchstart', onStart)
-      el.removeEventListener('touchmove', onMove)
-      el.removeEventListener('touchend', onEnd)
-    }
-  }, [isMobile, view]) // re-attach when the header (re)mounts on view change
+  // Week navigation, shared by the prev/next buttons and mobile swipe.
+  function goPrev() {
+    if (view === 'month') setStartDate(d => addDays(d, -totalDays))
+    else setStartDate(d => addDays(d, -7))
+  }
+  function goNext() {
+    if (view === 'month') setStartDate(d => addDays(d, totalDays))
+    else setStartDate(d => addDays(d, 7))
+  }
 
   function handleGridScroll() {
     if (!gridRef.current) return
@@ -1330,14 +1302,26 @@ function CalendarPageInner() {
       <div
         ref={gridRef}
         onScroll={handleGridScroll}
+        onTouchStart={isMobile ? (e) => {
+          swipeStartX = e.touches[0].clientX
+          swipeStartY = e.touches[0].clientY
+        } : undefined}
+        onTouchEnd={isMobile ? (e) => {
+          const deltaX = e.changedTouches[0].clientX - swipeStartX
+          const deltaY = e.changedTouches[0].clientY - swipeStartY
+          // Only treat as a swipe when clearly horizontal; otherwise let scroll be.
+          if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+            if (deltaX < 0) goNext()  // swipe left → next week
+            else goPrev()             // swipe right → previous week
+          }
+        } : undefined}
         style={{ flex: 1, overflow: 'auto', minHeight: 0, border: '1px solid var(--border)', borderRadius: 6, WebkitOverflowScrolling: 'touch' }}
       >
         <div style={{ minWidth: labelW + DAYS * colW }}>
-        {/* Day header row — also the mobile swipe target (see the touch effect). */}
-        <div ref={dateHeaderRef} style={{
+        {/* Day header row */}
+        <div style={{
           display: 'flex', position: 'sticky', top: 0, zIndex: 10,
           background: 'var(--surface)', borderBottom: '2px solid var(--border)',
-          touchAction: isMobile ? 'pan-y' : undefined,
         }}>
           <div style={{ width: labelW, flexShrink: 0, borderRight: '1px solid var(--border)', position: 'sticky', left: 0, zIndex: 11, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <span style={{ fontFamily: 'DM Mono', fontSize: 10, fontWeight: 600, color: '#6B7280', letterSpacing: '0.05em' }}>
@@ -1527,10 +1511,7 @@ function CalendarPageInner() {
         {/* Prev / Today / Next */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <button
-            onClick={() => {
-              if (view === 'month') setStartDate(d => addDays(d, -totalDays))
-              else setStartDate(d => addDays(d, -7))
-            }}
+            onClick={goPrev}
             style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
           >‹</button>
           <button
@@ -1552,10 +1533,7 @@ function CalendarPageInner() {
             style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer' }}
           >Today</button>
           <button
-            onClick={() => {
-              if (view === 'month') setStartDate(d => addDays(d, totalDays))
-              else setStartDate(d => addDays(d, 7))
-            }}
+            onClick={goNext}
             style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
           >›</button>
         </div>
