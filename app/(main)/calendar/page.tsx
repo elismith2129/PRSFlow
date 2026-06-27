@@ -812,6 +812,7 @@ function CalendarPageInner() {
   const lastWheelStep = useRef(0)
   const scrollCorrectionRef = useRef<number | null>(null)
   const shiftingRef = useRef(false)
+  const dateInputRef = useRef<HTMLInputElement>(null)
   const isMobile = useIsMobile()
   // Narrower room-label column on mobile so day columns keep usable width
   const labelW = isMobile ? 80 : LABEL_W
@@ -1359,7 +1360,8 @@ function CalendarPageInner() {
                   display: 'flex', borderBottom: '1px solid var(--border)',
                   height: isRoomCollapsed ? COLLAPSED_ROOM_H : rowH,
                 }}>
-                  {/* Room label — click to collapse/expand */}
+                  {/* Room label — click to collapse/expand. On mobile the column is
+                      only 80px, so trim padding/gap so "Studio A" fits without truncating. */}
                   <div
                     onClick={() => setCollapsedRooms(prev => {
                       const next = new Set(prev)
@@ -1367,8 +1369,8 @@ function CalendarPageInner() {
                       return next
                     })}
                     style={{
-                      width: labelW, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5,
-                      padding: '0 12px', fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)',
+                      width: labelW, flexShrink: 0, display: 'flex', alignItems: 'center', gap: isMobile ? 3 : 5,
+                      padding: isMobile ? '0 6px' : '0 12px', fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)',
                       borderRight: '1px solid var(--border)', cursor: 'pointer', userSelect: 'none',
                       whiteSpace: 'nowrap', overflow: 'hidden',
                       position: 'sticky', left: 0, zIndex: 5, background: 'var(--surface)',
@@ -1487,10 +1489,40 @@ function CalendarPageInner() {
           >›</button>
         </div>
 
-        {/* Range label */}
-        <div style={{ flex: 1, fontSize: 14, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text)' }}>
-          {rangeLabel(startDate, totalDays)}
-        </div>
+        {/* Range label — tappable on mobile to open a native date picker that
+            jumps the calendar to the week containing the chosen date. Desktop is
+            plain text (no picker), unchanged. */}
+        {isMobile ? (
+          <div
+            onClick={() => dateInputRef.current?.click()}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', position: 'relative' }}
+          >
+            <span style={{
+              fontSize: 14, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text)',
+              textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.3)', textUnderlineOffset: 3,
+            }}>
+              {rangeLabel(startDate, totalDays)}
+            </span>
+            <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>📅</span>
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={fmt(startDate)}
+              onChange={e => {
+                const v = e.target.value
+                if (!v) return
+                const picked = parse(v)
+                setStartDate(getSunday(picked))
+                setDayViewDate(picked)
+              }}
+              style={{ position: 'absolute', left: 0, bottom: 0, width: 1, height: 1, opacity: 0, padding: 0, margin: 0, border: 'none' }}
+            />
+          </div>
+        ) : (
+          <div style={{ flex: 1, fontSize: 14, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text)' }}>
+            {rangeLabel(startDate, totalDays)}
+          </div>
+        )}
         </div>{/* end mobile row 1 */}
 
         {/* Row 2 on mobile: location filter + view toggles (+ zoom, hidden on
