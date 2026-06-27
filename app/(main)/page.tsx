@@ -186,7 +186,11 @@ export default function DashboardPage() {
       sessionStorage.removeItem('showWelcome')
       setShowWelcome(true)
       setTimeout(() => setWelcomeFading(true), 2000)
-      setTimeout(() => setShowWelcome(false), 2500)
+      setTimeout(() => {
+        setShowWelcome(false)
+        // Tell the nav (hidden during the splash) it can fade in now.
+        window.dispatchEvent(new Event('welcomeDone'))
+      }, 2500)
     }
     // Mark the content ready whether or not the splash showed, so the wrapper can
     // transition in. Until this runs, the wrapper stays at opacity 0 (no flash).
@@ -637,16 +641,6 @@ export default function DashboardPage() {
 
   return (
     <>
-      {/* Synchronously hide the dashboard content before first paint when a fresh
-          login is flagged, so it can never flash before the splash mounts. The
-          restore effect (and the opacity fallback) reveal it once the splash is
-          dismissed. */}
-      <script dangerouslySetInnerHTML={{ __html: `
-  if (sessionStorage.getItem('showWelcome')) {
-    document.getElementById('dashboard-content') &&
-    (document.getElementById('dashboard-content').style.visibility = 'hidden');
-  }
-` }} />
       {/* One-time post-login welcome splash */}
       {showWelcome && (
         <div

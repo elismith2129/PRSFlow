@@ -1,4 +1,4 @@
-import { Nav } from '@/components/layout/Nav'
+import { NavGate } from '@/components/layout/NavGate'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 
 export default function MainLayout({
@@ -8,7 +8,7 @@ export default function MainLayout({
 }) {
   return (
     <AuthGuard>
-      <Nav />
+      <NavGate />
       <main className="page-main" style={{ padding: '24px 32px' }}>
         {children}
       </main>

@@ -15,7 +15,7 @@ const navItems = [
   { href: '/sop', label: 'SOP' },
 ]
 
-export function Nav() {
+export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean } = {}) {
   const pathname = usePathname()
   const router = useRouter()
   const [time, setTime] = useState('')
@@ -83,6 +83,11 @@ export function Nav() {
       padding: '0 32px', height: 52,
       background: 'var(--surface)', borderBottom: '1px solid var(--border)',
       position: 'sticky', top: 0, zIndex: 99999,
+      // Hidden during the fresh-login welcome splash so it doesn't flash before the
+      // splash covers it; fades in with the dashboard once the splash dismisses.
+      opacity: hiddenForWelcome ? 0 : 1,
+      pointerEvents: hiddenForWelcome ? 'none' : undefined,
+      transition: 'opacity 0.3s ease',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <Link href="/" style={{ textDecoration: 'none' }}>
