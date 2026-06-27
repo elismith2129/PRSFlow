@@ -499,9 +499,14 @@ function DayView({
                 .sort((a, b) => timeToMins(a.from_time) - timeToMins(b.from_time))
               return (
                 <div key={`${loc}|${room}`} style={{
+                  position: 'relative',
                   background: 'var(--surface)', borderRadius: 6, overflow: 'hidden',
-                  border: '1px solid rgba(255,255,255,0.08)',
+                  border: cards.length > 0 ? '1px solid rgba(20, 184, 166, 0.35)' : '1px solid rgba(255,255,255,0.08)',
+                  boxShadow: cards.length > 0 ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)' : 'none',
                 }}>
+                  {cards.length > 0 && (
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: '#14B8A6' }} />
+                  )}
                   {/* Card header */}
                   <div style={{ padding: '6px 10px', background: 'var(--surface2)', borderBottom: cards.length > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
                     <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 11, color: '#9ca3af', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
