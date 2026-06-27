@@ -690,15 +690,12 @@ export default function DashboardPage() {
             Paramount <em style={{ fontStyle: 'italic', color: 'var(--accent)' }}>Recording Studios</em>
           </h1>
         </div>
-        {/* Desktop-only live clock, aligned to the bottom of the heading */}
+        {/* Desktop-only live clock — date + time on one line, bottom-aligned with
+            the heading, matching its Syne ExtraBold weight */}
         {!isMobile && (
-          <div style={{ flexShrink: 0, paddingLeft: 24 }}>
-            <span style={{ display: 'block', textAlign: 'right', fontFamily: 'DM Mono', fontSize: 11, color: '#6B7280' }}>
-              {clockDate}
-            </span>
-            <span style={{ display: 'block', textAlign: 'right', fontFamily: 'DM Mono', fontSize: 24, fontWeight: 600, color: '#e8eaf0' }}>
-              {clockTime}
-            </span>
+          <div style={{ flexShrink: 0, paddingLeft: 24, textAlign: 'right', fontFamily: 'Syne', fontWeight: 800, fontSize: 28, letterSpacing: '0.02em', lineHeight: 1.05, whiteSpace: 'nowrap' }}>
+            <span style={{ color: '#c8f04e' }}>{clockDate.toUpperCase()}</span>
+            <span style={{ marginLeft: 12, color: '#e8eaf0' }}>{clockTime}</span>
           </div>
         )}
       </div>
