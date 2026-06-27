@@ -501,8 +501,8 @@ function DayView({
                 <div key={`${loc}|${room}`} style={{
                   position: 'relative',
                   background: 'var(--surface)', borderRadius: 6, overflow: 'hidden',
-                  border: cards.length > 0 ? '1px solid rgba(20, 184, 166, 0.35)' : '1px solid rgba(255,255,255,0.08)',
-                  boxShadow: cards.length > 0 ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)' : 'none',
+                  border: cards.length > 0 ? '1px solid rgba(20, 184, 166, 0.5)' : '1px solid rgba(255,255,255,0.08)',
+                  boxShadow: cards.length > 0 ? 'inset 0 0 24px rgba(20, 184, 166, 0.12)' : 'none',
                 }}>
                   {cards.length > 0 && (
                     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: '#14B8A6' }} />
