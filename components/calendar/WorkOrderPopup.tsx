@@ -5,6 +5,7 @@ import type { Booking } from '@/lib/supabase'
 import TimeInput from '@/components/shared/TimeInput'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 // ─── Local types (editable UI state, strings for all inputs) ─────────────────
 
@@ -284,6 +285,9 @@ export function WorkOrderPopup({
   onSaved?: () => void
   inline?: boolean
 }) {
+  // Mobile gets a full-screen sheet; never applies when rendered inline (USF embed).
+  const isMobileRaw = useIsMobile()
+  const isMobile = isMobileRaw && !inline
   const [wo, setWo] = useState<WO | null>(null)
   const [stRows, setStRows] = useState<StRow[]>([])
   const [equipRows, setEquipRows] = useState<EquipRow[]>([])
@@ -1297,7 +1301,7 @@ export function WorkOrderPopup({
   if (loading) return (
     <div style={inline
       ? { position: 'static', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }
-      : { position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      : { position: 'fixed', top: isMobile ? 0 : 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 12 }}>Loading work order…</div>
     </div>
   )
@@ -1312,27 +1316,46 @@ export function WorkOrderPopup({
       data-wo-portal=""
       style={inline
         ? { position: 'static', background: 'transparent' }
+        : isMobile
+        ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10010, background: '#13161d' }
         : { position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.75)', overflowY: 'auto' }}
-      onClick={inline ? undefined : e => { if (e.target === e.currentTarget) handleClose() }}
+      onClick={inline || isMobile ? undefined : e => { if (e.target === e.currentTarget) handleClose() }}
     >
+      {isMobile && (
+        <style>{`[data-wo-portal] input:not([type="checkbox"]):not([type="radio"]), [data-wo-portal] select, [data-wo-portal] textarea { min-height: 44px; }`}</style>
+      )}
       <div
-        style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '100%', padding: '20px 16px', boxSizing: 'border-box' }}
-        onClick={inline ? undefined : e => { if (e.target === e.currentTarget) handleClose() }}
+        style={isMobile
+          ? { display: 'flex', flexDirection: 'column', height: '100dvh', padding: 0, boxSizing: 'border-box' }
+          : { display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '100%', padding: '20px 16px', boxSizing: 'border-box' }}
+        onClick={inline || isMobile ? undefined : e => { if (e.target === e.currentTarget) handleClose() }}
       >
       <div
-        style={{ background: '#13161d', border: '1px solid rgba(255,255,255,0.13)', borderRadius: 10, width: '100%', maxWidth: 920, minWidth: 780, marginBottom: 20, alignSelf: 'flex-start' }}
+        style={isMobile
+          ? { background: '#13161d', border: 'none', borderRadius: 0, width: '100vw', height: '100dvh', maxWidth: 'none', minWidth: 0, margin: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }
+          : { background: '#13161d', border: '1px solid rgba(255,255,255,0.13)', borderRadius: 10, width: '100%', maxWidth: 920, minWidth: 780, marginBottom: 20, alignSelf: 'flex-start' }}
         onClick={e => e.stopPropagation()}
       >
 
         {/* ── STICKY HEADER ─────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'sticky', top: 0, background: '#13161d', zIndex: 10, borderRadius: '10px 10px 0 0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: '#f0f0f0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '12px 14px' : '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'sticky', top: 0, background: '#13161d', zIndex: 10, borderRadius: isMobile ? 0 : '10px 10px 0 0', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: '#f0f0f0', whiteSpace: 'nowrap' }}>
               Work Order{wo.invoice_number ? ` — #${wo.invoice_number}` : ''}
             </span>
             <StatusBadge status={wo.status} />
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          {isMobile && (
+            <button
+              onClick={() => handleCancel()}
+              disabled={saving}
+              aria-label="Close"
+              style={{ flexShrink: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, fontSize: 22, lineHeight: 1, cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#f0f0f0' }}
+            >
+              ×
+            </button>
+          )}
+          <div style={{ display: isMobile ? 'none' : 'flex', gap: 8 }}>
             {woId && (
               <>
                 <button
@@ -1367,7 +1390,9 @@ export function WorkOrderPopup({
         </div>
 
         {/* ── SCROLLABLE BODY ──────────────────────────────────────────────── */}
-        <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div style={isMobile
+          ? { padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 20, flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }
+          : { padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
           {/* BRANDING */}
           <div style={{ textAlign: 'center', paddingBottom: 20, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
@@ -1470,12 +1495,12 @@ export function WorkOrderPopup({
           {/* STUDIO TIME TABLE — unified per-row Day/Hr toggle */}
           <div>
             <SectionHeader title="Studio Time" />
-            <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
+            <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
               {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock | Del */}
-              <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)', minWidth: isMobile ? 880 : undefined }}>
                 {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total', '', ''].map((h, i) => <div key={i} style={thS}>{h}</div>)}
               </div>
-              <div data-st-scroll="" style={{ maxHeight: 420, overflowY: 'auto' }}>
+              <div data-st-scroll="" style={{ maxHeight: 420, overflowY: 'auto', minWidth: isMobile ? 880 : undefined }}>
                 {stRows.map(r => {
                   const isEngOnly = r.studio === ''
                   const isDayRow = r.row_rate_type === 'day'
@@ -1942,21 +1967,21 @@ export function WorkOrderPopup({
         </div>{/* end body */}
 
         {/* ── FOOTER ───────────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '14px 20px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-          <button onClick={() => printWithFilename()} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
+        <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: 10, padding: isMobile ? '12px 14px' : '14px 20px', borderTop: '1px solid rgba(255,255,255,0.07)', flexShrink: 0, background: '#13161d' }}>
+          <button onClick={() => printWithFilename()} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0', ...(isMobile ? { flex: '1 1 45%', minHeight: 44, fontSize: 12 } : {}) }}>
             Export PDF
           </button>
-          <button onClick={() => handleCancel()} disabled={saving} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}>
+          <button onClick={() => handleCancel()} disabled={saving} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0', ...(isMobile ? { flex: '1 1 45%', minHeight: 44, fontSize: 12 } : {}) }}>
             Cancel
           </button>
           <button
             onClick={handleComplete}
             disabled={completing}
-            style={{ padding: '7px 18px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: completing ? 'default' : 'pointer', background: isCompleted ? 'rgba(255,255,255,0.08)' : completing ? 'rgba(20,184,166,0.5)' : '#14B8A6', border: isCompleted ? '1px solid rgba(255,255,255,0.12)' : 'none', color: isCompleted ? '#8a8fa0' : '#0d0f14', opacity: completing ? 0.7 : 1 }}
+            style={{ padding: '7px 18px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: completing ? 'default' : 'pointer', background: isCompleted ? 'rgba(255,255,255,0.08)' : completing ? 'rgba(20,184,166,0.5)' : '#14B8A6', border: isCompleted ? '1px solid rgba(255,255,255,0.12)' : 'none', color: isCompleted ? '#8a8fa0' : '#0d0f14', opacity: completing ? 0.7 : 1, ...(isMobile ? { flex: '1 1 45%', minHeight: 44, fontSize: 12 } : {}) }}
           >
             {completing ? (isCompleted ? 'Re-opening…' : 'Completing…') : isCompleted ? 'Re-open WO' : 'Complete WO'}
           </button>
-          <button onClick={handleClose} disabled={saving} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: saving ? 0.7 : 1 }}>
+          <button onClick={handleClose} disabled={saving} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '1 1 100%', minHeight: 44, fontSize: 12 } : {}) }}>
             {saving ? 'Saving…' : 'Close & Save'}
           </button>
         </div>

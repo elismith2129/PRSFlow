@@ -7,6 +7,7 @@ import StudioSelect from '@/components/shared/StudioSelect'
 import { ClientProfile } from '@/components/clients/ClientProfile'
 import { WorkOrderPopup, type WOFormSync } from '@/components/calendar/WorkOrderPopup'
 import { addArtistToLabel } from '@/lib/roster'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 // ─── COLOR TOKENS ────────────────────────────────────────────────────────────
 
@@ -288,6 +289,7 @@ export function BookingForm({
   onDraftChange?: (data: FormData) => void
   onSaved?: () => void
 }) {
+  const isMobile = useIsMobile()
   const [form, setForm] = useState<FormData>(initial)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -722,19 +724,20 @@ export function BookingForm({
 
   return (
     <div
-      style={{
-        position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.72)', zIndex: 1000,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
-      }}
-      onClick={onClose}
+      style={isMobile
+        ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--surface)', zIndex: 1000, display: 'block', padding: 0 }
+        : { position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.72)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+      onClick={isMobile ? undefined : onClose}
     >
+      {isMobile && (
+        <style>{`[data-booking-form] input:not([type="checkbox"]):not([type="radio"]), [data-booking-form] select, [data-booking-form] textarea { min-height: 44px; }`}</style>
+      )}
       <div
+        data-booking-form=""
         onClick={e => e.stopPropagation()}
-        style={{
-          background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8,
-          width: '100%', maxWidth: 960, maxHeight: '90vh',
-          display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        }}
+        style={isMobile
+          ? { background: 'var(--surface)', border: 'none', borderRadius: 0, width: '100vw', height: '100dvh', maxWidth: 'none', maxHeight: 'none', display: 'flex', flexDirection: 'column', overflow: 'hidden' }
+          : { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, width: '100%', maxWidth: 960, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
       >
         {/* Header */}
         <div style={{
@@ -805,7 +808,7 @@ export function BookingForm({
         {/* Body */}
         <div style={{ padding: '18px 20px', flex: 1, overflowY: 'auto' }}>
           {/* Two-column top half */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28, marginBottom: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 18 : 28, marginBottom: 20 }}>
 
             {/* LEFT — Session details */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
@@ -871,7 +874,7 @@ export function BookingForm({
               </div>
 
               {/* Dates */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
                 <div>
                   <label style={fL}>Start Date</label>
                   <input type="date" value={form.start_date || ''} onChange={e => { set('start_date', e.target.value); if (!multiDay) set('end_date', e.target.value) }} style={inp} />
@@ -917,7 +920,7 @@ export function BookingForm({
               </div>
 
               {/* Engineer + Assistant — side by side */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
 
                 {/* Engineer */}
                 <div>
@@ -1569,7 +1572,10 @@ export function BookingForm({
         {/* Footer */}
         <div style={{
           padding: '12px 20px', borderTop: '1px solid var(--border)',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0,
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center',
+          gap: isMobile ? 10 : 0, flexShrink: 0,
         }}>
           <div>
             {bookingId && !confirmDelete && (
@@ -1593,9 +1599,9 @@ export function BookingForm({
               </div>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: isMobile ? 'wrap' : 'nowrap', width: isMobile ? '100%' : undefined }}>
             {saveError && (
-              <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'DM Mono', padding: '3px 8px', background: 'rgba(240,78,122,0.1)', borderRadius: 4, border: '1px solid rgba(240,78,122,0.3)' }}>
+              <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'DM Mono', padding: '3px 8px', background: 'rgba(240,78,122,0.1)', borderRadius: 4, border: '1px solid rgba(240,78,122,0.3)', width: isMobile ? '100%' : undefined }}>
                 {saveError}
               </div>
             )}
@@ -1603,11 +1609,13 @@ export function BookingForm({
               padding: '6px 16px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono',
               cursor: 'pointer', background: 'var(--surface2)',
               border: '1px solid var(--border)', color: 'var(--text2)',
+              ...(isMobile ? { flex: '1 1 40%', minHeight: 44, fontSize: 13 } : {}),
             }}>Cancel</button>
             <button onClick={handleSave} disabled={saving} style={{
               padding: '6px 20px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono',
               cursor: saving ? 'default' : 'pointer', background: '#1e40af',
               border: 'none', color: '#fff', fontWeight: 700, opacity: saving ? 0.6 : 1,
+              ...(isMobile ? { flex: '1 1 50%', minHeight: 44, fontSize: 13 } : {}),
             }}>{saving ? 'Saving...' : 'Save Booking'}</button>
           </div>
         </div>
