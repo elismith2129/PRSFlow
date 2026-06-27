@@ -7,6 +7,15 @@ import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
+// Studio accent colors — mirror the Runner Hub WO header (STUDIO_META) so the
+// mobile WO popup matches it. Keyed by venue name (booking.location).
+const STUDIO_COLORS: Record<string, string> = {
+  paramount: '#c8f04e',
+  ameraycan: '#EF4444',
+  encore: '#4e8ff0',
+  track: '#F97316',
+}
+
 // ─── Local types (editable UI state, strings for all inputs) ─────────────────
 
 type WO = {
@@ -1310,6 +1319,7 @@ export function WorkOrderPopup({
 
   const woId = woIdRef.current
   const isCompleted = wo.status === 'completed'
+  const accent = STUDIO_COLORS[(booking.location || '').toLowerCase()] || '#c8f04e'
 
   return (
     <div
@@ -1317,7 +1327,7 @@ export function WorkOrderPopup({
       style={inline
         ? { position: 'static', background: 'transparent' }
         : isMobile
-        ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10010, background: '#13161d' }
+        ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10010, background: '#0d0f14' }
         : { position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.75)', overflowY: 'auto' }}
       onClick={inline || isMobile ? undefined : e => { if (e.target === e.currentTarget) handleClose() }}
     >
@@ -1332,62 +1342,67 @@ export function WorkOrderPopup({
       >
       <div
         style={isMobile
-          ? { background: '#13161d', border: 'none', borderRadius: 0, width: '100vw', height: '100dvh', maxWidth: 'none', minWidth: 0, margin: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }
+          ? { background: '#0d0f14', border: 'none', borderRadius: 0, width: '100vw', height: '100dvh', maxWidth: 'none', minWidth: 0, margin: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }
           : { background: '#13161d', border: '1px solid rgba(255,255,255,0.13)', borderRadius: 10, width: '100%', maxWidth: 920, minWidth: 780, marginBottom: 20, alignSelf: 'flex-start' }}
         onClick={e => e.stopPropagation()}
       >
 
-        {/* ── STICKY HEADER ─────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '12px 14px' : '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'sticky', top: 0, background: '#13161d', zIndex: 10, borderRadius: isMobile ? 0 : '10px 10px 0 0', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: '#f0f0f0', whiteSpace: 'nowrap' }}>
-              Work Order{wo.invoice_number ? ` — #${wo.invoice_number}` : ''}
-            </span>
-            <StatusBadge status={wo.status} />
+        {/* ── HEADER ────────────────────────────────────────────────────────── */}
+        {isMobile ? (
+          /* Mobile: matches the Runner Hub WO header (back arrow + title + sub) */
+          <div style={{ background: '#161920', borderBottom: `3px solid ${accent}`, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10, flexShrink: 0 }}>
+            <button onClick={() => handleCancel()} disabled={saving} aria-label="Close" style={{ background: 'none', border: 'none', color: '#8b90a8', cursor: saving ? 'default' : 'pointer', fontSize: 18, padding: '0 4px', flexShrink: 0 }}>←</button>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#e8eaf2', fontFamily: 'Syne, sans-serif' }}>
+                Work Order{wo.invoice_number ? ` — #${wo.invoice_number}` : ''}
+              </div>
+              <div style={{ fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {(booking.client_name || wo.client || '—')} · {(booking.start_date || wo.session_date || '')}
+              </div>
+            </div>
           </div>
-          {isMobile && (
-            <button
-              onClick={() => handleCancel()}
-              disabled={saving}
-              aria-label="Close"
-              style={{ flexShrink: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, fontSize: 22, lineHeight: 1, cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#f0f0f0' }}
-            >
-              ×
-            </button>
-          )}
-          <div style={{ display: isMobile ? 'none' : 'flex', gap: 8 }}>
-            {woId && (
-              <>
-                <button
-                  onClick={() => printWithFilename()}
-                  style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}
-                >
-                  Export PDF
-                </button>
-                <button
-                  onClick={() => printWithFilename()}
-                  style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}
-                >
-                  Print
-                </button>
-              </>
-            )}
-            <button
-              onClick={() => handleCancel()}
-              disabled={saving}
-              style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleClose}
-              disabled={saving}
-              style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : 'rgba(200,240,78,0.12)', border: '1px solid rgba(200,240,78,0.3)', color: saving ? '#8a8fa0' : '#c8f04e' }}
-            >
-              {saving ? 'Saving…' : 'Close & Save'}
-            </button>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'sticky', top: 0, background: '#13161d', zIndex: 10, borderRadius: '10px 10px 0 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: '#f0f0f0' }}>
+                Work Order{wo.invoice_number ? ` — #${wo.invoice_number}` : ''}
+              </span>
+              <StatusBadge status={wo.status} />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {woId && (
+                <>
+                  <button
+                    onClick={() => printWithFilename()}
+                    style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}
+                  >
+                    Export PDF
+                  </button>
+                  <button
+                    onClick={() => printWithFilename()}
+                    style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}
+                  >
+                    Print
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => handleCancel()}
+                disabled={saving}
+                style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClose}
+                disabled={saving}
+                style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : 'rgba(200,240,78,0.12)', border: '1px solid rgba(200,240,78,0.3)', color: saving ? '#8a8fa0' : '#c8f04e' }}
+              >
+                {saving ? 'Saving…' : 'Close & Save'}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ── SCROLLABLE BODY ──────────────────────────────────────────────── */}
         <div style={isMobile
@@ -1967,21 +1982,21 @@ export function WorkOrderPopup({
         </div>{/* end body */}
 
         {/* ── FOOTER ───────────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: 10, padding: isMobile ? '12px 14px' : '14px 20px', borderTop: '1px solid rgba(255,255,255,0.07)', flexShrink: 0, background: '#13161d' }}>
-          <button onClick={() => printWithFilename()} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0', ...(isMobile ? { flex: '1 1 45%', minHeight: 44, fontSize: 12 } : {}) }}>
+        <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 8 : 10, padding: isMobile ? '12px 16px calc(12px + env(safe-area-inset-bottom)) 16px' : '14px 20px', borderTop: isMobile ? '1px solid #2a2e3d' : '1px solid rgba(255,255,255,0.07)', flexShrink: 0, background: isMobile ? '#0d0f14' : '#13161d' }}>
+          <button onClick={() => printWithFilename()} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0', ...(isMobile ? { flex: '1 1 45%', minHeight: 48, fontSize: 13, borderRadius: 12, padding: '13px 0', background: '#1e2130', border: '1px solid #2a2e3d', color: '#e8eaf2', letterSpacing: '0.02em' } : {}) }}>
             Export PDF
           </button>
-          <button onClick={() => handleCancel()} disabled={saving} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0', ...(isMobile ? { flex: '1 1 45%', minHeight: 44, fontSize: 12 } : {}) }}>
+          <button onClick={() => handleCancel()} disabled={saving} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0', ...(isMobile ? { flex: '1 1 45%', minHeight: 48, fontSize: 13, borderRadius: 12, padding: '13px 0', background: '#1e2130', border: '1px solid #2a2e3d', color: '#e8eaf2', letterSpacing: '0.02em' } : {}) }}>
             Cancel
           </button>
           <button
             onClick={handleComplete}
             disabled={completing}
-            style={{ padding: '7px 18px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: completing ? 'default' : 'pointer', background: isCompleted ? 'rgba(255,255,255,0.08)' : completing ? 'rgba(20,184,166,0.5)' : '#14B8A6', border: isCompleted ? '1px solid rgba(255,255,255,0.12)' : 'none', color: isCompleted ? '#8a8fa0' : '#0d0f14', opacity: completing ? 0.7 : 1, ...(isMobile ? { flex: '1 1 45%', minHeight: 44, fontSize: 12 } : {}) }}
+            style={{ padding: '7px 18px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: completing ? 'default' : 'pointer', background: isCompleted ? 'rgba(255,255,255,0.08)' : completing ? 'rgba(20,184,166,0.5)' : '#14B8A6', border: isCompleted ? '1px solid rgba(255,255,255,0.12)' : 'none', color: isCompleted ? '#8a8fa0' : '#0d0f14', opacity: completing ? 0.7 : 1, ...(isMobile ? { flex: '1 1 100%', minHeight: 48, fontSize: 13, borderRadius: 12, padding: '13px 0', letterSpacing: '0.02em' } : {}) }}
           >
             {completing ? (isCompleted ? 'Re-opening…' : 'Completing…') : isCompleted ? 'Re-open WO' : 'Complete WO'}
           </button>
-          <button onClick={handleClose} disabled={saving} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '1 1 100%', minHeight: 44, fontSize: 12 } : {}) }}>
+          <button onClick={handleClose} disabled={saving} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '1 1 100%', minHeight: 48, fontSize: 13, fontWeight: 800, borderRadius: 12, padding: '13px 0', letterSpacing: '0.02em' } : {}) }}>
             {saving ? 'Saving…' : 'Close & Save'}
           </button>
         </div>

@@ -806,7 +806,7 @@ export function BookingForm({
         </div>
 
         {/* Body */}
-        <div style={{ padding: '18px 20px', flex: 1, overflowY: 'auto' }}>
+        <div style={{ padding: '18px 20px', flex: 1, overflowY: 'auto', minHeight: isMobile ? 0 : undefined, WebkitOverflowScrolling: 'touch' }}>
           {/* Two-column top half */}
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 18 : 28, marginBottom: 20 }}>
 
