@@ -40,12 +40,6 @@ const COL_W = 120  // minimum day-column width; forces horizontal scroll when co
 const ZOOM_FIXED = [60, 80, 88, 110, 132] // zoom levels 1–5; level 0 = fit-all (≈44px)
 const BUFFER_WEEKS = 2 // weeks of buffer rendered on each side for endless horizontal scroll
 
-// Transient swipe-start coordinates for mobile grid navigation. Module-scoped so
-// they survive any re-render between touchstart and touchend (the calendar is a
-// single-instance page), keeping the touch handlers ref-free and useEffect-free.
-let swipeStartX = 0
-let swipeStartY = 0
-
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
 function getMonday(d: Date): Date {
@@ -1298,23 +1292,17 @@ function CalendarPageInner() {
 
   function renderGrid() {
     const DAYS = totalRenderDays
+    // Bounds of the actually-rendered grid window. `load` fetches a wider ±buffer
+    // range than mobile renders (bufDays=0 on mobile), so bookings outside this
+    // window must be excluded — otherwise off-window blocks clamp to left=0 /
+    // width≤0 and render as slivers stuck against the left edge. On desktop the
+    // rendered window equals the fetched range, so this filter is a no-op there.
+    const winStart = fmt(gridRenderStart)
+    const winEnd = fmt(addDays(gridRenderStart, DAYS - 1))
     return (
       <div
         ref={gridRef}
         onScroll={handleGridScroll}
-        onTouchStart={isMobile ? (e) => {
-          swipeStartX = e.touches[0].clientX
-          swipeStartY = e.touches[0].clientY
-        } : undefined}
-        onTouchEnd={isMobile ? (e) => {
-          const deltaX = e.changedTouches[0].clientX - swipeStartX
-          const deltaY = e.changedTouches[0].clientY - swipeStartY
-          // Only treat as a swipe when clearly horizontal; otherwise let scroll be.
-          if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
-            if (deltaX < 0) goNext()  // swipe left → next week
-            else goPrev()             // swipe right → previous week
-          }
-        } : undefined}
         style={{ flex: 1, overflow: 'auto', minHeight: 0, border: '1px solid var(--border)', borderRadius: 6, WebkitOverflowScrolling: 'touch' }}
       >
         <div style={{ minWidth: labelW + DAYS * colW }}>
@@ -1408,7 +1396,10 @@ function CalendarPageInner() {
             {!collapsed.has(loc.name) && loc.rooms.map(room => {
               const roomKey = `${loc.name}|${room}`
               const isRoomCollapsed = collapsedRooms.has(roomKey)
-              const roomBookings = bookings.filter(b => b.location === loc.name && b.studio === room)
+              const roomBookings = bookings.filter(b =>
+                b.location === loc.name && b.studio === room &&
+                b.start_date <= winEnd && b.end_date >= winStart
+              )
               const laneMap = assignLanes(roomBookings)
               return (
                 <div key={room} style={{
