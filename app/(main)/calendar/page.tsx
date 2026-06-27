@@ -504,7 +504,7 @@ function DayView({
                 }}>
                   {/* Card header */}
                   <div style={{ padding: '6px 10px', background: 'var(--surface2)', borderBottom: cards.length > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
-                    <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 11, color: '#c8f04e', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 11, color: '#9ca3af', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                       {loc} {room}
                     </span>
                   </div>
