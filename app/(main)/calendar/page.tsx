@@ -500,13 +500,21 @@ function DayView({
               return (
                 <div key={`${loc}|${room}`} style={{
                   position: 'relative',
-                  background: cards.length > 0 ? 'linear-gradient(135deg, rgba(20, 184, 166, 0.05) 0%, transparent 60%)' : 'var(--surface)',
+                  background: 'var(--surface)',
                   borderRadius: 6, overflow: 'hidden',
                   border: cards.length > 0 ? '1px solid rgba(20, 184, 166, 0.2)' : '1px solid rgba(255,255,255,0.08)',
-                  boxShadow: cards.length > 0 ? 'inset 0 0 30px rgba(20, 184, 166, 0.15)' : 'none',
                 }}>
                   {cards.length > 0 && (
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: '#14B8A6' }} />
+                    <>
+                      {/* Inner glow overlay — sits on top of the opaque content so the inset glow is actually visible */}
+                      <div style={{
+                        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2,
+                        background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.05) 0%, transparent 60%)',
+                        boxShadow: 'inset 0 0 30px rgba(20, 184, 166, 0.15)',
+                      }} />
+                      {/* 2px teal top bar */}
+                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: '#14B8A6', zIndex: 3 }} />
+                    </>
                   )}
                   {/* Card header */}
                   <div style={{ padding: '6px 10px', background: 'var(--surface2)', borderBottom: cards.length > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
