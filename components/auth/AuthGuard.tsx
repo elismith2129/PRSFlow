@@ -7,9 +7,19 @@ import { supabase } from '@/lib/supabase'
 // Client-side route protection for the internal (main) route group.
 // Unauthenticated users are redirected to /login. While the session is being
 // resolved we render nothing so protected content never flashes on screen.
+//
+// Fresh-login welcome hold: the login page sets a 'showWelcome' sessionStorage
+// flag before redirecting here. When that flag is present we render a full-screen
+// dark (#0d0f14) background while the session resolves — so the screen stays dark
+// from the moment the page loads until the dashboard's welcome splash takes over,
+// with no visible flash in between. We only read the flag here (never remove it);
+// the dashboard clears it once its splash mounts.
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [authed, setAuthed] = useState<boolean | null>(null)
+  const [pendingWelcome] = useState<boolean>(
+    () => typeof window !== 'undefined' && !!sessionStorage.getItem('showWelcome')
+  )
 
   useEffect(() => {
     let active = true
@@ -40,7 +50,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [router])
 
-  if (authed !== true) return null
+  if (authed !== true) {
+    // Fresh login: hold a dark screen until the session resolves and the dashboard's
+    // welcome splash takes over, so nothing flashes. Otherwise render nothing.
+    return pendingWelcome ? (
+      <div style={{ position: 'fixed', inset: 0, background: '#0d0f14', zIndex: 100001 }} />
+    ) : null
+  }
 
   return <>{children}</>
 }

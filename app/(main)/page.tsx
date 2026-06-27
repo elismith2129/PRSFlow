@@ -129,7 +129,12 @@ export default function DashboardPage() {
   const [dashEditBooking, setDashEditBooking] = useState<Booking | null>(null)
   const [dashFormInitial, setDashFormInitial] = useState<FormData>(() => emptyForm())
   // One-time post-login welcome splash (set by the login page in sessionStorage).
-  const [showWelcome, setShowWelcome] = useState(false)
+  // Initialize from the flag synchronously so the splash is in the dashboard's
+  // FIRST paint — covering the nav bar before it can flash. The welcome effect
+  // below still removes the flag and schedules the dismiss.
+  const [showWelcome, setShowWelcome] = useState<boolean>(
+    () => typeof window !== 'undefined' && sessionStorage.getItem('showWelcome') === 'true'
+  )
   const [welcomeFading, setWelcomeFading] = useState(false)
   // Content starts hidden until the welcome check resolves, so the dashboard
   // never flashes at full opacity for a frame before the splash mounts.
