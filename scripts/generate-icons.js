@@ -24,10 +24,10 @@ const mainSVG = `<svg width="512" height="512" viewBox="0 0 200 200" xmlns="http
   </defs>
   <rect width="200" height="200" rx="44" fill="url(#metal-bg)"/>
   <rect x="1" y="1" width="198" height="90" rx="43" fill="white" fill-opacity="0.04"/>
-  <text x="28" y="101" font-family="Arial Black, sans-serif" font-weight="800" font-size="52" fill="#14B8A6" fill-opacity="0.45" textLength="152" lengthAdjust="spacingAndGlyphs">PRS</text>
-  <text x="28" y="151" font-family="Arial Black, sans-serif" font-weight="800" font-size="52" fill="#14B8A6" fill-opacity="0.45" textLength="152" lengthAdjust="spacingAndGlyphs">FLOW</text>
-  <text x="24" y="98" font-family="Arial Black, sans-serif" font-weight="800" font-size="52" fill="url(#chrome-prs)" textLength="152" lengthAdjust="spacingAndGlyphs">PRS</text>
-  <text x="24" y="148" font-family="Arial Black, sans-serif" font-weight="800" font-size="52" fill="url(#chrome-flow)" textLength="152" lengthAdjust="spacingAndGlyphs">FLOW</text>
+  <text x="39" y="101" font-family="Arial Black, sans-serif" font-weight="800" font-size="48" fill="#14B8A6" fill-opacity="0.45" textLength="130" lengthAdjust="spacingAndGlyphs">PRS</text>
+  <text x="39" y="151" font-family="Arial Black, sans-serif" font-weight="800" font-size="48" fill="#14B8A6" fill-opacity="0.45" textLength="130" lengthAdjust="spacingAndGlyphs">FLOW</text>
+  <text x="35" y="98" font-family="Arial Black, sans-serif" font-weight="800" font-size="48" fill="url(#chrome-prs)" textLength="130" lengthAdjust="spacingAndGlyphs">PRS</text>
+  <text x="35" y="148" font-family="Arial Black, sans-serif" font-weight="800" font-size="48" fill="url(#chrome-flow)" textLength="130" lengthAdjust="spacingAndGlyphs">FLOW</text>
 </svg>`;
 
 const runnerSVG = `<svg width="512" height="512" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
