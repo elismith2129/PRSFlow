@@ -199,6 +199,18 @@ type TouchMap = Record<number, { initials: string, method: string, created_at: s
 type CrmView = 'needs-action' | 'all-leads' | 'analytics'
 type LabelSuggestion = Client & { _anrName?: string; _anrContactId?: string; _anrEmail?: string | null; _anrPhone?: string | null }
 
+// Universal client search result (label mode) — one row per label / A&R / artist match.
+// Mirrors the booking form's combined client search.
+type UniSuggestion = {
+  clientId: string
+  labelName: string
+  artist: string
+  anrName: string
+  anrContactId: string | null
+  anrEmail: string | null
+  anrPhone: string | null
+}
+
 export default function CRMPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [latestTouches, setLatestTouches] = useState<TouchMap>({})
@@ -2000,9 +2012,11 @@ function NewLeadModal({ leads, onClose, onSave }: {
   // Label mode state
   const [labelClientId, setLabelClientId] = useState<string | null>(null)
   const [labelQuery, setLabelQuery] = useState('')
-  const [labelClientSuggestions, setLabelClientSuggestions] = useState<LabelSuggestion[]>([])
-  const [showLabelClientDD, setShowLabelClientDD] = useState(false)
-  const [labelHighlight, setLabelHighlight] = useState(-1)
+  // Universal client search (label / A&R / artist) — the single search field in label mode
+  const [clientSearch, setClientSearch] = useState('')
+  const [uniSuggestions, setUniSuggestions] = useState<UniSuggestion[]>([])
+  const [showUniDD, setShowUniDD] = useState(false)
+  const [uniHighlight, setUniHighlight] = useState(-1)
   const [anrContacts, setAnrContacts] = useState<ClientContact[]>([])
   const [anrContactId, setAnrContactId] = useState<string | null>(null)
   const [selectedAnr, setSelectedAnr] = useState<ClientContact | null>(null)
@@ -2015,9 +2029,8 @@ function NewLeadModal({ leads, onClose, onSave }: {
 
   const [saving, setSaving] = useState(false)
   const nameDebounce = useRef<ReturnType<typeof setTimeout>>()
-  const labelDebounce = useRef<ReturnType<typeof setTimeout>>()
+  const uniDebounce = useRef<ReturnType<typeof setTimeout>>()
   const skipNameSearch = useRef(false)
-  const skipLabelSearch = useRef(false)
 
   // COD: name autocomplete
   useEffect(() => {
@@ -2061,41 +2074,92 @@ function NewLeadModal({ leads, onClose, onSave }: {
     setCompanySuggestions(Array.from(new Set(leads.map(l => l.company).filter((v): v is string => !!v && v.toLowerCase().includes(q)))).slice(0, 6))
   }, [form.company, leads])
 
-  // Label mode: label client search — matches on label name AND A&R contact names
+  // Label mode: universal client search — matches on label name, A&R contact name, AND artist name.
+  // Mirrors the booking form's combined client search (BookingForm.tsx).
   useEffect(() => {
     if (mode !== 'label') return
-    if (skipLabelSearch.current) { skipLabelSearch.current = false; return }
-    if (labelQuery.length < 2) { setLabelClientSuggestions([]); setShowLabelClientDD(false); return }
-    clearTimeout(labelDebounce.current)
-    labelDebounce.current = setTimeout(async () => {
-      const q = labelQuery.trim()
-      const [nameRes, anrRes] = await Promise.all([
-        supabase.from('clients').select('id, type, name, email, phone, created_at').eq('type', 'label').ilike('name', `%${q}%`).limit(8),
-        supabase.from('client_contacts').select('id, client_id, fname, lname, email, phone, clients(id, type, name, email, phone, created_at)').eq('contact_type', 'anr').or(`fname.ilike.%${q}%,lname.ilike.%${q}%`).limit(12),
+    const q = clientSearch.trim()
+    if (q.length < 2) { setUniSuggestions([]); setShowUniDD(false); return }
+    clearTimeout(uniDebounce.current)
+    uniDebounce.current = setTimeout(async () => {
+      const [labelRes, anrRes, artistRes] = await Promise.all([
+        // Label clients by name
+        supabase.from('clients').select('id, type, name').eq('type', 'label').ilike('name', `%${q}%`).limit(20),
+        // A&R contacts by name, joined to parent label client
+        supabase.from('client_contacts').select('id, client_id, fname, lname, email, phone, contact_type, clients(id, type, name)').or(`fname.ilike.%${q}%,lname.ilike.%${q}%`).limit(20),
+        // A&R contacts with artist arrays + parent label client; matched client-side
+        supabase.from('client_contacts').select('id, client_id, fname, lname, email, phone, artists, contact_type, clients(id, type, name)').neq('artists', '{}').limit(100),
       ])
+
       const seen = new Set<string>()
-      const suggestions: LabelSuggestion[] = []
-      for (const c of (nameRes.data || []) as Client[]) {
-        if (!seen.has(c.id)) { seen.add(c.id); suggestions.push(c) }
+      const results: UniSuggestion[] = []
+
+      // Artist matches — A&R contacts whose artist array contains the query (artist is the hero line)
+      for (const ct of (artistRes.data || []) as any[]) {
+        const parent = ct.clients as any
+        if (!parent || parent.type !== 'label') continue
+        if (ct.contact_type === 'admin') continue
+        if (!Array.isArray(ct.artists)) continue
+        for (const artistName of ct.artists as string[]) {
+          if (typeof artistName !== 'string') continue
+          if (!artistName.toLowerCase().includes(q.toLowerCase())) continue
+          const key = `artist-${ct.id}-${artistName}`
+          if (seen.has(key)) continue
+          seen.add(key)
+          results.push({
+            clientId: parent.id,
+            labelName: parent.name,
+            artist: artistName,
+            anrName: `${ct.fname || ''} ${ct.lname || ''}`.trim(),
+            anrContactId: ct.id,
+            anrEmail: ct.email ?? null,
+            anrPhone: ct.phone ?? null,
+          })
+        }
       }
+
+      // A&R name matches
       for (const ct of (anrRes.data || []) as any[]) {
-        const client = ct.clients as Client
-        if (!client || client.type !== 'label') continue
-        if (seen.has(client.id)) continue
-        seen.add(client.id)
-        suggestions.push({
-          ...client,
-          _anrName: `${ct.fname || ''} ${ct.lname || ''}`.trim(),
-          _anrContactId: ct.id,
-          _anrEmail: ct.email ?? null,
-          _anrPhone: ct.phone ?? null,
+        const parent = ct.clients as any
+        if (!parent || parent.type !== 'label') continue
+        if (ct.contact_type === 'admin') continue
+        const anrName = `${ct.fname || ''} ${ct.lname || ''}`.trim()
+        if (!anrName) continue
+        const key = `anr-${ct.id}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        results.push({
+          clientId: parent.id,
+          labelName: parent.name,
+          artist: '',
+          anrName,
+          anrContactId: ct.id,
+          anrEmail: ct.email ?? null,
+          anrPhone: ct.phone ?? null,
         })
       }
-      setLabelClientSuggestions(suggestions)
-      setShowLabelClientDD(suggestions.length > 0)
+
+      // Label name matches
+      for (const c of (labelRes.data || []) as any[]) {
+        const key = `label-${c.id}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        results.push({
+          clientId: c.id,
+          labelName: c.name,
+          artist: '',
+          anrName: '',
+          anrContactId: null,
+          anrEmail: null,
+          anrPhone: null,
+        })
+      }
+
+      setUniSuggestions(results)
+      setShowUniDD(results.length > 0)
     }, 200)
-    return () => clearTimeout(labelDebounce.current)
-  }, [labelQuery, mode])
+    return () => clearTimeout(uniDebounce.current)
+  }, [clientSearch, mode])
 
   // Label mode: load A&R contacts + label artist roster when label client is selected
   useEffect(() => {
@@ -2109,24 +2173,33 @@ function NewLeadModal({ leads, onClose, onSave }: {
     })
   }, [labelClientId])
 
-  function selectLabelClient(c: LabelSuggestion) {
-    skipLabelSearch.current = true
-    clearTimeout(labelDebounce.current)
-    setLabelClientId(c.id)
-    setLabelQuery(c.name)
-    setShowLabelClientDD(false)
-    setLabelHighlight(-1)
-    set('label', c.name)
-    if (c._anrName && c._anrContactId) {
-      setAnrContactId(c._anrContactId)
-      setAnrQuery(c._anrName)
-      setSelectedAnr({ id: c._anrContactId, client_id: c.id, fname: c._anrName.split(' ')[0] || null, lname: c._anrName.split(' ').slice(1).join(' ') || null, email: c._anrEmail || null, phone: c._anrPhone || null, instagram: null, role: null, notes: null, contact_type: 'anr', artists: null })
-      if (c._anrEmail) set('email', c._anrEmail)
-      if (c._anrPhone) set('phone', c._anrPhone)
+  // Autofill LABEL + A&R/REP + ARTIST from a universal-search pick. All three fields
+  // remain editable afterward (this only seeds their values).
+  function selectUniClient(s: UniSuggestion) {
+    clearTimeout(uniDebounce.current)
+    // LABEL
+    setLabelClientId(s.clientId)
+    setLabelQuery(s.labelName)
+    set('label', s.labelName)
+    // A&R / REP
+    if (s.anrContactId) {
+      setAnrContactId(s.anrContactId)
+      setAnrQuery(s.anrName)
+      setSelectedAnr({ id: s.anrContactId, client_id: s.clientId, fname: s.anrName.split(' ')[0] || null, lname: s.anrName.split(' ').slice(1).join(' ') || null, email: s.anrEmail, phone: s.anrPhone, instagram: null, role: null, notes: null, contact_type: 'anr', artists: null })
+      if (s.anrEmail) set('email', s.anrEmail)
+      if (s.anrPhone) set('phone', s.anrPhone)
       setAnrHighlight(-1)
     } else {
       setAnrContactId(null); setSelectedAnr(null); setAnrQuery(''); setAnrHighlight(-1)
     }
+    // ARTIST
+    if (s.artist) {
+      setArtistQuery(s.artist)
+      set('artist_name', s.artist)
+    }
+    setClientSearch('')
+    setShowUniDD(false)
+    setUniHighlight(-1)
   }
 
   function selectAnr(contact: ClientContact) {
@@ -2209,12 +2282,12 @@ function NewLeadModal({ leads, onClose, onSave }: {
     if (e.key === 'Escape') { setShowNameDD(false) }
   }
 
-  function handleLabelKeyDown(e: React.KeyboardEvent) {
-    if (!showLabelClientDD || labelClientSuggestions.length === 0) return
-    if (e.key === 'ArrowDown') { e.preventDefault(); setLabelHighlight(h => Math.min(h + 1, labelClientSuggestions.length - 1)) }
-    if (e.key === 'ArrowUp') { e.preventDefault(); setLabelHighlight(h => Math.max(h - 1, 0)) }
-    if (e.key === 'Enter' && labelHighlight >= 0) { e.preventDefault(); selectLabelClient(labelClientSuggestions[labelHighlight]) }
-    if (e.key === 'Escape') { setShowLabelClientDD(false); setLabelHighlight(-1) }
+  function handleUniKeyDown(e: React.KeyboardEvent) {
+    if (!showUniDD || uniSuggestions.length === 0) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setUniHighlight(h => Math.min(h + 1, uniSuggestions.length - 1)) }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setUniHighlight(h => Math.max(h - 1, 0)) }
+    if (e.key === 'Enter' && uniHighlight >= 0) { e.preventDefault(); selectUniClient(uniSuggestions[uniHighlight]) }
+    if (e.key === 'Escape') { setShowUniDD(false); setUniHighlight(-1) }
   }
 
   function handleAnrKeyDown(e: React.KeyboardEvent) {
@@ -2455,33 +2528,43 @@ function NewLeadModal({ leads, onClose, onSave }: {
             </>
           ) : (
             <>
-              {/* Label mode: Label → A&R → Artist */}
+              {/* Label mode: universal search → autofills Label / A&R / Artist */}
               <div style={{ position: 'relative' }}>
-                <label style={labelS}>Label</label>
+                <label style={labelS}>Search Client</label>
                 <input
                   autoFocus
-                  value={labelQuery}
-                  onChange={e => { setLabelQuery(e.target.value); setLabelClientId(null); setLabelHighlight(-1); setShowLabelClientDD(true) }}
-                  onFocus={() => setShowLabelClientDD(labelClientSuggestions.length > 0)}
-                  onBlur={() => setTimeout(() => setShowLabelClientDD(false), 200)}
-                  onKeyDown={handleLabelKeyDown}
-                  placeholder="Search label clients…"
+                  value={clientSearch}
+                  onChange={e => { setClientSearch(e.target.value); setUniHighlight(-1); setShowUniDD(true) }}
+                  onFocus={() => setShowUniDD(uniSuggestions.length > 0)}
+                  onBlur={() => setTimeout(() => setShowUniDD(false), 200)}
+                  onKeyDown={handleUniKeyDown}
+                  placeholder="Search client name…"
                   style={inputStyle}
                 />
-                {showLabelClientDD && labelClientSuggestions.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
-                    {labelClientSuggestions.map((c, i) => (
-                      <div key={c.id} onMouseDown={() => selectLabelClient(c)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i === labelHighlight ? 'var(--surface)' : 'transparent' }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>
-                          {c._anrName ? `${c._anrName} — ${c.name}` : c.name}
-                        </div>
-                        <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
-                          {c._anrName ? `A&R · ${c.name}` : c.email || ''}
+                {showUniDD && uniSuggestions.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden', maxHeight: 280, overflowY: 'auto' }}>
+                    {uniSuggestions.map((s, i) => (
+                      <div key={`${s.clientId}-${s.artist}-${s.anrContactId || ''}-${i}`} onMouseDown={() => selectUniClient(s)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i === uniHighlight ? 'var(--surface)' : 'transparent' }}>
+                        <div style={{ fontSize: 12, color: 'var(--text)', marginBottom: 2 }}>
+                          {s.artist && <span style={{ fontWeight: 700 }}>{s.artist}</span>}
+                          {s.artist && (s.labelName || s.anrName) && <span style={{ color: 'var(--text3)' }}> · </span>}
+                          {s.labelName && <span style={{ color: 'var(--text2)' }}>{s.labelName}</span>}
+                          {s.anrName && <span style={{ color: 'var(--text3)' }}> · {s.anrName}</span>}
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
+              </div>
+
+              <div style={{ position: 'relative' }}>
+                <label style={labelS}>Label</label>
+                <input
+                  value={labelQuery}
+                  onChange={e => { setLabelQuery(e.target.value); set('label', e.target.value); setLabelClientId(null) }}
+                  placeholder="Label name…"
+                  style={inputStyle}
+                />
                 {labelClientId && (
                   <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--booked)', fontFamily: 'DM Mono' }}>
                     <span>★ Linked to label client</span>
@@ -2498,9 +2581,8 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   onFocus={() => setShowAnrDD(true)}
                   onBlur={() => setTimeout(() => setShowAnrDD(false), 200)}
                   onKeyDown={handleAnrKeyDown}
-                  placeholder={labelClientId ? 'Search or add A&R contact…' : 'Select a label first'}
-                  disabled={!labelClientId}
-                  style={{ ...inputStyle, opacity: labelClientId ? 1 : 0.4 }}
+                  placeholder="A&R / rep name…"
+                  style={inputStyle}
                 />
                 {showAnrDD && labelClientId && (anrFiltered.length > 0 || anrQuery.trim().length >= 2) && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
