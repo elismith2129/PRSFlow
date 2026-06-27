@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, Suspense, type TouchEvent as ReactTouchEvent } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
@@ -828,8 +828,7 @@ function CalendarPageInner() {
   const lastWheelStep = useRef(0)
   const scrollCorrectionRef = useRef<number | null>(null)
   const shiftingRef = useRef(false)
-  const touchStartX = useRef(0)
-  const touchStartY = useRef(0)
+  const dateHeaderRef = useRef<HTMLDivElement>(null)
   const isMobile = useIsMobile()
   // Narrower room-label column on mobile so day columns keep usable width
   const labelW = isMobile ? 80 : LABEL_W
@@ -989,25 +988,48 @@ function CalendarPageInner() {
     }
   }, [startDate, view]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Mobile swipe navigation: a deliberate horizontal swipe (>50px, more horizontal
-  // than vertical) jumps one week; smaller moves fall through as taps so booking
-  // chips still open. setStartDate triggers the scroll-recenter effect above.
-  function handleTouchStart(e: ReactTouchEvent) {
-    const t = e.touches[0]
-    touchStartX.current = t.clientX
-    touchStartY.current = t.clientY
-  }
-
-  function handleTouchEnd(e: ReactTouchEvent) {
-    if (!isMobile) return
-    const t = e.changedTouches[0]
-    const dx = t.clientX - touchStartX.current
-    const dy = t.clientY - touchStartY.current
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
-      if (dx < 0) setStartDate(d => addDays(d, 7))   // swipe left → next week
-      else setStartDate(d => addDays(d, -7))          // swipe right → previous week
+  // Mobile swipe navigation — bound ONLY to the date header row (a narrow strip
+  // that isn't a vertical-scroll surface), so it can't interfere with the grid's
+  // vertical scrolling or the sticky room-label column. A deliberate horizontal
+  // swipe (>50px, more horizontal than vertical) jumps one week; smaller moves
+  // fall through as taps. preventDefault is called only while the gesture is
+  // clearly horizontal (deltaX > deltaY * 2) so vertical scroll is never blocked.
+  // Native listeners (not React's onTouch*) are used because React registers
+  // touchmove as passive, which would make preventDefault a no-op.
+  useEffect(() => {
+    const el = dateHeaderRef.current
+    if (!el || !isMobile) return
+    let startX = 0
+    let startY = 0
+    function onStart(e: TouchEvent) {
+      const t = e.touches[0]
+      startX = t.clientX
+      startY = t.clientY
     }
-  }
+    function onMove(e: TouchEvent) {
+      const t = e.touches[0]
+      const dx = Math.abs(t.clientX - startX)
+      const dy = Math.abs(t.clientY - startY)
+      if (dx > dy * 2) e.preventDefault()
+    }
+    function onEnd(e: TouchEvent) {
+      const t = e.changedTouches[0]
+      const dx = t.clientX - startX
+      const dy = t.clientY - startY
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+        if (dx < 0) setStartDate(d => addDays(d, 7))   // swipe left → next week
+        else setStartDate(d => addDays(d, -7))          // swipe right → previous week
+      }
+    }
+    el.addEventListener('touchstart', onStart, { passive: true })
+    el.addEventListener('touchmove', onMove, { passive: false })
+    el.addEventListener('touchend', onEnd, { passive: true })
+    return () => {
+      el.removeEventListener('touchstart', onStart)
+      el.removeEventListener('touchmove', onMove)
+      el.removeEventListener('touchend', onEnd)
+    }
+  }, [isMobile, view]) // re-attach when the header (re)mounts on view change
 
   function handleGridScroll() {
     if (!gridRef.current) return
@@ -1308,15 +1330,14 @@ function CalendarPageInner() {
       <div
         ref={gridRef}
         onScroll={handleGridScroll}
-        onTouchStart={isMobile ? handleTouchStart : undefined}
-        onTouchEnd={isMobile ? handleTouchEnd : undefined}
-        style={{ flex: 1, overflow: 'auto', minHeight: 0, border: '1px solid var(--border)', borderRadius: 6, WebkitOverflowScrolling: 'touch', overscrollBehaviorX: isMobile ? 'contain' : undefined }}
+        style={{ flex: 1, overflow: 'auto', minHeight: 0, border: '1px solid var(--border)', borderRadius: 6, WebkitOverflowScrolling: 'touch' }}
       >
         <div style={{ minWidth: labelW + DAYS * colW }}>
-        {/* Day header row */}
-        <div style={{
+        {/* Day header row — also the mobile swipe target (see the touch effect). */}
+        <div ref={dateHeaderRef} style={{
           display: 'flex', position: 'sticky', top: 0, zIndex: 10,
           background: 'var(--surface)', borderBottom: '2px solid var(--border)',
+          touchAction: isMobile ? 'pan-y' : undefined,
         }}>
           <div style={{ width: labelW, flexShrink: 0, borderRight: '1px solid var(--border)', position: 'sticky', left: 0, zIndex: 11, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <span style={{ fontFamily: 'DM Mono', fontSize: 10, fontWeight: 600, color: '#6B7280', letterSpacing: '0.05em' }}>
