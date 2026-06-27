@@ -207,8 +207,8 @@ function BookingBlock({
   const chipGlowBorder = topColor === '#f97316' ? 'rgba(249, 115, 22, 0.4)'
     : topColor === '#14B8A6' ? 'rgba(20, 184, 166, 0.4)'
     : 'rgba(255,255,255,0.08)'
-  const chipGlow = topColor === '#f97316' ? '0 0 8px rgba(249, 115, 22, 0.15)'
-    : topColor === '#14B8A6' ? '0 0 8px rgba(20, 184, 166, 0.15)'
+  const chipGlow = topColor === '#f97316' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
+    : topColor === '#14B8A6' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
     : 'none'
 
   // Line 1: artist (billing) or client name (COD)
@@ -743,8 +743,8 @@ function StudioView({
                 const chipGlowBorder = topColor === '#f97316' ? 'rgba(249, 115, 22, 0.4)'
                   : topColor === '#14B8A6' ? 'rgba(20, 184, 166, 0.4)'
                   : 'rgba(255,255,255,0.08)'
-                const chipGlow = topColor === '#f97316' ? '0 0 8px rgba(249, 115, 22, 0.15)'
-                  : topColor === '#14B8A6' ? '0 0 8px rgba(20, 184, 166, 0.15)'
+                const chipGlow = topColor === '#f97316' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
+                  : topColor === '#14B8A6' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
                   : 'none'
                 return (
                   <div
