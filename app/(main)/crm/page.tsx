@@ -13,6 +13,7 @@ import { combineLocation, parseLocation } from '@/lib/studios'
 import { addArtistToLabel } from '@/lib/roster'
 import { ClientsPageInner } from '@/app/(main)/clients/page'
 import { SectionHeader } from '@/components/ui/SectionHeader'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 const STATUS_COLORS: Record<string, string> = {
   hot: 'var(--hot)', warm: 'var(--warm)', cold: 'var(--cold)',
@@ -209,6 +210,7 @@ export default function CRMPage() {
   const [focusField, setFocusField] = useState<string | null>(null)
   const [toast, setToast] = useState<{ clientId: string } | null>(null)
   const router = useRouter()
+  const isMobile = useIsMobile()
   const [tab, setTab] = useState<'leads' | 'clients'>('leads')
   const [initialClientId, setInitialClientId] = useState<string | null>(null)
 
@@ -294,14 +296,16 @@ export default function CRMPage() {
     } catch {}
   }, [loading, leads])
   useEffect(() => {
-    if (loading || hasAutoSelected.current || leads.length === 0) return
+    // On mobile the detail panel replaces the list entirely, so a lead must only
+    // open by explicit tap (or the ?lead= deep-link above) — never auto-selected.
+    if (isMobile || loading || hasAutoSelected.current || leads.length === 0) return
     const uncontacted = leads.filter(l => l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead'].includes(l.status)))
     const hotDue = leads.filter(l => l.status === 'hot' && isKhuDue(l) && !isParked(l))
     const warmDue = leads.filter(l => l.status === 'warm' && isKhuDue(l) && !isParked(l))
     const incompleteLeads = leads.filter(l => ['hot', 'warm', 'uncontacted'].includes(l.status) && getMissing(l).length > 0)
     const first = uncontacted[0] || hotDue[0] || warmDue[0] || incompleteLeads[0]
     if (first) { setSelectedId(first.id); hasAutoSelected.current = true }
-  }, [loading, leads])
+  }, [loading, leads, isMobile])
 
   async function markTouched(id: number, initials: string, method: TouchMethod, notes = '', statusOverride?: string) {
     const now = new Date().toISOString()
@@ -418,8 +422,8 @@ export default function CRMPage() {
       {tab === 'leads' && (
         <>
           {/* Sub-nav */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexShrink: 0 }}>
-            <div style={{ display: 'flex', gap: 2, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: isMobile ? 'wrap' : 'nowrap', marginBottom: 14, flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: 2, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 3, maxWidth: '100%', overflowX: isMobile ? 'auto' : undefined }}>
               {(['needs-action', 'all-leads', 'analytics'] as CrmView[]).map(v => {
                 const labels: Record<CrmView, string> = { 'needs-action': 'Needs Action', 'all-leads': 'All Leads', 'analytics': 'Analytics' }
                 const active = view === v
@@ -454,65 +458,85 @@ export default function CRMPage() {
                 border: 'none', borderRadius: 6, fontFamily: 'Syne',
                 fontWeight: 700, fontSize: 11, cursor: 'pointer',
                 letterSpacing: '0.05em', textTransform: 'uppercase',
+                minHeight: isMobile ? 44 : undefined, flexShrink: 0,
               }}>+ New Lead</button>
             )}
           </div>
 
           {(view === 'needs-action' || view === 'all-leads') && (
-            <div style={{ display: 'grid', gridTemplateColumns: '60fr 40fr', gap: 14, flex: 1, minHeight: 0 }}>
-              {view === 'needs-action' ? (
-                <NeedsActionSection
-                  leads={leads}
-                  latestTouches={latestTouches}
-                  selectedId={selectedId}
-                  onSelect={selectAndFocus}
-                  onMarkTouched={markTouched}
-                  onKeepHot={keepHot}
-                  onUpdateStatus={updateStatus}
-                  loading={loading}
-                />
-              ) : (
-                <AllLeadsView
-                  leads={leads}
-                  latestTouches={latestTouches}
-                  selectedId={selectedId}
-                  onSelect={setSelectedId}
-                  onMarkTouched={markTouched}
-                  onKeepHot={keepHot}
-                  onUpdateStatus={updateStatus}
-                  loading={loading}
-                />
+            // On mobile this is a single-panel flow: the list and the detail panel
+            // never show at once — the list is hidden once a lead is selected, and
+            // the detail panel is hidden until one is. On desktop both render in the
+            // unchanged 60/40 two-column grid.
+            <div style={isMobile
+              ? { display: 'flex', flexDirection: 'column', gap: 14, flex: 1, minHeight: 0 }
+              : { display: 'grid', gridTemplateColumns: '60fr 40fr', gap: 14, flex: 1, minHeight: 0 }}>
+              {!(isMobile && selected) && (
+                view === 'needs-action' ? (
+                  <NeedsActionSection
+                    leads={leads}
+                    latestTouches={latestTouches}
+                    selectedId={selectedId}
+                    onSelect={selectAndFocus}
+                    onMarkTouched={markTouched}
+                    onKeepHot={keepHot}
+                    onUpdateStatus={updateStatus}
+                    loading={loading}
+                    isMobile={isMobile}
+                  />
+                ) : (
+                  <AllLeadsView
+                    leads={leads}
+                    latestTouches={latestTouches}
+                    selectedId={selectedId}
+                    onSelect={setSelectedId}
+                    onMarkTouched={markTouched}
+                    onKeepHot={keepHot}
+                    onUpdateStatus={updateStatus}
+                    loading={loading}
+                  />
+                )
               )}
 
-              {/* Detail panel */}
-              <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', minHeight: 0 }}>
-                {!selected ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--text3)', fontSize: 11 }}>
-                    Select a lead to view details
-                  </div>
-                ) : (
-                  <div style={{ overflowY: 'auto', flex: 1, padding: '14px 16px 16px' }}>
-                    <LeadDetail
-                      key={selected.id}
-                      lead={selected}
-                      missing={getMissing(selected)}
-                      latestTouch={latestTouches[selected.id]}
-                      focusField={focusField}
-                      onFocusConsumed={() => setFocusField(null)}
-                      distinctLabels={distinctLabels}
-                      distinctCompanies={distinctCompanies}
-                      onUpdate={(field, val) => {
-                        setLeads(prev => prev.map(l => l.id === selected.id ? { ...l, [field]: val } : l))
-                      }}
-                      onSendEmail={() => setEmailModal(true)}
-                      onDelete={() => {
-                        setLeads(prev => prev.filter(l => l.id !== selected.id))
-                        setSelectedId(null)
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
+              {/* Detail panel — full-screen on mobile, right column on desktop */}
+              {(!isMobile || selected) && (
+                <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', minHeight: 0, flex: isMobile ? 1 : undefined }}>
+                  {isMobile && selected && (
+                    <button
+                      onClick={() => setSelectedId(null)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, minHeight: 44, padding: '0 14px', background: 'var(--surface2)', border: 'none', borderBottom: '1px solid var(--border)', color: 'var(--accent)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer' }}
+                    >
+                      ← Leads
+                    </button>
+                  )}
+                  {!selected ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--text3)', fontSize: 11 }}>
+                      Select a lead to view details
+                    </div>
+                  ) : (
+                    <div style={{ overflowY: 'auto', flex: 1, padding: '14px 16px 16px' }}>
+                      <LeadDetail
+                        key={selected.id}
+                        lead={selected}
+                        missing={getMissing(selected)}
+                        latestTouch={latestTouches[selected.id]}
+                        focusField={focusField}
+                        onFocusConsumed={() => setFocusField(null)}
+                        distinctLabels={distinctLabels}
+                        distinctCompanies={distinctCompanies}
+                        onUpdate={(field, val) => {
+                          setLeads(prev => prev.map(l => l.id === selected.id ? { ...l, [field]: val } : l))
+                        }}
+                        onSendEmail={() => setEmailModal(true)}
+                        onDelete={() => {
+                          setLeads(prev => prev.filter(l => l.id !== selected.id))
+                          setSelectedId(null)
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -707,7 +731,7 @@ function DeadLeadPrompt({ leadId, onSubmit, onCancel }: {
 
 type NeedsActionTab = 'uncontacted' | 'hot' | 'warm' | 'incomplete'
 
-function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMarkTouched, onKeepHot, onUpdateStatus, loading }: {
+function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMarkTouched, onKeepHot, onUpdateStatus, loading, isMobile }: {
   leads: Lead[]
   latestTouches: TouchMap
   selectedId: number | null
@@ -716,6 +740,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
   onKeepHot: (id: number, initials: string, notes: string, status?: string) => Promise<void>
   onUpdateStatus: (id: number, status: string) => Promise<void>
   loading: boolean
+  isMobile?: boolean
 }) {
   const [activeTab, setActiveTab] = useState<NeedsActionTab>('uncontacted')
   useEffect(() => {
@@ -750,6 +775,9 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
     if (!didMountRef.current) { didMountRef.current = true; return }
     setTouchPromptId(null)
     setKeepHotPromptId(null)
+    // On mobile, auto-selecting on tab switch would yank the user into the detail
+    // view just for changing filters — keep them in the list until they tap a lead.
+    if (isMobile) return
     const items = tabs.find(t => t.key === activeTab)?.items || []
     if (items[0]) onSelect(items[0].id)
   }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
