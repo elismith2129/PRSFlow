@@ -1320,6 +1320,10 @@ export function WorkOrderPopup({
   const woId = woIdRef.current
   const isCompleted = wo.status === 'completed'
   const accent = STUDIO_COLORS[(booking.location || '').toLowerCase()] || '#c8f04e'
+  // Runner-style section card (mobile only) — #161920 surface, #2a2e3d border,
+  // radius 12, matching app/runner/[studio]/wo/[id]/page.tsx section cards.
+  const mCard: React.CSSProperties = { background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, padding: 14, boxSizing: 'border-box' }
+  const mCardOrange: React.CSSProperties = { background: '#161920', border: '1px solid rgba(249,115,22,0.35)', borderRadius: 12, padding: 14, boxSizing: 'border-box' }
 
   return (
     <div
@@ -1423,7 +1427,9 @@ export function WorkOrderPopup({
           </div>
 
           {/* META — two columns */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
+          <div style={isMobile
+            ? { display: 'grid', gridTemplateColumns: '1fr', gap: 14, ...mCard }
+            : { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
 
             {/* Left column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
@@ -1508,7 +1514,7 @@ export function WorkOrderPopup({
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }} />
 
           {/* STUDIO TIME TABLE — unified per-row Day/Hr toggle */}
-          <div>
+          <div style={isMobile ? mCard : undefined}>
             <SectionHeader title="Studio Time" />
             <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
               {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock | Del */}
@@ -1748,7 +1754,7 @@ export function WorkOrderPopup({
           </div>
 
           {/* EQUIPMENT CONDITION — excluded from PDF via data-no-print */}
-          <div data-no-print="">
+          <div data-no-print="" style={isMobile ? mCard : undefined}>
             <SectionHeader title="Equipment Condition" />
             {/* hidden file input for note photos */}
             <input ref={equipNoteFileRef} type="file" accept="image/*" style={{ display: 'none' }}
@@ -1830,14 +1836,14 @@ export function WorkOrderPopup({
           </div>
 
           {/* RENTALS */}
-          <div>
+          <div style={isMobile ? mCard : undefined}>
             <SectionHeader title="Rentals" />
-            <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+            <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', background: '#1a1e28', borderBottom: '1px solid rgba(255,255,255,0.07)', minWidth: isMobile ? 540 : undefined }}>
                 {['Qty', 'Item', 'Supplier', "Date(s) Used", 'Rate', 'Charge', ''].map(h => <div key={h} style={thS}>{h}</div>)}
               </div>
               {rentRows.map((r, idx) => (
-                <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', borderBottom: idx < rentRows.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', borderBottom: idx < rentRows.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none', minWidth: isMobile ? 540 : undefined }}>
                   <div style={cellS}><input value={r.qty} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, qty: e.target.value } : x))} style={inp} /></div>
                   <div style={cellS}><input value={r.item} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, item: e.target.value } : x))} style={inp} /></div>
                   <div style={cellS}><input value={r.supplier} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, supplier: e.target.value } : x))} style={inp} /></div>
@@ -1849,20 +1855,20 @@ export function WorkOrderPopup({
                   </div>
                 </div>
               ))}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: '#1a1e28', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: '#1a1e28', borderTop: '1px solid rgba(255,255,255,0.06)', minWidth: isMobile ? 540 : undefined }}>
                 <button type="button" onClick={() => setRentRows(p => [...p, { id: crypto.randomUUID(), qty: '', item: '', supplier: '', dates_used: '', rate: '', charge: '' }])} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button>
                 <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0', fontWeight: 700 }}>Total: ${rentTotal.toFixed(2)}</span>
               </div>
             </div>
           </div>
 
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }} />
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', display: isMobile ? 'none' : 'block' }} />
 
           {/* BOTTOM TWO COLUMNS */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 20 : 28 }}>
 
             {/* Left — Notes + Legal */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, ...(isMobile ? mCard : {}) }}>
               <div>
                 <SectionHeader title="Session Notes" />
                 <textarea value={wo.session_notes} onChange={e => setWo(w => w ? { ...w, session_notes: e.target.value } : w)}
@@ -1908,7 +1914,7 @@ export function WorkOrderPopup({
             </div>
 
             {/* Right — Payments + Totals */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, ...(isMobile ? mCard : {}) }}>
               <div>
                 <SectionHeader title="Payments" />
                 <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
@@ -1958,7 +1964,7 @@ export function WorkOrderPopup({
           </div>
 
           {/* NEEDS ATTENTION — internal only, never printed */}
-          <div data-no-print="" style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 20 }}>
+          <div data-no-print="" style={isMobile ? mCardOrange : { borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 20 }}>
             <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 10, color: '#f97316', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
               Needs Attention / Runner Notes
             </div>
