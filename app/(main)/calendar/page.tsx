@@ -369,12 +369,14 @@ function DayView({
   locFilter,
   onOpenEdit,
   reloadKey,
+  isMobile = false,
 }: {
   dayViewDate: Date
   setDayViewDate: (d: Date) => void
   locFilter: string
   onOpenEdit: (b: Booking) => void
   reloadKey: number
+  isMobile?: boolean
 }) {
   const [dayBookings, setDayBookings] = useState<Booking[]>([])
   const [miniMonthStart, setMiniMonthStart] = useState(
@@ -411,7 +413,8 @@ function DayView({
   return (
     <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
 
-      {/* ── LEFT: mini month calendar ──────────────────────────────────── */}
+      {/* ── LEFT: mini month calendar — hidden on mobile (no room for it) ── */}
+      {!isMobile && (
       <div style={{
         width: 216, flexShrink: 0, overflowY: 'auto',
         background: 'var(--surface)',
@@ -468,6 +471,7 @@ function DayView({
           })}
         </div>
       </div>
+      )}
 
       {/* ── RIGHT: date header + studio cards ─────────────────────────── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
@@ -479,7 +483,9 @@ function DayView({
           borderBottom: '1px solid rgba(255,255,255,0.08)',
         }}>
           <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
-            {dayViewDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+            {dayViewDate.toLocaleDateString('en-US', isMobile
+              ? { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }
+              : { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <button onClick={() => setDayViewDate(addDays(dayViewDate, -1))}
@@ -491,9 +497,9 @@ function DayView({
           </div>
         </div>
 
-        {/* Studio cards grid */}
+        {/* Studio cards grid — single column (rooms as rows) on mobile */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 10 }}>
             {allStudios.map(({ loc, room }) => {
               const cards = dayBookings
                 .filter(b => b.location === loc && b.studio === room)
@@ -802,13 +808,13 @@ export default function CalendarPage() {
 function CalendarPageInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  // Default to Week on mobile, 2 Wks on desktop. This component renders client-only
+  // Default to Day view on mobile, 2 Wks on desktop. This component renders client-only
   // (behind Suspense + useSearchParams), so reading matchMedia in the initializer is
   // safe — no SSR/hydration mismatch. The effect below is a backup for late breakpoint
   // resolution / resize.
   const [view, setView] = useState<ViewType>(() => {
     if (typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-      && window.matchMedia('(max-width: 768px)').matches) return 'week'
+      && window.matchMedia('(max-width: 768px)').matches) return 'day'
     return '2wks'
   })
   const [startDate, setStartDate] = useState(() => getSunday(new Date()))
@@ -867,14 +873,14 @@ function CalendarPageInner() {
 
   useEffect(() => { load() }, [load])
 
-  // On mobile, default to Week view (7 days fits a phone better than 2 weeks).
+  // On mobile, default to Day view (all rooms as rows, vertically scrollable).
   // Fires once when the breakpoint resolves to mobile; only overrides the initial
   // '2wks' default, never a view the user has since chosen.
   const didSetMobileDefaultView = useRef(false)
   useEffect(() => {
     if (isMobile && !didSetMobileDefaultView.current && view === '2wks') {
       didSetMobileDefaultView.current = true
-      setView('week')
+      setView('day')
     }
   }, [isMobile]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1687,6 +1693,7 @@ function CalendarPageInner() {
           locFilter={locFilter}
           onOpenEdit={openEdit}
           reloadKey={reloadKey}
+          isMobile={isMobile}
         />
       )}
 
