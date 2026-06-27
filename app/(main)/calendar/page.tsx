@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
 import { STUDIO_LOCATIONS, parseLocation } from '@/lib/studios'
 import { BookingForm, type FormData, bookingToForm, emptyForm } from '@/components/calendar/BookingForm'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 // ─── LOCATIONS ───────────────────────────────────────────────────────────────
 
@@ -177,10 +178,11 @@ function assignLanes(bookings: Booking[]): Map<string, { lane: number; numLanes:
 // ─── BOOKING BLOCK ───────────────────────────────────────────────────────────
 
 function BookingBlock({
-  booking, gridStart, totalDays, lane, numLanes, rowH, onClick,
+  booking, gridStart, totalDays, lane, numLanes, rowH, onClick, isMobile = false,
 }: {
   booking: Booking; gridStart: Date; totalDays: number
   lane: number; numLanes: number; rowH: number; onClick: () => void
+  isMobile?: boolean
 }) {
   const bStart = parse(booking.start_date)
   const bEnd = parse(booking.end_date)
@@ -238,6 +240,7 @@ function BookingBlock({
       onClick={e => { e.stopPropagation(); onClick() }}
       style={{
         position: 'absolute', top: blockTop, height: blockHeight,
+        minHeight: isMobile ? 44 : undefined,
         left: `calc(${left}% + 2px)`, width: `calc(${width}% - 4px)`,
         background: '#0d0f14', boxSizing: 'border-box',
         borderTop: `${micro ? 3 : 4}px solid ${topColor}`,
@@ -271,7 +274,7 @@ function BookingBlock({
           {/* Row 1: name + inline COD badge + invoice# */}
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, minWidth: 0, overflow: 'hidden' }}>
             <div style={{
-              color: nameColor, fontSize: blockHeight >= 48 ? 12 : 10,
+              color: nameColor, fontSize: isMobile ? 11 : (blockHeight >= 48 ? 12 : 10),
               fontFamily: 'DM Serif Display', lineHeight: 1.2,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               flex: '1 1 0', minWidth: 0,
@@ -300,7 +303,7 @@ function BookingBlock({
       ) : (
         <>
           <div style={{
-            color: nameColor, fontSize: 13, fontFamily: 'DM Serif Display', lineHeight: 1.2,
+            color: nameColor, fontSize: isMobile ? 11 : 13, fontFamily: 'DM Serif Display', lineHeight: 1.2,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
             {primaryName}
@@ -809,6 +812,9 @@ function CalendarPageInner() {
   const lastWheelStep = useRef(0)
   const scrollCorrectionRef = useRef<number | null>(null)
   const shiftingRef = useRef(false)
+  const isMobile = useIsMobile()
+  // Narrower room-label column on mobile so day columns keep usable width
+  const labelW = isMobile ? 80 : LABEL_W
 
 
   const totalDays = view === 'month'
@@ -820,9 +826,9 @@ function CalendarPageInner() {
   const days = Array.from({ length: totalRenderDays }, (_, i) => addDays(gridRenderStart, i))
 
   // Column width fills the viewport for the canonical window; month uses a smaller fixed size
-  const usableW = Math.max(gridW - LABEL_W, 400)
+  const usableW = Math.max(gridW - labelW, isMobile ? 200 : 400)
   const colW = view === 'week'
-    ? Math.max(80, Math.floor(usableW / 7))
+    ? Math.max(isMobile ? 40 : 80, Math.floor(usableW / 7))
     : view === '2wks'
     ? Math.max(60, Math.floor(usableW / 14))
     : Math.max(44, Math.floor(usableW / totalDays))
@@ -841,6 +847,17 @@ function CalendarPageInner() {
   }, [startDate, view])
 
   useEffect(() => { load() }, [load])
+
+  // On mobile, default to Week view (7 days fits a phone better than 2 weeks).
+  // Fires once when the breakpoint resolves to mobile; only overrides the initial
+  // '2wks' default, never a view the user has since chosen.
+  const didSetMobileDefaultView = useRef(false)
+  useEffect(() => {
+    if (isMobile && !didSetMobileDefaultView.current && view === '2wks') {
+      didSetMobileDefaultView.current = true
+      setView('week')
+    }
+  }, [isMobile]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep loadRef current so the subscription callback always calls the latest load
   // (load changes identity when startDate/view changes from navigation)
@@ -992,7 +1009,9 @@ function CalendarPageInner() {
   const fitRowH = Math.max(20, Math.floor(
     (gridH - DAY_HDR_H - filteredLocations.length * LOC_HDR_H - indivCollapsedCount * COLLAPSED_ROOM_H) / Math.max(1, expandedRoomCount)
   ))
-  const rowH = zoomLevel === 0 ? fitRowH : ZOOM_FIXED[zoomLevel - 1]
+  // Mobile uses a fixed comfortable row height (zoom is hidden) so single-lane
+  // booking chips clear the 44px tap target; the grid scrolls vertically instead.
+  const rowH = isMobile ? 56 : (zoomLevel === 0 ? fitRowH : ZOOM_FIXED[zoomLevel - 1])
 
   // Restore booking form draft on mount (e.g. user navigated away mid-create)
   useEffect(() => {
@@ -1246,13 +1265,13 @@ function CalendarPageInner() {
     const DAYS = totalRenderDays
     return (
       <div ref={gridRef} onScroll={handleGridScroll} style={{ flex: 1, overflow: 'auto', minHeight: 0, border: '1px solid var(--border)', borderRadius: 6, WebkitOverflowScrolling: 'touch' }}>
-        <div style={{ minWidth: LABEL_W + DAYS * colW }}>
+        <div style={{ minWidth: labelW + DAYS * colW }}>
         {/* Day header row */}
         <div style={{
           display: 'flex', position: 'sticky', top: 0, zIndex: 10,
           background: 'var(--surface)', borderBottom: '2px solid var(--border)',
         }}>
-          <div style={{ width: LABEL_W, flexShrink: 0, borderRight: '1px solid var(--border)', position: 'sticky', left: 0, zIndex: 11, background: 'var(--surface)' }} />
+          <div style={{ width: labelW, flexShrink: 0, borderRight: '1px solid var(--border)', position: 'sticky', left: 0, zIndex: 11, background: 'var(--surface)' }} />
           {days.map((d, i) => {
             const todayFlag = isToday(d)
             const wknd = isWeekend(d)
@@ -1280,7 +1299,7 @@ function CalendarPageInner() {
                   </div>
                 )}
                 <div style={{
-                  fontSize: 8, fontFamily: 'DM Mono', color: 'var(--text3)',
+                  fontSize: isMobile ? 9 : 8, fontFamily: 'DM Mono', color: 'var(--text3)',
                   letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1.2,
                 }}>
                   {d.toLocaleDateString('en-US', { weekday: 'short' })}
@@ -1308,7 +1327,7 @@ function CalendarPageInner() {
               <div
                 onClick={() => toggleCollapse(loc.name)}
                 style={{
-                  width: LABEL_W, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6,
+                  width: labelW, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6,
                   padding: '5px 10px', cursor: 'pointer', userSelect: 'none',
                   background: 'var(--surface2)',
                   position: 'sticky', left: 0, zIndex: 6,
@@ -1348,7 +1367,7 @@ function CalendarPageInner() {
                       return next
                     })}
                     style={{
-                      width: LABEL_W, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5,
+                      width: labelW, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5,
                       padding: '0 12px', fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)',
                       borderRight: '1px solid var(--border)', cursor: 'pointer', userSelect: 'none',
                       whiteSpace: 'nowrap', overflow: 'hidden',
@@ -1397,6 +1416,7 @@ function CalendarPageInner() {
                             gridStart={gridRenderStart} totalDays={DAYS}
                             lane={lane} numLanes={numLanes} rowH={rowH}
                             onClick={() => openEdit(b)}
+                            isMobile={isMobile}
                           />
                         )
                       })}
@@ -1419,9 +1439,18 @@ function CalendarPageInner() {
 
       {/* Top bar */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 12,
-        flexShrink: 0, flexWrap: 'wrap',
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'stretch' : 'center',
+        gap: 10, paddingBottom: 12,
+        flexShrink: 0, flexWrap: isMobile ? 'nowrap' : 'wrap',
       }}>
+        {/* Row 1 on mobile: date range + prev/today/next. `display: contents` on
+            desktop keeps these as direct flex children so the desktop bar is
+            byte-identical; on mobile they group into their own flex row. */}
+        <div style={isMobile
+          ? { display: 'flex', alignItems: 'center', gap: 8 }
+          : { display: 'contents' }}>
         {/* Prev / Today / Next */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <button
@@ -1462,6 +1491,13 @@ function CalendarPageInner() {
         <div style={{ flex: 1, fontSize: 14, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text)' }}>
           {rangeLabel(startDate, totalDays)}
         </div>
+        </div>{/* end mobile row 1 */}
+
+        {/* Row 2 on mobile: location filter + view toggles (+ zoom, hidden on
+            mobile). `display: contents` on desktop preserves the original bar. */}
+        <div style={isMobile
+          ? { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }
+          : { display: 'contents' }}>
 
         {/* "All" pill — only shown when a specific studio is selected */}
         {locFilter.includes('|') && (
@@ -1534,8 +1570,8 @@ function CalendarPageInner() {
           ))}
         </div>
 
-        {/* Zoom controls */}
-        <div style={{ display: 'flex', alignItems: 'center', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+        {/* Zoom controls — hidden on mobile (fixed fit; use scroll) */}
+        <div style={{ display: isMobile ? 'none' : 'flex', alignItems: 'center', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
           <button
             onClick={() => setZoomLevel(z => Math.max(z - 1, 0))}
             title="Zoom out (−)"
@@ -1552,13 +1588,22 @@ function CalendarPageInner() {
             style={{ padding: '4px 9px', fontSize: 14, lineHeight: 1, background: 'transparent', border: 'none', color: zoomLevel === ZOOM_FIXED.length ? 'var(--text3)' : 'var(--text)', cursor: zoomLevel === ZOOM_FIXED.length ? 'default' : 'pointer' }}
           >+</button>
         </div>
+        </div>{/* end mobile row 2 */}
 
-        {/* New booking */}
+        {/* New booking — full-width lime button below the controls on mobile */}
         <button
           onClick={() => openNew()}
           style={{
-            padding: '6px 16px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono',
-            fontWeight: 700, cursor: 'pointer', background: '#1e40af', border: 'none', color: '#fff',
+            padding: isMobile ? '12px 16px' : '6px 16px',
+            borderRadius: isMobile ? 8 : 4,
+            fontSize: isMobile ? 13 : 11, fontFamily: 'DM Mono',
+            fontWeight: 700, cursor: 'pointer',
+            background: isMobile ? 'var(--accent)' : '#1e40af',
+            border: 'none',
+            color: isMobile ? '#0d0f14' : '#fff',
+            width: isMobile ? '100%' : undefined,
+            minHeight: isMobile ? 44 : undefined,
+            letterSpacing: isMobile ? '0.04em' : undefined,
           }}
         >+ New Booking</button>
       </div>
