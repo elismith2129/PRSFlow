@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, Suspense } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, Suspense, type TouchEvent as ReactTouchEvent } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
@@ -10,6 +10,14 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 // ─── LOCATIONS ───────────────────────────────────────────────────────────────
 
 const LOCATIONS = STUDIO_LOCATIONS
+
+// Short codes shown in the grid location headers on mobile only
+const LOCATION_CODES: Record<string, string> = {
+  Paramount: 'PRS',
+  Ameraycan: 'ARS',
+  Encore: 'ERS',
+  Track: 'TRS',
+}
 
 // ─── COLOR TOKENS ────────────────────────────────────────────────────────────
 
@@ -794,7 +802,15 @@ export default function CalendarPage() {
 function CalendarPageInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const [view, setView] = useState<ViewType>('2wks')
+  // Default to Week on mobile, 2 Wks on desktop. This component renders client-only
+  // (behind Suspense + useSearchParams), so reading matchMedia in the initializer is
+  // safe — no SSR/hydration mismatch. The effect below is a backup for late breakpoint
+  // resolution / resize.
+  const [view, setView] = useState<ViewType>(() => {
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      && window.matchMedia('(max-width: 768px)').matches) return 'week'
+    return '2wks'
+  })
   const [startDate, setStartDate] = useState(() => getSunday(new Date()))
   const [bookings, setBookings] = useState<Booking[]>([])
   const [formOpen, setFormOpen] = useState(false)
@@ -812,7 +828,8 @@ function CalendarPageInner() {
   const lastWheelStep = useRef(0)
   const scrollCorrectionRef = useRef<number | null>(null)
   const shiftingRef = useRef(false)
-  const dateInputRef = useRef<HTMLInputElement>(null)
+  const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
   const isMobile = useIsMobile()
   // Narrower room-label column on mobile so day columns keep usable width
   const labelW = isMobile ? 80 : LABEL_W
@@ -821,7 +838,10 @@ function CalendarPageInner() {
   const totalDays = view === 'month'
     ? new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate()
     : view === 'week' ? 7 : 14
-  const bufDays = BUFFER_WEEKS * 7  // same buffer for all grid views
+  // No horizontal-scroll buffer on mobile: the week fits the viewport exactly, so
+  // there's no native horizontal scroll or infinite-scroll shifting to fight with
+  // the touch swipe handler (which is then the sole, discrete week navigator).
+  const bufDays = isMobile ? 0 : BUFFER_WEEKS * 7
   const totalRenderDays = totalDays + bufDays * 2
   const gridRenderStart = addDays(startDate, -bufDays)
   const days = Array.from({ length: totalRenderDays }, (_, i) => addDays(gridRenderStart, i))
@@ -968,6 +988,26 @@ function CalendarPageInner() {
       })
     }
   }, [startDate, view]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mobile swipe navigation: a deliberate horizontal swipe (>50px, more horizontal
+  // than vertical) jumps one week; smaller moves fall through as taps so booking
+  // chips still open. setStartDate triggers the scroll-recenter effect above.
+  function handleTouchStart(e: ReactTouchEvent) {
+    const t = e.touches[0]
+    touchStartX.current = t.clientX
+    touchStartY.current = t.clientY
+  }
+
+  function handleTouchEnd(e: ReactTouchEvent) {
+    if (!isMobile) return
+    const t = e.changedTouches[0]
+    const dx = t.clientX - touchStartX.current
+    const dy = t.clientY - touchStartY.current
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) setStartDate(d => addDays(d, 7))   // swipe left → next week
+      else setStartDate(d => addDays(d, -7))          // swipe right → previous week
+    }
+  }
 
   function handleGridScroll() {
     if (!gridRef.current) return
@@ -1265,14 +1305,24 @@ function CalendarPageInner() {
   function renderGrid() {
     const DAYS = totalRenderDays
     return (
-      <div ref={gridRef} onScroll={handleGridScroll} style={{ flex: 1, overflow: 'auto', minHeight: 0, border: '1px solid var(--border)', borderRadius: 6, WebkitOverflowScrolling: 'touch' }}>
+      <div
+        ref={gridRef}
+        onScroll={handleGridScroll}
+        onTouchStart={isMobile ? handleTouchStart : undefined}
+        onTouchEnd={isMobile ? handleTouchEnd : undefined}
+        style={{ flex: 1, overflow: 'auto', minHeight: 0, border: '1px solid var(--border)', borderRadius: 6, WebkitOverflowScrolling: 'touch', overscrollBehaviorX: isMobile ? 'contain' : undefined }}
+      >
         <div style={{ minWidth: labelW + DAYS * colW }}>
         {/* Day header row */}
         <div style={{
           display: 'flex', position: 'sticky', top: 0, zIndex: 10,
           background: 'var(--surface)', borderBottom: '2px solid var(--border)',
         }}>
-          <div style={{ width: labelW, flexShrink: 0, borderRight: '1px solid var(--border)', position: 'sticky', left: 0, zIndex: 11, background: 'var(--surface)' }} />
+          <div style={{ width: labelW, flexShrink: 0, borderRight: '1px solid var(--border)', position: 'sticky', left: 0, zIndex: 11, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontFamily: 'DM Mono', fontSize: 10, fontWeight: 600, color: '#6B7280', letterSpacing: '0.05em' }}>
+              {startDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
+            </span>
+          </div>
           {days.map((d, i) => {
             const todayFlag = isToday(d)
             const wknd = isWeekend(d)
@@ -1343,7 +1393,7 @@ function CalendarPageInner() {
                   fontSize: 10, fontFamily: 'Syne', fontWeight: 700,
                   color: 'var(--text2)', letterSpacing: '0.06em', textTransform: 'uppercase',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>{loc.name}</span>
+                }}>{isMobile ? (LOCATION_CODES[loc.name] ?? loc.name) : loc.name}</span>
               </div>
               {/* Separator band fills the rest of the row */}
               <div onClick={() => toggleCollapse(loc.name)} style={{ flex: 1, cursor: 'pointer' }} />
@@ -1489,23 +1539,20 @@ function CalendarPageInner() {
           >›</button>
         </div>
 
-        {/* Range label — tappable on mobile to open a native date picker that
-            jumps the calendar to the week containing the chosen date. Desktop is
-            plain text (no picker), unchanged. */}
+        {/* Range label — on mobile a transparent native date input is overlaid
+            directly over the text, so a tap lands on the input itself (iOS Safari
+            won't open a picker from a programmatic .click()). Picking a date jumps
+            to that date's week. Desktop is plain text (no picker), unchanged. */}
         {isMobile ? (
-          <div
-            onClick={() => dateInputRef.current?.click()}
-            style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', position: 'relative' }}
-          >
+          <div style={{ flex: 1, position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
             <span style={{
               fontSize: 14, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text)',
               textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.3)', textUnderlineOffset: 3,
+              cursor: 'pointer',
             }}>
               {rangeLabel(startDate, totalDays)}
             </span>
-            <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>📅</span>
             <input
-              ref={dateInputRef}
               type="date"
               value={fmt(startDate)}
               onChange={e => {
@@ -1515,7 +1562,7 @@ function CalendarPageInner() {
                 setStartDate(getSunday(picked))
                 setDayViewDate(picked)
               }}
-              style={{ position: 'absolute', left: 0, bottom: 0, width: 1, height: 1, opacity: 0, padding: 0, margin: 0, border: 'none' }}
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, padding: 0, margin: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
             />
           </div>
         ) : (
