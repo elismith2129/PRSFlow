@@ -505,16 +505,8 @@ function DayView({
                   border: cards.length > 0 ? '1px solid rgba(20, 184, 166, 0.2)' : '1px solid rgba(255,255,255,0.08)',
                 }}>
                   {cards.length > 0 && (
-                    <>
-                      {/* Inner glow overlay — sits on top of the opaque content so the inset glow is actually visible */}
-                      <div style={{
-                        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2,
-                        background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.05) 0%, transparent 60%)',
-                        boxShadow: 'inset 0 0 30px rgba(20, 184, 166, 0.15)',
-                      }} />
-                      {/* 2px teal top bar */}
-                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: '#14B8A6', zIndex: 3 }} />
-                    </>
+                    /* 2px teal top bar */
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: '#14B8A6', zIndex: 3 }} />
                   )}
                   {/* Card header */}
                   <div style={{ padding: '6px 10px', background: 'var(--surface2)', borderBottom: cards.length > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
@@ -541,8 +533,8 @@ function DayView({
                     const chipGlowBorder = topColor === '#f97316' ? 'rgba(249, 115, 22, 0.4)'
                       : topColor === '#14B8A6' ? 'rgba(20, 184, 166, 0.4)'
                       : 'rgba(255,255,255,0.08)'
-                    const chipGlow = topColor === '#f97316' ? '0 0 8px rgba(249, 115, 22, 0.15)'
-                      : topColor === '#14B8A6' ? '0 0 8px rgba(20, 184, 166, 0.15)'
+                    const chipGlow = topColor === '#f97316' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
+                      : topColor === '#14B8A6' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
                       : 'none'
 
                     return (
