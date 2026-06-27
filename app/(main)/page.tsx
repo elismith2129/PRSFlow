@@ -136,6 +136,8 @@ export default function DashboardPage() {
     () => typeof window !== 'undefined' && sessionStorage.getItem('showWelcome') === 'true'
   )
   const [welcomeFading, setWelcomeFading] = useState(false)
+  // Name fades in 300ms after the splash mounts (greeting + footer show immediately).
+  const [nameVisible, setNameVisible] = useState(false)
   // Content starts hidden until the welcome check resolves, so the dashboard
   // never flashes at full opacity for a frame before the splash mounts.
   const [contentReady, setContentReady] = useState(false)
@@ -189,6 +191,7 @@ export default function DashboardPage() {
     if (typeof window !== 'undefined' && sessionStorage.getItem('showWelcome') === 'true') {
       sessionStorage.removeItem('showWelcome')
       setShowWelcome(true)
+      setTimeout(() => setNameVisible(true), 300)
       setTimeout(() => setWelcomeFading(true), 2000)
       setTimeout(() => {
         setShowWelcome(false)
@@ -662,7 +665,7 @@ export default function DashboardPage() {
             display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center',
             opacity: welcomeFading ? 0 : 1,
-            transition: 'opacity 0.5s ease',
+            transition: 'opacity 0.6s ease',
             animation: welcomeFading ? undefined : 'welcomeFadeIn 0.3s ease',
           }}
         >
@@ -670,7 +673,12 @@ export default function DashboardPage() {
             {greeting.toUpperCase()}
           </div>
           {/* nbsp fallback reserves the line height so the name appearing causes no layout shift */}
-          <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: isMobile ? 48 : 64, color: '#e8eaf0', lineHeight: 1.1, marginTop: 14, textAlign: 'center' }}>
+          <div style={{
+            fontFamily: 'Syne', fontWeight: 800, fontSize: isMobile ? 48 : 64, color: '#e8eaf0', lineHeight: 1.1, marginTop: 14, textAlign: 'center',
+            opacity: nameVisible ? 1 : 0,
+            transform: nameVisible ? 'translateY(0)' : 'translateY(8px)',
+            transition: 'opacity 0.6s ease, transform 0.6s ease',
+          }}>
             {profile?.display_name || ' '}
           </div>
           <div style={{ position: 'absolute', bottom: 40, left: 0, right: 0, textAlign: 'center', fontFamily: 'DM Mono', fontSize: 11, letterSpacing: '0.2em', color: '#6B7280' }}>
