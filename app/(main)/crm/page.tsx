@@ -1447,31 +1447,6 @@ const khuDays = daysUntilKhu(lead)
         )}
       </div>
 
-      {/* Reg link panel — shown when pending token is expanded */}
-      {regPanelOpen && regLinkUrl && !regTokenDates?.used_at && (
-        <div style={{ marginBottom: 8, background: 'var(--surface2)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 5, padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-              {regLinkUrl}
-            </span>
-            <button onClick={() => setRegPanelOpen(false)} style={{ padding: '2px 6px', background: 'transparent', color: 'var(--text3)', border: 'none', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer', flexShrink: 0, lineHeight: 1 }}>
-              ✕
-            </button>
-          </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={copyRegLink} style={{ padding: '3px 10px', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 3, fontFamily: 'Syne', fontWeight: 700, fontSize: 8, letterSpacing: '0.08em', cursor: 'pointer' }}>
-              {regLinkCopied ? 'Copied!' : 'Copy Link'}
-            </button>
-            <button onClick={emailRegLink} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
-              Email
-            </button>
-            <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.4)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
-              {regLinkGenerating ? '…' : 'Resend'}
-            </button>
-          </div>
-        </div>
-      )}
-
       {savedField && <span style={{ fontSize: 9, color: 'var(--booked)', fontFamily: 'DM Mono', display: 'block', marginBottom: 4 }}>saved</span>}
 
       {/* ─── Missing warning ─────────────────────────────── */}
@@ -1483,7 +1458,7 @@ const khuDays = daysUntilKhu(lead)
 
       {/* ─── Identity + Contact ─────────────────────────────── */}
       <div style={{ marginBottom: 8 }}>
-        {/* Row 1: hero name/label + Start Booking */}
+        {/* Row 1: hero name/label + reg button + Start Booking */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, minWidth: 0, flex: 1, flexWrap: 'wrap' }}>
             {lead.billing !== 'COD' ? (
@@ -1558,7 +1533,20 @@ const khuDays = daysUntilKhu(lead)
               </>
             )}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0, marginTop: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginTop: 4 }}>
+            {lead.billing !== 'Billing' && (regTokenDates?.used_at ? (
+              <button onClick={() => setRegViewOpen(true)} style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.12)', color: 'var(--booked)', border: '1px solid rgba(20,184,166,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 10, cursor: 'pointer' }}>
+                ✓ Registered
+              </button>
+            ) : existingTokenStr ? (
+              <button onClick={async () => { const done = await refreshRegStatus(); if (!done) setRegPanelOpen(v => !v) }} style={{ padding: '5px 12px', background: regPanelOpen ? 'rgba(249,115,22,0.18)' : 'rgba(249,115,22,0.08)', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 10, cursor: 'pointer' }}>
+                Reg Sent
+              </button>
+            ) : (
+              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '5px 12px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 10, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
+                {regLinkGenerating ? '…' : 'Send Reg'}
+              </button>
+            ))}
             <button
               onClick={() => {
                 if (lead.client_id) {
@@ -1571,21 +1559,33 @@ const khuDays = daysUntilKhu(lead)
             >
               Start Booking
             </button>
-            {lead.billing !== 'Billing' && (regTokenDates?.used_at ? (
-              <button onClick={() => setRegViewOpen(true)} style={{ padding: '4px 8px', background: 'rgba(20,184,166,0.12)', color: 'var(--booked)', border: '1px solid rgba(20,184,166,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
-                ✓ Registered
-              </button>
-            ) : existingTokenStr ? (
-              <button onClick={async () => { const done = await refreshRegStatus(); if (!done) setRegPanelOpen(v => !v) }} style={{ padding: '4px 8px', background: regPanelOpen ? 'rgba(249,115,22,0.18)' : 'rgba(249,115,22,0.08)', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
-                Reg Sent
-              </button>
-            ) : (
-              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '4px 8px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
-                {regLinkGenerating ? '…' : 'Send Reg'}
-              </button>
-            ))}
           </div>
         </div>
+
+        {/* Reg link panel — expands directly below the hero name row */}
+        {regPanelOpen && regLinkUrl && !regTokenDates?.used_at && (
+          <div style={{ marginBottom: 8, background: 'var(--surface2)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 5, padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                {regLinkUrl}
+              </span>
+              <button onClick={() => setRegPanelOpen(false)} style={{ padding: '2px 6px', background: 'transparent', color: 'var(--text3)', border: 'none', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer', flexShrink: 0, lineHeight: 1 }}>
+                ✕
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button onClick={copyRegLink} style={{ padding: '3px 10px', background: '#e8eaf0', color: '#0d0f14', border: 'none', borderRadius: 3, fontFamily: 'Syne', fontWeight: 700, fontSize: 8, letterSpacing: '0.08em', cursor: 'pointer' }}>
+                {regLinkCopied ? 'Copied!' : 'Copy Link'}
+              </button>
+              <button onClick={emailRegLink} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
+                Email
+              </button>
+              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.4)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
+                {regLinkGenerating ? '…' : 'Resend'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Row 2 (Label/Billing only): A&R name line */}
         {lead.billing !== 'COD' && (
