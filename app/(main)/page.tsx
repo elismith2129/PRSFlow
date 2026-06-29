@@ -10,6 +10,24 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { ASSIGN_OPTIONS, resolveAssignTo, nameForId, visibleTabsForRole, idsForTab, fetchTasks } from '@/lib/tasks'
 
+// Needs Action predicates — mirror the CRM (app/(main)/crm/page.tsx) bucket logic
+// so the dashboard surfaces the same leads as the CRM Needs Action tab.
+function daysSince(d: string): number {
+  if (!d) return 99999
+  const t = new Date(d).getTime()
+  if (isNaN(t)) return 99999
+  return (Date.now() - t) / (1000 * 60 * 60 * 24)
+}
+
+function isParked(l: Lead): boolean {
+  return !!(l.parked_until && new Date(l.parked_until) > new Date())
+}
+
+function isKhuDue(l: Lead): boolean {
+  if (!l.keep_hot_until) return daysSince(l.last_contact || l.created_at) >= (l.status === 'hot' ? 5 : 3)
+  return new Date(l.keep_hot_until) <= new Date()
+}
+
 // Mobile-only override spread for modal cards: full-screen sheet (100vw × 100dvh,
 // no rounding, flush to the edges). Spread LAST into a card's style object so it
 // wins over the desktop width/maxWidth/margin/maxHeight/borderRadius values.
@@ -154,8 +172,17 @@ export default function DashboardPage() {
   const clockDate = clockNow.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   const clockTime = clockNow.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
   const needsActionLeads = leads
-    .filter(l => l.needs_contact === true && l.status !== 'dead' && l.status !== 'booked' && l.status !== 'cold')
-    .slice(0, 5)
+    .filter(l => {
+      if (l.needs_contact === false) return false
+      const uncontacted = l.status === 'uncontacted' || (!l.last_contact && l.status !== 'booked' && l.status !== 'dead')
+      const hot = l.status === 'hot' && isKhuDue(l) && !isParked(l)
+      const warm = l.status === 'warm' && isKhuDue(l) && !isParked(l)
+      const incomplete = (l.status === 'hot' || l.status === 'warm' || l.status === 'uncontacted')
+        && (!l.fname || !l.lname || !l.email || !l.phone || (!l.quote && !l.rate_daily))
+      return uncontacted || hot || warm || incomplete
+    })
+    .sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime())
+    .slice(0, 6)
   useEffect(() => {
     async function load() {
       const d = new Date(calDate)
