@@ -46,6 +46,7 @@ export interface Lead {
   session_end: string | null
   engineer_needed: boolean | null
   created_at: string
+  updated_at: string | null
 }
 
 export interface Client {
