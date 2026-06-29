@@ -1442,7 +1442,7 @@ const khuDays = daysUntilKhu(lead)
         </>)}
         {(lead.status === 'hot' || lead.status === 'warm') && lead.keep_hot_until && (
           <span style={{ marginLeft: 'auto', color: '#14B8A6', fontFamily: 'DM Mono', fontSize: 10, flexShrink: 0 }}>
-            Keep hot until {fmtDateTime(lead.keep_hot_until)}
+            {lead.status === 'warm' ? 'Keep warm until' : 'Keep hot until'} {fmtDateTime(lead.keep_hot_until)}
           </span>
         )}
       </div>
