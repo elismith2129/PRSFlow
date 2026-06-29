@@ -1494,62 +1494,82 @@ const khuDays = daysUntilKhu(lead)
         </div>
       )}
 
-      {/* ─── Name + Pills ─────────────────────────────── */}
+      {/* ─── Identity + Contact ─────────────────────────────── */}
       <div style={{ marginBottom: 8 }}>
+        {/* Row 1: hero name/label + Start Booking */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flexWrap: 'wrap', flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, minWidth: 0 }}>
-            <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
-              <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
-                {fnameVal || 'First'}
-              </span>
-              <input
-                value={fnameVal}
-                onChange={e => setFnameVal(e.target.value)}
-                onFocus={() => setFocusedInput('fname')}
-                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
-                onBlur={() => { setFocusedInput(null); save('fname', fnameVal.trim()) }}
-                placeholder="First"
-                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: leadNameColor(lead), fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
-              />
-            </div>
-            <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
-              <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
-                {lnameVal || 'Last'}
-              </span>
-              <input
-                value={lnameVal}
-                onChange={e => setLnameVal(e.target.value)}
-                onFocus={() => setFocusedInput('lname')}
-                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
-                onBlur={() => { setFocusedInput(null); save('lname', lnameVal.trim()) }}
-                placeholder="Last"
-                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'lname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: leadNameColor(lead), fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
-              />
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
-            <button
-              onClick={() => { const nb = (local.billing || lead.billing) === 'COD' ? 'Billing' : 'COD'; update('billing', nb); save('billing', nb) }}
-              style={{ ...pillBase, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)' }}>
-              {local.billing || lead.billing || 'COD'}
-            </button>
-            {lead.booking && (
-              <span style={{ ...pillBase, background: 'rgba(139,144,168,0.12)', color: 'var(--text2)', border: '1px solid var(--border)', cursor: 'default', fontSize: 9 }}>
-                {BOOKING_ICONS[lead.booking] || ''} {lead.booking}
-              </span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, minWidth: 0, flex: 1, flexWrap: 'wrap' }}>
+            {lead.billing !== 'COD' ? (
+              <>
+                <div style={{ display: 'inline-grid', minWidth: '3ch', position: 'relative' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
+                    {local.label || 'Label'}
+                  </span>
+                  <input
+                    value={local.label || ''}
+                    onChange={e => { update('label', e.target.value); setShowLabelDD(true) }}
+                    onFocus={() => { setFocusedInput('label'); setShowLabelDD(true) }}
+                    onKeyDown={enterBlur}
+                    onBlur={e => { setFocusedInput(null); setShowLabelDD(false); save('label', e.target.value) }}
+                    placeholder="Label"
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'label' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
+                  />
+                  {showLabelDD && labelSuggestions.length > 0 && (
+                    <div style={{ ...ddStyle, right: 'auto', width: 'max-content', minWidth: 220, maxWidth: 320 }}>
+                      {labelSuggestions.map(s => (
+                        <div key={s} onMouseDown={e => { e.preventDefault(); update('label', s); save('label', s); setShowLabelDD(false) }} style={ddItemStyle}>{s}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <span style={{ color: 'var(--text3)', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, flexShrink: 0 }}> — </span>
+                <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
+                    {local.artist_name || 'Artist'}
+                  </span>
+                  <input
+                    value={local.artist_name || ''}
+                    onChange={e => update('artist_name', e.target.value)}
+                    onFocus={() => setFocusedInput('artist_name')}
+                    onKeyDown={enterBlur}
+                    onBlur={e => { setFocusedInput(null); save('artist_name', e.target.value) }}
+                    placeholder="Artist"
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'artist_name' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
+                    {fnameVal || 'First'}
+                  </span>
+                  <input
+                    value={fnameVal}
+                    onChange={e => setFnameVal(e.target.value)}
+                    onFocus={() => setFocusedInput('fname')}
+                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
+                    onBlur={() => { setFocusedInput(null); save('fname', fnameVal.trim()) }}
+                    placeholder="First"
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: leadNameColor(lead), fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
+                  />
+                </div>
+                <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
+                    {lnameVal || 'Last'}
+                  </span>
+                  <input
+                    value={lnameVal}
+                    onChange={e => setLnameVal(e.target.value)}
+                    onFocus={() => setFocusedInput('lname')}
+                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
+                    onBlur={() => { setFocusedInput(null); save('lname', lnameVal.trim()) }}
+                    placeholder="Last"
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'lname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: leadNameColor(lead), fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
+                  />
+                </div>
+              </>
             )}
-            {lead.first_time && (
-              <span style={{ ...pillBase, background: 'rgba(139,144,168,0.12)', color: 'var(--text3)', border: '1px solid var(--border)', cursor: 'default' }}>
-                ★ First Time
-              </span>
-            )}
-            {lead.source && (
-              <span style={{ ...pillBase, background: 'rgba(139,144,168,0.12)', color: 'var(--text3)', border: '1px solid var(--border)', cursor: 'default', fontSize: 9 }}>
-                {lead.source}
-              </span>
-            )}
-          </div>
           </div>
           <button
             onClick={() => {
@@ -1564,49 +1584,69 @@ const khuDays = daysUntilKhu(lead)
             Start Booking
           </button>
         </div>
+
+        {/* Pills row — just below row 1 */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
+          <button
+            onClick={() => { const nb = (local.billing || lead.billing) === 'COD' ? 'Billing' : 'COD'; update('billing', nb); save('billing', nb) }}
+            style={{ ...pillBase, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)' }}>
+            {local.billing || lead.billing || 'COD'}
+          </button>
+          {lead.booking && (
+            <span style={{ ...pillBase, background: 'rgba(139,144,168,0.12)', color: 'var(--text2)', border: '1px solid var(--border)', cursor: 'default', fontSize: 9 }}>
+              {BOOKING_ICONS[lead.booking] || ''} {lead.booking}
+            </span>
+          )}
+          {lead.first_time && (
+            <span style={{ ...pillBase, background: 'rgba(139,144,168,0.12)', color: 'var(--text3)', border: '1px solid var(--border)', cursor: 'default' }}>
+              ★ First Time
+            </span>
+          )}
+          {lead.source && (
+            <span style={{ ...pillBase, background: 'rgba(139,144,168,0.12)', color: 'var(--text3)', border: '1px solid var(--border)', cursor: 'default', fontSize: 9 }}>
+              {lead.source}
+            </span>
+          )}
+        </div>
+
+        {/* Row 2 (Label/Billing only): A&R name line */}
         {lead.billing !== 'COD' && (
-          <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
-            <div style={{ flex: 1, position: 'relative' }}>
-              <div style={fieldLabelStyle}>Label / Company</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 6, minWidth: 0, flexWrap: 'wrap' }}>
+            <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
+              <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Mono', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
+                {fnameVal || 'First'}
+              </span>
               <input
-                value={local.label || ''}
-                onChange={e => { update('label', e.target.value); setShowLabelDD(true) }}
-                onFocus={() => { setFocusedInput('label'); setShowLabelDD(true) }}
-                onBlur={e => { setFocusedInput(null); setShowLabelDD(false); save('label', e.target.value) }}
-                onKeyDown={enterBlur}
-                placeholder="—"
-                style={iStyle('label')}
-              />
-              {showLabelDD && labelSuggestions.length > 0 && (
-                <div style={ddStyle}>
-                  {labelSuggestions.map(s => (
-                    <div key={s} onMouseDown={e => { e.preventDefault(); update('label', s); save('label', s); setShowLabelDD(false) }} style={ddItemStyle}>{s}</div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div style={{ flex: 1, position: 'relative' }}>
-              <div style={fieldLabelStyle}>Artist</div>
-              <input
-                value={local.artist_name || ''}
-                onChange={e => update('artist_name', e.target.value)}
-                onFocus={() => setFocusedInput('artist_name')}
-                onBlur={e => { setFocusedInput(null); save('artist_name', e.target.value) }}
-                onKeyDown={enterBlur}
-                placeholder="—"
-                style={iStyle('artist_name')}
+                value={fnameVal}
+                onChange={e => setFnameVal(e.target.value)}
+                onFocus={() => setFocusedInput('fname')}
+                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
+                onBlur={() => { setFocusedInput(null); save('fname', fnameVal.trim()) }}
+                placeholder="First"
+                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text2)', fontFamily: 'DM Mono', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
               />
             </div>
+            <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
+              <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Mono', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
+                {lnameVal || 'Last'}
+              </span>
+              <input
+                value={lnameVal}
+                onChange={e => setLnameVal(e.target.value)}
+                onFocus={() => setFocusedInput('lname')}
+                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
+                onBlur={() => { setFocusedInput(null); save('lname', lnameVal.trim()) }}
+                placeholder="Last"
+                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'lname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text2)', fontFamily: 'DM Mono', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
+              />
+            </div>
+            <span style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, fontFamily: 'DM Mono', flexShrink: 0 }}>A&amp;R</span>
           </div>
         )}
-      </div>
 
-      {/* ─── Contact — 3-col grid ─────────────────────────────── */}
-      <FieldGroupLabel label="Contact" />
-      <div style={{ marginTop: 4, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 48px' }}>
-        <div>
-          <div style={fieldLabelStyle}>Email</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        {/* Tight contact line: email + Email · phone + Call/Text */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 200px', minWidth: 0 }}>
             <input ref={emailRef} value={local.email || ''} onChange={e => update('email', e.target.value)}
               onFocus={() => setFocusedInput('email')} onBlur={e => { setFocusedInput(null); save('email', e.target.value) }}
               onKeyDown={enterBlur} placeholder="Add email" style={{ ...iStyle('email'), flex: 1, minWidth: 0 }} />
@@ -1614,14 +1654,8 @@ const khuDays = daysUntilKhu(lead)
               <a href={`mailto:${local.email}`} style={{ ...aBtnStyle('#8b90a8'), flexShrink: 0 }}>Email</a>
             )}
           </div>
-        </div>
-        <div>
-          <div style={fieldLabelStyle}>Created</div>
-          <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono', padding: '4px 6px', whiteSpace: 'nowrap' }}>{fmtDate(lead.created_at)}</div>
-        </div>
-        <div>
-          <div style={fieldLabelStyle}>Phone</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ color: 'var(--text3)', fontSize: 11, flexShrink: 0 }}>·</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 200px', minWidth: 0 }}>
             <input ref={phoneRef} value={local.phone || ''} onChange={e => update('phone', e.target.value)}
               onFocus={() => setFocusedInput('phone')} onBlur={e => { setFocusedInput(null); save('phone', e.target.value) }}
               onKeyDown={enterBlur} placeholder="Add phone" style={{ ...iStyle('phone'), flex: 1, minWidth: 0 }} />
