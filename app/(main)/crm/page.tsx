@@ -2380,7 +2380,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
       return
     }
     const data: Partial<Lead> = { ...form, status, needs_contact: needsContact }
-    if (temperature === 'booking' && matchedClientId) data.client_id = matchedClientId
+    if (matchedClientId) data.client_id = matchedClientId
     const leadId = await onSave(data)
     setSaving(false)
     if (temperature === 'booking' && matchedClientId) {
