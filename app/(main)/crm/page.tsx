@@ -474,8 +474,8 @@ export default function CRMPage() {
             </div>
             {view !== 'analytics' && (
               <button onClick={() => setNewLeadOpen(true)} style={{
-                padding: '8px 20px', background: '#e8eaf0', color: '#0d0f14',
-                border: 'none', borderRadius: 6, fontFamily: 'Syne',
+                padding: '8px 20px', background: 'transparent', color: '#e8eaf0',
+                border: '1px solid var(--border)', borderRadius: 6, fontFamily: 'Syne',
                 fontWeight: 700, fontSize: 11, cursor: 'pointer',
                 letterSpacing: '0.05em', textTransform: 'uppercase',
                 minHeight: isMobile ? 44 : undefined, flexShrink: 0,
@@ -887,7 +887,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                     setTouchPromptId(isTouchPrompting ? null : l.id)
                     if (!isTouchPrompting) onSelect(l.id)
                   }}
-                  style={{ flexShrink: 0, padding: '4px 10px', background: isTouchPrompting ? 'transparent' : '#e8eaf0', border: `1px solid ${isTouchPrompting ? 'var(--border)' : '#e8eaf0'}`, color: isTouchPrompting ? 'var(--text3)' : '#0d0f14', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  style={{ flexShrink: 0, padding: '4px 10px', background: 'transparent', border: '1px solid var(--border)', color: isTouchPrompting ? 'var(--text3)' : '#e8eaf0', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                   {isTouchPrompting ? 'Cancel' : 'Contact'}
                 </button>
               </div>
@@ -1085,7 +1085,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                   </button>
                 )}
                 <button onClick={e => { e.stopPropagation(); setKeepHotPromptId(null); setTouchPromptId(isTouchPrompting ? null : l.id); if (!isTouchPrompting) onSelect(l.id) }}
-                  style={{ flexShrink: 0, padding: '3px 8px', background: isTouchPrompting ? 'transparent' : '#e8eaf0', border: `1px solid ${isTouchPrompting ? 'var(--border)' : '#e8eaf0'}`, color: isTouchPrompting ? 'var(--text3)' : '#0d0f14', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: '1px solid var(--border)', color: isTouchPrompting ? 'var(--text3)' : '#e8eaf0', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                   {isTouchPrompting ? 'Cancel' : 'Contact'}
                 </button>
               </div>
@@ -1567,7 +1567,7 @@ const khuDays = daysUntilKhu(lead)
                   setShowConfirmModal(true)
                 }
               }}
-              style={{ padding: '5px 12px', background: '#e8eaf0', color: '#0d0f14', border: 'none', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
+              style={{ padding: '5px 12px', background: 'transparent', color: '#e8eaf0', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
             >
               Start Booking
             </button>
