@@ -223,7 +223,7 @@ export default function CRMPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [latestTouches, setLatestTouches] = useState<TouchMap>({})
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [view, setView] = useState<CrmView>('needs-action')
+  const [view, setView] = useState<CrmView>('all-leads')
   const [loading, setLoading] = useState(true)
   const [emailModal, setEmailModal] = useState(false)
   const [newLeadOpen, setNewLeadOpen] = useState(false)
@@ -309,7 +309,7 @@ export default function CRMPage() {
       if (lead) {
         setTab('leads')
         // The detail panel only renders in a list view, so move off analytics.
-        setView(v => v === 'analytics' ? 'needs-action' : v)
+        setView(v => v === 'analytics' ? 'all-leads' : v)
         setSelectedId(lead.id)
         hasAutoSelected.current = true
       }
