@@ -120,6 +120,14 @@ function fmtMoney(v: string): string {
   return `$${Math.round(n)}`
 }
 
+function fmtPhone(v: string): string {
+  if (!v) return v
+  const d = v.replace(/\D/g, '')
+  if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`
+  if (d.length === 11 && d[0] === '1') return `(${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}`
+  return v
+}
+
 function fmtTime12(t: string | null | undefined): string {
   if (!t) return ''
   if (/\s*(am|pm)$/i.test(t)) return t.trim()
@@ -1619,15 +1627,15 @@ const khuDays = daysUntilKhu(lead)
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 200px', minWidth: 0 }}>
             <input ref={emailRef} value={local.email || ''} onChange={e => update('email', e.target.value)}
               onFocus={() => setFocusedInput('email')} onBlur={e => { setFocusedInput(null); save('email', e.target.value) }}
-              onKeyDown={enterBlur} placeholder="Add email" style={{ ...iStyle('email'), flex: 1, minWidth: 0 }} />
+              onKeyDown={enterBlur} placeholder="Add email" style={{ ...iStyle('email'), flex: 1, minWidth: 0, paddingLeft: 0 }} />
             {local.email && (
               <a href={`mailto:${local.email}`} style={{ ...aBtnStyle('#8b90a8'), flexShrink: 0 }}>Email</a>
             )}
           </div>
           <span style={{ color: 'var(--text3)', fontSize: 11, flexShrink: 0 }}>·</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 200px', minWidth: 0 }}>
-            <input ref={phoneRef} value={local.phone || ''} onChange={e => update('phone', e.target.value)}
-              onFocus={() => setFocusedInput('phone')} onBlur={e => { setFocusedInput(null); save('phone', e.target.value) }}
+            <input ref={phoneRef} value={focusedInput === 'phone' ? (local.phone || '') : fmtPhone(local.phone || '')} onChange={e => update('phone', e.target.value)}
+              onFocus={() => setFocusedInput('phone')} onBlur={e => { setFocusedInput(null); const f = fmtPhone(e.target.value); if (f !== e.target.value) update('phone', f); save('phone', f) }}
               onKeyDown={enterBlur} placeholder="Add phone" style={{ ...iStyle('phone'), flex: 1, minWidth: 0 }} />
             {local.phone && (<>
               <a href={`tel:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('#8b90a8'), flexShrink: 0 }}>Call</a>
