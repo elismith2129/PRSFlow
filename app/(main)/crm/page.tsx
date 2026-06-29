@@ -877,7 +877,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                       setKeepHotPromptId(isKeepHotPrompting ? null : l.id)
                     }}
                     style={{ flexShrink: 0, padding: '4px 9px', background: 'transparent', border: `1px solid ${isKeepHotPrompting ? 'var(--border)' : keepColor}`, color: isKeepHotPrompting ? 'var(--text3)' : keepColor, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                    {isKeepHotPrompting ? 'Cancel' : activeBucket.key === 'warm' ? 'Keep Warm?' : 'Keep Hot?'}
+                    {isKeepHotPrompting ? 'Cancel' : l.status === 'warm' ? 'Keep Warm?' : 'Keep Hot?'}
                   </button>
                 )}
                 <button
