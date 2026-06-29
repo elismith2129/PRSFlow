@@ -1415,48 +1415,27 @@ const khuDays = daysUntilKhu(lead)
 
   return (
     <div>
-      {/* ─── Header bar ──────────────────────────────────────────────── */}
-      <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 10px', marginBottom: 8 }}>
-        {/* Row 1: left group (label + pills) | right group (reg button) */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
-            <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0 }}>Lead Details</span>
-            <select
-              value={local.status || lead.status}
-              onChange={e => { update('status', e.target.value); saveStatus(e.target.value) }}
-              style={{ ...pillBase, flexShrink: 0, background: `${STATUS_COLORS[local.status || lead.status]}22`, color: STATUS_COLORS[local.status || lead.status] || 'var(--text2)', border: `1px solid ${STATUS_COLORS[local.status || lead.status]}66` }}>
-              {['hot', 'warm', 'cold', 'uncontacted', 'booked', 'dead'].map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            {lead.needs_contact !== false && (
-              <button
-                onClick={() => { save('needs_contact', false); onUpdate('needs_contact', false) }}
-                style={{ ...pillBase, flexShrink: 0, background: 'rgba(123,167,188,0.12)', color: '#7BA7BC', border: '1px solid rgba(123,167,188,0.4)' }}
-              >
-                ● Needs Contact
-              </button>
-            )}
-          </div>
-          <div style={{ flexShrink: 0, display: 'flex', gap: 6, alignItems: 'center' }}>
-            {lead.billing !== 'Billing' && (regTokenDates?.used_at ? (
-              <button onClick={() => setRegViewOpen(true)} style={{ padding: '4px 8px', background: 'rgba(20,184,166,0.12)', color: 'var(--booked)', border: '1px solid rgba(20,184,166,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
-                ✓ Registered
-              </button>
-            ) : existingTokenStr ? (
-              <button onClick={async () => { const done = await refreshRegStatus(); if (!done) setRegPanelOpen(v => !v) }} style={{ padding: '4px 8px', background: regPanelOpen ? 'rgba(249,115,22,0.18)' : 'rgba(249,115,22,0.08)', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
-                Reg Sent
-              </button>
-            ) : (
-              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '4px 8px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
-                {regLinkGenerating ? '…' : 'Send Reg'}
-              </button>
-            ))}
-          </div>
-        </div>
-        {/* Row 2: Keep Hot Until — hot/warm only */}
+      {/* ─── Status strip ─────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 8, marginBottom: 10, borderBottom: '1px solid #1e2028' }}>
+        <select
+          value={local.status || lead.status}
+          onChange={e => { update('status', e.target.value); saveStatus(e.target.value) }}
+          style={{ ...pillBase, flexShrink: 0, background: `${STATUS_COLORS[local.status || lead.status]}22`, color: STATUS_COLORS[local.status || lead.status] || 'var(--text2)', border: 'none' }}>
+          {['hot', 'warm', 'cold', 'uncontacted', 'booked', 'dead'].map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        {lead.needs_contact !== false && (<>
+          <span style={{ color: '#2d3140', fontSize: 9, flexShrink: 0 }}>·</span>
+          <button
+            onClick={() => { save('needs_contact', false); onUpdate('needs_contact', false) }}
+            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#6B7280', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, flexShrink: 0 }}
+          >
+            <span style={{ fontSize: 7 }}>●</span> Needs Contact
+          </button>
+        </>)}
         {(lead.status === 'hot' || lead.status === 'warm') && lead.keep_hot_until && (
-          <div style={{ marginTop: 6, fontSize: 10, fontFamily: 'DM Mono', color: khuColor }}>
-            Keep Hot Until: {fmtDateTime(lead.keep_hot_until)}
-          </div>
+          <span style={{ marginLeft: 'auto', color: '#14B8A6', fontFamily: 'DM Mono', fontSize: 10, flexShrink: 0 }}>
+            Keep hot until {fmtDateTime(lead.keep_hot_until)}
+          </span>
         )}
       </div>
 
@@ -1571,42 +1550,33 @@ const khuDays = daysUntilKhu(lead)
               </>
             )}
           </div>
-          <button
-            onClick={() => {
-              if (lead.client_id) {
-                leadRouter.push(`/calendar?newBooking=1&clientId=${lead.client_id}&leadId=${lead.id}`)
-              } else {
-                setShowConfirmModal(true)
-              }
-            }}
-            style={{ padding: '5px 12px', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer', flexShrink: 0, marginTop: 4 }}
-          >
-            Start Booking
-          </button>
-        </div>
-
-        {/* Pills row — just below row 1 */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
-          <button
-            onClick={() => { const nb = (local.billing || lead.billing) === 'COD' ? 'Billing' : 'COD'; update('billing', nb); save('billing', nb) }}
-            style={{ ...pillBase, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)' }}>
-            {local.billing || lead.billing || 'COD'}
-          </button>
-          {lead.booking && (
-            <span style={{ ...pillBase, background: 'rgba(139,144,168,0.12)', color: 'var(--text2)', border: '1px solid var(--border)', cursor: 'default', fontSize: 9 }}>
-              {BOOKING_ICONS[lead.booking] || ''} {lead.booking}
-            </span>
-          )}
-          {lead.first_time && (
-            <span style={{ ...pillBase, background: 'rgba(139,144,168,0.12)', color: 'var(--text3)', border: '1px solid var(--border)', cursor: 'default' }}>
-              ★ First Time
-            </span>
-          )}
-          {lead.source && (
-            <span style={{ ...pillBase, background: 'rgba(139,144,168,0.12)', color: 'var(--text3)', border: '1px solid var(--border)', cursor: 'default', fontSize: 9 }}>
-              {lead.source}
-            </span>
-          )}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0, marginTop: 4 }}>
+            <button
+              onClick={() => {
+                if (lead.client_id) {
+                  leadRouter.push(`/calendar?newBooking=1&clientId=${lead.client_id}&leadId=${lead.id}`)
+                } else {
+                  setShowConfirmModal(true)
+                }
+              }}
+              style={{ padding: '5px 12px', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
+            >
+              Start Booking
+            </button>
+            {lead.billing !== 'Billing' && (regTokenDates?.used_at ? (
+              <button onClick={() => setRegViewOpen(true)} style={{ padding: '4px 8px', background: 'rgba(20,184,166,0.12)', color: 'var(--booked)', border: '1px solid rgba(20,184,166,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
+                ✓ Registered
+              </button>
+            ) : existingTokenStr ? (
+              <button onClick={async () => { const done = await refreshRegStatus(); if (!done) setRegPanelOpen(v => !v) }} style={{ padding: '4px 8px', background: regPanelOpen ? 'rgba(249,115,22,0.18)' : 'rgba(249,115,22,0.08)', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
+                Reg Sent
+              </button>
+            ) : (
+              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '4px 8px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
+                {regLinkGenerating ? '…' : 'Send Reg'}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Row 2 (Label/Billing only): A&R name line */}
@@ -1664,6 +1634,23 @@ const khuDays = daysUntilKhu(lead)
               <a href={`sms:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('#8b90a8'), flexShrink: 0 }}>Text</a>
             </>)}
           </div>
+        </div>
+
+        {/* Meta row: billing · session type · source — plain muted text chips */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+          <button
+            onClick={() => { const nb = (local.billing || lead.billing) === 'COD' ? 'Billing' : 'COD'; update('billing', nb); save('billing', nb) }}
+            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#6B7280', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>
+            {local.billing || lead.billing || 'COD'}
+          </button>
+          {lead.booking && (<>
+            <span style={{ color: '#2d3140', fontSize: 9 }}>·</span>
+            <span style={{ color: '#6B7280', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{lead.booking}</span>
+          </>)}
+          {lead.source && (<>
+            <span style={{ color: '#2d3140', fontSize: 9 }}>·</span>
+            <span style={{ color: '#6B7280', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{lead.source}</span>
+          </>)}
         </div>
       </div>
 
