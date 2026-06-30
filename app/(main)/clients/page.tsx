@@ -153,7 +153,7 @@ export function ClientsPageInner({ initialClientId, embedded }: { initialClientI
         </div>
         <button
           onClick={() => setNewClientOpen(true)}
-          style={{ padding: '5px 12px', background: '#e8eaf0', color: '#0d0f14', border: 'none', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
+          style={{ padding: '5px 12px', background: 'transparent', color: '#e8eaf0', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
         >
           + New Client
         </button>

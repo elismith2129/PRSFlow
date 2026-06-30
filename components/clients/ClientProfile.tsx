@@ -29,7 +29,7 @@ interface Props {
 // ─── Shared button styles ─────────────────────────────────────────────────────
 
 const accentBtn: React.CSSProperties = {
-  background: '#e8eaf0', color: '#0d0f14', border: 'none', borderRadius: 4,
+  background: 'transparent', color: '#e8eaf0', border: '1px solid var(--border)', borderRadius: 4,
   padding: '5px 12px', fontSize: 10, fontFamily: 'Syne', fontWeight: 700,
   letterSpacing: '0.08em', cursor: 'pointer',
 }
@@ -638,7 +638,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
           )}
           <button
             onClick={() => router.push(`/calendar?newBooking=1&clientId=${client.id}`)}
-            style={{ ...accentBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0, background: '#e8eaf0', color: '#0d0f14' }}
+            style={{ ...accentBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0, background: 'transparent', color: '#e8eaf0' }}
           >
             Start Booking
           </button>
