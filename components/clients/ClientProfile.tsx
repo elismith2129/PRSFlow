@@ -29,7 +29,7 @@ interface Props {
 // ─── Shared button styles ─────────────────────────────────────────────────────
 
 const accentBtn: React.CSSProperties = {
-  background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 4,
+  background: '#e8eaf0', color: '#0d0f14', border: 'none', borderRadius: 4,
   padding: '5px 12px', fontSize: 10, fontFamily: 'Syne', fontWeight: 700,
   letterSpacing: '0.08em', cursor: 'pointer',
 }
@@ -662,7 +662,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
           )}
           <button
             onClick={() => router.push(`/calendar?newBooking=1&clientId=${client.id}`)}
-            style={{ ...accentBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0, background: 'var(--accent)', color: '#0d0f14' }}
+            style={{ ...accentBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0, background: '#e8eaf0', color: '#0d0f14' }}
           >
             Start Booking
           </button>
@@ -832,45 +832,6 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                   </div>
                 )}
               </div>
-            )}
-          </>
-        )}
-
-        {/* ── LABEL ROSTER ── */}
-        {isLabel && (
-          <>
-            <SectionHeader label="Artists" mt={16} />
-            {rosterArtists.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 8 }}>
-                {rosterArtists.map(name => (
-                  removingArtist === name ? (
-                    <span key={name} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontFamily: 'DM Mono', color: 'var(--hot)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', padding: '2px 7px', borderRadius: 4 }}>
-                      Remove {name}?
-                      <button onClick={() => removeRosterArtist(name)} style={{ background: 'none', border: 'none', color: 'var(--hot)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'DM Mono', fontWeight: 700 }}>Yes</button>
-                      <button onClick={() => setRemovingArtist(null)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'DM Mono' }}>No</button>
-                    </span>
-                  ) : (
-                    <span key={name} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)', background: 'var(--surface2)', border: '1px solid var(--border)', padding: '2px 7px', borderRadius: 4 }}>
-                      {name}
-                      <button onClick={() => setRemovingArtist(name)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 0, fontSize: 11, lineHeight: 1 }} title="Remove">×</button>
-                    </span>
-                  )
-                ))}
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
-              <input
-                type="text"
-                placeholder="Artist name"
-                value={newArtistInput}
-                onChange={e => setNewArtistInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') addRosterArtist(newArtistInput) }}
-                style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 8px', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 10, outline: 'none' }}
-              />
-              <button onClick={() => addRosterArtist(newArtistInput)} style={{ ...ghostBtn, fontSize: 9, padding: '3px 10px' }}>+ Add</button>
-            </div>
-            {rosterArtists.length === 0 && !newArtistInput && (
-              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginBottom: 4 }}>No artists on roster yet.</div>
             )}
           </>
         )}
