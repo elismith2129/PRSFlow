@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { PRSFloIcon } from '@/components/PRSFloIcon'
 
 function getLocalToday(): string {
   const now = new Date()
@@ -77,6 +78,13 @@ export default function RunnerPage() {
       fontFamily: 'Syne, sans-serif',
     }}>
       <div style={{ textAlign: 'center', marginBottom: 40 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, marginBottom: 26 }}>
+          <PRSFloIcon size={32} />
+          <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 18, letterSpacing: -0.5 }}>
+            <span style={{ color: 'var(--accent)' }}>PRS</span>
+            <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flo</span>
+          </div>
+        </div>
         <div style={{ fontSize: 11, letterSpacing: '0.2em', color: '#8b90a8', textTransform: 'uppercase', marginBottom: 6 }}>
           Paramount Recording Group
         </div>
