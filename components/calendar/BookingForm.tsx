@@ -25,9 +25,6 @@ const STATUS_LABELS: Record<string, string> = {
   tour: 'Tour', tech: 'Tech', open_hours: 'Open Hours',
 }
 
-const COLOR_COD = '#7BBFFF'
-const COLOR_LABEL = '#96A9FF'
-
 const COD_METHODS = ['Cash', 'Credit Card', 'Zelle', 'Check', 'Venmo']
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
@@ -186,7 +183,7 @@ function ContactInfoPopover({ contact, children }: { contact: ClientContact; chi
               </>
             )}
             {contact.email && (
-              <a href={`mailto:${contact.email}`} style={{ flex: 1, textAlign: 'center', padding: '4px 6px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: '#7BBFFF', fontFamily: 'DM Mono', fontSize: 9, textDecoration: 'none', cursor: 'pointer' }}>
+              <a href={`mailto:${contact.email}`} style={{ flex: 1, textAlign: 'center', padding: '4px 6px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text2)', fontFamily: 'DM Mono', fontSize: 9, textDecoration: 'none', cursor: 'pointer' }}>
                 Email
               </a>
             )}
@@ -750,7 +747,7 @@ export function BookingForm({
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
                 fontFamily: 'DM Serif Display', fontSize: 34, lineHeight: 1.15,
-                color: (form.artist || form.label) ? '#96A9FF' : 'var(--text3)',
+                color: (form.artist || form.label) ? 'var(--text)' : 'var(--text3)',
               }}>
                 {form.artist || form.label || 'New Booking'}
               </div>
@@ -760,7 +757,7 @@ export function BookingForm({
                 </div>
               )}
               {form.label && form.artist && (
-                <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#96A9FF', marginTop: 1 }}>
+                <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text2)', marginTop: 1 }}>
                   {form.label}
                 </div>
               )}
@@ -769,7 +766,7 @@ export function BookingForm({
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
                 fontFamily: 'DM Serif Display', fontSize: 34, lineHeight: 1.15,
-                color: form.client_name ? '#7BBFFF' : 'var(--text3)',
+                color: form.client_name ? 'var(--text)' : 'var(--text3)',
               }}>
                 {form.client_name || 'New Booking'}
               </div>
@@ -1133,10 +1130,10 @@ export function BookingForm({
                 ? !!(form.label || form.client_name)
                 : !!form.client_name
 
-              const nameColor = isBilling ? '#96A9FF' : '#7BBFFF'
-              const badgeBg = isBilling ? 'rgba(150,169,255,0.12)' : 'rgba(123,191,255,0.12)'
-              const badgeColor = isBilling ? '#96A9FF' : '#7BBFFF'
-              const badgeBorder = isBilling ? 'rgba(150,169,255,0.3)' : 'rgba(123,191,255,0.3)'
+              const nameColor = 'var(--text)'
+              const badgeBg = 'rgba(139,144,168,0.12)'
+              const badgeColor = 'var(--text2)'
+              const badgeBorder = 'var(--border)'
               const badgeLabel = isBilling ? 'LABEL/BILLING' : 'COD'
               const displayName = isBilling ? (form.client_name || form.label) : form.client_name
 
@@ -1180,7 +1177,7 @@ export function BookingForm({
                           padding: '7px 28px', borderRadius: 6, border: 'none', cursor: 'pointer',
                           fontFamily: 'DM Mono', fontSize: 11, fontWeight: 500,
                           background: form.payment_type === m ? 'var(--surface2)' : 'transparent',
-                          color: form.payment_type === m ? (m === 'COD' ? '#7BBFFF' : '#96A9FF') : 'var(--text2)',
+                          color: form.payment_type === m ? 'var(--text)' : 'var(--text2)',
                           transition: 'all 0.15s', letterSpacing: '0.04em',
                         }}>
                           {m === 'COD' ? 'COD' : 'Label/Billing'}
@@ -1279,7 +1276,7 @@ export function BookingForm({
                               }}
                             >
                               <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)' }}>{s.label}</div>
-                              {s.sub && <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#96A9FF', marginTop: 1 }}>{s.sub}</div>}
+                              {s.sub && <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)', marginTop: 1 }}>{s.sub}</div>}
                             </div>
                           ))}
                         </div>
