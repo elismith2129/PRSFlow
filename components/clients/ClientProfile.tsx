@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase, Client, ClientContact, CLIENT_TYPE_LABELS } from '@/lib/supabase'
 import PhoneInput from '@/components/shared/PhoneInput'
-import { addArtistToLabel, removeArtistFromLabel } from '@/lib/roster'
+import { addArtistToLabel } from '@/lib/roster'
 import { RegViewModal } from '@/components/shared/RegViewModal'
 
 interface BookingLead {
@@ -443,9 +443,6 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   const [regViewOpen, setRegViewOpen] = useState(false)
   const [nameVal, setNameVal] = useState(client?.name || '')
   const [editingName, setEditingName] = useState(false)
-  const [rosterArtists, setRosterArtists] = useState<string[]>((client?.artists as string[]) || [])
-  const [newArtistInput, setNewArtistInput] = useState('')
-  const [removingArtist, setRemovingArtist] = useState<string | null>(null)
 
   // Load bookings for selected client
   useEffect(() => {
@@ -473,34 +470,13 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
     setRegLinkGenerating(false)
     setNameVal(client?.name || '')
     setEditingName(false)
-    setNewArtistInput('')
-    setRemovingArtist(null)
   }, [client?.id])
-
-  // Keep roster in sync when client refreshes (e.g. after addArtistToLabel updates it)
-  useEffect(() => {
-    setRosterArtists((client?.artists as string[]) || [])
-  }, [client?.artists])
 
   const saveClient = useCallback(async (fields: Partial<Client>) => {
     if (!client) return
     await supabase.from('clients').update(fields).eq('id', client.id)
     onRefresh()
   }, [client, onRefresh])
-
-  const addRosterArtist = useCallback(async (name: string) => {
-    if (!client || !name.trim()) return
-    const updated = await addArtistToLabel(client.id, name.trim(), rosterArtists)
-    setRosterArtists(updated)
-    setNewArtistInput('')
-  }, [client, rosterArtists])
-
-  const removeRosterArtist = useCallback(async (name: string) => {
-    if (!client) return
-    const updated = await removeArtistFromLabel(client.id, name, rosterArtists)
-    setRosterArtists(updated)
-    setRemovingArtist(null)
-  }, [client, rosterArtists])
 
   const saveContact = useCallback(async (contactId: string, data: Partial<ClientContact>) => {
     try {
