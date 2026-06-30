@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import '@/styles/globals.css'
 
 export const metadata: Metadata = {
-  title: 'PRSFlow',
+  title: 'PRSFlo',
   description: 'Paramount Recording Group Studio Management',
   manifest: '/manifest.json',
   icons: {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { PRSFloIcon } from '@/components/PRSFloIcon'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -87,17 +88,21 @@ export default function LoginPage() {
           Paramount Recording Group
         </div>
 
+        <div style={{ marginTop: 12 }}>
+          <PRSFloIcon size={72} />
+        </div>
+
         <div
           style={{
             fontFamily: "'Syne', sans-serif",
             fontWeight: 800,
             fontSize: 48,
             color: '#c8f04e',
-            marginTop: 12,
+            marginTop: 28,
             lineHeight: 1,
           }}
         >
-          PRSFlow
+          PRSFlo
         </div>
 
         <form

@@ -1,4 +1,4 @@
-# PRSFlow — Tech Stack & Roadmap
+# PRSFlo — Tech Stack & Roadmap
 
 *Last updated: June 27, 2026*
 
@@ -53,7 +53,7 @@ prs-flow.vercel.app is live with your changes
 
 ## Local Development Setup
 
-When you sit down to work on PRSFlow, here's what should be running:
+When you sit down to work on PRSFlo, here's what should be running:
 
 **VS Code**
 Open the project folder (`~/Desktop/PRS/PRSFlow/prsflow`). All file editing happens here. The built-in terminal panel at the bottom is where you run commands — you can have multiple terminals open as tabs.
@@ -102,8 +102,8 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 |---|---|
 | `app/layout.tsx` | Root layout; font loading, global CSS. PWA metadata (Metadata API): `metadata.manifest = '/manifest.json'`, `metadata.icons` (favicon-16/32 + apple-touch-icon), `viewport.themeColor = '#0d0f14'` |
 | `app/runner/layout.tsx` | Server-component passthrough layout for the `/runner/*` subtree (runner `page.tsx` is `'use client'` and can't export metadata). Hosts the runner PWA metadata: `manifest = '/runner-manifest.json'`, `icons.apple = '/runner-apple-touch-icon.png'`, `appleWebApp` (capable, black-translucent, title 'Runner'). Overrides the root's manifest/apple-icon for runner routes only |
-| `public/manifest.json` | Main-app web manifest (`name "PRSFlow"`, `start_url "/"`, `display standalone`, `theme_color #0d0f14`, icons 192/512/512-maskable) |
-| `public/runner-manifest.json` | Runner-hub web manifest (`name "PRSFlow Runner"`, `short_name "Runner"`, `start_url "/runner"`, runner icons 192/512/512-maskable) |
+| `public/manifest.json` | Main-app web manifest (`name "PRSFlo"`, `start_url "/"`, `display standalone`, `theme_color #0d0f14`, icons 192/512/512-maskable) |
+| `public/runner-manifest.json` | Runner-hub web manifest (`name "PRSFlo Runner"`, `short_name "Runner"`, `start_url "/runner"`, runner icons 192/512/512-maskable) |
 | `scripts/generate-icons.js` | Dev script (Node + `sharp`) — rasterizes two inline SVG sources to the 8 PWA PNGs + writes 2 SVGs into `public/` (main + runner icon sets). Re-run with `node scripts/generate-icons.js` after editing the SVGs |
 | `public/icon.svg` / `public/runner-icon.svg` / `public/*icon*.png` | Generated PWA icons — main (`icon.svg`, `favicon-16x16`, `favicon-32x32`, `apple-touch-icon`, `icon-192`, `icon-512`) + runner (`runner-icon.svg`, `runner-apple-touch-icon`, `runner-icon-192`, `runner-icon-512`). Do not hand-edit; regenerate via `scripts/generate-icons.js` |
 | `app/(main)/` | Route group for internal nav-bearing pages (gated by `AuthGuard`) |
@@ -369,7 +369,7 @@ Defined in `styles/globals.css`:
 | **Lead-form universal client search ✅** | **NewLeadModal Label mode searches label + A&R + artist in one field, mirroring the booking form** |
 | lead-universal-search | **(`535eaab`)** `app/(main)/crm/page.tsx` `NewLeadModal` Label mode now leads with one "Search client name…" field running three parallel queries — `clients` label names, `client_contacts` A&R names, `client_contacts.artists[]` artist names (matched client-side, admins excluded via `contact_type === 'admin'`) — the same combined-search pattern as `BookingForm`. Result rows show **Artist (bold) · Label · A&R**; picking one autofills + links LABEL (`labelClientId`, so Move-to-Booking still works), A&R/REP (`anr_contact_id` + email/phone), and ARTIST. The three fields below became plain **editable** inputs (LABEL no longer searches; A&R lost its "Select a label first" disable gate), so an un-matched lead can be typed by hand. Removed the dead label-only-search code (`selectLabelClient`, `handleLabelKeyDown`, `labelClientSuggestions`/`showLabelClientDD`/`labelHighlight`/`labelDebounce`/`skipLabelSearch`); added a `UniSuggestion` type. COD mode, the COD/Label toggle, and EMAIL/PHONE are untouched. |
 | **PWA — installable icons + manifests ✅** | **Add-to-home-screen for the main app and a separate Runner hub app; icons + manifests only, no service worker** |
-| pwa-icons-manifests | **(`fe17795`)** Makes PRSFlow installable to a phone home screen (branded icon, `display: standalone`). **No service worker / no offline caching** (deliberate; offline is separate future work). Two manifests + icon sets: `public/manifest.json` (`start_url "/"`) for the main app, `public/runner-manifest.json` (`start_url "/runner"`, `short_name "Runner"`) so runners install the Runner hub as its own app with a distinct teal-`RUNNER`-badged icon; both `background_color`/`theme_color` `#0d0f14`, icons 192/512/512-maskable. Icons wired via the **Next.js Metadata API, not raw `<head>` tags** — root `app/layout.tsx` sets `metadata.manifest`/`metadata.icons` (+ `viewport.themeColor`), new server-component `app/runner/layout.tsx` overrides `manifest`/`icons.apple` + `appleWebApp` for the `/runner/*` subtree (proper parent→child override; raw global head tags would have leaked the main manifest/apple-icon onto `/runner` and duplicated). `scripts/generate-icons.js` (Node + `sharp` dev dep, `^0.35.2`) rasterizes two inline SVG sources to 8 PNGs + 2 SVGs in `public/`; re-run with `node scripts/generate-icons.js`. iOS "Add to Home Screen" still needs a real-device check. |
+| pwa-icons-manifests | **(`fe17795`)** Makes PRSFlo installable to a phone home screen (branded icon, `display: standalone`). **No service worker / no offline caching** (deliberate; offline is separate future work). Two manifests + icon sets: `public/manifest.json` (`start_url "/"`) for the main app, `public/runner-manifest.json` (`start_url "/runner"`, `short_name "Runner"`) so runners install the Runner hub as its own app with a distinct teal-`RUNNER`-badged icon; both `background_color`/`theme_color` `#0d0f14`, icons 192/512/512-maskable. Icons wired via the **Next.js Metadata API, not raw `<head>` tags** — root `app/layout.tsx` sets `metadata.manifest`/`metadata.icons` (+ `viewport.themeColor`), new server-component `app/runner/layout.tsx` overrides `manifest`/`icons.apple` + `appleWebApp` for the `/runner/*` subtree (proper parent→child override; raw global head tags would have leaked the main manifest/apple-icon onto `/runner` and duplicated). `scripts/generate-icons.js` (Node + `sharp` dev dep, `^0.35.2`) rasterizes two inline SVG sources to 8 PNGs + 2 SVGs in `public/`; re-run with `node scripts/generate-icons.js`. iOS "Add to Home Screen" still needs a real-device check. |
 
 ### Next
 

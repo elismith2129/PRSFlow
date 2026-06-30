@@ -22,7 +22,7 @@ To (re)create the database, run `schema.sql` in the Supabase SQL editor, then th
 
 ## Architecture
 
-PRSFlow is a single-tenant studio operations app for Paramount Recording Studios. It is a Next.js 14 App Router project with **client-rendered pages that talk directly to Supabase from the browser** using the anon key. There is no Next.js API layer (except `/api/ocr-receipt` which needs the Anthropic API key server-side), no server actions, and no server-side auth — every page is `'use client'` and queries `supabase` directly.
+PRSFlo is a single-tenant studio operations app for Paramount Recording Studios. It is a Next.js 14 App Router project with **client-rendered pages that talk directly to Supabase from the browser** using the anon key. There is no Next.js API layer (except `/api/ocr-receipt` which needs the Anthropic API key server-side), no server actions, and no server-side auth — every page is `'use client'` and queries `supabase` directly.
 
 ### Auth (June 25, 2026)
 

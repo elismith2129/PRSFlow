@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { PRSFloIcon } from '@/components/PRSFloIcon'
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
@@ -70,19 +71,13 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
       transition: 'opacity 0.3s ease',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <PRSFloIcon size={38} />
         <Link href="/" style={{ textDecoration: 'none' }}>
           <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 20, letterSpacing: -0.5, cursor: 'pointer' }}>
             <span style={{ color: 'var(--accent)' }}>PRS</span>
-            <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flow</span>
+            <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flo</span>
           </div>
         </Link>
-        {!isMobile && (
-          <span style={{
-            fontSize: 8, fontFamily: 'DM Mono', color: 'var(--text3)',
-            border: '1px solid var(--border)', borderRadius: 3,
-            padding: '2px 6px', letterSpacing: '0.1em'
-          }}>STUDIO OS</span>
-        )}
       </div>
 
       {!isMobile && (
