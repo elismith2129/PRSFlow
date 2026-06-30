@@ -88,22 +88,20 @@ export default function LoginPage() {
           Paramount Recording Group
         </div>
 
-        <div style={{ marginTop: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, marginTop: 26 }}>
           <PRSFloIcon size={72} />
-        </div>
-
-        <div
-          style={{
-            fontFamily: 'Syne',
-            fontWeight: 800,
-            fontSize: 48,
-            letterSpacing: -0.5,
-            marginTop: 28,
-            lineHeight: 1,
-          }}
-        >
-          <span style={{ color: 'var(--accent)' }}>PRS</span>
-          <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flo</span>
+          <div
+            style={{
+              fontFamily: 'Syne',
+              fontWeight: 800,
+              fontSize: 48,
+              letterSpacing: -0.5,
+              lineHeight: 1,
+            }}
+          >
+            <span style={{ color: 'var(--accent)' }}>PRS</span>
+            <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flo</span>
+          </div>
         </div>
 
         <form
@@ -212,8 +210,8 @@ const authInputStyle: React.CSSProperties = {
 const authButtonStyle: React.CSSProperties = {
   width: '100%',
   maxWidth: 380,
-  background: '#c8f04e',
-  color: '#0d0f14',
+  background: 'transparent',
+  color: '#e8eaf0',
   fontFamily: "'DM Mono', monospace",
   fontSize: 12,
   fontWeight: 700,
@@ -221,7 +219,7 @@ const authButtonStyle: React.CSSProperties = {
   textTransform: 'uppercase',
   padding: '13px',
   borderRadius: 6,
-  border: 'none',
+  border: '1px solid var(--border)',
   cursor: 'pointer',
   boxSizing: 'border-box',
 }
