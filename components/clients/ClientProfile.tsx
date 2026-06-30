@@ -153,7 +153,8 @@ function ContactRow({ contact, onSave, onDelete }: {
             </div>
           )}
           {contact.phone && (
-            <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>{contact.phone}</span>
               <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Call</a>
               <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Text</a>
             </div>
