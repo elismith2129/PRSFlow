@@ -221,6 +221,8 @@ export default function RunnerWOPage() {
           to_time: bkData.to_time ?? '',
           total_hours: !isDR ? calcHours(bkData.from_time ?? '', bkData.to_time ?? '') : null,
           rate: rateVal,
+          rate_daily: isDR ? rateVal : null,
+          row_rate_type: isDR ? 'day' : 'hour',
           charge: !isDR ? calcCharge(bkData.from_time ?? '', bkData.to_time ?? '', rateVal) : null,
           day_count: isDR ? 1 : null,
           sort_order: i,
