@@ -73,15 +73,16 @@ export default function ResetPasswordPage() {
 
         <div
           style={{
-            fontFamily: "'Syne', sans-serif",
+            fontFamily: 'Syne',
             fontWeight: 800,
             fontSize: 48,
-            color: '#c8f04e',
+            letterSpacing: -0.5,
             marginTop: 28,
             lineHeight: 1,
           }}
         >
-          PRSFlo
+          <span style={{ color: 'var(--accent)' }}>PRS</span>
+          <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flo</span>
         </div>
 
         <form

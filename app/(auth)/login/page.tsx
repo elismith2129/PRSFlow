@@ -94,15 +94,16 @@ export default function LoginPage() {
 
         <div
           style={{
-            fontFamily: "'Syne', sans-serif",
+            fontFamily: 'Syne',
             fontWeight: 800,
             fontSize: 48,
-            color: '#c8f04e',
+            letterSpacing: -0.5,
             marginTop: 28,
             lineHeight: 1,
           }}
         >
-          PRSFlo
+          <span style={{ color: 'var(--accent)' }}>PRS</span>
+          <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flo</span>
         </div>
 
         <form
@@ -121,9 +122,10 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email"
             autoComplete="email"
+            className="auth-input"
             style={authInputStyle}
             onFocus={(e) => (e.currentTarget.style.borderColor = '#c8f04e')}
-            onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
+            onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
           />
           <input
             type="password"
@@ -131,9 +133,10 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
             autoComplete="current-password"
+            className="auth-input"
             style={authInputStyle}
             onFocus={(e) => (e.currentTarget.style.borderColor = '#c8f04e')}
-            onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
+            onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
           />
 
           <button
@@ -195,11 +198,11 @@ export default function LoginPage() {
 const authInputStyle: React.CSSProperties = {
   width: '100%',
   maxWidth: 380,
-  background: '#161920',
-  border: '1px solid rgba(255,255,255,0.1)',
+  background: 'var(--surface)',
+  border: '1px solid var(--border)',
   borderRadius: 6,
   padding: '12px 14px',
-  color: '#e8eaf0',
+  color: 'var(--text)',
   fontFamily: "'DM Mono', monospace",
   fontSize: 13,
   outline: 'none',

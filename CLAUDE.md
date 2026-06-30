@@ -3,6 +3,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Locked Design Conventions
+
+*Locked — must not drift. Copy exact values from the cited source of truth; never recreate from memory or description.*
+
+- **PRSFlo wordmark: `components/layout/Nav.tsx` is the single source of truth for PRS/Flo span styling (font-family, weight, color). Always copy these exact values when the wordmark appears elsewhere — never recreate from description.** It must be byte-for-byte identical everywhere it appears site-wide (nav, login, reset-password, runner hub, welcome splash, and any future placement). The exact values, from Nav.tsx: container `fontFamily: 'Syne'`, `fontWeight: 800`, `letterSpacing: -0.5`; `PRS` span `color: var(--accent)`; `Flo` span `color: var(--text)`, `opacity: 0.45`, `fontWeight: 500`. Only `fontSize` may differ per placement. (This rule exists because the login page once drifted to the wrong font/color.)
+
 ## Commands
 
 - `npm run dev` — start the Next.js dev server at http://localhost:3000

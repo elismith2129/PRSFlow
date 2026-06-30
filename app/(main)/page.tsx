@@ -9,6 +9,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { ASSIGN_OPTIONS, resolveAssignTo, nameForId, visibleTabsForRole, idsForTab, fetchTasks } from '@/lib/tasks'
+import { PRSFloIcon } from '@/components/PRSFloIcon'
 
 // Needs Action predicates — mirror the CRM (app/(main)/crm/page.tsx) bucket logic
 // so the dashboard surfaces the same leads as the CRM Needs Action tab.
@@ -696,6 +697,13 @@ export default function DashboardPage() {
             animation: welcomeFading ? undefined : 'welcomeFadeIn 0.3s ease',
           }}
         >
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, marginBottom: 26 }}>
+            <PRSFloIcon size={32} />
+            <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 18, letterSpacing: -0.5 }}>
+              <span style={{ color: 'var(--accent)' }}>PRS</span>
+              <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flo</span>
+            </div>
+          </div>
           <div style={{ fontFamily: 'DM Mono', fontSize: 13, letterSpacing: '0.2em', color: '#6B7280', textTransform: 'uppercase' }}>
             {greeting.toUpperCase()}
           </div>
