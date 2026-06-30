@@ -273,7 +273,7 @@ export type WOFormSync = {
   producer: string; engineer_name: string; assistant_name: string
   payment_type: string; food_budget: boolean; food_amount: string
   invoice_num: string; start_date: string; end_date: string; studio: string; location: string
-  rate: string; rate_daily: string; rate_type?: string
+  rate: string; rate_daily: string; rate_type?: 'hourly' | 'daily'
   notes?: string; engineer_status?: string; engineer_rate?: string
 }
 
