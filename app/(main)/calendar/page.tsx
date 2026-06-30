@@ -563,12 +563,6 @@ function DayView({
                             {codLabel}
                           </div>
                         )}
-                        {/* Notes */}
-                        {b.notes && (
-                          <div style={{ fontFamily: 'DM Mono', fontSize: 9, color: 'rgba(255,255,255,0.7)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {b.notes.toUpperCase()}
-                          </div>
-                        )}
                         {/* Invoice + engineer */}
                         {(b.invoice_num || eng || asst) && (
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5 }}>
