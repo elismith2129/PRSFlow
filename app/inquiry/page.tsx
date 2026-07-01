@@ -52,7 +52,8 @@ export default function InquiryPage() {
     <div
       style={{
         minHeight: '100vh',
-        background: '#0d0f14',
+        background: 'linear-gradient(135deg, #0a0c10 0%, #0d0f14 40%, #111418 70%, #0a0b0d 100%)',
+        position: 'relative',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -60,10 +61,22 @@ export default function InquiryPage() {
         padding: '24px',
       }}
     >
+      {/* Subtle upper-center radial glow for depth, painted behind the content. */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'radial-gradient(ellipse at 50% 20%, rgba(93,202,165,0.06) 0%, rgba(0,0,0,0) 60%)',
+          pointerEvents: 'none',
+        }}
+      />
       {submitted ? (
         // Thank-you screen replaces the form in place; no redirect.
         <div
           style={{
+            position: 'relative',
+            zIndex: 1,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -100,6 +113,8 @@ export default function InquiryPage() {
       ) : (
         <div
           style={{
+            position: 'relative',
+            zIndex: 1,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -107,24 +122,8 @@ export default function InquiryPage() {
             maxWidth: 380,
           }}
         >
-          {/* Locked logo lockup — icon directly above the wordmark (gap: 2). The
-              PRS/Flo span styling is copied byte-for-byte from Nav.tsx (the single
-              source of truth per CLAUDE.md); only fontSize differs per placement. */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <PRSFloIcon size={72} />
-            <div
-              style={{
-                fontFamily: 'Syne',
-                fontWeight: 800,
-                fontSize: 48,
-                letterSpacing: -0.5,
-                lineHeight: 1,
-              }}
-            >
-              <span style={{ color: 'var(--accent)' }}>PRS</span>
-              <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flo</span>
-            </div>
-          </div>
+          {/* Logo lockup — icon above the PARAMOUNT RECORDING GROUP eyebrow. */}
+          <PRSFloIcon size={72} />
 
           <div
             style={{
@@ -134,7 +133,7 @@ export default function InquiryPage() {
               color: '#6B7280',
               textTransform: 'uppercase',
               textAlign: 'center',
-              marginTop: 14,
+              marginTop: 12,
             }}
           >
             Paramount Recording Group
