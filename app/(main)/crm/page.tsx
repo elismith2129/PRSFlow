@@ -234,12 +234,14 @@ export default function CRMPage() {
   const [tab, setTab] = useState<'leads' | 'clients'>('leads')
   const [initialClientId, setInitialClientId] = useState<string | null>(null)
 
-  // Switch to clients tab if ?clientId= or ?id= is present on load
+  // Switch to clients tab if ?clientId= or ?id= is present on load;
+  // open the New Lead modal (on the leads tab) if ?newLead=1 (e.g. from the dashboard).
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search)
       const cid = params.get('clientId') || params.get('id')
       if (cid) { setTab('clients'); setInitialClientId(cid) }
+      if (params.get('newLead') === '1') { setTab('leads'); setNewLeadOpen(true) }
     } catch {}
   }, [])
 

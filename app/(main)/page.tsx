@@ -760,7 +760,11 @@ export default function DashboardPage() {
         {/* COL 1 — NEEDS ACTION */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', order: isMobile ? 2 : 0 }}>
           <div style={{ padding: '13px 16px 0', borderBottom: '1px solid var(--border)' }}>
-            <SectionHeader title="NEEDS ACTION" />
+            <SectionHeader
+              title="NEEDS ACTION"
+              action={{ label: 'View all in CRM →', onClick: () => router.push('/crm') }}
+              actionColor="#6B7280"
+            />
           </div>
           <div style={{ borderBottom: '1px solid var(--border)' }}>
             {loading ? (
@@ -797,12 +801,19 @@ export default function DashboardPage() {
               })
             )}
           </div>
-          <div style={{ padding: '10px 16px' }}>
+          {/* Footer: new lead — opens the CRM New Lead modal via ?newLead=1 */}
+          <div style={{ padding: '8px', borderTop: '1px solid var(--border)' }}>
             <button
-              onClick={() => router.push('/crm')}
-              style={{ fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'DM Mono' }}
+              onClick={() => router.push('/crm?newLead=1')}
+              style={{
+                width: '100%', padding: isMobile ? '13px' : '8px', fontSize: 11, fontFamily: 'DM Mono',
+                color: 'var(--text3)', background: 'transparent', letterSpacing: '0.04em',
+                border: '1px dashed var(--border)', borderRadius: 8, cursor: 'pointer',
+                minHeight: isMobile ? 44 : undefined,
+                transition: 'all 0.15s',
+              }}
             >
-              View all in CRM →
+              + new lead
             </button>
           </div>
         </div>
@@ -860,8 +871,8 @@ export default function DashboardPage() {
                   : booking?.assistant_status === 'hold' ? '#f0a24e'
                   : 'rgba(255,255,255,0.4)'
                 const isEmpty = !booking
-                // Empty cards hint they're clickable with a lime border tint on hover.
-                const effectiveBorder = isEmpty && hoverRoom === room.label ? 'rgba(200, 240, 78, 0.2)' : cardBorder
+                // Empty cards hint they're clickable by lightening slightly on hover.
+                const emptyHover = isEmpty && hoverRoom === room.label
                 return (
                   <div
                     key={room.label}
@@ -873,15 +884,16 @@ export default function DashboardPage() {
                       height: isMobile ? undefined : 120,
                       minHeight: isMobile ? 72 : undefined,
                       borderRadius: 6,
-                      border: `1px solid ${effectiveBorder}`,
+                      border: `1px solid ${cardBorder}`,
                       boxShadow: cardGlow,
-                      background: booking ? '#0d0f14' : 'rgba(0,0,0,0.2)',
+                      background: booking ? '#0d0f14' : (emptyHover ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0,0,0,0.2)'),
                       padding: isMobile ? '8px 10px' : '7px 9px',
                       display: 'flex',
                       flexDirection: 'column',
                       overflow: 'hidden',
                       boxSizing: 'border-box',
                       cursor: 'pointer',
+                      transition: 'background 0.15s',
                     }}
                   >
                     {cardAccent && (
@@ -934,10 +946,11 @@ export default function DashboardPage() {
               title="TASKS"
               count={tasks.length > 0 ? tasks.length : undefined}
               action={{ label: 'show all tasks →', onClick: () => router.push('/tasks') }}
+              actionColor="#6B7280"
             />
           </div>
           {/* Tab row — horizontally scrollable, scrollbar hidden */}
-          <div className="hide-scrollbar" style={{ display: 'flex', gap: 3, padding: '6px 8px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+          <div className="hide-scrollbar" style={{ display: 'flex', gap: isMobile ? 3 : 2, justifyContent: isMobile ? 'flex-start' : 'space-between', padding: isMobile ? '6px 8px' : '6px 6px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', overflowX: 'auto', whiteSpace: 'nowrap' }}>
             {visibleTabs.map(tab => {
               const isActive = activeTaskTab === tab.key
               return (
@@ -945,13 +958,13 @@ export default function DashboardPage() {
                   key={tab.key}
                   onClick={() => setActiveTaskTab(tab.key)}
                   style={{
-                    flexShrink: 0, padding: isMobile ? '0 12px' : '0 6px', fontSize: isMobile ? 11 : 10, fontFamily: 'Syne',
-                    fontWeight: isActive ? 600 : 400,
-                    color: isActive ? '#0d0f14' : 'var(--text3)',
-                    background: isActive ? '#c8f04e' : 'transparent',
+                    flexShrink: 0, padding: isMobile ? '0 12px' : '0 4px', fontSize: isMobile ? 11 : 9, fontFamily: 'Syne',
+                    fontWeight: isActive ? 700 : 600,
+                    color: isActive ? '#e8eaf2' : 'var(--text2)',
+                    background: isActive ? '#1a1d27' : 'transparent',
                     border: 'none', cursor: 'pointer', borderRadius: 6, whiteSpace: 'nowrap',
                     minHeight: isMobile ? 40 : undefined,
-                    textTransform: 'uppercase', letterSpacing: '0.06em', transition: 'all 0.1s',
+                    textTransform: 'uppercase', letterSpacing: isMobile ? '0.06em' : '0.03em', transition: 'all 0.1s',
                   }}
                 >
                   {tab.label}
@@ -1051,6 +1064,7 @@ export default function DashboardPage() {
             count={flags.filter(f => f.status === 'pending').length > 0 ? flags.filter(f => f.status === 'pending').length : undefined}
             countColor="orange"
             action={{ label: '+ Flag', onClick: () => setAddingFlag(true) }}
+            actionColor="#6B7280"
           />
         </div>
         {flagsLoading ? (
@@ -1118,8 +1132,8 @@ export default function DashboardPage() {
         )}
         <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', textAlign: 'right' }}>
           <button
-            onClick={() => router.push('/admin')}
-            style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#c8f04e', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            onClick={() => router.push('/admin?section=flags_log')}
+            style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#6B7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
           >
             View all flags →
           </button>

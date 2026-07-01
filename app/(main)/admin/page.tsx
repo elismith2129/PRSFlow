@@ -188,6 +188,14 @@ type SrsEntry = {
 
 export default function AdminPage() {
   const [section, setSection] = useState<AdminSection>('engineers')
+  // Open a specific sidebar tab when deep-linked via ?section= (e.g. the dashboard
+  // Flags panel's "View all flags →" → ?section=flags_log).
+  useEffect(() => {
+    try {
+      const s = new URLSearchParams(window.location.search).get('section') as AdminSection | null
+      if (s && ADMIN_NAV.some(n => n.key === s)) setSection(s)
+    } catch {}
+  }, [])
   const [engineers, setEngineers] = useState<Engineer[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)

@@ -19,11 +19,13 @@ export function SectionHeader({
   count,
   countColor = 'lime',
   action,
+  actionColor = '#c8f04e',
 }: {
   title: string
   count?: number
   countColor?: CountColor
   action?: SectionHeaderAction
+  actionColor?: string
 }) {
   const pill = COUNT_COLORS[countColor]
   return (
@@ -59,7 +61,7 @@ export function SectionHeader({
         action.href ? (
           <a
             href={action.href}
-            style={{ marginLeft: 'auto', fontSize: 11, color: '#c8f04e', textDecoration: 'none', cursor: 'pointer' }}
+            style={{ marginLeft: 'auto', fontSize: 11, color: actionColor, textDecoration: 'none', cursor: 'pointer' }}
           >
             {action.label}
           </a>
@@ -69,7 +71,7 @@ export function SectionHeader({
             style={{
               marginLeft: 'auto',
               fontSize: 11,
-              color: '#c8f04e',
+              color: actionColor,
               textDecoration: 'none',
               cursor: 'pointer',
               background: 'none',

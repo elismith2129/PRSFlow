@@ -7,12 +7,12 @@ const STATUS_COLORS: Record<string, string> = {
   // gray
   uncontacted: '#6B7280',
   open: '#6B7280',
-  // orange
-  hot: '#F97316',
+  // red (matches --hot)
+  hot: '#EF4444',
+  // orange (matches --warm)
+  warm: '#F97316',
   pending: '#F97316',
   tentative: '#F97316',
-  // yellow
-  warm: '#FACC15',
   // blue
   cold: '#60A5FA',
   // teal
