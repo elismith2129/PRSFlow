@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
+import { createWorkOrderForBooking, bookingShouldHaveWorkOrder } from '@/lib/createWorkOrder'
 import TimeInput from '@/components/shared/TimeInput'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
@@ -320,6 +321,7 @@ export function WorkOrderPopup({
   const [noteUploading, setNoteUploading] = useState(false)
   const woIdRef = useRef<string | null>(null)
   const [resolvedWoId, setResolvedWoId] = useState<string | null>(null)
+  const [woMissing, setWoMissing] = useState<string | null>(null)
   const [siPopoverRowId, setSiPopoverRowId] = useState<string | null>(null)
   const [siPopoverText, setSiPopoverText] = useState('')
   const [siPopoverPos, setSiPopoverPos] = useState<{ top: number; left: number } | null>(null)
@@ -497,7 +499,43 @@ export function WorkOrderPopup({
       .eq('booking_id', booking.id)
       .order('created_at', { ascending: false })
       .limit(1)
-    const existing = rows?.[0] ?? null
+    let existing = rows?.[0] ?? null
+
+    // Adopt-first; if no WO exists yet, fall back to the single canonical creator
+    // (createWorkOrderForBooking) so admin has a real in-app retry path when save-time
+    // WO creation failed. This popup no longer has its own create logic — it calls the
+    // same function the booking-save path uses. (The runner WO page never creates.)
+    if (!existing) {
+      if (!booking.id) {
+        setWoMissing('No booking selected — save the booking first.')
+        setLoading(false)
+        return
+      }
+      if (!bookingShouldHaveWorkOrder(booking)) {
+        setWoMissing('This booking type does not use a work order.')
+        setLoading(false)
+        return
+      }
+      try {
+        await createWorkOrderForBooking(booking)
+      } catch (e: any) {
+        setWoMissing('Work order missing — could not be created.' + (e?.message ? ' (' + e.message + ')' : '') + ' Contact office.')
+        setLoading(false)
+        return
+      }
+      const { data: refetch } = await supabase
+        .from('work_orders')
+        .select('*')
+        .eq('booking_id', booking.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+      existing = refetch?.[0] ?? null
+      if (!existing) {
+        setWoMissing('Work order missing — contact office.')
+        setLoading(false)
+        return
+      }
+    }
 
     if (existing) {
       woIdRef.current = existing.id
@@ -648,87 +686,6 @@ export function WorkOrderPopup({
         setPayRows(pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: p.amount != null ? formatCurrency(String(p.amount)) : '', memo: p.memo ?? '', last_four: p.last_four ?? '' })))
         pay.forEach(p => payIdsInDb.current.add(p.id))
       }
-    } else {
-      // Create new WO from booking data
-      const dates = dateRange(booking.start_date, booking.end_date)
-      const studioLetter = booking.studio ? toStudioLetter(booking.studio) : ''
-      const woPayload = {
-        booking_id: booking.id,
-        invoice_number: booking.invoice_num ?? '',
-        session_date: booking.start_date,
-        studios: studioLetter ? [studioLetter] : [],
-        from_time: booking.from_time ?? '',
-        to_time: booking.to_time ?? '',
-        engineer: booking.engineer_name ?? '',
-        second_engineer: booking.assistant_name ?? '',
-        producer: booking.producer ?? '',
-        payment_status: booking.payment_type === 'billing' ? 'Billing' : 'COD',
-        food_budget: booking.food_budget ?? false,
-        food_amount: booking.food_amount ? parseFloat(booking.food_amount) : null,
-        client: booking.client_name ?? '',
-        artist: booking.artist ?? '',
-        label: booking.label ?? '',
-        ordered_by: booking.ordered_by ?? '',
-        po_number: booking.po ?? '',
-        phone: booking.phone ?? '',
-        email: booking.email ?? '',
-        session_notes: booking.notes ?? '',
-        status: 'open',
-      }
-      const { data: created } = await supabase.from('work_orders').insert(woPayload).select('*').single()
-      if (!created) { setLoading(false); return }
-      woIdRef.current = created.id
-      setResolvedWoId(created.id)
-      const seededNew = applyLiveForm(normalizeWO(created))
-      adminInitialSigRef.current = seededNew.signature_data ?? ''
-      setWo(seededNew)
-
-      // Auto-generate studio time rows (one per date)
-      const isDay = booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily)
-      const stPayloads = dates.map((d, i) => {
-        if (isDay) {
-          const dayRateNum = parseFloat((booking.rate_daily ?? '').replace(/[^0-9.]/g, ''))
-          return {
-            work_order_id: created.id,
-            studio: studioLetter || booking.studio || '',
-            date: d, session_info: '',
-            from_time: booking.from_time ?? '', to_time: booking.to_time ?? '',
-            total_hours: null,
-            rate: booking.rate_daily ?? '',
-            charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
-            day_count: 1,
-            ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
-            sort_order: i,
-          }
-        }
-        const hrs = calcHours(booking.from_time ?? '', booking.to_time ?? '')
-        return {
-          work_order_id: created.id,
-          studio: studioLetter || booking.studio || '',
-          date: d, session_info: '',
-          from_time: booking.from_time ?? '', to_time: booking.to_time ?? '',
-          total_hours: hrs,
-          rate: booking.rate ?? '',
-          charge: calcCharge(hrs, booking.rate ?? ''),
-          ot_rate: parseFloat((booking.rate ?? '').replace(/[^0-9.]/g, '')) || null,
-          sort_order: i,
-        }
-      })
-      const { data: stCreated } = await supabase.from('studio_time_rows').insert(stPayloads).select('*')
-      if (stCreated) {
-        const createdRows = stCreated.map(normalizeStRow)
-        originalStRowsRef.current = createdRows
-        setStRows(createdRows)
-      }
-
-      // Auto-generate equipment condition rows
-      const eqPayloads = dates.flatMap(d =>
-        EQUIPMENT_ITEMS.map(eq => ({ work_order_id: created.id, equipment: eq, date: d, condition: null }))
-      )
-      const { data: eqCreated } = await supabase.from('equipment_condition_rows').insert(eqPayloads).select('*')
-      if (eqCreated) setEquipRows(eqCreated as EquipRow[])
-
-      onStatusChange?.('open')
     }
     setLoading(false)
   }
@@ -1319,6 +1276,17 @@ export function WorkOrderPopup({
       ? { position: 'static', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }
       : { position: 'fixed', top: isMobile ? 0 : 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 12 }}>Loading work order…</div>
+    </div>
+  )
+
+  if (woMissing) return (
+    <div style={inline
+      ? { position: 'static', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }
+      : { position: 'fixed', top: isMobile ? 0 : 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ maxWidth: 360, padding: 24, background: '#161920', border: '1px solid rgba(240,78,122,0.35)', borderRadius: 12, textAlign: 'center' }}>
+        <div style={{ color: '#f04e7a', fontFamily: 'DM Mono', fontSize: 12, marginBottom: 14, lineHeight: 1.5 }}>{woMissing}</div>
+        <button onClick={onClose} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 6, padding: '7px 18px', fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>Close</button>
+      </div>
     </div>
   )
 

@@ -68,6 +68,7 @@ export default function RunnerWOPage() {
 
   const woRef = useRef<string | null>(null)
   const [resolvedWoId, setResolvedWoId] = useState<string | null>(null)
+  const [woMissing, setWoMissing] = useState<string | null>(null)
   const [wo, setWo]           = useState<any>(null)
   const [booking, setBooking] = useState<any>(null)
   const [stRows, setStRows] = useState<any[]>([])
@@ -114,63 +115,33 @@ export default function RunnerWOPage() {
       let resolvedId = woIdParam !== 'new' ? woIdParam : null
 
       if (!resolvedId && bookingId) {
-        // Check for existing WO
-        const { data: existing } = await supabase
+        // Adopt-only: the runner never creates a work order. WO creation happens at
+        // booking-save (admin). If none exists yet, fall through to the error state below.
+        const { data: existingRows } = await supabase
           .from('work_orders')
-          .select('*')
+          .select('id')
           .eq('booking_id', bookingId)
-          .maybeSingle()
-
-        if (existing) {
-          resolvedId = existing.id
-        } else {
-          // Create new WO from booking
-          const { data: booking } = await supabase
-            .from('bookings')
-            .select('*')
-            .eq('id', bookingId)
-            .single()
-
-          if (!booking) { setLoading(false); return }
-
-          const { data: newWo } = await supabase
-            .from('work_orders')
-            .insert({
-              booking_id: bookingId,
-              session_date: booking.start_date,
-              studios: booking.studio ? [booking.studio] : [],
-              from_time: booking.from_time,
-              to_time: booking.to_time,
-              engineer: booking.engineer_name,
-              client: booking.client_name,
-              artist: booking.artist,
-              payment_status: booking.payment_type,
-              status: 'open',
-            })
-            .select()
-            .single()
-
-          resolvedId = newWo?.id ?? null
-
-          // Auto-generate equipment condition rows
-          if (resolvedId && booking.start_date) {
-            const eqInserts = EQUIPMENT.map(eq => ({
-              work_order_id: resolvedId,
-              equipment: eq,
-              date: booking.start_date,
-              condition: null,
-            }))
-            await supabase.from('equipment_condition_rows').insert(eqInserts)
-          }
-        }
+          .order('created_at', { ascending: true })
+          .limit(1)
+        if (existingRows?.[0]) resolvedId = existingRows[0].id
       }
 
-      if (!resolvedId) { setLoading(false); return }
+      if (!resolvedId) {
+        setWoMissing('Work order not yet created — contact office.')
+        setLoading(false)
+        return
+      }
       woRef.current = resolvedId
       setResolvedWoId(resolvedId)
 
       // Fetch WO first to get booking_id, then fetch linked booking + rows in parallel
       const { data: woData } = await supabase.from('work_orders').select('*').eq('id', resolvedId).single()
+      if (!woData) {
+        // Stale / deleted WO id in the URL — never blank-render.
+        setWoMissing('Work order not found — contact office.')
+        setLoading(false)
+        return
+      }
 
       const [{ data: bkData }, { data: st }, { data: eq }, { data: pay }, { data: eqNotes }] = await Promise.all([
         (woData?.booking_id || bookingId)
@@ -181,6 +152,14 @@ export default function RunnerWOPage() {
         supabase.from('payment_rows').select('*').eq('work_order_id', resolvedId).order('recorded_at'),
         supabase.from('equipment_condition_notes').select('*').eq('work_order_id', resolvedId),
       ])
+
+      if (!bkData) {
+        // WO with no linked booking (orphan) — show an error instead of blank session/client.
+        // After centralized creation every WO has a valid booking_id, so this is defensive.
+        setWoMissing('This work order is not linked to a booking — contact office.')
+        setLoading(false)
+        return
+      }
 
       setWo(woData)
       setBooking(bkData)
@@ -202,37 +181,6 @@ export default function RunnerWOPage() {
         }
       }
       buildMaps(finalStRows)
-
-      if (finalStRows.length === 0 && bkData && resolvedId) {
-        const startD = new Date(bkData.start_date + 'T12:00:00')
-        const endD = bkData.end_date ? new Date(bkData.end_date + 'T12:00:00') : startD
-        const seedDates: string[] = []
-        for (let d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
-          seedDates.push(d.toISOString().split('T')[0])
-        }
-        const isDR = bkData.rate_type === 'day' || (!bkData.rate && !!bkData.rate_daily)
-        const rateVal = isDR ? (bkData.rate_daily ?? '') : (bkData.rate ?? '')
-        const seedInserts = seedDates.map((date, i) => ({
-          work_order_id: resolvedId,
-          date,
-          studio: bkData.studio ?? '',
-          session_info: [bkData.artist, bkData.engineer_name].filter(Boolean).join(' / ') || '',
-          from_time: bkData.from_time ?? '',
-          to_time: bkData.to_time ?? '',
-          total_hours: !isDR ? calcHours(bkData.from_time ?? '', bkData.to_time ?? '') : null,
-          rate: rateVal,
-          rate_daily: isDR ? rateVal : null,
-          row_rate_type: isDR ? 'day' : 'hour',
-          charge: !isDR ? calcCharge(bkData.from_time ?? '', bkData.to_time ?? '', rateVal) : null,
-          day_count: isDR ? 1 : null,
-          sort_order: i,
-        }))
-        const { data: seeded } = await supabase.from('studio_time_rows').insert(seedInserts).select()
-        if (seeded && seeded.length > 0) {
-          finalStRows = seeded
-          buildMaps(seeded)
-        }
-      }
 
       setStRows(finalStRows)
       setEngHoursMap(finalEngHours)
@@ -747,6 +695,15 @@ export default function RunnerWOPage() {
   if (loading) return (
     <div style={{ minHeight: '100dvh', maxWidth: '100vw', overflowX: 'hidden', background: '#0d0f14', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b90a8', fontFamily: 'Syne, sans-serif' }}>
       Loading…
+    </div>
+  )
+
+  if (woMissing) return (
+    <div style={{ minHeight: '100dvh', maxWidth: '100vw', overflowX: 'hidden', background: '#0d0f14', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'Syne, sans-serif' }}>
+      <div style={{ maxWidth: 320, padding: 24, background: '#161920', border: '1px solid rgba(240,78,122,0.35)', borderRadius: 12, textAlign: 'center' }}>
+        <div style={{ color: '#f04e7a', fontFamily: 'DM Mono, monospace', fontSize: 12, marginBottom: 14, lineHeight: 1.5 }}>{woMissing}</div>
+        <button onClick={() => router.back()} style={{ background: 'transparent', border: '1px solid #2a2e3d', color: '#e8eaf2', borderRadius: 6, padding: '8px 18px', fontFamily: 'DM Mono, monospace', fontSize: 11, cursor: 'pointer' }}>Back</button>
+      </div>
     </div>
   )
 

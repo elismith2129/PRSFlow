@@ -53,11 +53,17 @@ export default function StudioDailyOpsPage() {
       const ids = filtered.map((b: Booking) => b.id)
       const { data: wos } = await supabase
         .from('work_orders')
-        .select('id, booking_id, status')
+        .select('id, booking_id, status, created_at')
         .in('booking_id', ids)
+        .order('created_at', { ascending: true })
       const map: Record<string, WOStatus> = {}
       for (const wo of wos ?? []) {
-        if (wo.booking_id) map[wo.booking_id] = { id: wo.id, status: wo.status }
+        // First-wins (earliest created): deterministic if legacy duplicate WOs exist,
+        // and the same earliest row the runner WO page adopts when the card is tapped.
+        // The unique constraint on booking_id makes one-WO-per-booking the steady state.
+        // `.in('booking_id', ids)` already excludes null booking_id rows, so the guard
+        // below is defensive only — every row here maps to a real booking.
+        if (wo.booking_id && !map[wo.booking_id]) map[wo.booking_id] = { id: wo.id, status: wo.status }
       }
       setWoMap(map)
     } else {

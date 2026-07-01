@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
 import { STUDIO_LOCATIONS, parseLocation } from '@/lib/studios'
 import { BookingForm, type FormData, bookingToForm, emptyForm } from '@/components/calendar/BookingForm'
+import { createWorkOrderForBooking, bookingShouldHaveWorkOrder } from '@/lib/createWorkOrder'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
 // ─── LOCATIONS ───────────────────────────────────────────────────────────────
@@ -818,6 +819,7 @@ function CalendarPageInner() {
   const [locFilter, setLocFilter] = useState('All')
   const [dayViewDate, setDayViewDate] = useState<Date>(() => new Date())
   const [reloadKey, setReloadKey] = useState(0)
+  const [woWarning, setWoWarning] = useState<string | null>(null)
   const [zoomLevel, setZoomLevel] = useState(0) // 0 = fit-all; 1–6 = ZOOM_FIXED steps
   const [gridH, setGridH] = useState(700)
   const [gridW, setGridW] = useState(1200)
@@ -1248,6 +1250,8 @@ function CalendarPageInner() {
                 from_time: payload.from_time ?? '', to_time: payload.to_time ?? '',
                 total_hours: null,
                 rate: payload.rate_daily ?? '',
+                rate_daily: payload.rate_daily ?? '',
+                row_rate_type: 'day',
                 charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
                 day_count: 1,
                 ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
@@ -1263,6 +1267,22 @@ function CalendarPageInner() {
       throwIfError(error)
       if (data.is_srs && inserted) {
         await supabase.from('srs_log').insert({ booking_id: inserted.id, paid: false })
+      }
+      // Create the work order + seed studio_time_rows / equipment rows at save time —
+      // the single canonical creation path. Gated: Tech / Tour / Open Hours / cancelled get no WO.
+      // The booking is already saved and takes priority: a WO failure must NOT roll back or
+      // block the booking. Surface the WO error via a page banner instead of throwing.
+      if (inserted) {
+        const newBooking = { ...payload, id: inserted.id } as Booking
+        if (bookingShouldHaveWorkOrder(newBooking)) {
+          try {
+            await createWorkOrderForBooking(newBooking)
+          } catch (woErr: any) {
+            const msg = [woErr?.message, woErr?.details].filter(Boolean).join(' — ')
+            console.error('[CalendarPage] work order creation failed for booking', inserted.id, woErr)
+            setWoWarning(`Booking saved, but its work order could not be created${msg ? ': ' + msg : ''}. Reopen the booking to create it manually.`)
+          }
+        }
       }
     }
     try { sessionStorage.removeItem('cal_form_draft') } catch {}
@@ -1481,6 +1501,22 @@ function CalendarPageInner() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 52px - 48px)', overflow: 'hidden' }}>
+
+      {/* Work-order creation warning — booking saved, but its WO failed to create (non-blocking) */}
+      {woWarning && (
+        <div style={{
+          flexShrink: 0, marginBottom: 12, padding: '10px 14px', borderRadius: 8,
+          background: 'rgba(240,78,122,0.10)', border: '1px solid rgba(240,78,122,0.35)',
+          color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 12,
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
+        }}>
+          <span>{woWarning}</span>
+          <button
+            onClick={() => setWoWarning(null)}
+            style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 14, lineHeight: 1, flexShrink: 0 }}
+          >×</button>
+        </div>
+      )}
 
       {/* Top bar */}
       <div style={{
