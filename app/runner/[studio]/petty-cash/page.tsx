@@ -3,11 +3,11 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 
-const STUDIO_META: Record<string, { label: string; color: string }> = {
-  paramount: { label: 'Paramount', color: '#c8f04e' },
-  ameraycan: { label: 'Ameraycan', color: '#EF4444' },
-  encore: { label: 'Encore', color: '#4e8ff0' },
-  track: { label: 'Track', color: '#F97316' },
+const STUDIO_META: Record<string, { label: string }> = {
+  paramount: { label: 'Paramount' },
+  ameraycan: { label: 'Ameraycan' },
+  encore: { label: 'Encore' },
+  track: { label: 'Track' },
 }
 
 type Entry = { id?: string; description: string; amount: string; type: 'in' | 'out' }
@@ -15,7 +15,7 @@ type Entry = { id?: string; description: string; amount: string; type: 'in' | 'o
 export default function PettyCashPage() {
   const router = useRouter()
   const { studio } = useParams<{ studio: string }>()
-  const meta = STUDIO_META[studio] ?? { label: studio, color: '#c8f04e' }
+  const meta = STUDIO_META[studio] ?? { label: studio }
   const today = (() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10) })()
 
   const [entries, setEntries] = useState<Entry[]>([])
@@ -98,7 +98,7 @@ export default function PettyCashPage() {
 
   return (
     <div style={{ minHeight: '100dvh', background: '#0d0f14', fontFamily: 'Syne, sans-serif', paddingBottom: 100 }}>
-      <div style={{ background: '#161920', borderBottom: `3px solid ${meta.color}`, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 }}>
+      <div style={{ background: '#161920', borderBottom: '1px solid var(--border)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 }}>
         <button onClick={() => router.push(`/runner/${studio}`)} style={{ background: 'none', border: 'none', color: '#8b90a8', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>←</button>
         <div>
           <div style={{ fontSize: 15, fontWeight: 800, color: '#e8eaf2' }}>Petty Cash</div>
@@ -120,7 +120,7 @@ export default function PettyCashPage() {
               style={{ width: 80, textAlign: 'right', background: '#2a2e3d', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#e8eaf2', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none' }}
             />
           </div>
-          {[['Cash In', `+$${totalIn.toFixed(2)}`, '#14B8A6'], ['Cash Out', `-$${totalOut.toFixed(2)}`, '#EF4444'], ['Closing Balance', `$${closing.toFixed(2)}`, meta.color]].map(([l, v, c]) => (
+          {[['Cash In', `+$${totalIn.toFixed(2)}`, '#14B8A6'], ['Cash Out', `-$${totalOut.toFixed(2)}`, '#EF4444'], ['Closing Balance', `$${closing.toFixed(2)}`, '#c8f04e']].map(([l, v, c]) => (
             <div key={String(l)} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
               <span style={{ fontSize: 12, color: '#8b90a8' }}>{l}</span>
               <span style={{ fontSize: 13, fontWeight: 700, color: String(c), fontFamily: 'DM Mono, monospace' }}>{v}</span>
@@ -132,7 +132,7 @@ export default function PettyCashPage() {
         <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, padding: '14px', marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8' }}>Transactions</div>
-            <button onClick={addEntry} style={{ background: meta.color + '22', color: meta.color, border: 'none', borderRadius: 6, padding: '4px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>+ Add</button>
+            <button onClick={addEntry} style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>+ Add</button>
           </div>
 
           {entries.length === 0 && <div style={{ fontSize: 12, color: '#8b90a8', textAlign: 'center', padding: '12px 0' }}>No entries yet</div>}
@@ -172,7 +172,7 @@ export default function PettyCashPage() {
             {saveError}
           </div>
         )}
-        <button onClick={save} disabled={saving} style={{ width: '100%', padding: '14px 0', background: meta.color, color: '#0d0f14', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'Syne, sans-serif' }}>
+        <button onClick={save} disabled={saving} style={{ width: '100%', padding: '14px 0', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'Syne, sans-serif' }}>
           {saving ? 'Saving…' : 'Save'}
         </button>
       </div>

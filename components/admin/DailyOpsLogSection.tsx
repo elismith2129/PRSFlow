@@ -5,11 +5,11 @@ import type { Booking } from '@/lib/supabase'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 
-const STUDIO_META: Record<string, { label: string; abbr: string; color: string }> = {
-  paramount: { label: 'Paramount', abbr: 'PRS', color: '#c8f04e' },
-  encore:    { label: 'Encore',    abbr: 'ERS', color: '#4e8ff0' },
-  ameraycan: { label: 'Ameraycan', abbr: 'ARS', color: '#f04e7a' },
-  track:     { label: 'Track',     abbr: 'TRS', color: '#f0a24e' },
+const STUDIO_META: Record<string, { label: string; abbr: string }> = {
+  paramount: { label: 'Paramount', abbr: 'PRS' },
+  encore:    { label: 'Encore',    abbr: 'ERS' },
+  ameraycan: { label: 'Ameraycan', abbr: 'ARS' },
+  track:     { label: 'Track',     abbr: 'TRS' },
 }
 
 const OPS_CATS = [
@@ -181,8 +181,8 @@ export function DailyOpsLogSection() {
               style={{
                 padding: '6px 18px', borderRadius: 20, border: 'none', cursor: 'pointer',
                 fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.05em',
-                background: active ? m.color : 'var(--surface)',
-                color: active ? '#0d0f14' : 'var(--text3)',
+                background: active ? '#1a1d27' : 'var(--surface)',
+                color: active ? '#e8eaf2' : 'var(--text3)',
                 transition: 'background 0.12s, color 0.12s',
               }}
             >
@@ -261,18 +261,15 @@ export function DailyOpsLogSection() {
             maxHeight: '88dvh', borderRadius: 16, overflow: 'hidden',
             display: 'flex', flexDirection: 'column',
             boxShadow: '0 32px 96px #0009',
-            border: `1px solid ${meta.color}33`,
+            border: '1px solid var(--border)',
           }}>
-            {/* Accent bar */}
-            <div style={{ height: 3, background: meta.color, flexShrink: 0 }} />
-
             {/* Modal header */}
             <div style={{
               padding: '18px 26px 14px', borderBottom: '1px solid var(--border)',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0,
             }}>
               <div>
-                <div style={{ fontFamily: 'Syne', fontWeight: 900, fontSize: 18, color: meta.color }}>
+                <div style={{ fontFamily: 'Syne', fontWeight: 900, fontSize: 18, color: 'var(--text)' }}>
                   {meta.label}
                 </div>
                 <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
@@ -434,7 +431,7 @@ export function DailyOpsLogSection() {
                             )}
                           </div>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <CheckBox label="Runner" checked={runnerDone} color={meta.color} />
+                            <CheckBox label="Runner" checked={runnerDone} color="#c8f04e" />
                             <CheckBox label="Admin" checked={adminDone} color="#14B8A6" />
                           </div>
                         </div>

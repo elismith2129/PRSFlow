@@ -4,11 +4,11 @@ import { supabase } from '@/lib/supabase'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import TimeInput from '@/components/shared/TimeInput'
 
-const STUDIO_META: Record<string, { label: string; abbr: string; color: string }> = {
-  paramount: { label: 'Paramount', abbr: 'PRS', color: '#c8f04e' },
-  ameraycan: { label: 'Ameraycan', abbr: 'ARS', color: '#EF4444' },
-  encore: { label: 'Encore', abbr: 'ERS', color: '#4e8ff0' },
-  track: { label: 'Track', abbr: 'TRS', color: '#F97316' },
+const STUDIO_META: Record<string, { label: string; abbr: string }> = {
+  paramount: { label: 'Paramount', abbr: 'PRS' },
+  ameraycan: { label: 'Ameraycan', abbr: 'ARS' },
+  encore: { label: 'Encore', abbr: 'ERS' },
+  track: { label: 'Track', abbr: 'TRS' },
 }
 
 const EQUIPMENT = ['Speakers', 'Microphone', 'Console']
@@ -64,7 +64,7 @@ export default function RunnerWOPage() {
   const { studio, id: woIdParam } = useParams<{ studio: string; id: string }>()
   const searchParams = useSearchParams()
   const bookingId = searchParams.get('booking_id')
-  const meta = STUDIO_META[studio] ?? { label: studio, abbr: '?', color: '#c8f04e' }
+  const meta = STUDIO_META[studio] ?? { label: studio, abbr: '?' }
 
   const woRef = useRef<string | null>(null)
   const [resolvedWoId, setResolvedWoId] = useState<string | null>(null)
@@ -743,7 +743,7 @@ export default function RunnerWOPage() {
       )}
       {/* Header */}
       <div style={{
-        background: '#161920', borderBottom: `3px solid ${meta.color}`,
+        background: '#161920', borderBottom: '1px solid var(--border)',
         padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12,
         position: 'sticky', top: 0, zIndex: 10,
       }}>
@@ -916,7 +916,7 @@ export default function RunnerWOPage() {
                                 {otCharge > 0 ? `$${otCharge.toFixed(2)}` : '—'}
                               </div>
                               {/* Total */}
-                              <div style={{ ...tdStyle, color: rowTotal != null ? meta.color : '#4a4f64', fontWeight: rowTotal != null ? 700 : 400, borderRight: 'none', fontSize: 10 }}>
+                              <div style={{ ...tdStyle, color: rowTotal != null ? '#c8f04e' : '#4a4f64', fontWeight: rowTotal != null ? 700 : 400, borderRight: 'none', fontSize: 10 }}>
                                 {rowTotal != null ? `$${rowTotal.toFixed(2)}` : '—'}
                               </div>
                             </div>
@@ -944,7 +944,7 @@ export default function RunnerWOPage() {
                                 <div style={{ ...tdStyle }} />
                                 <div style={{ ...tdStyle }} />
                                 <div style={{ ...tdStyle }} />
-                                <div style={{ ...tdStyle, color: liveEngCharge != null ? meta.color : '#4a4f64', fontWeight: liveEngCharge != null ? 700 : 400, borderRight: 'none', fontSize: 10 }}>
+                                <div style={{ ...tdStyle, color: liveEngCharge != null ? '#c8f04e' : '#4a4f64', fontWeight: liveEngCharge != null ? 700 : 400, borderRight: 'none', fontSize: 10 }}>
                                   {liveEngCharge != null ? `$${liveEngCharge.toFixed(2)}` : '—'}
                                 </div>
                               </div>
@@ -959,16 +959,16 @@ export default function RunnerWOPage() {
               {stRows.length > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 14px', borderTop: '1px solid #2a2e3d', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
                   <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: '#e8eaf2' }}>
-                    Studio: <span style={{ color: meta.color }}>${stTotal.toFixed(2)}</span>
+                    Studio: <span style={{ color: '#c8f04e' }}>${stTotal.toFixed(2)}</span>
                   </span>
                   {engTotal > 0 && (
                     <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: '#e8eaf2' }}>
-                      Eng: <span style={{ color: meta.color }}>${engTotal.toFixed(2)}</span>
+                      Eng: <span style={{ color: '#c8f04e' }}>${engTotal.toFixed(2)}</span>
                     </span>
                   )}
                   {engTotal > 0 && (
                     <span style={{ fontSize: 13, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: '#e8eaf2', borderTop: '1px solid #2a2e3d', paddingTop: 4 }}>
-                      Total: <span style={{ color: meta.color }}>${(stTotal + engTotal).toFixed(2)}</span>
+                      Total: <span style={{ color: '#c8f04e' }}>${(stTotal + engTotal).toFixed(2)}</span>
                     </span>
                   )}
                 </div>
@@ -1142,7 +1142,7 @@ export default function RunnerWOPage() {
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', padding: '12px 14px 8px' }}>Totals</div>
             {([
               { label: 'Studio Total', value: stTotal, color: '#e8eaf2', bold: false },
-              ...(engTotal > 0 ? [{ label: 'Eng Total', value: engTotal, color: meta.color, bold: false }] : []),
+              ...(engTotal > 0 ? [{ label: 'Eng Total', value: engTotal, color: '#e8eaf2', bold: false }] : []),
               ...(rentTotal > 0 ? [{ label: 'Rentals Total', value: rentTotal, color: '#e8eaf2', bold: false }] : []),
               { label: 'Grand Total', value: grandTotal, color: '#e8eaf2', bold: true },
               { label: 'Total Paid', value: totalPaid, color: '#14B8A6', bold: false },
@@ -1262,7 +1262,7 @@ export default function RunnerWOPage() {
           <button
             onClick={handleSaveChanges}
             disabled={saving || isCompleted}
-            style={{ flex: 2, padding: '14px 0', background: meta.color, color: '#0d0f14', border: 'none', borderRadius: 12, fontSize: 13, fontWeight: 800, cursor: (saving || isCompleted) ? 'not-allowed' : 'pointer', opacity: (saving || isCompleted) ? 0.5 : 1, fontFamily: 'Syne, sans-serif' }}
+            style={{ flex: 2, padding: '14px 0', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 13, fontWeight: 800, cursor: (saving || isCompleted) ? 'not-allowed' : 'pointer', opacity: (saving || isCompleted) ? 0.5 : 1, fontFamily: 'Syne, sans-serif' }}
           >
             {saving ? 'Saving…' : 'Save'}
           </button>

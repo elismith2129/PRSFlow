@@ -9,11 +9,11 @@ function getLocalToday(): string {
   return now.toISOString().slice(0, 10)
 }
 
-const STUDIO_META: Record<string, { label: string; color: string }> = {
-  paramount: { label: 'Paramount', color: '#c8f04e' },
-  ameraycan: { label: 'Ameraycan', color: '#EF4444' },
-  encore:    { label: 'Encore',    color: '#4e8ff0' },
-  track:     { label: 'Track',     color: '#F97316' },
+const STUDIO_META: Record<string, { label: string }> = {
+  paramount: { label: 'Paramount' },
+  ameraycan: { label: 'Ameraycan' },
+  encore:    { label: 'Encore' },
+  track:     { label: 'Track' },
 }
 
 const STUDIO_ROOMS: Record<string, string[]> = {
@@ -39,7 +39,7 @@ type CheckinState = {
 export default function MicsPage() {
   const router = useRouter()
   const { studio } = useParams<{ studio: string }>()
-  const meta  = STUDIO_META[studio] ?? { label: studio, color: '#c8f04e' }
+  const meta  = STUDIO_META[studio] ?? { label: studio }
   const today = getLocalToday()
   const rooms = STUDIO_ROOMS[studio] ?? []
 
@@ -271,7 +271,7 @@ export default function MicsPage() {
     <div style={{ minHeight: '100dvh', maxWidth: '100vw', overflowX: 'hidden', background: '#0d0f14', fontFamily: 'Syne, sans-serif', paddingBottom: 120 }}>
 
       {/* Header */}
-      <div style={{ background: '#161920', borderBottom: `3px solid ${meta.color}`, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 }}>
+      <div style={{ background: '#161920', borderBottom: '1px solid var(--border)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 }}>
         <button onClick={() => router.push(`/runner/${studio}`)} style={{ background: 'none', border: 'none', color: '#8b90a8', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>←</button>
         <div>
           <div style={{ fontSize: 15, fontWeight: 800, color: '#e8eaf2' }}>Mic Inventory</div>
@@ -349,7 +349,7 @@ export default function MicsPage() {
         <button
           onClick={() => { if (!initials.trim()) { setShowInitialsHint(true); return } handleSubmit() }}
           disabled={submitting}
-          style={{ flex: 1, padding: '12px', background: initials.trim() ? meta.color : '#1e2130', border: 'none', borderRadius: 12, color: initials.trim() ? '#0d0f14' : '#4b5563', fontSize: 13, fontWeight: 800, cursor: initials.trim() ? 'pointer' : 'default', fontFamily: 'Syne, sans-serif' }}
+          style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 12, color: initials.trim() ? 'var(--text)' : '#4b5563', fontSize: 13, fontWeight: 800, cursor: initials.trim() ? 'pointer' : 'default', opacity: initials.trim() ? 1 : 0.6, fontFamily: 'Syne, sans-serif' }}
         >
           {submitting ? 'Submitting…' : 'Submit'}
         </button>

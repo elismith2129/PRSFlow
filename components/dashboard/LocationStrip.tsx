@@ -8,10 +8,10 @@ import { CHECKLISTS, flattenSections } from '@/lib/checklist-items'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
 const LOCATIONS = [
-  { label: 'Paramount', key: 'paramount', abbr: 'PRS', color: '#c8f04e' },
-  { label: 'Encore',    key: 'encore',    abbr: 'ERS', color: '#4e8ff0' },
-  { label: 'Ameraycan', key: 'ameraycan', abbr: 'ARS', color: '#f04e7a' },
-  { label: 'Track',     key: 'track',     abbr: 'TRS', color: '#f0a24e' },
+  { label: 'Paramount', key: 'paramount', abbr: 'PRS' },
+  { label: 'Encore',    key: 'encore',    abbr: 'ERS' },
+  { label: 'Ameraycan', key: 'ameraycan', abbr: 'ARS' },
+  { label: 'Track',     key: 'track',     abbr: 'TRS' },
 ]
 
 const OPS_CATS = [
@@ -321,17 +321,16 @@ export function LocationStrip() {
           const active   = sessCount > 0
           return (
             <div key={loc.key} onClick={() => openDrawer(loc)}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = loc.color + '99')}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = active ? loc.color + '55' : 'var(--border)')}
-              style={{ background: 'var(--surface)', border: `1px solid ${active ? loc.color + '55' : 'var(--border)'}`, borderRadius: 10, overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--text3)')}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.15s' }}
             >
-              <div style={{ height: 2, background: active ? loc.color : 'var(--border)', opacity: active ? 1 : 0.25 }} />
               <div style={{ padding: '10px 14px 12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13, color: active ? loc.color : 'var(--text2)' }}>{loc.label}</div>
+                  <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>{loc.label}</div>
 
                 </div>
-                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: active ? loc.color : 'var(--text3)', marginTop: 2 }}>
+                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: active ? '#c8f04e' : '#6B7280', marginTop: 2 }}>
                   {loadingSummary ? '…' : active ? `${sessCount} SESSION${sessCount !== 1 ? 'S' : ''}` : 'OPEN'}
                 </div>
               </div>
@@ -352,15 +351,12 @@ export function LocationStrip() {
             borderRadius: isMobile ? 0 : 16, overflow: 'hidden',
             display: 'flex', flexDirection: 'column',
             boxShadow: '0 32px 96px #0009',
-            border: `1px solid ${selectedLoc.color}33`,
+            border: '1px solid var(--border)',
           }}>
-            {/* Color accent bar */}
-            <div style={{ height: 3, background: selectedLoc.color, flexShrink: 0 }} />
-
             {/* Header */}
             <div style={{ padding: '18px 26px 14px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
               <div>
-                <div style={{ fontFamily: 'Syne', fontWeight: 900, fontSize: 20, color: selectedLoc.color }}>{selectedLoc.label}</div>
+                <div style={{ fontFamily: 'Syne', fontWeight: 900, fontSize: 20, color: 'var(--text)' }}>{selectedLoc.label}</div>
                 <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
                   {new Date(today + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} · Daily Ops
                 </div>
@@ -436,8 +432,8 @@ export function LocationStrip() {
 
                   {/* ── RIGHT — Today ── */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingBottom: 10, borderBottom: `1px solid ${selectedLoc.color}44` }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: selectedLoc.color, fontFamily: 'Syne' }}>Today</span>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'Syne' }}>Today</span>
                       <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
                         {new Date(today + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                       </span>
@@ -491,8 +487,8 @@ export function LocationStrip() {
                               )}
                             </div>
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                              <TwoCheckbox label="Runner" checked={runnerDone} color={selectedLoc.color} />
-                              <TwoCheckbox label="Admin"  checked={adminDone}  color={selectedLoc.color} />
+                              <TwoCheckbox label="Runner" checked={runnerDone} color="#c8f04e" />
+                              <TwoCheckbox label="Admin"  checked={adminDone}  color="#c8f04e" />
                             </div>
                           </div>
                         )
@@ -526,7 +522,7 @@ export function LocationStrip() {
             category={category}
             studio={studioKey}
             today={date}
-            color={selectedLoc.color}
+            color="#c8f04e"
             studioLabel={cat?.label ?? selectedLoc.label}
             submission={submission}
             onClose={() => setOpenModal(null)}

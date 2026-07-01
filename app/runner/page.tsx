@@ -11,10 +11,10 @@ function getLocalToday(): string {
 }
 
 const STUDIOS = [
-  { key: 'paramount', label: 'Paramount', abbr: 'PRS', color: '#c8f04e' },
-  { key: 'ameraycan', label: 'Ameraycan', abbr: 'ARS', color: '#f04e7a' },
-  { key: 'encore', label: 'Encore', abbr: 'ERS', color: '#4e8ff0' },
-  { key: 'track', label: 'Track', abbr: 'TRS', color: '#f0a24e' },
+  { key: 'paramount', label: 'Paramount', abbr: 'PRS' },
+  { key: 'ameraycan', label: 'Ameraycan', abbr: 'ARS' },
+  { key: 'encore', label: 'Encore', abbr: 'ERS' },
+  { key: 'track', label: 'Track', abbr: 'TRS' },
 ]
 
 export default function RunnerPage() {
@@ -109,7 +109,7 @@ export default function RunnerPage() {
             onClick={() => router.push(`/runner/${s.key}`)}
             style={{
               background: '#161920',
-              border: `2px solid ${s.color}22`,
+              border: '1px solid var(--border)',
               borderRadius: 16,
               padding: '28px 16px',
               cursor: 'pointer',
@@ -120,20 +120,21 @@ export default function RunnerPage() {
               transition: 'border-color 0.15s',
               WebkitTapHighlightColor: 'transparent',
             }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = s.color + '66')}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = s.color + '22')}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--text3)')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
           >
             <div style={{
               width: 52,
               height: 52,
               borderRadius: 14,
-              background: s.color + '18',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: 13,
               fontWeight: 800,
-              color: s.color,
+              color: 'rgba(232,234,240,0.7)',
               letterSpacing: '0.05em',
               fontFamily: 'DM Mono, monospace',
             }}>
@@ -143,7 +144,7 @@ export default function RunnerPage() {
             {!loading && (
               <div style={{
                 fontSize: 11,
-                color: counts[s.key] > 0 ? s.color : '#8b90a8',
+                color: counts[s.key] > 0 ? '#c8f04e' : '#6B7280',
                 fontFamily: 'DM Mono, monospace',
               }}>
                 {counts[s.key] > 0

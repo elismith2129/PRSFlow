@@ -5,13 +5,6 @@ import type { Flag, FlagComment } from '@/lib/supabase'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 
-const STUDIO_COLORS: Record<string, string> = {
-  paramount: '#c8f04e',
-  ameraycan: '#f04e7a',
-  encore: '#4e8ff0',
-  track: '#F97316',
-}
-
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   facility_general: { label: 'Facility / General', color: 'var(--text3)', bg: 'var(--surface2)' },
   gear_equipment:   { label: 'Gear / Equipment',   color: '#F59E0B',       bg: 'rgba(245,158,11,0.12)' },
@@ -279,7 +272,6 @@ export function FlagsLogSection() {
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {filtered.map(flag => {
             const statusDotColor = flag.status === 'pending' ? '#EF4444' : flag.status === 'acknowledged' ? '#F97316' : '#14B8A6'
-            const studioColor = STUDIO_COLORS[flag.studio] ?? '#8b90a8'
             const catConf = flag.category ? CATEGORY_CONFIG[flag.category] : null
             return (
               <div
@@ -294,7 +286,7 @@ export function FlagsLogSection() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                   <span style={{
                     fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
-                    color: studioColor, background: `${studioColor}18`, borderRadius: 4, padding: '2px 6px',
+                    color: 'rgba(232,234,240,0.7)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 6px',
                   }}>
                     {flag.studio}
                   </span>
@@ -338,12 +330,6 @@ export function FlagsLogSection() {
             {/* Modal header */}
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
               {(() => {
-                const STUDIO_COLORS: Record<string, string> = {
-                  paramount: '#c8f04e',
-                  ameraycan: '#f04e7a',
-                  encore: '#4e8ff0',
-                  track: '#F97316',
-                }
                 return (
                   <>
                     {/* Row 1: status badge + resolve + × */}
@@ -369,7 +355,7 @@ export function FlagsLogSection() {
                     </div>
                     {/* Row 2: studio name · category */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Syne', textTransform: 'uppercase', color: STUDIO_COLORS[selectedFlag.studio] ?? 'var(--text)' }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Syne', textTransform: 'uppercase', color: 'var(--text)' }}>
                         {selectedFlag.studio.charAt(0).toUpperCase() + selectedFlag.studio.slice(1)}
                       </span>
                       {selectedFlag.category && (() => {

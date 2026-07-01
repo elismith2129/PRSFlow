@@ -4,17 +4,17 @@ import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { CHECKLISTS, flattenSections, type ChecklistSection } from '@/lib/checklist-items'
 
-const STUDIO_META: Record<string, { label: string; color: string }> = {
-  paramount: { label: 'Paramount', color: '#c8f04e' },
-  ameraycan: { label: 'Ameraycan', color: '#EF4444' },
-  encore:    { label: 'Encore',    color: '#4e8ff0' },
-  track:     { label: 'Track',     color: '#F97316' },
+const STUDIO_META: Record<string, { label: string }> = {
+  paramount: { label: 'Paramount' },
+  ameraycan: { label: 'Ameraycan' },
+  encore:    { label: 'Encore' },
+  track:     { label: 'Track' },
 }
 
 export default function ChecklistPage() {
   const router     = useRouter()
   const { studio, type } = useParams<{ studio: string; type: string }>()
-  const meta       = STUDIO_META[studio] ?? { label: studio, color: '#c8f04e' }
+  const meta       = STUDIO_META[studio] ?? { label: studio }
   const isOpening  = type === 'opening'
   const today      = (() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10) })()
 
@@ -222,7 +222,7 @@ export default function ChecklistPage() {
     <div style={{ minHeight: '100dvh', background: '#0d0f14', fontFamily: 'Syne, sans-serif', paddingBottom: 120 }}>
 
       {/* Sticky header */}
-      <div style={{ background: '#161920', borderBottom: `3px solid ${meta.color}`, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 }}>
+      <div style={{ background: '#161920', borderBottom: '1px solid var(--border)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 }}>
         <button onClick={() => router.push(`/runner/${studio}`)} style={{ background: 'none', border: 'none', color: '#8b90a8', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>←</button>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -232,7 +232,7 @@ export default function ChecklistPage() {
           <div style={{ fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>{meta.label} · {completedCount}/{allItems.length} checked</div>
         </div>
         <div style={{ width: 60, height: 4, background: '#2a2e3d', borderRadius: 2, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${allItems.length > 0 ? (completedCount / allItems.length) * 100 : 0}%`, background: meta.color, transition: 'width 0.2s' }} />
+          <div style={{ height: '100%', width: `${allItems.length > 0 ? (completedCount / allItems.length) * 100 : 0}%`, background: '#c8f04e', transition: 'width 0.2s' }} />
         </div>
       </div>
 
@@ -252,15 +252,15 @@ export default function ChecklistPage() {
                 const on = checked[item] ?? false
                 return (
                   <button key={item} onClick={() => toggle(item)} style={{
-                    background: on ? meta.color + '15' : '#161920',
-                    border: `1px solid ${on ? meta.color + '55' : '#2a2e3d'}`,
+                    background: on ? '#c8f04e15' : '#161920',
+                    border: `1px solid ${on ? '#c8f04e55' : '#2a2e3d'}`,
                     borderRadius: 10, padding: '11px 14px', cursor: 'pointer',
                     display: 'flex', alignItems: 'flex-start', gap: 12, textAlign: 'left',
                     transition: 'all 0.12s',
                   }}>
                     <div style={{
                       width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 1,
-                      background: on ? meta.color : '#2a2e3d',
+                      background: on ? '#c8f04e' : '#2a2e3d',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 13, color: '#0d0f14', fontWeight: 700,
                       transition: 'background 0.12s',
@@ -377,7 +377,7 @@ export default function ChecklistPage() {
           <button
             onClick={() => { if (!staffName.trim()) { setShowInitialsHint(true); return } handleSubmit() }}
             disabled={submitting}
-            style={{ flex: 1, padding: '12px', background: staffName.trim() ? meta.color : '#1e2130', border: 'none', borderRadius: 12, color: staffName.trim() ? '#0d0f14' : '#4b5563', fontSize: 13, fontWeight: 800, cursor: staffName.trim() ? 'pointer' : 'default', fontFamily: 'Syne, sans-serif' }}
+            style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 12, color: staffName.trim() ? 'var(--text)' : '#4b5563', fontSize: 13, fontWeight: 800, cursor: staffName.trim() ? 'pointer' : 'default', opacity: staffName.trim() ? 1 : 0.6, fontFamily: 'Syne, sans-serif' }}
           >
             {submitting ? 'Submitting…' : `Submit ${isOpening ? 'Opening' : 'Closing'} Checklist`}
           </button>

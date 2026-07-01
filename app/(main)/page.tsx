@@ -39,13 +39,6 @@ function fullscreenCardOnMobile(isMobile: boolean): React.CSSProperties {
     : {}
 }
 
-const STUDIO_COLORS: Record<string, string> = {
-  paramount: '#c8f04e',
-  ameraycan: '#f04e7a',
-  encore: '#4e8ff0',
-  track: '#F97316',
-}
-
 const ROOMS = [
   { venue: 'Paramount', studio: 'Studio A', label: 'Paramount A' },
   { venue: 'Paramount', studio: 'Studio B', label: 'Paramount B' },
@@ -845,7 +838,6 @@ export default function DashboardPage() {
                   b.location === room.venue && b.studio === room.studio
                 )
                 const isBilling = booking?.payment_type === 'billing'
-                const venueColor = STUDIO_COLORS[room.venue.toLowerCase()] || 'var(--text)'
                 const topColor = booking?.status === 'confirmed' ? '#14B8A6' : booking?.status === 'tentative' ? '#F97316' : null
                 // Card state accent: orange (attention) takes priority over teal (occupied); null = empty
                 const cardAccent = topColor === '#F97316' ? '#F97316' : booking ? '#14B8A6' : null
@@ -1097,7 +1089,7 @@ export default function DashboardPage() {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', color: STUDIO_COLORS[flag.studio] ?? 'var(--text3)', textTransform: 'uppercase', background: (STUDIO_COLORS[flag.studio] ?? '#888888') + '1f', padding: '2px 6px', borderRadius: 4, border: '0.5px solid var(--border)' }}>
+                      <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(232,234,240,0.7)', textTransform: 'uppercase', background: 'var(--surface)', padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)' }}>
                         {flag.studio}
                       </span>
                       {catInfo && (
@@ -1558,7 +1550,7 @@ export default function DashboardPage() {
               </div>
               {/* Row 2: studio name · category */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Syne', textTransform: 'uppercase', color: STUDIO_COLORS[selectedFlag.studio] ?? 'var(--text)' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Syne', textTransform: 'uppercase', color: 'var(--text)' }}>
                   {selectedFlag.studio.charAt(0).toUpperCase() + selectedFlag.studio.slice(1)}
                 </span>
                 {selectedFlag.category && (() => {

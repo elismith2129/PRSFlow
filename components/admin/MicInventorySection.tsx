@@ -3,11 +3,11 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 
-const STUDIO_META: Record<string, { label: string; color: string }> = {
-  paramount: { label: 'Paramount', color: '#c8f04e' },
-  ameraycan: { label: 'Ameraycan', color: '#f04e7a' },
-  encore:    { label: 'Encore',    color: '#4e8ff0' },
-  track:     { label: 'Track',     color: '#f0a24e' },
+const STUDIO_META: Record<string, { label: string }> = {
+  paramount: { label: 'Paramount' },
+  ameraycan: { label: 'Ameraycan' },
+  encore:    { label: 'Encore' },
+  track:     { label: 'Track' },
 }
 
 // Spec-ordered studios + a catch-all group for floating gear / odds & ends.
@@ -269,14 +269,12 @@ export function MicInventorySection() {
     const studioGroups = STUDIO_ORDER.map(key => ({
       key,
       label: STUDIO_META[key].label,
-      color: STUDIO_META[key].color,
       isStudio: true,
       mics: activeMics.filter(m => m.category === 'mic' && m.home_studio === key),
     }))
     const floating = {
       key: FLOATING_KEY,
       label: 'Floating Gear',
-      color: '#8b90a8',
       isStudio: false,
       mics: activeMics.filter(
         m => !(m.category === 'mic' && (STUDIO_ORDER as readonly string[]).includes(m.home_studio))
@@ -494,7 +492,7 @@ export function MicInventorySection() {
                 padding: '8px 14px', border: 'none', cursor: 'pointer', background: 'transparent',
                 fontFamily: 'Syne', fontWeight: 700, fontSize: 12, letterSpacing: '0.03em',
                 color: active ? '#e8eaf2' : '#8b90a8',
-                borderBottom: `2px solid ${active ? group.color : 'transparent'}`,
+                borderBottom: `2px solid ${active ? '#c8f04e' : 'transparent'}`,
                 marginBottom: -1,
               }}
             >

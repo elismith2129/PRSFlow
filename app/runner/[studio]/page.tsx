@@ -11,11 +11,11 @@ function getLocalToday(): string {
 }
 
 
-const STUDIO_META: Record<string, { label: string; abbr: string; color: string }> = {
-  paramount: { label: 'Paramount', abbr: 'PRS', color: '#c8f04e' },
-  ameraycan: { label: 'Ameraycan', abbr: 'ARS', color: '#f04e7a' },
-  encore: { label: 'Encore', abbr: 'ERS', color: '#4e8ff0' },
-  track: { label: 'Track', abbr: 'TRS', color: '#f0a24e' },
+const STUDIO_META: Record<string, { label: string; abbr: string }> = {
+  paramount: { label: 'Paramount', abbr: 'PRS' },
+  ameraycan: { label: 'Ameraycan', abbr: 'ARS' },
+  encore: { label: 'Encore', abbr: 'ERS' },
+  track: { label: 'Track', abbr: 'TRS' },
 }
 
 type WOStatus = { id: string; status: string } | null
@@ -23,7 +23,7 @@ type WOStatus = { id: string; status: string } | null
 export default function StudioDailyOpsPage() {
   const router = useRouter()
   const { studio } = useParams<{ studio: string }>()
-  const meta = STUDIO_META[studio] ?? { label: studio, abbr: '?', color: '#c8f04e' }
+  const meta = STUDIO_META[studio] ?? { label: studio, abbr: '?' }
 
   const [bookings, setBookings] = useState<Booking[]>([])
   const [woMap, setWoMap] = useState<Record<string, WOStatus>>({})
@@ -184,7 +184,7 @@ export default function StudioDailyOpsPage() {
       {/* Header */}
       <div style={{
         background: '#161920',
-        borderBottom: `3px solid ${meta.color}`,
+        borderBottom: '1px solid var(--border)',
         padding: '16px 20px',
         display: 'flex',
         alignItems: 'center',
@@ -200,9 +200,9 @@ export default function StudioDailyOpsPage() {
           ←
         </button>
         <div style={{
-          width: 40, height: 40, borderRadius: 10, background: meta.color + '20',
+          width: 40, height: 40, borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 800, color: meta.color, fontFamily: 'DM Mono, monospace',
+          fontSize: 11, fontWeight: 800, color: 'rgba(232,234,240,0.7)', fontFamily: 'DM Mono, monospace',
         }}>
           {meta.abbr}
         </div>
