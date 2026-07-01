@@ -219,7 +219,6 @@ export default function DashboardPage() {
     if (typeof window !== 'undefined' && sessionStorage.getItem('showWelcome') === 'true') {
       sessionStorage.removeItem('showWelcome')
       setShowWelcome(true)
-      setTimeout(() => setNameVisible(true), 300)
       setTimeout(() => setWelcomeFading(true), 2000)
       setTimeout(() => {
         setShowWelcome(false)
@@ -231,6 +230,18 @@ export default function DashboardPage() {
     // transition in. Until this runs, the wrapper stays at opacity 0 (no flash).
     setContentReady(true)
   }, [])
+
+  // Fade the name in once it has actually loaded (useUserProfile is async). Firing on
+  // a blind timer made the 0.6s opacity fade animate the empty placeholder, so the real
+  // name popped in at full opacity. Gating on display_name makes the fade animate the
+  // real name — symmetric with the 0.6s ease fade-out. Keep a 300ms beat after the
+  // greeting before the name fades in.
+  useEffect(() => {
+    if (showWelcome && profile?.display_name) {
+      const t = setTimeout(() => setNameVisible(true), 300)
+      return () => clearTimeout(t)
+    }
+  }, [showWelcome, profile?.display_name])
 
   // Once the welcome check has resolved and the splash is gone, undo the inline
   // script's pre-paint visibility:hidden on the content wrapper. Harmless when the
@@ -705,7 +716,7 @@ export default function DashboardPage() {
           </div>
           {/* nbsp fallback reserves the line height so the name appearing causes no layout shift */}
           <div style={{
-            fontFamily: 'Syne', fontWeight: 800, fontSize: isMobile ? 48 : 64, color: '#e8eaf0', lineHeight: 1.1, marginTop: 14, textAlign: 'center',
+            fontFamily: 'Syne', fontWeight: 800, fontSize: isMobile ? 48 : 64, color: '#e8eaf0', lineHeight: 1.1, marginTop: 14, marginBottom: 108, textAlign: 'center',
             opacity: nameVisible ? 1 : 0,
             transform: nameVisible ? 'translateY(0)' : 'translateY(8px)',
             transition: 'opacity 0.6s ease, transform 0.6s ease',

@@ -70,7 +70,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
       pointerEvents: hiddenForWelcome ? 'none' : undefined,
       transition: 'opacity 0.3s ease',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <PRSFloIcon size={38} />
         <Link href="/" style={{ textDecoration: 'none' }}>
           <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 20, letterSpacing: -0.5, cursor: 'pointer' }}>
