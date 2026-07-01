@@ -64,7 +64,8 @@ function ToastItem({
         position: 'fixed',
         top: 20 + index * STACK_OFFSET,
         right: 20,
-        zIndex: 9999,
+        // Above the Nav (zIndex 99999) so toasts are never hidden behind it.
+        zIndex: 100000,
         width: 260,
         boxSizing: 'border-box',
         cursor: 'pointer',

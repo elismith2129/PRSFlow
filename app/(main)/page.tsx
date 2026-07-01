@@ -90,7 +90,9 @@ export default function DashboardPage() {
   const { profile, loading: profileLoading } = useUserProfile()
   const isMobile = useIsMobile()
   // Real-time Web Inquiry notifications: unaddressed inquiry lead IDs pulse below.
-  const { isUnacked } = useWebInquiries()
+  // leadsVersion bumps on any realtime leads INSERT/UPDATE so Needs Action re-fetches
+  // live (see the load effect dep below) — no page refresh needed.
+  const { isUnacked, leadsVersion } = useWebInquiries()
   const canAssign = !!profile && (profile.role === 'owner' || profile.role === 'manager' || profile.role === 'billing')
   const visibleTabs = visibleTabsForRole(profile?.role)
   const [allProfiles, setAllProfiles] = useState<UserProfile[]>([])
@@ -197,7 +199,7 @@ export default function DashboardPage() {
       setFlagsLoading(false)
     }
     load()
-  }, [calDate])
+  }, [calDate, leadsVersion])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {

@@ -31,6 +31,10 @@ type WebInquiryContextValue = {
   // Transient slide-in toasts; cleared on dismiss/timeout (not persisted).
   toasts: WebInquiryToast[]
   dismissToast: (key: number) => void
+  // Bumps on every leads INSERT/UPDATE the channel receives. List views (e.g. the
+  // dashboard Needs Action module) watch this and re-fetch, so new/changed leads
+  // appear live without a page refresh — reusing this single subscription.
+  leadsVersion: number
 }
 
 const WebInquiryContext = createContext<WebInquiryContextValue>({
@@ -38,6 +42,7 @@ const WebInquiryContext = createContext<WebInquiryContextValue>({
   isUnacked: () => false,
   toasts: [],
   dismissToast: () => {},
+  leadsVersion: 0,
 })
 
 export function useWebInquiries() {
@@ -51,7 +56,10 @@ export function WebInquiryProvider({ children }: { children: React.ReactNode }) 
   const [unackedIds, setUnackedIds] = useState<number[]>([])
   const [toasts, setToasts] = useState<WebInquiryToast[]>([])
   const toastKeyRef = useRef(0)
+  // Incremented on any leads INSERT/UPDATE so list views can re-fetch live.
+  const [leadsVersion, setLeadsVersion] = useState(0)
 
+  const bumpVersion = useCallback(() => setLeadsVersion(v => v + 1), [])
   const addUnacked = useCallback((id: number) => {
     setUnackedIds(prev => (prev.includes(id) ? prev : [...prev, id]))
   }, [])
@@ -69,15 +77,13 @@ export function WebInquiryProvider({ children }: { children: React.ReactNode }) 
   // Step 5 — hydrate on mount: any Web Inquiry lead still 'uncontacted' is
   // unacknowledged immediately, so refresh/login re-surfaces overnight inquiries.
   useEffect(() => {
-    console.log('[WebInquiry] provider mounted — hydrating')
     let cancelled = false
     supabase
       .from('leads')
       .select('id')
       .eq('source', 'Web Inquiry')
       .eq('status', 'uncontacted')
-      .then(({ data, error }) => {
-        console.log('[WebInquiry] hydrate result:', { count: data?.length, error: error?.message })
+      .then(({ data }) => {
         if (cancelled || !data) return
         setUnackedIds((data as { id: number }[]).map(r => r.id))
       })
@@ -93,7 +99,7 @@ export function WebInquiryProvider({ children }: { children: React.ReactNode }) 
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'leads' },
         payload => {
-          console.log('[WebInquiry] INSERT received:', payload.new)
+          bumpVersion()
           const row = payload.new as { id: number; source?: string; status?: string; fname?: string; lname?: string }
           if (row?.source === 'Web Inquiry' && row?.status === 'uncontacted') {
             addUnacked(row.id)
@@ -105,18 +111,16 @@ export function WebInquiryProvider({ children }: { children: React.ReactNode }) 
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'leads' },
         payload => {
-          console.log('[WebInquiry] UPDATE received:', payload.new)
+          bumpVersion()
           const row = payload.new as { id: number; source?: string; status?: string }
           if (row?.source !== 'Web Inquiry') return
           if (row.status !== 'uncontacted') removeUnacked(row.id)
           else addUnacked(row.id)
         },
       )
-      .subscribe(status => {
-        console.log('[WebInquiry] channel status:', status)
-      })
+      .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [addUnacked, removeUnacked, pushToast])
+  }, [addUnacked, removeUnacked, pushToast, bumpVersion])
 
   const count = unackedIds.length
 
@@ -134,8 +138,9 @@ export function WebInquiryProvider({ children }: { children: React.ReactNode }) 
       isUnacked: (leadId: number) => unackedSet.has(leadId),
       toasts,
       dismissToast,
+      leadsVersion,
     }),
-    [count, unackedSet, toasts, dismissToast],
+    [count, unackedSet, toasts, dismissToast, leadsVersion],
   )
 
   return <WebInquiryContext.Provider value={value}>{children}</WebInquiryContext.Provider>
