@@ -899,7 +899,7 @@ export default function DashboardPage() {
                     {cardAccent && (
                       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: cardAccent }} />
                     )}
-                    <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)', letterSpacing: '0.04em', opacity: booking ? 0.7 : 0.5, marginBottom: booking ? 4 : 0 }}>
+                    <div style={{ fontSize: 9, fontFamily: 'DM Mono', fontWeight: 600, color: 'var(--text2)', letterSpacing: '0.04em', opacity: booking ? 0.9 : 0.75, marginBottom: booking ? 4 : 0 }}>
                       {room.label}
                     </div>
                     {booking && (
