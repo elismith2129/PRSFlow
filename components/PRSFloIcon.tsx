@@ -27,7 +27,7 @@ export function PRSFloIcon({ size = 38 }: { size?: number }) {
           width: glowSize,
           height: glowSize,
           transform: 'translate(-50%, -50%)',
-          background: 'radial-gradient(circle, rgba(93,202,165,0.12) 0%, rgba(0,0,0,0) 70%)',
+          background: 'radial-gradient(circle, rgba(93,202,165,0.10) 0%, rgba(93,202,165,0.04) 30%, rgba(0,0,0,0) 55%)',
           pointerEvents: 'none',
         }}
       />
