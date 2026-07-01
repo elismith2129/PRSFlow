@@ -69,13 +69,15 @@ export function WebInquiryProvider({ children }: { children: React.ReactNode }) 
   // Step 5 — hydrate on mount: any Web Inquiry lead still 'uncontacted' is
   // unacknowledged immediately, so refresh/login re-surfaces overnight inquiries.
   useEffect(() => {
+    console.log('[WebInquiry] provider mounted — hydrating')
     let cancelled = false
     supabase
       .from('leads')
       .select('id')
       .eq('source', 'Web Inquiry')
       .eq('status', 'uncontacted')
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        console.log('[WebInquiry] hydrate result:', { count: data?.length, error: error?.message })
         if (cancelled || !data) return
         setUnackedIds((data as { id: number }[]).map(r => r.id))
       })
@@ -91,6 +93,7 @@ export function WebInquiryProvider({ children }: { children: React.ReactNode }) 
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'leads' },
         payload => {
+          console.log('[WebInquiry] INSERT received:', payload.new)
           const row = payload.new as { id: number; source?: string; status?: string; fname?: string; lname?: string }
           if (row?.source === 'Web Inquiry' && row?.status === 'uncontacted') {
             addUnacked(row.id)
@@ -102,13 +105,16 @@ export function WebInquiryProvider({ children }: { children: React.ReactNode }) 
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'leads' },
         payload => {
+          console.log('[WebInquiry] UPDATE received:', payload.new)
           const row = payload.new as { id: number; source?: string; status?: string }
           if (row?.source !== 'Web Inquiry') return
           if (row.status !== 'uncontacted') removeUnacked(row.id)
           else addUnacked(row.id)
         },
       )
-      .subscribe()
+      .subscribe(status => {
+        console.log('[WebInquiry] channel status:', status)
+      })
     return () => { supabase.removeChannel(channel) }
   }, [addUnacked, removeUnacked, pushToast])
 
