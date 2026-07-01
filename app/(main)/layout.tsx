@@ -1,5 +1,7 @@
 import { NavGate } from '@/components/layout/NavGate'
 import { AuthGuard } from '@/components/auth/AuthGuard'
+import { WebInquiryProvider } from '@/components/notifications/WebInquiryProvider'
+import { WebInquiryToaster } from '@/components/notifications/WebInquiryToaster'
 
 export default function MainLayout({
   children,
@@ -8,10 +10,15 @@ export default function MainLayout({
 }) {
   return (
     <AuthGuard>
-      <NavGate />
-      <main className="page-main" style={{ padding: '24px 32px' }}>
-        {children}
-      </main>
+      <WebInquiryProvider>
+        <NavGate />
+        <main className="page-main" style={{ padding: '24px 32px' }}>
+          {children}
+        </main>
+        {/* Site-wide Web Inquiry toasts — mounted at layout level so they appear
+            on every internal page, independent of page content. */}
+        <WebInquiryToaster />
+      </WebInquiryProvider>
     </AuthGuard>
   )
 }

@@ -10,6 +10,7 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { ASSIGN_OPTIONS, resolveAssignTo, nameForId, visibleTabsForRole, idsForTab, fetchTasks } from '@/lib/tasks'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
+import { useWebInquiries } from '@/components/notifications/WebInquiryProvider'
 
 // Needs Action predicates — mirror the CRM (app/(main)/crm/page.tsx) bucket logic
 // so the dashboard surfaces the same leads as the CRM Needs Action tab.
@@ -88,6 +89,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const { profile, loading: profileLoading } = useUserProfile()
   const isMobile = useIsMobile()
+  // Real-time Web Inquiry notifications: unaddressed inquiry lead IDs pulse below.
+  const { isUnacked } = useWebInquiries()
   const canAssign = !!profile && (profile.role === 'owner' || profile.role === 'manager' || profile.role === 'billing')
   const visibleTabs = visibleTabsForRole(profile?.role)
   const [allProfiles, setAllProfiles] = useState<UserProfile[]>([])
@@ -771,17 +774,26 @@ export default function DashboardPage() {
                   l.status === 'warm' ? 'Follow up due' :
                   l.status === 'uncontacted' ? 'Never contacted' :
                   'Needs attention'
+                // New unaddressed Web Inquiry → persistent lime pulse + NEW badge
+                // (clears when the lead's status changes away from 'uncontacted').
+                const isNewInquiry = isUnacked(l.id)
                 return (
                   <div
                     key={l.id}
                     onClick={() => router.push(`/crm?lead=${l.id}`)}
                     style={{
+                      position: 'relative',
                       padding: '9px 16px',
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       borderBottom: i < needsActionLeads.length - 1 ? '1px solid var(--border)' : 'none',
                       cursor: 'pointer',
+                      ...(isNewInquiry ? {
+                        background: 'rgba(200, 240, 78, 0.05)',
+                        animation: 'webInquiryPulse 2s ease-in-out infinite',
+                        zIndex: 1,
+                      } : {}),
                     }}
                   >
                     <div>
@@ -789,6 +801,16 @@ export default function DashboardPage() {
                       <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>{reason}</div>
                     </div>
                     <StatusBadge status={l.status} />
+                    {isNewInquiry && (
+                      <span style={{
+                        position: 'absolute', top: 4, right: 4,
+                        background: '#c8f04e', color: '#0d0f14',
+                        fontSize: 8, fontFamily: 'DM Mono, monospace', fontWeight: 700,
+                        letterSpacing: '0.08em', padding: '1px 4px', borderRadius: 3, lineHeight: 1.4,
+                      }}>
+                        NEW
+                      </span>
+                    )}
                   </div>
                 )
               })
