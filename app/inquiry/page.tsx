@@ -51,9 +51,9 @@ export default function InquiryPage() {
   return (
     <div
       style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0a0c10 0%, #0d0f14 40%, #111418 70%, #0a0b0d 100%)',
         position: 'relative',
+        minHeight: '100vh',
+        overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -61,13 +61,26 @@ export default function InquiryPage() {
         padding: '24px',
       }}
     >
-      {/* Subtle upper-center radial glow for depth, painted behind the content. */}
+      {/* Layer 1 — full-bleed studio photo background. */}
       <div
         aria-hidden="true"
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'radial-gradient(ellipse at 50% 20%, rgba(93,202,165,0.06) 0%, rgba(0,0,0,0) 60%)',
+          zIndex: 0,
+          backgroundImage: 'url(/inquiry-bg.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      />
+      {/* Layer 2 — dark gradient overlay so the content reads clearly over the photo. */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 1,
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.60) 60%, rgba(0,0,0,0.80) 100%)',
           pointerEvents: 'none',
         }}
       />
@@ -76,7 +89,7 @@ export default function InquiryPage() {
         <div
           style={{
             position: 'relative',
-            zIndex: 1,
+            zIndex: 2,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -114,7 +127,7 @@ export default function InquiryPage() {
         <div
           style={{
             position: 'relative',
-            zIndex: 1,
+            zIndex: 2,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -122,22 +135,12 @@ export default function InquiryPage() {
             maxWidth: 380,
           }}
         >
-          {/* Logo lockup — icon above the PARAMOUNT RECORDING GROUP eyebrow. */}
-          <PRSFloIcon size={72} />
-
-          <div
-            style={{
-              fontFamily: "'DM Mono', monospace",
-              fontSize: 11,
-              letterSpacing: '0.2em',
-              color: '#6B7280',
-              textTransform: 'uppercase',
-              textAlign: 'center',
-              marginTop: 12,
-            }}
-          >
-            Paramount Recording Group
-          </div>
+          {/* Paramount white logo, centered above the frosted form card. */}
+          <img
+            src="/paramount-logo.png"
+            alt="Paramount Recording Studios"
+            style={{ width: 220, display: 'block', margin: '0 auto 32px' }}
+          />
 
           <form
             onSubmit={handleSubmit}
@@ -147,6 +150,13 @@ export default function InquiryPage() {
               gap: 12,
               width: '100%',
               marginTop: 30,
+              padding: 28,
+              borderRadius: 12,
+              background: 'rgba(13,15,20,0.85)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              boxSizing: 'border-box',
             }}
           >
             <input
