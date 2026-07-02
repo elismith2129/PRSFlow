@@ -22,14 +22,14 @@ const STATUS_COLORS: Record<string, string> = {
   uncontacted: 'var(--uncontacted)', booked: 'var(--booked)', dead: 'var(--text3)'
 }
 
-// Temperature-tinted avatar palette for lead-list cards (bg / text per status).
-const LEAD_AVATAR_COLORS: Record<string, { bg: string; text: string }> = {
-  hot: { bg: '#7f1a1a', text: '#EF4444' },
-  warm: { bg: '#7c3a1a', text: '#F97316' },
-  uncontacted: { bg: '#1a1d24', text: '#6B7280' },
-  booked: { bg: '#0e2a28', text: '#14B8A6' },
-  cold: { bg: '#1a1d24', text: '#4B5563' },
-  dead: { bg: '#1a1d24', text: '#4B5563' },
+// Temperature color per status — used for both the avatar ring and its text.
+const LEAD_AVATAR_COLORS: Record<string, string> = {
+  hot: '#EF4444',
+  warm: '#F97316',
+  uncontacted: '#6B7280',
+  booked: '#14B8A6',
+  cold: '#4B5563',
+  dead: '#4B5563',
 }
 
 // First letter of fname + first letter of lname, uppercased.
@@ -39,12 +39,12 @@ function leadInitials(l: { fname?: string | null; lname?: string | null }): stri
   return (f + ln).toUpperCase()
 }
 
-// Circular initials avatar for lead-list cards, colored by lead temperature.
-// Matches the engineers-list avatar footprint (36px circle); DM Mono per spec.
+// Circular initials avatar for lead-list cards: colored ring + matching text,
+// no fill. 36px circle, DM Mono per spec; ring/text keyed to lead temperature.
 function LeadAvatar({ lead }: { lead: Lead }) {
   const c = LEAD_AVATAR_COLORS[lead.status] || LEAD_AVATAR_COLORS.uncontacted
   return (
-    <div style={{ flexShrink: 0, width: 36, height: 36, borderRadius: '50%', background: c.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Mono, monospace', fontSize: 12, fontWeight: 700, color: c.text, letterSpacing: '0.02em' }}>
+    <div style={{ flexShrink: 0, width: 36, height: 36, borderRadius: '50%', background: 'transparent', border: `2px solid ${c}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Mono, monospace', fontSize: 12, fontWeight: 700, color: c, letterSpacing: '0.02em' }}>
       {leadInitials(lead) || '—'}
     </div>
   )
@@ -890,7 +890,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
           const keepColor = l.status === 'warm' ? 'var(--warm)' : 'var(--hot)'
           return (
             <React.Fragment key={l.id}>
-              <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(200,240,78,0.04)' : 'transparent', transition: 'background 0.15s' }}>
+              <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(255,255,255,0.04)' : 'transparent', transition: 'background 0.15s' }}>
                 <LeadAvatar lead={l} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
@@ -1102,7 +1102,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                   <span style={{ flex: 1, borderBottom: '1px solid #2a2e3d' }} />
                 </div>
               )}
-              <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(200,240,78,0.04)' : 'transparent', transition: 'background 0.15s' }}>
+              <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(255,255,255,0.04)' : 'transparent', transition: 'background 0.15s' }}>
                 <LeadAvatar lead={l} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
