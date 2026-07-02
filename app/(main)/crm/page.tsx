@@ -1491,8 +1491,8 @@ const khuDays = daysUntilKhu(lead)
 
   return (
     <div>
-      {/* ═══ Zone 1 (bg #0d0f14) — identity + contact ═══════════ */}
-      <div style={{ background: '#0d0f14', margin: '0 -16px', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+      {/* ═══ Zone 1 (bg #161920) — identity + contact ═══════════ */}
+      <div style={{ background: '#161920', margin: '0 -16px', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
       {/* ─── Status strip ─────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 8, marginBottom: 10, borderBottom: '1px solid #1e2028' }}>
         <select
@@ -1733,8 +1733,8 @@ const khuDays = daysUntilKhu(lead)
       </div>
       </div>
 
-      {/* ═══ Zone 2 (bg #161920) — session info ═══════════════ */}
-      <div style={{ background: '#161920', margin: '0 -16px', padding: '12px 16px' }}>
+      {/* ═══ Zone 2 (bg #1c1f27) — session info ═══════════════ */}
+      <div style={{ background: '#1c1f27', margin: '0 -16px', padding: '12px 16px' }}>
       {/* ─── Session & Quote ─────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 48px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
