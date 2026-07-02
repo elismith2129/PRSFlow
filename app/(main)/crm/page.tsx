@@ -1491,6 +1491,8 @@ const khuDays = daysUntilKhu(lead)
 
   return (
     <div>
+      {/* ═══ Zone 1 (bg #0d0f14) — identity + contact ═══════════ */}
+      <div style={{ background: '#0d0f14', margin: '0 -16px', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
       {/* ─── Status strip ─────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 8, marginBottom: 10, borderBottom: '1px solid #1e2028' }}>
         <select
@@ -1525,7 +1527,7 @@ const khuDays = daysUntilKhu(lead)
       )}
 
       {/* ─── Identity + Contact ─────────────────────────────── */}
-      <div style={{ marginBottom: 8 }}>
+      <div>
         {/* Row 1: hero name/label + reg button + Start Booking */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, minWidth: 0, flex: 1, flexWrap: 'wrap' }}>
@@ -1729,24 +1731,29 @@ const khuDays = daysUntilKhu(lead)
           </>)}
         </div>
       </div>
+      </div>
 
+      {/* ═══ Zone 2 (bg #161920) — session info ═══════════════ */}
+      <div style={{ background: '#161920', margin: '0 -16px', padding: '12px 16px' }}>
       {/* ─── Session & Quote ─────────────────────────────── */}
-      <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 48px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 48px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div>
             <div style={fieldLabelStyle}>Location · Studio</div>
-            <StudioSelect
-              location={localVenue}
-              studio={localStudio}
-              onChange={(venue, studio) => {
-                setLocalVenue(venue)
-                setLocalStudio(studio)
-                const combined = combineLocation(venue, studio)
-                save('location', combined)
-                update('location', combined)
-              }}
-              selectStyle={selStyle}
-            />
+            <div style={{ maxWidth: 200 }}>
+              <StudioSelect
+                location={localVenue}
+                studio={localStudio}
+                onChange={(venue, studio) => {
+                  setLocalVenue(venue)
+                  setLocalStudio(studio)
+                  const combined = combineLocation(venue, studio)
+                  save('location', combined)
+                  update('location', combined)
+                }}
+                selectStyle={selStyle}
+              />
+            </div>
           </div>
           <div>
             <div style={fieldLabelStyle}>Session Date</div>
@@ -1778,7 +1785,7 @@ const khuDays = daysUntilKhu(lead)
                 }}
                 onKeyDown={enterBlur}
                 placeholder="—"
-                style={{ ...iStyle('quote'), borderRadius: '0 4px 4px 0', borderLeft: 'none', flex: 1 }}
+                style={{ ...iStyle('quote'), width: 72, flex: 'none', borderRadius: '0 4px 4px 0', borderLeft: 'none' }}
               />
             </div>
           </div>
@@ -1790,7 +1797,7 @@ const khuDays = daysUntilKhu(lead)
                 onChange={v => { update('session_start', v) }}
                 onBlur={() => { setFocusedInput(null); save('session_start', local.session_start || '') }}
                 placeholder="Start"
-                style={{ ...iStyle('session_start'), flex: 1, minWidth: 0 }}
+                style={{ ...iStyle('session_start'), width: 78, flex: 'none' }}
               />
               <span style={{ color: 'var(--text3)', fontSize: 11, flexShrink: 0 }}>–</span>
               <TimeInput
@@ -1798,13 +1805,13 @@ const khuDays = daysUntilKhu(lead)
                 onChange={v => { update('session_end', v) }}
                 onBlur={() => { setFocusedInput(null); save('session_end', local.session_end || '') }}
                 placeholder="End"
-                style={{ ...iStyle('session_end'), flex: 1, minWidth: 0 }}
+                style={{ ...iStyle('session_end'), width: 78, flex: 'none' }}
               />
             </div>
           </div>
         </div>
       </div>
-      <div style={{ marginTop: 8, marginBottom: 8 }}>
+      <div style={{ marginTop: 8 }}>
         <button
           onClick={() => { const v = !local.engineer_needed; update('engineer_needed', v); save('engineer_needed', v) }}
           style={{ padding: '5px 14px', background: local.engineer_needed ? 'rgba(200,240,78,0.12)' : 'var(--surface2)', color: local.engineer_needed ? 'var(--accent)' : 'var(--text3)', border: `1px solid ${local.engineer_needed ? 'rgba(200,240,78,0.35)' : 'var(--border)'}`, borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer' }}
@@ -1812,20 +1819,6 @@ const khuDays = daysUntilKhu(lead)
           {local.engineer_needed ? '● Engineer Needed' : '○ Engineer Needed'}
         </button>
       </div>
-
-      {/* ─── Activity Log ──────────────────────────────── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 16 }}>
-        {activityLog.length === 0 ? (
-          <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', padding: '4px 0' }}>No activity yet</div>
-        ) : activityLog.map((entry, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-            <div style={{ width: 7, height: 7, borderRadius: '50%', background: entry.color, flexShrink: 0, marginTop: 3 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>{fmtActivityTime(entry.ts)} · </span>
-              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>{entry.label}</span>
-            </div>
-          </div>
-        ))}
       </div>
 
       {/* ─── Session Notes ─────────────────────────────── */}
@@ -1843,6 +1836,21 @@ const khuDays = daysUntilKhu(lead)
           Save Notes
         </button>
       )}
+
+      {/* ─── Activity Log ──────────────────────────────── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 16 }}>
+        {activityLog.length === 0 ? (
+          <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', padding: '4px 0' }}>No activity yet</div>
+        ) : activityLog.map((entry, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: entry.color, flexShrink: 0, marginTop: 3 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>{fmtActivityTime(entry.ts)} · </span>
+              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>{entry.label}</span>
+            </div>
+          </div>
+        ))}
+      </div>
 
       <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
         <button
