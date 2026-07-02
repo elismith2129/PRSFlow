@@ -966,7 +966,16 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
 
 const PAGE_SIZE = 25
 
-type AllLeadsFilter = 'all' | 'uncontacted' | 'hot' | 'warm' | 'cold-dead' | 'booked'
+type StatusFilter = 'uncontacted' | 'hot' | 'warm' | 'cold-dead' | 'booked'
+
+// Maps a lead to its tab-filter key (cold + dead collapse into one bucket).
+function leadStatusKey(l: Lead): StatusFilter {
+  if (l.status === 'cold' || l.status === 'dead') return 'cold-dead'
+  return l.status as StatusFilter
+}
+
+const ALL_STATUS_FILTERS: StatusFilter[] = ['uncontacted', 'hot', 'warm', 'cold-dead', 'booked']
+const DEFAULT_STATUS_FILTERS: StatusFilter[] = ['uncontacted', 'hot', 'warm']
 
 function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouched, onKeepHot, onUpdateStatus, loading }: {
   leads: Lead[]
@@ -978,27 +987,30 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   onUpdateStatus: (id: number, status: string) => Promise<void>
   loading: boolean
 }) {
-  const [activeFilter, setActiveFilter] = useState<AllLeadsFilter>('all')
+  const [active, setActive] = useState<Set<StatusFilter>>(() => new Set(DEFAULT_STATUS_FILTERS))
   const [search, setSearch] = useState('')
   const skipFilterReset = useRef(false)
 
-  // Restore persisted filter + search after mount — lazy initializers read sessionStorage
+  // Restore persisted active-set + search after mount — lazy initializers read sessionStorage
   // during SSR where it doesn't exist, causing a hydration mismatch on the style-conditional
   // filter buttons. Start with stable defaults and restore client-side only.
   useEffect(() => {
     try {
-      const f = sessionStorage.getItem('crm_al_filter') as AllLeadsFilter
+      const a = sessionStorage.getItem('crm_al_active')
       const s = sessionStorage.getItem('crm_al_search')
-      if (f || s) {
+      if (a !== null || s) {
         skipFilterReset.current = true
-        if (f) setActiveFilter(f)
+        if (a !== null) {
+          const arr = JSON.parse(a) as StatusFilter[]
+          setActive(new Set(Array.isArray(arr) ? arr : DEFAULT_STATUS_FILTERS))
+        }
         if (s) setSearch(s)
       }
     } catch {}
   }, [])
   useEffect(() => {
-    try { sessionStorage.setItem('crm_al_filter', activeFilter) } catch {}
-  }, [activeFilter])
+    try { sessionStorage.setItem('crm_al_active', JSON.stringify(Array.from(active))) } catch {}
+  }, [active])
   useEffect(() => {
     try { sessionStorage.setItem('crm_al_search', search) } catch {}
   }, [search])
@@ -1009,8 +1021,18 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   useEffect(() => { setPage(1) }, [search])
   useEffect(() => {
     if (skipFilterReset.current) { skipFilterReset.current = false; return }
-    setPage(1); setSearch(''); setTouchPromptId(null); setKeepHotPromptId(null)
-  }, [activeFilter])
+    setPage(1)
+  }, [active])
+
+  // Independent toggles: clicking flips a status in/out of the active set.
+  function toggleFilter(key: StatusFilter) {
+    setActive(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   const uncontactedLeads = leads.filter(l => l.status === 'uncontacted')
   const hotLeads = leads.filter(l => l.status !== 'uncontacted' && l.status === 'hot')
@@ -1018,13 +1040,12 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   const coldDeadLeads = leads.filter(l => l.status === 'cold' || l.status === 'dead')
   const bookedLeads = leads.filter(l => l.status === 'booked')
 
-  const filterMap: Record<AllLeadsFilter, Lead[]> = {
-    all: leads,
+  // Per-status counts for the tab badges — independent of which tabs are active.
+  const filterMap: Record<StatusFilter, Lead[]> = {
     uncontacted: uncontactedLeads, hot: hotLeads, warm: warmLeads, 'cold-dead': coldDeadLeads, booked: bookedLeads,
   }
 
-  const filterDefs: { key: AllLeadsFilter; label: string; color: string }[] = [
-    { key: 'all', label: 'All', color: '#e8eaf2' },
+  const filterDefs: { key: StatusFilter; label: string; color: string }[] = [
     { key: 'uncontacted', label: 'Uncontacted', color: '#7BA7BC' },
     { key: 'hot', label: 'Hot', color: '#EF4444' },
     { key: 'warm', label: 'Warm', color: '#F97316' },
@@ -1032,7 +1053,10 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
     { key: 'booked', label: 'Booked', color: '#14B8A6' },
   ]
 
-  const activeLeads = filterMap[activeFilter]
+  // Show leads matching ANY active status. Empty set falls back to all statuses
+  // so the list is never blank.
+  const effectiveActive = active.size === 0 ? new Set(ALL_STATUS_FILTERS) : active
+  const activeLeads = leads.filter(l => effectiveActive.has(leadStatusKey(l)))
   const q = search.trim().toLowerCase()
   const filtered = activeLeads.filter(l => {
     if (!q) return true
@@ -1050,14 +1074,14 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
       <div style={{ padding: '10px 16px 0', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
           {filterDefs.map(f => {
-            const active = activeFilter === f.key
+            const isActive = active.has(f.key)
             return (
-              <button key={f.key} onClick={() => setActiveFilter(f.key)} style={{
+              <button key={f.key} onClick={() => toggleFilter(f.key)} style={{
                 padding: '4px 10px', cursor: 'pointer', borderRadius: 20,
-                fontFamily: 'Syne', fontWeight: active ? 700 : 600, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase',
-                background: active ? `${f.color}33` : 'transparent',
-                border: `1px solid ${active ? f.color : `${f.color}80`}`,
-                color: active ? f.color : `${f.color}b3`,
+                fontFamily: 'Syne', fontWeight: isActive ? 700 : 600, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase',
+                background: isActive ? `${f.color}33` : 'transparent',
+                border: `1px solid ${isActive ? f.color : `${f.color}80`}`,
+                color: isActive ? f.color : `${f.color}b3`,
                 transition: 'all 0.15s',
               }}>
                 {f.label} ({filterMap[f.key].length})
@@ -1068,7 +1092,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
         <div style={{ padding: '0 0 8px' }}>
           <input
             value={search} onChange={e => setSearch(e.target.value)}
-            placeholder={`Search ${activeLeads.length} ${activeFilter === 'all' ? '' : filterDefs.find(f => f.key === activeFilter)?.label.toLowerCase() + ' '}leads…`}
+            placeholder={`Search ${activeLeads.length} leads…`}
             style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 10px', borderRadius: 5, fontFamily: 'DM Mono', fontSize: 11, outline: 'none' }}
           />
         </div>
