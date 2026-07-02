@@ -154,7 +154,7 @@ export function MicInventorySection() {
   // Current user for amended_by. Prefer the logged-in profile's initials; the
   // auth full_name/email effect below is a fallback when there's no profile.
   const { profile } = useUserProfile()
-  const myInitials = profileInitials(profile?.display_name)
+  const myInitials = profile?.initials || profileInitials(profile?.display_name)
   const [amendedBy, setAmendedBy] = useState('Admin')
 
   // Inline status editing.

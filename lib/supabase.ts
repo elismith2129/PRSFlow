@@ -323,6 +323,7 @@ export interface UserProfile {
   auth_user_id: string | null
   email: string
   display_name: string
+  initials?: string | null
   role: 'owner' | 'manager' | 'billing' | 'asst_manager' | 'tech'
   created_at: string
   updated_at: string | null

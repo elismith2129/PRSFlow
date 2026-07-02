@@ -635,7 +635,7 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel }: {
   onCancel: () => void
 }) {
   const { profile } = useUserProfile()
-  const myInitials = profileInitials(profile?.display_name)
+  const myInitials = profile?.initials || profileInitials(profile?.display_name)
   const [method, setMethod] = useState<TouchMethod | null>(null)
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -711,7 +711,7 @@ function KeepHotPrompt({ leadId, onSubmit, onCancel, label = 'Keep Hot', status 
   status?: string
 }) {
   const { profile } = useUserProfile()
-  const myInitials = profileInitials(profile?.display_name)
+  const myInitials = profile?.initials || profileInitials(profile?.display_name)
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const canSubmit = myInitials.length > 0
@@ -763,7 +763,7 @@ function DeadLeadPrompt({ leadId, onSubmit, onCancel }: {
   onCancel: () => void
 }) {
   const { profile } = useUserProfile()
-  const myInitials = profileInitials(profile?.display_name)
+  const myInitials = profile?.initials || profileInitials(profile?.display_name)
   const [submitting, setSubmitting] = useState(false)
   const canSubmit = myInitials.length > 0
 
