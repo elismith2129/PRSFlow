@@ -723,10 +723,10 @@ export default function DashboardPage() {
             alignItems: 'center', justifyContent: 'center',
             opacity: welcomeFading ? 0 : 1,
             transition: 'opacity 0.6s ease',
-            animation: welcomeFading ? undefined : 'welcomeFadeIn 0.3s ease',
+            animation: welcomeFading ? undefined : 'welcomeFadeIn 0.4s ease',
           }}
         >
-          <div style={{ marginBottom: 26 }}>
+          <div style={{ marginBottom: 2 }}>
             <PRSFloIcon size={72} />
           </div>
           <div style={{ fontFamily: 'DM Mono', fontSize: 13, letterSpacing: '0.2em', color: '#6B7280', textTransform: 'uppercase' }}>
@@ -740,9 +740,6 @@ export default function DashboardPage() {
             transition: 'opacity 0.6s ease, transform 0.6s ease',
           }}>
             {profile?.display_name || ' '}
-          </div>
-          <div style={{ position: 'absolute', bottom: 40, left: 0, right: 0, textAlign: 'center', fontFamily: 'DM Mono', fontSize: 11, letterSpacing: '0.2em', color: '#6B7280' }}>
-            PARAMOUNT RECORDING GROUP
           </div>
         </div>
       )}

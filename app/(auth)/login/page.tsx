@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
+  const [fadingOut, setFadingOut] = useState(false)
 
   // Already-authenticated users hitting /login get redirected to /
   useEffect(() => {
@@ -34,7 +35,10 @@ export default function LoginPage() {
     // Flag a fresh login so the dashboard shows the one-time welcome splash.
     // Cleared by the dashboard on mount, so refresh/navigation never re-triggers it.
     sessionStorage.setItem('showWelcome', 'true')
-    router.replace('/')
+    // Fade the login page out (400ms), then navigate — the dashboard splash fades
+    // in on mount, producing a smooth crossfade instead of an abrupt route swap.
+    setFadingOut(true)
+    setTimeout(() => router.replace('/'), 400)
   }
 
   async function handleForgotPassword() {
@@ -64,8 +68,11 @@ export default function LoginPage() {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '24px',
+        opacity: fadingOut ? 0 : 1,
+        transition: 'opacity 0.4s ease',
       }}
     >
+      <style dangerouslySetInnerHTML={{ __html: '@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }' }} />
       <div
         style={{
           display: 'flex',
@@ -75,21 +82,10 @@ export default function LoginPage() {
           maxWidth: 380,
         }}
       >
-        <div
-          style={{
-            fontFamily: "'DM Mono', monospace",
-            fontSize: 11,
-            letterSpacing: '0.2em',
-            color: '#6B7280',
-            textTransform: 'uppercase',
-            textAlign: 'center',
-          }}
-        >
-          Paramount Recording Group
-        </div>
-
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, marginTop: 26 }}>
-          <PRSFloIcon size={72} />
+          <div style={fadeUpStyle(0.1, 0.4)}>
+            <PRSFloIcon size={72} />
+          </div>
           <div
             style={{
               fontFamily: 'Syne',
@@ -97,10 +93,25 @@ export default function LoginPage() {
               fontSize: 48,
               letterSpacing: -0.5,
               lineHeight: 1,
+              ...fadeUpStyle(0.25, 0.4),
             }}
           >
             <span style={{ color: 'var(--accent)' }}>PRS</span>
             <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flo</span>
+          </div>
+          <div
+            style={{
+              fontFamily: "'DM Mono', monospace",
+              fontSize: 11,
+              letterSpacing: '0.2em',
+              color: '#6B7280',
+              textTransform: 'uppercase',
+              textAlign: 'center',
+              marginTop: 6,
+              ...fadeUpStyle(0.38, 0.4),
+            }}
+          >
+            Paramount Recording Group
           </div>
         </div>
 
@@ -121,7 +132,7 @@ export default function LoginPage() {
             placeholder="Email"
             autoComplete="email"
             className="auth-input"
-            style={authInputStyle}
+            style={{ ...authInputStyle, ...fadeUpStyle(0.52, 0.35) }}
             onFocus={(e) => (e.currentTarget.style.borderColor = '#c8f04e')}
             onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
           />
@@ -132,7 +143,7 @@ export default function LoginPage() {
             placeholder="Password"
             autoComplete="current-password"
             className="auth-input"
-            style={authInputStyle}
+            style={{ ...authInputStyle, ...fadeUpStyle(0.64, 0.35) }}
             onFocus={(e) => (e.currentTarget.style.borderColor = '#c8f04e')}
             onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
           />
@@ -140,7 +151,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            style={authButtonStyle}
+            style={{ ...authButtonStyle, ...fadeUpStyle(0.76, 0.35) }}
             onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
             onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
           >
@@ -157,6 +168,7 @@ export default function LoginPage() {
               textAlign: 'center',
               textDecoration: 'none',
               marginTop: 2,
+              ...fadeUpStyle(0.88, 0.35),
             }}
           >
             Forgot password?
@@ -191,6 +203,13 @@ export default function LoginPage() {
       </div>
     </div>
   )
+}
+
+// Staggered fade-up entrance for login elements. Each starts at opacity 0 and
+// animates in via the `fadeUp` keyframe injected in the page; `forwards` keeps
+// the end state after the animation completes.
+function fadeUpStyle(delay: number, duration: number): React.CSSProperties {
+  return { opacity: 0, animation: `fadeUp ${duration}s ease ${delay}s forwards` }
 }
 
 const authInputStyle: React.CSSProperties = {
