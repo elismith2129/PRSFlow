@@ -91,6 +91,16 @@ export function ClientsPageInner({ initialClientId, embedded }: { initialClientI
 
   useEffect(() => { load() }, [load])
 
+  // Real-time: re-fetch the client list live when clients/contacts change elsewhere.
+  useEffect(() => {
+    const channel = supabase
+      .channel('clients-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => { load() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'client_contacts' }, () => { load() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [load])
+
   // Auto-select: prefer initialClientId prop or ?id= param, otherwise fall back to first client
   useEffect(() => {
     if (loading || hasAutoSelected.current || clients.length === 0) return

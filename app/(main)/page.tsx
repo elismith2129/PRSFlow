@@ -102,6 +102,9 @@ export default function DashboardPage() {
   const [tabReady, setTabReady] = useState(false)
   const [tasks, setTasks] = useState<DashboardTask[]>([])
   const [tasksLoading, setTasksLoading] = useState(true)
+  // Bumped by the dashboard realtime channel on bookings/flags changes → re-runs the
+  // leads/bookings/flags load so Today's Sessions + Flags panels update live.
+  const [dashDataVersion, setDashDataVersion] = useState(0)
   const [selectedTask, setSelectedTask] = useState<DashboardTask | null>(null)
   const [taskComments, setTaskComments] = useState<DashboardTaskComment[]>([])
   const [commentText, setCommentText] = useState('')
@@ -199,7 +202,7 @@ export default function DashboardPage() {
       setFlagsLoading(false)
     }
     load()
-  }, [calDate, leadsVersion])
+  }, [calDate, leadsVersion, dashDataVersion])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -301,6 +304,23 @@ export default function DashboardPage() {
     setTasks(await fetchTasks(idsForTab(activeTaskTab, allProfiles)))
     setTasksLoading(false)
   }
+
+  // Real-time dashboard data: one channel covering the three tables the dashboard
+  // renders that aren't already live via the Needs Action (leadsVersion) path.
+  // bookings/flags → re-run the leads/bookings/flags load (via dashDataVersion);
+  // dashboard_tasks → reload the active task tab (via a ref so the channel is stable).
+  // (LocationStrip keeps its own bookings/work_orders channels for its own data.)
+  const reloadTasksRef = useRef(reloadTasks)
+  useEffect(() => { reloadTasksRef.current = reloadTasks })
+  useEffect(() => {
+    const channel = supabase
+      .channel('dashboard-data')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => setDashDataVersion(v => v + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'flags' }, () => setDashDataVersion(v => v + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dashboard_tasks' }, () => { reloadTasksRef.current() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   function openBookingEdit(bk: Booking) {
     setDashEditBooking(bk)

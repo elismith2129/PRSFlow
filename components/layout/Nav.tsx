@@ -26,18 +26,21 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
   useEffect(() => {
     async function fetchCount() {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-      const { count, error } = await supabase
+      const { count } = await supabase
         .from('clients')
         .select('id', { count: 'exact', head: true })
         .not('registered_at', 'is', null)
         .is('profile_confirmed_at', null)
         .gt('registered_at', thirtyDaysAgo)
-      console.log('[Nav] unreviewed regs count:', count, 'error:', error)
       setUnreviewedRegs(count ?? 0)
     }
     fetchCount()
-    const id = setInterval(fetchCount, 60_000)
-    return () => clearInterval(id)
+    // Real-time (replaces the old 60s poll): refresh the reg badge on any clients change.
+    const channel = supabase
+      .channel('nav-reg-count')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => { fetchCount() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
   async function handleSignOut() {
@@ -54,8 +57,12 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
       if (!error) setTentativeCount(count ?? 0)
     }
     fetchTentative()
-    const id = setInterval(fetchTentative, 60_000)
-    return () => clearInterval(id)
+    // Real-time (replaces the old 60s poll): refresh the tentative count on any bookings change.
+    const channel = supabase
+      .channel('nav-tentative-count')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => { fetchTentative() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
   return (

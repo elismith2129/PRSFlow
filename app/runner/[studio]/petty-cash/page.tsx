@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 
@@ -23,27 +23,41 @@ export default function PettyCashPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  // True once the runner edits anything; blocks the realtime refetch so a live update
+  // never clobbers unsaved local entries. Reset to false whenever we load fresh data.
+  const dirtyRef = useRef(false)
 
-  useEffect(() => {
-    async function load() {
-      const { data } = await supabase
-        .from('petty_cash_entries')
-        .select('*')
-        .eq('studio', studio)
-        .order('date')
-        .order('created_at')
-      setEntries((data ?? []).map((e: any) => ({
-        id: e.id, description: e.description ?? '', amount: e.amount != null ? String(e.amount) : '', type: e.type ?? 'out',
-      })))
-      // Check opening balance
-      const { data: ob } = await supabase.from('petty_cash_balances').select('amount').eq('studio', studio).order('date', { ascending: false }).limit(1).maybeSingle()
-      setOpeningBalance(ob?.amount != null ? String(ob.amount) : '')
-      setLoading(false)
-    }
-    load()
+  const load = useCallback(async () => {
+    const { data } = await supabase
+      .from('petty_cash_entries')
+      .select('*')
+      .eq('studio', studio)
+      .order('date')
+      .order('created_at')
+    setEntries((data ?? []).map((e: any) => ({
+      id: e.id, description: e.description ?? '', amount: e.amount != null ? String(e.amount) : '', type: e.type ?? 'out',
+    })))
+    // Check opening balance
+    const { data: ob } = await supabase.from('petty_cash_balances').select('amount').eq('studio', studio).order('date', { ascending: false }).limit(1).maybeSingle()
+    setOpeningBalance(ob?.amount != null ? String(ob.amount) : '')
+    setLoading(false)
+    dirtyRef.current = false
   }, [studio])
 
+  useEffect(() => { load() }, [load])
+
+  // Real-time: refetch entries/balance live when clean; skip while the runner is mid-edit.
+  useEffect(() => {
+    const channel = supabase
+      .channel(`runner-petty-cash-${studio}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'petty_cash_entries' }, () => { if (!dirtyRef.current) load() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'petty_cash_balances' }, () => { if (!dirtyRef.current) load() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [studio, load])
+
   async function addEntry() {
+    dirtyRef.current = true
     setEntries(prev => [...prev, { description: '', amount: '', type: 'out' }])
   }
 
@@ -106,7 +120,7 @@ export default function PettyCashPage() {
         </div>
       </div>
 
-      <div style={{ padding: '16px' }}>
+      <div style={{ padding: '16px' }} onChangeCapture={() => { dirtyRef.current = true }}>
         {/* Balances */}
         <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, padding: '14px', marginBottom: 16 }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', marginBottom: 12 }}>Balances</div>
@@ -155,7 +169,7 @@ export default function PettyCashPage() {
                 />
                 <button
                   type="button"
-                  onClick={() => setEntries(prev => prev.map((x, j) => j === i ? { ...x, type: x.type === 'in' ? 'out' : 'in' } : x))}
+                  onClick={() => { dirtyRef.current = true; setEntries(prev => prev.map((x, j) => j === i ? { ...x, type: x.type === 'in' ? 'out' : 'in' } : x)) }}
                   style={{ background: '#0d0f14', border: `1px solid ${e.type === 'in' ? '#14B8A6' : '#EF4444'}`, borderRadius: 8, padding: '7px 10px', color: e.type === 'in' ? '#14B8A6' : '#EF4444', fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', cursor: 'pointer', minWidth: 44 }}
                 >
                   {e.type === 'in' ? 'In' : 'Out'}

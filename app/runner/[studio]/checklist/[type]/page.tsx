@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { CHECKLISTS, flattenSections, type ChecklistSection } from '@/lib/checklist-items'
@@ -37,36 +37,50 @@ export default function ChecklistPage() {
   const [pageLoading, setPageLoading]       = useState(true)
   const [showInitialsHint, setShowInitialsHint] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  // True once the runner interacts; blocks the realtime refetch so a live update never
+  // clobbers an in-progress note/photo/toggle. Reset to false whenever we load fresh data.
+  const dirtyRef = useRef(false)
 
   const completedCount = Object.values(checked).filter(Boolean).length
 
   // ── Load existing data on mount ──────────────────────────────────────────────
-  useEffect(() => {
-    async function loadExisting() {
-      const [{ data: clData }, { data: subData }] = await Promise.all([
-        supabase.from('checklists').select('*')
-          .eq('studio', studio).eq('type', type).eq('date', today)
-          .maybeSingle(),
-        supabase.from('daily_ops_submissions').select('*')
-          .eq('studio', studio).eq('date', today).eq('category', `${type}_checklist`)
-          .maybeSingle(),
-      ])
-      if (clData) {
-        clIdRef.current = clData.id
-        const checkedMap: Record<string, boolean> = {}
-        for (const row of clData.items ?? []) checkedMap[row.item] = row.checked
-        checkedRef.current = checkedMap
-        setChecked(checkedMap)
-        setNotes(clData.needs_attention_notes ?? clData.notes ?? '')
-        setPhotos(clData.needs_attention_photos ?? clData.photo_urls ?? [])
-        if (clData.staff_name) setStaffName(clData.staff_name)
-      }
-      if (subData?.submitted_at) setIsSubmitted(true)
-      if (!clData && subData?.staff_name) setStaffName(subData.staff_name)
-      setPageLoading(false)
+  const loadExisting = useCallback(async () => {
+    const [{ data: clData }, { data: subData }] = await Promise.all([
+      supabase.from('checklists').select('*')
+        .eq('studio', studio).eq('type', type).eq('date', today)
+        .maybeSingle(),
+      supabase.from('daily_ops_submissions').select('*')
+        .eq('studio', studio).eq('date', today).eq('category', `${type}_checklist`)
+        .maybeSingle(),
+    ])
+    if (clData) {
+      clIdRef.current = clData.id
+      const checkedMap: Record<string, boolean> = {}
+      for (const row of clData.items ?? []) checkedMap[row.item] = row.checked
+      checkedRef.current = checkedMap
+      setChecked(checkedMap)
+      setNotes(clData.needs_attention_notes ?? clData.notes ?? '')
+      setPhotos(clData.needs_attention_photos ?? clData.photo_urls ?? [])
+      if (clData.staff_name) setStaffName(clData.staff_name)
     }
-    loadExisting()
+    if (subData?.submitted_at) setIsSubmitted(true)
+    if (!clData && subData?.staff_name) setStaffName(subData.staff_name)
+    setPageLoading(false)
+    dirtyRef.current = false
   }, [studio, type, today])
+
+  useEffect(() => { loadExisting() }, [loadExisting])
+
+  // Real-time: another device's checklist changes refetch live when clean; skipped
+  // while this runner is mid-edit so their local toggles/notes are never clobbered.
+  useEffect(() => {
+    const channel = supabase
+      .channel(`runner-checklist-${studio}-${type}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'checklists' }, () => { if (!dirtyRef.current) loadExisting() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_ops_submissions' }, () => { if (!dirtyRef.current) loadExisting() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [studio, type, loadExisting])
 
   // ── Attention content sync — fires after runner edits notes or photos ────────
   // Auto-derives needs_attention from content; no manual toggle needed.
@@ -94,6 +108,7 @@ export default function ChecklistPage() {
 
   // ── Toggle item — saves immediately ─────────────────────────────────────────
   async function toggle(item: string) {
+    dirtyRef.current = true
     const newChecked = { ...checkedRef.current, [item]: !checkedRef.current[item] }
     checkedRef.current = newChecked
     setChecked({ ...newChecked })
@@ -219,7 +234,7 @@ export default function ChecklistPage() {
   )
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#0d0f14', fontFamily: 'Syne, sans-serif', paddingBottom: 120 }}>
+    <div style={{ minHeight: '100dvh', background: '#0d0f14', fontFamily: 'Syne, sans-serif', paddingBottom: 120 }} onChangeCapture={() => { dirtyRef.current = true }}>
 
       {/* Sticky header */}
       <div style={{ background: '#161920', borderBottom: '1px solid var(--border)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 }}>
@@ -328,7 +343,7 @@ export default function ChecklistPage() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={url} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid #2a2e3d' }} />
                   <button
-                    onClick={() => { attentionChangedRef.current = true; setPhotos(prev => prev.filter((_, j) => j !== i)) }}
+                    onClick={() => { dirtyRef.current = true; attentionChangedRef.current = true; setPhotos(prev => prev.filter((_, j) => j !== i)) }}
                     style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: 9, background: '#EF4444', border: 'none', color: '#fff', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}
                   >✕</button>
                 </div>

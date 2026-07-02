@@ -14,6 +14,7 @@ import { addArtistToLabel } from '@/lib/roster'
 import { ClientsPageInner } from '@/app/(main)/clients/page'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { useWebInquiries } from '@/components/notifications/WebInquiryProvider'
 
 const STATUS_COLORS: Record<string, string> = {
   hot: 'var(--hot)', warm: 'var(--warm)', cold: 'var(--cold)',
@@ -231,6 +232,9 @@ export default function CRMPage() {
   const [toast, setToast] = useState<{ clientId: string } | null>(null)
   const router = useRouter()
   const isMobile = useIsMobile()
+  // Real-time: leadsVersion bumps on any realtime leads INSERT/UPDATE (from the
+  // shared WebInquiryProvider channel), so the leads list re-fetches live.
+  const { leadsVersion } = useWebInquiries()
   const [tab, setTab] = useState<'leads' | 'clients'>('leads')
   const [initialClientId, setInitialClientId] = useState<string | null>(null)
 
@@ -293,7 +297,7 @@ export default function CRMPage() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load() }, [load, leadsVersion])
 
   const hasAutoSelected = useRef(false)
   // Pre-select a lead passed via ?lead= (e.g. from the dashboard Needs Action panel).

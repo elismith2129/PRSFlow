@@ -75,6 +75,26 @@ export function FlagsLogSection() {
     setFlagComments(data || [])
   }
 
+  // Real-time: refetch the flag list on any flags change; refetch the open flag's
+  // comments when a flag_comment for it changes. Refs keep the single channel stable
+  // across filter changes / flag selection (no re-subscribe churn).
+  const loadFlagsRef = useRef(loadFlags)
+  useEffect(() => { loadFlagsRef.current = loadFlags }, [loadFlags])
+  const selectedFlagRef = useRef(selectedFlag)
+  useEffect(() => { selectedFlagRef.current = selectedFlag }, [selectedFlag])
+  useEffect(() => {
+    const channel = supabase
+      .channel('flags-log')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'flags' }, () => { loadFlagsRef.current() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'flag_comments' }, payload => {
+        const openId = selectedFlagRef.current?.id
+        const changedFlagId = (payload.new as { flag_id?: string })?.flag_id ?? (payload.old as { flag_id?: string })?.flag_id
+        if (openId && changedFlagId === openId) loadFlagComments(openId)
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
   async function handleOpenFlag(flag: Flag) {
     setSelectedFlag(flag)
     setFlagCommentText('')

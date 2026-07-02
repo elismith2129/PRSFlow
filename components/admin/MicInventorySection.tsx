@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 
@@ -197,6 +197,22 @@ export function MicInventorySection() {
     }
     init()
   }, [loadData])
+
+  // Real-time: refetch when checkins/submissions change — but NOT while an admin is
+  // mid-edit (inline pencil open or Manage Mics modal open), so a live event never
+  // clobbers an in-progress edit.
+  const loadDataRef = useRef(loadData)
+  useEffect(() => { loadDataRef.current = loadData }, [loadData])
+  const micEditingRef = useRef(false)
+  useEffect(() => { micEditingRef.current = editingMicId !== null || manageOpen }, [editingMicId, manageOpen])
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-mic-inventory')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mic_checkins' }, () => { if (!micEditingRef.current) loadDataRef.current() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mic_inventory_submissions' }, () => { if (!micEditingRef.current) loadDataRef.current() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {

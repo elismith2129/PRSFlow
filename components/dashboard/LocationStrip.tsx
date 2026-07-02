@@ -131,9 +131,18 @@ export function LocationStrip() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, handleChange)
       .subscribe()
 
+    // Ops badges/drawer also depend on runner ops submissions + checklists — subscribe
+    // directly so a runner submitting ops (with no booking change) updates the badge live.
+    const opsChannel = supabase
+      .channel('daily-ops-submissions-checklists')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_ops_submissions' }, handleChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'checklists' }, handleChange)
+      .subscribe()
+
     return () => {
       supabase.removeChannel(bookingsChannel)
       supabase.removeChannel(woChannel)
+      supabase.removeChannel(opsChannel)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

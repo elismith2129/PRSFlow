@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
 import { SectionHeader } from '@/components/ui/SectionHeader'
@@ -83,6 +83,29 @@ export function DailyOpsLogSection() {
   useEffect(() => {
     if (selectedDate) fetchDayData(selectedDate)
   }, [selectedDate]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Real-time: refresh the date list (and the open day, if any) when ops submissions
+  // or work orders change. Read-only historical view, so a full refetch is safe.
+  const fetchDatesRef = useRef(fetchDates)
+  const fetchDayDataRef = useRef(fetchDayData)
+  const selectedDateRef = useRef(selectedDate)
+  useEffect(() => {
+    fetchDatesRef.current = fetchDates
+    fetchDayDataRef.current = fetchDayData
+    selectedDateRef.current = selectedDate
+  })
+  useEffect(() => {
+    const refresh = () => {
+      fetchDatesRef.current()
+      if (selectedDateRef.current) fetchDayDataRef.current(selectedDateRef.current)
+    }
+    const channel = supabase
+      .channel('admin-ops-log')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_ops_submissions' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, refresh)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   async function fetchDates() {
     setDatesLoading(true)

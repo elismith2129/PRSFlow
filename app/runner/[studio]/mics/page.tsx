@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 
@@ -54,45 +54,60 @@ export default function MicsPage() {
     home: true, other: false, floating: false, odds: false,
   })
   const [roomPickerOpen, setRoomPickerOpen] = useState<Record<string, boolean>>({})
+  // True once the runner edits anything; blocks the realtime refetch so a live update
+  // never clobbers unsaved status/room/qty. Reset to false whenever we load fresh data.
+  const dirtyRef = useRef(false)
 
-  useEffect(() => {
-    async function load() {
-      const { data } = await supabase
-        .from('mics')
-        .select('*')
-        .eq('is_active', true)
-        .order('sort_order')
-      setMics(data ?? [])
+  const load = useCallback(async () => {
+    const { data } = await supabase
+      .from('mics')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order')
+    setMics(data ?? [])
 
-      const [{ data: savedCheckins }, { data: savedQtys }] = await Promise.all([
-        supabase.from('mic_checkins').select('*').eq('studio', studio).eq('date', today),
-        supabase.from('mic_inventory_quantities').select('*').eq('studio', studio).eq('date', today),
-      ])
-      if (savedCheckins?.length) {
-        const restored: Record<string, CheckinState> = {}
-        for (const c of savedCheckins) {
-          restored[c.mic_id] = { status: c.status, room: c.room ?? '' }
-        }
-        setCheckins(restored)
+    const [{ data: savedCheckins }, { data: savedQtys }] = await Promise.all([
+      supabase.from('mic_checkins').select('*').eq('studio', studio).eq('date', today),
+      supabase.from('mic_inventory_quantities').select('*').eq('studio', studio).eq('date', today),
+    ])
+    if (savedCheckins?.length) {
+      const restored: Record<string, CheckinState> = {}
+      for (const c of savedCheckins) {
+        restored[c.mic_id] = { status: c.status, room: c.room ?? '' }
       }
-      if (savedQtys?.length) {
-        const restored: Record<string, number> = {}
-        for (const q of savedQtys) {
-          restored[q.mic_id] = q.quantity
-        }
-        setQuantities(restored)
-      }
-
-      setLoading(false)
+      setCheckins(restored)
     }
-    load()
-  }, [])
+    if (savedQtys?.length) {
+      const restored: Record<string, number> = {}
+      for (const q of savedQtys) {
+        restored[q.mic_id] = q.quantity
+      }
+      setQuantities(restored)
+    }
+
+    setLoading(false)
+    dirtyRef.current = false
+  }, [studio, today])
+
+  useEffect(() => { load() }, [load])
+
+  // Real-time: another device's mic check-ins/quantities refetch live when clean;
+  // skipped while this runner is mid-edit so their local entries are never clobbered.
+  useEffect(() => {
+    const channel = supabase
+      .channel(`runner-mics-${studio}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mic_checkins' }, () => { if (!dirtyRef.current) load() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mic_inventory_quantities' }, () => { if (!dirtyRef.current) load() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [studio, load])
 
   function toggleSection(key: string) {
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
   function setStatus(micId: string, status: CheckinState['status']) {
+    dirtyRef.current = true
     setCheckins(prev => {
       const cur = prev[micId]
       if (cur?.status === status) return { ...prev, [micId]: { status: 'not_checked', room: '' } }
@@ -101,11 +116,13 @@ export default function MicsPage() {
   }
 
   function setRoom(micId: string, room: string) {
+    dirtyRef.current = true
     setCheckins(prev => ({ ...prev, [micId]: { status: 'room', room } }))
     setRoomPickerOpen(prev => ({ ...prev, [micId]: false }))
   }
 
   function adjustQty(micId: string, delta: number) {
+    dirtyRef.current = true
     setQuantities(prev => ({ ...prev, [micId]: Math.max(0, (prev[micId] ?? 0) + delta) }))
   }
 

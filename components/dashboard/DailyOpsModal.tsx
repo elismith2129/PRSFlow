@@ -167,6 +167,20 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
     setHistory((data ?? []) as DailyOpsSubmission[])
   }
 
+  // Real-time: this modal is a read-only admin view, so a full refetch on any change
+  // to the tables it renders is safe. (stock_items + mic_inventory are omitted — those
+  // relations don't exist in the DB; the modal reads them with a null fallback.)
+  useEffect(() => {
+    const channel = supabase
+      .channel(`dailyops-modal-${studio}-${category}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'checklists' }, () => { loadDetail() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'petty_cash_entries' }, () => { loadDetail() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'petty_cash_balances' }, () => { loadDetail() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_ops_submissions' }, () => { loadHistory() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [category, studio, today]) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function handleApprove() {
     setApproving(true)
     await onApprove()
