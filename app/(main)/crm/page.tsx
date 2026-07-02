@@ -26,7 +26,7 @@ const STATUS_COLORS: Record<string, string> = {
 const LEAD_AVATAR_COLORS: Record<string, string> = {
   hot: '#EF4444',
   warm: '#F97316',
-  uncontacted: '#6B7280',
+  uncontacted: '#7BA7BC',
   booked: '#14B8A6',
   cold: '#4B5563',
   dead: '#4B5563',
