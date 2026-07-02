@@ -921,7 +921,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                       setTouchPromptId(null)
                       setKeepHotPromptId(isKeepHotPrompting ? null : l.id)
                     }}
-                    style={{ flexShrink: 0, padding: '4px 9px', background: 'transparent', border: `1px solid ${isKeepHotPrompting ? 'var(--border)' : keepColor}`, color: isKeepHotPrompting ? 'var(--text3)' : keepColor, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                    style={{ flexShrink: 0, padding: '4px 9px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     {isKeepHotPrompting ? 'Cancel' : l.status === 'warm' ? 'Keep Warm?' : 'Keep Hot?'}
                   </button>
                 )}
@@ -1148,7 +1148,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                 </div>
                 {showKeepHot && (
                   <button onClick={e => { e.stopPropagation(); setTouchPromptId(null); setKeepHotPromptId(isKeepHotPrompting ? null : l.id) }}
-                    style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: `1px solid ${isKeepHotPrompting ? 'var(--border)' : keepColor}`, color: isKeepHotPrompting ? 'var(--text3)' : keepColor, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                    style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     {isKeepHotPrompting ? 'Cancel' : keepLabel}
                   </button>
                 )}
@@ -1731,8 +1731,7 @@ const khuDays = daysUntilKhu(lead)
       </div>
 
       {/* ─── Session & Quote ─────────────────────────────── */}
-      <FieldGroupLabel label="Session & Quote" mt={8} />
-      <div style={{ marginTop: 4, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 48px' }}>
+      <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 48px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div>
             <div style={fieldLabelStyle}>Location · Studio</div>
@@ -1805,7 +1804,7 @@ const khuDays = daysUntilKhu(lead)
           </div>
         </div>
       </div>
-      <div style={{ marginTop: 8 }}>
+      <div style={{ marginTop: 8, marginBottom: 8 }}>
         <button
           onClick={() => { const v = !local.engineer_needed; update('engineer_needed', v); save('engineer_needed', v) }}
           style={{ padding: '5px 14px', background: local.engineer_needed ? 'rgba(200,240,78,0.12)' : 'var(--surface2)', color: local.engineer_needed ? 'var(--accent)' : 'var(--text3)', border: `1px solid ${local.engineer_needed ? 'rgba(200,240,78,0.35)' : 'var(--border)'}`, borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer' }}
@@ -1815,8 +1814,7 @@ const khuDays = daysUntilKhu(lead)
       </div>
 
       {/* ─── Activity Log ──────────────────────────────── */}
-      <FieldGroupLabel label="Activity Log" mt={8} />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 4 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 16 }}>
         {activityLog.length === 0 ? (
           <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', padding: '4px 0' }}>No activity yet</div>
         ) : activityLog.map((entry, i) => (
@@ -1831,13 +1829,12 @@ const khuDays = daysUntilKhu(lead)
       </div>
 
       {/* ─── Session Notes ─────────────────────────────── */}
-      <FieldGroupLabel label="Session Notes" mt={8} />
       <textarea
         value={notesVal}
         onChange={e => setNotesVal(e.target.value)}
         onBlur={() => { if (notesDirty) save('notes', notesVal) }}
         placeholder="Add notes…"
-        style={{ width: '100%', minHeight: 70, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '6px 10px', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, resize: 'vertical', outline: 'none', lineHeight: 1.6 }}
+        style={{ width: '100%', minHeight: 70, marginTop: 16, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '6px 10px', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, resize: 'vertical', outline: 'none', lineHeight: 1.6 }}
       />
       {notesDirty && (
         <button
