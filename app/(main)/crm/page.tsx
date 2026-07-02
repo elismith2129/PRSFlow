@@ -14,11 +14,51 @@ import { addArtistToLabel } from '@/lib/roster'
 import { ClientsPageInner } from '@/app/(main)/clients/page'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { useUserProfile } from '@/hooks/useUserProfile'
 import { useWebInquiries } from '@/components/notifications/WebInquiryProvider'
 
 const STATUS_COLORS: Record<string, string> = {
   hot: 'var(--hot)', warm: 'var(--warm)', cold: 'var(--cold)',
   uncontacted: 'var(--uncontacted)', booked: 'var(--booked)', dead: 'var(--text3)'
+}
+
+// Temperature-tinted avatar palette for lead-list cards (bg / text per status).
+const LEAD_AVATAR_COLORS: Record<string, { bg: string; text: string }> = {
+  hot: { bg: '#7f1a1a', text: '#EF4444' },
+  warm: { bg: '#7c3a1a', text: '#F97316' },
+  uncontacted: { bg: '#1a1d24', text: '#6B7280' },
+  booked: { bg: '#0e2a28', text: '#14B8A6' },
+  cold: { bg: '#1a1d24', text: '#4B5563' },
+  dead: { bg: '#1a1d24', text: '#4B5563' },
+}
+
+// First letter of fname + first letter of lname, uppercased.
+function leadInitials(l: { fname?: string | null; lname?: string | null }): string {
+  const f = (l.fname || '').trim()[0] || ''
+  const ln = (l.lname || '').trim()[0] || ''
+  return (f + ln).toUpperCase()
+}
+
+// Circular initials avatar for lead-list cards, colored by lead temperature.
+// Matches the engineers-list avatar footprint (36px circle); DM Mono per spec.
+function LeadAvatar({ lead }: { lead: Lead }) {
+  const c = LEAD_AVATAR_COLORS[lead.status] || LEAD_AVATAR_COLORS.uncontacted
+  return (
+    <div style={{ flexShrink: 0, width: 36, height: 36, borderRadius: '50%', background: c.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Mono, monospace', fontSize: 12, fontWeight: 700, color: c.text, letterSpacing: '0.02em' }}>
+      {leadInitials(lead) || '—'}
+    </div>
+  )
+}
+
+// First letter of display_name's first word + first letter of its last word,
+// uppercased. Used to auto-populate staff initials from the logged-in profile.
+function profileInitials(displayName: string | null | undefined): string {
+  if (!displayName) return ''
+  const words = displayName.trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return ''
+  const first = words[0][0] || ''
+  const last = words.length > 1 ? words[words.length - 1][0] || '' : ''
+  return (first + last).toUpperCase()
 }
 
 function leadNameColor(_l: { billing?: string | null }): string {
@@ -594,16 +634,17 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel }: {
   onSubmit: (id: number, initials: string, method: TouchMethod, notes: string) => Promise<void>
   onCancel: () => void
 }) {
-  const [initials, setInitials] = useState('')
+  const { profile } = useUserProfile()
+  const myInitials = profileInitials(profile?.display_name)
   const [method, setMethod] = useState<TouchMethod | null>(null)
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const canSubmit = initials.trim().length >= 2 && method !== null
+  const canSubmit = myInitials.length > 0 && method !== null
 
   async function handleSubmit() {
     if (!canSubmit || submitting) return
     setSubmitting(true)
-    await onSubmit(leadId, initials.trim().toUpperCase(), method!, notes)
+    await onSubmit(leadId, myInitials, method!, notes)
     setSubmitting(false)
   }
 
@@ -617,13 +658,12 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel }: {
     <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
       {/* Row 1: initials + method buttons */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <input
-          autoFocus value={initials}
-          onChange={e => setInitials(e.target.value.toUpperCase().slice(0, 3))}
-          onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
-          placeholder="Initials" maxLength={3}
-          style={{ width: 70, background: 'var(--surface)', border: '1px solid var(--accent)', color: 'var(--text)', padding: '4px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 12, outline: 'none', textAlign: 'center', letterSpacing: '0.12em' }}
-        />
+        <div
+          title="Logged in as"
+          style={{ width: 70, background: 'var(--surface2)', border: '1px solid var(--border)', color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
+        >
+          {myInitials || '—'}
+        </div>
         <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
           {methodDefs.map(({ m, color, actionHref, actionLabel }) => {
             const active = method === m
@@ -670,30 +710,30 @@ function KeepHotPrompt({ leadId, onSubmit, onCancel, label = 'Keep Hot', status 
   label?: string
   status?: string
 }) {
-  const [initials, setInitials] = useState('')
+  const { profile } = useUserProfile()
+  const myInitials = profileInitials(profile?.display_name)
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const canSubmit = initials.trim().length >= 2
+  const canSubmit = myInitials.length > 0
   const color = status === 'warm' ? 'var(--warm)' : 'var(--hot)'
   const bgTint = status === 'warm' ? 'rgba(249,115,22,0.07)' : 'rgba(239,68,68,0.07)'
 
   async function handleSubmit() {
     if (!canSubmit || submitting) return
     setSubmitting(true)
-    await onSubmit(leadId, initials.trim().toUpperCase(), notes)
+    await onSubmit(leadId, myInitials, notes)
     setSubmitting(false)
   }
 
   return (
     <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: bgTint, borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <input
-          autoFocus value={initials}
-          onChange={e => setInitials(e.target.value.toUpperCase().slice(0, 3))}
-          onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
-          placeholder="Initials" maxLength={3}
-          style={{ width: 70, background: 'var(--surface)', border: `1px solid ${color}`, color: 'var(--text)', padding: '4px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 12, outline: 'none', textAlign: 'center', letterSpacing: '0.12em' }}
-        />
+        <div
+          title="Logged in as"
+          style={{ width: 70, background: 'var(--surface2)', border: `1px solid ${color}`, color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
+        >
+          {myInitials || '—'}
+        </div>
         <span style={{ fontSize: 10, color, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</span>
       </div>
       <textarea
@@ -722,27 +762,27 @@ function DeadLeadPrompt({ leadId, onSubmit, onCancel }: {
   onSubmit: (id: number, initials: string) => Promise<void>
   onCancel: () => void
 }) {
-  const [initials, setInitials] = useState('')
+  const { profile } = useUserProfile()
+  const myInitials = profileInitials(profile?.display_name)
   const [submitting, setSubmitting] = useState(false)
-  const canSubmit = initials.trim().length >= 2
+  const canSubmit = myInitials.length > 0
 
   async function handleSubmit() {
     if (!canSubmit || submitting) return
     setSubmitting(true)
-    await onSubmit(leadId, initials.trim().toUpperCase())
+    await onSubmit(leadId, myInitials)
     setSubmitting(false)
   }
 
   return (
     <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: 'rgba(58,63,82,0.5)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
       <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginRight: 4 }}>Mark dead?</span>
-      <input
-        autoFocus value={initials}
-        onChange={e => setInitials(e.target.value.toUpperCase().slice(0, 3))}
-        onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); if (e.key === 'Escape') onCancel() }}
-        placeholder="Initials" maxLength={3}
-        style={{ width: 70, background: 'var(--surface)', border: '1px solid var(--dead)', color: 'var(--text)', padding: '4px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 12, outline: 'none', textAlign: 'center', letterSpacing: '0.12em' }}
-      />
+      <div
+        title="Logged in as"
+        style={{ width: 70, background: 'var(--surface2)', border: '1px solid var(--dead)', color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
+      >
+        {myInitials || '—'}
+      </div>
       <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? 'var(--dead)' : 'var(--surface)', color: canSubmit ? 'var(--text2)' : 'var(--text3)', border: `1px solid ${canSubmit ? 'var(--border)' : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
         {submitting ? '…' : 'Confirm'}
       </button>
@@ -851,8 +891,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
           return (
             <React.Fragment key={l.id}>
               <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(200,240,78,0.04)' : 'transparent', transition: 'background 0.15s' }}>
-                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: STATUS_COLORS[l.status] || 'var(--text3)' }} />
-                <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, background: STATUS_COLORS[l.status] || 'var(--text3)' }} />
+                <LeadAvatar lead={l} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
                     {l.label && l.artist_name
@@ -973,9 +1012,9 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
     setPage(1); setSearch(''); setTouchPromptId(null); setKeepHotPromptId(null)
   }, [activeFilter])
 
-  const uncontactedLeads = leads.filter(l => l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead'].includes(l.status)))
-  const hotLeads = leads.filter(l => l.status === 'hot')
-  const warmLeads = leads.filter(l => l.status === 'warm')
+  const uncontactedLeads = leads.filter(l => l.status === 'uncontacted')
+  const hotLeads = leads.filter(l => l.status !== 'uncontacted' && l.status === 'hot')
+  const warmLeads = leads.filter(l => l.status !== 'uncontacted' && l.status === 'warm')
   const coldDeadLeads = leads.filter(l => l.status === 'cold' || l.status === 'dead')
   const bookedLeads = leads.filter(l => l.status === 'booked')
 
@@ -1064,8 +1103,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                 </div>
               )}
               <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(200,240,78,0.04)' : 'transparent', transition: 'background 0.15s' }}>
-                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: STATUS_COLORS[l.status] || 'var(--text3)' }} />
-                <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, background: STATUS_COLORS[l.status] || 'var(--text3)' }} />
+                <LeadAvatar lead={l} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
                     {l.label && l.artist_name

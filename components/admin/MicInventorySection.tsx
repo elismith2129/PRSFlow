@@ -2,6 +2,18 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { SectionHeader } from '@/components/ui/SectionHeader'
+import { useUserProfile } from '@/hooks/useUserProfile'
+
+// First letter of display_name's first word + first letter of its last word,
+// uppercased. Used to auto-populate admin initials from the logged-in profile.
+function profileInitials(displayName: string | null | undefined): string {
+  if (!displayName) return ''
+  const words = displayName.trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return ''
+  const first = words[0][0] || ''
+  const last = words.length > 1 ? words[words.length - 1][0] || '' : ''
+  return (first + last).toUpperCase()
+}
 
 const STUDIO_META: Record<string, { label: string }> = {
   paramount: { label: 'Paramount' },
@@ -139,7 +151,10 @@ export function MicInventorySection() {
   const [activeTab, setActiveTab] = useState<string>(STUDIO_ORDER[0])
   const [showHistory, setShowHistory] = useState(false)
 
-  // Current user for amended_by (auth not live yet — falls back to 'Admin').
+  // Current user for amended_by. Prefer the logged-in profile's initials; the
+  // auth full_name/email effect below is a fallback when there's no profile.
+  const { profile } = useUserProfile()
+  const myInitials = profileInitials(profile?.display_name)
   const [amendedBy, setAmendedBy] = useState('Admin')
 
   // Inline status editing.
@@ -329,7 +344,8 @@ export function MicInventorySection() {
     setDraftRoom(c?.room ?? '')
     const q = resolveQty(group, mic)
     setDraftQty(q != null ? String(q) : '')
-    setDraftBy(c?.source === 'admin' && c?.amended_by ? c.amended_by : '')
+    // Initials auto-populate from the logged-in profile (read-only in the row).
+    setDraftBy(myInitials)
     setEditingMicId(mic.id)
   }
 
@@ -349,7 +365,7 @@ export function MicInventorySection() {
       status: draftStatus,
       room: draftStatus === 'room' ? (draftRoom.trim() || null) : null,
       source: 'admin',
-      amended_by: draftBy.trim() || amendedBy || null,
+      amended_by: myInitials || draftBy.trim() || amendedBy || null,
     }
     await supabase.from('mic_checkins').upsert(row, { onConflict: 'mic_id,studio,date' })
     // Qty cell is editable now → persist a changed value to mic_inventory_quantities.
@@ -652,12 +668,12 @@ export function MicInventorySection() {
                         {/* Submitted by */}
                         <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: byName !== '—' ? '#8b90a8' : NONE_COLOR, display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
                           {isEditing ? (
-                            <input
-                              value={draftBy}
-                              onChange={e => setDraftBy(e.target.value)}
-                              placeholder="Initials"
-                              style={{ ...inputS, padding: '4px 6px' }}
-                            />
+                            <span
+                              title="Logged in as"
+                              style={{ fontFamily: 'DM Mono', fontSize: 10, letterSpacing: '0.08em', color: (draftBy || myInitials) ? '#e8eaf2' : NONE_COLOR }}
+                            >
+                              {draftBy || myInitials || '—'}
+                            </span>
                           ) : (
                             <>
                               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{byName}</span>
