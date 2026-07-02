@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import TimeInput from '@/components/shared/TimeInput'
+import { SignedImage } from '@/components/shared/SignedImage'
 
 const STUDIO_META: Record<string, { label: string; abbr: string }> = {
   paramount: { label: 'Paramount', abbr: 'PRS' },
@@ -469,9 +470,9 @@ export default function RunnerWOPage() {
     const path = `equip-notes/${woRef.current}/${pending.equipment.toLowerCase()}_${pending.date}_${Date.now()}.${ext}`
     const { data, error } = await supabase.storage.from('checklist-photos').upload(path, file, { upsert: true })
     if (!error && data) {
-      const { data: { publicUrl } } = supabase.storage.from('checklist-photos').getPublicUrl(data.path)
+      // Store the storage PATH — checklist-photos is private; reads sign on demand.
       const currentPhotos = equipNotes[pending.key]?.photo_urls ?? []
-      await upsertEquipNote(pending.key, pending.equipment, pending.date, { photo_urls: [...currentPhotos, publicUrl] })
+      await upsertEquipNote(pending.key, pending.equipment, pending.date, { photo_urls: [...currentPhotos, data.path] })
     }
     setNoteUploading(false)
     if (equipNoteFileRef.current) equipNoteFileRef.current.value = ''
@@ -485,22 +486,15 @@ export default function RunnerWOPage() {
     const path = `na-photos/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
 
     const { data, error: uploadError } = await supabase.storage.from('checklist-photos').upload(path, file, { upsert: true })
-    console.log('[NA photo] storage upload:', { data, error: uploadError })
 
     if (!uploadError && data) {
-      const { data: { publicUrl } } = supabase.storage.from('checklist-photos').getPublicUrl(data.path)
-      console.log('[NA photo] publicUrl value:', publicUrl, '| type:', typeof publicUrl, '| truthy:', !!publicUrl)
-
-      if (publicUrl) {
-        const newPhotos = [...needsAttentionPhotos, publicUrl]
-        setNeedsAttentionPhotos(newPhotos)
-        const { error: dbError } = await supabase.from('work_orders')
-          .update({ needs_attention_photos: newPhotos })
-          .eq('id', woRef.current)
-        console.log('[NA photo] work_orders update:', { newPhotos, error: dbError })
-      } else {
-        console.error('[NA photo] publicUrl is falsy — thumbnail will not render. Check checklist-photos bucket is public.')
-      }
+      // Store the storage PATH — checklist-photos is private; reads sign on demand.
+      const newPhotos = [...needsAttentionPhotos, data.path]
+      setNeedsAttentionPhotos(newPhotos)
+      const { error: dbError } = await supabase.from('work_orders')
+        .update({ needs_attention_photos: newPhotos })
+        .eq('id', woRef.current)
+      if (dbError) console.error('[NA photo] work_orders update failed:', dbError)
     } else {
       console.error('[NA photo] upload failed:', uploadError)
     }
@@ -1037,9 +1031,7 @@ export default function RunnerWOPage() {
                           {(equipNotes[`${eq}||${openDate}`]?.photo_urls?.length ?? 0) > 0 && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                               {equipNotes[`${eq}||${openDate}`].photo_urls.map((url, i) => (
-                                <a key={i} href={url} target="_blank" rel="noreferrer">
-                                  <img src={url} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(249,115,22,0.3)', display: 'block' }} />
-                                </a>
+                                <SignedImage key={i} path={url} link alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(249,115,22,0.3)', display: 'block' }} />
                               ))}
                             </div>
                           )}
@@ -1230,9 +1222,7 @@ export default function RunnerWOPage() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
               {needsAttentionPhotos.map((url, i) => (
                 <div key={i} style={{ position: 'relative', flexShrink: 0 }}>
-                  <a href={url} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
-                    <img src={url} alt="" onError={() => console.error('[NA photo] img failed to load:', url)} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '2px solid rgba(249,115,22,0.35)', display: 'block' }} />
-                  </a>
+                  <SignedImage path={url} link linkStyle={{ display: 'block' }} alt="" onError={() => console.error('[NA photo] img failed to load:', url)} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '2px solid rgba(249,115,22,0.35)', display: 'block' }} />
                   <button
                     onClick={e => { e.preventDefault(); e.stopPropagation(); deleteNAPhoto(url) }}
                     style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10, background: '#EF4444', border: 'none', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: 0 }}

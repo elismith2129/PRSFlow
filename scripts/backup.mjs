@@ -10,7 +10,10 @@
 //
 // Required environment variables:
 //   NEXT_PUBLIC_SUPABASE_URL        — Supabase project URL
-//   NEXT_PUBLIC_SUPABASE_ANON_KEY   — Supabase anon key (RLS is off, full read access)
+//   SUPABASE_SERVICE_ROLE_KEY       — Supabase service-role key. REQUIRED: after the
+//                                      RLS hardening the anon key has no read access,
+//                                      so the backup must use the service role (which
+//                                      bypasses RLS) to read every table in full.
 //   GOOGLE_SERVICE_ACCOUNT_JSON     — full service-account JSON (parsed at runtime)
 //
 // Local run:
@@ -50,11 +53,11 @@ const PAGE_SIZE = 1000;
 // Environment
 // ---------------------------------------------------------------------------
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const GOOGLE_SERVICE_ACCOUNT_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
   process.exit(1);
 }
 if (!GOOGLE_SERVICE_ACCOUNT_JSON) {
@@ -70,11 +73,12 @@ try {
   process.exit(1);
 }
 
-// PostgREST base URL + auth headers (anon key as both apikey and bearer token).
+// PostgREST base URL + auth headers (service-role key as both apikey and bearer
+// token — bypasses RLS so the backup reads every row of every table).
 const REST_URL = SUPABASE_URL.replace(/\/+$/, '') + '/rest/v1/';
 const REST_HEADERS = {
-  apikey: SUPABASE_ANON_KEY,
-  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  apikey: SUPABASE_SERVICE_ROLE_KEY,
+  Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
   'Content-Type': 'application/json',
 };
 

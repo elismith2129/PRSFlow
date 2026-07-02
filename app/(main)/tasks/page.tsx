@@ -13,6 +13,7 @@ import {
   fmtTaskTime,
   uploadTaskPhoto,
 } from '@/lib/tasks'
+import { SignedImage } from '@/components/shared/SignedImage'
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -369,8 +370,8 @@ export default function TasksPage() {
               <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 {selectedTask.text}
                 {selectedTask.photo_url && (
-                  <img
-                    src={selectedTask.photo_url}
+                  <SignedImage
+                    path={selectedTask.photo_url}
                     alt=""
                     style={{ display: 'block', maxWidth: '100%', maxHeight: 220, borderRadius: 8, objectFit: 'cover', marginTop: 10 }}
                   />
@@ -398,8 +399,8 @@ export default function TasksPage() {
                       <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.5 }}>{c.text}</div>
                     )}
                     {c.photo_url && (
-                      <img
-                        src={c.photo_url}
+                      <SignedImage
+                        path={c.photo_url}
                         alt=""
                         style={{ display: 'block', maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover', marginTop: c.text ? 6 : 0 }}
                       />

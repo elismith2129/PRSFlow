@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { CHECKLISTS, flattenSections, type ChecklistSection } from '@/lib/checklist-items'
+import { SignedImage } from '@/components/shared/SignedImage'
 
 const STUDIO_META: Record<string, { label: string }> = {
   paramount: { label: 'Paramount' },
@@ -142,8 +143,8 @@ export default function ChecklistPage() {
       const path = `${studio}/${today}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`
       const { data, error } = await supabase.storage.from('checklist-photos').upload(path, file, { upsert: true })
       if (data && !error) {
-        const { data: { publicUrl } } = supabase.storage.from('checklist-photos').getPublicUrl(data.path)
-        urls.push(publicUrl)
+        // Store the storage PATH — checklist-photos is private; reads sign on demand.
+        urls.push(data.path)
       }
     }
     attentionChangedRef.current = true
@@ -340,8 +341,7 @@ export default function ChecklistPage() {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
               {photos.map((url, i) => (
                 <div key={i} style={{ position: 'relative' }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid #2a2e3d' }} />
+                  <SignedImage path={url} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid #2a2e3d' }} />
                   <button
                     onClick={() => { dirtyRef.current = true; attentionChangedRef.current = true; setPhotos(prev => prev.filter((_, j) => j !== i)) }}
                     style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: 9, background: '#EF4444', border: 'none', color: '#fff', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}

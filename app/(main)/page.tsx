@@ -11,6 +11,7 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 import { ASSIGN_OPTIONS, resolveAssignTo, nameForId, visibleTabsForRole, idsForTab, fetchTasks } from '@/lib/tasks'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
 import { useWebInquiries } from '@/components/notifications/WebInquiryProvider'
+import { SignedImage } from '@/components/shared/SignedImage'
 
 // Needs Action predicates — mirror the CRM (app/(main)/crm/page.tsx) bucket logic
 // so the dashboard surfaces the same leads as the CRM Needs Action tab.
@@ -397,8 +398,8 @@ export default function DashboardPage() {
       console.error('photo upload failed:', error)
       return null
     }
-    const { data: { publicUrl } } = supabase.storage.from('checklist-photos').getPublicUrl(data.path)
-    return publicUrl
+    // Store the storage PATH — checklist-photos is private; reads sign on demand.
+    return data.path
   }
 
   async function loadComments(taskId: string) {
@@ -1202,8 +1203,8 @@ export default function DashboardPage() {
               <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 {selectedTask.text}
                 {selectedTask.photo_url && (
-                  <img
-                    src={selectedTask.photo_url}
+                  <SignedImage
+                    path={selectedTask.photo_url}
                     alt=""
                     style={{ display: 'block', maxWidth: '100%', maxHeight: 220, borderRadius: 8, objectFit: 'cover', marginTop: 10 }}
                   />
@@ -1231,8 +1232,8 @@ export default function DashboardPage() {
                       <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.5 }}>{c.text}</div>
                     )}
                     {c.photo_url && (
-                      <img
-                        src={c.photo_url}
+                      <SignedImage
+                        path={c.photo_url}
                         alt=""
                         style={{ display: 'block', maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover', marginTop: c.text ? 6 : 0 }}
                       />
@@ -1401,7 +1402,7 @@ export default function DashboardPage() {
                 {selectedHistoryTask.text}
               </div>
               {selectedHistoryTask.photo_url && (
-                <img src={selectedHistoryTask.photo_url} alt="" style={{ display: 'block', maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover', marginTop: 8 }} />
+                <SignedImage path={selectedHistoryTask.photo_url} alt="" style={{ display: 'block', maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover', marginTop: 8 }} />
               )}
               {selectedHistoryTask.source !== 'manual' && selectedHistoryTask.source_label && (
                 <div style={{ fontSize: 10, color: 'var(--warm)', marginTop: 4, fontFamily: 'DM Mono' }}>{selectedHistoryTask.source_label}</div>
@@ -1423,7 +1424,7 @@ export default function DashboardPage() {
                   <div key={c.id} style={{ marginBottom: 14 }}>
                     {c.text && <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>{c.text}</div>}
                     {c.photo_url && (
-                      <img src={c.photo_url} alt="" style={{ display: 'block', maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover', marginTop: c.text ? 6 : 0 }} />
+                      <SignedImage path={c.photo_url} alt="" style={{ display: 'block', maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover', marginTop: c.text ? 6 : 0 }} />
                     )}
                     <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 4, fontFamily: 'DM Mono' }}>
                       {c.created_by_name && `${c.created_by_name} · `}{fmtTime(c.created_at)}
@@ -1719,8 +1720,8 @@ export default function DashboardPage() {
                       <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>{c.text}</div>
                     )}
                     {c.photo_url && (
-                      <img
-                        src={c.photo_url}
+                      <SignedImage
+                        path={c.photo_url}
                         alt=""
                         style={{ display: 'block', maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover', marginTop: c.text ? 6 : 0 }}
                       />

@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
-import type { RegistrationToken, Client } from '@/lib/supabase'
+import type { Client } from '@/lib/supabase'
 import { TERMS_SECTIONS } from '@/lib/terms'
 import PhoneInput from '@/components/shared/PhoneInput'
 
@@ -67,7 +66,6 @@ export default function RegisterPage() {
   const tokenParam = params.token as string
 
   const [pageState, setPageState] = useState<PageState>('loading')
-  const [tokenRow, setTokenRow] = useState<RegistrationToken | null>(null)
   const [form, setForm] = useState<FormData>(EMPTY_FORM)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -76,38 +74,26 @@ export default function RegisterPage() {
   const [conflictAcknowledged, setConflictAcknowledged] = useState(false)
 
   const validateToken = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('registration_tokens')
-      .select('*')
-      .eq('token', tokenParam)
-      .single()
+    try {
+      const res = await fetch(`/api/register?token=${encodeURIComponent(tokenParam)}`)
+      const data = await res.json()
 
-    if (error || !data) {
+      if (data.state === 'invalid') { setPageState('invalid'); return }
+      if (data.state === 'used') { setPageState('used'); return }
+      if (data.state === 'expired') { setPageState('expired'); return }
+
+      const nameParts = (data.prefill?.name || '').trim().split(/\s+/)
+      setForm(prev => ({
+        ...prev,
+        email: data.prefill?.email || '',
+        fname: nameParts[0] || '',
+        lname: nameParts.slice(1).join(' ') || '',
+      }))
+
+      setPageState('form')
+    } catch {
       setPageState('invalid')
-      return
     }
-
-    if (data.used_at) {
-      setPageState('used')
-      return
-    }
-
-    if (new Date(data.expires_at) < new Date()) {
-      setPageState('expired')
-      return
-    }
-
-    setTokenRow(data)
-
-    const nameParts = (data.prefill_name || '').trim().split(/\s+/)
-    setForm(prev => ({
-      ...prev,
-      email: data.prefill_email || '',
-      fname: nameParts[0] || '',
-      lname: nameParts.slice(1).join(' ') || '',
-    }))
-
-    setPageState('form')
   }, [tokenParam])
 
   useEffect(() => {
@@ -156,142 +142,74 @@ export default function RegisterPage() {
   }
 
   async function handleUseExisting() {
-    if (!matchedClient || !tokenRow) return
+    if (!matchedClient) return
     setPageState('submitting')
     try {
-      if (tokenRow.lead_id) {
-        await supabase.from('leads').update({ client_id: matchedClient.id }).eq('id', tokenRow.lead_id)
+      const fd = new FormData()
+      fd.append('token', tokenParam)
+      fd.append('action', 'use_existing')
+      fd.append('matched_client_id', String(matchedClient.id))
+      fd.append('fname', form.fname.trim())
+
+      const res = await fetch('/api/register', { method: 'POST', body: fd })
+      const data = await res.json()
+
+      if (!res.ok || data.error) {
+        setSubmitError(data.error || 'Something went wrong.')
+        setPageState('conflict')
+        return
       }
-      await supabase.from('registration_tokens').update({ used_at: new Date().toISOString() }).eq('token', tokenParam)
-      setSubmittedName(form.fname.trim())
+
+      setSubmittedName(data.name || form.fname.trim())
       setPageState('success')
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Something went wrong.'
-      setSubmitError(message)
+    } catch {
+      setSubmitError('Something went wrong.')
       setPageState('conflict')
     }
   }
 
-  async function doSubmit() {
+  async function doSubmit(acknowledge = conflictAcknowledged) {
     setSubmitError(null)
     setPageState('submitting')
 
     try {
-      const isExistingClient = !!tokenRow?.client_id
+      const fd = new FormData()
+      fd.append('token', tokenParam)
+      fd.append('action', 'submit')
+      fd.append('acknowledge_conflict', acknowledge ? 'true' : 'false')
+      fd.append('fname', form.fname.trim())
+      fd.append('lname', form.lname.trim())
+      fd.append('phone', form.phone.trim())
+      fd.append('email', form.email.trim())
+      fd.append('instagram', form.instagram.trim())
+      fd.append('how_heard', form.how_heard.trim())
+      fd.append('address_street', form.address_street.trim())
+      fd.append('address_street2', form.address_street2.trim())
+      fd.append('address_city', form.address_city.trim())
+      fd.append('address_state', form.address_state.trim())
+      fd.append('address_zip', form.address_zip.trim())
+      fd.append('signature', form.signature.trim())
+      if (form.id_file) fd.append('id_file', form.id_file)
 
-      // Email conflict check — only for new registrations, skipped if user acknowledged
-      if (!isExistingClient && !conflictAcknowledged && form.email.trim()) {
-        const { data: existing } = await supabase
-          .from('clients')
-          .select('id, type, name, fname, lname, email, phone, registered_at')
-          .eq('email', form.email.trim().toLowerCase())
-          .maybeSingle()
-        if (existing) {
-          setMatchedClient(existing as Client)
-          setPageState('conflict')
-          return
-        }
+      const res = await fetch('/api/register', { method: 'POST', body: fd })
+      const data = await res.json()
+
+      if (data.conflict) {
+        setMatchedClient(data.matchedClient as Client)
+        setPageState('conflict')
+        return
       }
 
-      const clientId = isExistingClient ? tokenRow!.client_id! : crypto.randomUUID()
-      const fullName = `${form.fname.trim()} ${form.lname.trim()}`.trim()
-
-      // Upload ID file
-      let idFileUrl: string | null = null
-      if (form.id_file) {
-        const timestamp = Date.now()
-        const sanitizedName = form.id_file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-        const filePath = `${clientId}/${timestamp}_${sanitizedName}`
-
-        const { error: uploadError } = await supabase.storage
-          .from('client-ids')
-          .upload(filePath, form.id_file, { contentType: form.id_file.type })
-
-        if (uploadError) throw new Error(`ID upload failed: ${uploadError.message}`)
-        idFileUrl = filePath
+      if (!res.ok || data.error) {
+        setSubmitError(data.error || 'Something went wrong. Please try again.')
+        setPageState('form')
+        return
       }
 
-      if (isExistingClient) {
-        // Update existing migrated client
-        const updateFields: Record<string, unknown> = {
-          fname: form.fname.trim(),
-          lname: form.lname.trim(),
-          name: fullName,
-          email: form.email.trim(),
-          phone: form.phone.trim(),
-          instagram: form.instagram.trim(),
-          how_heard: form.how_heard.trim() || null,
-          address_street: form.address_street.trim(),
-          address_street2: form.address_street2.trim() || null,
-          address_city: form.address_city.trim(),
-          address_state: form.address_state.trim().toUpperCase(),
-          signature_url: form.signature.trim(),
-          terms_accepted: true,
-          terms_accepted_at: new Date().toISOString(),
-          registered_at: new Date().toISOString(),
-        }
-        if (idFileUrl) updateFields.id_file_url = idFileUrl
-
-        const { error: clientError } = await supabase
-          .from('clients')
-          .update(updateFields)
-          .eq('id', clientId)
-
-        if (clientError) throw new Error(`Registration failed: ${clientError.message}`)
-      } else {
-        // Create new client row
-        const { error: clientError } = await supabase
-          .from('clients')
-          .insert({
-            id: clientId,
-            type: 'individual',
-            name: fullName,
-            fname: form.fname.trim(),
-            lname: form.lname.trim(),
-            email: form.email.trim(),
-            phone: form.phone.trim(),
-            instagram: form.instagram.trim(),
-            how_heard: form.how_heard.trim() || null,
-            address_street: form.address_street.trim(),
-            address_street2: form.address_street2.trim() || null,
-            address_city: form.address_city.trim(),
-            address_state: form.address_state.trim().toUpperCase(),
-            address_zip: form.address_zip.trim(),
-            id_file_url: idFileUrl,
-            signature_url: form.signature.trim(),
-            terms_accepted: true,
-            terms_accepted_at: new Date().toISOString(),
-            registered_at: new Date().toISOString(),
-            source_lead_id: tokenRow?.lead_id || null,
-            artists: [],
-          })
-
-        if (clientError) throw new Error(`Registration failed: ${clientError.message}`)
-
-        // Link lead if applicable
-        if (tokenRow?.lead_id) {
-          const { error: leadError } = await supabase
-            .from('leads')
-            .update({ client_id: clientId })
-            .eq('id', tokenRow.lead_id)
-
-          if (leadError) throw new Error(`Lead link failed: ${leadError.message}`)
-        }
-      }
-
-      // Mark token used
-      const { error: tokenError } = await supabase
-        .from('registration_tokens')
-        .update({ used_at: new Date().toISOString() })
-        .eq('token', tokenParam)
-
-      if (tokenError) throw new Error(`Token update failed: ${tokenError.message}`)
-
-      setSubmittedName(form.fname.trim())
+      setSubmittedName(data.name || form.fname.trim())
       setPageState('success')
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
-      setSubmitError(message)
+    } catch {
+      setSubmitError('Something went wrong. Please try again.')
       setPageState('form')
     }
   }
@@ -306,46 +224,8 @@ export default function RegisterPage() {
     setConflictAcknowledged(true)
     setMatchedClient(null)
     setSubmitError(null)
-    setPageState('submitting')
-    // Re-run submit bypassing the conflict check
-    setTimeout(async () => {
-      try {
-        const clientId = crypto.randomUUID()
-        const fullName = `${form.fname.trim()} ${form.lname.trim()}`.trim()
-        let idFileUrl: string | null = null
-        if (form.id_file) {
-          const timestamp = Date.now()
-          const sanitizedName = form.id_file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-          const filePath = `${clientId}/${timestamp}_${sanitizedName}`
-          const { error: uploadError } = await supabase.storage.from('client-ids').upload(filePath, form.id_file, { contentType: form.id_file.type })
-          if (uploadError) throw new Error(`ID upload failed: ${uploadError.message}`)
-          idFileUrl = filePath
-        }
-        const { error: clientError } = await supabase.from('clients').insert({
-          id: clientId, type: 'individual', name: fullName,
-          fname: form.fname.trim(), lname: form.lname.trim(),
-          email: form.email.trim(), phone: form.phone.trim(),
-          instagram: form.instagram.trim(), how_heard: form.how_heard.trim() || null,
-          address_street: form.address_street.trim(), address_street2: form.address_street2.trim() || null,
-          address_city: form.address_city.trim(), address_state: form.address_state.trim().toUpperCase(),
-          address_zip: form.address_zip.trim(), id_file_url: idFileUrl,
-          signature_url: form.signature.trim(), terms_accepted: true,
-          terms_accepted_at: new Date().toISOString(), registered_at: new Date().toISOString(),
-          source_lead_id: tokenRow?.lead_id || null, artists: [],
-        })
-        if (clientError) throw new Error(`Registration failed: ${clientError.message}`)
-        if (tokenRow?.lead_id) {
-          await supabase.from('leads').update({ client_id: clientId }).eq('id', tokenRow.lead_id)
-        }
-        await supabase.from('registration_tokens').update({ used_at: new Date().toISOString() }).eq('token', tokenParam)
-        setSubmittedName(form.fname.trim())
-        setPageState('success')
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
-        setSubmitError(message)
-        setPageState('form')
-      }
-    }, 0)
+    // Re-run submit bypassing the conflict check (server handles the write).
+    doSubmit(true)
   }
 
   // ── Layout shell (no nav — public page) ──────────────────────────────────

@@ -109,6 +109,6 @@ export async function uploadTaskPhoto(file: File): Promise<string | null> {
     console.error('photo upload failed:', error)
     return null
   }
-  const { data: { publicUrl } } = supabase.storage.from('checklist-photos').getPublicUrl(data.path)
-  return publicUrl
+  // Store the storage PATH — checklist-photos is private; reads sign on demand.
+  return data.path
 }

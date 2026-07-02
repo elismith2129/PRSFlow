@@ -2,9 +2,13 @@ import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import PrintTrigger from './PrintTrigger'
 
+// Server component (no 'use client') — the service-role key never reaches the
+// browser. Required because after the RLS hardening, `clients` SELECT and
+// client-ids signed-URL creation are no longer allowed for the anon role.
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false, autoRefreshToken: false } }
 )
 
 export default async function RegPrintPage({ params }: { params: { clientId: string } }) {

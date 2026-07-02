@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import type { Flag, FlagComment } from '@/lib/supabase'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
+import { SignedImage } from '@/components/shared/SignedImage'
 
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   facility_general: { label: 'Facility / General', color: 'var(--text3)', bg: 'var(--surface2)' },
@@ -24,8 +25,8 @@ async function uploadPhoto(file: File): Promise<string | null> {
   const path = `dashboard-tasks/${Date.now()}-${file.name.replace(/\s+/g, '_')}`
   const { data, error } = await supabase.storage.from('checklist-photos').upload(path, file, { upsert: true })
   if (!data || error) return null
-  const { data: { publicUrl } } = supabase.storage.from('checklist-photos').getPublicUrl(data.path)
-  return publicUrl
+  // Store the storage PATH — checklist-photos is private; reads sign on demand.
+  return data.path
 }
 
 export function FlagsLogSection() {
@@ -514,8 +515,8 @@ export function FlagsLogSection() {
                       <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>{c.text}</div>
                     )}
                     {c.photo_url && (
-                      <img
-                        src={c.photo_url}
+                      <SignedImage
+                        path={c.photo_url}
                         alt=""
                         style={{ display: 'block', maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover', marginTop: c.text ? 6 : 0 }}
                       />

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabase'
 import { getChecklistSections } from '@/lib/checklist-items'
+import { SignedImage } from '@/components/shared/SignedImage'
 
 // ─── Appendix B: Stock list defaults ─────────────────────────────────────────
 
@@ -223,10 +224,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
             {photosToShow.length > 0 && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {photosToShow.map((url, i) => (
-                  <a key={i} href={url} target="_blank" rel="noreferrer">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={url} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid #f0a24e33' }} />
-                  </a>
+                  <SignedImage key={i} path={url} link alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid #f0a24e33' }} />
                 ))}
               </div>
             )}
@@ -295,10 +293,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
             <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'Syne, sans-serif', marginBottom: 6 }}>Photos</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {photosToShow.map((url, i) => (
-                <a key={i} href={url} target="_blank" rel="noreferrer">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
-                </a>
+                <SignedImage key={i} path={url} link alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
               ))}
             </div>
           </div>

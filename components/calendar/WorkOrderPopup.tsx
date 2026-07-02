@@ -7,6 +7,7 @@ import TimeInput from '@/components/shared/TimeInput'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { SignedImage } from '@/components/shared/SignedImage'
 
 // Studio accent colors — mirror the Runner Hub WO header (STUDIO_META) so the
 // mobile WO popup matches it. Keyed by venue name (booking.location).
@@ -907,9 +908,9 @@ export function WorkOrderPopup({
     const path = `equip-notes/${woIdRef.current}/${pending.equipment.toLowerCase()}_${pending.date}_${Date.now()}.${ext}`
     const { data, error } = await supabase.storage.from('checklist-photos').upload(path, file, { upsert: true })
     if (!error && data) {
-      const { data: { publicUrl } } = supabase.storage.from('checklist-photos').getPublicUrl(data.path)
+      // Store the storage PATH — checklist-photos is private; reads sign on demand.
       const currentPhotos = equipNotes[pending.key]?.photo_urls ?? []
-      await upsertEquipNote(pending.key, pending.equipment, pending.date, { photo_urls: [...currentPhotos, publicUrl] })
+      await upsertEquipNote(pending.key, pending.equipment, pending.date, { photo_urls: [...currentPhotos, data.path] })
     }
     setNoteUploading(false)
     if (equipNoteFileRef.current) equipNoteFileRef.current.value = ''
@@ -1817,9 +1818,7 @@ export function WorkOrderPopup({
                           {(equipNotes[`${eq}||${openDate}`]?.photo_urls?.length ?? 0) > 0 && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
                               {equipNotes[`${eq}||${openDate}`].photo_urls.map((url, i) => (
-                                <a key={i} href={url} target="_blank" rel="noreferrer">
-                                  <img src={url} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)', display: 'block' }} />
-                                </a>
+                                <SignedImage key={i} path={url} link alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)', display: 'block' }} />
                               ))}
                             </div>
                           )}
@@ -1982,9 +1981,7 @@ export function WorkOrderPopup({
             {wo.needs_attention_photos?.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
                 {wo.needs_attention_photos.map((url, i) => (
-                  <a key={i} href={url} target="_blank" rel="noreferrer" style={{ display: 'block', flexShrink: 0 }}>
-                    <img src={url} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, border: '2px solid rgba(249,115,22,0.4)', display: 'block' }} />
-                  </a>
+                  <SignedImage key={i} path={url} link linkStyle={{ display: 'block', flexShrink: 0 }} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, border: '2px solid rgba(249,115,22,0.4)', display: 'block' }} />
                 ))}
               </div>
             )}
