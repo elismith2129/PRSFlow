@@ -9,6 +9,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **PRSFlo wordmark: `components/layout/Nav.tsx` is the single source of truth for PRS/Flo span styling (font-family, weight, color). Always copy these exact values when the wordmark appears elsewhere — never recreate from description.** It must be byte-for-byte identical everywhere it appears site-wide (nav, login, reset-password, runner hub, welcome splash, and any future placement). The exact values, from Nav.tsx: container `fontFamily: 'Syne'`, `fontWeight: 800`, `letterSpacing: -0.5`; `PRS` span `color: var(--accent)`; `Flo` span `color: var(--text)`, `opacity: 0.45`, `fontWeight: 500`. Only `fontSize` may differ per placement. (This rule exists because the login page once drifted to the wrong font/color.)
 
+## Standing Architecture Rules
+
+### Real-time data (hard requirement)
+Every page and component that fetches from Supabase MUST use a realtime subscription to keep data live. One-time on-mount fetches with no corresponding supabase.channel() subscription are not acceptable — the app is used as a PWA where the user cannot refresh.
+
+The reference pattern to follow is WebInquiryProvider (components/notifications/WebInquiryProvider.tsx) which uses a version counter exposed via context that dependent components watch to trigger re-fetches. For simpler cases, define a load() function, call it on mount, and call it again from the realtime channel callback.
+
+Rules:
+- Always pair every Supabase fetch with a realtime subscription on the same table
+- Every channel must be cleaned up on unmount: return () => supabase.removeChannel(channel)
+- Channel names must be unique across the app — use descriptive names like 'crm-leads', 'flags-log', 'runner-mics-[studio]'
+- Never open duplicate channels for the same table on the same page
+- Never build a page that requires a refresh to show updated data
+- Tables must be in the supabase_realtime publication with REPLICA IDENTITY FULL before subscriptions will fire — see supabase/realtime-publication.sql for the pattern
+
 ## Commands
 
 - `npm run dev` — start the Next.js dev server at http://localhost:3000
