@@ -1,9 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { createClient } from '@supabase/supabase-js'
+import { checkRateLimit } from '@/lib/rateLimit'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+// SERVER-ONLY service-role client — validates the caller's Supabase session
+// token and backs the per-IP rate limiter. Never reaches the browser.
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false, autoRefreshToken: false } }
+)
+
+// Best-effort client IP. On Vercel, x-forwarded-for's first entry is the client.
+function clientIp(req: NextRequest): string {
+  const xff = req.headers.get('x-forwarded-for')
+  if (xff) return xff.split(',')[0].trim()
+  return req.headers.get('x-real-ip')?.trim() || 'unknown'
+}
+
 export async function POST(req: NextRequest) {
+  // ── Auth: require a valid Supabase session (Bearer access token). ──
+  const authHeader = req.headers.get('authorization') || ''
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  const { data: userData, error: authError } = await supabaseAdmin.auth.getUser(token)
+  if (authError || !userData?.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // ── Rate limit: 10 requests per minute per IP. ──
+  const ip = clientIp(req)
+  const { allowed } = await checkRateLimit(supabaseAdmin, 'ocr', ip, 10, 60_000)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please wait a moment and try again.' }, { status: 429 })
+  }
+
   try {
     const { image_base64, media_type } = await req.json()
     if (!image_base64) return NextResponse.json({ error: 'No image' }, { status: 400 })

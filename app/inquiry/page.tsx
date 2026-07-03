@@ -1,12 +1,11 @@
 'use client'
 
 // Public, unauthenticated inquiry form. Lives OUTSIDE the (main) route group, so it
-// gets no AuthGuard — anyone can reach /inquiry without logging in. It talks to
-// Supabase with the browser anon key only (NEXT_PUBLIC_SUPABASE_ANON_KEY); no service
-// role key or private env var is referenced here or in its imports. On submit it
-// creates a leads row with status 'uncontacted' + source 'Web Inquiry'.
+// gets no AuthGuard — anyone can reach /inquiry without logging in. On submit it
+// POSTs to /api/inquiry (a service-role server route) which per-IP rate-limits
+// (3/min) and inserts the leads row (status 'uncontacted', source 'Web Inquiry').
+// The browser never writes to Supabase directly — no client or key is referenced here.
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
 
 export default function InquiryPage() {
@@ -29,20 +28,33 @@ export default function InquiryPage() {
     }
 
     setLoading(true)
-    const { error: insertError } = await supabase.from('leads').insert({
-      fname: firstName.trim(),
-      lname: lastName.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      notes: notes.trim() || null,
-      status: 'uncontacted',
-      source: 'Web Inquiry',
-      created_at: new Date().toISOString(),
-    })
+    let res: Response
+    try {
+      res = await fetch('/api/inquiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fname: firstName.trim(),
+          lname: lastName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          notes: notes.trim(),
+        }),
+      })
+    } catch {
+      setLoading(false)
+      setError('Something went wrong. Please try again.')
+      return
+    }
     setLoading(false)
 
-    if (insertError) {
-      setError('Something went wrong. Please try again.')
+    if (res.status === 429) {
+      setError('Too many requests. Please wait a moment and try again.')
+      return
+    }
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setError(data.error || 'Something went wrong. Please try again.')
       return
     }
     setSubmitted(true)
