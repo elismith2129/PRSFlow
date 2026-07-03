@@ -89,6 +89,46 @@ export async function fetchCompletedTasks(ids: string[]): Promise<DashboardTask[
   return data || []
 }
 
+// ── "My Tasks" fetchers (own-only tiers: asst_manager / tech / runner) ──
+// These return every task the given user CREATED (assigned_by) OR was ASSIGNED
+// (assigned_to), matching the RLS visibility rule for own-only roles. RLS is the
+// hard boundary; these queries just align the UI so users see tasks they created
+// (which the assigned_to-only tab query misses).
+
+// Active (incomplete) tasks the given user created or was assigned.
+export async function fetchMyTasks(profileId: string): Promise<DashboardTask[]> {
+  if (!profileId) return []
+  const { data } = await supabase
+    .from('dashboard_tasks')
+    .select('*')
+    .or(`assigned_to.eq.${profileId},assigned_by.eq.${profileId}`)
+    .eq('completed', false)
+    .is('deleted_at', null)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+  return data || []
+}
+
+// Completed tasks the given user created or was assigned, most-recent first.
+export async function fetchMyCompletedTasks(profileId: string): Promise<DashboardTask[]> {
+  if (!profileId) return []
+  const { data } = await supabase
+    .from('dashboard_tasks')
+    .select('*')
+    .or(`assigned_to.eq.${profileId},assigned_by.eq.${profileId}`)
+    .eq('completed', true)
+    .is('deleted_at', null)
+    .order('completed_at', { ascending: false })
+    .limit(100)
+  return data || []
+}
+
+// True for roles that see only their own tasks (created or assigned), rather than
+// the per-person tabs. owner/manager/billing keep the full tab set.
+export function isOwnOnlyRole(role: UserProfile['role'] | null | undefined): boolean {
+  return role === 'asst_manager' || role === 'tech' || role === 'runner'
+}
+
 // Format a comment/update timestamp as "Jun 25 · 02:30 PM".
 export function fmtTaskTime(iso: string): string {
   const d = new Date(iso)

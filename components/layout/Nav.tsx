@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
+import { useUserProfile } from '@/hooks/useUserProfile'
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
@@ -22,6 +23,11 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
   const [tentativeCount, setTentativeCount] = useState(0)
   const isMobile = useIsMobile()
   const [menuOpen, setMenuOpen] = useState(false)
+  const { profile } = useUserProfile()
+  // Tech gets the full nav minus CRM; every other role sees all items.
+  const visibleNavItems = profile?.role === 'tech'
+    ? navItems.filter(item => item.href !== '/crm')
+    : navItems
 
   useEffect(() => {
     async function fetchCount() {
@@ -89,7 +95,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
 
       {!isMobile && (
       <div style={{ display: 'flex', gap: 2, height: '100%', alignItems: 'center' }}>
-        {navItems.map(item => {
+        {visibleNavItems.map(item => {
           const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
           const badge = item.href === '/crm' && unreviewedRegs > 0
             ? unreviewedRegs
@@ -177,7 +183,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
             background: '#161920', borderBottom: '1px solid rgba(255,255,255,0.1)',
             display: 'flex', flexDirection: 'column',
           }}>
-            {navItems.map(item => {
+            {visibleNavItems.map(item => {
               const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
               return (
                 <Link

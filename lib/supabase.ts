@@ -324,10 +324,11 @@ export interface UserProfile {
   email: string
   display_name: string
   initials?: string | null
-  role: 'owner' | 'manager' | 'billing' | 'asst_manager' | 'tech'
+  role: 'owner' | 'manager' | 'billing' | 'asst_manager' | 'tech' | 'runner'
   created_at: string
   updated_at: string | null
   deleted_at: string | null
+  sop_acknowledged?: boolean
 }
 
 export interface Flag {

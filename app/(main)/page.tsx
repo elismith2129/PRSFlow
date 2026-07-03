@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
-import { ASSIGN_OPTIONS, resolveAssignTo, nameForId, visibleTabsForRole, idsForTab, fetchTasks } from '@/lib/tasks'
+import { ASSIGN_OPTIONS, resolveAssignTo, nameForId, visibleTabsForRole, idsForTab, fetchTasks, fetchMyTasks, fetchMyCompletedTasks, isOwnOnlyRole } from '@/lib/tasks'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
 import { useWebInquiries } from '@/components/notifications/WebInquiryProvider'
 import { SignedImage } from '@/components/shared/SignedImage'
@@ -94,7 +94,9 @@ export default function DashboardPage() {
   // leadsVersion bumps on any realtime leads INSERT/UPDATE so Needs Action re-fetches
   // live (see the load effect dep below) — no page refresh needed.
   const { isUnacked, leadsVersion } = useWebInquiries()
-  const canAssign = !!profile && (profile.role === 'owner' || profile.role === 'manager' || profile.role === 'billing')
+  const ownOnly = isOwnOnlyRole(profile?.role)
+  // Everyone with a profile can assign tasks to anyone (own-only tiers included).
+  const canAssign = !!profile
   const visibleTabs = visibleTabsForRole(profile?.role)
   const [allProfiles, setAllProfiles] = useState<UserProfile[]>([])
   const [newTaskAssignTo, setNewTaskAssignTo] = useState<string>('')
@@ -277,6 +279,8 @@ export default function DashboardPage() {
   useEffect(() => {
     if (profileLoading || defaultTabSetRef.current || allProfiles.length === 0) return
     defaultTabSetRef.current = true
+    // Own-only tiers use a single "My Tasks" view — no tab to select.
+    if (ownOnly) { setTabReady(true); return }
     const tabs = visibleTabsForRole(profile?.role)
     let initial = tabs.length > 0 ? tabs[0].key : 'eli'
     const name = profile?.display_name?.toLowerCase()
@@ -294,15 +298,23 @@ export default function DashboardPage() {
     if (profileLoading || !tabReady) return
     async function load() {
       setTasksLoading(true)
-      setTasks(await fetchTasks(idsForTab(activeTaskTab, allProfiles)))
+      if (ownOnly && profile?.id) {
+        setTasks(await fetchMyTasks(profile.id))
+      } else {
+        setTasks(await fetchTasks(idsForTab(activeTaskTab, allProfiles)))
+      }
       setTasksLoading(false)
     }
     load()
-  }, [activeTaskTab, allProfiles, profileLoading, tabReady])
+  }, [activeTaskTab, allProfiles, profileLoading, tabReady, ownOnly, profile?.id])
 
   async function reloadTasks() {
     setTasksLoading(true)
-    setTasks(await fetchTasks(idsForTab(activeTaskTab, allProfiles)))
+    if (ownOnly && profile?.id) {
+      setTasks(await fetchMyTasks(profile.id))
+    } else {
+      setTasks(await fetchTasks(idsForTab(activeTaskTab, allProfiles)))
+    }
     setTasksLoading(false)
   }
 
@@ -377,6 +389,10 @@ export default function DashboardPage() {
   }
 
   async function fetchCompletedTasks() {
+    if (ownOnly && profile?.id) {
+      setCompletedTasks(await fetchMyCompletedTasks(profile.id))
+      return
+    }
     const ids = idsForTab(activeTaskTab, allProfiles)
     if (ids.length === 0) { setCompletedTasks([]); return }
     const { data } = await supabase
@@ -419,10 +435,9 @@ export default function DashboardPage() {
   }
 
   function openAddTask() {
-    // Default the dropdown to the option matching the active tab — option keys
-    // share the TAB_DEFS key space. Non-assigners (asst_manager / tech) don't see
-    // the dropdown and auto-assign to themselves.
-    setNewTaskAssignTo(canAssign ? activeTaskTab : '')
+    // owner/manager/billing default to the active tab's option; own-only tiers
+    // (asst_manager/tech/runner) default to "" = "Me" (self), and can pick anyone.
+    setNewTaskAssignTo(canAssign ? (ownOnly ? '' : activeTaskTab) : '')
     setAddingTask(true)
   }
 
@@ -475,11 +490,11 @@ export default function DashboardPage() {
     if (!newTaskText.trim() || taskSubmitting) return
     setTaskSubmitting(true)
     const photo_url = newTaskPhoto ? await uploadPhoto(newTaskPhoto) : null
-    // owner/manager/billing assign via the dropdown (the selected option resolves
-    // to a member id — Asst Mgr → Quinn, Tech → Sierra); asst_manager/tech always
-    // assign to their own profile. assigned_by is always the creating user.
-    // assigned_role stays a vestigial NOT NULL column — tab membership is driven
-    // entirely by assigned_to.
+    // Everyone assigns via the dropdown now. A selected option resolves to a
+    // member id (Asst Mgr → Quinn, Tech → Sierra); own-only tiers default to
+    // "Me" ("" → resolves to null → falls back to the creator's own id below).
+    // assigned_by is always the creating user. assigned_role stays a vestigial
+    // NOT NULL column — visibility is driven by assigned_to / assigned_by.
     const assigned_to = canAssign
       ? (resolveAssignTo(newTaskAssignTo, allProfiles) || profile?.id || null)
       : (profile?.id || null)
@@ -983,29 +998,37 @@ export default function DashboardPage() {
               actionColor="#6B7280"
             />
           </div>
-          {/* Tab row — horizontally scrollable, scrollbar hidden */}
-          <div className="hide-scrollbar" style={{ display: 'flex', gap: isMobile ? 3 : 2, justifyContent: isMobile ? 'flex-start' : 'space-between', padding: isMobile ? '6px 8px' : '6px 6px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', overflowX: 'auto', whiteSpace: 'nowrap' }}>
-            {visibleTabs.map(tab => {
-              const isActive = activeTaskTab === tab.key
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTaskTab(tab.key)}
-                  style={{
-                    flexShrink: 0, padding: isMobile ? '0 12px' : '0 4px', fontSize: isMobile ? 11 : 9, fontFamily: 'Syne',
-                    fontWeight: isActive ? 700 : 600,
-                    color: isActive ? '#e8eaf2' : 'var(--text2)',
-                    background: isActive ? '#1a1d27' : 'transparent',
-                    border: 'none', cursor: 'pointer', borderRadius: 6, whiteSpace: 'nowrap',
-                    minHeight: isMobile ? 40 : undefined,
-                    textTransform: 'uppercase', letterSpacing: isMobile ? '0.06em' : '0.03em', transition: 'all 0.1s',
-                  }}
-                >
-                  {tab.label}
-                </button>
-              )
-            })}
-          </div>
+          {/* Tab row (owner/manager/billing) OR a single "My Tasks" label (own-only tiers) */}
+          {ownOnly ? (
+            <div style={{ display: 'flex', alignItems: 'center', padding: isMobile ? '10px 8px' : '8px 6px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
+              <span style={{ fontSize: isMobile ? 11 : 9, fontFamily: 'Syne', fontWeight: 700, color: '#e8eaf2', textTransform: 'uppercase', letterSpacing: isMobile ? '0.06em' : '0.03em' }}>
+                My Tasks
+              </span>
+            </div>
+          ) : (
+            <div className="hide-scrollbar" style={{ display: 'flex', gap: isMobile ? 3 : 2, justifyContent: isMobile ? 'flex-start' : 'space-between', padding: isMobile ? '6px 8px' : '6px 6px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+              {visibleTabs.map(tab => {
+                const isActive = activeTaskTab === tab.key
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTaskTab(tab.key)}
+                    style={{
+                      flexShrink: 0, padding: isMobile ? '0 12px' : '0 4px', fontSize: isMobile ? 11 : 9, fontFamily: 'Syne',
+                      fontWeight: isActive ? 700 : 600,
+                      color: isActive ? '#e8eaf2' : 'var(--text2)',
+                      background: isActive ? '#1a1d27' : 'transparent',
+                      border: 'none', cursor: 'pointer', borderRadius: 6, whiteSpace: 'nowrap',
+                      minHeight: isMobile ? 40 : undefined,
+                      textTransform: 'uppercase', letterSpacing: isMobile ? '0.06em' : '0.03em', transition: 'all 0.1s',
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                )
+              })}
+            </div>
+          )}
           {/* Task list */}
           <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 60 }}>
             {tasksLoading ? (
@@ -1901,6 +1924,7 @@ export default function DashboardPage() {
                       outline: 'none', boxSizing: 'border-box',
                     }}
                   >
+                    {ownOnly && <option value="">Me</option>}
                     {ASSIGN_OPTIONS.map(opt => (
                       <option key={opt.key} value={opt.key}>
                         {opt.label}

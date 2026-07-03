@@ -7,6 +7,7 @@ import TimeInput from '@/components/shared/TimeInput'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { useUserProfile } from '@/hooks/useUserProfile'
 import { SignedImage } from '@/components/shared/SignedImage'
 
 // Studio accent colors — mirror the Runner Hub WO header (STUDIO_META) so the
@@ -299,6 +300,10 @@ export function WorkOrderPopup({
   // Mobile gets a full-screen sheet; never applies when rendered inline (USF embed).
   const isMobileRaw = useIsMobile()
   const isMobile = isMobileRaw && !inline
+  const { profile } = useUserProfile()
+  // Tech is read-only on WOs everywhere (calendar, wo-hub, LocationStrip): hide
+  // all write controls. RLS also blocks tech writes, so this is a UX guard.
+  const readOnly = profile?.role === 'tech'
   const [wo, setWo] = useState<WO | null>(null)
   const [stRows, setStRows] = useState<StRow[]>([])
   const [equipRows, setEquipRows] = useState<EquipRow[]>([])
@@ -1318,7 +1323,7 @@ export function WorkOrderPopup({
         style={isMobile
           ? { display: 'flex', flexDirection: 'column', height: '100dvh', padding: 0, boxSizing: 'border-box' }
           : { display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '100%', padding: '20px 16px', boxSizing: 'border-box' }}
-        onClick={inline || isMobile ? undefined : e => { if (e.target === e.currentTarget) handleClose() }}
+        onClick={inline || isMobile ? undefined : e => { if (e.target === e.currentTarget) { readOnly ? onClose() : handleClose() } }}
       >
       <div
         style={isMobile
@@ -1366,6 +1371,8 @@ export function WorkOrderPopup({
                   </button>
                 </>
               )}
+              {!readOnly && (
+              <>
               <button
                 onClick={() => handleCancel()}
                 disabled={saving}
@@ -1380,6 +1387,16 @@ export function WorkOrderPopup({
               >
                 {saving ? 'Saving…' : 'Close & Save'}
               </button>
+              </>
+              )}
+              {readOnly && (
+                <button
+                  onClick={onClose}
+                  style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0' }}
+                >
+                  Close
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1654,7 +1671,7 @@ export function WorkOrderPopup({
                         </div>
                         {/* Delete row */}
                         <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto' }}>
-                          {confirmDeleteRowId === r.id ? (
+                          {!readOnly && (confirmDeleteRowId === r.id ? (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                               <span style={{ fontSize: 7, color: '#f97316', fontFamily: 'DM Mono', whiteSpace: 'nowrap' }}>Del?</span>
                               <div style={{ display: 'flex', gap: 3 }}>
@@ -1664,7 +1681,7 @@ export function WorkOrderPopup({
                             </div>
                           ) : (
                             <button type="button" onClick={() => setConfirmDeleteRowId(r.id)} style={{ fontSize: 13, fontFamily: 'DM Mono', color: '#4a4f60', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
-                          )}
+                          ))}
                         </div>
                       </div>}
                       {!isEngOnly && pendingLockedEdits[r.id] && (
@@ -1725,7 +1742,7 @@ export function WorkOrderPopup({
                             </div>
                             {/* Eng delete × */}
                             <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto' }}>
-                              <button type="button" onClick={() => setConfirmClearEngId(r.id)} style={{ fontSize: 13, fontFamily: 'DM Mono', color: '#4a4f60', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
+                              {!readOnly && <button type="button" onClick={() => setConfirmClearEngId(r.id)} style={{ fontSize: 13, fontFamily: 'DM Mono', color: '#4a4f60', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>}
                             </div>
                           </div>
                           {confirmClearEngId === r.id && (
@@ -1742,10 +1759,12 @@ export function WorkOrderPopup({
                 })}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: '#1a1e28', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                {!readOnly ? (
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
                   <button type="button" onClick={addStRow} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add Studio Time</button>
                   <button type="button" onClick={addEngRow} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#c8f04e88', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add Eng</button>
                 </div>
+                ) : <div />}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
                   <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0' }}>Studio: ${stTotal.toFixed(2)}</span>
                   {engTotal > 0 && (
@@ -1822,6 +1841,7 @@ export function WorkOrderPopup({
                               ))}
                             </div>
                           )}
+                          {!readOnly && (
                           <button
                             type="button"
                             disabled={noteUploading}
@@ -1830,6 +1850,7 @@ export function WorkOrderPopup({
                           >
                             {noteUploading ? 'Uploading…' : '+ Photo'}
                           </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1855,12 +1876,12 @@ export function WorkOrderPopup({
                   <div style={cellS}><input value={r.rate} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, rate: e.target.value } : x))} style={inp} /></div>
                   <div style={cellS}><input value={r.charge} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, charge: e.target.value } : x))} placeholder="$0.00" style={inp} /></div>
                   <div style={{ ...cellS, borderRight: 'none', padding: '6px 4px' }}>
-                    <button type="button" onClick={() => setRentRows(p => p.filter(x => x.id !== r.id))} style={{ background: 'none', border: 'none', color: '#4a4f64', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                    {!readOnly && <button type="button" onClick={() => setRentRows(p => p.filter(x => x.id !== r.id))} style={{ background: 'none', border: 'none', color: '#4a4f64', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>}
                   </div>
                 </div>
               ))}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: '#1a1e28', borderTop: '1px solid rgba(255,255,255,0.06)', minWidth: isMobile ? 540 : undefined }}>
-                <button type="button" onClick={() => setRentRows(p => [...p, { id: crypto.randomUUID(), qty: '', item: '', supplier: '', dates_used: '', rate: '', charge: '' }])} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button>
+                {!readOnly ? <button type="button" onClick={() => setRentRows(p => [...p, { id: crypto.randomUUID(), qty: '', item: '', supplier: '', dates_used: '', rate: '', charge: '' }])} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button> : <span />}
                 <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0', fontWeight: 700 }}>Total: ${rentTotal.toFixed(2)}</span>
               </div>
             </div>
@@ -1896,8 +1917,9 @@ export function WorkOrderPopup({
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <div style={metaLabel}>Signature</div>
-                      <button type="button" onClick={clearAdminSignature} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '2px 8px', color: '#8a8fa0', fontSize: 10, cursor: 'pointer', fontFamily: 'DM Mono' }}>Clear</button>
+                      {!readOnly && <button type="button" onClick={clearAdminSignature} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '2px 8px', color: '#8a8fa0', fontSize: 10, cursor: 'pointer', fontFamily: 'DM Mono' }}>Clear</button>}
                     </div>
+                    {!readOnly && (
                     <canvas
                       ref={adminCanvasRef}
                       width={700}
@@ -1911,6 +1933,7 @@ export function WorkOrderPopup({
                       onTouchEnd={endAdminDraw}
                       style={{ width: '100%', height: 100, background: '#0d0f14', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', display: 'block', touchAction: 'none', cursor: 'crosshair' }}
                     />
+                    )}
                     {wo.signature_data && <div style={{ fontSize: 9, color: '#4a4f64', fontFamily: 'DM Mono', marginTop: 4 }}>Signature captured ✓</div>}
                   </div>
                 </div>
@@ -1938,13 +1961,13 @@ export function WorkOrderPopup({
                           <div style={cellS}><input value={p.last_four} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) } : x))} placeholder="last 4" maxLength={4} style={inp} /></div>
                         )}
                         <div style={{ ...cellS, borderRight: 'none', padding: '6px 4px' }}>
-                          <button type="button" onClick={() => setPayRows(p2 => p2.filter(x => x.id !== p.id))} style={{ background: 'none', border: 'none', color: '#4a4f64', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                          {!readOnly && <button type="button" onClick={() => setPayRows(p2 => p2.filter(x => x.id !== p.id))} style={{ background: 'none', border: 'none', color: '#4a4f64', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>}
                         </div>
                       </div>
                     )
                   })}
                   <div style={{ padding: '7px 10px' }}>
-                    <button type="button" onClick={() => setPayRows(p => [...p, { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '' }])} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add payment</button>
+                    {!readOnly && <button type="button" onClick={() => setPayRows(p => [...p, { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '' }])} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8a8fa0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add payment</button>}
                   </div>
                 </div>
               </div>
@@ -1989,7 +2012,7 @@ export function WorkOrderPopup({
 
           {/* COMPLETE WO — mobile secondary action (the footer is Cancel/Save only
               on mobile; the footer Complete button is hidden there). */}
-          {isMobile && (
+          {isMobile && !readOnly && (
             <button
               onClick={handleComplete}
               disabled={completing}
@@ -2006,6 +2029,8 @@ export function WorkOrderPopup({
           <button onClick={() => printWithFilename()} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0', ...(isMobile ? { display: 'none' } : {}) }}>
             Export PDF
           </button>
+          {!readOnly && (
+          <>
           <button onClick={() => handleCancel()} disabled={saving} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0', ...(isMobile ? { flex: '1 1 0', minHeight: 48, fontSize: 13, borderRadius: 12, padding: '13px 0', background: '#1e2130', border: '1px solid #2a2e3d', color: '#e8eaf2', letterSpacing: '0.02em' } : {}) }}>
             Cancel
           </button>
@@ -2019,6 +2044,13 @@ export function WorkOrderPopup({
           <button onClick={handleClose} disabled={saving} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : '#c8f04e', border: 'none', color: '#0d0f14', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '2 1 0', minHeight: 48, fontSize: 13, fontWeight: 800, borderRadius: 12, padding: '13px 0', letterSpacing: '0.02em' } : {}) }}>
             {saving ? 'Saving…' : 'Close & Save'}
           </button>
+          </>
+          )}
+          {readOnly && (
+            <button onClick={onClose} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#8a8fa0', ...(isMobile ? { flex: '1 1 0', minHeight: 48, fontSize: 13, borderRadius: 12, padding: '13px 0', background: '#1e2130', border: '1px solid #2a2e3d', color: '#e8eaf2', letterSpacing: '0.02em' } : {}) }}>
+              Close
+            </button>
+          )}
         </div>
 
       </div>

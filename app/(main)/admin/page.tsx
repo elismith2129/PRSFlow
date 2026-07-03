@@ -5,6 +5,7 @@ import type { Engineer, EngineerRole, Booking } from '@/lib/supabase'
 import { DailyOpsLogSection } from '@/components/admin/DailyOpsLogSection'
 import { FlagsLogSection } from '@/components/admin/FlagsLogSection'
 import { MicInventorySection } from '@/components/admin/MicInventorySection'
+import { useUserProfile } from '@/hooks/useUserProfile'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 
@@ -188,6 +189,12 @@ type SrsEntry = {
 
 export default function AdminPage() {
   const [section, setSection] = useState<AdminSection>('engineers')
+  const { profile } = useUserProfile()
+  const isTech = profile?.role === 'tech'
+  // Tech sees only Ops Log / Flags / Mic Inventory (no Engineers / SRS Log).
+  const visibleNav = isTech
+    ? ADMIN_NAV.filter(n => n.key === 'daily_ops_log' || n.key === 'flags_log' || n.key === 'mic_inventory')
+    : ADMIN_NAV
   // Open a specific sidebar tab when deep-linked via ?section= (e.g. the dashboard
   // Flags panel's "View all flags →" → ?section=flags_log).
   useEffect(() => {
@@ -196,6 +203,12 @@ export default function AdminPage() {
       if (s && ADMIN_NAV.some(n => n.key === s)) setSection(s)
     } catch {}
   }, [])
+  // Tech can't see Engineers/SRS — bounce them to a visible tab.
+  useEffect(() => {
+    if (isTech && (section === 'engineers' || section === 'srs_log')) {
+      setSection('flags_log')
+    }
+  }, [isTech, section])
   const [engineers, setEngineers] = useState<Engineer[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -323,7 +336,7 @@ export default function AdminPage() {
         <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#4a4f64', padding: '0 20px 12px' }}>
           Admin
         </div>
-        {ADMIN_NAV.map(({ key, label }) => {
+        {visibleNav.map(({ key, label }) => {
           const active = section === key
           return (
             <button

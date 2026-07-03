@@ -10,6 +10,9 @@ import {
   nameForId,
   fetchTasks,
   fetchCompletedTasks,
+  fetchMyTasks,
+  fetchMyCompletedTasks,
+  isOwnOnlyRole,
   fmtTaskTime,
   uploadTaskPhoto,
 } from '@/lib/tasks'
@@ -23,6 +26,7 @@ export default function TasksPage() {
   const router = useRouter()
   const { profile, loading: profileLoading } = useUserProfile()
   const canAssign = !!profile && (profile.role === 'owner' || profile.role === 'manager' || profile.role === 'billing')
+  const ownOnly = isOwnOnlyRole(profile?.role)
   const visibleTabs = visibleTabsForRole(profile?.role)
 
   const [allProfiles, setAllProfiles] = useState<UserProfile[]>([])
@@ -68,6 +72,8 @@ export default function TasksPage() {
   useEffect(() => {
     if (profileLoading || defaultTabSetRef.current || allProfiles.length === 0) return
     defaultTabSetRef.current = true
+    // Own-only tiers use a single "My Tasks" view — no tab to select.
+    if (ownOnly) { setTabReady(true); return }
     const tabs = visibleTabsForRole(profile?.role)
     let initial = tabs.length > 0 ? tabs[0].key : 'eli'
     const name = profile?.display_name?.toLowerCase()
@@ -85,16 +91,28 @@ export default function TasksPage() {
     if (profileLoading || !tabReady) return
     async function load() {
       setLoading(true)
-      const ids = idsForTab(activeTaskTab, allProfiles)
-      const [active, completed] = await Promise.all([fetchTasks(ids), fetchCompletedTasks(ids)])
-      setActiveTasks(active)
-      setCompletedTasks(completed)
+      if (ownOnly && profile?.id) {
+        const [active, completed] = await Promise.all([fetchMyTasks(profile.id), fetchMyCompletedTasks(profile.id)])
+        setActiveTasks(active)
+        setCompletedTasks(completed)
+      } else {
+        const ids = idsForTab(activeTaskTab, allProfiles)
+        const [active, completed] = await Promise.all([fetchTasks(ids), fetchCompletedTasks(ids)])
+        setActiveTasks(active)
+        setCompletedTasks(completed)
+      }
       setLoading(false)
     }
     load()
-  }, [activeTaskTab, allProfiles, profileLoading, tabReady])
+  }, [activeTaskTab, allProfiles, profileLoading, tabReady, ownOnly, profile?.id])
 
   async function reload() {
+    if (ownOnly && profile?.id) {
+      const [active, completed] = await Promise.all([fetchMyTasks(profile.id), fetchMyCompletedTasks(profile.id)])
+      setActiveTasks(active)
+      setCompletedTasks(completed)
+      return
+    }
     const ids = idsForTab(activeTaskTab, allProfiles)
     const [active, completed] = await Promise.all([fetchTasks(ids), fetchCompletedTasks(ids)])
     setActiveTasks(active)
@@ -267,28 +285,36 @@ export default function TasksPage() {
         </button>
       </div>
 
-      {/* Tab row — horizontally scrollable, scrollbar hidden */}
-      <div className="hide-scrollbar" style={{ display: 'flex', gap: 4, padding: '6px 0', overflowX: 'auto', whiteSpace: 'nowrap', marginBottom: 14 }}>
-        {visibleTabs.map(tab => {
-          const isActive = activeTaskTab === tab.key
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTaskTab(tab.key)}
-              style={{
-                flexShrink: 0, padding: '4px 12px', fontSize: 11, fontFamily: 'Syne',
-                fontWeight: isActive ? 600 : 400,
-                color: isActive ? '#0d0f14' : 'var(--text3)',
-                background: isActive ? '#c8f04e' : 'transparent',
-                border: 'none', cursor: 'pointer', borderRadius: 6, whiteSpace: 'nowrap',
-                textTransform: 'uppercase', letterSpacing: '0.06em', transition: 'all 0.1s',
-              }}
-            >
-              {tab.label}
-            </button>
-          )
-        })}
-      </div>
+      {/* Tab row (owner/manager/billing) OR a single "My Tasks" label (own-only tiers) */}
+      {ownOnly ? (
+        <div style={{ padding: '6px 0', marginBottom: 14 }}>
+          <span style={{ fontSize: 11, fontFamily: 'Syne', fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            My Tasks
+          </span>
+        </div>
+      ) : (
+        <div className="hide-scrollbar" style={{ display: 'flex', gap: 4, padding: '6px 0', overflowX: 'auto', whiteSpace: 'nowrap', marginBottom: 14 }}>
+          {visibleTabs.map(tab => {
+            const isActive = activeTaskTab === tab.key
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTaskTab(tab.key)}
+                style={{
+                  flexShrink: 0, padding: '4px 12px', fontSize: 11, fontFamily: 'Syne',
+                  fontWeight: isActive ? 600 : 400,
+                  color: isActive ? '#0d0f14' : 'var(--text3)',
+                  background: isActive ? '#c8f04e' : 'transparent',
+                  border: 'none', cursor: 'pointer', borderRadius: 6, whiteSpace: 'nowrap',
+                  textTransform: 'uppercase', letterSpacing: '0.06em', transition: 'all 0.1s',
+                }}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {/* Search */}
       <input
