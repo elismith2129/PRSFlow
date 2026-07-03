@@ -113,10 +113,10 @@ body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text1);min
   </div>
   <div class="section-label">Lead statuses — tap to expand</div>
   <div class="status-guide">
+    <div class="status-pill" style="background:#7BA7BC22;color:#7BA7BC;border-color:#7BA7BC44" onclick="showStatus('uncontacted',this)">◎ UNCONTACTED</div>
     <div class="status-pill" style="background:#ff4d4d22;color:#ff4d4d;border-color:#ff4d4d44" onclick="showStatus('hot',this)">🔥 HOT</div>
     <div class="status-pill" style="background:#ff980022;color:#ff9800;border-color:#ff980044" onclick="showStatus('warm',this)">☀ WARM</div>
     <div class="status-pill" style="background:#5b8def22;color:#5b8def;border-color:#5b8def44" onclick="showStatus('cold',this)">❄ COLD</div>
-    <div class="status-pill" style="background:#55555522;color:#888;border-color:#55555544" onclick="showStatus('uncontacted',this)">◎ UNCONTACTED</div>
     <div class="status-pill" style="background:#c8f04e22;color:#c8f04e;border-color:#c8f04e44" onclick="showStatus('booked',this)">✓ BOOKED</div>
   </div>
   <div id="status-detail-box"></div>
@@ -149,7 +149,7 @@ body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text1);min
 
   <div class="section-label">Working the Needs Action view</div>
   <div class="na-explainer">
-    <div class="na-intro">Needs Action is your daily call list. Every morning at 8am, every Hot and Warm lead reappears here. Work through it top to bottom — Hot first, always. Each lead has a <b style="color:var(--text1)">Contact</b> button. Here's exactly what happens when you click it.</div>
+    <div class="na-intro">Needs Action is your daily call list. Every morning at 8am, every Hot and Warm lead reappears here. Work through it top to bottom — Uncontacted first, always: contact brand-new inquiries the same day, and escalate to upper management if you can't handle one. Then work your Hot leads. Each lead has a <b style="color:var(--text1)">Contact</b> button. Here's exactly what happens when you click it.</div>
 
     <div class="na-flow">
       <div class="na-step">
@@ -163,21 +163,13 @@ body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text1);min
       <div class="na-step">
         <div class="na-step-n" style="color:var(--accent)">2</div>
         <div class="na-step-content">
-          <div class="na-step-title">Enter your initials</div>
-          <div class="na-step-body">Type your initials (2–3 letters). This logs who made the contact. Every touch is attributed — no anonymous entries.</div>
-        </div>
-      </div>
-      <div class="na-connector"></div>
-      <div class="na-step">
-        <div class="na-step-n" style="color:var(--accent)">3</div>
-        <div class="na-step-content">
           <div class="na-step-title">Select contact method</div>
           <div class="na-step-body">Choose how you reached them: <b style="color:var(--text1)">Call · Text · Email</b>. This gets logged in the notes as <span style="color:var(--accent);font-size:11px">[5/21 2:30pm] ES - Call</span></div>
         </div>
       </div>
       <div class="na-connector"></div>
       <div class="na-step">
-        <div class="na-step-n" style="color:var(--accent)">4</div>
+        <div class="na-step-n" style="color:var(--accent)">3</div>
         <div class="na-step-content">
           <div class="na-step-title">Update temperature (optional)</div>
           <div class="na-step-body">If the lead's status changed based on the conversation, update it here: <b style="color:var(--hot)">Hot</b> · <b style="color:var(--warm)">Warm</b> · <b style="color:var(--text3)">Cold/Dead</b>. Changing status resets the demotion timer. Leave it if nothing changed.</div>
@@ -185,7 +177,7 @@ body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text1);min
       </div>
       <div class="na-connector"></div>
       <div class="na-step">
-        <div class="na-step-n" style="color:var(--accent)">5</div>
+        <div class="na-step-n" style="color:var(--accent)">4</div>
         <div class="na-step-content">
           <div class="na-step-title">Add notes (optional)</div>
           <div class="na-step-body">Any context worth capturing — what they said, next steps, anything relevant. Keep it brief and specific. This is what the next person reads.</div>
@@ -193,7 +185,7 @@ body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text1);min
       </div>
       <div class="na-connector"></div>
       <div class="na-step">
-        <div class="na-step-n" style="color:var(--accent)">6</div>
+        <div class="na-step-n" style="color:var(--accent)">5</div>
         <div class="na-step-content">
           <div class="na-step-title">Click Log Contact</div>
           <div class="na-step-body">Lead disappears from Needs Action. It'll reappear tomorrow at 8am if it's still Hot or Warm. The demotion timer keeps running in the background.</div>
@@ -202,9 +194,13 @@ body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text1);min
     </div>
 
     <div class="na-rules">
+      <div class="na-rule" style="border-color:#7BA7BC44;background:#7BA7BC08">
+        <div class="na-rule-label" style="color:#7BA7BC">UNCONTACTED leads</div>
+        <div class="na-rule-body">Work these first, every time. A fresh inquiry sitting uncontacted is the most expensive thing in the CRM. Same-day contact, no exceptions. Escalate to management immediately if you can't handle it.</div>
+      </div>
       <div class="na-rule" style="border-color:#ff4d4d44;background:#ff4d4d08">
         <div class="na-rule-label" style="color:var(--hot)">HOT leads</div>
-        <div class="na-rule-body">Work these first, every time. A HOT lead sitting untouched in Needs Action is the most expensive thing in the CRM. Same-day contact, no exceptions.</div>
+        <div class="na-rule-body">Work these right after uncontacted. A HOT lead sitting untouched in Needs Action is money walking out the door. Same-day contact, no exceptions.</div>
       </div>
       <div class="na-rule" style="border-color:#ff980044;background:#ff980008">
         <div class="na-rule-label" style="color:var(--warm)">WARM leads</div>
@@ -266,14 +262,14 @@ const STATUS_DATA={
   hot:{color:'#ff4d4d',label:'🔥 HOT',title:'Serious lead — ready to move.',body:'Has a date in mind, knows what they want, has a budget, and understands what Paramount offers. Includes regulars who confirm quickly. These leads are close to revenue.',rule:'Contact same day, every time. Call AND text if no answer. Log every attempt. A HOT lead untouched for 24 hours is money walking out the door.',bg:'#ff4d4d11'},
   warm:{color:'#ff9800',label:'☀ WARM',title:'Interested but not ready yet.',body:'Genuinely interested but no specific date, hasn\'t locked in what they want, no set budget. They need nurturing — consistent presence without pressure.',rule:'Touch every 2–3 days. Help them get concrete: a date, a budget, a plan. Share availability and what\'s been recorded here.',bg:'#ff980011'},
   cold:{color:'#5b8def',label:'❄ COLD',title:'Low engagement — keep them warm.',body:'No recent response or went quiet. Don\'t drop them — cold leads re-engage. Light, periodic outreach keeps Paramount top of mind.',rule:'Once a week max. If no response after 3–4 weeks, reassess.',bg:'#5b8def11'},
-  uncontacted:{color:'#888',label:'◎ UNCONTACTED',title:'New — no outreach yet.',body:'Just came in. They\'re probably reaching out to other studios right now. Speed of response is everything.',rule:'Contact the same business day. Move to HOT, WARM, or COLD after first contact.',bg:'#44444411'},
+  uncontacted:{color:'#7BA7BC',label:'◎ UNCONTACTED',title:'New — no outreach yet.',body:'Just came in. They\'re probably reaching out to other studios right now. Speed of response is everything.',rule:'Contact the same business day. Move to HOT, WARM, or COLD after first contact.',bg:'#44444411'},
   booked:{color:'#c8f04e',label:'✓ BOOKED',title:'Confirmed — send registration link.',body:'A lead moves to BOOKED after approval or payment from COD. Generate their registration link and get them into the Clients page. Keep the CRM record — don\'t delete it.',rule:'Send the registration link same day. Follow up if they haven\'t completed it within 48 hours.',bg:'#c8f04e11'}
 };
 const CRM_STEPS=[
   {title:'Adding a New Lead',tag:'Most important step',desc:'The moment an inquiry comes in — phone, email, walk-in, DM, referral — it goes in the CRM immediately. Not later. Right now. Full name always. Phone AND email every single time.',tip:"Open the new lead form while you are on the phone, mid-text, or reading the email. Enter it directly — no paper, no notes app, no waiting until later. That middle step is exactly where leads disappear. One less step, zero missed inquiries.",dos:['Enter the lead the second it comes in','Full name — no first names only','Phone AND email, every time','Note what they want, timeline, and any budget info'],donts:['Wait until later — leads go cold fast','Leave fields half-filled','Enter just a first name and a number']},
   {title:'Logging Every Touch',tag:'No log = it didn\'t happen',desc:'Every interaction gets logged — calls, texts, emails, in-person. Even "left voicemail, no answer." This is what keeps the team aligned and prevents leads from slipping.',tip:'Log right after the interaction. Be specific: what was said, what\'s next.',dos:['Log every attempt, even no-response','Include dates, what was discussed, next steps'],donts:['Skip logging because it felt minor','Write "called them" with nothing else']},
   {title:'Keeping Statuses Current',tag:'Needs Action view depends on this',desc:'The Needs Action view shows exactly who needs attention — but only if statuses are accurate. Update the moment something changes.',tip:'Just off a call and they\'re ready to book? Change the status before you do anything else.',dos:['Update status immediately after any shift in intent','Review leads daily — does this status reflect reality?'],donts:['Leave a booked lead showing as HOT or WARM','Keep dead leads as COLD indefinitely']},
-  {title:'Working the Needs Action View',tag:'Start every shift here',desc:'The Needs Action view shows exactly who needs attention right now. This is where every shift starts. HOT first, always.',tip:'Multiple HOT leads untouched? That\'s the only thing that matters until they\'re handled.',dos:['Open Needs Action at the start of every shift','Clear HOT leads before anything else','Click Contact and log it after every interaction'],donts:['Jump to new leads and ignore existing ones','Let HOT leads pile up']},
+  {title:'Working the Needs Action View',tag:'Start every shift here',desc:'The Needs Action view shows exactly who needs attention right now. This is where every shift starts. Uncontacted first, always — escalate to upper management if you can\'t handle one, then work your Hot leads.',tip:'A fresh inquiry sitting uncontacted? That\'s the most expensive thing in the CRM — contact it same-day or escalate to management.',dos:['Open Needs Action at the start of every shift','Contact Uncontacted leads same-day, before anything else — escalate to management if you can\'t','Then clear your Hot leads','Click Contact and log it after every interaction'],donts:['Let an uncontacted inquiry sit past same-day','Let HOT leads pile up']},
   {title:'Booking a Lead',tag:'What the whole CRM exists for',desc:'Lead approves or pays COD — they move to BOOKED. Click Book Client → New Client, generate their registration link, send it same day.',tip:'Don\'t let the link sit. Send immediately. Follow up in 30 minutes if they haven\'t registered.',dos:['Send the registration link same day','Let the client fill out their own profile'],donts:['Delete the CRM record after booking','Mark BOOKED before approval or payment is confirmed']}
 ];
 const CLIENT_STEPS=[
