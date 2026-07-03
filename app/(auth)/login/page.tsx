@@ -5,10 +5,58 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
 
+type Mode = 'pin' | 'email'
+type PinMsg = { text: string; color: string } | null
+
+const LOCKOUT_KEY = 'pin_lockout'
+const MAX_FAILS = 5
+const LOCKOUT_MS = 30_000
+
+const COLOR_ERROR = '#ef4444'
+const COLOR_SUCCESS = '#c8f04e'
+const COLOR_LOCK = '#F97316'
+
+type LockoutStore = { attempts: number; lockedUntil: number | null }
+
+function readLockout(): LockoutStore {
+  if (typeof window === 'undefined') return { attempts: 0, lockedUntil: null }
+  try {
+    const raw = localStorage.getItem(LOCKOUT_KEY)
+    if (!raw) return { attempts: 0, lockedUntil: null }
+    const parsed = JSON.parse(raw)
+    return { attempts: Number(parsed.attempts) || 0, lockedUntil: parsed.lockedUntil ?? null }
+  } catch {
+    return { attempts: 0, lockedUntil: null }
+  }
+}
+
+function writeLockout(store: LockoutStore) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(LOCKOUT_KEY, JSON.stringify(store))
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter()
+
+  // ── Mode: PIN numpad is the primary view; email is the fallback. ──
+  const [mode, setMode] = useState<Mode>('pin')
+
+  // ── PIN state ──
+  const [pin, setPin] = useState('')
+  const [pinMsg, setPinMsg] = useState<PinMsg>(null)
+  const [shake, setShake] = useState(false)
+  const [submittingPin, setSubmittingPin] = useState(false)
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null)
+  const [lockRemaining, setLockRemaining] = useState(0)
+
+  // ── Email/password state (existing flow, unchanged logic) ──
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
@@ -21,6 +69,141 @@ export default function LoginPage() {
     })
   }, [router])
 
+  // Hydrate any existing lockout from a previous session.
+  useEffect(() => {
+    const store = readLockout()
+    if (store.lockedUntil && store.lockedUntil > Date.now()) {
+      setLockedUntil(store.lockedUntil)
+    }
+  }, [])
+
+  // Lockout countdown — ticks the remaining seconds and clears on expiry.
+  useEffect(() => {
+    if (!lockedUntil) return
+    const tick = () => {
+      const rem = Math.ceil((lockedUntil - Date.now()) / 1000)
+      if (rem <= 0) {
+        setLockedUntil(null)
+        setLockRemaining(0)
+        setPinMsg(null)
+        writeLockout({ attempts: 0, lockedUntil: null })
+      } else {
+        setLockRemaining(rem)
+      }
+    }
+    tick()
+    const id = setInterval(tick, 500)
+    return () => clearInterval(id)
+  }, [lockedUntil])
+
+  const isLocked = lockedUntil !== null && lockedUntil > Date.now()
+
+  function triggerShake() {
+    setShake(true)
+    setTimeout(() => setShake(false), 400)
+  }
+
+  // Record a client-side failed attempt; lock the numpad after MAX_FAILS.
+  function registerFail() {
+    const store = readLockout()
+    const attempts = (store.attempts || 0) + 1
+    if (attempts >= MAX_FAILS) {
+      const until = Date.now() + LOCKOUT_MS
+      writeLockout({ attempts: 0, lockedUntil: until })
+      setLockedUntil(until)
+    } else {
+      writeLockout({ attempts, lockedUntil: null })
+      setPinMsg({ text: 'incorrect pin', color: COLOR_ERROR })
+    }
+  }
+
+  // Apply a server-enforced lockout (429) using its retry_after.
+  function applyServerLock(retryAfter?: number) {
+    const until = Date.now() + (retryAfter && retryAfter > 0 ? retryAfter : 30) * 1000
+    writeLockout({ attempts: 0, lockedUntil: until })
+    setLockedUntil(until)
+  }
+
+  async function submitPin(fullPin: string) {
+    setSubmittingPin(true)
+    try {
+      const res = await fetch('/api/auth/pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: fullPin }),
+      })
+      const data = await res.json().catch(() => ({} as Record<string, unknown>))
+
+      // ── Success: mint the session client-side from the returned token. ──
+      if (res.ok && data.token_hash) {
+        const { error: otpError } = await supabase.auth.verifyOtp({
+          type: 'magiclink',
+          token_hash: data.token_hash as string,
+        })
+        if (otpError) {
+          triggerShake()
+          setPin('')
+          setPinMsg({ text: 'could not sign in — try again', color: COLOR_ERROR })
+          setSubmittingPin(false)
+          return
+        }
+        try { localStorage.removeItem(LOCKOUT_KEY) } catch { /* ignore */ }
+        setPinMsg({ text: '✓ welcome', color: COLOR_SUCCESS })
+        sessionStorage.setItem('showWelcome', 'true')
+        setFadingOut(true)
+        setTimeout(() => router.replace('/'), 600)
+        return
+      }
+
+      // ── Server lockout ──
+      if (res.status === 429 || data.error === 'locked') {
+        setPin('')
+        applyServerLock(data.retry_after as number | undefined)
+        setSubmittingPin(false)
+        return
+      }
+
+      // ── Valid PIN but no auth account yet (e.g. the runner) ──
+      if (data.error === 'no_account') {
+        triggerShake()
+        setPin('')
+        setPinMsg({ text: "this account isn't set up yet", color: COLOR_ERROR })
+        setSubmittingPin(false)
+        return
+      }
+
+      // ── Incorrect PIN (401) or any other failure ──
+      triggerShake()
+      setPin('')
+      if (res.status === 401 || data.error === 'incorrect') {
+        registerFail()
+      } else {
+        setPinMsg({ text: 'something went wrong', color: COLOR_ERROR })
+      }
+      setSubmittingPin(false)
+    } catch {
+      triggerShake()
+      setPin('')
+      setPinMsg({ text: 'network error — try again', color: COLOR_ERROR })
+      setSubmittingPin(false)
+    }
+  }
+
+  function pressDigit(d: string) {
+    if (isLocked || submittingPin || pin.length >= 4) return
+    if (pinMsg && pinMsg.color !== COLOR_SUCCESS) setPinMsg(null)
+    const next = pin + d
+    setPin(next)
+    if (next.length === 4) submitPin(next)
+  }
+
+  function pressBack() {
+    if (isLocked || submittingPin) return
+    if (pinMsg && pinMsg.color !== COLOR_SUCCESS) setPinMsg(null)
+    setPin(prev => prev.slice(0, -1))
+  }
+
+  // ── Email/password sign-in (unchanged from the original login logic) ──
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault()
     setError('')
@@ -58,6 +241,13 @@ export default function LoginPage() {
     setSuccess('Password reset email sent')
   }
 
+  // Lockout message overrides the transient pinMsg while a lockout is active.
+  const displayMsg: PinMsg = isLocked
+    ? { text: `too many attempts — try again in ${lockRemaining}s`, color: COLOR_LOCK }
+    : pinMsg
+
+  const numpadKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫']
+
   return (
     <div
       style={{
@@ -72,7 +262,7 @@ export default function LoginPage() {
         transition: 'opacity 0.4s ease',
       }}
     >
-      <style dangerouslySetInnerHTML={{ __html: '@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }' }} />
+      <style dangerouslySetInnerHTML={{ __html: '@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } @keyframes pinShake { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-8px); } 40%,80% { transform: translateX(8px); } }' }} />
       <div
         style={{
           display: 'flex',
@@ -82,6 +272,7 @@ export default function LoginPage() {
           maxWidth: 380,
         }}
       >
+        {/* Header — byte-for-byte the locked PRSFlo wordmark (source: Nav.tsx). */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, marginTop: 26 }}>
           <div style={fadeUpStyle(0.1, 0.4)}>
             <PRSFloIcon size={72} />
@@ -115,101 +306,264 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <form
-          onSubmit={handleSignIn}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-            width: '100%',
-            marginTop: 48,
-          }}
-        >
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            autoComplete="email"
-            className="auth-input"
-            style={{ ...authInputStyle, ...fadeUpStyle(0.52, 0.35) }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = '#c8f04e')}
-            onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            autoComplete="current-password"
-            className="auth-input"
-            style={{ ...authInputStyle, ...fadeUpStyle(0.64, 0.35) }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = '#c8f04e')}
-            onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
-          />
+        {mode === 'pin' ? (
+          // ── PIN NUMPAD (primary) ──────────────────────────────────────────
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', marginTop: 40 }}>
+            {/* Dot progress indicators */}
+            <div
+              style={{
+                display: 'flex',
+                gap: 16,
+                marginBottom: 18,
+                animation: shake ? 'pinShake 0.4s ease' : undefined,
+              }}
+            >
+              {[0, 1, 2, 3].map(i => (
+                <div
+                  key={i}
+                  style={{
+                    width: 14,
+                    height: 14,
+                    borderRadius: '50%',
+                    background: i < pin.length ? COLOR_SUCCESS : 'transparent',
+                    border: `2px solid ${i < pin.length ? COLOR_SUCCESS : '#2a2e3d'}`,
+                    transition: 'background 0.12s ease, border-color 0.12s ease',
+                  }}
+                />
+              ))}
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{ ...authButtonStyle, ...fadeUpStyle(0.76, 0.35) }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-          >
-            {loading ? 'Signing In…' : 'Sign In'}
-          </button>
+            {/* Message line (fixed height so the numpad doesn't jump) */}
+            <div
+              style={{
+                minHeight: 18,
+                marginBottom: 18,
+                fontFamily: "'DM Mono', monospace",
+                fontSize: 12,
+                textAlign: 'center',
+                color: displayMsg?.color ?? 'transparent',
+              }}
+            >
+              {displayMsg?.text ?? ' '}
+            </div>
 
-          <div
-            onClick={handleForgotPassword}
+            {/* 3x4 numpad */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 12,
+                width: '100%',
+                maxWidth: 300,
+                opacity: isLocked ? 0.4 : 1,
+                pointerEvents: isLocked || submittingPin ? 'none' : 'auto',
+                transition: 'opacity 0.2s ease',
+              }}
+            >
+              {numpadKeys.map((key, i) => {
+                if (key === '') return <div key={`empty-${i}`} />
+                const isBack = key === '⌫'
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => (isBack ? pressBack() : pressDigit(key))}
+                    style={numKeyStyle}
+                    onMouseDown={(e) => (e.currentTarget.style.background = '#20242f')}
+                    onMouseUp={(e) => (e.currentTarget.style.background = '#161920')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = '#161920')}
+                  >
+                    {key}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Toggle to email login */}
+            <div
+              onClick={() => { setMode('email'); setPin(''); setPinMsg(null) }}
+              style={{
+                marginTop: 28,
+                fontFamily: "'DM Mono', monospace",
+                fontSize: 11,
+                color: '#6B7280',
+                cursor: 'pointer',
+                textAlign: 'center',
+              }}
+            >
+              sign in with email instead
+            </div>
+          </div>
+        ) : (
+          // ── EMAIL / PASSWORD (fallback) ───────────────────────────────────
+          <form
+            onSubmit={handleSignIn}
             style={{
-              fontFamily: "'DM Mono', monospace",
-              fontSize: 11,
-              color: '#6B7280',
-              cursor: 'pointer',
-              textAlign: 'center',
-              textDecoration: 'none',
-              marginTop: 2,
-              ...fadeUpStyle(0.88, 0.35),
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+              width: '100%',
+              marginTop: 40,
             }}
           >
-            Forgot password?
-          </div>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
+              autoComplete="email"
+              className="auth-input"
+              style={authInputStyle}
+              onFocus={(e) => (e.currentTarget.style.borderColor = '#c8f04e')}
+              onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
+            />
+            <div style={{ position: 'relative', width: '100%' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                autoComplete="current-password"
+                className="auth-input"
+                style={{ ...authInputStyle, paddingRight: 44 }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = '#c8f04e')}
+                onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(s => !s)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                style={{
+                  position: 'absolute',
+                  right: 8,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 6,
+                  cursor: 'pointer',
+                  color: '#6B7280',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            </div>
 
-          {error && (
+            <button
+              type="submit"
+              disabled={loading}
+              style={authButtonStyle}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+            >
+              {loading ? 'Signing In…' : 'Sign In'}
+            </button>
+
             <div
+              onClick={handleForgotPassword}
               style={{
                 fontFamily: "'DM Mono', monospace",
                 fontSize: 11,
-                color: '#ef4444',
+                color: '#6B7280',
+                cursor: 'pointer',
                 textAlign: 'center',
+                textDecoration: 'none',
+                marginTop: 2,
               }}
             >
-              {error}
+              Forgot password?
             </div>
-          )}
 
-          {success && (
+            {error && (
+              <div
+                style={{
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: 11,
+                  color: '#ef4444',
+                  textAlign: 'center',
+                }}
+              >
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div
+                style={{
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: 11,
+                  color: '#c8f04e',
+                  textAlign: 'center',
+                }}
+              >
+                {success}
+              </div>
+            )}
+
             <div
+              onClick={() => { setMode('pin'); setError(''); setSuccess('') }}
               style={{
                 fontFamily: "'DM Mono', monospace",
                 fontSize: 11,
-                color: '#c8f04e',
+                color: '#6B7280',
+                cursor: 'pointer',
                 textAlign: 'center',
+                marginTop: 6,
               }}
             >
-              {success}
+              use PIN instead
             </div>
-          )}
-        </form>
+          </form>
+        )}
       </div>
     </div>
   )
 }
 
-// Staggered fade-up entrance for login elements. Each starts at opacity 0 and
-// animates in via the `fadeUp` keyframe injected in the page; `forwards` keeps
-// the end state after the animation completes.
+// Inline eye / eye-off icons (Tabler isn't loaded in this project) — visually
+// equivalent to ti-eye / ti-eye-off.
+function EyeIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
+function EyeOffIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+      <path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+      <line x1="2" y1="2" x2="22" y2="22" />
+    </svg>
+  )
+}
+
+// Staggered fade-up entrance for the header elements.
 function fadeUpStyle(delay: number, duration: number): React.CSSProperties {
   return { opacity: 0, animation: `fadeUp ${duration}s ease ${delay}s forwards` }
+}
+
+const numKeyStyle: React.CSSProperties = {
+  height: 68,
+  background: '#161920',
+  border: '1px solid #2a2e3d',
+  borderRadius: 12,
+  color: '#e8eaf0',
+  fontFamily: "'DM Mono', monospace",
+  fontSize: 24,
+  fontWeight: 500,
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  userSelect: 'none',
+  transition: 'background 0.1s ease',
 }
 
 const authInputStyle: React.CSSProperties = {
