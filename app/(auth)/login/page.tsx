@@ -205,6 +205,25 @@ export default function LoginPage() {
     setPin(prev => prev.slice(0, -1))
   }
 
+  // Physical-keyboard input for the PIN numpad (desktop) — purely additive; the
+  // on-screen buttons still work. Active only in PIN mode so the email/password
+  // fields aren't intercepted. Reuses pressDigit/pressBack so every guard
+  // (lockout, submitting, 4-digit cap, error-clear) applies identically.
+  useEffect(() => {
+    if (mode !== 'pin') return
+    function onKeyDown(e: KeyboardEvent) {
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault()
+        pressDigit(e.key)
+      } else if (e.key === 'Backspace') {
+        e.preventDefault()
+        pressBack()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [mode, pin, isLocked, submittingPin, pinMsg])
+
   // ── Email/password sign-in (unchanged from the original login logic) ──
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault()
