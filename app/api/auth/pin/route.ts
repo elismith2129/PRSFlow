@@ -78,24 +78,33 @@ export async function POST(req: NextRequest) {
   // Correct PIN — clear this IP's failure counter.
   await supabaseAdmin.from('pin_login_attempts').delete().eq('ip', ip)
 
-  // Valid PIN but the profile has no auth account yet (e.g. the runner) —
-  // fail cleanly instead of crashing generateLink.
-  if (!match.auth_user_id) {
+  // Valid PIN but no usable auth credentials yet (e.g. the runner, or a profile
+  // whose password hasn't been provisioned by scripts/set-staff-passwords.mjs) —
+  // fail cleanly instead of attempting a sign-in.
+  if (!match.auth_user_id || !match.supabase_password) {
     return NextResponse.json({ error: 'no_account' }, { status: 403 })
   }
 
-  // Mint a one-time magic-link token; the browser calls verifyOtp() with it to
-  // establish the session client-side.
-  const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-    type: 'magiclink',
+  // ── Single-step session mint: sign in with the server-stored password.
+  //    Uses a DEDICATED anon-key client (NOT supabaseAdmin) — signInWithPassword
+  //    makes its client adopt the user's session, which would poison the shared
+  //    service-role client's later RLS-bypassing queries. The browser adopts the
+  //    returned session via setSession() with no further OTP exchange. ──
+  const supabaseAuth = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  )
+  const { data: signInData, error: signInError } = await supabaseAuth.auth.signInWithPassword({
     email: match.email,
+    password: match.supabase_password,
   })
-  if (linkError || !linkData?.properties?.hashed_token) {
+  if (signInError || !signInData?.session) {
     return NextResponse.json({ error: 'server_error' }, { status: 500 })
   }
 
   return NextResponse.json({
-    token_hash: linkData.properties.hashed_token,
-    email: match.email,
+    access_token: signInData.session.access_token,
+    refresh_token: signInData.session.refresh_token,
   })
 }

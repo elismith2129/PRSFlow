@@ -135,13 +135,14 @@ export default function LoginPage() {
       })
       const data = await res.json().catch(() => ({} as Record<string, unknown>))
 
-      // ── Success: mint the session client-side from the returned token. ──
-      if (res.ok && data.token_hash) {
-        const { error: otpError } = await supabase.auth.verifyOtp({
-          type: 'magiclink',
-          token_hash: data.token_hash as string,
+      // ── Success: adopt the server-minted session directly. One setSession
+      //    call (no OTP exchange) — far faster than the old verifyOtp round trip. ──
+      if (res.ok && data.access_token && data.refresh_token) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: data.access_token as string,
+          refresh_token: data.refresh_token as string,
         })
-        if (otpError) {
+        if (sessionError) {
           triggerShake()
           setPin('')
           setPinMsg({ text: 'could not sign in — try again', color: COLOR_ERROR })
