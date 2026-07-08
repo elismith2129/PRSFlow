@@ -8,12 +8,15 @@
 :root{--bg:#0d0d0d;--surface:#161616;--surface2:#1e1e1e;--border:#252525;--accent:#c8f04e;--text1:#f0f0f0;--text2:#aaa;--text3:#555;--hot:#ff4d4d;--warm:#ff9800;--cold:#5b8def;}
 body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text1);min-height:100vh;}
 .wrap{max-width:900px;margin:0 auto;}
-.top-nav{display:flex;align-items:center;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 20px;position:sticky;top:0;z-index:10;}
-.nav-logo{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-right:20px;padding:14px 0;}
-.nav-logo span{color:var(--accent);}
-.tab-btn{background:none;border:none;color:var(--text3);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:14px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;}
-.tab-btn:hover{color:var(--text2);}
-.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.layout{display:flex;align-items:flex-start;min-height:100vh;}
+.sidebar{width:190px;flex-shrink:0;position:sticky;top:0;height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:3px;padding:20px 14px;z-index:20;}
+.side-logo{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;padding:4px 10px 18px;}
+.side-logo span{color:var(--accent);}
+.side-btn{display:flex;align-items:center;gap:9px;background:none;border:none;border-left:2px solid transparent;color:var(--text3);font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:11px 14px;cursor:pointer;border-radius:0 6px 6px 0;text-align:left;width:100%;transition:all .2s;}
+.side-btn:hover{color:var(--text2);background:var(--surface2);}
+.side-btn.active{color:var(--accent);background:#c8f04e11;border-left-color:var(--accent);}
+.side-ico{font-size:13px;line-height:1;}
+.content{flex:1;min-width:0;}
 .page{display:none;padding:28px 24px;}
 .page.active{display:block;}
 .hero{margin-bottom:22px;}
@@ -89,15 +92,37 @@ body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text1);min
 .rule-card-title{font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:9px;}
 .rule-card.do-card .rule-card-title{color:var(--accent);}
 .rule-card.dont-card .rule-card-title{color:var(--hot);}
+.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:22px;}
+.cat-card{border:1px solid;border-radius:8px;padding:14px 15px;}
+.cat-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.cat-body{font-size:11px;color:var(--text2);line-height:1.65;}
+@media(max-width:768px){
+  .layout{flex-direction:column;}
+  .sidebar{position:sticky;top:0;width:100%;height:auto;flex-direction:row;align-items:center;gap:6px;overflow-x:auto;border-right:none;border-bottom:1px solid var(--border);padding:10px 12px;}
+  .side-logo{display:none;}
+  .side-btn{width:auto;flex-shrink:0;border-left:none;border:1px solid var(--border);border-radius:20px;padding:8px 14px;font-size:11px;}
+  .side-btn.active{border-color:var(--accent);background:#c8f04e11;}
+  .why-grid{grid-template-columns:repeat(2,1fr);}
+  .rules-grid{grid-template-columns:1fr;}
+  .timer-tracks{grid-template-columns:1fr;}
+  .na-rules{grid-template-columns:1fr;}
+  .reg-flow{grid-template-columns:1fr;}
+  .cat-grid{grid-template-columns:1fr;}
+  .page{padding:22px 16px;}
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-<div class="top-nav">
-  <div class="nav-logo"><span>PRS</span>Flow</div>
-  <button class="tab-btn active" onclick="switchTab('crm',this)">CRM</button>
-  <button class="tab-btn" onclick="switchTab('clients',this)">Clients</button>
+<div class="layout">
+<div class="sidebar">
+  <div class="side-logo"><span>PRS</span>Flow</div>
+  <button class="side-btn active" onclick="switchTab('crm',this)"><span class="side-ico">📇</span>CRM</button>
+  <button class="side-btn" onclick="switchTab('clients',this)"><span class="side-ico">👤</span>Clients</button>
+  <button class="side-btn" onclick="switchTab('tasks',this)"><span class="side-ico">📋</span>Tasks</button>
+  <button class="side-btn" onclick="switchTab('flags',this)"><span class="side-ico">🚩</span>Flags</button>
 </div>
+<div class="content">
+<div class="wrap">
 
 <div class="page active" id="page-crm">
   <div class="hero">
@@ -255,6 +280,307 @@ body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text1);min
     </div>
   </div>
 </div>
+
+<div class="page" id="page-tasks">
+  <div class="hero">
+    <div class="hero-label">Training Guide · Tasks</div>
+    <div class="hero-title">Assignments that get done.<br><em>Not problems to fix.</em></div>
+    <div class="hero-body">Tasks are action items between staff — "do this thing." Round up tenants late on rent, have a runner clean the patio, order new mic stands. If something is broken or wrong, that's a Flag, not a Task. And if it's not in the system, it doesn't exist.</div>
+  </div>
+
+  <div class="section-label">What a task is — and what it isn't</div>
+  <div class="rules-grid">
+    <div class="rule-card do-card">
+      <div class="rule-card-title">✓ Tasks are</div>
+      <div class="do-list">
+        <div class="do-item"><span style="color:var(--accent)">✓</span>Action items and assignments between staff</div>
+        <div class="do-item"><span style="color:var(--accent)">✓</span>"Round up tenants late on rent"</div>
+        <div class="do-item"><span style="color:var(--accent)">✓</span>"Have a runner clean the patio"</div>
+        <div class="do-item"><span style="color:var(--accent)">✓</span>"Order new mic stands"</div>
+      </div>
+    </div>
+    <div class="rule-card dont-card">
+      <div class="rule-card-title">✗ Tasks are NOT</div>
+      <div class="do-list">
+        <div class="do-item"><span style="color:var(--hot)">✗</span>Operational problems — those go in Flags</div>
+        <div class="do-item"><span style="color:var(--hot)">✗</span>A broken alarm</div>
+        <div class="do-item"><span style="color:var(--hot)">✗</span>A client who left without paying</div>
+        <div class="do-item"><span style="color:var(--hot)">✗</span>A facility issue</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Who sees what — visibility rules</div>
+  <div class="na-explainer">
+    <div class="na-intro">Tasks aren't a global broadcast. Visibility is scoped so people see what's theirs — plus the people who need the full picture. Understand this before you assign a task or go looking for one.</div>
+    <div class="na-rules">
+      <div class="na-rule" style="border-color:#c8f04e44;background:#c8f04e08">
+        <div class="na-rule-label" style="color:var(--accent)">You</div>
+        <div class="na-rule-body">You see tasks you created <b style="color:var(--text1)">and</b> tasks assigned to you. That's your working set.</div>
+      </div>
+      <div class="na-rule" style="border-color:#7BA7BC44;background:#7BA7BC08">
+        <div class="na-rule-label" style="color:#7BA7BC">Managers &amp; Billing</div>
+        <div class="na-rule-body">See every task across the team — except Eli's private ones. Full visibility to keep things moving.</div>
+      </div>
+      <div class="na-rule" style="border-color:#ff980044;background:#ff980008">
+        <div class="na-rule-label" style="color:var(--warm)">Eli's private tasks</div>
+        <div class="na-rule-body">Eli's self-assigned tasks are private — only Eli sees them. They never appear for anyone else.</div>
+      </div>
+      <div class="na-rule" style="border-color:#c8f04e44;background:#c8f04e08">
+        <div class="na-rule-label" style="color:var(--accent)">Comments</div>
+        <div class="na-rule-body">Comments follow the task. If you can see the task, you can read the thread and add to it.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Creating a task</div>
+  <div class="na-explainer">
+    <div class="na-intro">A good task is specific enough that anyone could pick it up and know exactly what "done" looks like. Here's the flow.</div>
+    <div class="na-flow">
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">1</div>
+        <div class="na-step-content">
+          <div class="na-step-title">Click + on the Tasks panel</div>
+          <div class="na-step-body">Opens the new-task form right there on the dashboard. No separate screen.</div>
+        </div>
+      </div>
+      <div class="na-connector"></div>
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">2</div>
+        <div class="na-step-content">
+          <div class="na-step-title">Write a clear, specific description</div>
+          <div class="na-step-body">Say exactly what needs to happen. "Clean the patio before the 6pm session," not "clean." The person doing it should never have to guess.</div>
+        </div>
+      </div>
+      <div class="na-connector"></div>
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">3</div>
+        <div class="na-step-content">
+          <div class="na-step-title">Assign it to a person or role</div>
+          <div class="na-step-body">Pick who owns it. An unassigned task is a task nobody's doing.</div>
+        </div>
+      </div>
+      <div class="na-connector"></div>
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">4</div>
+        <div class="na-step-content">
+          <div class="na-step-title">Add a photo if relevant</div>
+          <div class="na-step-body">Optional, but a picture often says it faster — the shelf to fix, the area to clean, the part to order.</div>
+        </div>
+      </div>
+      <div class="na-connector"></div>
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">5</div>
+        <div class="na-step-content">
+          <div class="na-step-title">Submit</div>
+          <div class="na-step-body">The task lands with the assignee and appears for everyone who can see it. It's now in the system — which means it's real.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Completing a task</div>
+  <div class="na-explainer">
+    <div class="na-intro">When the work is done, close it out. A finished task left open is just noise on everyone's list.</div>
+    <div class="na-flow">
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">1</div>
+        <div class="na-step-content">
+          <div class="na-step-title">Open the task</div>
+          <div class="na-step-body">Tap it to open the full ticket and its comment thread.</div>
+        </div>
+      </div>
+      <div class="na-connector"></div>
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">2</div>
+        <div class="na-step-content">
+          <div class="na-step-title">Add a comment if there's anything to note</div>
+          <div class="na-step-body">What you did, anything that came up, a photo of the result. Optional — but it's how the next person knows the story.</div>
+        </div>
+      </div>
+      <div class="na-connector"></div>
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">3</div>
+        <div class="na-step-content">
+          <div class="na-step-title">Mark complete</div>
+          <div class="na-step-body">Closes the task and clears it off the active list. Done means marked done.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Golden rules</div>
+  <div class="rules-grid">
+    <div class="rule-card do-card">
+      <div class="rule-card-title">✓ Always</div>
+      <div class="do-list">
+        <div class="do-item"><span style="color:var(--accent)">✓</span>Put it in the system — if it's not in the system, it doesn't exist</div>
+        <div class="do-item"><span style="color:var(--accent)">✓</span>Be specific — "clean patio," not "clean"</div>
+        <div class="do-item"><span style="color:var(--accent)">✓</span>Assign every task to someone</div>
+        <div class="do-item"><span style="color:var(--accent)">✓</span>Complete tasks the moment they're done</div>
+      </div>
+    </div>
+    <div class="rule-card dont-card">
+      <div class="rule-card-title">✗ Never</div>
+      <div class="do-list">
+        <div class="do-item"><span style="color:var(--hot)">✗</span>Leave finished work marked incomplete</div>
+        <div class="do-item"><span style="color:var(--hot)">✗</span>Let tasks hang open with no movement</div>
+        <div class="do-item"><span style="color:var(--hot)">✗</span>Use a Task for something broken — raise a Flag</div>
+        <div class="do-item"><span style="color:var(--hot)">✗</span>Assign a vague, one-word task</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-flags">
+  <div class="hero">
+    <div class="hero-label">Training Guide · Flags</div>
+    <div class="hero-title">Something is wrong.<br><em>Flag it.</em></div>
+    <div class="hero-body">Flags are operational issues that need attention or resolution — the alarm won't set, a client left without paying, the vines at Encore need trimming, a mic stand is broken. Flags are not to-dos between staff; those are Tasks. Raise a flag the moment you spot the problem.</div>
+  </div>
+
+  <div class="section-label">What a flag is — and what it isn't</div>
+  <div class="rules-grid">
+    <div class="rule-card do-card">
+      <div class="rule-card-title">✓ Flags are</div>
+      <div class="do-list">
+        <div class="do-item"><span style="color:var(--accent)">✓</span>Operational issues that need attention or resolution</div>
+        <div class="do-item"><span style="color:var(--accent)">✓</span>"Alarm won't set"</div>
+        <div class="do-item"><span style="color:var(--accent)">✓</span>"Client left without paying"</div>
+        <div class="do-item"><span style="color:var(--accent)">✓</span>"Need to trim the vines at Encore"</div>
+        <div class="do-item"><span style="color:var(--accent)">✓</span>"Mic stand broken"</div>
+      </div>
+    </div>
+    <div class="rule-card dont-card">
+      <div class="rule-card-title">✗ Flags are NOT</div>
+      <div class="do-list">
+        <div class="do-item"><span style="color:var(--hot)">✗</span>Action items or to-dos between staff</div>
+        <div class="do-item"><span style="color:var(--hot)">✗</span>"Order new mic stands" — that's a Task</div>
+        <div class="do-item"><span style="color:var(--hot)">✗</span>An assignment for someone to go do</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">The three categories</div>
+  <div class="cat-grid">
+    <div class="cat-card" style="border-color:#7BA7BC44;background:#7BA7BC08">
+      <div class="cat-label" style="color:#7BA7BC">Facility / General</div>
+      <div class="cat-body">Physical space issues, access, maintenance — anything related to the building or the grounds.</div>
+    </div>
+    <div class="cat-card" style="border-color:#c8f04e44;background:#c8f04e08">
+      <div class="cat-label" style="color:var(--accent)">Gear / Equipment</div>
+      <div class="cat-body">Broken or missing equipment — mic stands, cables, outboard gear.</div>
+    </div>
+    <div class="cat-card" style="border-color:#ff980044;background:#ff980008">
+      <div class="cat-label" style="color:var(--warm)">Client / Billing</div>
+      <div class="cat-body">Client-related issues — payment problems, disputes, conduct.</div>
+    </div>
+  </div>
+
+  <div class="section-label">How runners report flags</div>
+  <div class="na-explainer">
+    <div class="na-intro">Runners are the eyes on the ground — most flags start with them. A flag can be raised from three places:</div>
+    <div class="cat-grid" style="margin-bottom:0">
+      <div class="cat-card" style="border-color:var(--border);background:var(--surface2)">
+        <div class="cat-label" style="color:var(--accent)">1 · Checklist</div>
+        <div class="cat-body">Mark an item as needs attention while working an opening or closing checklist.</div>
+      </div>
+      <div class="cat-card" style="border-color:var(--border);background:var(--surface2)">
+        <div class="cat-label" style="color:var(--accent)">2 · Work Order</div>
+        <div class="cat-body">Mark needs attention on a piece of equipment directly on the Work Order.</div>
+      </div>
+      <div class="cat-card" style="border-color:var(--border);background:var(--surface2)">
+        <div class="cat-label" style="color:var(--accent)">3 · Manually</div>
+        <div class="cat-body">Raise a flag by hand straight from the dashboard when something comes up.</div>
+      </div>
+    </div>
+    <div class="tip-box" style="margin-top:16px;margin-bottom:0">
+      <div class="tip-label">💡 Writing the runner note</div>
+      <div class="tip-text">Describe the issue clearly and be specific — location, what happened, what it looks like. "Mic stand in Studio B, boom arm won't hold, drops on its own." A photo helps a lot.</div>
+    </div>
+  </div>
+
+  <div class="section-label">How managers handle flags</div>
+  <div class="na-explainer">
+    <div class="na-intro">When a flag comes in, work it end to end. Don't just read it and move on — categorize it, acknowledge it, and resolve it with real detail.</div>
+    <div class="na-flow">
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">1</div>
+        <div class="na-step-content">
+          <div class="na-step-title">Open it — read the runner note</div>
+          <div class="na-step-body">Understand what happened before you do anything else. The runner note is your starting point.</div>
+        </div>
+      </div>
+      <div class="na-connector"></div>
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">2</div>
+        <div class="na-step-content">
+          <div class="na-step-title">Select a category</div>
+          <div class="na-step-body">Facility / General, Gear / Equipment, or Client / Billing. This is what makes the log searchable later.</div>
+        </div>
+      </div>
+      <div class="na-connector"></div>
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">3</div>
+        <div class="na-step-content">
+          <div class="na-step-title">Add an acknowledgment note</div>
+          <div class="na-step-body">Say what you're doing about it — who's on it, what the plan is, what you're waiting on.</div>
+        </div>
+      </div>
+      <div class="na-connector"></div>
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">4</div>
+        <div class="na-step-content">
+          <div class="na-step-title">Click Acknowledge</div>
+          <div class="na-step-body">Moves the flag from pending to acknowledged so everyone knows it's being handled.</div>
+        </div>
+      </div>
+      <div class="na-connector"></div>
+      <div class="na-step">
+        <div class="na-step-n" style="color:var(--accent)">5</div>
+        <div class="na-step-content">
+          <div class="na-step-title">When resolved: click Resolve</div>
+          <div class="na-step-body">Fill in what was done (<b style="color:var(--text1)">required</b>), the vendor or person if applicable, and the cost if applicable. Then close it out.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Why resolution details matter</div>
+  <div class="na-explainer" style="border-color:#c8f04e44;background:#c8f04e08">
+    <div class="na-intro" style="border-bottom:none;padding-bottom:0;margin-bottom:0;color:var(--text2)">The Flags Log is the studio's maintenance history. Vendor names and costs logged here are how you track recurring issues, find reliable contractors, and know what repairs have cost over time. Every resolved flag with complete details makes the log more valuable — a vague resolution is a gap in the record.</div>
+  </div>
+
+  <div class="section-label">Search &amp; filter</div>
+  <div class="na-explainer">
+    <div class="na-intro" style="border-bottom:none;padding-bottom:0;margin-bottom:0">The Flags Log has a search bar that searches across <b style="color:var(--text1)">runner notes, acknowledgment notes, resolution notes, and vendor names</b>. Filter by <b style="color:var(--text1)">status</b> (pending, acknowledged, resolved) and by <b style="color:var(--text1)">category</b> to find exactly what you need — every past fix, every vendor, every recurring problem.</div>
+  </div>
+
+  <div class="section-label">Golden rules</div>
+  <div class="rules-grid">
+    <div class="rule-card do-card">
+      <div class="rule-card-title">✓ Always</div>
+      <div class="do-list">
+        <div class="do-item"><span style="color:var(--accent)">✓</span>Flag it immediately — don't wait to see if it resolves itself</div>
+        <div class="do-item"><span style="color:var(--accent)">✓</span>Be specific in the runner note — vague flags are hard to action</div>
+        <div class="do-item"><span style="color:var(--accent)">✓</span>Categorize it — categories make the log searchable and useful</div>
+        <div class="do-item"><span style="color:var(--accent)">✓</span>Fill in resolution details — the log is only as good as what you put in it</div>
+      </div>
+    </div>
+    <div class="rule-card dont-card">
+      <div class="rule-card-title">✗ Never</div>
+      <div class="do-list">
+        <div class="do-item"><span style="color:var(--hot)">✗</span>Sit on a flag hoping it fixes itself</div>
+        <div class="do-item"><span style="color:var(--hot)">✗</span>Write a vague, one-line note with no location or detail</div>
+        <div class="do-item"><span style="color:var(--hot)">✗</span>Resolve a flag without saying what was done</div>
+        <div class="do-item"><span style="color:var(--hot)">✗</span>Let resolved-but-undocumented flags pile up — an open issue is an open issue</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
 </div>
 
 <script>
@@ -278,7 +604,7 @@ const CLIENT_STEPS=[
   {title:'Writing Good Notes',tag:'Turns one-time clients into regulars',desc:'Notes capture the relationship. What do they care about? Usual setup? Who they work with? This is what makes any team member able to make a client feel like a VIP.',tip:'"Prefers Studio A, works with Marcus, R&B, usually needs parking for 3 cars" — that\'s what matters.',dos:['Add notes after every session or significant interaction','Note preferences, quirks, recurring needs, who referred them'],donts:['Leave notes empty on active clients','Only write notes when something goes wrong']}
 ];
 let openStatus=null,openCrm=null,openClient=null;
-function switchTab(tab,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('page-'+tab).classList.add('active');el.classList.add('active');}
+function switchTab(tab,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.side-btn').forEach(b=>b.classList.remove('active'));document.getElementById('page-'+tab).classList.add('active');el.classList.add('active');window.scrollTo(0,0);}
 function showStatus(key,el){if(openStatus===key){document.getElementById('status-detail-box').innerHTML='';document.querySelectorAll('.status-pill').forEach(p=>p.classList.remove('active-pill'));openStatus=null;return;}openStatus=key;document.querySelectorAll('.status-pill').forEach(p=>p.classList.remove('active-pill'));el.classList.add('active-pill');const d=STATUS_DATA[key];document.getElementById('status-detail-box').innerHTML=`<div class="status-detail show" style="border-color:${d.color}44;background:${d.bg}"><div class="status-detail-title" style="color:${d.color}">${d.label} — ${d.title}</div><div class="status-detail-body">${d.body}</div><div class="status-rule" style="background:${d.color}15;color:${d.color};border-left:2px solid ${d.color}"><b>The Rule:</b> ${d.rule}</div></div>`;}
 function buildSteps(data,id,fn){document.getElementById(id).innerHTML=data.map((s,i)=>`<div class="step" onclick="${fn}(${i})"><div class="step-header"><div class="step-num">${String(i+1).padStart(2,'0')}</div><div class="step-title">${s.title}</div><div class="step-tag">${s.tag}</div><div class="step-chevron">▼</div></div><div class="step-body"><div class="step-inner"><div class="step-desc">${s.desc}</div><div class="tip-box"><div class="tip-label">💡 Pro tip</div><div class="tip-text">${s.tip}</div></div><div class="do-list" style="margin-bottom:6px">${(s.dos||[]).map(d=>`<div class="do-item"><span style="color:var(--accent);flex-shrink:0">✓</span>${d}</div>`).join('')}</div><div class="do-list">${(s.donts||[]).map(d=>`<div class="do-item"><span style="color:var(--hot);flex-shrink:0">✗</span>${d}</div>`).join('')}</div></div></div></div>`).join('');}
 buildSteps(CRM_STEPS,'crm-steps','toggleCrm');
