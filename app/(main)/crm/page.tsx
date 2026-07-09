@@ -1509,7 +1509,7 @@ const khuDays = daysUntilKhu(lead)
       {/* ═══ Zone 1 (bg #161920) — identity + contact ═══════════ */}
       <div style={{ background: '#161920', margin: '0 -16px', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
       {/* ─── Status strip ─────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 32, paddingBottom: 8, marginBottom: 10, borderBottom: '1px solid #1e2028' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 32, paddingBottom: 26, marginBottom: 10, borderBottom: '1px solid #1e2028' }}>
         <div ref={statusPillRef} style={{ position: 'relative', flexShrink: 0 }}>
           <button
             type="button"
