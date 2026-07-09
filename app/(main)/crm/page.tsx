@@ -1242,6 +1242,10 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
+  // TEMPORARY: remove when booking form is live
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [showBookedModal, setShowBookedModal] = useState(false)
+  const [markingBooked, setMarkingBooked] = useState(false)
   const [showBookingToast, setShowBookingToast] = useState(false)
   const leadRouter = useRouter()
   const [regLinkUrl, setRegLinkUrl] = useState<string | null>(null)
@@ -1617,17 +1621,18 @@ const khuDays = daysUntilKhu(lead)
                 {regLinkGenerating ? '…' : 'Send Reg'}
               </button>
             ))}
+            {/* TEMPORARY: remove when booking form is live */}
             <button
               onClick={() => {
                 if (lead.client_id) {
-                  leadRouter.push(`/calendar?newBooking=1&clientId=${lead.client_id}&leadId=${lead.id}`)
+                  setShowBookedModal(true)
                 } else {
                   setShowConfirmModal(true)
                 }
               }}
               style={{ padding: '5px 12px', background: 'transparent', color: '#e8eaf0', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
             >
-              Start Booking
+              Confirm Client Account
             </button>
           </div>
         </div>
@@ -1904,12 +1909,61 @@ const khuDays = daysUntilKhu(lead)
           lead={lead}
           onClose={() => setShowConfirmModal(false)}
           onCreated={(clientId) => {
+            // TEMPORARY: remove when booking form is live — was a redirect to /calendar
             setShowConfirmModal(false)
             onUpdate('client_id', clientId)
             onUpdate('status', 'booked')
-            leadRouter.push(`/calendar?newBooking=1&clientId=${clientId}&leadId=${lead.id}`)
+            setShowSuccessModal(true)
           }}
         />
+      )}
+      {/* TEMPORARY: remove when booking form is live — FLOW 1 (new client): success modal replaces the booking-form redirect */}
+      {showSuccessModal && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={e => { if (e.target === e.currentTarget) setShowSuccessModal(false) }}
+        >
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '22px 24px', maxWidth: 420, width: '100%' }}>
+            <div style={{ fontFamily: 'DM Serif Display', fontSize: 18, color: 'var(--text)', marginBottom: 8 }}>Client Account Created</div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono', lineHeight: 1.7, marginBottom: 20 }}>New client account created successfully. Proceed to standard booking protocols.</div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                style={{ padding: '7px 18px', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.05em', border: 'none', cursor: 'pointer', background: 'var(--accent)', color: '#0d0f14' }}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* TEMPORARY: remove when booking form is live — FLOW 2 (returning client): mark-as-booked modal replaces the booking-form redirect */}
+      {showBookedModal && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={e => { if (e.target === e.currentTarget) setShowBookedModal(false) }}
+        >
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '22px 24px', maxWidth: 420, width: '100%' }}>
+            <div style={{ fontFamily: 'DM Serif Display', fontSize: 18, color: 'var(--text)', marginBottom: 8 }}>Mark as Booked</div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono', lineHeight: 1.7, marginBottom: 20 }}>This client has been marked as booked. Proceed to standard booking protocols.</div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={async () => {
+                  if (markingBooked) return
+                  setMarkingBooked(true)
+                  await supabase.from('leads').update({ status: 'booked' }).eq('id', lead.id)
+                  onUpdate('status', 'booked')
+                  setMarkingBooked(false)
+                  setShowBookedModal(false)
+                }}
+                disabled={markingBooked}
+                style={{ padding: '7px 18px', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.05em', border: 'none', cursor: markingBooked ? 'default' : 'pointer', background: 'var(--accent)', color: '#0d0f14', opacity: markingBooked ? 0.7 : 1 }}
+              >
+                {markingBooked ? 'Saving…' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {regViewOpen && lead.client_id && (
         <RegViewModal clientId={lead.client_id} onClose={() => setRegViewOpen(false)} />
