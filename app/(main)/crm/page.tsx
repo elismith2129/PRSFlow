@@ -1262,6 +1262,8 @@ const parsedLoc0 = parseLocation(lead.location || '')
   const [detailRateType, setDetailRateType] = useState<'hourly' | 'daily'>(() => lead.rate_daily ? 'daily' : 'hourly')
   const [activityLog, setActivityLog] = useState<Array<{ ts: string; label: string; color: string }>>([])
   const [regTokenDates, setRegTokenDates] = useState<{ created_at: string; used_at: string | null } | null>(null)
+  const [statusDDOpen, setStatusDDOpen] = useState(false)
+  const statusPillRef = useRef<HTMLDivElement>(null)
 
   const emailRef = useRef<HTMLInputElement>(null)
   const phoneRef = useRef<HTMLInputElement>(null)
@@ -1345,6 +1347,15 @@ const parsedLoc0 = parseLocation(lead.location || '')
     }
     onFocusConsumed?.()
   }, [focusField])
+
+  useEffect(() => {
+    if (!statusDDOpen) return
+    function onDocClick(e: MouseEvent) {
+      if (statusPillRef.current && !statusPillRef.current.contains(e.target as Node)) setStatusDDOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [statusDDOpen])
 
   const notesDirty = notesVal !== (lead.notes || '')
 
@@ -1499,12 +1510,37 @@ const khuDays = daysUntilKhu(lead)
       <div style={{ background: '#161920', margin: '0 -16px', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
       {/* ─── Status strip ─────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 8, marginBottom: 10, borderBottom: '1px solid #1e2028' }}>
-        <select
-          value={local.status || lead.status}
-          onChange={e => { update('status', e.target.value); saveStatus(e.target.value) }}
-          style={{ ...pillBase, flexShrink: 0, background: `${STATUS_COLORS[local.status || lead.status]}22`, color: STATUS_COLORS[local.status || lead.status] || 'var(--text2)', border: 'none' }}>
-          {['hot', 'warm', 'cold', 'uncontacted', 'booked', 'dead'].map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
+        <div ref={statusPillRef} style={{ position: 'relative', flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={() => setStatusDDOpen(o => !o)}
+            style={{ ...pillBase, gap: 5, background: `${LEAD_AVATAR_COLORS[local.status || lead.status] || LEAD_AVATAR_COLORS.uncontacted}22`, color: LEAD_AVATAR_COLORS[local.status || lead.status] || LEAD_AVATAR_COLORS.uncontacted, border: 'none' }}
+          >
+            <span>{local.status || lead.status}</span>
+            <span style={{ fontSize: 8, lineHeight: 1, transform: statusDDOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+          </button>
+          {statusDDOpen && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 60, overflow: 'hidden', boxShadow: '0 6px 20px rgba(0,0,0,0.45)', minWidth: 150 }}>
+              {['uncontacted', 'hot', 'warm', 'cold', 'booked', 'dead'].map(s => {
+                const c = LEAD_AVATAR_COLORS[s] || LEAD_AVATAR_COLORS.uncontacted
+                const active = (local.status || lead.status) === s
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => { update('status', s); saveStatus(s); setStatusDDOpen(false) }}
+                    onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface2)' }}
+                    onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', background: active ? 'var(--surface2)' : 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: c }}
+                  >
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: c, flexShrink: 0 }} />
+                    {s}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
         {lead.needs_contact !== false && (<>
           <span style={{ color: '#2d3140', fontSize: 9, flexShrink: 0 }}>·</span>
           <button
