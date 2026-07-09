@@ -1515,7 +1515,7 @@ export default function DashboardPage() {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) { setAddingFlag(false); setNewFlagText(''); setNewFlagCategory(null); setNewFlagStudio('paramount'); clearNewFlagPhoto() } }}
         >
-          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile), ...(isMobile ? { paddingTop: 'calc(52px + env(safe-area-inset-top, 0px))', paddingBottom: 'env(safe-area-inset-bottom, 0px)' } : {}) }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile), ...(isMobile ? { height: 'auto', maxHeight: '90dvh', paddingTop: 'calc(52px + env(safe-area-inset-top, 0px))', paddingBottom: 'env(safe-area-inset-bottom, 0px)' } : {}) }}>
 
             {/* Header */}
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
