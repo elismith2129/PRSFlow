@@ -139,6 +139,7 @@ export default function DashboardPage() {
   const [newFlagCategory, setNewFlagCategory] = useState<'facility_general' | 'gear_equipment' | 'client_billing' | null>(null)
   const [newFlagPhoto, setNewFlagPhoto] = useState<File | null>(null)
   const [newFlagPhotoPreview, setNewFlagPhotoPreview] = useState<string | null>(null)
+  const [flagKeyboardHeight, setFlagKeyboardHeight] = useState(0)
   const [showResolveModal, setShowResolveModal] = useState(false)
   const [confirmDeleteFlag, setConfirmDeleteFlag] = useState(false)
   const [resolveNote, setResolveNote] = useState('')
@@ -148,6 +149,8 @@ export default function DashboardPage() {
   const commentPhotoRef = useRef<HTMLInputElement>(null)
   const flagCommentPhotoRef = useRef<HTMLInputElement>(null)
   const newFlagPhotoRef = useRef<HTMLInputElement>(null)
+  const flagOverlayRef = useRef<HTMLDivElement>(null)
+  const flagBodyRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const [calDate, setCalDate] = useState(new Date())
   const [hoverRoom, setHoverRoom] = useState<string | null>(null)
@@ -521,6 +524,43 @@ export default function DashboardPage() {
       body.style.width = ''
       window.scrollTo({ top: scrollY, behavior: 'instant' as ScrollBehavior })
     }
+  }, [addingFlag])
+
+  // ISSUE 1: keyboard avoidance. iOS overlays the keyboard on top of the viewport
+  // rather than shrinking it, so the visualViewport shrinks while window.innerHeight
+  // stays put. Track that delta and translate the modal card up by it.
+  useEffect(() => {
+    if (!addingFlag || !isMobile) { setFlagKeyboardHeight(0); return }
+    const vv = window.visualViewport
+    if (!vv) return
+    function onViewportChange() {
+      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+      setFlagKeyboardHeight(kb)
+    }
+    onViewportChange()
+    vv.addEventListener('resize', onViewportChange)
+    vv.addEventListener('scroll', onViewportChange)
+    return () => {
+      vv.removeEventListener('resize', onViewportChange)
+      vv.removeEventListener('scroll', onViewportChange)
+      setFlagKeyboardHeight(0)
+    }
+  }, [addingFlag, isMobile])
+
+  // ISSUE 2: primary iOS scroll prevention. React's synthetic onTouchMove is passive,
+  // so preventDefault there is ignored — attach a native non-passive touchmove listener
+  // to the overlay and block the gesture unless it started inside the scrollable body.
+  useEffect(() => {
+    if (!addingFlag) return
+    const overlay = flagOverlayRef.current
+    if (!overlay) return
+    function onTouchMove(e: TouchEvent) {
+      const body = flagBodyRef.current
+      if (body && body.contains(e.target as Node)) return
+      e.preventDefault()
+    }
+    overlay.addEventListener('touchmove', onTouchMove, { passive: false })
+    return () => overlay.removeEventListener('touchmove', onTouchMove)
   }, [addingFlag])
 
   function closeAddTask() {
@@ -1512,10 +1552,11 @@ export default function DashboardPage() {
       {/* CREATE FLAG MODAL */}
       {addingFlag && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          ref={flagOverlayRef}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'none', overflow: 'hidden' }}
           onClick={e => { if (e.target === e.currentTarget) { setAddingFlag(false); setNewFlagText(''); setNewFlagCategory(null); setNewFlagStudio('paramount'); clearNewFlagPhoto() } }}
         >
-          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile), ...(isMobile ? { height: 'auto', maxHeight: '90dvh', paddingTop: 'calc(52px + env(safe-area-inset-top, 0px))', paddingBottom: 'env(safe-area-inset-bottom, 0px)' } : {}) }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile), ...(isMobile ? { height: 'auto', maxHeight: '90dvh', paddingTop: 'calc(52px + env(safe-area-inset-top, 0px))', paddingBottom: 'env(safe-area-inset-bottom, 0px)', transform: flagKeyboardHeight > 0 ? `translateY(-${flagKeyboardHeight}px)` : undefined, transition: 'transform 0.25s ease' } : {}) }}>
 
             {/* Header */}
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
@@ -1531,7 +1572,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Body */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div ref={flagBodyRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
               {/* Studio */}
               <div>
