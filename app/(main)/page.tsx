@@ -137,6 +137,8 @@ export default function DashboardPage() {
   const [newFlagText, setNewFlagText] = useState('')
   const [newFlagStudio, setNewFlagStudio] = useState<string>('paramount')
   const [newFlagCategory, setNewFlagCategory] = useState<'facility_general' | 'gear_equipment' | 'client_billing' | null>(null)
+  const [newFlagPhoto, setNewFlagPhoto] = useState<File | null>(null)
+  const [newFlagPhotoPreview, setNewFlagPhotoPreview] = useState<string | null>(null)
   const [showResolveModal, setShowResolveModal] = useState(false)
   const [confirmDeleteFlag, setConfirmDeleteFlag] = useState(false)
   const [resolveNote, setResolveNote] = useState('')
@@ -145,6 +147,7 @@ export default function DashboardPage() {
   const newTaskPhotoRef = useRef<HTMLInputElement>(null)
   const commentPhotoRef = useRef<HTMLInputElement>(null)
   const flagCommentPhotoRef = useRef<HTMLInputElement>(null)
+  const newFlagPhotoRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const [calDate, setCalDate] = useState(new Date())
   const [hoverRoom, setHoverRoom] = useState<string | null>(null)
@@ -479,6 +482,47 @@ export default function DashboardPage() {
     if (commentPhotoRef.current) commentPhotoRef.current.value = ''
   }
 
+  // Set the selected new-flag photo and its object-URL preview, revoking any prior
+  // preview URL to avoid leaks.
+  function pickNewFlagPhoto(file: File | null) {
+    setNewFlagPhoto(file)
+    setNewFlagPhotoPreview(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return file ? URL.createObjectURL(file) : null
+    })
+  }
+
+  function clearNewFlagPhoto() {
+    setNewFlagPhoto(null)
+    setNewFlagPhotoPreview(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+    if (newFlagPhotoRef.current) newFlagPhotoRef.current.value = ''
+  }
+
+  // Lock background page scroll while the create-flag modal is open. iOS Safari
+  // ignores overflow:hidden on body, so use the documented position:fixed + top
+  // offset pattern and restore the scroll position on close.
+  useEffect(() => {
+    if (!addingFlag) return
+    const scrollY = window.scrollY
+    const body = document.body
+    body.style.position = 'fixed'
+    body.style.top = `-${scrollY}px`
+    body.style.left = '0'
+    body.style.right = '0'
+    body.style.width = '100%'
+    return () => {
+      body.style.position = ''
+      body.style.top = ''
+      body.style.left = ''
+      body.style.right = ''
+      body.style.width = ''
+      window.scrollTo({ top: scrollY, behavior: 'instant' as ScrollBehavior })
+    }
+  }, [addingFlag])
+
   function closeAddTask() {
     setAddingTask(false)
     setNewTaskText('')
@@ -703,12 +747,14 @@ export default function DashboardPage() {
   async function handleCreateFlag() {
     if (!newFlagText.trim() || !newFlagCategory) return
     setFlagSubmitting(true)
+    const photo_url = newFlagPhoto ? await uploadPhoto(newFlagPhoto) : null
     await supabase.from('flags').insert({
       studio: newFlagStudio,
       source: 'manual',
       runner_note: newFlagText.trim(),
       category: newFlagCategory,
       status: 'pending',
+      photo_url,
     })
     const { data } = await supabase
       .from('flags')
@@ -721,6 +767,7 @@ export default function DashboardPage() {
     setNewFlagText('')
     setNewFlagCategory(null)
     setNewFlagStudio('paramount')
+    clearNewFlagPhoto()
     setAddingFlag(false)
     setFlagSubmitting(false)
   }
@@ -1006,7 +1053,7 @@ export default function DashboardPage() {
               </span>
             </div>
           ) : (
-            <div className="hide-scrollbar" style={{ display: 'flex', gap: isMobile ? 3 : 2, justifyContent: isMobile ? 'flex-start' : 'space-between', padding: isMobile ? '6px 8px' : '6px 6px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+            <div className="hide-scrollbar" style={{ display: 'flex', gap: isMobile ? 3 : 2, justifyContent: 'space-between', padding: isMobile ? '6px 8px' : '6px 6px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', overflowX: isMobile ? 'hidden' : 'auto', whiteSpace: 'nowrap' }}>
               {visibleTabs.map(tab => {
                 const isActive = activeTaskTab === tab.key
                 return (
@@ -1014,13 +1061,15 @@ export default function DashboardPage() {
                     key={tab.key}
                     onClick={() => setActiveTaskTab(tab.key)}
                     style={{
-                      flexShrink: 0, padding: isMobile ? '0 12px' : '0 4px', fontSize: isMobile ? 11 : 9, fontFamily: 'Syne',
+                      flexShrink: isMobile ? 1 : 0, flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : undefined,
+                      padding: '0 4px', fontSize: isMobile ? 10 : 9, fontFamily: 'Syne',
                       fontWeight: isActive ? 700 : 600,
                       color: isActive ? '#e8eaf2' : 'var(--text2)',
                       background: isActive ? '#1a1d27' : 'transparent',
                       border: 'none', cursor: 'pointer', borderRadius: 6, whiteSpace: 'nowrap',
+                      overflow: isMobile ? 'hidden' : undefined, textOverflow: isMobile ? 'ellipsis' : undefined,
                       minHeight: isMobile ? 40 : undefined,
-                      textTransform: 'uppercase', letterSpacing: isMobile ? '0.06em' : '0.03em', transition: 'all 0.1s',
+                      textTransform: 'uppercase', letterSpacing: isMobile ? '0.02em' : '0.03em', transition: 'all 0.1s',
                     }}
                   >
                     {tab.label}
@@ -1464,16 +1513,16 @@ export default function DashboardPage() {
       {addingFlag && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={e => { if (e.target === e.currentTarget) { setAddingFlag(false); setNewFlagText(''); setNewFlagCategory(null); setNewFlagStudio('paramount') } }}
+          onClick={e => { if (e.target === e.currentTarget) { setAddingFlag(false); setNewFlagText(''); setNewFlagCategory(null); setNewFlagStudio('paramount'); clearNewFlagPhoto() } }}
         >
-          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile) }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile), ...(isMobile ? { paddingTop: 'calc(52px + env(safe-area-inset-top, 0px))', paddingBottom: 'env(safe-area-inset-bottom, 0px)' } : {}) }}>
 
             {/* Header */}
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: '#e8eaf2' }}>New Flag</span>
                 <button
-                  onClick={() => { setAddingFlag(false); setNewFlagText(''); setNewFlagCategory(null); setNewFlagStudio('paramount') }}
+                  onClick={() => { setAddingFlag(false); setNewFlagText(''); setNewFlagCategory(null); setNewFlagStudio('paramount'); clearNewFlagPhoto() }}
                   style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 18, lineHeight: 1, padding: 0 }}
                 >
                   ×
@@ -1549,6 +1598,30 @@ export default function DashboardPage() {
                 />
               </div>
 
+              {/* Photo */}
+              <div>
+                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
+                  Photo
+                </div>
+                {newFlagPhotoPreview && (
+                  <img
+                    src={newFlagPhotoPreview}
+                    alt=""
+                    style={{ display: 'block', maxHeight: 80, borderRadius: 4, objectFit: 'cover', marginBottom: 8 }}
+                  />
+                )}
+                <label style={{ display: 'inline-block', fontSize: 11, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'DM Mono', padding: '9px 14px', border: '1px dashed var(--border)', borderRadius: 6 }}>
+                  {newFlagPhoto ? newFlagPhoto.name : '+ Add Photo'}
+                  <input
+                    ref={newFlagPhotoRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={e => pickNewFlagPhoto(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+              </div>
+
             </div>
 
             {/* Divider */}
@@ -1557,7 +1630,7 @@ export default function DashboardPage() {
             {/* Footer */}
             <div style={{ padding: '12px 20px', display: 'flex', gap: 8 }}>
               <button
-                onClick={() => { setAddingFlag(false); setNewFlagText(''); setNewFlagCategory(null); setNewFlagStudio('paramount') }}
+                onClick={() => { setAddingFlag(false); setNewFlagText(''); setNewFlagCategory(null); setNewFlagStudio('paramount'); clearNewFlagPhoto() }}
                 style={{ flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono', background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--text2)' }}
               >
                 Cancel
