@@ -149,8 +149,6 @@ export default function DashboardPage() {
   const commentPhotoRef = useRef<HTMLInputElement>(null)
   const flagCommentPhotoRef = useRef<HTMLInputElement>(null)
   const newFlagPhotoRef = useRef<HTMLInputElement>(null)
-  const flagOverlayRef = useRef<HTMLDivElement>(null)
-  const flagBodyRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const [calDate, setCalDate] = useState(new Date())
   const [hoverRoom, setHoverRoom] = useState<string | null>(null)
@@ -504,28 +502,6 @@ export default function DashboardPage() {
     if (newFlagPhotoRef.current) newFlagPhotoRef.current.value = ''
   }
 
-  // Lock background page scroll while the create-flag modal is open. iOS Safari
-  // ignores overflow:hidden on body, so use the documented position:fixed + top
-  // offset pattern and restore the scroll position on close.
-  useEffect(() => {
-    if (!addingFlag) return
-    const scrollY = window.scrollY
-    const body = document.body
-    body.style.position = 'fixed'
-    body.style.top = `-${scrollY}px`
-    body.style.left = '0'
-    body.style.right = '0'
-    body.style.width = '100%'
-    return () => {
-      body.style.position = ''
-      body.style.top = ''
-      body.style.left = ''
-      body.style.right = ''
-      body.style.width = ''
-      window.scrollTo({ top: scrollY, behavior: 'instant' as ScrollBehavior })
-    }
-  }, [addingFlag])
-
   // ISSUE 1: keyboard avoidance. iOS overlays the keyboard on top of the viewport
   // rather than shrinking it, so the visualViewport shrinks while window.innerHeight
   // stays put. Track that delta and translate the modal card up by it.
@@ -546,22 +522,6 @@ export default function DashboardPage() {
       setFlagKeyboardHeight(0)
     }
   }, [addingFlag, isMobile])
-
-  // ISSUE 2: primary iOS scroll prevention. React's synthetic onTouchMove is passive,
-  // so preventDefault there is ignored — attach a native non-passive touchmove listener
-  // to the overlay and block the gesture unless it started inside the scrollable body.
-  useEffect(() => {
-    if (!addingFlag) return
-    const overlay = flagOverlayRef.current
-    if (!overlay) return
-    function onTouchMove(e: TouchEvent) {
-      const body = flagBodyRef.current
-      if (body && body.contains(e.target as Node)) return
-      e.preventDefault()
-    }
-    overlay.addEventListener('touchmove', onTouchMove, { passive: false })
-    return () => overlay.removeEventListener('touchmove', onTouchMove)
-  }, [addingFlag])
 
   function closeAddTask() {
     setAddingTask(false)
@@ -1289,8 +1249,9 @@ export default function DashboardPage() {
       {/* TASK MODAL */}
       {selectedTask && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', overscrollBehavior: 'none', touchAction: 'none' }}
           onClick={e => { if (e.target === e.currentTarget) handleCancelTaskModal() }}
+          onTouchMove={e => e.stopPropagation()}
         >
           <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile) }}>
 
@@ -1310,7 +1271,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Body */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
               {/* Description */}
               <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 {selectedTask.text}
@@ -1439,8 +1400,9 @@ export default function DashboardPage() {
 
       {showHistory && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', overscrollBehavior: 'none', touchAction: 'none' }}
           onClick={e => { if (e.target === e.currentTarget) { setShowHistory(false); setHistorySearch('') } }}
+          onTouchMove={e => e.stopPropagation()}
         >
           <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 520, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile) }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1455,7 +1417,7 @@ export default function DashboardPage() {
                 style={{ width: '100%', padding: '7px 10px', fontSize: 12, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontFamily: 'DM Mono', outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6, overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
               {completedTasks
                 .filter(t => !historySearch || t.text.toLowerCase().includes(historySearch.toLowerCase()))
                 .map(t => (
@@ -1500,8 +1462,9 @@ export default function DashboardPage() {
 
       {selectedHistoryTask && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', overscrollBehavior: 'none', touchAction: 'none' }}
           onClick={e => { if (e.target === e.currentTarget) { setSelectedHistoryTask(null); setHistoryTaskComments([]) } }}
+          onTouchMove={e => e.stopPropagation()}
         >
           <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile) }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
@@ -1528,7 +1491,7 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px', overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
               {historyTaskComments.length === 0 ? (
                 <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>No updates</div>
               ) : (
@@ -1552,9 +1515,9 @@ export default function DashboardPage() {
       {/* CREATE FLAG MODAL */}
       {addingFlag && (
         <div
-          ref={flagOverlayRef}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'none', overflow: 'hidden' }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', overscrollBehavior: 'none', touchAction: 'none' }}
           onClick={e => { if (e.target === e.currentTarget) { setAddingFlag(false); setNewFlagText(''); setNewFlagCategory(null); setNewFlagStudio('paramount'); clearNewFlagPhoto() } }}
+          onTouchMove={e => e.stopPropagation()}
         >
           <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile), ...(isMobile ? { height: 'auto', maxHeight: '90dvh', paddingTop: 'calc(52px + env(safe-area-inset-top, 0px))', paddingBottom: 'env(safe-area-inset-bottom, 0px)', transform: flagKeyboardHeight > 0 ? `translateY(-${flagKeyboardHeight}px)` : undefined, transition: 'transform 0.25s ease' } : {}) }}>
 
@@ -1572,7 +1535,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Body */}
-            <div ref={flagBodyRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14, overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
 
               {/* Studio */}
               <div>
@@ -1699,8 +1662,9 @@ export default function DashboardPage() {
       {/* FLAG MODAL */}
       {selectedFlag && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', overscrollBehavior: 'none', touchAction: 'none' }}
           onClick={e => { if (e.target === e.currentTarget) { setSelectedFlag(null); setConfirmDeleteFlag(false) } }}
+          onTouchMove={e => e.stopPropagation()}
         >
           <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile) }}>
 
@@ -1758,7 +1722,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Scrollable body */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 12, overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
 
               {/* Runner note — read only */}
               {selectedFlag.runner_note && (
@@ -1991,8 +1955,9 @@ export default function DashboardPage() {
       {/* ADD TASK MODAL */}
       {addingTask && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', overscrollBehavior: 'none', touchAction: 'none' }}
           onClick={e => { if (e.target === e.currentTarget) closeAddTask() }}
+          onTouchMove={e => e.stopPropagation()}
         >
           <div style={{ background: '#161920', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, width: '100%', maxWidth: 600, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile) }}>
             <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>
@@ -2004,7 +1969,7 @@ export default function DashboardPage() {
                 ×
               </button>
             </div>
-            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 18, overflowY: 'auto' }}>
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 18, overflowY: 'auto', overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
               <div>
                 <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
                   Task Description <span style={{ color: '#EF4444' }}>*</span>
@@ -2103,8 +2068,9 @@ export default function DashboardPage() {
       {/* RESOLVE MODAL */}
       {showResolveModal && selectedFlag && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', overscrollBehavior: 'none', touchAction: 'none' }}
           onClick={e => { if (e.target === e.currentTarget) setShowResolveModal(false) }}
+          onTouchMove={e => e.stopPropagation()}
         >
           <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 420, margin: '0 20px', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile) }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>
@@ -2116,7 +2082,7 @@ export default function DashboardPage() {
                 ×
               </button>
             </div>
-            <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12, overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
               <div>
                 <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
                   Resolution Notes <span style={{ color: '#EF4444' }}>*</span>
