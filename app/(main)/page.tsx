@@ -1537,7 +1537,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Body */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 8px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
               {/* Studio */}
               <div>
@@ -1634,7 +1634,7 @@ export default function DashboardPage() {
             <div style={{ borderTop: '1px solid var(--border)' }} />
 
             {/* Footer */}
-            <div style={{ padding: '12px 20px', display: 'flex', gap: 8 }}>
+            <div style={{ padding: '20px 20px 12px', display: 'flex', gap: 8 }}>
               <button
                 onClick={() => { setAddingFlag(false); setNewFlagText(''); setNewFlagCategory(null); setNewFlagStudio('paramount'); clearNewFlagPhoto() }}
                 style={{ flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono', background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--text2)' }}
