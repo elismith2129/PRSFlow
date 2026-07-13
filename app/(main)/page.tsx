@@ -1175,7 +1175,7 @@ export default function DashboardPage() {
             title="FLAGS"
             count={flags.filter(f => f.status === 'pending').length > 0 ? flags.filter(f => f.status === 'pending').length : undefined}
             countColor="orange"
-            action={{ label: '+ Flag', onClick: () => setAddingFlag(true) }}
+            action={{ label: 'View all flags →', onClick: () => router.push('/admin?section=flags_log') }}
             actionColor="#6B7280"
           />
         </div>
@@ -1242,12 +1242,19 @@ export default function DashboardPage() {
             })}
           </div>
         )}
-        <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', textAlign: 'right' }}>
+        {/* Footer: add flag — opens the full modal */}
+        <div style={{ padding: '8px', borderTop: '1px solid var(--border)' }}>
           <button
-            onClick={() => router.push('/admin?section=flags_log')}
-            style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#6B7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            onClick={() => setAddingFlag(true)}
+            style={{
+              width: '100%', padding: isMobile ? '13px' : '8px', fontSize: 11, fontFamily: 'DM Mono',
+              color: 'var(--text3)', background: 'transparent', letterSpacing: '0.04em',
+              border: '1px dashed var(--border)', borderRadius: 8, cursor: 'pointer',
+              minHeight: isMobile ? 44 : undefined,
+              transition: 'all 0.15s',
+            }}
           >
-            View all flags →
+            + add flag
           </button>
         </div>
       </div>
