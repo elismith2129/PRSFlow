@@ -77,7 +77,8 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
     <nav style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 32px', height: 52,
-      background: 'var(--surface)', borderBottom: '1px solid var(--border)',
+      background: 'linear-gradient(180deg, #1a1d27 0%, #0d0f14 100%)', borderBottom: '1px solid var(--border)',
+      boxShadow: '0 1px 0 rgba(200, 240, 78, 0.07), 0 4px 24px rgba(0, 0, 0, 0.5)',
       position: 'sticky', top: 0, zIndex: 99999,
       // Hidden during the fresh-login welcome splash so it doesn't flash before the
       // splash covers it; fades in with the dashboard once the splash dismisses.
