@@ -514,7 +514,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
       style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 20px' }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div style={{
+      <div data-ops-modal="" style={{
         background: 'var(--bg)', width: '100%', maxWidth: 680,
         maxHeight: '88dvh', borderRadius: 16, overflow: 'hidden',
         display: 'flex', flexDirection: 'column',

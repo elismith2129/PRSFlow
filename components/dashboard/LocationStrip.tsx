@@ -354,7 +354,7 @@ export function LocationStrip() {
           style={{ position: 'fixed', inset: 0, background: '#000000cc', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? 0 : '24px 20px' }}
           onClick={e => e.target === e.currentTarget && closeDrawer()}
         >
-          <div style={{
+          <div data-ops-modal="" style={{
             background: 'var(--bg)', width: '100%', maxWidth: isMobile ? '100vw' : 920,
             maxHeight: isMobile ? '100dvh' : '88dvh', height: isMobile ? '100dvh' : undefined,
             borderRadius: isMobile ? 0 : 16, overflow: 'hidden',
@@ -382,7 +382,7 @@ export function LocationStrip() {
 
                   {/* ── LEFT — Yesterday ── */}
                   {!pastRetentionWindow && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div data-ops-col="yesterday" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
                       <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'Syne' }}>Yesterday</span>
                       <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
@@ -440,7 +440,7 @@ export function LocationStrip() {
                   )}
 
                   {/* ── RIGHT — Today ── */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div data-ops-col="today" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
                       <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'Syne' }}>Today</span>
                       <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>

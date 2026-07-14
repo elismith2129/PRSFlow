@@ -979,6 +979,7 @@ export default function DashboardPage() {
                   <div
                     key={room.label}
                     data-session-active={cardAccent === 'var(--booked)' ? '' : undefined}
+                    data-room-cell=""
                     onClick={() => booking ? openBookingEdit(booking) : openNewRoomBooking(room)}
                     onMouseEnter={isEmpty ? () => setHoverRoom(room.label) : undefined}
                     onMouseLeave={isEmpty ? () => setHoverRoom(null) : undefined}
