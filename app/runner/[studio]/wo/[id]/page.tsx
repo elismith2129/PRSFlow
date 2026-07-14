@@ -877,7 +877,7 @@ export default function RunnerWOPage() {
                                 <button
                                   onClick={() => { if (r.admin_locked) return; notesScrollRef.current = window.scrollY; document.body.style.top = `-${window.scrollY}px`; document.body.style.position = 'fixed'; document.body.style.width = '100%'; setNotesModalRowId(r.id); setNotesModalText(r.session_info || '') }}
                                   disabled={!!r.admin_locked}
-                                  style={{ width: '100%', padding: '3px 4px', border: `1px solid ${hasNotes ? 'var(--accent)' : '#3a3f52'}`, borderRadius: 4, background: hasNotes ? 'rgba(200,240,78,0.08)' : 'transparent', color: hasNotes ? 'var(--accent)' : 'var(--text3)', fontSize: 9, fontFamily: 'Syne', cursor: r.admin_locked ? 'default' : 'pointer', opacity: r.admin_locked ? 0.4 : 1 }}
+                                  style={{ width: '100%', padding: '3px 4px', border: `1px solid ${hasNotes ? 'var(--accent)' : '#3a3f52'}`, borderRadius: 4, background: hasNotes ? 'rgba(var(--accent-rgb),0.08)' : 'transparent', color: hasNotes ? 'var(--accent)' : 'var(--text3)', fontSize: 9, fontFamily: 'Syne', cursor: r.admin_locked ? 'default' : 'pointer', opacity: r.admin_locked ? 0.4 : 1 }}
                                 >Notes</button>
                               </div>
                               {/* From / To */}
@@ -915,7 +915,7 @@ export default function RunnerWOPage() {
                               </div>
                             </div>
                             {engName && (
-                              <div style={{ display: 'grid', gridTemplateColumns: '50px 55px 85px 85px 42px 35px 65px 45px 55px 50px 60px', borderBottom: '1px solid var(--border)', background: 'rgba(200,240,78,0.03)' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: '50px 55px 85px 85px 42px 35px 65px 45px 55px 50px 60px', borderBottom: '1px solid var(--border)', background: 'rgba(var(--accent-rgb),0.03)' }}>
                                 <div style={{ ...tdStyle, padding: '4px 3px' }}>
                                   <button
                                     onClick={e => {
@@ -926,7 +926,7 @@ export default function RunnerWOPage() {
                                         setEngPopoverPos({ top: rect.top, left: rect.left })
                                       }
                                     }}
-                                    style={{ padding: '2px 5px', border: '1px solid var(--accent)', borderRadius: 4, background: 'rgba(200,240,78,0.08)', color: 'var(--accent)', fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer' }}
+                                    style={{ padding: '2px 5px', border: '1px solid var(--accent)', borderRadius: 4, background: 'rgba(var(--accent-rgb),0.08)', color: 'var(--accent)', fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer' }}
                                   >{initials}</button>
                                 </div>
                                 <div style={{ ...tdStyle }} />

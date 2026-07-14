@@ -189,7 +189,7 @@ export default function WoHubPage() {
       padding: '5px 14px',
       borderRadius: 20,
       border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-      background: active ? 'rgba(200,240,78,0.12)' : 'transparent',
+      background: active ? 'rgba(var(--accent-rgb),0.12)' : 'transparent',
       color: active ? 'var(--accent)' : 'var(--text3)',
       fontSize: 11,
       fontFamily: 'DM Mono',

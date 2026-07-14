@@ -879,7 +879,7 @@ export default function DashboardPage() {
                       borderBottom: i < needsActionLeads.length - 1 ? '1px solid var(--border)' : 'none',
                       cursor: 'pointer',
                       ...(isNewInquiry ? {
-                        background: 'rgba(200, 240, 78, 0.05)',
+                        background: 'rgba(var(--accent-rgb), 0.05)',
                         animation: 'webInquiryPulse 2s ease-in-out infinite',
                         zIndex: 1,
                       } : {}),

@@ -94,7 +94,7 @@ export default function FeedbackPage() {
   return (
     <div style={{ maxWidth: 720, margin: '0 auto' }}>
       {/* TEMPORARY: remove when rollout period ends — banner */}
-      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 20, padding: '8px 12px', border: '1px dashed rgba(200,240,78,0.4)', borderRadius: 8, background: 'rgba(200,240,78,0.06)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 20, padding: '8px 12px', border: '1px dashed rgba(var(--accent-rgb),0.4)', borderRadius: 8, background: 'rgba(var(--accent-rgb),0.06)' }}>
         <span style={{ fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent)' }}>Temporary</span>
         <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text2)' }}>
           Rollout feedback board — report bugs, suggestions, and questions about the app.

@@ -829,14 +829,14 @@ export function BookingForm({
                       padding: '4px 8px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700,
                       letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
                       borderRadius: '4px 0 0 4px', border: '1px solid var(--border)',
-                      background: form.rate_type === 'hourly' ? 'rgba(200,240,78,0.12)' : 'transparent',
+                      background: form.rate_type === 'hourly' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent',
                       color: form.rate_type === 'hourly' ? 'var(--accent)' : 'var(--text3)',
                     }}>/ hr</button>
                     <button type="button" onClick={() => set('rate_type', 'daily')} style={{
                       padding: '4px 8px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700,
                       letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
                       borderRadius: '0 4px 4px 0', border: '1px solid var(--border)', borderLeft: 'none',
-                      background: form.rate_type === 'daily' ? 'rgba(200,240,78,0.12)' : 'transparent',
+                      background: form.rate_type === 'daily' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent',
                       color: form.rate_type === 'daily' ? 'var(--accent)' : 'var(--text3)',
                     }}>/ day</button>
                     <input
@@ -863,7 +863,7 @@ export function BookingForm({
                       flex: 1, padding: '4px 6px', borderRadius: 4, fontSize: 9,
                       fontFamily: 'DM Mono', cursor: 'pointer',
                       border: form.session_type === k ? '1px solid var(--accent)' : '1px solid var(--border)',
-                      background: form.session_type === k ? 'rgba(200,240,78,0.08)' : 'var(--surface2)',
+                      background: form.session_type === k ? 'rgba(var(--accent-rgb),0.08)' : 'var(--surface2)',
                       color: form.session_type === k ? 'var(--accent)' : 'var(--text2)',
                     }}>{v}</button>
                   ))}

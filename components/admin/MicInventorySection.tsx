@@ -597,7 +597,7 @@ export function MicInventorySection() {
                         display: 'grid', gridTemplateColumns: GRID_COLS, gap: 12,
                         padding: isEditing ? '7px 16px' : '9px 16px', alignItems: 'center',
                         borderLeft: isMissing ? '3px solid var(--hot)' : isEditing ? '3px solid var(--accent)' : '3px solid transparent',
-                        background: isEditing ? 'rgba(200,240,78,0.05)' : isMissing ? 'rgba(239,68,68,0.06)' : 'transparent',
+                        background: isEditing ? 'rgba(var(--accent-rgb),0.05)' : isMissing ? 'rgba(239,68,68,0.06)' : 'transparent',
                       }}>
                         {/* Mic name */}
                         <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mic.name}</div>

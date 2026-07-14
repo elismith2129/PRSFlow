@@ -13,6 +13,7 @@
   --text2: #8b90a8;
   --text3: #4a4f64;
   --accent: #c8f04e;
+  --accent-rgb: 200, 240, 78;
   --accent2: #4e8ff0;
   --hot: #EF4444;
   --warm: #F97316;
@@ -36,9 +37,13 @@
   --border: #cbd5e1;
   --text: #1e293b;
   --text2: #475569;
-  --text3: #94a3b8;
+  /* (FIX 4) darkened from #94a3b8 so faint labels / tertiary text stay readable. */
+  --text3: #64748b;
   /* (PART 2.4) blue accent replaces lime in light mode. */
   --accent: #3b82f6;
+  /* (FIX 2) accent as an RGB triple so rgba(var(--accent-rgb), a) tints follow the
+     theme — lime in dark, blue in light — instead of the hardcoded lime literal. */
+  --accent-rgb: 59, 130, 246;
   --accent2: #0ea5e9;
   --hot: #dc2626;
   --warm: #ea580c;
@@ -173,6 +178,36 @@ html[data-theme="light"] {
   background: linear-gradient(135deg, #dbeafe 0%, #ffe4e6 100%) !important;
 }
 
+
+/* (FIX 1/6) Text set to color:var(--bg) is "contrast text on an accent fill" — but
+   var(--bg) is transparent in light, so it disappears (submit buttons, the TASKS
+   count bubble, the /tasks active tab). Force it white. Matches `color` only (not
+   `background-color`) via a start/semicolon boundary; both style serializations. */
+[data-theme="light"] [style^="color: var(--bg)"],
+[data-theme="light"] [style*="; color: var(--bg)"],
+[data-theme="light"] [style^="color:var(--bg)"],
+[data-theme="light"] [style*=";color:var(--bg)"] {
+  color: #ffffff !important;
+}
+
+/* (FIX 2) The active ENGINEER NEEDED badge is solid blue with white text in light. */
+[data-theme="light"] [data-eng-needed] {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+  border-color: #3b82f6 !important;
+}
+
+/* (FIX 5) Inputs inside modals (fixed-overlay descendants) get a faint fill + a
+   visible slate border so they stand out from the white modal card in light mode. */
+[data-theme="light"] [style*="position:fixed"] input,
+[data-theme="light"] [style*="position:fixed"] textarea,
+[data-theme="light"] [style*="position:fixed"] select,
+[data-theme="light"] [style*="position: fixed"] input,
+[data-theme="light"] [style*="position: fixed"] textarea,
+[data-theme="light"] [style*="position: fixed"] select {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+}
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 

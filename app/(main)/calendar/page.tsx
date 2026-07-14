@@ -246,9 +246,9 @@ function BookingBlock({
         left: `calc(${left}% + 2px)`, width: `calc(${width}% - 4px)`,
         background: 'var(--bg)', boxSizing: 'border-box',
         borderTop: `${micro ? 3 : 4}px solid ${topColor}`,
-        borderLeft: sessionBorder ? '2px solid rgba(200,240,78,0.7)' : `1px solid ${chipGlowBorder}`,
-        borderRight: sessionBorder ? '2px solid rgba(200,240,78,0.7)' : `1px solid ${chipGlowBorder}`,
-        borderBottom: sessionBorder ? '2px solid rgba(200,240,78,0.7)' : `1px solid ${chipGlowBorder}`,
+        borderLeft: sessionBorder ? '2px solid rgba(var(--accent-rgb),0.7)' : `1px solid ${chipGlowBorder}`,
+        borderRight: sessionBorder ? '2px solid rgba(var(--accent-rgb),0.7)' : `1px solid ${chipGlowBorder}`,
+        borderBottom: sessionBorder ? '2px solid rgba(var(--accent-rgb),0.7)' : `1px solid ${chipGlowBorder}`,
         borderRadius: 4,
         boxShadow: chipGlow,
         padding: micro ? '1px 4px' : compact ? '3px 5px' : '4px 6px',
@@ -543,7 +543,7 @@ function DayView({
                         padding: '7px 10px', cursor: 'pointer',
                         background: 'var(--bg)',
                         borderTop: `3px solid ${topColor}`,
-                        borderLeft: hasSessionBorder ? '3px solid rgba(200,240,78,0.7)' : `1px solid ${chipGlowBorder}`,
+                        borderLeft: hasSessionBorder ? '3px solid rgba(var(--accent-rgb),0.7)' : `1px solid ${chipGlowBorder}`,
                         borderRight: `1px solid ${chipGlowBorder}`,
                         borderBottom: `1px solid ${chipGlowBorder}`,
                         boxShadow: chipGlow,
@@ -704,7 +704,7 @@ function StudioView({
                 borderRight: i % 7 < 6 ? '1px solid rgba(255,255,255,0.05)' : 'none',
                 borderBottom: '1px solid rgba(255,255,255,0.05)',
                 padding: '4px 5px',
-                background: isTodayCell ? 'rgba(200,240,78,0.04)' : 'transparent',
+                background: isTodayCell ? 'rgba(var(--accent-rgb),0.04)' : 'transparent',
               }}
             >
               {/* Date number */}
@@ -750,7 +750,7 @@ function StudioView({
                       background: 'var(--bg)',
                       cursor: 'pointer',
                       borderTop: `3px solid ${topColor}`,
-                      borderLeft: b.session_type !== 'recording' ? '2px solid rgba(200,240,78,0.7)' : `1px solid ${chipGlowBorder}`,
+                      borderLeft: b.session_type !== 'recording' ? '2px solid rgba(var(--accent-rgb),0.7)' : `1px solid ${chipGlowBorder}`,
                       borderRight: `1px solid ${chipGlowBorder}`,
                       borderBottom: `1px solid ${chipGlowBorder}`,
                       boxShadow: chipGlow,
@@ -1464,7 +1464,7 @@ function CalendarPageInner() {
                               background: isWeekend(d) ? 'rgba(255,255,255,0.012)' : 'transparent',
                               borderRight: '1px solid var(--border)',
                               boxShadow: cellIsMonthStart
-                                ? 'inset 2px 0 0 rgba(200,240,78,0.3)'
+                                ? 'inset 2px 0 0 rgba(var(--accent-rgb),0.3)'
                                 : cellIsWeekStart ? 'inset 2px 0 0 rgba(255,255,255,0.12)' : 'none',
                               cursor: 'crosshair',
                             }}
@@ -1624,8 +1624,8 @@ function CalendarPageInner() {
             else if (view === 'studio') setView('day')
           }}
           style={{
-            background: locFilter.includes('|') ? 'rgba(200,240,78,0.08)' : 'var(--surface2)',
-            border: locFilter.includes('|') ? '1px solid rgba(200,240,78,0.4)' : '1px solid var(--border)',
+            background: locFilter.includes('|') ? 'rgba(var(--accent-rgb),0.08)' : 'var(--surface2)',
+            border: locFilter.includes('|') ? '1px solid rgba(var(--accent-rgb),0.4)' : '1px solid var(--border)',
             color: locFilter.includes('|') ? 'var(--accent)' : 'var(--text2)',
             borderRadius: 4, padding: '4px 10px',
             fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', outline: 'none',

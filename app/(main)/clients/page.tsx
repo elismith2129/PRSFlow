@@ -139,7 +139,7 @@ export function ClientsPageInner({ initialClientId, embedded }: { initialClientI
           onClick={() => setRegModalOpen(true)}
           style={{
             marginBottom: 12, padding: '10px 16px', flexShrink: 0,
-            background: 'rgba(200,240,78,0.08)', border: '1px solid rgba(200,240,78,0.3)',
+            background: 'rgba(var(--accent-rgb),0.08)', border: '1px solid rgba(var(--accent-rgb),0.3)',
             borderRadius: 8, cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 10,
           }}
@@ -357,7 +357,7 @@ function RegistrationReviewModal({ regs, onClose, onNavigate }: {
                         </span>
                       )}
                       {reg.id_file_url ? (
-                        <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--accent)', background: 'rgba(200,240,78,0.08)', border: '1px solid rgba(200,240,78,0.25)', padding: '2px 6px', borderRadius: 3 }}>
+                        <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--accent)', background: 'rgba(var(--accent-rgb),0.08)', border: '1px solid rgba(var(--accent-rgb),0.25)', padding: '2px 6px', borderRadius: 3 }}>
                           ID ON FILE
                         </span>
                       ) : (

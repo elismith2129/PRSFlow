@@ -99,7 +99,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 32px', height: 52,
       background: 'linear-gradient(180deg, var(--surface2) 0%, var(--bg) 100%)', borderBottom: '1px solid var(--border)',
-      boxShadow: '0 1px 0 rgba(200, 240, 78, 0.07), 0 4px 24px rgba(0, 0, 0, 0.5)',
+      boxShadow: '0 1px 0 rgba(var(--accent-rgb), 0.07), 0 4px 24px rgba(0, 0, 0, 0.5)',
       position: 'sticky', top: 0, zIndex: 99999,
       // Hidden during the fresh-login welcome splash so it doesn't flash before the
       // splash covers it; fades in with the dashboard once the splash dismisses.

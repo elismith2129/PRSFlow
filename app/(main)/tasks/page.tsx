@@ -303,7 +303,7 @@ export default function TasksPage() {
                 style={{
                   flexShrink: 0, padding: '4px 12px', fontSize: 11, fontFamily: 'Syne',
                   fontWeight: isActive ? 600 : 400,
-                  color: isActive ? 'var(--bg)' : 'var(--text3)',
+                  color: isActive ? 'var(--bg)' : 'var(--text2)',
                   background: isActive ? 'var(--accent)' : 'transparent',
                   border: 'none', cursor: 'pointer', borderRadius: 6, whiteSpace: 'nowrap',
                   textTransform: 'uppercase', letterSpacing: '0.06em', transition: 'all 0.1s',

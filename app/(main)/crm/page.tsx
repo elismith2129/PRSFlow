@@ -1808,8 +1808,8 @@ const khuDays = daysUntilKhu(lead)
           <div>
             <div style={fieldLabelStyle}>Quote / Rate</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-              <button type="button" onClick={() => setDetailRateType('hourly')} style={{ padding: '3px 7px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '4px 0 0 4px', border: '1px solid var(--border)', background: detailRateType === 'hourly' ? 'rgba(200,240,78,0.12)' : 'transparent', color: detailRateType === 'hourly' ? 'var(--accent)' : 'var(--text3)' }}>/ hr</button>
-              <button type="button" onClick={() => setDetailRateType('daily')} style={{ padding: '3px 7px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '0 4px 4px 0', border: '1px solid var(--border)', borderLeft: 'none', background: detailRateType === 'daily' ? 'rgba(200,240,78,0.12)' : 'transparent', color: detailRateType === 'daily' ? 'var(--accent)' : 'var(--text3)' }}>/ day</button>
+              <button type="button" onClick={() => setDetailRateType('hourly')} style={{ padding: '3px 7px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '4px 0 0 4px', border: '1px solid var(--border)', background: detailRateType === 'hourly' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: detailRateType === 'hourly' ? 'var(--accent)' : 'var(--text3)' }}>/ hr</button>
+              <button type="button" onClick={() => setDetailRateType('daily')} style={{ padding: '3px 7px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '0 4px 4px 0', border: '1px solid var(--border)', borderLeft: 'none', background: detailRateType === 'daily' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: detailRateType === 'daily' ? 'var(--accent)' : 'var(--text3)' }}>/ day</button>
               <input
                 ref={quoteRef}
                 value={detailRateType === 'hourly' ? (local.quote || '') : (local.rate_daily || '')}
@@ -1853,7 +1853,8 @@ const khuDays = daysUntilKhu(lead)
       <div style={{ marginTop: 8 }}>
         <button
           onClick={() => { const v = !local.engineer_needed; update('engineer_needed', v); save('engineer_needed', v) }}
-          style={{ padding: '5px 14px', background: local.engineer_needed ? 'rgba(200,240,78,0.12)' : 'var(--surface2)', color: local.engineer_needed ? 'var(--accent)' : 'var(--text3)', border: `1px solid ${local.engineer_needed ? 'rgba(200,240,78,0.35)' : 'var(--border)'}`, borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer' }}
+          data-eng-needed={local.engineer_needed ? '' : undefined}
+          style={{ padding: '5px 14px', background: local.engineer_needed ? 'rgba(var(--accent-rgb),0.12)' : 'var(--surface2)', color: local.engineer_needed ? 'var(--accent)' : 'var(--text3)', border: `1px solid ${local.engineer_needed ? 'rgba(var(--accent-rgb),0.35)' : 'var(--border)'}`, borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer' }}
         >
           {local.engineer_needed ? '● Engineer Needed' : '○ Engineer Needed'}
         </button>
@@ -2611,8 +2612,8 @@ function NewLeadModal({ leads, onClose, onSave }: {
         <div>
           <label style={labelS}>Quote / Rate</label>
           <div style={{ display: 'flex', gap: 0 }}>
-            <button type="button" onClick={() => setRateType('hourly')} style={{ padding: '4px 8px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '4px 0 0 4px', border: '1px solid var(--border)', background: rateType === 'hourly' ? 'rgba(200,240,78,0.12)' : 'transparent', color: rateType === 'hourly' ? 'var(--accent)' : 'var(--text3)' }}>/ hr</button>
-            <button type="button" onClick={() => setRateType('daily')} style={{ padding: '4px 8px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '0 4px 4px 0', border: '1px solid var(--border)', borderLeft: 'none', background: rateType === 'daily' ? 'rgba(200,240,78,0.12)' : 'transparent', color: rateType === 'daily' ? 'var(--accent)' : 'var(--text3)' }}>/ day</button>
+            <button type="button" onClick={() => setRateType('hourly')} style={{ padding: '4px 8px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '4px 0 0 4px', border: '1px solid var(--border)', background: rateType === 'hourly' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: rateType === 'hourly' ? 'var(--accent)' : 'var(--text3)' }}>/ hr</button>
+            <button type="button" onClick={() => setRateType('daily')} style={{ padding: '4px 8px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '0 4px 4px 0', border: '1px solid var(--border)', borderLeft: 'none', background: rateType === 'daily' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: rateType === 'daily' ? 'var(--accent)' : 'var(--text3)' }}>/ day</button>
             <input
               value={rateType === 'hourly' ? form.quote : form.rate_daily}
               onChange={e => set(rateType === 'hourly' ? 'quote' : 'rate_daily', e.target.value)}

@@ -363,7 +363,7 @@ export default function RegisterPage() {
             width: 48,
             height: 48,
             borderRadius: '50%',
-            background: 'rgba(200, 240, 78, 0.12)',
+            background: 'rgba(var(--accent-rgb), 0.12)',
             border: '1px solid var(--accent)',
             display: 'flex',
             alignItems: 'center',

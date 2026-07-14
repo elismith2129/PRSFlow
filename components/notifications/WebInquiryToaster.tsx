@@ -90,7 +90,7 @@ function ToastItem({
           borderRadius: '50%',
           background: 'var(--accent)',
           flexShrink: 0,
-          boxShadow: '0 0 6px rgba(200,240,78,0.8)',
+          boxShadow: '0 0 6px rgba(var(--accent-rgb),0.8)',
         }}
       />
       <div style={{ minWidth: 0 }}>

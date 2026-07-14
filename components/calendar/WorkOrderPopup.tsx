@@ -1383,7 +1383,7 @@ export function WorkOrderPopup({
               <button
                 onClick={handleClose}
                 disabled={saving}
-                style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : 'rgba(200,240,78,0.12)', border: '1px solid rgba(200,240,78,0.3)', color: saving ? 'var(--text2)' : 'var(--accent)' }}
+                style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(var(--accent-rgb),0.5)' : 'rgba(var(--accent-rgb),0.12)', border: '1px solid rgba(var(--accent-rgb),0.3)', color: saving ? 'var(--text2)' : 'var(--accent)' }}
               >
                 {saving ? 'Saving…' : 'Close & Save'}
               </button>
@@ -1484,7 +1484,7 @@ export function WorkOrderPopup({
                       <button key={s} type="button" onClick={() => setWo(w => {
                         if (!w) return w
                         return { ...w, studios: on ? w.studios.filter(x => x !== s) : [...w.studios, s] }
-                      })} style={{ width: 26, height: 24, borderRadius: 4, border: `1px solid ${on ? 'var(--accent)' : 'rgba(255,255,255,0.12)'}`, background: on ? 'rgba(200,240,78,0.12)' : 'transparent', color: on ? 'var(--accent)' : 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>
+                      })} style={{ width: 26, height: 24, borderRadius: 4, border: `1px solid ${on ? 'var(--accent)' : 'rgba(255,255,255,0.12)'}`, background: on ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: on ? 'var(--accent)' : 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>
                         {s}
                       </button>
                     )
@@ -1507,7 +1507,7 @@ export function WorkOrderPopup({
               <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
                 <div style={metaLabel}>Food Budget</div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button type="button" onClick={() => { setDirtyFields(prev => new Set(prev).add('food_budget')); setWo(w => w ? { ...w, food_budget: !w.food_budget } : w) }} style={{ padding: '2px 10px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', border: `1px solid ${wo.food_budget ? 'var(--accent)' : 'rgba(255,255,255,0.12)'}`, background: wo.food_budget ? 'rgba(200,240,78,0.12)' : 'transparent', color: wo.food_budget ? 'var(--accent)' : 'var(--text2)' }}>
+                  <button type="button" onClick={() => { setDirtyFields(prev => new Set(prev).add('food_budget')); setWo(w => w ? { ...w, food_budget: !w.food_budget } : w) }} style={{ padding: '2px 10px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', border: `1px solid ${wo.food_budget ? 'var(--accent)' : 'rgba(255,255,255,0.12)'}`, background: wo.food_budget ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: wo.food_budget ? 'var(--accent)' : 'var(--text2)' }}>
                     {wo.food_budget ? 'Yes' : 'No'}
                   </button>
                   {wo.food_budget && <input value={wo.food_amount} onChange={e => { setDirtyFields(prev => new Set(prev).add('food_amount')); setWo(w => w ? { ...w, food_amount: e.target.value } : w) }} placeholder="$0.00" style={{ ...inp, width: 70 }} />}
@@ -1701,7 +1701,7 @@ export function WorkOrderPopup({
                       )}
                       {(r.studio === '' || !!wo?.engineer || !!r.eng_rate) && r.eng_visible !== false && (
                         <>
-                          <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(200,240,78,0.03)' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(var(--accent-rgb),0.03)' }}>
                             <div style={{ ...cellS, color: 'var(--text2)', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
                             {/* Date picker — uses r.date for eng-only rows; shared with main row for studio rows */}
                             <div key={r.id + '-eng-date'} style={{ ...cellS, color: 'var(--text2)', fontSize: 10, position: 'relative', cursor: isEngOnly ? 'pointer' : 'default' }}>
@@ -2041,7 +2041,7 @@ export function WorkOrderPopup({
           >
             {completing ? (isCompleted ? 'Re-opening…' : 'Completing…') : isCompleted ? 'Re-open WO' : 'Complete WO'}
           </button>
-          <button onClick={handleClose} disabled={saving} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(200,240,78,0.5)' : 'var(--accent)', border: 'none', color: 'var(--bg)', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '2 1 0', minHeight: 48, fontSize: 13, fontWeight: 800, borderRadius: 12, padding: '13px 0', letterSpacing: '0.02em' } : {}) }}>
+          <button onClick={handleClose} disabled={saving} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(var(--accent-rgb),0.5)' : 'var(--accent)', border: 'none', color: 'var(--bg)', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '2 1 0', minHeight: 48, fontSize: 13, fontWeight: 800, borderRadius: 12, padding: '13px 0', letterSpacing: '0.02em' } : {}) }}>
             {saving ? 'Saving…' : 'Close & Save'}
           </button>
           </>
