@@ -46,7 +46,7 @@ export function SopGate() {
         // the fresh-login welcome splash (z 100000) so the splash wins on a
         // brand-new user's very first login.
         zIndex: 99999,
-        background: '#0d0f14',
+        background: 'var(--bg)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -81,8 +81,8 @@ export function SopGate() {
             marginTop: 32,
             width: '100%',
             maxWidth: 320,
-            background: '#c8f04e',
-            color: '#0d0f14',
+            background: 'var(--accent)',
+            color: 'var(--bg)',
             border: 'none',
             borderRadius: 6,
             padding: '14px',

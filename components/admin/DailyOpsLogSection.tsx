@@ -38,26 +38,26 @@ function fmtTime(iso: string | null): string {
 }
 
 function StatusDot({ status }: { status: 'all' | 'partial' | 'none' }) {
-  const color = status === 'all' ? '#14B8A6' : status === 'partial' ? '#F97316' : '#6B7280'
+  const color = status === 'all' ? 'var(--booked)' : status === 'partial' ? 'var(--warm)' : 'var(--cold)'
   return (
     <div style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
   )
 }
 
-function CheckBox({ label, checked, color = '#14B8A6' }: { label: string; checked: boolean; color?: string }) {
+function CheckBox({ label, checked, color = 'var(--booked)' }: { label: string; checked: boolean; color?: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
       <div style={{
         width: 11, height: 11, borderRadius: 3, flexShrink: 0,
-        border: `1.5px solid ${checked ? color : '#6B7280'}`,
+        border: `1.5px solid ${checked ? color : 'var(--cold)'}`,
         background: checked ? color : 'transparent',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        {checked && <span style={{ fontSize: 7, color: '#0d0f14', fontWeight: 900, lineHeight: 1 }}>✓</span>}
+        {checked && <span style={{ fontSize: 7, color: 'var(--bg)', fontWeight: 900, lineHeight: 1 }}>✓</span>}
       </div>
       <span style={{
         fontSize: 9, fontFamily: 'DM Mono, monospace', fontWeight: 700,
-        letterSpacing: '0.05em', color: checked ? color : '#6B7280',
+        letterSpacing: '0.05em', color: checked ? color : 'var(--cold)',
       }}>
         {label}
       </span>
@@ -204,8 +204,8 @@ export function DailyOpsLogSection() {
               style={{
                 padding: '6px 18px', borderRadius: 20, border: 'none', cursor: 'pointer',
                 fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.05em',
-                background: active ? '#1a1d27' : 'var(--surface)',
-                color: active ? '#e8eaf2' : 'var(--text3)',
+                background: active ? 'var(--surface2)' : 'var(--surface)',
+                color: active ? 'var(--text)' : 'var(--text3)',
                 transition: 'background 0.12s, color 0.12s',
               }}
             >
@@ -324,7 +324,7 @@ export function DailyOpsLogSection() {
                         const wo = dayData.wos.find((w: any) => w.booking_id === booking.id) ?? null
                         const completed = wo?.status === 'completed'
                         const needsAttn = !!(wo?.needs_attention_notes)
-                        const borderColor = completed ? '#14B8A6' : needsAttn ? '#F97316' : 'var(--border)'
+                        const borderColor = completed ? 'var(--booked)' : needsAttn ? 'var(--warm)' : 'var(--border)'
                         return (
                           <div
                             key={booking.id}
@@ -351,16 +351,16 @@ export function DailyOpsLogSection() {
                               </div>
                               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                                 {needsAttn && (
-                                  <span style={{ fontSize: 9, fontWeight: 700, color: '#F97316', background: '#F9731622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>
+                                  <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--warm)', background: '#F9731622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>
                                     ⚠ Needs Attention
                                   </span>
                                 )}
                                 {completed ? (
-                                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#14B8A6', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>
+                                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--booked)', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>
                                     COMPLETED
                                   </span>
                                 ) : (
-                                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6B7280', background: '#6B728022', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>
+                                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--cold)', background: '#6B728022', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>
                                     OPEN
                                   </span>
                                 )}
@@ -454,8 +454,8 @@ export function DailyOpsLogSection() {
                             )}
                           </div>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <CheckBox label="Runner" checked={runnerDone} color="#c8f04e" />
-                            <CheckBox label="Admin" checked={adminDone} color="#14B8A6" />
+                            <CheckBox label="Runner" checked={runnerDone} color="var(--accent)" />
+                            <CheckBox label="Admin" checked={adminDone} color="var(--booked)" />
                           </div>
                         </div>
                       )

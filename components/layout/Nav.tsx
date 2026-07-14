@@ -98,7 +98,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
     <nav style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 32px', height: 52,
-      background: 'linear-gradient(180deg, #1a1d27 0%, #0d0f14 100%)', borderBottom: '1px solid var(--border)',
+      background: 'linear-gradient(180deg, var(--surface2) 0%, var(--bg) 100%)', borderBottom: '1px solid var(--border)',
       boxShadow: '0 1px 0 rgba(200, 240, 78, 0.07), 0 4px 24px rgba(0, 0, 0, 0.5)',
       position: 'sticky', top: 0, zIndex: 99999,
       // Hidden during the fresh-login welcome splash so it doesn't flash before the
@@ -131,14 +131,14 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
               key={item.href}
               href={item.href}
               data-feedback={isFeedback ? '' : undefined}
-              onMouseEnter={active || isFeedback ? undefined : (e) => { e.currentTarget.style.color = '#9ca3af' }}
-              onMouseLeave={active || isFeedback ? undefined : (e) => { e.currentTarget.style.color = '#6B7280' }}
+              onMouseEnter={active || isFeedback ? undefined : (e) => { e.currentTarget.style.color = 'var(--text2)' }}
+              onMouseLeave={active || isFeedback ? undefined : (e) => { e.currentTarget.style.color = 'var(--cold)' }}
               style={{
                 position: 'relative', display: 'flex', alignItems: 'center', height: '100%',
                 padding: '0 10px', fontSize: 11,
                 fontFamily: 'DM Mono', fontWeight: 500, letterSpacing: '0.04em',
                 background: 'transparent',
-                color: isFeedback ? '#c8f04e' : active ? '#e8eaf0' : '#6B7280',
+                color: isFeedback ? 'var(--accent)' : active ? 'var(--text)' : 'var(--cold)',
                 borderBottom: active ? '2px solid var(--accent)' : 'none',
                 borderRadius: 0,
                 textDecoration: 'none', transition: 'color 0.15s ease',
@@ -168,12 +168,12 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
         <button
           onClick={toggleTheme}
           aria-label="Toggle light/dark theme"
-          onMouseEnter={(e) => { e.currentTarget.style.color = '#e8eaf0' }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = '#6B7280' }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--cold)' }}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'transparent', border: 'none', cursor: 'pointer',
-            color: '#6B7280', padding: 0, transition: 'color 0.15s ease',
+            color: 'var(--cold)', padding: 0, transition: 'color 0.15s ease',
           }}
         >
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
@@ -181,15 +181,15 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
         <button
           onClick={handleSignOut}
           data-signout=""
-          onMouseEnter={(e) => { e.currentTarget.style.color = '#e8eaf0' }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = '#6B7280' }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--cold)' }}
           style={{
             background: 'transparent', border: 'none',
             borderLeft: '1px solid rgba(255,255,255,0.08)',
             padding: 0, paddingLeft: 12, marginLeft: 8,
             fontFamily: 'DM Mono', fontSize: 10, fontWeight: 500,
             letterSpacing: '0.08em', textTransform: 'uppercase',
-            color: '#6B7280', cursor: 'pointer', transition: 'color 0.15s ease',
+            color: 'var(--cold)', cursor: 'pointer', transition: 'color 0.15s ease',
           }}
         >
           Sign Out
@@ -205,7 +205,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
           style={{
             width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'transparent', border: 'none', cursor: 'pointer',
-            color: '#e8eaf0', fontSize: 24, lineHeight: 1, padding: 0,
+            color: 'var(--text)', fontSize: 24, lineHeight: 1, padding: 0,
           }}
         >
           ≡
@@ -237,7 +237,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
                   style={{
                     display: 'flex', alignItems: 'center', height: 48, paddingLeft: 16,
                     fontFamily: 'DM Mono', fontSize: 13, textDecoration: 'none',
-                    color: isFeedback ? '#c8f04e' : active ? '#e8eaf0' : '#9ca3af',
+                    color: isFeedback ? 'var(--accent)' : active ? 'var(--text)' : 'var(--text2)',
                     borderLeft: active ? '2px solid var(--accent)' : '2px solid transparent',
                   }}
                 >
@@ -249,7 +249,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
               onClick={toggleTheme}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10, height: 48, width: '100%', paddingLeft: 16,
-                fontFamily: 'DM Mono', fontSize: 13, color: '#9ca3af',
+                fontFamily: 'DM Mono', fontSize: 13, color: 'var(--text2)',
                 background: 'transparent', border: 'none', borderTop: '1px solid rgba(255,255,255,0.06)',
                 cursor: 'pointer', textAlign: 'left',
               }}
@@ -262,7 +262,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
               data-signout=""
               style={{
                 display: 'flex', alignItems: 'center', height: 48, width: '100%', paddingLeft: 16,
-                fontFamily: 'DM Mono', fontSize: 13, color: '#ef4444',
+                fontFamily: 'DM Mono', fontSize: 13, color: 'var(--hot)',
                 background: 'transparent', border: 'none', borderTop: '1px solid rgba(255,255,255,0.06)',
                 cursor: 'pointer', textAlign: 'left',
               }}

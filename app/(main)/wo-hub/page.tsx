@@ -20,8 +20,8 @@ type WoEntry = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<WoStatus, string> = {
-  open:      '#6B7280',
-  completed: '#14B8A6',
+  open:      'var(--cold)',
+  completed: 'var(--booked)',
 }
 
 

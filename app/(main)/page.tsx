@@ -787,7 +787,7 @@ export default function DashboardPage() {
             // Above the Nav (99999) so the splash fully covers the viewport — a
             // 9999 overlay would sit under the sticky nav bar and look broken.
             position: 'fixed', inset: 0, zIndex: 100000,
-            background: '#0d0f14',
+            background: 'var(--bg)',
             display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center',
             opacity: welcomeFading ? 0 : 1,
@@ -798,12 +798,12 @@ export default function DashboardPage() {
           <div style={{ marginBottom: 2 }}>
             <PRSFloIcon size={72} />
           </div>
-          <div style={{ fontFamily: 'DM Mono', fontSize: 13, letterSpacing: '0.2em', color: '#6B7280', textTransform: 'uppercase' }}>
+          <div style={{ fontFamily: 'DM Mono', fontSize: 13, letterSpacing: '0.2em', color: 'var(--cold)', textTransform: 'uppercase' }}>
             {greeting.toUpperCase()}
           </div>
           {/* nbsp fallback reserves the line height so the name appearing causes no layout shift */}
           <div style={{
-            fontFamily: 'Syne', fontWeight: 800, fontSize: isMobile ? 48 : 64, color: '#e8eaf0', lineHeight: 1.1, marginTop: 14, marginBottom: 108, textAlign: 'center',
+            fontFamily: 'Syne', fontWeight: 800, fontSize: isMobile ? 48 : 64, color: 'var(--text)', lineHeight: 1.1, marginTop: 14, marginBottom: 108, textAlign: 'center',
             opacity: nameVisible ? 1 : 0,
             transform: nameVisible ? 'translateY(0)' : 'translateY(8px)',
             transition: 'opacity 0.6s ease, transform 0.6s ease',
@@ -828,8 +828,8 @@ export default function DashboardPage() {
             the heading, matching its Syne ExtraBold weight */}
         {!isMobile && (
           <div style={{ flexShrink: 0, paddingLeft: 24, textAlign: 'right', fontFamily: 'DM Serif Display', fontSize: 28, letterSpacing: '0.02em', lineHeight: 1.05, whiteSpace: 'nowrap' }}>
-            <span style={{ color: '#c8f04e' }}>{clockDate.toUpperCase()}</span>
-            <span style={{ marginLeft: 12, color: '#e8eaf0' }}>{clockTime}</span>
+            <span style={{ color: 'var(--accent)' }}>{clockDate.toUpperCase()}</span>
+            <span style={{ marginLeft: 12, color: 'var(--text)' }}>{clockTime}</span>
           </div>
         )}
       </div>
@@ -842,12 +842,12 @@ export default function DashboardPage() {
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr 1fr', gap: 14, alignItems: 'start', marginTop: 14 }}>
 
         {/* COL 1 — NEEDS ACTION */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', order: isMobile ? 2 : 0 }}>
+        <div data-panel="needs-action" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', order: isMobile ? 2 : 0 }}>
           <div style={{ padding: '13px 16px 0', borderBottom: '1px solid var(--border)' }}>
             <SectionHeader
               title="NEEDS ACTION"
               action={{ label: 'View all in CRM →', onClick: () => router.push('/crm') }}
-              actionColor="#6B7280"
+              actionColor="var(--cold)"
             />
           </div>
           <div style={{ borderBottom: '1px solid var(--border)' }}>
@@ -892,7 +892,7 @@ export default function DashboardPage() {
                     {isNewInquiry && (
                       <span style={{
                         position: 'absolute', top: 4, right: 4,
-                        background: '#c8f04e', color: '#0d0f14',
+                        background: 'var(--accent)', color: 'var(--bg)',
                         fontSize: 8, fontFamily: 'DM Mono, monospace', fontWeight: 700,
                         letterSpacing: '0.08em', padding: '1px 4px', borderRadius: 3, lineHeight: 1.4,
                       }}>
@@ -922,7 +922,7 @@ export default function DashboardPage() {
         </div>
 
         {/* COL 2 — TODAY'S SESSIONS */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', height: isMobile ? 'auto' : 556, order: isMobile ? 1 : 0 }}>
+        <div data-panel="today-sessions" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', height: isMobile ? 'auto' : 556, order: isMobile ? 1 : 0 }}>
           <div style={{ padding: '13px 16px 0', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <SectionHeader title="TODAY'S SESSIONS" />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -948,14 +948,14 @@ export default function DashboardPage() {
                   b.location === room.venue && b.studio === room.studio
                 )
                 const isBilling = booking?.payment_type === 'billing'
-                const topColor = booking?.status === 'confirmed' ? '#14B8A6' : booking?.status === 'tentative' ? '#F97316' : null
+                const topColor = booking?.status === 'confirmed' ? 'var(--booked)' : booking?.status === 'tentative' ? 'var(--warm)' : null
                 // Card state accent: orange (attention) takes priority over teal (occupied); null = empty
-                const cardAccent = topColor === '#F97316' ? '#F97316' : booking ? '#14B8A6' : null
-                const cardBorder = cardAccent === '#F97316' ? 'rgba(249, 115, 22, 0.35)'
-                  : cardAccent === '#14B8A6' ? 'rgba(20, 184, 166, 0.35)'
+                const cardAccent = topColor === 'var(--warm)' ? 'var(--warm)' : booking ? 'var(--booked)' : null
+                const cardBorder = cardAccent === 'var(--warm)' ? 'rgba(249, 115, 22, 0.35)'
+                  : cardAccent === 'var(--booked)' ? 'rgba(20, 184, 166, 0.35)'
                   : 'rgba(255, 255, 255, 0.08)'
-                const cardGlow = cardAccent === '#F97316' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
-                  : cardAccent === '#14B8A6' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
+                const cardGlow = cardAccent === 'var(--warm)' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
+                  : cardAccent === 'var(--booked)' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
                   : 'none'
                 const primaryName = booking
                   ? (isBilling ? (booking.artist || booking.label || booking.client_name || '') : (booking.client_name || ''))
@@ -978,6 +978,7 @@ export default function DashboardPage() {
                 return (
                   <div
                     key={room.label}
+                    data-session-active={cardAccent === 'var(--booked)' ? '' : undefined}
                     onClick={() => booking ? openBookingEdit(booking) : openNewRoomBooking(room)}
                     onMouseEnter={isEmpty ? () => setHoverRoom(room.label) : undefined}
                     onMouseLeave={isEmpty ? () => setHoverRoom(null) : undefined}
@@ -988,7 +989,7 @@ export default function DashboardPage() {
                       borderRadius: 6,
                       border: `1px solid ${cardBorder}`,
                       boxShadow: cardGlow,
-                      background: booking ? '#0d0f14' : (emptyHover ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0,0,0,0.2)'),
+                      background: booking ? 'var(--bg)' : (emptyHover ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0,0,0,0.2)'),
                       padding: isMobile ? '8px 10px' : '7px 9px',
                       display: 'flex',
                       flexDirection: 'column',
@@ -1041,20 +1042,20 @@ export default function DashboardPage() {
         </div>
 
         {/* COL 3 — TASKS */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', order: isMobile ? 3 : 0 }}>
+        <div data-panel="tasks" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', order: isMobile ? 3 : 0 }}>
           {/* Header */}
           <div style={{ padding: '13px 16px 0', borderBottom: '1px solid var(--border)' }}>
             <SectionHeader
               title="TASKS"
               count={tasks.length > 0 ? tasks.length : undefined}
               action={{ label: 'show all tasks →', onClick: () => router.push('/tasks') }}
-              actionColor="#6B7280"
+              actionColor="var(--cold)"
             />
           </div>
           {/* Tab row (owner/manager/billing) OR a single "My Tasks" label (own-only tiers) */}
           {ownOnly ? (
             <div style={{ display: 'flex', alignItems: 'center', padding: isMobile ? '10px 8px' : '8px 6px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
-              <span style={{ fontSize: isMobile ? 11 : 9, fontFamily: 'Syne', fontWeight: 700, color: '#e8eaf2', textTransform: 'uppercase', letterSpacing: isMobile ? '0.06em' : '0.03em' }}>
+              <span style={{ fontSize: isMobile ? 11 : 9, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: isMobile ? '0.06em' : '0.03em' }}>
                 My Tasks
               </span>
             </div>
@@ -1070,8 +1071,8 @@ export default function DashboardPage() {
                       flexShrink: isMobile ? 1 : 0, flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : undefined,
                       padding: '0 4px', fontSize: isMobile ? 10 : 9, fontFamily: 'Syne',
                       fontWeight: isActive ? 700 : 600,
-                      color: isActive ? '#e8eaf2' : 'var(--text2)',
-                      background: isActive ? '#1a1d27' : 'transparent',
+                      color: isActive ? 'var(--text)' : 'var(--text2)',
+                      background: isActive ? 'var(--surface2)' : 'transparent',
                       border: 'none', cursor: 'pointer', borderRadius: 6, whiteSpace: 'nowrap',
                       overflow: isMobile ? 'hidden' : undefined, textOverflow: isMobile ? 'ellipsis' : undefined,
                       minHeight: isMobile ? 40 : undefined,
@@ -1100,7 +1101,7 @@ export default function DashboardPage() {
                     padding: isMobile ? '6px 10px' : '10px 12px',
                     background: 'var(--surface2)',
                     border: task.source !== 'manual' ? '0.5px solid var(--border)' : '0.5px solid var(--border)',
-                    borderLeft: task.source !== 'manual' ? '2px solid #F97316' : '0.5px solid var(--border)',
+                    borderLeft: task.source !== 'manual' ? '2px solid var(--warm)' : '0.5px solid var(--border)',
                     borderRadius: task.source !== 'manual' ? '0 8px 8px 0' : 8,
                     cursor: 'pointer',
                     transition: 'border-color 0.15s',
@@ -1108,7 +1109,7 @@ export default function DashboardPage() {
                 >
                   <div style={{
                     width: 6, height: 6, borderRadius: '50%',
-                    background: '#F97316',
+                    background: 'var(--warm)',
                     marginTop: isMobile ? 0 : 4, flexShrink: 0,
                   }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -1143,7 +1144,7 @@ export default function DashboardPage() {
             {!tasksLoading && tasks.length > 9 && (
               <div
                 onClick={() => router.push('/tasks')}
-                style={{ fontSize: 10, color: '#6B7280', fontFamily: 'DM Mono', padding: '2px 4px', cursor: 'pointer' }}
+                style={{ fontSize: 10, color: 'var(--cold)', fontFamily: 'DM Mono', padding: '2px 4px', cursor: 'pointer' }}
               >
                 + {tasks.length - 9} more
               </div>
@@ -1169,14 +1170,14 @@ export default function DashboardPage() {
       </div>
 
       {/* FLAGS PANEL */}
-      <div style={{ marginTop: 14, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+      <div data-panel="flags" style={{ marginTop: 14, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
         <div style={{ padding: '13px 16px 0', borderBottom: '1px solid var(--border)' }}>
           <SectionHeader
             title="FLAGS"
             count={flags.filter(f => f.status === 'pending').length > 0 ? flags.filter(f => f.status === 'pending').length : undefined}
             countColor="orange"
             action={{ label: 'View all flags →', onClick: () => router.push('/admin?section=flags_log') }}
-            actionColor="#6B7280"
+            actionColor="var(--cold)"
           />
         </div>
         {flagsLoading ? (
@@ -1186,7 +1187,7 @@ export default function DashboardPage() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10, padding: 12 }}>
             {flags.map(flag => {
-              const statusColor = flag.status === 'pending' ? '#EF4444' : flag.status === 'acknowledged' ? '#F97316' : '#14B8A6'
+              const statusColor = flag.status === 'pending' ? 'var(--hot)' : flag.status === 'acknowledged' ? 'var(--warm)' : 'var(--booked)'
               const borderColor = statusColor
               const categoryConfig: Record<string, { label: string; color: string; bg: string }> = {
                 facility_general: { label: 'Facility / General', color: 'var(--text3)', bg: 'var(--surface2)' },
@@ -1262,7 +1263,7 @@ export default function DashboardPage() {
       {/* TASK MODAL */}
       {selectedTask && (
         <div
-          style={{ position: 'fixed', inset: 0, background: isMobile ? '#0d0f14' : 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'fixed', inset: 0, background: isMobile ? 'var(--bg)' : 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) handleCancelTaskModal() }}
         >
           <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile, modalViewportHeight) }}>
@@ -1273,7 +1274,7 @@ export default function DashboardPage() {
                 onClick={handleCompleteTask}
                 disabled={taskSubmitting}
                 style={{
-                  border: '1px solid #14B8A6', background: 'transparent', color: '#14B8A6',
+                  border: '1px solid var(--booked)', background: 'transparent', color: 'var(--booked)',
                   fontSize: 10, fontFamily: 'DM Mono', fontWeight: 700, textTransform: 'uppercase',
                   padding: '5px 12px', borderRadius: 4, cursor: 'pointer', letterSpacing: '0.04em',
                 }}
@@ -1285,7 +1286,7 @@ export default function DashboardPage() {
             {/* Body */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
               {/* Description */}
-              <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.6, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 {selectedTask.text}
                 {selectedTask.photo_url && (
                   <SignedImage
@@ -1297,24 +1298,24 @@ export default function DashboardPage() {
               </div>
 
               {/* Assigned meta */}
-              <div style={{ fontSize: 10, color: '#6B7280', fontFamily: 'DM Mono', marginTop: 12 }}>
+              <div style={{ fontSize: 10, color: 'var(--cold)', fontFamily: 'DM Mono', marginTop: 12 }}>
                 Assigned to: {nameForId(selectedTask.assigned_to, allProfiles)} · by {nameForId(selectedTask.assigned_by, allProfiles)} · {new Date(selectedTask.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </div>
 
               {/* Updates */}
-              <div style={{ fontSize: 10, color: '#6B7280', fontFamily: 'DM Mono', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 18, marginBottom: 10 }}>
+              <div style={{ fontSize: 10, color: 'var(--cold)', fontFamily: 'DM Mono', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 18, marginBottom: 10 }}>
                 Updates
               </div>
               {taskComments.length === 0 ? (
-                <div style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic' }}>No updates yet</div>
+                <div style={{ fontSize: 12, color: 'var(--cold)', fontStyle: 'italic' }}>No updates yet</div>
               ) : (
                 taskComments.map(c => (
                   <div key={c.id} style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 10, color: '#6B7280', fontFamily: 'DM Mono', marginBottom: 3 }}>
+                    <div style={{ fontSize: 10, color: 'var(--cold)', fontFamily: 'DM Mono', marginBottom: 3 }}>
                       {c.created_by_name && `${c.created_by_name} · `}{fmtTime(c.created_at)}
                     </div>
                     {c.text && (
-                      <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.5 }}>{c.text}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}>{c.text}</div>
                     )}
                     {c.photo_url && (
                       <SignedImage
@@ -1334,7 +1335,7 @@ export default function DashboardPage() {
                 placeholder="Add a note..."
                 style={{
                   width: '100%', height: 72, padding: '10px 12px', fontSize: 12,
-                  background: '#0d0f14', border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'var(--bg)', border: '1px solid rgba(255,255,255,0.08)',
                   borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono',
                   outline: 'none', resize: 'none', boxSizing: 'border-box', marginTop: 16,
                 }}
@@ -1347,7 +1348,7 @@ export default function DashboardPage() {
                 />
               )}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-                <label style={{ fontSize: 11, color: '#9ca3af', cursor: 'pointer', fontFamily: 'DM Mono' }}>
+                <label style={{ fontSize: 11, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'DM Mono' }}>
                   {commentPhoto ? commentPhoto.name : '+ Attach photo'}
                   <input
                     ref={commentPhotoRef}
@@ -1361,7 +1362,7 @@ export default function DashboardPage() {
                   onClick={handleComment}
                   disabled={taskSubmitting || (!commentText.trim() && !commentPhoto)}
                   style={{
-                    border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: '#9ca3af',
+                    border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: 'var(--text2)',
                     fontSize: 11, fontFamily: 'DM Mono', padding: '6px 14px', borderRadius: 6,
                     cursor: (commentText.trim() || commentPhoto) ? 'pointer' : 'default',
                   }}
@@ -1377,7 +1378,7 @@ export default function DashboardPage() {
                 <button
                   onClick={handleDeleteSelectedTask}
                   style={{
-                    border: '1px solid rgba(239,68,68,0.4)', background: 'transparent', color: '#ef4444',
+                    border: '1px solid rgba(239,68,68,0.4)', background: 'transparent', color: 'var(--hot)',
                     fontSize: 11, fontFamily: 'DM Mono', padding: '8px 14px', borderRadius: 6, cursor: 'pointer',
                   }}
                 >
@@ -1398,7 +1399,7 @@ export default function DashboardPage() {
                 onClick={handleSaveAndCloseTask}
                 disabled={taskSubmitting}
                 style={{
-                  background: '#c8f04e', color: '#0d0f14', border: 'none',
+                  background: 'var(--accent)', color: 'var(--bg)', border: 'none',
                   fontSize: 11, fontFamily: 'DM Mono', fontWeight: 600, padding: '8px 14px', borderRadius: 6, cursor: 'pointer',
                 }}
               >
@@ -1412,7 +1413,7 @@ export default function DashboardPage() {
 
       {showHistory && (
         <div
-          style={{ position: 'fixed', inset: 0, background: isMobile ? '#0d0f14' : 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'fixed', inset: 0, background: isMobile ? 'var(--bg)' : 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) { setShowHistory(false); setHistorySearch('') } }}
         >
           <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 520, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile, modalViewportHeight) }}>
@@ -1445,7 +1446,7 @@ export default function DashboardPage() {
                     }}
                     style={{ padding: '10px 12px', background: 'var(--surface2)', borderRadius: 8, border: '0.5px solid var(--border)', display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}
                   >
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#14B8A6', marginTop: 4, flexShrink: 0 }} />
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--booked)', marginTop: 4, flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                         <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.4, flex: 1 }}>{t.text}</div>
@@ -1473,7 +1474,7 @@ export default function DashboardPage() {
 
       {selectedHistoryTask && (
         <div
-          style={{ position: 'fixed', inset: 0, background: isMobile ? '#0d0f14' : 'rgba(0,0,0,0.75)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'fixed', inset: 0, background: isMobile ? 'var(--bg)' : 'rgba(0,0,0,0.75)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) { setSelectedHistoryTask(null); setHistoryTaskComments([]) } }}
         >
           <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile, modalViewportHeight) }}>
@@ -1482,7 +1483,7 @@ export default function DashboardPage() {
                 onClick={() => { setSelectedHistoryTask(null); setHistoryTaskComments([]) }}
                 style={{ position: 'absolute', top: 14, right: 16, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 18, lineHeight: 1, padding: 0 }}
               >×</button>
-              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', color: '#14B8A6', textTransform: 'uppercase', marginBottom: 6 }}>COMPLETED</div>
+              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', color: 'var(--booked)', textTransform: 'uppercase', marginBottom: 6 }}>COMPLETED</div>
               <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15, color: 'var(--text)', paddingRight: 24, lineHeight: 1.3 }}>
                 {selectedHistoryTask.text}
               </div>
@@ -1496,7 +1497,7 @@ export default function DashboardPage() {
                 <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2, fontFamily: 'DM Mono' }}>Due {selectedHistoryTask.due_date}</div>
               )}
               {selectedHistoryTask.completed_at && (
-                <div style={{ fontSize: 10, color: '#14B8A6', marginTop: 2, fontFamily: 'DM Mono' }}>
+                <div style={{ fontSize: 10, color: 'var(--booked)', marginTop: 2, fontFamily: 'DM Mono' }}>
                   Completed {new Date(selectedHistoryTask.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </div>
               )}
@@ -1525,7 +1526,7 @@ export default function DashboardPage() {
       {/* CREATE FLAG MODAL */}
       {addingFlag && (
         <div
-          style={{ position: 'fixed', inset: 0, background: isMobile ? '#0d0f14' : 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'fixed', inset: 0, background: isMobile ? 'var(--bg)' : 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) { setAddingFlag(false); setNewFlagText(''); setNewFlagCategory(null); setNewFlagStudio('paramount'); clearNewFlagPhoto() } }}
         >
           <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile, modalViewportHeight) }}>
@@ -1533,7 +1534,7 @@ export default function DashboardPage() {
             {/* Header */}
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: '#e8eaf2' }}>New Flag</span>
+                <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>New Flag</span>
                 <button
                   onClick={() => { setAddingFlag(false); setNewFlagText(''); setNewFlagCategory(null); setNewFlagStudio('paramount'); clearNewFlagPhoto() }}
                   style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 18, lineHeight: 1, padding: 0 }}
@@ -1571,9 +1572,9 @@ export default function DashboardPage() {
                 <div style={{ display: 'flex', gap: 6 }}>
                   {(['facility_general', 'gear_equipment', 'client_billing'] as const).map(catKey => {
                     const catConfig = {
-                      facility_general: { label: 'Facility / General', activeColor: '#0d0f14', activeBg: '#c8f04e', activeBorder: '#c8f04e' },
-                      gear_equipment: { label: 'Gear / Equipment', activeColor: '#0d0f14', activeBg: '#c8f04e', activeBorder: '#c8f04e' },
-                      client_billing: { label: 'Client / Billing', activeColor: '#0d0f14', activeBg: '#c8f04e', activeBorder: '#c8f04e' },
+                      facility_general: { label: 'Facility / General', activeColor: 'var(--bg)', activeBg: 'var(--accent)', activeBorder: 'var(--accent)' },
+                      gear_equipment: { label: 'Gear / Equipment', activeColor: 'var(--bg)', activeBg: 'var(--accent)', activeBorder: 'var(--accent)' },
+                      client_billing: { label: 'Client / Billing', activeColor: 'var(--bg)', activeBg: 'var(--accent)', activeBorder: 'var(--accent)' },
                     }[catKey]
                     const isSelected = newFlagCategory === catKey
                     return (
@@ -1653,8 +1654,8 @@ export default function DashboardPage() {
                 disabled={flagSubmitting || !newFlagText.trim() || !newFlagCategory}
                 style={{
                   flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
-                  background: newFlagText.trim() && newFlagCategory ? '#c8f04e' : 'var(--surface2)',
-                  color: newFlagText.trim() && newFlagCategory ? '#0d0f14' : 'var(--text3)',
+                  background: newFlagText.trim() && newFlagCategory ? 'var(--accent)' : 'var(--surface2)',
+                  color: newFlagText.trim() && newFlagCategory ? 'var(--bg)' : 'var(--text3)',
                   border: 'none', borderRadius: 6,
                   cursor: newFlagText.trim() && newFlagCategory ? 'pointer' : 'default',
                   fontWeight: 600,
@@ -1671,7 +1672,7 @@ export default function DashboardPage() {
       {/* FLAG MODAL */}
       {selectedFlag && (
         <div
-          style={{ position: 'fixed', inset: 0, background: isMobile ? '#0d0f14' : 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'fixed', inset: 0, background: isMobile ? 'var(--bg)' : 'rgba(0,0,0,0.6)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) { setSelectedFlag(null); setConfirmDeleteFlag(false) } }}
         >
           <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 480, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile, modalViewportHeight) }}>
@@ -1686,7 +1687,7 @@ export default function DashboardPage() {
                     <button
                       onClick={() => setShowResolveModal(true)}
                       disabled={flagSubmitting}
-                      style={{ fontSize: 10, fontFamily: 'DM Mono', background: 'transparent', color: '#14B8A6', border: '1px solid #14B8A6', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}
+                      style={{ fontSize: 10, fontFamily: 'DM Mono', background: 'transparent', color: 'var(--booked)', border: '1px solid var(--booked)', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}
                     >
                       {flagSubmitting ? 'Saving…' : 'Resolve'}
                     </button>
@@ -1753,9 +1754,9 @@ export default function DashboardPage() {
                   <div style={{ display: 'flex', gap: 6 }}>
                     {(['facility_general', 'gear_equipment', 'client_billing'] as const).map(catKey => {
                       const catConfig = {
-                        facility_general: { label: 'Facility / General', activeColor: '#0d0f14', activeBg: '#c8f04e', activeBorder: '#c8f04e' },
-                        gear_equipment: { label: 'Gear / Equipment', activeColor: '#0d0f14', activeBg: '#c8f04e', activeBorder: '#c8f04e' },
-                        client_billing: { label: 'Client / Billing', activeColor: '#0d0f14', activeBg: '#c8f04e', activeBorder: '#c8f04e' },
+                        facility_general: { label: 'Facility / General', activeColor: 'var(--bg)', activeBg: 'var(--accent)', activeBorder: 'var(--accent)' },
+                        gear_equipment: { label: 'Gear / Equipment', activeColor: 'var(--bg)', activeBg: 'var(--accent)', activeBorder: 'var(--accent)' },
+                        client_billing: { label: 'Client / Billing', activeColor: 'var(--bg)', activeBg: 'var(--accent)', activeBorder: 'var(--accent)' },
                       }[catKey]
                       const isSelected = pendingCategory === catKey
                       return (
@@ -1794,7 +1795,7 @@ export default function DashboardPage() {
               {/* Resolved box */}
               {selectedFlag.resolved_at && (
                 <div style={{ background: 'rgba(20,184,166,0.06)', border: '1px solid rgba(20,184,166,0.2)', borderRadius: 8, padding: '10px 12px' }}>
-                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#14B8A6', marginBottom: 4 }}>
+                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--booked)', marginBottom: 4 }}>
                     Resolved
                   </div>
                   <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>
@@ -1896,7 +1897,7 @@ export default function DashboardPage() {
                     <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono' }}>Confirm delete?</span>
                     <button
                       onClick={handleDeleteFlag}
-                      style={{ padding: '6px 12px', fontSize: 11, fontFamily: 'DM Mono', background: '#EF4444', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                      style={{ padding: '6px 12px', fontSize: 11, fontFamily: 'DM Mono', background: 'var(--hot)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
                     >
                       Yes, delete
                     </button>
@@ -1910,7 +1911,7 @@ export default function DashboardPage() {
                 ) : (
                   <button
                     onClick={() => setConfirmDeleteFlag(true)}
-                    style={{ padding: '6px 12px', fontSize: 11, fontFamily: 'DM Mono', background: 'transparent', color: '#EF4444', border: '1px solid #EF4444', borderRadius: 6, cursor: 'pointer' }}
+                    style={{ padding: '6px 12px', fontSize: 11, fontFamily: 'DM Mono', background: 'transparent', color: 'var(--hot)', border: '1px solid var(--hot)', borderRadius: 6, cursor: 'pointer' }}
                   >
                     Delete
                   </button>
@@ -1925,8 +1926,8 @@ export default function DashboardPage() {
                         disabled={flagSubmitting || !canAck}
                         style={{
                           padding: '8px 16px', fontSize: 11, fontFamily: 'DM Mono',
-                          background: canAck ? '#c8f04e' : 'var(--surface2)',
-                          color: canAck ? '#0d0f14' : 'var(--text3)',
+                          background: canAck ? 'var(--accent)' : 'var(--surface2)',
+                          color: canAck ? 'var(--bg)' : 'var(--text3)',
                           border: 'none', borderRadius: 6,
                           cursor: canAck ? 'pointer' : 'default',
                           fontWeight: 600,
@@ -1942,8 +1943,8 @@ export default function DashboardPage() {
                       disabled={flagSubmitting}
                       style={{
                         padding: '8px 16px', fontSize: 11, fontFamily: 'DM Mono',
-                        background: '#c8f04e',
-                        color: '#0d0f14',
+                        background: 'var(--accent)',
+                        color: 'var(--bg)',
                         border: 'none', borderRadius: 6,
                         cursor: 'pointer',
                         fontWeight: 600,
@@ -1963,10 +1964,10 @@ export default function DashboardPage() {
       {/* ADD TASK MODAL */}
       {addingTask && (
         <div
-          style={{ position: 'fixed', inset: 0, background: isMobile ? '#0d0f14' : 'rgba(0,0,0,0.6)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'fixed', inset: 0, background: isMobile ? 'var(--bg)' : 'rgba(0,0,0,0.6)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) closeAddTask() }}
         >
-          <div style={{ background: '#161920', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, width: '100%', maxWidth: 600, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile, modalViewportHeight) }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, width: '100%', maxWidth: 600, margin: '0 20px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile, modalViewportHeight) }}>
             <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>
               <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>New Task</span>
               <button
@@ -1979,7 +1980,7 @@ export default function DashboardPage() {
             <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 18, overflowY: 'auto' }}>
               <div>
                 <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
-                  Task Description <span style={{ color: '#EF4444' }}>*</span>
+                  Task Description <span style={{ color: 'var(--hot)' }}>*</span>
                 </div>
                 <textarea
                   autoFocus
@@ -2057,8 +2058,8 @@ export default function DashboardPage() {
                   disabled={taskSubmitting || !newTaskText.trim()}
                   style={{
                     flex: 1, padding: '11px', fontSize: 12, fontFamily: 'DM Mono',
-                    background: newTaskText.trim() ? '#c8f04e' : 'var(--surface2)',
-                    color: newTaskText.trim() ? '#0d0f14' : 'var(--text3)',
+                    background: newTaskText.trim() ? 'var(--accent)' : 'var(--surface2)',
+                    color: newTaskText.trim() ? 'var(--bg)' : 'var(--text3)',
                     border: 'none', borderRadius: 6,
                     cursor: newTaskText.trim() ? 'pointer' : 'default',
                     fontWeight: 600,
@@ -2075,7 +2076,7 @@ export default function DashboardPage() {
       {/* RESOLVE MODAL */}
       {showResolveModal && selectedFlag && (
         <div
-          style={{ position: 'fixed', inset: 0, background: isMobile ? '#0d0f14' : 'rgba(0,0,0,0.5)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'fixed', inset: 0, background: isMobile ? 'var(--bg)' : 'rgba(0,0,0,0.5)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) setShowResolveModal(false) }}
         >
           <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 420, margin: '0 20px', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...fullscreenCardOnMobile(isMobile, modalViewportHeight) }}>
@@ -2091,7 +2092,7 @@ export default function DashboardPage() {
             <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12, ...(isMobile ? { flex: 1, overflowY: 'auto' } : {}) }}>
               <div>
                 <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
-                  Resolution Notes <span style={{ color: '#EF4444' }}>*</span>
+                  Resolution Notes <span style={{ color: 'var(--hot)' }}>*</span>
                 </div>
                 <textarea
                   value={resolveNote}
@@ -2159,8 +2160,8 @@ export default function DashboardPage() {
                   disabled={flagSubmitting || !resolveNote.trim()}
                   style={{
                     flex: 1, padding: '9px', fontSize: 11, fontFamily: 'DM Mono',
-                    background: resolveNote.trim() ? '#c8f04e' : 'var(--surface2)',
-                    color: resolveNote.trim() ? '#0d0f14' : 'var(--text3)',
+                    background: resolveNote.trim() ? 'var(--accent)' : 'var(--surface2)',
+                    color: resolveNote.trim() ? 'var(--bg)' : 'var(--text3)',
                     border: 'none', borderRadius: 6,
                     cursor: resolveNote.trim() ? 'pointer' : 'default',
                     fontWeight: 600,

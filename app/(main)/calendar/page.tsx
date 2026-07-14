@@ -23,11 +23,11 @@ const LOCATION_CODES: Record<string, string> = {
 // ─── COLOR TOKENS ────────────────────────────────────────────────────────────
 
 const STATUS_TOP_COLORS: Record<string, string> = {
-  confirmed:  '#14B8A6',
-  tentative:  '#f97316',
-  cancelled:  '#ef4444',
+  confirmed:  'var(--booked)',
+  tentative:  'var(--warm)',
+  cancelled:  'var(--hot)',
   tour:       '#a855f7',
-  tech:       '#6b7280',
+  tech:       'var(--cold)',
   open_hours: '#e2e8f0',
 }
 
@@ -201,15 +201,15 @@ function BookingBlock({
   const width = (dur / totalDays) * 100
 
   const isBilling = booking.payment_type === 'billing'
-  const nameColor = '#e8eaf0' // chip name text — white regardless of payment type
+  const nameColor = 'var(--text)' // chip name text — white regardless of payment type
   const topColor = STATUS_TOP_COLORS[booking.status] ?? STATUS_TOP_COLORS.confirmed
   const sessionBorder = booking.session_type !== 'recording'
   // Chip glow: orange (open WO / attention) or teal (confirmed); subtle, no layout impact
-  const chipGlowBorder = topColor === '#f97316' ? 'rgba(249, 115, 22, 0.4)'
-    : topColor === '#14B8A6' ? 'rgba(20, 184, 166, 0.4)'
+  const chipGlowBorder = topColor === 'var(--warm)' ? 'rgba(249, 115, 22, 0.4)'
+    : topColor === 'var(--booked)' ? 'rgba(20, 184, 166, 0.4)'
     : 'rgba(255,255,255,0.08)'
-  const chipGlow = topColor === '#f97316' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
-    : topColor === '#14B8A6' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
+  const chipGlow = topColor === 'var(--warm)' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
+    : topColor === 'var(--booked)' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
     : 'none'
 
   // Line 1: artist (billing) or client name (COD)
@@ -227,8 +227,8 @@ function BookingBlock({
 
   const eng = initials(booking.engineer_name)
   const asst = initials(booking.assistant_name)
-  const engColor = '#6B7280' // chip engineer initials — muted
-  const asstColor = '#6B7280' // chip assistant initials — muted
+  const engColor = 'var(--cold)' // chip engineer initials — muted
+  const asstColor = 'var(--cold)' // chip assistant initials — muted
 
   const slotH = rowH / numLanes
   const blockTop = lane * slotH + 2
@@ -239,12 +239,13 @@ function BookingBlock({
 
   return (
     <div
+      data-session-active={topColor === 'var(--booked)' ? '' : undefined}
       onClick={e => { e.stopPropagation(); onClick() }}
       style={{
         position: 'absolute', top: blockTop, height: blockHeight,
         minHeight: isMobile ? 44 : undefined,
         left: `calc(${left}% + 2px)`, width: `calc(${width}% - 4px)`,
-        background: '#0d0f14', boxSizing: 'border-box',
+        background: 'var(--bg)', boxSizing: 'border-box',
         borderTop: `${micro ? 3 : 4}px solid ${topColor}`,
         borderLeft: sessionBorder ? '2px solid rgba(200,240,78,0.7)' : `1px solid ${chipGlowBorder}`,
         borderRight: sessionBorder ? '2px solid rgba(200,240,78,0.7)' : `1px solid ${chipGlowBorder}`,
@@ -266,7 +267,7 @@ function BookingBlock({
             {primaryName}
           </div>
           {timeStr && (
-            <div style={{ fontSize: 7, fontFamily: 'DM Mono', color: '#6B7280', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <div style={{ fontSize: 7, fontFamily: 'DM Mono', color: 'var(--cold)', whiteSpace: 'nowrap', flexShrink: 0 }}>
               {timeStr}
             </div>
           )}
@@ -291,7 +292,7 @@ function BookingBlock({
           </div>
           {/* Row 2: time + eng/asst */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', overflow: 'hidden' }}>
-            <div style={{ fontSize: 8, fontFamily: 'DM Mono', color: '#6B7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 8, fontFamily: 'DM Mono', color: 'var(--cold)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
               {timeStr}
             </div>
             {(eng || asst) && (
@@ -313,14 +314,14 @@ function BookingBlock({
           {labelLine && (
             <div style={{
               fontSize: 10, fontFamily: 'DM Mono', lineHeight: 1.2, marginTop: 1,
-              color: '#9ca3af',
+              color: 'var(--text2)',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>
               {labelLine}
             </div>
           )}
           {timeStr && (
-            <div style={{ fontSize: 9, fontFamily: 'DM Mono', lineHeight: 1.2, marginTop: 2, color: '#6B7280' }}>
+            <div style={{ fontSize: 9, fontFamily: 'DM Mono', lineHeight: 1.2, marginTop: 2, color: 'var(--cold)' }}>
               {timeStr}
             </div>
           )}
@@ -453,8 +454,8 @@ function DayView({
                   width: 24, height: 24, borderRadius: '50%', margin: '0 auto',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, fontFamily: 'DM Mono',
-                  background: isSelected ? '#c8f04e' : isTodayCell ? 'rgba(255,255,255,0.1)' : 'transparent',
-                  color: isSelected ? '#0d0f14' : 'var(--text2)',
+                  background: isSelected ? 'var(--accent)' : isTodayCell ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  color: isSelected ? 'var(--bg)' : 'var(--text2)',
                   fontWeight: isSelected || isTodayCell ? 700 : 400,
                   outline: isTodayCell && !isSelected ? '1px solid rgba(255,255,255,0.2)' : 'none',
                 }}>
@@ -507,11 +508,11 @@ function DayView({
                 }}>
                   {cards.length > 0 && (
                     /* 2px teal top bar */
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: '#14B8A6', zIndex: 3 }} />
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'var(--booked)', zIndex: 3 }} />
                   )}
                   {/* Card header */}
                   <div style={{ padding: '6px 10px', background: 'var(--surface2)', borderBottom: cards.length > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
-                    <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 11, color: '#9ca3af', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 11, color: 'var(--text2)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                       {loc} {room}
                     </span>
                   </div>
@@ -519,7 +520,7 @@ function DayView({
                   {/* Booking blocks */}
                   {cards.map(b => {
                     const isBilling = b.payment_type === 'billing'
-                    const nameColor = '#e8eaf0' // chip name text — white regardless of payment type
+                    const nameColor = 'var(--text)' // chip name text — white regardless of payment type
                     const displayName = isBilling
                       ? (b.artist && b.label ? `${b.label} / ${b.artist}` : b.artist || b.label || b.client_name || '')
                       : (b.client_name || '')
@@ -531,17 +532,17 @@ function DayView({
                     const codLabel = !isBilling && b.cod_method ? `COD ${b.cod_method.toUpperCase()}` : null
                     const hasSessionBorder = b.session_type !== 'recording'
                     const topColor = STATUS_TOP_COLORS[b.status] ?? STATUS_TOP_COLORS.confirmed
-                    const chipGlowBorder = topColor === '#f97316' ? 'rgba(249, 115, 22, 0.4)'
-                      : topColor === '#14B8A6' ? 'rgba(20, 184, 166, 0.4)'
+                    const chipGlowBorder = topColor === 'var(--warm)' ? 'rgba(249, 115, 22, 0.4)'
+                      : topColor === 'var(--booked)' ? 'rgba(20, 184, 166, 0.4)'
                       : 'rgba(255,255,255,0.08)'
-                    const chipGlow = topColor === '#f97316' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
-                      : topColor === '#14B8A6' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
+                    const chipGlow = topColor === 'var(--warm)' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
+                      : topColor === 'var(--booked)' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
                       : 'none'
 
                     return (
-                      <div key={b.id} onClick={() => onOpenEdit(b)} style={{
+                      <div key={b.id} data-session-active={topColor === 'var(--booked)' ? '' : undefined} onClick={() => onOpenEdit(b)} style={{
                         padding: '7px 10px', cursor: 'pointer',
-                        background: '#0d0f14',
+                        background: 'var(--bg)',
                         borderTop: `3px solid ${topColor}`,
                         borderLeft: hasSessionBorder ? '3px solid rgba(200,240,78,0.7)' : `1px solid ${chipGlowBorder}`,
                         borderRight: `1px solid ${chipGlowBorder}`,
@@ -554,7 +555,7 @@ function DayView({
                         </div>
                         {/* Time */}
                         {timeStr && (
-                          <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: '#6B7280', marginTop: 2 }}>
+                          <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'var(--cold)', marginTop: 2 }}>
                             {timeStr}
                           </div>
                         )}
@@ -570,7 +571,7 @@ function DayView({
                             <span style={{ fontFamily: 'DM Mono', fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>
                               {b.invoice_num ? `#${b.invoice_num}` : ''}
                             </span>
-                            <span style={{ fontFamily: 'DM Mono', fontSize: 9, color: '#6B7280' }}>
+                            <span style={{ fontFamily: 'DM Mono', fontSize: 9, color: 'var(--cold)' }}>
                               {[eng, asst].filter(Boolean).join(' ')}
                             </span>
                           </div>
@@ -643,7 +644,7 @@ function StudioView({
         borderBottom: '1px solid rgba(255,255,255,0.08)',
       }}>
         <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
-          <span style={{ color: '#c8f04e', textTransform: 'uppercase' }}>{loc} {room}</span>
+          <span style={{ color: 'var(--accent)', textTransform: 'uppercase' }}>{loc} {room}</span>
           <span style={{ color: 'var(--text3)', margin: '0 8px' }}>—</span>
           {monthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         </div>
@@ -711,8 +712,8 @@ function StudioView({
               <div style={{
                 width: 22, height: 22, borderRadius: '50%', marginBottom: 2,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: isTodayCell ? '#c8f04e' : 'transparent',
-                color: isTodayCell ? '#0d0f14' : 'var(--text3)',
+                background: isTodayCell ? 'var(--accent)' : 'transparent',
+                color: isTodayCell ? 'var(--bg)' : 'var(--text3)',
                 fontSize: 11, fontFamily: 'DM Mono', fontWeight: isTodayCell ? 700 : 400,
               }}>
                 {cell.getDate()}
@@ -720,7 +721,7 @@ function StudioView({
               {/* Booking blocks */}
               {cellBookings.map(b => {
                 const isBilling = b.payment_type === 'billing'
-                const nameColor = '#e8eaf0' // chip name text — white regardless of payment type
+                const nameColor = 'var(--text)' // chip name text — white regardless of payment type
                 const displayName = isBilling
                   ? (b.artist && b.label ? `${b.label} / ${b.artist}` : b.artist || b.label || b.client_name || '')
                   : (b.client_name || '')
@@ -732,22 +733,23 @@ function StudioView({
                   : null
                 const eng = b.engineer_name ? `1ST-${initials(b.engineer_name)}` : ''
                 const asst = b.assistant_name ? `2ND-${initials(b.assistant_name)}` : ''
-                const engColor = '#6B7280' // chip engineer initials — muted
-                const asstColor = '#6B7280' // chip assistant initials — muted
+                const engColor = 'var(--cold)' // chip engineer initials — muted
+                const asstColor = 'var(--cold)' // chip assistant initials — muted
                 const topColor = STATUS_TOP_COLORS[b.status] ?? STATUS_TOP_COLORS.confirmed
-                const chipGlowBorder = topColor === '#f97316' ? 'rgba(249, 115, 22, 0.4)'
-                  : topColor === '#14B8A6' ? 'rgba(20, 184, 166, 0.4)'
+                const chipGlowBorder = topColor === 'var(--warm)' ? 'rgba(249, 115, 22, 0.4)'
+                  : topColor === 'var(--booked)' ? 'rgba(20, 184, 166, 0.4)'
                   : 'rgba(255,255,255,0.08)'
-                const chipGlow = topColor === '#f97316' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
-                  : topColor === '#14B8A6' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
+                const chipGlow = topColor === 'var(--warm)' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
+                  : topColor === 'var(--booked)' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
                   : 'none'
                 return (
                   <div
                     key={b.id}
+                    data-session-active={topColor === 'var(--booked)' ? '' : undefined}
                     onClick={e => { e.stopPropagation(); onOpenEdit(b) }}
                     style={{
                       marginBottom: 3, padding: '5px 7px', borderRadius: 3,
-                      background: '#0d0f14',
+                      background: 'var(--bg)',
                       cursor: 'pointer',
                       borderTop: `3px solid ${topColor}`,
                       borderLeft: b.session_type !== 'recording' ? '2px solid rgba(200,240,78,0.7)' : `1px solid ${chipGlowBorder}`,
@@ -762,7 +764,7 @@ function StudioView({
                     </div>
                     {/* Time */}
                     {timeStr && (
-                      <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: '#6B7280', marginTop: 2 }}>
+                      <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'var(--cold)', marginTop: 2 }}>
                         {timeStr}
                       </div>
                     )}
@@ -1329,7 +1331,7 @@ function CalendarPageInner() {
           background: 'var(--surface)', borderBottom: '2px solid var(--border)',
         }}>
           <div style={{ width: labelW, flexShrink: 0, borderRight: '1px solid var(--border)', position: 'sticky', left: 0, zIndex: 11, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontFamily: 'DM Mono', fontSize: 10, fontWeight: 600, color: '#6B7280', letterSpacing: '0.05em' }}>
+            <span style={{ fontFamily: 'DM Mono', fontSize: 10, fontWeight: 600, color: 'var(--cold)', letterSpacing: '0.05em' }}>
               {startDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
             </span>
           </div>
@@ -1370,7 +1372,7 @@ function CalendarPageInner() {
                   background: todayFlag ? 'var(--accent)' : 'transparent',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, fontFamily: 'DM Mono', fontWeight: todayFlag ? 700 : 400,
-                  color: todayFlag ? '#0d0f14' : wknd ? 'var(--text2)' : 'var(--text)',
+                  color: todayFlag ? 'var(--bg)' : wknd ? 'var(--text2)' : 'var(--text)',
                 }}>
                   {d.getDate()}
                 </div>
@@ -1702,7 +1704,7 @@ function CalendarPageInner() {
             fontWeight: 700, cursor: 'pointer',
             background: isMobile ? 'var(--accent)' : '#1e40af',
             border: 'none',
-            color: isMobile ? '#0d0f14' : '#fff',
+            color: isMobile ? 'var(--bg)' : '#fff',
             width: isMobile ? '100%' : undefined,
             minHeight: isMobile ? 44 : undefined,
             letterSpacing: isMobile ? '0.04em' : undefined,

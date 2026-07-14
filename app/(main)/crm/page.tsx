@@ -24,12 +24,12 @@ const STATUS_COLORS: Record<string, string> = {
 
 // Temperature color per status — used for both the avatar ring and its text.
 const LEAD_AVATAR_COLORS: Record<string, string> = {
-  hot: '#EF4444',
-  warm: '#F97316',
-  uncontacted: '#7BA7BC',
-  booked: '#14B8A6',
-  cold: '#4B5563',
-  dead: '#4B5563',
+  hot: 'var(--hot)',
+  warm: 'var(--warm)',
+  uncontacted: 'var(--uncontacted)',
+  booked: 'var(--booked)',
+  cold: 'var(--text3)',
+  dead: 'var(--text3)',
 }
 
 // First letter of fname + first letter of lname, uppercased.
@@ -103,14 +103,14 @@ function fmtActivityTime(ts: string) {
 
 function activityColor(note: string): string {
   const n = (note || '').toLowerCase()
-  if (n.includes('call')) return '#EF4444'
-  if (n.includes('text')) return '#F97316'
-  if (n.includes('email')) return '#7BA7BC'
-  if (n.includes('kept hot') || n.includes('keep hot')) return '#EF4444'
-  if (n.includes('kept warm') || n.includes('keep warm')) return '#F97316'
-  if (n.includes('registration returned') || n.includes('reg returned')) return '#14B8A6'
-  if (n.includes('registration') || n.includes('reg link') || n.includes('reg sent')) return '#c8f04e'
-  return '#8b90a8'
+  if (n.includes('call')) return 'var(--hot)'
+  if (n.includes('text')) return 'var(--warm)'
+  if (n.includes('email')) return 'var(--uncontacted)'
+  if (n.includes('kept hot') || n.includes('keep hot')) return 'var(--hot)'
+  if (n.includes('kept warm') || n.includes('keep warm')) return 'var(--warm)'
+  if (n.includes('registration returned') || n.includes('reg returned')) return 'var(--booked)'
+  if (n.includes('registration') || n.includes('reg link') || n.includes('reg sent')) return 'var(--accent)'
+  return 'var(--text2)'
 }
 
 function fmtDate(d: string) {
@@ -520,7 +520,7 @@ export default function CRMPage() {
             </div>
             {view !== 'analytics' && (
               <button onClick={() => setNewLeadOpen(true)} style={{
-                padding: '8px 20px', background: 'transparent', color: '#e8eaf0',
+                padding: '8px 20px', background: 'transparent', color: 'var(--text)',
                 border: '1px solid var(--border)', borderRadius: 6, fontFamily: 'Syne',
                 fontWeight: 700, fontSize: 11, cursor: 'pointer',
                 letterSpacing: '0.05em', textTransform: 'uppercase',
@@ -566,7 +566,7 @@ export default function CRMPage() {
 
               {/* Detail panel — full-screen on mobile, right column on desktop */}
               {(!isMobile || selected) && (
-                <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', minHeight: 0, flex: isMobile ? 1 : undefined }}>
+                <div data-panel="crm-detail" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', minHeight: 0, flex: isMobile ? 1 : undefined }}>
                   {isMobile && selected && (
                     <button
                       onClick={() => setSelectedId(null)}
@@ -649,9 +649,9 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel }: {
   }
 
   const methodDefs: { m: TouchMethod; color: string; actionHref?: string; actionLabel?: string }[] = [
-    { m: 'Call',  color: '#EF4444', actionHref: phone ? `tel:${phone.replace(/\D/g, '')}` : undefined,  actionLabel: '→ Dial' },
-    { m: 'Text',  color: '#F97316', actionHref: phone ? `sms:${phone.replace(/\D/g, '')}` : undefined,  actionLabel: '→ Text' },
-    { m: 'Email', color: '#8b90a8', actionHref: email ? `mailto:${email}` : undefined, actionLabel: '→ Mail' },
+    { m: 'Call',  color: 'var(--hot)', actionHref: phone ? `tel:${phone.replace(/\D/g, '')}` : undefined,  actionLabel: '→ Dial' },
+    { m: 'Text',  color: 'var(--warm)', actionHref: phone ? `sms:${phone.replace(/\D/g, '')}` : undefined,  actionLabel: '→ Text' },
+    { m: 'Email', color: 'var(--text2)', actionHref: email ? `mailto:${email}` : undefined, actionLabel: '→ Mail' },
   ]
 
   return (
@@ -690,7 +690,7 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel }: {
         style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
       />
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? 'var(--accent)' : 'var(--surface)', color: canSubmit ? '#0d0f14' : 'var(--text3)', border: `1px solid ${canSubmit ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
+        <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? 'var(--accent)' : 'var(--surface)', color: canSubmit ? 'var(--bg)' : 'var(--text3)', border: `1px solid ${canSubmit ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
           {submitting ? '…' : 'Log Touch'}
         </button>
         <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}>
@@ -828,7 +828,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
   const totalCount = uncontacted.length + hotDue.length + warmDue.length + incompleteLeads.length
 
   const tabs: { key: NeedsActionTab; label: string; color: string; items: Lead[]; type: 'touch' | 'incomplete'; emptyMsg: string }[] = [
-    { key: 'uncontacted', label: 'Uncontacted', color: '#7BA7BC', items: uncontacted, type: 'touch', emptyMsg: 'No fresh uncontacted leads.' },
+    { key: 'uncontacted', label: 'Uncontacted', color: 'var(--uncontacted)', items: uncontacted, type: 'touch', emptyMsg: 'No fresh uncontacted leads.' },
     { key: 'hot', label: 'Hot', color: 'var(--hot)', items: hotDue, type: 'touch', emptyMsg: 'All hot leads are up to date.' },
     { key: 'warm', label: 'Warm', color: 'var(--warm)', items: warmDue, type: 'touch', emptyMsg: 'All warm leads are up to date.' },
     { key: 'incomplete', label: 'Incomplete', color: 'var(--text2)', items: incompleteLeads, type: 'incomplete', emptyMsg: 'All leads have complete info.' },
@@ -849,7 +849,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
   }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
+    <div data-panel="crm-leads" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
       {/* Header */}
       <div style={{ padding: '12px 16px 0', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <SectionHeader title="Needs Action" count={totalCount > 0 ? totalCount : undefined} />
@@ -930,7 +930,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                     setTouchPromptId(isTouchPrompting ? null : l.id)
                     if (!isTouchPrompting) onSelect(l.id)
                   }}
-                  style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: '1px solid var(--border)', color: isTouchPrompting ? 'var(--text3)' : '#e8eaf0', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: '1px solid var(--border)', color: isTouchPrompting ? 'var(--text3)' : 'var(--text)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                   {isTouchPrompting ? 'Cancel' : 'Contact'}
                 </button>
               </div>
@@ -1044,11 +1044,11 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   }
 
   const filterDefs: { key: StatusFilter; label: string; color: string }[] = [
-    { key: 'uncontacted', label: 'Uncontacted', color: '#7BA7BC' },
-    { key: 'hot', label: 'Hot', color: '#EF4444' },
-    { key: 'warm', label: 'Warm', color: '#F97316' },
-    { key: 'cold-dead', label: 'Cold/Dead', color: '#8b90a8' },
-    { key: 'booked', label: 'Booked', color: '#14B8A6' },
+    { key: 'uncontacted', label: 'Uncontacted', color: 'var(--uncontacted)' },
+    { key: 'hot', label: 'Hot', color: 'var(--hot)' },
+    { key: 'warm', label: 'Warm', color: 'var(--warm)' },
+    { key: 'cold-dead', label: 'Cold/Dead', color: 'var(--text2)' },
+    { key: 'booked', label: 'Booked', color: 'var(--booked)' },
   ]
 
   // Show leads matching ANY active status. Empty set falls back to all statuses
@@ -1067,7 +1067,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   const paginated = filtered.slice(startIdx, startIdx + PAGE_SIZE)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
+    <div data-panel="crm-leads" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
       {/* Header: filter pills + search */}
       <div style={{ padding: '10px 16px 0', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -1118,10 +1118,10 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
           return (
             <React.Fragment key={l.id}>
               {showDateSep && (
-                <div style={{ display: 'flex', alignItems: 'center', margin: '16px 16px 0', color: '#4a4f64', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  <span style={{ flex: 1, borderBottom: '1px solid #2a2e3d' }} />
+                <div style={{ display: 'flex', alignItems: 'center', margin: '16px 16px 0', color: 'var(--text3)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <span style={{ flex: 1, borderBottom: '1px solid var(--border)' }} />
                   <span style={{ margin: '0 12px' }}>{dateSepLabel(l.created_at)}</span>
-                  <span style={{ flex: 1, borderBottom: '1px solid #2a2e3d' }} />
+                  <span style={{ flex: 1, borderBottom: '1px solid var(--border)' }} />
                 </div>
               )}
               <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(255,255,255,0.04)' : 'transparent', transition: 'background 0.15s' }}>
@@ -1151,7 +1151,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                   </button>
                 )}
                 <button onClick={e => { e.stopPropagation(); setKeepHotPromptId(null); setTouchPromptId(isTouchPrompting ? null : l.id); if (!isTouchPrompting) onSelect(l.id) }}
-                  style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: '1px solid var(--border)', color: isTouchPrompting ? 'var(--text3)' : '#e8eaf0', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: '1px solid var(--border)', color: isTouchPrompting ? 'var(--text3)' : 'var(--text)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                   {isTouchPrompting ? 'Cancel' : 'Contact'}
                 </button>
               </div>
@@ -1324,10 +1324,10 @@ const parsedLoc0 = parseLocation(lead.location || '')
           color: activityColor(row.note || ''),
         }))
         const synth: Array<{ ts: string; label: string; color: string }> = [
-          { ts: lead.created_at, label: 'Lead Created', color: '#8b90a8' },
+          { ts: lead.created_at, label: 'Lead Created', color: 'var(--text2)' },
         ]
-        if (regTokenDates?.created_at) synth.push({ ts: regTokenDates.created_at, label: 'Reg Link Sent', color: '#c8f04e' })
-        if (regTokenDates?.used_at) synth.push({ ts: regTokenDates.used_at, label: 'Registration Returned', color: '#14B8A6' })
+        if (regTokenDates?.created_at) synth.push({ ts: regTokenDates.created_at, label: 'Reg Link Sent', color: 'var(--accent)' })
+        if (regTokenDates?.used_at) synth.push({ ts: regTokenDates.used_at, label: 'Registration Returned', color: 'var(--booked)' })
         const all = [...items, ...synth].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
         setActivityLog(all)
       })
@@ -1504,8 +1504,8 @@ const khuDays = daysUntilKhu(lead)
 
   return (
     <div>
-      {/* ═══ Zone 1 (bg #161920) — identity + contact ═══════════ */}
-      <div style={{ background: '#161920', margin: '0 -16px', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+      {/* ═══ Zone 1 (bg var(--surface)) — identity + contact ═══════════ */}
+      <div style={{ background: 'var(--surface)', margin: '0 -16px', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
       {/* ─── Status strip ─────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 26, marginBottom: 10, borderBottom: '1px solid #1e2028' }}>
         <div ref={statusPillRef} style={{ position: 'relative', flexShrink: 0 }}>
@@ -1543,13 +1543,13 @@ const khuDays = daysUntilKhu(lead)
           <span style={{ color: '#2d3140', fontSize: 9, flexShrink: 0 }}>·</span>
           <button
             onClick={() => { save('needs_contact', false); onUpdate('needs_contact', false) }}
-            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#6B7280', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, flexShrink: 0 }}
+            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--cold)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, flexShrink: 0 }}
           >
             <span style={{ fontSize: 7 }}>●</span> Needs Contact
           </button>
         </>)}
         {(lead.status === 'hot' || lead.status === 'warm') && lead.keep_hot_until && (
-          <span style={{ marginLeft: 'auto', color: '#14B8A6', fontFamily: 'DM Mono', fontSize: 10, flexShrink: 0 }}>
+          <span style={{ marginLeft: 'auto', color: 'var(--booked)', fontFamily: 'DM Mono', fontSize: 10, flexShrink: 0 }}>
             {lead.status === 'warm' ? 'Keep warm until' : 'Keep hot until'} {fmtDateTime(lead.keep_hot_until)}
           </span>
         )}
@@ -1559,7 +1559,7 @@ const khuDays = daysUntilKhu(lead)
 
       {/* ─── Missing warning ─────────────────────────────── */}
       {missing.length > 0 && (
-        <div style={{ fontSize: 10, color: '#F97316', background: 'rgba(249,115,22,0.08)', padding: '6px 10px', borderRadius: 6, marginBottom: 6 }}>
+        <div style={{ fontSize: 10, color: 'var(--warm)', background: 'rgba(249,115,22,0.08)', padding: '6px 10px', borderRadius: 6, marginBottom: 6 }}>
           ⚠ Missing: {missing.join(', ')}
         </div>
       )}
@@ -1664,7 +1664,7 @@ const khuDays = daysUntilKhu(lead)
                   setShowConfirmModal(true)
                 }
               }}
-              style={{ padding: '5px 12px', background: 'transparent', color: '#e8eaf0', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
+              style={{ padding: '5px 12px', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
             >
               Confirm Client Account
             </button>
@@ -1683,7 +1683,7 @@ const khuDays = daysUntilKhu(lead)
               </button>
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
-              <button onClick={copyRegLink} style={{ padding: '3px 10px', background: '#e8eaf0', color: '#0d0f14', border: 'none', borderRadius: 3, fontFamily: 'Syne', fontWeight: 700, fontSize: 8, letterSpacing: '0.08em', cursor: 'pointer' }}>
+              <button onClick={copyRegLink} style={{ padding: '3px 10px', background: 'var(--text)', color: 'var(--bg)', border: 'none', borderRadius: 3, fontFamily: 'Syne', fontWeight: 700, fontSize: 8, letterSpacing: '0.08em', cursor: 'pointer' }}>
                 {regLinkCopied ? 'Copied!' : 'Copy Link'}
               </button>
               <button onClick={emailRegLink} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
@@ -1738,7 +1738,7 @@ const khuDays = daysUntilKhu(lead)
               onFocus={() => setFocusedInput('email')} onBlur={e => { setFocusedInput(null); save('email', e.target.value) }}
               onKeyDown={enterBlur} placeholder="Add email" style={{ ...iStyle('email'), flex: 1, minWidth: 0, paddingLeft: 0 }} />
             {local.email && (
-              <a href={`mailto:${local.email}`} style={{ ...aBtnStyle('#8b90a8'), flexShrink: 0 }}>Email</a>
+              <a href={`mailto:${local.email}`} style={{ ...aBtnStyle('var(--text2)'), flexShrink: 0 }}>Email</a>
             )}
           </div>
           <span style={{ color: 'var(--text3)', fontSize: 11, flexShrink: 0 }}>·</span>
@@ -1747,8 +1747,8 @@ const khuDays = daysUntilKhu(lead)
               onFocus={() => setFocusedInput('phone')} onBlur={e => { setFocusedInput(null); const f = fmtPhone(e.target.value); if (f !== e.target.value) update('phone', f); save('phone', f) }}
               onKeyDown={enterBlur} placeholder="Add phone" style={{ ...iStyle('phone'), flex: 1, minWidth: 0 }} />
             {local.phone && (<>
-              <a href={`tel:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('#8b90a8'), flexShrink: 0 }}>Call</a>
-              <a href={`sms:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('#8b90a8'), flexShrink: 0 }}>Text</a>
+              <a href={`tel:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('var(--text2)'), flexShrink: 0 }}>Call</a>
+              <a href={`sms:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('var(--text2)'), flexShrink: 0 }}>Text</a>
             </>)}
           </div>
         </div>
@@ -1757,23 +1757,23 @@ const khuDays = daysUntilKhu(lead)
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
           <button
             onClick={() => { const nb = (local.billing || lead.billing) === 'COD' ? 'Billing' : 'COD'; update('billing', nb); save('billing', nb) }}
-            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#6B7280', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>
+            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--cold)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>
             {local.billing || lead.billing || 'COD'}
           </button>
           {lead.booking && (<>
             <span style={{ color: '#2d3140', fontSize: 9 }}>·</span>
-            <span style={{ color: '#6B7280', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{lead.booking}</span>
+            <span style={{ color: 'var(--cold)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{lead.booking}</span>
           </>)}
           {lead.source && (<>
             <span style={{ color: '#2d3140', fontSize: 9 }}>·</span>
-            <span style={{ color: '#6B7280', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{lead.source}</span>
+            <span style={{ color: 'var(--cold)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{lead.source}</span>
           </>)}
         </div>
       </div>
       </div>
 
-      {/* ═══ Zone 2 (bg #1c1f27) — session info ═══════════════ */}
-      <div style={{ background: '#1c1f27', margin: '0 -16px', padding: '12px 16px' }}>
+      {/* ═══ Zone 2 (bg var(--surface2)) — session info ═══════════════ */}
+      <div style={{ background: 'var(--surface2)', margin: '0 -16px', padding: '12px 16px' }}>
       {/* ─── Session & Quote ─────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 48px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1963,7 +1963,7 @@ const khuDays = daysUntilKhu(lead)
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setShowSuccessModal(false)}
-                style={{ padding: '7px 18px', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.05em', border: 'none', cursor: 'pointer', background: 'var(--accent)', color: '#0d0f14' }}
+                style={{ padding: '7px 18px', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.05em', border: 'none', cursor: 'pointer', background: 'var(--accent)', color: 'var(--bg)' }}
               >
                 Done
               </button>
@@ -1991,7 +1991,7 @@ const khuDays = daysUntilKhu(lead)
                   setShowBookedModal(false)
                 }}
                 disabled={markingBooked}
-                style={{ padding: '7px 18px', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.05em', border: 'none', cursor: markingBooked ? 'default' : 'pointer', background: 'var(--accent)', color: '#0d0f14', opacity: markingBooked ? 0.7 : 1 }}
+                style={{ padding: '7px 18px', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.05em', border: 'none', cursor: markingBooked ? 'default' : 'pointer', background: 'var(--accent)', color: 'var(--bg)', opacity: markingBooked ? 0.7 : 1 }}
               >
                 {markingBooked ? 'Saving…' : 'Confirm'}
               </button>
@@ -2159,7 +2159,7 @@ function ConfirmClientModal({ lead, onClose, onCreated }: {
               fontSize: 11, letterSpacing: '0.05em', border: 'none',
               cursor: (valid && !saving) ? 'pointer' : 'default',
               background: valid ? 'var(--accent)' : 'var(--surface2)',
-              color: valid ? '#0d0f14' : 'var(--text3)',
+              color: valid ? 'var(--bg)' : 'var(--text3)',
             }}
           >
             {saving ? 'Creating…' : 'Start Booking →'}
@@ -2585,7 +2585,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
     <button
       type="button"
       onClick={() => setNeedsContact(nc => !nc)}
-      style={{ alignSelf: 'flex-start', padding: '5px 14px', borderRadius: 20, border: `1px solid ${needsContact ? '#7BA7BC' : 'var(--border)'}`, background: needsContact ? 'rgba(123,167,188,0.12)' : 'transparent', color: needsContact ? '#7BA7BC' : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.15s' }}
+      style={{ alignSelf: 'flex-start', padding: '5px 14px', borderRadius: 20, border: `1px solid ${needsContact ? 'var(--uncontacted)' : 'var(--border)'}`, background: needsContact ? 'rgba(123,167,188,0.12)' : 'transparent', color: needsContact ? 'var(--uncontacted)' : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.15s' }}
     >
       {needsContact ? '● Needs Contact' : '○ Needs Contact'}
     </button>
@@ -2849,7 +2849,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
             <div style={{ marginBottom: 8, fontSize: 11, color: 'var(--hot)', fontFamily: 'DM Mono' }}>{bookingError}</div>
           )}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '9px 0', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: saving ? 0.6 : 1 }}>
+            <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '9px 0', background: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: saving ? 0.6 : 1 }}>
               {saving ? 'Saving…' : temperature === 'booking' ? 'Save & Go to Booking →' : 'Create Lead'}
             </button>
             <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
@@ -2890,7 +2890,7 @@ function EmailModal({ lead, onClose }: { lead: Lead, onClose: () => void }) {
           <textarea value={body} onChange={e => setBody(e.target.value)} style={{ width: '100%', height: 220, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '10px 12px', borderRadius: 7, fontFamily: 'DM Mono', fontSize: 11, resize: 'none', outline: 'none', lineHeight: 1.6 }} />
         </div>
         <div style={{ padding: '0 20px 20px', display: 'flex', gap: 8 }}>
-          <button onClick={handleCopyAndOpen} disabled={!lead.email} style={{ flex: 1, padding: '9px 0', background: lead.email ? 'var(--accent)' : 'var(--surface2)', color: lead.email ? '#0d0f14' : 'var(--text3)', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: lead.email ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          <button onClick={handleCopyAndOpen} disabled={!lead.email} style={{ flex: 1, padding: '9px 0', background: lead.email ? 'var(--accent)' : 'var(--surface2)', color: lead.email ? 'var(--bg)' : 'var(--text3)', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: lead.email ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
             {copied ? '✓ Copied!' : '✉ Copy & Open Mail'}
           </button>
           <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
@@ -2915,14 +2915,14 @@ function DonutChart({ segments, size = 100 }: {
 
   if (total === 0) return (
     <svg width={size} height={size}>
-      <circle cx={cx} cy={cy} r={r} fill="transparent" stroke="var(--border)" strokeWidth={sw} />
+      <circle cx={cx} cy={cy} r={r} fill="transparent" style={{ stroke: 'var(--border)' }} strokeWidth={sw} />
     </svg>
   )
 
   let cumLen = 0
   return (
     <svg width={size} height={size} style={{ flexShrink: 0 }}>
-      <circle cx={cx} cy={cy} r={r} fill="transparent" stroke="var(--border)" strokeWidth={sw} />
+      <circle cx={cx} cy={cy} r={r} fill="transparent" style={{ stroke: 'var(--border)' }} strokeWidth={sw} />
       {segments.map((seg, i) => {
         const L = (seg.value / total) * C
         const dashOffset = C - cumLen
@@ -2930,7 +2930,7 @@ function DonutChart({ segments, size = 100 }: {
         if (L < 0.5) return null
         return (
           <circle key={i} cx={cx} cy={cy} r={r} fill="transparent"
-            stroke={seg.color} strokeWidth={sw}
+            style={{ stroke: seg.color }} strokeWidth={sw}
             strokeDasharray={`${L} ${C - L}`}
             strokeDashoffset={dashOffset}
             transform={`rotate(-90 ${cx} ${cy})`}

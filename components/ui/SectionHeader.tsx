@@ -9,9 +9,9 @@ type SectionHeaderAction = {
 }
 
 const COUNT_COLORS: Record<CountColor, { background: string; color: string }> = {
-  lime: { background: '#c8f04e', color: '#0d0f14' },
-  orange: { background: '#F97316', color: '#fff' },
-  teal: { background: '#14B8A6', color: '#0d0f14' },
+  lime: { background: 'var(--accent)', color: 'var(--bg)' },
+  orange: { background: 'var(--warm)', color: '#fff' },
+  teal: { background: 'var(--booked)', color: 'var(--bg)' },
 }
 
 export function SectionHeader({
@@ -19,7 +19,7 @@ export function SectionHeader({
   count,
   countColor = 'lime',
   action,
-  actionColor = '#c8f04e',
+  actionColor = 'var(--accent)',
 }: {
   title: string
   count?: number
@@ -36,7 +36,7 @@ export function SectionHeader({
           fontWeight: 700,
           letterSpacing: '0.12em',
           textTransform: 'uppercase',
-          color: '#9ca3af',
+          color: 'var(--text2)',
           fontFamily: 'DM Mono',
         }}
       >

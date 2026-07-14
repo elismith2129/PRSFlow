@@ -22,9 +22,9 @@ interface AppFeedback {
 
 // TEMPORARY: remove when rollout period ends — type badge colors (red/lime/blue)
 const TYPE_META: Record<FeedbackType, { label: string; color: string }> = {
-  bug: { label: 'Bug', color: '#ef4444' },
-  suggestion: { label: 'Suggestion', color: '#c8f04e' },
-  question: { label: 'Question', color: '#7BA7BC' },
+  bug: { label: 'Bug', color: 'var(--hot)' },
+  suggestion: { label: 'Suggestion', color: 'var(--accent)' },
+  question: { label: 'Question', color: 'var(--uncontacted)' },
 }
 
 // TEMPORARY: remove when rollout period ends
@@ -88,14 +88,14 @@ export default function FeedbackPage() {
 
   const labelStyle: React.CSSProperties = {
     fontSize: 11, fontFamily: 'DM Mono', fontWeight: 500, letterSpacing: '0.08em',
-    textTransform: 'uppercase', color: '#9ca3af', marginBottom: 8,
+    textTransform: 'uppercase', color: 'var(--text2)', marginBottom: 8,
   }
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto' }}>
       {/* TEMPORARY: remove when rollout period ends — banner */}
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 20, padding: '8px 12px', border: '1px dashed rgba(200,240,78,0.4)', borderRadius: 8, background: 'rgba(200,240,78,0.06)' }}>
-        <span style={{ fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#c8f04e' }}>Temporary</span>
+        <span style={{ fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent)' }}>Temporary</span>
         <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text2)' }}>
           Rollout feedback board — report bugs, suggestions, and questions about the app.
         </span>
@@ -121,7 +121,7 @@ export default function FeedbackPage() {
                   flex: 1, padding: '8px 0', fontSize: 11, fontFamily: 'Syne', fontWeight: 700,
                   letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer',
                   borderRadius: 8, transition: 'all 0.15s',
-                  color: selected ? '#0d0f14' : meta.color,
+                  color: selected ? 'var(--bg)' : meta.color,
                   background: selected ? meta.color : 'transparent',
                   border: `1px solid ${selected ? meta.color : 'var(--border)'}`,
                 }}
@@ -155,8 +155,8 @@ export default function FeedbackPage() {
             style={{
               padding: '8px 18px', fontSize: 11, fontFamily: 'Syne', fontWeight: 700,
               letterSpacing: '0.06em', textTransform: 'uppercase', borderRadius: 8, border: 'none',
-              background: note.trim() ? '#c8f04e' : 'var(--surface2)',
-              color: note.trim() ? '#0d0f14' : 'var(--text3)',
+              background: note.trim() ? 'var(--accent)' : 'var(--surface2)',
+              color: note.trim() ? 'var(--bg)' : 'var(--text3)',
               cursor: note.trim() && !submitting ? 'pointer' : 'default',
             }}
           >
@@ -205,8 +205,8 @@ export default function FeedbackPage() {
                         flexShrink: 0, padding: '3px 8px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700,
                         letterSpacing: '0.04em', textTransform: 'uppercase', borderRadius: 4, cursor: 'pointer',
                         background: 'transparent',
-                        border: `1px solid ${item.resolved ? '#c8f04e' : 'var(--border)'}`,
-                        color: item.resolved ? '#c8f04e' : 'var(--text3)',
+                        border: `1px solid ${item.resolved ? 'var(--accent)' : 'var(--border)'}`,
+                        color: item.resolved ? 'var(--accent)' : 'var(--text3)',
                         whiteSpace: 'nowrap',
                       }}
                     >

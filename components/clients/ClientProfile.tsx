@@ -29,7 +29,7 @@ interface Props {
 // ─── Shared button styles ─────────────────────────────────────────────────────
 
 const accentBtn: React.CSSProperties = {
-  background: 'transparent', color: '#e8eaf0', border: '1px solid var(--border)', borderRadius: 4,
+  background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 4,
   padding: '5px 12px', fontSize: 10, fontFamily: 'Syne', fontWeight: 700,
   letterSpacing: '0.08em', cursor: 'pointer',
 }
@@ -149,14 +149,14 @@ function ContactRow({ contact, onSave, onDelete }: {
           {contact.email && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
               <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>{contact.email}</span>
-              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Email</a>
+              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('var(--text2)')}>Email</a>
             </div>
           )}
           {contact.phone && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
               <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>{contact.phone}</span>
-              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Call</a>
-              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Text</a>
+              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--text2)')}>Call</a>
+              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--text2)')}>Text</a>
             </div>
           )}
           {localArtists.length > 0 && (
@@ -290,13 +290,13 @@ function AdminRow({ contact, onSave, onDelete }: {
           {contact.email && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
               <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>{contact.email}</span>
-              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Email</a>
+              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('var(--text2)')}>Email</a>
             </div>
           )}
           {contact.phone && (
             <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Call</a>
-              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Text</a>
+              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--text2)')}>Call</a>
+              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--text2)')}>Text</a>
             </div>
           )}
         </div>
@@ -639,7 +639,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
           )}
           <button
             onClick={() => router.push(`/calendar?newBooking=1&clientId=${client.id}`)}
-            style={{ ...accentBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0, background: 'transparent', color: '#e8eaf0' }}
+            style={{ ...accentBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0, background: 'transparent', color: 'var(--text)' }}
           >
             Start Booking
           </button>
@@ -730,7 +730,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                 <InlineField label="Email" value={client.email} onSave={v => saveClient({ email: v })} />
                 {client.email && (
                   <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-                    <a href={`mailto:${client.email}`} style={aBtn('#8b90a8')}>Email</a>
+                    <a href={`mailto:${client.email}`} style={aBtn('var(--text2)')}>Email</a>
                   </div>
                 )}
               </div>
@@ -738,8 +738,8 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                 <PhoneInlineField value={client.phone} onSave={v => saveClient({ phone: v })} />
                 {client.phone && (
                   <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-                    <a href={`tel:${client.phone.replace(/\D/g, '')}`} style={aBtn('#8b90a8')}>Call</a>
-                    <a href={`sms:${client.phone.replace(/\D/g, '')}`} style={aBtn('#8b90a8')}>Text</a>
+                    <a href={`tel:${client.phone.replace(/\D/g, '')}`} style={aBtn('var(--text2)')}>Call</a>
+                    <a href={`sms:${client.phone.replace(/\D/g, '')}`} style={aBtn('var(--text2)')}>Text</a>
                   </div>
                 )}
               </div>

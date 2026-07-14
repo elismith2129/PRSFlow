@@ -163,7 +163,7 @@ export function ClientsPageInner({ initialClientId, embedded }: { initialClientI
         </div>
         <button
           onClick={() => setNewClientOpen(true)}
-          style={{ padding: '5px 12px', background: 'transparent', color: '#e8eaf0', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
+          style={{ padding: '5px 12px', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
         >
           + New Client
         </button>
@@ -369,7 +369,7 @@ function RegistrationReviewModal({ regs, onClose, onNavigate }: {
                     <button
                       onClick={() => confirm(reg.id)}
                       disabled={isConfirming}
-                      style={{ background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 5, padding: '7px 16px', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: isConfirming ? 'default' : 'pointer', opacity: isConfirming ? 0.7 : 1, flexShrink: 0 }}
+                      style={{ background: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: 5, padding: '7px 16px', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: isConfirming ? 'default' : 'pointer', opacity: isConfirming ? 0.7 : 1, flexShrink: 0 }}
                     >
                       {isConfirming ? 'Creating…' : 'Create Client Profile →'}
                     </button>
@@ -671,7 +671,7 @@ function NewClientModal({ onClose, onCreated }: {
                   fontSize: 11, letterSpacing: '0.05em', border: 'none',
                   cursor: (valid && !saving) ? 'pointer' : 'default',
                   background: valid ? 'var(--accent)' : 'var(--surface2)',
-                  color: valid ? '#0d0f14' : 'var(--text3)',
+                  color: valid ? 'var(--bg)' : 'var(--text3)',
                 }}
               >
                 {saving ? 'Creating…' : 'Create Client'}
@@ -689,7 +689,7 @@ function NewClientModal({ onClose, onCreated }: {
             <div style={{ fontFamily: 'DM Mono', fontSize: 11, color: 'var(--text)', marginBottom: 4 }}>{dupTarget.name || [dupTarget.fname, dupTarget.lname].filter(Boolean).join(' ')}</div>
             <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'var(--text3)', marginBottom: 16 }}>{[dupTarget.email, dupTarget.phone].filter(Boolean).join(' · ')}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <button onClick={() => onCreated(dupTarget.id)} style={{ padding: '8px 0', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', cursor: 'pointer' }}>
+              <button onClick={() => onCreated(dupTarget.id)} style={{ padding: '8px 0', background: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', cursor: 'pointer' }}>
                 Open Existing Profile
               </button>
               <button onClick={() => { setShowDupModal(false); setForceCreate(true) }} style={{ padding: '8px 0', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 5, fontFamily: 'DM Mono', fontSize: 10, cursor: 'pointer' }}>

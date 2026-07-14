@@ -127,7 +127,7 @@ export default function InquiryPage() {
               fontFamily: "'DM Mono', monospace",
               fontSize: 11,
               letterSpacing: '0.2em',
-              color: '#6B7280',
+              color: 'var(--cold)',
               textTransform: 'uppercase',
               marginTop: 18,
             }}
@@ -179,7 +179,7 @@ export default function InquiryPage() {
               autoComplete="given-name"
               required
               style={inquiryInputStyle}
-              onFocus={(e) => (e.currentTarget.style.borderColor = '#c8f04e')}
+              onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
               onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
             />
             <input
@@ -190,7 +190,7 @@ export default function InquiryPage() {
               autoComplete="family-name"
               required
               style={inquiryInputStyle}
-              onFocus={(e) => (e.currentTarget.style.borderColor = '#c8f04e')}
+              onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
               onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
             />
             <input
@@ -201,7 +201,7 @@ export default function InquiryPage() {
               autoComplete="email"
               required
               style={inquiryInputStyle}
-              onFocus={(e) => (e.currentTarget.style.borderColor = '#c8f04e')}
+              onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
               onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
             />
             <input
@@ -212,7 +212,7 @@ export default function InquiryPage() {
               autoComplete="tel"
               required
               style={inquiryInputStyle}
-              onFocus={(e) => (e.currentTarget.style.borderColor = '#c8f04e')}
+              onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
               onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
             />
             <textarea
@@ -221,7 +221,7 @@ export default function InquiryPage() {
               placeholder="Tell us about your session"
               rows={4}
               style={{ ...inquiryInputStyle, resize: 'vertical', minHeight: 96 }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = '#c8f04e')}
+              onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
               onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
             />
 
@@ -240,7 +240,7 @@ export default function InquiryPage() {
                 style={{
                   fontFamily: "'DM Mono', monospace",
                   fontSize: 11,
-                  color: '#ef4444',
+                  color: 'var(--hot)',
                   textAlign: 'center',
                 }}
               >
@@ -272,7 +272,7 @@ const inquiryButtonStyle: React.CSSProperties = {
   width: '100%',
   maxWidth: 380,
   background: 'transparent',
-  color: '#e8eaf0',
+  color: 'var(--text)',
   fontFamily: "'DM Mono', monospace",
   fontSize: 12,
   fontWeight: 700,

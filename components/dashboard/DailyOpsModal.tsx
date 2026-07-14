@@ -29,7 +29,7 @@ const MIC_GROUPS = [
 ]
 
 const CONDITION_COLORS: Record<string, string> = {
-  good: '#4ade80', fair: '#f0a24e', damaged: '#f87171', '': '#8b90a8',
+  good: '#4ade80', fair: '#f0a24e', damaged: '#f87171', '': 'var(--text2)',
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -217,7 +217,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
               </span>
             </div>
             {notesText && (
-              <div style={{ fontSize: 12, color: '#e8eaf2', fontFamily: 'DM Mono, monospace', lineHeight: 1.6, background: '#0d0f1488', borderRadius: 8, padding: '10px 12px', marginBottom: photosToShow.length > 0 ? 10 : 0 }}>
+              <div style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'DM Mono, monospace', lineHeight: 1.6, background: '#0d0f1488', borderRadius: 8, padding: '10px 12px', marginBottom: photosToShow.length > 0 ? 10 : 0 }}>
                 {notesText}
               </div>
             )}
@@ -265,7 +265,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
                       background: on ? color : 'transparent',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                      {on && <span style={{ fontSize: 10, color: '#0d0f14', fontWeight: 900 }}>✓</span>}
+                      {on && <span style={{ fontSize: 10, color: 'var(--bg)', fontWeight: 900 }}>✓</span>}
                     </div>
                     <span style={{ fontSize: 12, color: on ? 'var(--text)' : 'var(--text2)', fontFamily: 'Syne, sans-serif', lineHeight: 1.45, textDecoration: on ? 'none' : 'none' }}>
                       {item}
@@ -453,7 +453,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
                   <span style={{
                     fontSize: 10, fontWeight: 700, fontFamily: 'DM Mono, monospace',
                     color: CONDITION_COLORS[mic.condition] ?? 'var(--text3)',
-                    background: (CONDITION_COLORS[mic.condition] ?? '#8b90a8') + '22',
+                    background: (CONDITION_COLORS[mic.condition] ?? 'var(--text2)') + '22',
                     padding: '2px 8px', borderRadius: 4,
                   }}>
                     {mic.condition}
@@ -554,7 +554,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
             <span style={{
               fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
               padding: '3px 10px', borderRadius: 6, fontFamily: 'DM Mono, monospace',
-              color: isApproved ? color : isSubmitted ? '#4ade80' : hasLiveProgress ? '#8b90a8' : '#f0a24e',
+              color: isApproved ? color : isSubmitted ? '#4ade80' : hasLiveProgress ? 'var(--text2)' : '#f0a24e',
               background: isApproved ? color + '22' : isSubmitted ? '#4ade8022' : hasLiveProgress ? '#8b90a822' : '#f0a24e22',
             }}>
               {isApproved ? 'Approved' : isSubmitted ? 'Submitted' : hasLiveProgress ? 'In Progress' : 'Not Started'}
@@ -609,7 +609,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
                 style={{
                   width: '100%', padding: '14px 0',
                   background: approving ? color + '88' : color,
-                  color: '#0d0f14', border: 'none', borderRadius: 10,
+                  color: 'var(--bg)', border: 'none', borderRadius: 10,
                   fontSize: 14, fontWeight: 800, fontFamily: 'Syne, sans-serif',
                   cursor: approving ? 'not-allowed' : 'pointer',
                   letterSpacing: '0.04em', textTransform: 'uppercase',

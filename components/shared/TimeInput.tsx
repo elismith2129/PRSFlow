@@ -124,7 +124,7 @@ export default function TimeInput({ value, onChange, onBlur, placeholder = '—'
       disabled={disabled}
       placeholder={placeholder}
       style={{
-        background: '#1a1e28',
+        background: 'var(--surface2)',
         color: raw ? '#f0f0f0' : '#555',
         border: 'none',
         fontSize: 11,

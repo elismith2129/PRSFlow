@@ -37,7 +37,7 @@ export default function ResetPasswordPage() {
     <div
       style={{
         minHeight: '100vh',
-        background: '#0d0f14',
+        background: 'var(--bg)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -59,7 +59,7 @@ export default function ResetPasswordPage() {
             fontFamily: "'DM Mono', monospace",
             fontSize: 11,
             letterSpacing: '0.2em',
-            color: '#6B7280',
+            color: 'var(--cold)',
             textTransform: 'uppercase',
             textAlign: 'center',
           }}
@@ -100,7 +100,7 @@ export default function ResetPasswordPage() {
             placeholder="New Password"
             autoComplete="new-password"
             style={authInputStyle}
-            onFocus={(e) => (e.currentTarget.style.borderColor = '#c8f04e')}
+            onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
             onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
           />
           <input
@@ -110,7 +110,7 @@ export default function ResetPasswordPage() {
             placeholder="Confirm Password"
             autoComplete="new-password"
             style={authInputStyle}
-            onFocus={(e) => (e.currentTarget.style.borderColor = '#c8f04e')}
+            onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
             onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
           />
 
@@ -129,7 +129,7 @@ export default function ResetPasswordPage() {
               style={{
                 fontFamily: "'DM Mono', monospace",
                 fontSize: 11,
-                color: '#ef4444',
+                color: 'var(--hot)',
                 textAlign: 'center',
               }}
             >
@@ -145,11 +145,11 @@ export default function ResetPasswordPage() {
 const authInputStyle: React.CSSProperties = {
   width: '100%',
   maxWidth: 380,
-  background: '#161920',
+  background: 'var(--surface)',
   border: '1px solid rgba(255,255,255,0.1)',
   borderRadius: 6,
   padding: '12px 14px',
-  color: '#e8eaf0',
+  color: 'var(--text)',
   fontFamily: "'DM Mono', monospace",
   fontSize: 13,
   outline: 'none',
@@ -159,8 +159,8 @@ const authInputStyle: React.CSSProperties = {
 const authButtonStyle: React.CSSProperties = {
   width: '100%',
   maxWidth: 380,
-  background: '#c8f04e',
-  color: '#0d0f14',
+  background: 'var(--accent)',
+  color: 'var(--bg)',
   fontFamily: "'DM Mono', monospace",
   fontSize: 12,
   fontWeight: 700,

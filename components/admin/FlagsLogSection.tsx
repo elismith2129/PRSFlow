@@ -224,23 +224,23 @@ export function FlagsLogSection() {
         placeholder="Search flags…"
         style={{
           width: '100%', padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
-          background: '#1a1d27', border: '1px solid #2a2e3d',
-          borderRadius: 6, color: '#e8eaf2', outline: 'none',
+          background: 'var(--surface2)', border: '1px solid var(--border)',
+          borderRadius: 6, color: 'var(--text)', outline: 'none',
           boxSizing: 'border-box', marginBottom: 12,
         }}
       />
 
       {/* Filter row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 4, background: '#1a1d27', borderRadius: 8, padding: 3 }}>
+        <div style={{ display: 'flex', gap: 4, background: 'var(--surface2)', borderRadius: 8, padding: 3 }}>
           {(['all', 'pending', 'acknowledged', 'resolved'] as const).map(s => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
               style={{
                 padding: '4px 10px', fontSize: 10, fontFamily: 'DM Mono', border: 'none', borderRadius: 6, cursor: 'pointer',
-                background: statusFilter === s ? '#c8f04e' : 'transparent',
-                color: statusFilter === s ? '#0d0f14' : '#8b90a8',
+                background: statusFilter === s ? 'var(--accent)' : 'transparent',
+                color: statusFilter === s ? 'var(--bg)' : 'var(--text2)',
                 fontWeight: statusFilter === s ? 700 : 400,
                 textTransform: 'capitalize',
               }}
@@ -252,7 +252,7 @@ export function FlagsLogSection() {
         <select
           value={studioFilter}
           onChange={e => setStudioFilter(e.target.value)}
-          style={{ padding: '5px 8px', fontSize: 11, background: '#1a1d27', border: '1px solid #2a2e3d', borderRadius: 6, color: '#e8eaf2', fontFamily: 'DM Mono', outline: 'none' }}
+          style={{ padding: '5px 8px', fontSize: 11, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono', outline: 'none' }}
         >
           <option value="all">All Studios</option>
           <option value="paramount">Paramount</option>
@@ -263,7 +263,7 @@ export function FlagsLogSection() {
         <select
           value={categoryFilter}
           onChange={e => setCategoryFilter(e.target.value)}
-          style={{ padding: '5px 8px', fontSize: 11, background: '#1a1d27', border: '1px solid #2a2e3d', borderRadius: 6, color: '#e8eaf2', fontFamily: 'DM Mono', outline: 'none' }}
+          style={{ padding: '5px 8px', fontSize: 11, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono', outline: 'none' }}
         >
           <option value="all">All Categories</option>
           <option value="facility_general">Facility / General</option>
@@ -274,7 +274,7 @@ export function FlagsLogSection() {
 
       {/* Flag list */}
       {loading ? (
-        <div style={{ fontSize: 11, color: '#4a4f64', fontFamily: 'DM Mono', padding: '24px 0' }}>Loading…</div>
+        <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono', padding: '24px 0' }}>Loading…</div>
       ) : (() => {
         const filtered = flags.filter(f => {
           if (!search.trim()) return true
@@ -288,11 +288,11 @@ export function FlagsLogSection() {
           )
         })
         return filtered.length === 0 ? (
-          <div style={{ fontSize: 11, color: '#4a4f64', fontFamily: 'DM Mono', padding: '24px 0' }}>No flags found.</div>
+          <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono', padding: '24px 0' }}>No flags found.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {filtered.map(flag => {
-            const statusDotColor = flag.status === 'pending' ? '#EF4444' : flag.status === 'acknowledged' ? '#F97316' : '#14B8A6'
+            const statusDotColor = flag.status === 'pending' ? 'var(--hot)' : flag.status === 'acknowledged' ? 'var(--warm)' : 'var(--booked)'
             const catConf = flag.category ? CATEGORY_CONFIG[flag.category] : null
             return (
               <div
@@ -300,7 +300,7 @@ export function FlagsLogSection() {
                 onClick={() => handleOpenFlag(flag)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10, padding: '11px 0',
-                  borderBottom: '1px solid #2a2e3d', cursor: 'pointer',
+                  borderBottom: '1px solid var(--border)', cursor: 'pointer',
                 }}
               >
                 <div style={{ width: 7, height: 7, borderRadius: '50%', background: statusDotColor, flexShrink: 0 }} />
@@ -321,16 +321,16 @@ export function FlagsLogSection() {
                   )}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, color: '#e8eaf2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {flag.runner_note || '—'}
                   </div>
                   {flag.source_label && (
-                    <div style={{ fontSize: 10, color: '#4a4f64', fontFamily: 'DM Mono', marginTop: 2 }}>
+                    <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 2 }}>
                       {flag.source_label}
                     </div>
                   )}
                 </div>
-                <div style={{ fontSize: 10, color: '#4a4f64', fontFamily: 'DM Mono', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', whiteSpace: 'nowrap', flexShrink: 0 }}>
                   {new Date(flag.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </div>
               </div>
@@ -361,7 +361,7 @@ export function FlagsLogSection() {
                           <button
                             onClick={() => setShowResolveModal(true)}
                             disabled={flagSubmitting}
-                            style={{ fontSize: 10, fontFamily: 'DM Mono', background: 'transparent', color: '#14B8A6', border: '1px solid #14B8A6', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}
+                            style={{ fontSize: 10, fontFamily: 'DM Mono', background: 'transparent', color: 'var(--booked)', border: '1px solid var(--booked)', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}
                           >
                             {flagSubmitting ? 'Saving…' : 'Resolve'}
                           </button>
@@ -434,9 +434,9 @@ export function FlagsLogSection() {
                           style={{
                             flex: 1, padding: '5px 4px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700,
                             letterSpacing: '0.04em', textTransform: 'uppercase',
-                            color: isSelected ? '#0d0f14' : 'var(--text3)',
-                            background: isSelected ? '#c8f04e' : 'transparent',
-                            border: isSelected ? '1px solid #c8f04e' : '1px solid var(--border)',
+                            color: isSelected ? 'var(--bg)' : 'var(--text3)',
+                            background: isSelected ? 'var(--accent)' : 'transparent',
+                            border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border)',
                             borderRadius: 6, cursor: 'pointer',
                           }}
                         >
@@ -462,7 +462,7 @@ export function FlagsLogSection() {
               {/* Acknowledged box — shown whenever acknowledged_at is set, including after resolve */}
               {selectedFlag.acknowledged_at && (
                 <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 8, padding: '10px 12px' }}>
-                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#F97316', marginBottom: 4 }}>
+                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--warm)', marginBottom: 4 }}>
                     Acknowledged
                   </div>
                   <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>
@@ -480,7 +480,7 @@ export function FlagsLogSection() {
               {/* Resolved box */}
               {selectedFlag.resolved_at && (
                 <div style={{ background: 'rgba(20,184,166,0.06)', border: '1px solid rgba(20,184,166,0.2)', borderRadius: 8, padding: '10px 12px' }}>
-                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#14B8A6', marginBottom: 4 }}>
+                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--booked)', marginBottom: 4 }}>
                     Resolved
                   </div>
                   <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>
@@ -565,7 +565,7 @@ export function FlagsLogSection() {
                     <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono' }}>Confirm delete?</span>
                     <button
                       onClick={handleDeleteFlag}
-                      style={{ padding: '6px 12px', fontSize: 11, fontFamily: 'DM Mono', background: '#EF4444', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                      style={{ padding: '6px 12px', fontSize: 11, fontFamily: 'DM Mono', background: 'var(--hot)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
                     >
                       Yes, delete
                     </button>
@@ -579,7 +579,7 @@ export function FlagsLogSection() {
                 ) : (
                   <button
                     onClick={() => setConfirmDeleteFlag(true)}
-                    style={{ padding: '6px 12px', fontSize: 11, fontFamily: 'DM Mono', background: 'transparent', color: '#EF4444', border: '1px solid #EF4444', borderRadius: 6, cursor: 'pointer' }}
+                    style={{ padding: '6px 12px', fontSize: 11, fontFamily: 'DM Mono', background: 'transparent', color: 'var(--hot)', border: '1px solid var(--hot)', borderRadius: 6, cursor: 'pointer' }}
                   >
                     Delete
                   </button>
@@ -594,8 +594,8 @@ export function FlagsLogSection() {
                         disabled={flagSubmitting || !canAck}
                         style={{
                           padding: '8px 16px', fontSize: 11, fontFamily: 'DM Mono',
-                          background: canAck ? '#c8f04e' : 'var(--surface2)',
-                          color: canAck ? '#0d0f14' : 'var(--text3)',
+                          background: canAck ? 'var(--accent)' : 'var(--surface2)',
+                          color: canAck ? 'var(--bg)' : 'var(--text3)',
                           border: 'none', borderRadius: 6,
                           cursor: canAck ? 'pointer' : 'default',
                           fontWeight: 600,
@@ -611,8 +611,8 @@ export function FlagsLogSection() {
                       disabled={flagSubmitting}
                       style={{
                         padding: '8px 16px', fontSize: 11, fontFamily: 'DM Mono',
-                        background: '#c8f04e',
-                        color: '#0d0f14',
+                        background: 'var(--accent)',
+                        color: 'var(--bg)',
                         border: 'none', borderRadius: 6,
                         cursor: 'pointer',
                         fontWeight: 600,
@@ -648,7 +648,7 @@ export function FlagsLogSection() {
             <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
                 <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
-                  Resolution Notes <span style={{ color: '#EF4444' }}>*</span>
+                  Resolution Notes <span style={{ color: 'var(--hot)' }}>*</span>
                 </div>
                 <textarea
                   value={resolveNote}
@@ -716,8 +716,8 @@ export function FlagsLogSection() {
                   disabled={flagSubmitting || !resolveNote.trim()}
                   style={{
                     flex: 1, padding: '9px', fontSize: 11, fontFamily: 'DM Mono',
-                    background: resolveNote.trim() ? '#c8f04e' : 'var(--surface2)',
-                    color: resolveNote.trim() ? '#0d0f14' : 'var(--text3)',
+                    background: resolveNote.trim() ? 'var(--accent)' : 'var(--surface2)',
+                    color: resolveNote.trim() ? 'var(--bg)' : 'var(--text3)',
                     border: 'none', borderRadius: 6,
                     cursor: resolveNote.trim() ? 'pointer' : 'default',
                     fontWeight: 600,

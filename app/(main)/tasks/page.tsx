@@ -230,14 +230,14 @@ export default function TasksPage() {
           padding: '12px 14px',
           background: 'var(--surface2)',
           border: '0.5px solid var(--border)',
-          borderLeft: task.source !== 'manual' ? '2px solid #F97316' : '0.5px solid var(--border)',
+          borderLeft: task.source !== 'manual' ? '2px solid var(--warm)' : '0.5px solid var(--border)',
           borderRadius: task.source !== 'manual' ? '0 8px 8px 0' : 8,
           cursor: 'pointer',
         }}
       >
         <div style={{
           width: 6, height: 6, borderRadius: '50%',
-          background: task.completed ? '#14B8A6' : '#F97316',
+          background: task.completed ? 'var(--booked)' : 'var(--warm)',
           marginTop: 5, flexShrink: 0,
         }} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -250,7 +250,7 @@ export default function TasksPage() {
             </div>
           )}
         </div>
-        <div style={{ fontSize: 10, color: '#6B7280', fontFamily: 'DM Mono', textAlign: 'right', whiteSpace: 'nowrap', flexShrink: 0, marginTop: 1 }}>
+        <div style={{ fontSize: 10, color: 'var(--cold)', fontFamily: 'DM Mono', textAlign: 'right', whiteSpace: 'nowrap', flexShrink: 0, marginTop: 1 }}>
           by {nameForId(task.assigned_by, allProfiles)}
           <br />
           {fmtDate(task.created_at)}
@@ -303,8 +303,8 @@ export default function TasksPage() {
                 style={{
                   flexShrink: 0, padding: '4px 12px', fontSize: 11, fontFamily: 'Syne',
                   fontWeight: isActive ? 600 : 400,
-                  color: isActive ? '#0d0f14' : 'var(--text3)',
-                  background: isActive ? '#c8f04e' : 'transparent',
+                  color: isActive ? 'var(--bg)' : 'var(--text3)',
+                  background: isActive ? 'var(--accent)' : 'transparent',
                   border: 'none', cursor: 'pointer', borderRadius: 6, whiteSpace: 'nowrap',
                   textTransform: 'uppercase', letterSpacing: '0.06em', transition: 'all 0.1s',
                 }}
@@ -380,7 +380,7 @@ export default function TasksPage() {
                   onClick={handleCompleteTask}
                   disabled={taskSubmitting}
                   style={{
-                    border: '1px solid #14B8A6', background: 'transparent', color: '#14B8A6',
+                    border: '1px solid var(--booked)', background: 'transparent', color: 'var(--booked)',
                     fontSize: 10, fontFamily: 'DM Mono', fontWeight: 700, textTransform: 'uppercase',
                     padding: '5px 12px', borderRadius: 4, cursor: 'pointer', letterSpacing: '0.04em',
                   }}
@@ -393,7 +393,7 @@ export default function TasksPage() {
             {/* Body */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
               {/* Description */}
-              <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.6, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 {selectedTask.text}
                 {selectedTask.photo_url && (
                   <SignedImage
@@ -405,24 +405,24 @@ export default function TasksPage() {
               </div>
 
               {/* Assigned meta */}
-              <div style={{ fontSize: 10, color: '#6B7280', fontFamily: 'DM Mono', marginTop: 12 }}>
+              <div style={{ fontSize: 10, color: 'var(--cold)', fontFamily: 'DM Mono', marginTop: 12 }}>
                 Assigned to: {nameForId(selectedTask.assigned_to, allProfiles)} · by {nameForId(selectedTask.assigned_by, allProfiles)} · {fmtDate(selectedTask.created_at)}
               </div>
 
               {/* Updates */}
-              <div style={{ fontSize: 10, color: '#6B7280', fontFamily: 'DM Mono', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 18, marginBottom: 10 }}>
+              <div style={{ fontSize: 10, color: 'var(--cold)', fontFamily: 'DM Mono', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 18, marginBottom: 10 }}>
                 Updates
               </div>
               {taskComments.length === 0 ? (
-                <div style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic' }}>No updates yet</div>
+                <div style={{ fontSize: 12, color: 'var(--cold)', fontStyle: 'italic' }}>No updates yet</div>
               ) : (
                 taskComments.map(c => (
                   <div key={c.id} style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 10, color: '#6B7280', fontFamily: 'DM Mono', marginBottom: 3 }}>
+                    <div style={{ fontSize: 10, color: 'var(--cold)', fontFamily: 'DM Mono', marginBottom: 3 }}>
                       {c.created_by_name && `${c.created_by_name} · `}{fmtTaskTime(c.created_at)}
                     </div>
                     {c.text && (
-                      <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.5 }}>{c.text}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}>{c.text}</div>
                     )}
                     {c.photo_url && (
                       <SignedImage
@@ -442,7 +442,7 @@ export default function TasksPage() {
                 placeholder="Add a note..."
                 style={{
                   width: '100%', height: 72, padding: '10px 12px', fontSize: 12,
-                  background: '#0d0f14', border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'var(--bg)', border: '1px solid rgba(255,255,255,0.08)',
                   borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono',
                   outline: 'none', resize: 'none', boxSizing: 'border-box', marginTop: 16,
                 }}
@@ -455,7 +455,7 @@ export default function TasksPage() {
                 />
               )}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-                <label style={{ fontSize: 11, color: '#9ca3af', cursor: 'pointer', fontFamily: 'DM Mono' }}>
+                <label style={{ fontSize: 11, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'DM Mono' }}>
                   {commentPhoto ? commentPhoto.name : '+ Attach photo'}
                   <input
                     ref={commentPhotoRef}
@@ -469,7 +469,7 @@ export default function TasksPage() {
                   onClick={handleComment}
                   disabled={taskSubmitting || (!commentText.trim() && !commentPhoto)}
                   style={{
-                    border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: '#9ca3af',
+                    border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: 'var(--text2)',
                     fontSize: 11, fontFamily: 'DM Mono', padding: '6px 14px', borderRadius: 6,
                     cursor: (commentText.trim() || commentPhoto) ? 'pointer' : 'default',
                   }}
@@ -485,7 +485,7 @@ export default function TasksPage() {
                 <button
                   onClick={handleDeleteSelectedTask}
                   style={{
-                    border: '1px solid rgba(239,68,68,0.4)', background: 'transparent', color: '#ef4444',
+                    border: '1px solid rgba(239,68,68,0.4)', background: 'transparent', color: 'var(--hot)',
                     fontSize: 11, fontFamily: 'DM Mono', padding: '8px 14px', borderRadius: 6, cursor: 'pointer',
                   }}
                 >
@@ -506,7 +506,7 @@ export default function TasksPage() {
                 onClick={handleSaveAndCloseTask}
                 disabled={taskSubmitting}
                 style={{
-                  background: '#c8f04e', color: '#0d0f14', border: 'none',
+                  background: 'var(--accent)', color: 'var(--bg)', border: 'none',
                   fontSize: 11, fontFamily: 'DM Mono', fontWeight: 600, padding: '8px 14px', borderRadius: 6, cursor: 'pointer',
                 }}
               >

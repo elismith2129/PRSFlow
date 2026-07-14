@@ -5,30 +5,30 @@ import React from 'react'
 // tinted background (12% opacity) and matching border (25% opacity).
 const STATUS_COLORS: Record<string, string> = {
   // gray
-  uncontacted: '#6B7280',
-  open: '#6B7280',
+  uncontacted: 'var(--cold)',
+  open: 'var(--cold)',
   // red (matches --hot)
-  hot: '#EF4444',
+  hot: 'var(--hot)',
   // orange (matches --warm)
-  warm: '#F97316',
-  pending: '#F97316',
-  tentative: '#F97316',
+  warm: 'var(--warm)',
+  pending: 'var(--warm)',
+  tentative: 'var(--warm)',
   // blue
   cold: '#60A5FA',
   // teal
-  booked: '#14B8A6',
-  completed: '#14B8A6',
-  resolved: '#14B8A6',
-  confirmed: '#14B8A6',
+  booked: 'var(--booked)',
+  completed: 'var(--booked)',
+  resolved: 'var(--booked)',
+  confirmed: 'var(--booked)',
   // lime
-  needs_action: '#C8F04E',
-  needs_contact: '#C8F04E',
-  in_progress: '#C8F04E',
+  needs_action: 'var(--accent)',
+  needs_contact: 'var(--accent)',
+  in_progress: 'var(--accent)',
   // red
-  cancelled: '#EF4444',
+  cancelled: 'var(--hot)',
 }
 
-const DEFAULT_COLOR = '#6B7280'
+const DEFAULT_COLOR = 'var(--cold)'
 
 // Normalize an incoming status string to a map key: lowercase, trimmed,
 // and any run of spaces/hyphens collapsed to a single underscore.

@@ -56,7 +56,7 @@ function matchesLoc(loc: string | null, key: string, abbr: string) {
   return l.includes(key) || l.includes(abbr.toLowerCase())
 }
 
-function TwoCheckbox({ label, checked, clickable = false, loading = false, onClick, color = '#c8f04e' }: {
+function TwoCheckbox({ label, checked, clickable = false, loading = false, onClick, color = 'var(--accent)' }: {
   label: string; checked: boolean; clickable?: boolean; loading?: boolean; onClick?: () => void; color?: string
 }) {
   return (
@@ -64,7 +64,7 @@ function TwoCheckbox({ label, checked, clickable = false, loading = false, onCli
       onClick={clickable && !loading ? onClick : undefined}
       style={{
         display: 'flex', alignItems: 'center', gap: 5,
-        background: checked ? color + '18' : 'var(--surface2, #1e2130)',
+        background: checked ? color + '18' : 'var(--surface2, var(--surface2))',
         border: `1px solid ${checked ? color + '66' : 'var(--border)'}`,
         borderRadius: 6, padding: '4px 9px',
         cursor: clickable && !loading ? 'pointer' : 'default',
@@ -77,7 +77,7 @@ function TwoCheckbox({ label, checked, clickable = false, loading = false, onCli
         background: checked ? color : 'transparent',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        {checked && <span style={{ fontSize: 7, color: '#0d0f14', fontWeight: 900, lineHeight: 1 }}>✓</span>}
+        {checked && <span style={{ fontSize: 7, color: 'var(--bg)', fontWeight: 900, lineHeight: 1 }}>✓</span>}
       </div>
       <span style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', fontWeight: 700, letterSpacing: '0.05em', color: checked ? color : 'var(--text3, #666)' }}>
         {loading ? '…' : label}
@@ -267,7 +267,7 @@ export function LocationStrip() {
   function SessionCard({ b, wo, isYesterday }: { b: Booking; wo: WO | null; isYesterday?: boolean }) {
     const completed      = wo?.status === 'completed'
     const needsAttention = !!(wo?.needs_attention_notes)
-    const borderColor    = completed ? '#14B8A6' : isYesterday ? '#F97316' : '#c8f04e'
+    const borderColor    = completed ? 'var(--booked)' : isYesterday ? 'var(--warm)' : 'var(--accent)'
     return (
       <div
         onClick={() => setWoBooking(b)}
@@ -286,10 +286,10 @@ export function LocationStrip() {
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {needsAttention && (
-              <span style={{ fontSize: 9, fontWeight: 700, color: '#f97316', background: '#f9731622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>⚠ Needs Attention</span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--warm)', background: '#f9731622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>⚠ Needs Attention</span>
             )}
             {completed && (
-              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#14B8A6', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>COMPLETED</span>
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--booked)', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>COMPLETED</span>
             )}
           </div>
         </div>
@@ -339,7 +339,7 @@ export function LocationStrip() {
                   <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>{loc.label}</div>
 
                 </div>
-                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: active ? '#c8f04e' : '#6B7280', marginTop: 2 }}>
+                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: active ? 'var(--accent)' : 'var(--cold)', marginTop: 2 }}>
                   {loadingSummary ? '…' : active ? `${sessCount} SESSION${sessCount !== 1 ? 'S' : ''}` : 'OPEN'}
                 </div>
               </div>
@@ -410,7 +410,7 @@ export function LocationStrip() {
                               return (
                                 <div key={cat.key}
                                   onClick={() => setOpenModal({ category: cat.key, date: yesterday })}
-                                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2, #1e2130)')}
+                                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2, var(--surface2))')}
                                   onMouseLeave={e => (e.currentTarget.style.background = needsReview ? '#f0a24e08' : 'transparent')}
                                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: needsReview ? '#f0a24e08' : 'transparent', borderBottom: i < DAILY_CATS.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.1s' }}
                                 >
@@ -426,8 +426,8 @@ export function LocationStrip() {
                                     )}
                                   </div>
                                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                    <TwoCheckbox label="Runner" checked={runnerDone} color="#F97316" />
-                                    <TwoCheckbox label="Admin"  checked={adminDone}  color="#14B8A6" />
+                                    <TwoCheckbox label="Runner" checked={runnerDone} color="var(--warm)" />
+                                    <TwoCheckbox label="Admin"  checked={adminDone}  color="var(--booked)" />
                                   </div>
                                 </div>
                               )
@@ -473,7 +473,7 @@ export function LocationStrip() {
                         return (
                           <div key={cat.key}
                             onClick={() => setOpenModal({ category: cat.key, date: today })}
-                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2, #1e2130)')}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2, var(--surface2))')}
                             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', borderBottom: i < OPS_CATS.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.1s' }}
                           >
@@ -485,7 +485,7 @@ export function LocationStrip() {
                                 )}
                               </div>
                               {isChecklist && prog && (
-                                <div style={{ fontSize: 9, color: runnerDone ? '#4ade80' : '#8b90a8', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+                                <div style={{ fontSize: 9, color: runnerDone ? '#4ade80' : 'var(--text2)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
                                   {prog.checked}/{prog.total} checked
                                 </div>
                               )}
@@ -496,8 +496,8 @@ export function LocationStrip() {
                               )}
                             </div>
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                              <TwoCheckbox label="Runner" checked={runnerDone} color="#c8f04e" />
-                              <TwoCheckbox label="Admin"  checked={adminDone}  color="#c8f04e" />
+                              <TwoCheckbox label="Runner" checked={runnerDone} color="var(--accent)" />
+                              <TwoCheckbox label="Admin"  checked={adminDone}  color="var(--accent)" />
                             </div>
                           </div>
                         )
@@ -531,7 +531,7 @@ export function LocationStrip() {
             category={category}
             studio={studioKey}
             today={date}
-            color="#c8f04e"
+            color="var(--accent)"
             studioLabel={cat?.label ?? selectedLoc.label}
             submission={submission}
             onClose={() => setOpenModal(null)}

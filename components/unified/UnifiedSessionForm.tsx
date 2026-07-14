@@ -11,11 +11,11 @@ import { addArtistToLabel } from '@/lib/roster'
 // ─── COLOR TOKENS ────────────────────────────────────────────────────────────
 
 const STATUS_TOP_COLORS: Record<string, string> = {
-  confirmed:  '#14B8A6',
-  tentative:  '#f97316',
-  cancelled:  '#ef4444',
+  confirmed:  'var(--booked)',
+  tentative:  'var(--warm)',
+  cancelled:  'var(--hot)',
   tour:       '#a855f7',
-  tech:       '#6b7280',
+  tech:       'var(--cold)',
   open_hours: '#e2e8f0',
 }
 
@@ -541,7 +541,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
               fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em',
               padding: '4px 9px', borderRadius: 4, flexShrink: 0, marginTop: 4,
               textTransform: 'uppercase',
-              color: woStatus === 'completed' ? '#14B8A6' : '#F97316',
+              color: woStatus === 'completed' ? 'var(--booked)' : 'var(--warm)',
               border: `1px solid ${woStatus === 'completed' ? 'rgba(20,184,166,0.5)' : 'rgba(249,115,22,0.5)'}`,
               background: woStatus === 'completed' ? 'rgba(20,184,166,0.1)' : 'rgba(249,115,22,0.1)',
             }}>
@@ -611,7 +611,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                         padding: '7px 16px', borderRadius: 6, border: form.is_srs ? '1px solid rgba(255,59,59,0.4)' : '1px solid rgba(255,255,255,0.12)',
                         cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700,
                         background: form.is_srs ? 'rgba(255,59,59,0.12)' : 'transparent',
-                        color: form.is_srs ? '#ff3b3b' : '#6b7280',
+                        color: form.is_srs ? '#ff3b3b' : 'var(--cold)',
                         letterSpacing: '0.08em', transition: 'all 0.15s',
                       }}
                     >
@@ -646,14 +646,14 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                       background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                       <div style={{
-                        background: '#13161d', border: '1px solid rgba(255,255,255,0.08)',
+                        background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.08)',
                         borderRadius: 10, padding: '28px 32px', width: 380, maxWidth: '90vw',
                         boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
                       }}>
-                        <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: '#e8eaf0', marginBottom: 10 }}>
+                        <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: 'var(--text)', marginBottom: 10 }}>
                           SRS Referral
                         </div>
-                        <div style={{ fontFamily: 'DM Mono', fontSize: 12, color: '#8b90a8', lineHeight: 1.6, marginBottom: 24 }}>
+                        <div style={{ fontFamily: 'DM Mono', fontSize: 12, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 24 }}>
                           Apply this to the client&apos;s profile so all future bookings are automatically flagged as SRS?
                         </div>
                         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -666,7 +666,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                             style={{
                               padding: '8px 18px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)',
                               cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11,
-                              background: 'transparent', color: '#8b90a8',
+                              background: 'transparent', color: 'var(--text2)',
                             }}
                           >
                             Just this session
@@ -683,7 +683,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                             style={{
                               padding: '8px 18px', borderRadius: 6, border: 'none',
                               cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700,
-                              background: '#c8f04e', color: '#0d0f14',
+                              background: 'var(--accent)', color: 'var(--bg)',
                             }}
                           >
                             Apply to profile
@@ -952,14 +952,14 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                             {/* Contact update prompt — "Update profile or just this session?" */}
                             {contactUpdatePrompt && (
                               <div style={{ position: 'fixed', inset: 0, zIndex: 10040, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <div style={{ background: '#13161d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '24px 28px', width: 340, maxWidth: '90vw', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
-                                  <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: '#e8eaf0', marginBottom: 8 }}>Update client profile or just this session?</div>
-                                  <div style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#8b90a8', lineHeight: 1.6, marginBottom: 20 }}>
+                                <div style={{ background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '24px 28px', width: 340, maxWidth: '90vw', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
+                                  <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: 'var(--text)', marginBottom: 8 }}>Update client profile or just this session?</div>
+                                  <div style={{ fontFamily: 'DM Mono', fontSize: 11, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 20 }}>
                                     Save the new {contactUpdatePrompt.column} back to the contact record, or keep it for this booking only.
                                   </div>
                                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                                    <button type="button" onClick={() => setContactUpdatePrompt(null)} style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, background: 'transparent', color: '#8b90a8' }}>Just this session</button>
-                                    <button type="button" onClick={async () => { await supabase.from('client_contacts').update({ [contactUpdatePrompt.column]: contactUpdatePrompt.value }).eq('id', contactUpdatePrompt.contactId); contactUpdatePrompt.onUpdate(); setContactUpdatePrompt(null) }} style={{ padding: '7px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700, background: 'var(--accent)', color: '#0d0f14' }}>Update profile</button>
+                                    <button type="button" onClick={() => setContactUpdatePrompt(null)} style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, background: 'transparent', color: 'var(--text2)' }}>Just this session</button>
+                                    <button type="button" onClick={async () => { await supabase.from('client_contacts').update({ [contactUpdatePrompt.column]: contactUpdatePrompt.value }).eq('id', contactUpdatePrompt.contactId); contactUpdatePrompt.onUpdate(); setContactUpdatePrompt(null) }} style={{ padding: '7px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700, background: 'var(--accent)', color: 'var(--bg)' }}>Update profile</button>
                                   </div>
                                 </div>
                               </div>

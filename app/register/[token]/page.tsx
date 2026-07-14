@@ -329,7 +329,7 @@ export default function RegisterPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <button
               onClick={handleUseExisting}
-              style={{ width: '100%', padding: '12px 0', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
+              style={{ width: '100%', padding: '12px 0', background: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
             >
               Use &amp; Link this Profile
             </button>
@@ -669,7 +669,7 @@ export default function RegisterPage() {
               width: '100%',
               padding: '14px 0',
               background: isSubmitting ? 'var(--border)' : 'var(--accent)',
-              color: isSubmitting ? 'var(--text3)' : '#0d0f14',
+              color: isSubmitting ? 'var(--text3)' : 'var(--bg)',
               border: 'none',
               borderRadius: 6,
               fontFamily: 'Syne',
