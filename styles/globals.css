@@ -51,7 +51,7 @@
 /* (STEP 2) Page gradient on <html> (which carries data-theme). The body must be
    transparent in light mode, otherwise its opaque --bg would hide the gradient. */
 html[data-theme="light"] {
-  background: linear-gradient(135deg, #dbeafe 0%, #ede9fe 40%, #fef3c7 70%, #fce7f3 100%);
+  background: linear-gradient(135deg, #dbeafe 0%, #ffe4e6 100%);
 }
 [data-theme="light"] body {
   background-color: transparent;
