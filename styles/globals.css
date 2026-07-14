@@ -173,17 +173,6 @@ html[data-theme="light"] {
   background: linear-gradient(135deg, #dbeafe 0%, #ffe4e6 100%) !important;
 }
 
-/* (LIGHT) Recolor the PRSFlo wave mark in light mode — blue / grey / blue. The teal
-   and lime waves are stroked with a gradient (url(#…)); CSS `stroke` doesn't reliably
-   override that, so recolor the gradient STOPS (reliable) and keep the stroke override
-   as a backstop. The white wave is a solid stroke, so overriding it is reliable.
-   Two blues share #3b82f6 at 0.9 / 0.4 for depth; grey sits between. Dark mode keeps
-   teal / lime / white. */
-[data-theme="light"] #prsflo-teal stop { stop-color: #3b82f6 !important; }
-[data-theme="light"] #prsflo-lime stop { stop-color: #cbd5e1 !important; }
-[data-theme="light"] [data-wave="teal"]  { stroke: #3b82f6 !important; opacity: 0.9 !important; }
-[data-theme="light"] [data-wave="lime"]  { stroke: #cbd5e1 !important; opacity: 0.6 !important; }
-[data-theme="light"] [data-wave="white"] { stroke: #3b82f6 !important; opacity: 0.4 !important; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
