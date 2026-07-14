@@ -51,7 +51,7 @@
 /* (STEP 2) Page gradient on <html> (which carries data-theme). The body must be
    transparent in light mode, otherwise its opaque --bg would hide the gradient. */
 html[data-theme="light"] {
-  background: linear-gradient(135deg, #bfdbfe 0%, #ddd6fe 35%, #fde68a 70%, #fecaca 100%);
+  background: linear-gradient(135deg, #dbeafe 0%, #ede9fe 40%, #fef3c7 70%, #fce7f3 100%);
 }
 [data-theme="light"] body {
   background-color: transparent;
@@ -98,14 +98,14 @@ html[data-theme="light"] {
 
 /* (PART 3) Unique per-panel gradients in light mode. Declared after the glass-card
    rule so they win at equal specificity; the frosted border/shadow still apply. */
-[data-theme="light"] [data-panel="needs-action"]   { background: linear-gradient(135deg, #bbf7d0 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="today-sessions"] { background: linear-gradient(135deg, #fecdd3 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="tasks"]          { background: linear-gradient(135deg, #99f6e4 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="flags"]          { background: linear-gradient(135deg, #fcd34d 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="crm-leads"]      { background: linear-gradient(135deg, #d9f99d 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="crm-detail"]     { background: linear-gradient(135deg, #e9d5ff 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="clients-list"]   { background: linear-gradient(135deg, #fca5a5 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="clients-detail"] { background: linear-gradient(135deg, #a5f3fc 0%, #ffffff 100%) !important; }
+[data-theme="light"] [data-panel="needs-action"]   { background: linear-gradient(135deg, #d1fae5 0%, #ffffff 100%) !important; }
+[data-theme="light"] [data-panel="today-sessions"] { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
+[data-theme="light"] [data-panel="tasks"]          { background: linear-gradient(135deg, #ccfbf1 0%, #ffffff 100%) !important; }
+[data-theme="light"] [data-panel="flags"]          { background: linear-gradient(135deg, #fef3c7 0%, #ffffff 100%) !important; }
+[data-theme="light"] [data-panel="crm-leads"]      { background: linear-gradient(135deg, #ecfccb 0%, #ffffff 100%) !important; }
+[data-theme="light"] [data-panel="crm-detail"]     { background: linear-gradient(135deg, #f3e8ff 0%, #ffffff 100%) !important; }
+[data-theme="light"] [data-panel="clients-list"]   { background: linear-gradient(135deg, #fee2e2 0%, #ffffff 100%) !important; }
+[data-theme="light"] [data-panel="clients-detail"] { background: linear-gradient(135deg, #e0f7fa 0%, #ffffff 100%) !important; }
 [data-theme="light"] [data-panel="admin-sidebar"]  { background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important; }
 
 /* (FIX 2) Dashboard session room cells: clean white slots with visible borders in
@@ -126,7 +126,7 @@ html[data-theme="light"] {
 
 /* (FIX 4) Daily-ops modal + drawer cards are solid white in light mode (their inline
    background is var(--bg) = transparent, which was showing the dark overlay). */
-[data-theme="light"] [data-ops-modal] { background: linear-gradient(135deg, #c7d2fe 0%, #ffffff 100%) !important; }
+[data-theme="light"] [data-ops-modal] { background: linear-gradient(135deg, #ede9fe 0%, #ffffff 100%) !important; }
 
 /* (FIX 4) Yesterday vs Today: Today reads brighter/whiter to mark the current day. */
 [data-theme="light"] [data-ops-col="yesterday"] {
