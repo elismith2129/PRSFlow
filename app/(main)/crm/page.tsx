@@ -890,20 +890,21 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
           const keepColor = l.status === 'warm' ? 'var(--warm)' : 'var(--hot)'
           return (
             <React.Fragment key={l.id}>
-              <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(255,255,255,0.04)' : 'transparent', transition: 'background 0.15s' }}>
+              <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(255,255,255,0.04)' : 'transparent', transition: 'background 0.15s' }}>
                 <LeadAvatar lead={l} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
                     {l.label && l.artist_name
                       ? <>{l.label} <span style={{ color: 'var(--text3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--text3)' }}>/</span> {l.artist_name}</>
-                      : <>{l.fname} {l.lname}</>}
+                      : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--text3)', fontWeight: 400 }}> · {l.company}</span>}</>}
                   </div>
                   {fmtSessionLine(l) && (
                     <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {fmtSessionLine(l)}
                     </div>
                   )}
-                  <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
+                  <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {l.booking && <span>{BOOKING_ICONS[l.booking] || ''} {l.booking} · </span>}
                     {activeBucket.type === 'incomplete'
                       ? <span style={{ color: 'var(--accent2)' }}>missing: {missing.join(', ')}</span>
                       : activeBucket.key === 'uncontacted'
@@ -911,9 +912,6 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                         : <>{daysSince(l.last_contact || l.created_at)}d ago{touch?.initials && <span style={{ color: 'var(--text2)' }}> · {touch.initials}{touch.method ? ` via ${touch.method}` : ''}</span>}</>}
                   </div>
                 </div>
-                <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, border: '1px solid var(--border)', color: 'var(--text3)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                  {BOOKING_ICONS[l.booking] || ''} {l.booking || '—'}
-                </span>
                 {(l.status === 'hot' || l.status === 'warm') && daysUntilKhu(l) !== null && (daysUntilKhu(l) as number) <= 1 && (
                   <button
                     onClick={e => {
@@ -921,7 +919,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                       setTouchPromptId(null)
                       setKeepHotPromptId(isKeepHotPrompting ? null : l.id)
                     }}
-                    style={{ flexShrink: 0, padding: '4px 9px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                    style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     {isKeepHotPrompting ? 'Cancel' : l.status === 'warm' ? 'Keep Warm?' : 'Keep Hot?'}
                   </button>
                 )}
@@ -932,7 +930,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                     setTouchPromptId(isTouchPrompting ? null : l.id)
                     if (!isTouchPrompting) onSelect(l.id)
                   }}
-                  style={{ flexShrink: 0, padding: '4px 10px', background: 'transparent', border: '1px solid var(--border)', color: isTouchPrompting ? 'var(--text3)' : '#e8eaf0', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: '1px solid var(--border)', color: isTouchPrompting ? 'var(--text3)' : '#e8eaf0', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                   {isTouchPrompting ? 'Cancel' : 'Contact'}
                 </button>
               </div>
