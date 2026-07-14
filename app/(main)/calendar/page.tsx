@@ -239,7 +239,6 @@ function BookingBlock({
 
   return (
     <div
-      data-session-active={topColor === 'var(--booked)' ? '' : undefined}
       onClick={e => { e.stopPropagation(); onClick() }}
       style={{
         position: 'absolute', top: blockTop, height: blockHeight,
@@ -540,7 +539,7 @@ function DayView({
                       : 'none'
 
                     return (
-                      <div key={b.id} data-session-active={topColor === 'var(--booked)' ? '' : undefined} onClick={() => onOpenEdit(b)} style={{
+                      <div key={b.id} onClick={() => onOpenEdit(b)} style={{
                         padding: '7px 10px', cursor: 'pointer',
                         background: 'var(--bg)',
                         borderTop: `3px solid ${topColor}`,
@@ -745,7 +744,6 @@ function StudioView({
                 return (
                   <div
                     key={b.id}
-                    data-session-active={topColor === 'var(--booked)' ? '' : undefined}
                     onClick={e => { e.stopPropagation(); onOpenEdit(b) }}
                     style={{
                       marginBottom: 3, padding: '5px 7px', borderRadius: 3,

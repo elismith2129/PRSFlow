@@ -569,7 +569,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   // ── Loading skeleton ───────────────────────────────────────────────────────
   if (loading && !client) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
+      <div data-panel="clients-detail" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
         <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ height: 18, borderRadius: 4, background: 'var(--surface2)', animation: 'shimmer 1.4s ease-in-out infinite', width: '52%', marginBottom: 10 }} />
           <div style={{ height: 12, borderRadius: 3, background: 'var(--surface2)', animation: 'shimmer 1.4s ease-in-out infinite', width: '28%' }} />
@@ -589,7 +589,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   // ── Empty state ────────────────────────────────────────────────────────────
   if (!client) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--text3)', fontSize: 11, fontFamily: 'DM Mono' }}>
+      <div data-panel="clients-detail" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--text3)', fontSize: 11, fontFamily: 'DM Mono' }}>
         Select a client to view their profile
       </div>
     )

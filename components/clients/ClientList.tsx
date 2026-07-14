@@ -63,7 +63,7 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
   ]
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
+    <div data-panel="clients-list" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
       <div style={{ padding: '10px 16px 0', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8, flexWrap: 'wrap' as const }}>
           {filterDefs.map(f => {
@@ -73,9 +73,9 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
                 padding: '4px 10px', cursor: 'pointer', borderRadius: 20,
                 fontFamily: 'Syne', fontWeight: active ? 700 : 600, fontSize: 9,
                 letterSpacing: '0.08em', textTransform: 'uppercase',
-                background: active ? 'rgba(200,240,78,0.15)' : 'transparent',
-                border: `1px solid ${active ? 'var(--accent)' : 'rgba(200,240,78,0.4)'}`,
-                color: active ? 'var(--accent)' : 'rgba(200,240,78,0.6)',
+                background: active ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent',
+                border: `1px solid ${active ? 'var(--accent)' : 'color-mix(in srgb, var(--accent) 40%, transparent)'}`,
+                color: active ? 'var(--accent)' : 'color-mix(in srgb, var(--accent) 60%, transparent)',
                 transition: 'all 0.15s',
               }}>
                 {f.label} ({f.count})
