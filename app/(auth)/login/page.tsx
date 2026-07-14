@@ -387,6 +387,7 @@ export default function LoginPage() {
                 return (
                   <button
                     key={key}
+                    data-login-key=""
                     type="button"
                     onClick={() => (isBack ? pressBack() : pressDigit(key))}
                     style={numKeyStyle}
@@ -475,6 +476,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
+              data-login-submit=""
               disabled={loading}
               style={authButtonStyle}
               onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}

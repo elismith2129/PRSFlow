@@ -54,7 +54,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     // Fresh login: hold a dark screen until the session resolves and the dashboard's
     // welcome splash takes over, so nothing flashes. Otherwise render nothing.
     return pendingWelcome ? (
-      <div style={{ position: 'fixed', inset: 0, background: 'var(--bg)', zIndex: 100001 }} />
+      <div data-auth-hold="" style={{ position: 'fixed', inset: 0, background: 'var(--bg)', zIndex: 100001 }} />
     ) : null
   }
 

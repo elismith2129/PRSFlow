@@ -143,6 +143,36 @@ html[data-theme="light"] {
   padding: 12px;
 }
 
+/* (LIGHT LOGIN) Clean the login controls in light mode — the glass-card rule would
+   otherwise frost the PIN keys / inputs (they use var(--surface)). */
+[data-theme="light"] [data-login-key] {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #1e293b !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+[data-theme="light"] .auth-input {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #1e293b !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+[data-theme="light"] [data-login-submit] {
+  background: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+/* (LIGHT) The welcome splash + AuthGuard hold use var(--bg) (transparent in light),
+   so give them the app's light gradient to stay opaque full-screen covers. */
+[data-theme="light"] [data-splash],
+[data-theme="light"] [data-auth-hold] {
+  background: linear-gradient(135deg, #dbeafe 0%, #ffe4e6 100%) !important;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {

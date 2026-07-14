@@ -783,6 +783,7 @@ export default function DashboardPage() {
       {/* One-time post-login welcome splash */}
       {showWelcome && (
         <div
+          data-splash=""
           style={{
             // Above the Nav (99999) so the splash fully covers the viewport — a
             // 9999 overlay would sit under the sticky nav bar and look broken.

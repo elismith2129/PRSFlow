@@ -26,7 +26,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
   const [tentativeCount, setTentativeCount] = useState(0)
   const isMobile = useIsMobile()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const { profile } = useUserProfile()
   // Tech gets the full nav minus CRM; every other role sees all items.
   const visibleNavItems = profile?.role === 'tech'
@@ -53,10 +53,10 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
     return () => { supabase.removeChannel(channel) }
   }, [])
 
-  // Apply the saved theme on mount (default dark). data-theme lives on <html>.
+  // Apply the saved theme on mount (default light). data-theme lives on <html>.
   useEffect(() => {
     const saved = localStorage.getItem('prsflo-theme')
-    const t = saved === 'light' ? 'light' : 'dark'
+    const t = saved === 'dark' ? 'dark' : 'light'
     setTheme(t)
     const root = document.documentElement
     if (t === 'light') root.setAttribute('data-theme', 'light')
