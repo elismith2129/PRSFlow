@@ -14,6 +14,8 @@ const navItems = [
   { href: '/admin', label: 'Admin' },
   { href: '/wo-hub', label: 'WO Hub' },
   { href: '/sop', label: 'SOP' },
+  // TEMPORARY: remove when rollout period ends
+  { href: '/feedback', label: 'Feedback' },
 ]
 
 export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean } = {}) {
@@ -97,6 +99,8 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
       <div style={{ display: 'flex', gap: 2, height: '100%', alignItems: 'center' }}>
         {visibleNavItems.map(item => {
           const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
+          // TEMPORARY: remove when rollout period ends — Feedback stands out in lime
+          const isFeedback = item.href === '/feedback'
           const badge = item.href === '/crm' && unreviewedRegs > 0
             ? unreviewedRegs
             : 0
@@ -104,14 +108,14 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
             <Link
               key={item.href}
               href={item.href}
-              onMouseEnter={active ? undefined : (e) => { e.currentTarget.style.color = '#9ca3af' }}
-              onMouseLeave={active ? undefined : (e) => { e.currentTarget.style.color = '#6B7280' }}
+              onMouseEnter={active || isFeedback ? undefined : (e) => { e.currentTarget.style.color = '#9ca3af' }}
+              onMouseLeave={active || isFeedback ? undefined : (e) => { e.currentTarget.style.color = '#6B7280' }}
               style={{
                 position: 'relative', display: 'flex', alignItems: 'center', height: '100%',
                 padding: '0 10px', fontSize: 11,
                 fontFamily: 'DM Mono', fontWeight: 500, letterSpacing: '0.04em',
                 background: 'transparent',
-                color: active ? '#e8eaf0' : '#6B7280',
+                color: isFeedback ? '#c8f04e' : active ? '#e8eaf0' : '#6B7280',
                 borderBottom: active ? '2px solid #c8f04e' : 'none',
                 borderRadius: 0,
                 textDecoration: 'none', transition: 'color 0.15s ease',
@@ -185,6 +189,8 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
           }}>
             {visibleNavItems.map(item => {
               const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
+              // TEMPORARY: remove when rollout period ends — Feedback stands out in lime
+              const isFeedback = item.href === '/feedback'
               return (
                 <Link
                   key={item.href}
@@ -193,7 +199,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
                   style={{
                     display: 'flex', alignItems: 'center', height: 48, paddingLeft: 16,
                     fontFamily: 'DM Mono', fontSize: 13, textDecoration: 'none',
-                    color: active ? '#e8eaf0' : '#9ca3af',
+                    color: isFeedback ? '#c8f04e' : active ? '#e8eaf0' : '#9ca3af',
                     borderLeft: active ? '2px solid #c8f04e' : '2px solid transparent',
                   }}
                 >
