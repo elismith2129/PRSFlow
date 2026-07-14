@@ -49,9 +49,9 @@ export function PRSFloIcon({ size = 38 }: { size?: number }) {
             <stop offset="100%" stopColor="#8ab030" />
           </linearGradient>
         </defs>
-        <path d="M 14 100 Q 70 -10, 113 100 T 186 100" stroke="url(#prsflo-teal)" strokeWidth="11" fill="none" strokeLinecap="round" opacity="0.6" />
+        <path data-wave="teal" d="M 14 100 Q 70 -10, 113 100 T 186 100" stroke="url(#prsflo-teal)" strokeWidth="11" fill="none" strokeLinecap="round" opacity="0.6" />
         <path data-wave="lime" d="M 14 100 Q 70 30, 113 100 T 186 100" stroke="url(#prsflo-lime)" strokeWidth="11" fill="none" strokeLinecap="round" opacity="0.9" />
-        <path d="M 14 100 Q 70 70, 113 100 T 186 100" stroke="#e8eaf0" strokeWidth="11" fill="none" strokeLinecap="round" />
+        <path data-wave="white" d="M 14 100 Q 70 70, 113 100 T 186 100" stroke="#e8eaf0" strokeWidth="11" fill="none" strokeLinecap="round" />
       </svg>
     </div>
   )
