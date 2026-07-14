@@ -22,6 +22,65 @@
   --dead: #6B7280;
 }
 
+/* ═══ LIGHT THEME ═══════════════════════════════════════════════════════════
+   Applied when <html> carries data-theme="light" (set by the Nav toggle).
+   Glassmorphism reference: soft gradient bg + frosted cards + blue accent. */
+[data-theme="light"] {
+  --bg: #dbeafe;
+  --surface: rgba(255, 255, 255, 0.75);
+  --surface2: rgba(255, 255, 255, 0.5);
+  --border: rgba(255, 255, 255, 0.8);
+  --text: #1e293b;
+  --text2: #475569;
+  --text3: #94a3b8;
+  --accent: #3b82f6;
+  --accent2: #0ea5e9;
+  --hot: #dc2626;
+  --warm: #ea580c;
+  --cold: #64748b;
+  --booked: #0d9488;
+  --uncontacted: #3b82f6;
+  --dead: #94a3b8;
+}
+
+/* (STEP 2) Page gradient on <html> (which carries data-theme). The body must be
+   transparent in light mode, otherwise its opaque --bg would hide the gradient. */
+html[data-theme="light"] {
+  background: linear-gradient(135deg, #dbeafe 0%, #ede9fe 40%, #fef3c7 70%, #fce7f3 100%);
+}
+[data-theme="light"] body {
+  background-color: transparent;
+}
+
+/* (STEP 3) Frosted-glass cards/panels in light mode. */
+[data-theme="light"] .panel,
+[data-theme="light"] [style*="background: var(--surface)"],
+[data-theme="light"] [style*="background:var(--surface)"] {
+  background: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* (DECISION 2) Nav becomes white glass in light mode; its text switches to dark.
+   Overrides the inline dark gradient/box-shadow set in Nav.tsx (needs !important). */
+[data-theme="light"] nav {
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: none !important;
+}
+[data-theme="light"] nav a,
+[data-theme="light"] nav button {
+  color: var(--text) !important;
+}
+/* Keep the Feedback link lime and Sign Out red even in light mode — higher
+   specificity than the blanket nav-text rule above, so these two win. */
+[data-theme="light"] nav [data-feedback] { color: #c8f04e !important; }
+[data-theme="light"] nav [data-signout] { color: #ef4444 !important; }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
@@ -42,7 +101,7 @@ body {
 
 /* (2) RADIAL GLOW — soft teal→lime glow from top-center, fixed so it stays put
    while scrolling; z-index:-1 keeps it above the dot grid but behind content */
-body::before {
+:root:not([data-theme="light"]) body::before {
   content: '';
   position: fixed;
   top: -150px;

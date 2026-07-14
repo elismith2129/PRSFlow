@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { Sun, Moon } from 'lucide-react'
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
@@ -25,6 +26,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
   const [tentativeCount, setTentativeCount] = useState(0)
   const isMobile = useIsMobile()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const { profile } = useUserProfile()
   // Tech gets the full nav minus CRM; every other role sees all items.
   const visibleNavItems = profile?.role === 'tech'
@@ -50,6 +52,25 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [])
+
+  // Apply the saved theme on mount (default dark). data-theme lives on <html>.
+  useEffect(() => {
+    const saved = localStorage.getItem('prsflo-theme')
+    const t = saved === 'light' ? 'light' : 'dark'
+    setTheme(t)
+    const root = document.documentElement
+    if (t === 'light') root.setAttribute('data-theme', 'light')
+    else root.removeAttribute('data-theme')
+  }, [])
+
+  function toggleTheme() {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    const root = document.documentElement
+    if (next === 'light') root.setAttribute('data-theme', 'light')
+    else root.removeAttribute('data-theme')
+    localStorage.setItem('prsflo-theme', next)
+  }
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -109,6 +130,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
             <Link
               key={item.href}
               href={item.href}
+              data-feedback={isFeedback ? '' : undefined}
               onMouseEnter={active || isFeedback ? undefined : (e) => { e.currentTarget.style.color = '#9ca3af' }}
               onMouseLeave={active || isFeedback ? undefined : (e) => { e.currentTarget.style.color = '#6B7280' }}
               style={{
@@ -117,7 +139,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
                 fontFamily: 'DM Mono', fontWeight: 500, letterSpacing: '0.04em',
                 background: 'transparent',
                 color: isFeedback ? '#c8f04e' : active ? '#e8eaf0' : '#6B7280',
-                borderBottom: active ? '2px solid #c8f04e' : 'none',
+                borderBottom: active ? '2px solid var(--accent)' : 'none',
                 borderRadius: 0,
                 textDecoration: 'none', transition: 'color 0.15s ease',
               }}
@@ -144,7 +166,21 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
       {!isMobile && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <button
+          onClick={toggleTheme}
+          aria-label="Toggle light/dark theme"
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#e8eaf0' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = '#6B7280' }}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            color: '#6B7280', padding: 0, transition: 'color 0.15s ease',
+          }}
+        >
+          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
+        <button
           onClick={handleSignOut}
+          data-signout=""
           onMouseEnter={(e) => { e.currentTarget.style.color = '#e8eaf0' }}
           onMouseLeave={(e) => { e.currentTarget.style.color = '#6B7280' }}
           style={{
@@ -185,7 +221,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
           />
           <div style={{
             position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 2,
-            background: '#161920', borderBottom: '1px solid rgba(255,255,255,0.1)',
+            background: 'var(--surface)', borderBottom: '1px solid rgba(255,255,255,0.1)',
             display: 'flex', flexDirection: 'column',
           }}>
             {visibleNavItems.map(item => {
@@ -196,12 +232,13 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
                 <Link
                   key={item.href}
                   href={item.href}
+                  data-feedback={isFeedback ? '' : undefined}
                   onClick={() => setMenuOpen(false)}
                   style={{
                     display: 'flex', alignItems: 'center', height: 48, paddingLeft: 16,
                     fontFamily: 'DM Mono', fontSize: 13, textDecoration: 'none',
                     color: isFeedback ? '#c8f04e' : active ? '#e8eaf0' : '#9ca3af',
-                    borderLeft: active ? '2px solid #c8f04e' : '2px solid transparent',
+                    borderLeft: active ? '2px solid var(--accent)' : '2px solid transparent',
                   }}
                 >
                   {item.label}
@@ -209,7 +246,20 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
               )
             })}
             <button
+              onClick={toggleTheme}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, height: 48, width: '100%', paddingLeft: 16,
+                fontFamily: 'DM Mono', fontSize: 13, color: '#9ca3af',
+                background: 'transparent', border: 'none', borderTop: '1px solid rgba(255,255,255,0.06)',
+                cursor: 'pointer', textAlign: 'left',
+              }}
+            >
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            </button>
+            <button
               onClick={async () => { setMenuOpen(false); await handleSignOut() }}
+              data-signout=""
               style={{
                 display: 'flex', alignItems: 'center', height: 48, width: '100%', paddingLeft: 16,
                 fontFamily: 'DM Mono', fontSize: 13, color: '#ef4444',
