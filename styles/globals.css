@@ -209,6 +209,38 @@ html[data-theme="light"] {
   border: 1px solid #cbd5e1 !important;
 }
 
+/* (FIX 2/3) Finarrow-style gradient on the booking / new-lead modal cards in light
+   mode. Uses the fixed-overlay context so it outranks the modal-opaque rule (equal
+   specificity, declared later → wins). */
+[data-theme="light"] [style*="position:fixed"] [data-modal-gradient],
+[data-theme="light"] [style*="position: fixed"] [data-modal-gradient] {
+  background: linear-gradient(160deg, #dbeafe 0%, #ffffff 40%, #ffe4e6 100%) !important;
+}
+
+/* (FIX 2) Elevated SESSION / CLIENT section headers in light mode. */
+[data-theme="light"] [data-section-head] {
+  background: rgba(255, 255, 255, 0.8);
+  border-bottom: 1px solid #e2e8f0;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+/* (FIX 4) Distinct glass treatment for the dashboard studio cards in light mode. */
+[data-theme="light"] [data-studio-card] {
+  background: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* (FIX 5) Selected lead row: subtle blue tint + a blue left bar (inset shadow, so no
+   layout shift) in light mode. */
+[data-theme="light"] [data-selected] {
+  background: rgba(59, 130, 246, 0.08) !important;
+  box-shadow: inset 3px 0 0 #3b82f6 !important;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {

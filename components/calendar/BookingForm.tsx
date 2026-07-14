@@ -731,6 +731,7 @@ export function BookingForm({
       )}
       <div
         data-booking-form=""
+        data-modal-gradient=""
         onClick={e => e.stopPropagation()}
         style={isMobile
           ? { background: 'var(--surface)', border: 'none', borderRadius: 0, width: '100vw', height: '100dvh', maxWidth: 'none', maxHeight: 'none', display: 'flex', flexDirection: 'column', overflow: 'hidden' }
@@ -809,7 +810,7 @@ export function BookingForm({
 
             {/* LEFT — Session details */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-              <div style={sectionHead}>Session</div>
+              <div data-section-head="" style={sectionHead}>Session</div>
 
               {/* Studio + Rate */}
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
@@ -1139,7 +1140,7 @@ export function BookingForm({
 
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-                  <div style={sectionHead}>Client</div>
+                  <div data-section-head="" style={sectionHead}>Client</div>
 
                   {/* SRS + COD / Label billing toggle row */}
                   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>

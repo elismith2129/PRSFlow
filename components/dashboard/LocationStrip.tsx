@@ -330,6 +330,7 @@ export function LocationStrip() {
           const active   = sessCount > 0
           return (
             <div key={loc.key} onClick={() => openDrawer(loc)}
+              data-studio-card=""
               onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--text3)')}
               onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
               style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.15s' }}
