@@ -29,7 +29,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body style={{ background: 'var(--bg)', minHeight: '100vh' }}>
+      <body>
         {children}
       </body>
     </html>
