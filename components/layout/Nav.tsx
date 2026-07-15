@@ -97,7 +97,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
   return (
     <nav style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '0 32px', height: 52,
+      padding: isMobile ? '0 12px' : '0 32px', height: 52,
       background: 'linear-gradient(180deg, var(--surface2) 0%, var(--bg) 100%)', borderBottom: '1px solid var(--border)',
       boxShadow: '0 1px 0 rgba(var(--accent-rgb), 0.07), 0 4px 24px rgba(0, 0, 0, 0.5)',
       position: 'sticky', top: 0, zIndex: 99999,
@@ -197,19 +197,41 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
       </div>
       )}
 
-      {/* Mobile: hamburger button (far right). Tap toggles the dropdown menu. */}
+      {/* Mobile: CRM + Calendar quick links, then the hamburger (far right). */}
       {isMobile && (
-        <button
-          onClick={() => setMenuOpen(o => !o)}
-          aria-label="Menu"
-          style={{
-            width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'transparent', border: 'none', cursor: 'pointer',
-            color: 'var(--text)', fontSize: 24, lineHeight: 1, padding: 0,
-          }}
-        >
-          ≡
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {visibleNavItems
+            .filter(item => item.href === '/crm' || item.href === '/calendar')
+            .map(item => {
+              const active = pathname.startsWith(item.href)
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  style={{
+                    display: 'flex', alignItems: 'center', height: 44, padding: '0 8px',
+                    fontFamily: 'DM Mono', fontSize: 12, fontWeight: 500, letterSpacing: '0.04em',
+                    textDecoration: 'none', whiteSpace: 'nowrap',
+                    color: active ? 'var(--text)' : 'var(--cold)',
+                    borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
+                  }}
+                >
+                  {item.label}
+                </Link>
+              )
+            })}
+          <button
+            onClick={() => setMenuOpen(o => !o)}
+            aria-label="Menu"
+            style={{
+              width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              color: 'var(--text)', fontSize: 24, lineHeight: 1, padding: 0,
+            }}
+          >
+            ≡
+          </button>
+        </div>
       )}
 
       {/* Mobile: full-width dropdown menu + outside-tap overlay */}

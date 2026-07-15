@@ -488,8 +488,8 @@ export default function CRMPage() {
       {tab === 'leads' && (
         <>
           {/* Sub-nav */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: isMobile ? 'wrap' : 'nowrap', marginBottom: 14, flexShrink: 0 }}>
-            <div style={{ display: 'flex', gap: 2, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 3, maxWidth: '100%', overflowX: isMobile ? 'auto' : undefined }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'nowrap', marginBottom: 14, flexShrink: 0 }}>
+            <div className={isMobile ? 'hide-scrollbar' : undefined} style={{ display: 'flex', gap: 2, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 3, maxWidth: '100%', flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : undefined, overflowX: isMobile ? 'auto' : undefined }}>
               {(['needs-action', 'all-leads', 'analytics'] as CrmView[]).map(v => {
                 const labels: Record<CrmView, string> = { 'needs-action': 'Needs Action', 'all-leads': 'All Leads', 'analytics': 'Analytics' }
                 const active = view === v
@@ -854,16 +854,17 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
       <div style={{ padding: '12px 16px 0', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <SectionHeader title="Needs Action" count={totalCount > 0 ? totalCount : undefined} />
         {/* Tab bar */}
-        <div style={{ display: 'flex', gap: 0 }}>
+        <div className={isMobile ? 'hide-scrollbar' : undefined} style={{ display: 'flex', gap: 0, overflowX: isMobile ? 'auto' : undefined }}>
           {tabs.map(tab => {
             const active = activeTab === tab.key
             return (
               <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
-                padding: '6px 12px', border: 'none', background: 'transparent', cursor: 'pointer',
+                padding: isMobile ? '6px 8px' : '6px 12px', border: 'none', background: 'transparent', cursor: 'pointer',
                 fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase',
                 color: tab.color,
                 borderBottom: active ? `3px solid ${tab.color}` : '3px solid transparent',
                 marginBottom: -1, transition: 'border-color 0.15s', whiteSpace: 'nowrap',
+                flexShrink: isMobile ? 0 : undefined,
                 opacity: active ? 1 : 0.6,
               }}>
                 {tab.label}
@@ -985,6 +986,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   onUpdateStatus: (id: number, status: string) => Promise<void>
   loading: boolean
 }) {
+  const isMobile = useIsMobile()
   const [active, setActive] = useState<Set<StatusFilter>>(() => new Set(DEFAULT_STATUS_FILTERS))
   const [search, setSearch] = useState('')
   const skipFilterReset = useRef(false)
@@ -1070,16 +1072,17 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
     <div data-panel="crm-leads" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
       {/* Header: filter pills + search */}
       <div style={{ padding: '10px 16px 0', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
+        <div className={isMobile ? 'hide-scrollbar' : undefined} style={{ display: 'flex', gap: 5, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : undefined, marginBottom: 8 }}>
           {filterDefs.map(f => {
             const isActive = active.has(f.key)
             return (
               <button key={f.key} onClick={() => toggleFilter(f.key)} style={{
-                padding: '4px 10px', cursor: 'pointer', borderRadius: 20,
-                fontFamily: 'Syne', fontWeight: isActive ? 700 : 600, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase',
+                padding: isMobile ? '4px 8px' : '4px 10px', cursor: 'pointer', borderRadius: 20,
+                fontFamily: 'Syne', fontWeight: isActive ? 700 : 600, fontSize: isMobile ? 10 : 9, letterSpacing: '0.08em', textTransform: 'uppercase',
                 background: isActive ? `${f.color}33` : 'transparent',
                 border: `1px solid ${isActive ? f.color : `${f.color}80`}`,
                 color: isActive ? f.color : `${f.color}b3`,
+                flexShrink: isMobile ? 0 : undefined, whiteSpace: isMobile ? 'nowrap' : undefined,
                 transition: 'all 0.15s',
               }}>
                 {f.label} ({filterMap[f.key].length})

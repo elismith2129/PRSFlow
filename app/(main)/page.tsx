@@ -929,14 +929,14 @@ export default function DashboardPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
                 onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() - 1); return n })}
-                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text2)', cursor: 'pointer', padding: '2px 7px', fontSize: 13, lineHeight: 1, minWidth: isMobile ? 44 : undefined, minHeight: isMobile ? 44 : undefined }}
+                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text2)', cursor: 'pointer', padding: '2px 7px', fontSize: 13, lineHeight: 1, minWidth: isMobile ? 44 : undefined, minHeight: isMobile ? 44 : undefined, display: isMobile ? 'flex' : undefined, alignItems: isMobile ? 'center' : undefined, justifyContent: isMobile ? 'center' : undefined }}
               >‹</button>
               <div style={{ fontSize: isMobile ? 11 : 10, fontFamily: 'DM Mono', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
                 {calDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
               </div>
               <button
                 onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() + 1); return n })}
-                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text2)', cursor: 'pointer', padding: '2px 7px', fontSize: 13, lineHeight: 1, minWidth: isMobile ? 44 : undefined, minHeight: isMobile ? 44 : undefined }}
+                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text2)', cursor: 'pointer', padding: '2px 7px', fontSize: 13, lineHeight: 1, minWidth: isMobile ? 44 : undefined, minHeight: isMobile ? 44 : undefined, display: isMobile ? 'flex' : undefined, alignItems: isMobile ? 'center' : undefined, justifyContent: isMobile ? 'center' : undefined }}
               >›</button>
             </div>
           </div>
