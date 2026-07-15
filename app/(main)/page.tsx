@@ -924,7 +924,7 @@ export default function DashboardPage() {
 
         {/* COL 2 — TODAY'S SESSIONS */}
         <div data-panel="today-sessions" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', height: isMobile ? 'auto' : 556, order: isMobile ? 1 : 0 }}>
-          <div style={{ padding: '13px 16px 0', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div style={{ padding: isMobile ? '13px 16px' : '13px 16px 0', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: isMobile ? 'center' : 'flex-start', justifyContent: 'space-between' }}>
             <SectionHeader title="TODAY'S SESSIONS" />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
