@@ -270,6 +270,7 @@ export function LocationStrip() {
     const borderColor    = completed ? 'var(--booked)' : isYesterday ? 'var(--warm)' : 'var(--accent)'
     return (
       <div
+        data-session-card={isYesterday ? 'yesterday' : 'today'}
         onClick={() => setWoBooking(b)}
         onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
         onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface)')}
@@ -323,7 +324,7 @@ export function LocationStrip() {
     <>
       {/* ── Strip ── */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 10, marginBottom: 18 }}>
-        {LOCATIONS.map(loc => {
+        {LOCATIONS.map((loc, i) => {
           const s        = summaries[loc.key]
           const sessCount = s?.sessionCount ?? 0
           const pending  = s?.pendingCount ?? 0
@@ -331,6 +332,7 @@ export function LocationStrip() {
           return (
             <div key={loc.key} onClick={() => openDrawer(loc)}
               data-studio-card=""
+              data-studio-index={i}
               onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--text3)')}
               onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
               style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.15s' }}
@@ -402,7 +404,7 @@ export function LocationStrip() {
                             </div>
                           )}
 
-                          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                          <div data-checklist-section="" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
                             {DAILY_CATS.map((cat, i) => {
                               const row        = yestOpsRows.find(o => o.category === cat.key)
                               const runnerDone = !!row?.submitted_at
@@ -464,7 +466,7 @@ export function LocationStrip() {
 
                     {(() => {
                       return (
-                      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                      <div data-checklist-section="" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
                       {OPS_CATS.map((cat, i) => {
                         const row         = opsRows.find(o => o.category === cat.key)
                         const runnerDone  = !!row?.submitted_at

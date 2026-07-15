@@ -241,6 +241,25 @@ html[data-theme="light"] {
   box-shadow: inset 3px 0 0 #3b82f6 !important;
 }
 
+/* (FIX 1) Unique alternating gradients per studio card in light mode. Declared after
+   [data-studio-card] so the gradient replaces the bg while the glass backdrop-filter /
+   border / shadow remain. */
+[data-theme="light"] [data-studio-index="0"] { background: linear-gradient(135deg, #dbeafe 0%, rgba(255,255,255,0.7) 100%) !important; }
+[data-theme="light"] [data-studio-index="1"] { background: linear-gradient(135deg, #ffe4e6 0%, rgba(255,255,255,0.7) 100%) !important; }
+[data-theme="light"] [data-studio-index="2"] { background: linear-gradient(135deg, #dbeafe 0%, rgba(255,255,255,0.7) 100%) !important; }
+[data-theme="light"] [data-studio-index="3"] { background: linear-gradient(135deg, #ffe4e6 0%, rgba(255,255,255,0.7) 100%) !important; }
+
+/* (FIX 2) Daily Ops session cards — Yesterday blue / Today rose. Fixed-overlay
+   context so they outrank the modal-opaque rule (equal specificity, later → wins). */
+[data-theme="light"] [style*="position:fixed"] [data-session-card="yesterday"],
+[data-theme="light"] [style*="position: fixed"] [data-session-card="yesterday"] { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
+[data-theme="light"] [style*="position:fixed"] [data-session-card="today"],
+[data-theme="light"] [style*="position: fixed"] [data-session-card="today"] { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
+
+/* (FIX 3) Daily Ops grouped-checklist containers — subtle light-blue gradient. */
+[data-theme="light"] [style*="position:fixed"] [data-checklist-section],
+[data-theme="light"] [style*="position: fixed"] [data-checklist-section] { background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%) !important; }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
