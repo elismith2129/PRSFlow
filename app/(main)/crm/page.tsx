@@ -892,8 +892,8 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
             <React.Fragment key={l.id}>
               <div onClick={() => onSelect(l.id)} data-selected={selectedId === l.id ? '' : undefined} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(255,255,255,0.04)' : 'transparent', transition: 'background 0.15s' }}>
                 <LeadAvatar lead={l} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
+                <div data-lead-content style={{ flex: 1, minWidth: 0 }}>
+                  <div data-lead-name style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
                     {l.label && l.artist_name
                       ? <>{l.label} <span style={{ color: 'var(--text3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--text3)' }}>/</span> {l.artist_name}</>
                       : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--text3)', fontWeight: 400 }}> · {l.company}</span>}</>}
@@ -1126,8 +1126,8 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
               )}
               <div onClick={() => onSelect(l.id)} data-selected={selectedId === l.id ? '' : undefined} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(255,255,255,0.04)' : 'transparent', transition: 'background 0.15s' }}>
                 <LeadAvatar lead={l} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
+                <div data-lead-content style={{ flex: 1, minWidth: 0 }}>
+                  <div data-lead-name style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
                     {l.label && l.artist_name
                       ? <>{l.label} <span style={{ color: 'var(--text3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--text3)' }}>/</span> {l.artist_name}</>
                       : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--text3)', fontWeight: 400 }}> · {l.company}</span>}</>}

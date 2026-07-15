@@ -260,6 +260,12 @@ html[data-theme="light"] {
 [data-theme="light"] [style*="position:fixed"] [data-checklist-section],
 [data-theme="light"] [style*="position: fixed"] [data-checklist-section] { background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%) !important; }
 
+/* (light) CRM lead cards read stronger: bolder names, and darker secondary/tertiary
+   metadata. The scoped --text2/--text3 override darkens only this card's text
+   (secondary → #334155, tertiary → #475569) without touching those tokens elsewhere. */
+[data-theme="light"] [data-lead-name] { font-weight: 600 !important; }
+[data-theme="light"] [data-lead-content] { --text2: #334155; --text3: #475569; }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
