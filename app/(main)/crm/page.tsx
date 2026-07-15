@@ -1234,6 +1234,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   onSendEmail?: () => void
   onDelete?: () => void
 }) {
+  const isMobile = useIsMobile()
   const [local, setLocal] = useState<Partial<Lead>>({ ...lead })
   const [notesVal, setNotesVal] = useState(lead.notes || '')
   const [savedField, setSavedField] = useState<string | null>(null)
@@ -1508,7 +1509,7 @@ const khuDays = daysUntilKhu(lead)
   return (
     <div>
       {/* ═══ Zone 1 (bg var(--surface)) — identity + contact ═══════════ */}
-      <div style={{ background: 'var(--surface)', margin: '0 -16px', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+      <div style={{ background: 'var(--surface)', margin: '0 -16px', padding: isMobile ? '12px 16px 6px' : '12px 16px', borderBottom: '1px solid var(--border)' }}>
       {/* ─── Status strip ─────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 26, marginBottom: 10, borderBottom: '1px solid #1e2028' }}>
         <div ref={statusPillRef} style={{ position: 'relative', flexShrink: 0 }}>
@@ -1734,8 +1735,12 @@ const khuDays = daysUntilKhu(lead)
         )}
 
         {/* Tight contact line: email + Email · phone + Call/Text */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 200px', minWidth: 0 }}>
+        <div style={isMobile
+          ? { display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 6, marginTop: 6 }
+          : { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+          <div style={isMobile
+            ? { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }
+            : { display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 200px', minWidth: 0 }}>
             <input ref={emailRef} value={local.email || ''} onChange={e => update('email', e.target.value)}
               onFocus={() => setFocusedInput('email')} onBlur={e => { setFocusedInput(null); save('email', e.target.value) }}
               onKeyDown={enterBlur} placeholder="Add email" style={{ ...iStyle('email'), flex: 1, minWidth: 0, paddingLeft: 0 }} />
@@ -1743,11 +1748,13 @@ const khuDays = daysUntilKhu(lead)
               <a href={`mailto:${local.email}`} style={{ ...aBtnStyle('var(--text2)'), flexShrink: 0 }}>Email</a>
             )}
           </div>
-          <span style={{ color: 'var(--text3)', fontSize: 11, flexShrink: 0 }}>·</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 200px', minWidth: 0 }}>
+          {!isMobile && <span style={{ color: 'var(--text3)', fontSize: 11, flexShrink: 0 }}>·</span>}
+          <div style={isMobile
+            ? { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }
+            : { display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 200px', minWidth: 0 }}>
             <input ref={phoneRef} value={focusedInput === 'phone' ? (local.phone || '') : fmtPhone(local.phone || '')} onChange={e => update('phone', e.target.value)}
               onFocus={() => setFocusedInput('phone')} onBlur={e => { setFocusedInput(null); const f = fmtPhone(e.target.value); if (f !== e.target.value) update('phone', f); save('phone', f) }}
-              onKeyDown={enterBlur} placeholder="Add phone" style={{ ...iStyle('phone'), flex: 1, minWidth: 0 }} />
+              onKeyDown={enterBlur} placeholder="Add phone" style={{ ...iStyle('phone'), flex: 1, minWidth: 0, paddingLeft: isMobile ? 0 : undefined }} />
             {local.phone && (<>
               <a href={`tel:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('var(--text2)'), flexShrink: 0 }}>Call</a>
               <a href={`sms:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('var(--text2)'), flexShrink: 0 }}>Text</a>
@@ -1756,7 +1763,7 @@ const khuDays = daysUntilKhu(lead)
         </div>
 
         {/* Meta row: billing · session type · source — plain muted text chips */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: isMobile ? 6 : 8 }}>
           <button
             onClick={() => { const nb = (local.billing || lead.billing) === 'COD' ? 'Billing' : 'COD'; update('billing', nb); save('billing', nb) }}
             style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--cold)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>
@@ -1775,7 +1782,7 @@ const khuDays = daysUntilKhu(lead)
       </div>
 
       {/* ═══ Zone 2 (bg var(--surface2)) — session info ═══════════════ */}
-      <div style={{ background: 'var(--surface2)', margin: '0 -16px', padding: '12px 16px' }}>
+      <div style={{ background: 'var(--surface2)', margin: '0 -16px', padding: isMobile ? '6px 16px 12px' : '12px 16px' }}>
       {/* ─── Session & Quote ─────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 48px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
