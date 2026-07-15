@@ -1526,7 +1526,19 @@ const khuDays = daysUntilKhu(lead)
                   <button
                     key={s}
                     type="button"
-                    onClick={() => { update('status', s); saveStatus(s); setStatusDDOpen(false) }}
+                    onClick={() => {
+                      setStatusDDOpen(false)
+                      // TEMPORARY: remove when booking form is live — selecting Booked triggers the
+                      // client-confirmation flow (QC modal for a new client, "Mark as Booked" for a
+                      // returning client) instead of writing status directly; those modals set
+                      // status:'booked' on confirm. All other statuses update directly.
+                      if (s === 'booked') {
+                        if (lead.client_id) setShowBookedModal(true)
+                        else setShowConfirmModal(true)
+                        return
+                      }
+                      update('status', s); saveStatus(s)
+                    }}
                     onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface2)' }}
                     onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                     style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', background: active ? 'var(--surface2)' : 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: c }}
@@ -1655,19 +1667,6 @@ const khuDays = daysUntilKhu(lead)
                 {regLinkGenerating ? '…' : 'Send Reg'}
               </button>
             ))}
-            {/* TEMPORARY: remove when booking form is live */}
-            <button
-              onClick={() => {
-                if (lead.client_id) {
-                  setShowBookedModal(true)
-                } else {
-                  setShowConfirmModal(true)
-                }
-              }}
-              style={{ padding: '5px 12px', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
-            >
-              Confirm Client Account
-            </button>
           </div>
         </div>
 
