@@ -1392,9 +1392,6 @@ const parsedLoc0 = parseLocation(lead.location || '')
     setTimeout(() => setSavedField(null), 600)
   }
 
-const khuDays = daysUntilKhu(lead)
-  const khuColor = khuDays === null ? 'var(--text3)' : khuDays < 1 ? 'var(--hot)' : khuDays <= 2 ? 'var(--warm)' : 'var(--booked)'
-
   const selStyle: React.CSSProperties = {
     background: 'var(--surface2)', border: '1px solid var(--border)',
     color: 'var(--text)', padding: '4px 6px', fontFamily: 'DM Mono',
@@ -1508,8 +1505,8 @@ const khuDays = daysUntilKhu(lead)
 
   return (
     <div>
-      {/* ═══ Zone 1 (bg var(--surface)) — identity + contact ═══════════ */}
-      <div style={{ background: 'var(--surface)', margin: '0 -16px', padding: isMobile ? '12px 16px 6px' : '12px 16px', borderBottom: '1px solid var(--border)' }}>
+      {/* ═══ Zone 1 (transparent — lets the panel gradient show through) — identity + contact ═══════════ */}
+      <div style={{ background: 'transparent', margin: '0 -16px', padding: isMobile ? '12px 16px 6px' : '12px 16px', borderBottom: '1px solid var(--border)' }}>
       {/* ─── Status strip ─────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 26, marginBottom: 10, borderBottom: '1px solid #1e2028' }}>
         <div ref={statusPillRef} style={{ position: 'relative', flexShrink: 0 }}>
@@ -1556,19 +1553,14 @@ const khuDays = daysUntilKhu(lead)
           )}
         </div>
         {lead.needs_contact !== false && (<>
-          <span style={{ color: '#2d3140', fontSize: 9, flexShrink: 0 }}>·</span>
+          <span style={{ color: 'var(--text3)', fontSize: 9, flexShrink: 0 }}>·</span>
           <button
             onClick={() => { save('needs_contact', false); onUpdate('needs_contact', false) }}
             style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--cold)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, flexShrink: 0 }}
           >
-            <span style={{ fontSize: 7 }}>●</span> Needs Contact
+            Needs Contact
           </button>
         </>)}
-        {(lead.status === 'hot' || lead.status === 'warm') && lead.keep_hot_until && (
-          <span style={{ marginLeft: 'auto', color: 'var(--booked)', fontFamily: 'DM Mono', fontSize: 10, flexShrink: 0 }}>
-            {lead.status === 'warm' ? 'Keep warm until' : 'Keep hot until'} {fmtDateTime(lead.keep_hot_until)}
-          </span>
-        )}
       </div>
 
       {savedField && <span style={{ fontSize: 9, color: 'var(--booked)', fontFamily: 'DM Mono', display: 'block', marginBottom: 4 }}>saved</span>}
@@ -1739,22 +1731,22 @@ const khuDays = daysUntilKhu(lead)
           ? { display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 6, marginTop: 6 }
           : { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
           <div style={isMobile
-            ? { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }
+            ? { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, minWidth: 0 }
             : { display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 200px', minWidth: 0 }}>
             <input ref={emailRef} value={local.email || ''} onChange={e => update('email', e.target.value)}
               onFocus={() => setFocusedInput('email')} onBlur={e => { setFocusedInput(null); save('email', e.target.value) }}
-              onKeyDown={enterBlur} placeholder="Add email" style={{ ...iStyle('email'), flex: 1, minWidth: 0, paddingLeft: 0 }} />
+              onKeyDown={enterBlur} placeholder="Add email" style={{ ...iStyle('email'), ...(isMobile ? { flex: '0 1 auto', width: 190, minWidth: 0, paddingLeft: 0 } : { flex: 1, minWidth: 0, paddingLeft: 0 }) }} />
             {local.email && (
               <a href={`mailto:${local.email}`} style={{ ...aBtnStyle('var(--text2)'), flexShrink: 0 }}>Email</a>
             )}
           </div>
           {!isMobile && <span style={{ color: 'var(--text3)', fontSize: 11, flexShrink: 0 }}>·</span>}
           <div style={isMobile
-            ? { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }
+            ? { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, minWidth: 0 }
             : { display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 200px', minWidth: 0 }}>
             <input ref={phoneRef} value={focusedInput === 'phone' ? (local.phone || '') : fmtPhone(local.phone || '')} onChange={e => update('phone', e.target.value)}
               onFocus={() => setFocusedInput('phone')} onBlur={e => { setFocusedInput(null); const f = fmtPhone(e.target.value); if (f !== e.target.value) update('phone', f); save('phone', f) }}
-              onKeyDown={enterBlur} placeholder="Add phone" style={{ ...iStyle('phone'), flex: 1, minWidth: 0, paddingLeft: isMobile ? 0 : undefined }} />
+              onKeyDown={enterBlur} placeholder="Add phone" style={{ ...iStyle('phone'), ...(isMobile ? { flex: '0 0 auto', width: 132, minWidth: 0, paddingLeft: 0 } : { flex: 1, minWidth: 0 }) }} />
             {local.phone && (<>
               <a href={`tel:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('var(--text2)'), flexShrink: 0 }}>Call</a>
               <a href={`sms:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('var(--text2)'), flexShrink: 0 }}>Text</a>
