@@ -2666,13 +2666,13 @@ function NewLeadModal({ leads, onClose, onSave }: {
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '64px 20px 24px' }}>
-      <div onClick={e => e.stopPropagation()} data-modal-gradient="" style={{ width: 540, maxHeight: '88vh', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 1 }}>
+      <div onClick={e => e.stopPropagation()} data-modal-gradient="" style={{ width: 540, maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'var(--surface)' }}>
           <span style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15 }}>New Lead</span>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
         </div>
 
-        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', flex: 1, minHeight: 0 }}>
           {modeToggle}
           {mode === 'cod' ? (
             <>
@@ -2873,7 +2873,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
           </div>
         </div>
 
-        <div style={{ padding: '12px 20px 20px', position: 'sticky', bottom: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
+        <div style={{ padding: '12px 20px 20px', flexShrink: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
           {bookingError && (
             <div style={{ marginBottom: 8, fontSize: 11, color: 'var(--hot)', fontFamily: 'Inter' }}>{bookingError}</div>
           )}
