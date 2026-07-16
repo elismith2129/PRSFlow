@@ -7,9 +7,19 @@ interface StudioSelectProps {
   studio: string
   onChange: (location: string, studio: string) => void
   selectStyle?: React.CSSProperties
+  shortCodes?: boolean
 }
 
-export default function StudioSelect({ location, studio, onChange, selectStyle }: StudioSelectProps) {
+// Display-only short codes for the venue name. The stored value ("Venue|Room")
+// is unchanged — only the rendered option label is abbreviated when shortCodes is set.
+const STUDIO_CODES: Record<string, string> = {
+  Paramount: 'PRS',
+  Ameraycan: 'ARS',
+  Encore: 'ERS',
+  Track: 'TRK',
+}
+
+export default function StudioSelect({ location, studio, onChange, selectStyle, shortCodes }: StudioSelectProps) {
   const base: React.CSSProperties = {
     background: 'var(--surface2)',
     border: '1px solid var(--border)',
@@ -40,7 +50,7 @@ export default function StudioSelect({ location, studio, onChange, selectStyle }
       {STUDIO_LOCATIONS.flatMap(l =>
         l.rooms.map(r => (
           <option key={`${l.name}|${r}`} value={`${l.name}|${r}`}>
-            {l.name} — {r}
+            {shortCodes ? `${STUDIO_CODES[l.name] || l.name} — ${r}` : `${l.name} — ${r}`}
           </option>
         ))
       )}

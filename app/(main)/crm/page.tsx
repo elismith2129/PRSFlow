@@ -1263,6 +1263,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
   const [localStudio, setLocalStudio] = useState(parsedLoc0.studio)
   const [detailRateType, setDetailRateType] = useState<'hourly' | 'daily'>(() => lead.rate_daily ? 'daily' : 'hourly')
   const [activityLog, setActivityLog] = useState<Array<{ ts: string; label: string; color: string }>>([])
+  const [creatorInitials, setCreatorInitials] = useState<string | null>(null)
   const [regTokenDates, setRegTokenDates] = useState<{ created_at: string; used_at: string | null } | null>(null)
   const [statusDDOpen, setStatusDDOpen] = useState(false)
   const statusPillRef = useRef<HTMLDivElement>(null)
@@ -1327,15 +1328,32 @@ const parsedLoc0 = parseLocation(lead.location || '')
           label: row.note || '',
           color: activityColor(row.note || ''),
         }))
-        const synth: Array<{ ts: string; label: string; color: string }> = [
-          { ts: lead.created_at, label: 'Lead Created', color: 'var(--text2)' },
-        ]
+        // Lead Created is rendered as a dedicated always-last row below the log, not injected here.
+        const synth: Array<{ ts: string; label: string; color: string }> = []
         if (regTokenDates?.created_at) synth.push({ ts: regTokenDates.created_at, label: 'Reg Link Sent', color: 'var(--accent)' })
         if (regTokenDates?.used_at) synth.push({ ts: regTokenDates.used_at, label: 'Registration Returned', color: 'var(--booked)' })
         const all = [...items, ...synth].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
         setActivityLog(all)
       })
   }, [lead.id, lead.last_contact, regTokenDates])
+
+  // Resolve the creator's initials for the dedicated "Lead Created" row.
+  // Web Inquiry rows are attributed to "Inquiry" (no staff lookup). Otherwise
+  // join created_by → user_profiles.auth_user_id for initials / display_name.
+  useEffect(() => {
+    setCreatorInitials(null)
+    if (!lead.created_by || lead.source === 'Web Inquiry') return
+    supabase.from('user_profiles').select('initials, display_name').eq('auth_user_id', lead.created_by).maybeSingle()
+      .then(({ data }) => {
+        if (data) setCreatorInitials(data.initials || profileInitials(data.display_name) || null)
+      })
+  }, [lead.id, lead.created_by, lead.source])
+
+  const creationLabel = lead.source === 'Web Inquiry'
+    ? 'Inquiry · Lead Created'
+    : creatorInitials
+      ? `${creatorInitials} · Lead Created`
+      : 'Lead Created'
 
   useEffect(() => {
     if (!focusField) return
@@ -1784,6 +1802,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
               <StudioSelect
                 location={localVenue}
                 studio={localStudio}
+                shortCodes
                 onChange={(venue, studio) => {
                   setLocalVenue(venue)
                   setLocalStudio(studio)
@@ -1801,7 +1820,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
               type="date"
               value={local.session_date || ''}
               onChange={e => { update('session_date', e.target.value); save('session_date', e.target.value) }}
-              style={{ ...iStyle('session_date'), cursor: 'pointer' }}
+              style={{ ...iStyle('session_date'), cursor: 'pointer', paddingLeft: 0 }}
             />
           </div>
         </div>
@@ -1880,9 +1899,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
 
       {/* ─── Activity Log ──────────────────────────────── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 16 }}>
-        {activityLog.length === 0 ? (
-          <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', padding: '4px 0' }}>No activity yet</div>
-        ) : activityLog.map((entry, i) => (
+        {activityLog.map((entry, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: entry.color, flexShrink: 0, marginTop: 3 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -1891,6 +1908,14 @@ const parsedLoc0 = parseLocation(lead.location || '')
             </div>
           </div>
         ))}
+        {/* Dedicated Lead Created row — always the oldest (last) entry */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--text2)', flexShrink: 0, marginTop: 3 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>{fmtActivityTime(lead.created_at)} · </span>
+            <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>{creationLabel}</span>
+          </div>
+        </div>
       </div>
 
       <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
