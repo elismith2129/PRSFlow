@@ -2,6 +2,11 @@
 import React, { useEffect, useState } from 'react'
 import { supabase, Client } from '@/lib/supabase'
 
+function isImagePath(path: string | null | undefined): boolean {
+  if (!path) return false
+  return /\.(jpg|jpeg|png|heic|webp)$/i.test(path)
+}
+
 export function RegField({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div>
@@ -21,9 +26,12 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
       if (data) {
         setClient(data as Client)
         if (data.id_file_url) {
-          supabase.storage.from('client-ids').createSignedUrl(data.id_file_url, 3600).then(({ data: u }) => {
-            if (u?.signedUrl) setIdUrl(u.signedUrl)
-          })
+          // The client-ids bucket is private; a service-role server route mints the
+          // signed URL (the browser anon key can't sign paths it doesn't own).
+          fetch(`/api/client-id-photo?storagePath=${encodeURIComponent(data.id_file_url)}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(j => { if (j?.signedUrl) setIdUrl(j.signedUrl) })
+            .catch(() => {})
         }
       }
       setLoading(false)
@@ -38,7 +46,7 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
       style={{ position: 'fixed', inset: 0, zIndex: 10003, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: '100%', maxWidth: 540, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 48px rgba(0,0,0,0.6)', margin: '0 16px' }}>
+      <div data-modal-gradient style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: '100%', maxWidth: 540, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 48px rgba(0,0,0,0.6)', margin: '0 16px' }}>
 
         {/* Header */}
         <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -97,10 +105,18 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
               </div>
               <div>
                 <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--text3)', marginBottom: 8 }}>Government-Issued ID</div>
-                {idUrl ? (
-                  <img src={idUrl} alt="Client ID" style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 6, border: '1px solid var(--border)', objectFit: 'contain', display: 'block' }} />
-                ) : (
+                {!client.id_file_url ? (
                   <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)' }}>No ID on file</div>
+                ) : !idUrl ? (
+                  <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)' }}>Loading ID…</div>
+                ) : isImagePath(client.id_file_url) ? (
+                  <a href={idUrl} target="_blank" rel="noopener noreferrer" title="Open full size in a new tab" style={{ display: 'block', cursor: 'pointer' }}>
+                    <img src={idUrl} alt="Client ID" style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 6, border: '1px solid var(--border)', objectFit: 'contain', display: 'block' }} />
+                  </a>
+                ) : (
+                  <a href={idUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 6, background: 'var(--surface2)', border: '1px solid var(--border)', textDecoration: 'none', color: 'var(--text2)', fontFamily: 'Inter', fontSize: 11 }}>
+                    <span style={{ fontSize: 18 }}>📄</span> View ID document (PDF) — opens in new tab
+                  </a>
                 )}
               </div>
             </div>
