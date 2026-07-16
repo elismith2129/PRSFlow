@@ -65,9 +65,9 @@ export function PRSFloIcon({ size = 38 }: { size?: number }) {
             <stop offset="100%" stopColor="#8ab030" />
           </linearGradient>
         </defs>
-        <path data-wave="teal" d="M 14 100 Q 70 -10, 113 100 T 186 100" stroke={isLight ? '#3b82f6' : 'url(#prsflo-teal)'} strokeWidth="11" fill="none" strokeLinecap="round" opacity={isLight ? 0.9 : 0.6} />
-        <path data-wave="lime" d="M 14 100 Q 70 30, 113 100 T 186 100" stroke={isLight ? '#3b82f6' : 'url(#prsflo-lime)'} strokeWidth="11" fill="none" strokeLinecap="round" opacity={isLight ? 0.6 : 0.9} />
-        <path data-wave="white" d="M 14 100 Q 70 70, 113 100 T 186 100" stroke={isLight ? '#cbd5e1' : '#e8eaf0'} strokeWidth="11" fill="none" strokeLinecap="round" opacity={isLight ? 0.4 : 1} />
+        <path data-wave="teal" d="M 14 100 Q 70 -10, 113 100 T 186 100" stroke={isLight ? '#3b82f6' : 'url(#prsflo-teal)'} strokeWidth="11" fill="none" strokeLinecap="round" opacity={isLight ? 1 : 0.6} />
+        <path data-wave="lime" d="M 14 100 Q 70 30, 113 100 T 186 100" stroke={isLight ? '#3b82f6' : 'url(#prsflo-lime)'} strokeWidth="11" fill="none" strokeLinecap="round" opacity={isLight ? 1 : 0.9} />
+        <path data-wave="white" d="M 14 100 Q 70 70, 113 100 T 186 100" stroke={isLight ? '#93c5fd' : '#e8eaf0'} strokeWidth="11" fill="none" strokeLinecap="round" opacity={isLight ? 1 : 1} />
       </svg>
     </div>
   )
