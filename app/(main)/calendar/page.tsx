@@ -266,7 +266,7 @@ function BookingBlock({
             {primaryName}
           </div>
           {timeStr && (
-            <div style={{ fontSize: 7, fontFamily: 'DM Mono', color: 'var(--cold)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <div style={{ fontSize: 7, fontFamily: 'Inter', color: 'var(--cold)', whiteSpace: 'nowrap', flexShrink: 0 }}>
               {timeStr}
             </div>
           )}
@@ -284,20 +284,20 @@ function BookingBlock({
               {primaryName}
             </div>
             {!isBilling && codLabel && (
-              <span style={{ fontSize: 7, fontFamily: 'DM Mono', fontWeight: 700, color: '#f87171', flexShrink: 0, lineHeight: 1, letterSpacing: '0.03em' }}>
+              <span style={{ fontSize: 7, fontFamily: 'Inter', fontWeight: 700, color: '#f87171', flexShrink: 0, lineHeight: 1, letterSpacing: '0.03em' }}>
                 {codLabel}
               </span>
             )}
           </div>
           {/* Row 2: time + eng/asst */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', overflow: 'hidden' }}>
-            <div style={{ fontSize: 8, fontFamily: 'DM Mono', color: 'var(--cold)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--cold)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
               {timeStr}
             </div>
             {(eng || asst) && (
               <div style={{ display: 'flex', gap: 3, flexShrink: 0, marginLeft: 4 }}>
-                {eng  && <div style={{ fontSize: 8, fontFamily: 'DM Mono', color: engColor, whiteSpace: 'nowrap' }}>1ST-{eng}</div>}
-                {asst && <div style={{ fontSize: 8, fontFamily: 'DM Mono', color: asstColor, whiteSpace: 'nowrap' }}>2ND-{asst}</div>}
+                {eng  && <div style={{ fontSize: 8, fontFamily: 'Inter', color: engColor, whiteSpace: 'nowrap' }}>1ST-{eng}</div>}
+                {asst && <div style={{ fontSize: 8, fontFamily: 'Inter', color: asstColor, whiteSpace: 'nowrap' }}>2ND-{asst}</div>}
               </div>
             )}
           </div>
@@ -312,7 +312,7 @@ function BookingBlock({
           </div>
           {labelLine && (
             <div style={{
-              fontSize: 10, fontFamily: 'DM Mono', lineHeight: 1.2, marginTop: 1,
+              fontSize: 10, fontFamily: 'Inter', lineHeight: 1.2, marginTop: 1,
               color: 'var(--text2)',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>
@@ -320,22 +320,22 @@ function BookingBlock({
             </div>
           )}
           {timeStr && (
-            <div style={{ fontSize: 9, fontFamily: 'DM Mono', lineHeight: 1.2, marginTop: 2, color: 'var(--cold)' }}>
+            <div style={{ fontSize: 9, fontFamily: 'Inter', lineHeight: 1.2, marginTop: 2, color: 'var(--cold)' }}>
               {timeStr}
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto' }}>
             <div>
               {!isBilling && booking.cod_method && (
-                <div style={{ fontSize: 8, fontFamily: 'DM Mono', fontWeight: 700, lineHeight: 1.3, color: '#f87171' }}>
+                <div style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, lineHeight: 1.3, color: '#f87171' }}>
                   {booking.cod_method.toUpperCase()}
                 </div>
               )}
             </div>
             {(eng || asst) && (
               <div style={{ textAlign: 'right' }}>
-                {eng  && <div style={{ fontSize: 8, fontFamily: 'DM Mono', lineHeight: 1.3, color: engColor }}>1ST-{eng}</div>}
-                {asst && <div style={{ fontSize: 8, fontFamily: 'DM Mono', lineHeight: 1.3, color: asstColor }}>2ND-{asst}</div>}
+                {eng  && <div style={{ fontSize: 8, fontFamily: 'Inter', lineHeight: 1.3, color: engColor }}>1ST-{eng}</div>}
+                {asst && <div style={{ fontSize: 8, fontFamily: 'Inter', lineHeight: 1.3, color: asstColor }}>2ND-{asst}</div>}
               </div>
             )}
           </div>
@@ -433,7 +433,7 @@ function DayView({
         {/* Weekday labels */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 2 }}>
           {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
-            <div key={d} style={{ textAlign: 'center', fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)', padding: '2px 0' }}>
+            <div key={d} style={{ textAlign: 'center', fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)', padding: '2px 0' }}>
               {d}
             </div>
           ))}
@@ -452,7 +452,7 @@ function DayView({
                 <div style={{
                   width: 24, height: 24, borderRadius: '50%', margin: '0 auto',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontFamily: 'DM Mono',
+                  fontSize: 11, fontFamily: 'Inter',
                   background: isSelected ? 'var(--accent)' : isTodayCell ? 'rgba(255,255,255,0.1)' : 'transparent',
                   color: isSelected ? 'var(--bg)' : 'var(--text2)',
                   fontWeight: isSelected || isTodayCell ? 700 : 400,
@@ -485,7 +485,7 @@ function DayView({
             <button onClick={() => setDayViewDate(addDays(dayViewDate, -1))}
               style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}>‹</button>
             <button onClick={() => setDayViewDate(new Date())}
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer' }}>Today</button>
+              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}>Today</button>
             <button onClick={() => setDayViewDate(addDays(dayViewDate, 1))}
               style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}>›</button>
           </div>
@@ -549,28 +549,28 @@ function DayView({
                         boxShadow: chipGlow,
                       }}>
                         {/* Name */}
-                        <div style={{ fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700, color: nameColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: nameColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {displayName}
                         </div>
                         {/* Time */}
                         {timeStr && (
-                          <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'var(--cold)', marginTop: 2 }}>
+                          <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--cold)', marginTop: 2 }}>
                             {timeStr}
                           </div>
                         )}
                         {/* COD method */}
                         {codLabel && (
-                          <div style={{ fontFamily: 'DM Mono', fontSize: 9, fontWeight: 700, color: '#f87171', marginTop: 2 }}>
+                          <div style={{ fontFamily: 'Inter', fontSize: 9, fontWeight: 700, color: '#f87171', marginTop: 2 }}>
                             {codLabel}
                           </div>
                         )}
                         {/* Invoice + engineer */}
                         {(b.invoice_num || eng || asst) && (
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5 }}>
-                            <span style={{ fontFamily: 'DM Mono', fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>
+                            <span style={{ fontFamily: 'Inter', fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>
                               {b.invoice_num ? `#${b.invoice_num}` : ''}
                             </span>
-                            <span style={{ fontFamily: 'DM Mono', fontSize: 9, color: 'var(--cold)' }}>
+                            <span style={{ fontFamily: 'Inter', fontSize: 9, color: 'var(--cold)' }}>
                               {[eng, asst].filter(Boolean).join(' ')}
                             </span>
                           </div>
@@ -654,7 +654,7 @@ function StudioView({
           >‹</button>
           <button
             onClick={() => { const t = new Date(); setMonthStart(new Date(t.getFullYear(), t.getMonth(), 1)) }}
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer' }}
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}
           >Today</button>
           <button
             onClick={() => setMonthStart(new Date(year, month + 1, 1))}
@@ -668,7 +668,7 @@ function StudioView({
         {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
           <div key={d} style={{
             textAlign: 'center', padding: '5px 0',
-            fontFamily: 'DM Mono', fontSize: 10, color: 'var(--text3)',
+            fontFamily: 'Inter', fontSize: 10, color: 'var(--text3)',
             letterSpacing: '0.05em', textTransform: 'uppercase',
           }}>{d}</div>
         ))}
@@ -713,7 +713,7 @@ function StudioView({
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: isTodayCell ? 'var(--accent)' : 'transparent',
                 color: isTodayCell ? 'var(--bg)' : 'var(--text3)',
-                fontSize: 11, fontFamily: 'DM Mono', fontWeight: isTodayCell ? 700 : 400,
+                fontSize: 11, fontFamily: 'Inter', fontWeight: isTodayCell ? 700 : 400,
               }}>
                 {cell.getDate()}
               </div>
@@ -757,24 +757,24 @@ function StudioView({
                     }}
                   >
                     {/* Name */}
-                    <div style={{ fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700, color: nameColor, wordBreak: 'break-word' }}>
+                    <div style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: nameColor, wordBreak: 'break-word' }}>
                       {displayName}
                     </div>
                     {/* Time */}
                     {timeStr && (
-                      <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'var(--cold)', marginTop: 2 }}>
+                      <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--cold)', marginTop: 2 }}>
                         {timeStr}
                       </div>
                     )}
                     {/* COD method + engineer/assistant row */}
                     {(codLabel || eng || asst) && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                        <span style={{ fontFamily: 'DM Mono', fontSize: 9, fontWeight: 700, color: '#f87171' }}>
+                        <span style={{ fontFamily: 'Inter', fontSize: 9, fontWeight: 700, color: '#f87171' }}>
                           {codLabel ?? ''}
                         </span>
                         <div style={{ display: 'flex', gap: 4 }}>
-                          {eng  && <span style={{ fontFamily: 'DM Mono', fontSize: 9, color: engColor }}>{eng}</span>}
-                          {asst && <span style={{ fontFamily: 'DM Mono', fontSize: 9, color: asstColor }}>{asst}</span>}
+                          {eng  && <span style={{ fontFamily: 'Inter', fontSize: 9, color: engColor }}>{eng}</span>}
+                          {asst && <span style={{ fontFamily: 'Inter', fontSize: 9, color: asstColor }}>{asst}</span>}
                         </div>
                       </div>
                     )}
@@ -1329,7 +1329,7 @@ function CalendarPageInner() {
           background: 'var(--surface)', borderBottom: '2px solid var(--border)',
         }}>
           <div style={{ width: labelW, flexShrink: 0, borderRight: '1px solid var(--border)', position: 'sticky', left: 0, zIndex: 11, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontFamily: 'DM Mono', fontSize: 10, fontWeight: 600, color: 'var(--cold)', letterSpacing: '0.05em' }}>
+            <span style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 600, color: 'var(--cold)', letterSpacing: '0.05em' }}>
               {startDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
             </span>
           </div>
@@ -1353,14 +1353,14 @@ function CalendarPageInner() {
                 {isMonthStart && (
                   <div style={{
                     position: 'absolute', top: 2, left: 5,
-                    fontSize: 6, fontFamily: 'DM Mono', color: 'var(--accent)',
+                    fontSize: 6, fontFamily: 'Inter', color: 'var(--accent)',
                     letterSpacing: '0.1em', textTransform: 'uppercase', lineHeight: 1,
                   }}>
                     {d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
                   </div>
                 )}
                 <div style={{
-                  fontSize: isMobile ? 9 : 8, fontFamily: 'DM Mono', color: 'var(--text3)',
+                  fontSize: isMobile ? 9 : 8, fontFamily: 'Inter', color: 'var(--text3)',
                   letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1.2,
                 }}>
                   {d.toLocaleDateString('en-US', { weekday: 'short' })}
@@ -1369,7 +1369,7 @@ function CalendarPageInner() {
                   width: 22, height: 22, borderRadius: '50%', margin: '2px auto 0',
                   background: todayFlag ? 'var(--accent)' : 'transparent',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontFamily: 'DM Mono', fontWeight: todayFlag ? 700 : 400,
+                  fontSize: 11, fontFamily: 'Inter', fontWeight: todayFlag ? 700 : 400,
                   color: todayFlag ? 'var(--bg)' : wknd ? 'var(--text2)' : 'var(--text)',
                 }}>
                   {d.getDate()}
@@ -1395,7 +1395,7 @@ function CalendarPageInner() {
                 }}
               >
                 <span style={{
-                  fontSize: 8, fontFamily: 'DM Mono', color: 'var(--text3)',
+                  fontSize: 8, fontFamily: 'Inter', color: 'var(--text3)',
                   display: 'inline-block', transition: 'transform 0.15s', flexShrink: 0,
                   transform: collapsed.has(loc.name) ? 'rotate(-90deg)' : 'rotate(0deg)',
                 }}>▼</span>
@@ -1433,7 +1433,7 @@ function CalendarPageInner() {
                     })}
                     style={{
                       width: labelW, flexShrink: 0, display: 'flex', alignItems: 'center', gap: isMobile ? 3 : 5,
-                      padding: isMobile ? '0 6px' : '0 12px', fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)',
+                      padding: isMobile ? '0 6px' : '0 12px', fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)',
                       borderRight: '1px solid var(--border)', cursor: 'pointer', userSelect: 'none',
                       whiteSpace: 'nowrap', overflow: 'hidden',
                       position: 'sticky', left: 0, zIndex: 5, background: 'var(--surface)',
@@ -1507,7 +1507,7 @@ function CalendarPageInner() {
         <div style={{
           flexShrink: 0, marginBottom: 12, padding: '10px 14px', borderRadius: 8,
           background: 'rgba(240,78,122,0.10)', border: '1px solid rgba(240,78,122,0.35)',
-          color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 12,
+          color: 'var(--text)', fontFamily: 'Inter', fontSize: 12,
           display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
         }}>
           <span>{woWarning}</span>
@@ -1554,7 +1554,7 @@ function CalendarPageInner() {
                 }
               }
             }}
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer' }}
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}
           >Today</button>
           <button
             onClick={goNext}
@@ -1606,7 +1606,7 @@ function CalendarPageInner() {
           <button
             onClick={() => { setLocFilter('All'); setView('2wks') }}
             style={{
-              padding: '4px 14px', borderRadius: 20, fontSize: 10, fontFamily: 'DM Mono',
+              padding: '4px 14px', borderRadius: 20, fontSize: 10, fontFamily: 'Inter',
               fontWeight: 700, cursor: 'pointer', border: '1px solid var(--border)',
               background: 'var(--surface2)', color: 'var(--text2)',
               letterSpacing: '0.04em',
@@ -1628,7 +1628,7 @@ function CalendarPageInner() {
             border: locFilter.includes('|') ? '1px solid rgba(var(--accent-rgb),0.4)' : '1px solid var(--border)',
             color: locFilter.includes('|') ? 'var(--accent)' : 'var(--text2)',
             borderRadius: 4, padding: '4px 10px',
-            fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', outline: 'none',
+            fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', outline: 'none',
           }}
         >
           <option value="All">All Locations</option>
@@ -1661,7 +1661,7 @@ function CalendarPageInner() {
                 if (el) el.scrollLeft = bufDays * colW
               }
             }} style={{
-              padding: '4px 12px', fontSize: 10, fontFamily: 'DM Mono',
+              padding: '4px 12px', fontSize: 10, fontFamily: 'Inter',
               cursor: 'pointer', border: 'none',
               background: view === v ? 'var(--border)' : 'transparent',
               color: view === v ? 'var(--accent)' : 'var(--text2)',
@@ -1682,7 +1682,7 @@ function CalendarPageInner() {
           <span
             onClick={() => setZoomLevel(0)}
             title="Reset to fit all (0)"
-            style={{ fontSize: 9, fontFamily: 'DM Mono', color: zoomLevel === 0 ? 'var(--accent)' : 'var(--text2)', minWidth: 26, textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}
+            style={{ fontSize: 9, fontFamily: 'Inter', color: zoomLevel === 0 ? 'var(--accent)' : 'var(--text2)', minWidth: 26, textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}
           >{zoomLevel === 0 ? 'Fit' : `${rowH}px`}</span>
           <button
             onClick={() => setZoomLevel(z => Math.min(z + 1, ZOOM_FIXED.length))}
@@ -1698,7 +1698,7 @@ function CalendarPageInner() {
           style={{
             padding: isMobile ? '12px 16px' : '6px 16px',
             borderRadius: isMobile ? 8 : 4,
-            fontSize: isMobile ? 13 : 11, fontFamily: 'DM Mono',
+            fontSize: isMobile ? 13 : 11, fontFamily: 'Inter',
             fontWeight: 700, cursor: 'pointer',
             background: isMobile ? 'var(--accent)' : '#1e40af',
             border: 'none',

@@ -115,7 +115,7 @@ export function TodoModule({ leads, clients, loading, onRefresh }: Props) {
           style={{
             padding: '5px 12px', background: 'transparent',
             border: '1px solid var(--accent)', color: 'var(--accent)',
-            borderRadius: 6, fontFamily: 'DM Mono', fontSize: 10, cursor: 'pointer'
+            borderRadius: 6, fontFamily: 'Inter', fontSize: 10, cursor: 'pointer'
           }}>
           Open CRM →
         </button>

@@ -56,7 +56,7 @@ export default function ResetPasswordPage() {
       >
         <div
           style={{
-            fontFamily: "'DM Mono', monospace",
+            fontFamily: 'Inter',
             fontSize: 11,
             letterSpacing: '0.2em',
             color: 'var(--cold)',
@@ -127,7 +127,7 @@ export default function ResetPasswordPage() {
           {error && (
             <div
               style={{
-                fontFamily: "'DM Mono', monospace",
+                fontFamily: 'Inter',
                 fontSize: 11,
                 color: 'var(--hot)',
                 textAlign: 'center',
@@ -150,7 +150,7 @@ const authInputStyle: React.CSSProperties = {
   borderRadius: 6,
   padding: '12px 14px',
   color: 'var(--text)',
-  fontFamily: "'DM Mono', monospace",
+  fontFamily: 'Inter',
   fontSize: 13,
   outline: 'none',
   boxSizing: 'border-box',
@@ -161,7 +161,7 @@ const authButtonStyle: React.CSSProperties = {
   maxWidth: 380,
   background: 'var(--accent)',
   color: 'var(--bg)',
-  fontFamily: "'DM Mono', monospace",
+  fontFamily: 'Inter',
   fontSize: 12,
   fontWeight: 700,
   letterSpacing: '0.1em',

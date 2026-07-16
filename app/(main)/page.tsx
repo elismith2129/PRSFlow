@@ -799,7 +799,7 @@ export default function DashboardPage() {
           <div style={{ marginBottom: 2 }}>
             <PRSFloIcon size={72} />
           </div>
-          <div style={{ fontFamily: 'DM Mono', fontSize: 13, letterSpacing: '0.2em', color: 'var(--cold)', textTransform: 'uppercase' }}>
+          <div style={{ fontFamily: 'Inter', fontSize: 13, letterSpacing: '0.2em', color: 'var(--cold)', textTransform: 'uppercase' }}>
             {greeting.toUpperCase()}
           </div>
           {/* nbsp fallback reserves the line height so the name appearing causes no layout shift */}
@@ -894,7 +894,7 @@ export default function DashboardPage() {
                       <span style={{
                         position: 'absolute', top: 4, right: 4,
                         background: 'var(--accent)', color: 'var(--bg)',
-                        fontSize: 8, fontFamily: 'DM Mono, monospace', fontWeight: 700,
+                        fontSize: 8, fontFamily: 'Inter', fontWeight: 700,
                         letterSpacing: '0.08em', padding: '1px 4px', borderRadius: 3, lineHeight: 1.4,
                       }}>
                         NEW
@@ -910,7 +910,7 @@ export default function DashboardPage() {
             <button
               onClick={() => router.push('/crm?newLead=1')}
               style={{
-                width: '100%', padding: isMobile ? '13px' : '8px', fontSize: 11, fontFamily: 'DM Mono',
+                width: '100%', padding: isMobile ? '13px' : '8px', fontSize: 11, fontFamily: 'Inter',
                 color: 'var(--text3)', background: 'transparent', letterSpacing: '0.04em',
                 border: '1px dashed var(--border)', borderRadius: 8, cursor: 'pointer',
                 minHeight: isMobile ? 44 : undefined,
@@ -931,7 +931,7 @@ export default function DashboardPage() {
                 onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() - 1); return n })}
                 style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text2)', cursor: 'pointer', padding: '2px 7px', fontSize: 13, lineHeight: 1, minWidth: isMobile ? 44 : undefined, minHeight: isMobile ? 44 : undefined, display: isMobile ? 'flex' : undefined, alignItems: isMobile ? 'center' : undefined, justifyContent: isMobile ? 'center' : undefined }}
               >‹</button>
-              <div style={{ fontSize: isMobile ? 11 : 10, fontFamily: 'DM Mono', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: isMobile ? 11 : 10, fontFamily: 'Inter', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
                 {calDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
               </div>
               <button
@@ -1004,7 +1004,7 @@ export default function DashboardPage() {
                     {cardAccent && (
                       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: cardAccent }} />
                     )}
-                    <div style={{ fontSize: 9, fontFamily: 'DM Mono', fontWeight: 600, color: 'var(--text2)', letterSpacing: '0.04em', opacity: booking ? 0.9 : 0.75, marginBottom: booking ? 4 : 0 }}>
+                    <div style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 600, color: 'var(--text2)', letterSpacing: '0.04em', opacity: booking ? 0.9 : 0.75, marginBottom: booking ? 4 : 0 }}>
                       {room.label}
                     </div>
                     {booking && (
@@ -1017,21 +1017,21 @@ export default function DashboardPage() {
                         </div>
                         {labelLine && (
                           <div style={{
-                            fontSize: 9, fontFamily: 'DM Mono', color: 'rgba(255,255,255,0.45)', lineHeight: 1.2, marginTop: 2,
+                            fontSize: 9, fontFamily: 'Inter', color: 'rgba(255,255,255,0.45)', lineHeight: 1.2, marginTop: 2,
                             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                           }}>
                             {labelLine}
                           </div>
                         )}
                         {timeStr && (
-                          <div style={{ fontSize: isMobile ? 10 : 9, fontFamily: 'DM Mono', color: 'rgba(255,255,255,0.75)', lineHeight: 1.2, marginTop: 2 }}>
+                          <div style={{ fontSize: isMobile ? 10 : 9, fontFamily: 'Inter', color: 'rgba(255,255,255,0.75)', lineHeight: 1.2, marginTop: 2 }}>
                             {timeStr}
                           </div>
                         )}
                         {(eng || asst) && (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginTop: 'auto' }}>
-                            {eng && <div style={{ fontSize: isMobile ? 10 : 8, fontFamily: 'DM Mono', color: engColor, whiteSpace: 'nowrap' }}>1ST-{eng}</div>}
-                            {asst && <div style={{ fontSize: isMobile ? 10 : 8, fontFamily: 'DM Mono', color: asstColor, whiteSpace: 'nowrap' }}>2ND-{asst}</div>}
+                            {eng && <div style={{ fontSize: isMobile ? 10 : 8, fontFamily: 'Inter', color: engColor, whiteSpace: 'nowrap' }}>1ST-{eng}</div>}
+                            {asst && <div style={{ fontSize: isMobile ? 10 : 8, fontFamily: 'Inter', color: asstColor, whiteSpace: 'nowrap' }}>2ND-{asst}</div>}
                           </div>
                         )}
                       </>
@@ -1119,12 +1119,12 @@ export default function DashboardPage() {
                       {task.text}
                     </div>
                     {task.due_date && (
-                      <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 3, fontFamily: 'DM Mono' }}>
+                      <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 3, fontFamily: 'Inter' }}>
                         Due {task.due_date}
                       </div>
                     )}
                     {task.source !== 'manual' && task.source_label && (
-                      <div style={{ fontSize: 9, color: 'var(--warm)', marginTop: 3, fontFamily: 'DM Mono' }}>
+                      <div style={{ fontSize: 9, color: 'var(--warm)', marginTop: 3, fontFamily: 'Inter' }}>
                         {task.source_label}
                       </div>
                     )}
@@ -1146,7 +1146,7 @@ export default function DashboardPage() {
             {!tasksLoading && tasks.length > 9 && (
               <div
                 onClick={() => router.push('/tasks')}
-                style={{ fontSize: 10, color: 'var(--cold)', fontFamily: 'DM Mono', padding: '2px 4px', cursor: 'pointer' }}
+                style={{ fontSize: 10, color: 'var(--cold)', fontFamily: 'Inter', padding: '2px 4px', cursor: 'pointer' }}
               >
                 + {tasks.length - 9} more
               </div>
@@ -1157,7 +1157,7 @@ export default function DashboardPage() {
             <button
               onClick={openAddTask}
               style={{
-                width: '100%', padding: isMobile ? '13px' : '8px', fontSize: 11, fontFamily: 'DM Mono',
+                width: '100%', padding: isMobile ? '13px' : '8px', fontSize: 11, fontFamily: 'Inter',
                 color: 'var(--text3)', background: 'transparent', letterSpacing: '0.04em',
                 border: '1px dashed var(--border)', borderRadius: 8, cursor: 'pointer',
                 minHeight: isMobile ? 44 : undefined,
@@ -1230,13 +1230,13 @@ export default function DashboardPage() {
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, gap: 8 }}>
                     {flag.source_label ? (
-                      <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
                         {flag.source_label}
                       </div>
                     ) : (
                       <div style={{ flex: 1 }} />
                     )}
-                    <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       {new Date(flag.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </div>
                   </div>
@@ -1250,7 +1250,7 @@ export default function DashboardPage() {
           <button
             onClick={() => setAddingFlag(true)}
             style={{
-              width: '100%', padding: isMobile ? '13px' : '8px', fontSize: 11, fontFamily: 'DM Mono',
+              width: '100%', padding: isMobile ? '13px' : '8px', fontSize: 11, fontFamily: 'Inter',
               color: 'var(--text3)', background: 'transparent', letterSpacing: '0.04em',
               border: '1px dashed var(--border)', borderRadius: 8, cursor: 'pointer',
               minHeight: isMobile ? 44 : undefined,
@@ -1277,7 +1277,7 @@ export default function DashboardPage() {
                 disabled={taskSubmitting}
                 style={{
                   border: '1px solid var(--booked)', background: 'transparent', color: 'var(--booked)',
-                  fontSize: 10, fontFamily: 'DM Mono', fontWeight: 700, textTransform: 'uppercase',
+                  fontSize: 10, fontFamily: 'Inter', fontWeight: 700, textTransform: 'uppercase',
                   padding: '5px 12px', borderRadius: 4, cursor: 'pointer', letterSpacing: '0.04em',
                 }}
               >
@@ -1300,12 +1300,12 @@ export default function DashboardPage() {
               </div>
 
               {/* Assigned meta */}
-              <div style={{ fontSize: 10, color: 'var(--cold)', fontFamily: 'DM Mono', marginTop: 12 }}>
+              <div style={{ fontSize: 10, color: 'var(--cold)', fontFamily: 'Inter', marginTop: 12 }}>
                 Assigned to: {nameForId(selectedTask.assigned_to, allProfiles)} · by {nameForId(selectedTask.assigned_by, allProfiles)} · {new Date(selectedTask.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </div>
 
               {/* Updates */}
-              <div style={{ fontSize: 10, color: 'var(--cold)', fontFamily: 'DM Mono', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 18, marginBottom: 10 }}>
+              <div style={{ fontSize: 10, color: 'var(--cold)', fontFamily: 'Inter', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 18, marginBottom: 10 }}>
                 Updates
               </div>
               {taskComments.length === 0 ? (
@@ -1313,7 +1313,7 @@ export default function DashboardPage() {
               ) : (
                 taskComments.map(c => (
                   <div key={c.id} style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 10, color: 'var(--cold)', fontFamily: 'DM Mono', marginBottom: 3 }}>
+                    <div style={{ fontSize: 10, color: 'var(--cold)', fontFamily: 'Inter', marginBottom: 3 }}>
                       {c.created_by_name && `${c.created_by_name} · `}{fmtTime(c.created_at)}
                     </div>
                     {c.text && (
@@ -1338,7 +1338,7 @@ export default function DashboardPage() {
                 style={{
                   width: '100%', height: 72, padding: '10px 12px', fontSize: 12,
                   background: 'var(--bg)', border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono',
+                  borderRadius: 6, color: 'var(--text)', fontFamily: 'Inter',
                   outline: 'none', resize: 'none', boxSizing: 'border-box', marginTop: 16,
                 }}
               />
@@ -1350,7 +1350,7 @@ export default function DashboardPage() {
                 />
               )}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-                <label style={{ fontSize: 11, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'DM Mono' }}>
+                <label style={{ fontSize: 11, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'Inter' }}>
                   {commentPhoto ? commentPhoto.name : '+ Attach photo'}
                   <input
                     ref={commentPhotoRef}
@@ -1365,7 +1365,7 @@ export default function DashboardPage() {
                   disabled={taskSubmitting || (!commentText.trim() && !commentPhoto)}
                   style={{
                     border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: 'var(--text2)',
-                    fontSize: 11, fontFamily: 'DM Mono', padding: '6px 14px', borderRadius: 6,
+                    fontSize: 11, fontFamily: 'Inter', padding: '6px 14px', borderRadius: 6,
                     cursor: (commentText.trim() || commentPhoto) ? 'pointer' : 'default',
                   }}
                 >
@@ -1381,7 +1381,7 @@ export default function DashboardPage() {
                   onClick={handleDeleteSelectedTask}
                   style={{
                     border: '1px solid rgba(239,68,68,0.4)', background: 'transparent', color: 'var(--hot)',
-                    fontSize: 11, fontFamily: 'DM Mono', padding: '8px 14px', borderRadius: 6, cursor: 'pointer',
+                    fontSize: 11, fontFamily: 'Inter', padding: '8px 14px', borderRadius: 6, cursor: 'pointer',
                   }}
                 >
                   Delete
@@ -1392,7 +1392,7 @@ export default function DashboardPage() {
                 onClick={handleCancelTaskModal}
                 style={{
                   border: '1px solid var(--border)', background: 'transparent', color: 'var(--text2)',
-                  fontSize: 11, fontFamily: 'DM Mono', padding: '8px 14px', borderRadius: 6, cursor: 'pointer',
+                  fontSize: 11, fontFamily: 'Inter', padding: '8px 14px', borderRadius: 6, cursor: 'pointer',
                 }}
               >
                 Cancel
@@ -1402,7 +1402,7 @@ export default function DashboardPage() {
                 disabled={taskSubmitting}
                 style={{
                   background: 'var(--accent)', color: 'var(--bg)', border: 'none',
-                  fontSize: 11, fontFamily: 'DM Mono', fontWeight: 600, padding: '8px 14px', borderRadius: 6, cursor: 'pointer',
+                  fontSize: 11, fontFamily: 'Inter', fontWeight: 600, padding: '8px 14px', borderRadius: 6, cursor: 'pointer',
                 }}
               >
                 Save &amp; Close
@@ -1428,7 +1428,7 @@ export default function DashboardPage() {
                 value={historySearch}
                 onChange={e => setHistorySearch(e.target.value)}
                 placeholder="Search completed tasks…"
-                style={{ width: '100%', padding: '7px 10px', fontSize: 12, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontFamily: 'DM Mono', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '7px 10px', fontSize: 12, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontFamily: 'Inter', outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1457,9 +1457,9 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       {t.source !== 'manual' && t.source_label && (
-                        <div style={{ fontSize: 9, color: 'var(--warm)', marginTop: 3, fontFamily: 'DM Mono' }}>{t.source_label}</div>
+                        <div style={{ fontSize: 9, color: 'var(--warm)', marginTop: 3, fontFamily: 'Inter' }}>{t.source_label}</div>
                       )}
-                      <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 4, fontFamily: 'DM Mono' }}>
+                      <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 4, fontFamily: 'Inter' }}>
                         Completed {t.completed_at ? new Date(t.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                       </div>
                     </div>
@@ -1493,13 +1493,13 @@ export default function DashboardPage() {
                 <SignedImage path={selectedHistoryTask.photo_url} alt="" style={{ display: 'block', maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover', marginTop: 8 }} />
               )}
               {selectedHistoryTask.source !== 'manual' && selectedHistoryTask.source_label && (
-                <div style={{ fontSize: 10, color: 'var(--warm)', marginTop: 4, fontFamily: 'DM Mono' }}>{selectedHistoryTask.source_label}</div>
+                <div style={{ fontSize: 10, color: 'var(--warm)', marginTop: 4, fontFamily: 'Inter' }}>{selectedHistoryTask.source_label}</div>
               )}
               {selectedHistoryTask.due_date && (
-                <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2, fontFamily: 'DM Mono' }}>Due {selectedHistoryTask.due_date}</div>
+                <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2, fontFamily: 'Inter' }}>Due {selectedHistoryTask.due_date}</div>
               )}
               {selectedHistoryTask.completed_at && (
-                <div style={{ fontSize: 10, color: 'var(--booked)', marginTop: 2, fontFamily: 'DM Mono' }}>
+                <div style={{ fontSize: 10, color: 'var(--booked)', marginTop: 2, fontFamily: 'Inter' }}>
                   Completed {new Date(selectedHistoryTask.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </div>
               )}
@@ -1514,7 +1514,7 @@ export default function DashboardPage() {
                     {c.photo_url && (
                       <SignedImage path={c.photo_url} alt="" style={{ display: 'block', maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover', marginTop: c.text ? 6 : 0 }} />
                     )}
-                    <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 4, fontFamily: 'DM Mono' }}>
+                    <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 4, fontFamily: 'Inter' }}>
                       {c.created_by_name && `${c.created_by_name} · `}{fmtTime(c.created_at)}
                     </div>
                   </div>
@@ -1557,7 +1557,7 @@ export default function DashboardPage() {
                 <select
                   value={newFlagStudio}
                   onChange={e => setNewFlagStudio(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', fontSize: 11, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono', outline: 'none' }}
+                  style={{ width: '100%', padding: '8px 10px', fontSize: 11, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'Inter', outline: 'none' }}
                 >
                   <option value="paramount">Paramount</option>
                   <option value="encore">Encore</option>
@@ -1610,7 +1610,7 @@ export default function DashboardPage() {
                   placeholder="Describe the issue…"
                   rows={3}
                   autoFocus
-                  style={{ width: '100%', padding: '8px', fontSize: 11, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono', outline: 'none', resize: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '8px', fontSize: 11, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'Inter', outline: 'none', resize: 'none', boxSizing: 'border-box' }}
                 />
               </div>
 
@@ -1626,7 +1626,7 @@ export default function DashboardPage() {
                     style={{ display: 'block', maxHeight: 80, borderRadius: 4, objectFit: 'cover', marginBottom: 8 }}
                   />
                 )}
-                <label style={{ display: 'inline-block', fontSize: 11, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'DM Mono', padding: '9px 14px', border: '1px dashed var(--border)', borderRadius: 6 }}>
+                <label style={{ display: 'inline-block', fontSize: 11, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'Inter', padding: '9px 14px', border: '1px dashed var(--border)', borderRadius: 6 }}>
                   {newFlagPhoto ? newFlagPhoto.name : '+ Add Photo'}
                   <input
                     ref={newFlagPhotoRef}
@@ -1647,7 +1647,7 @@ export default function DashboardPage() {
             <div style={{ padding: '20px 20px 12px', display: 'flex', gap: 8 }}>
               <button
                 onClick={() => { setAddingFlag(false); setNewFlagText(''); setNewFlagCategory(null); setNewFlagStudio('paramount'); clearNewFlagPhoto() }}
-                style={{ flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono', background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--text2)' }}
+                style={{ flex: 1, padding: '8px', fontSize: 11, fontFamily: 'Inter', background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--text2)' }}
               >
                 Cancel
               </button>
@@ -1655,7 +1655,7 @@ export default function DashboardPage() {
                 onClick={handleCreateFlag}
                 disabled={flagSubmitting || !newFlagText.trim() || !newFlagCategory}
                 style={{
-                  flex: 1, padding: '8px', fontSize: 11, fontFamily: 'DM Mono',
+                  flex: 1, padding: '8px', fontSize: 11, fontFamily: 'Inter',
                   background: newFlagText.trim() && newFlagCategory ? 'var(--accent)' : 'var(--surface2)',
                   color: newFlagText.trim() && newFlagCategory ? 'var(--bg)' : 'var(--text3)',
                   border: 'none', borderRadius: 6,
@@ -1689,7 +1689,7 @@ export default function DashboardPage() {
                     <button
                       onClick={() => setShowResolveModal(true)}
                       disabled={flagSubmitting}
-                      style={{ fontSize: 10, fontFamily: 'DM Mono', background: 'transparent', color: 'var(--booked)', border: '1px solid var(--booked)', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}
+                      style={{ fontSize: 10, fontFamily: 'Inter', background: 'transparent', color: 'var(--booked)', border: '1px solid var(--booked)', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}
                     >
                       {flagSubmitting ? 'Saving…' : 'Resolve'}
                     </button>
@@ -1717,7 +1717,7 @@ export default function DashboardPage() {
                   return c ? (
                     <>
                       <span style={{ color: 'var(--text3)', fontSize: 11 }}>·</span>
-                      <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+                      <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>
                         {c.label}
                       </span>
                     </>
@@ -1726,7 +1726,7 @@ export default function DashboardPage() {
               </div>
               {/* Row 3: source label */}
               {selectedFlag.source_label && (
-                <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 2, opacity: 0.6 }}>
+                <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2, opacity: 0.6 }}>
                   {selectedFlag.source_label}
                 </div>
               )}
@@ -1785,7 +1785,7 @@ export default function DashboardPage() {
                 <select
                   value={pendingCategory ?? selectedFlag.category ?? ''}
                   onChange={e => setPendingCategory(e.target.value as 'facility_general' | 'gear_equipment' | 'client_billing')}
-                  style={{ width: '100%', padding: '7px 8px', fontSize: 11, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono', outline: 'none', marginBottom: 8 }}
+                  style={{ width: '100%', padding: '7px 8px', fontSize: 11, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'Inter', outline: 'none', marginBottom: 8 }}
                 >
                   <option value="facility_general">Facility / General</option>
                   <option value="gear_equipment">Gear / Equipment</option>
@@ -1800,7 +1800,7 @@ export default function DashboardPage() {
                   <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--booked)', marginBottom: 4 }}>
                     Resolved
                   </div>
-                  <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>
+                  <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>
                     {selectedFlag.resolved_by}
                     {selectedFlag.resolved_at && ` · ${new Date(selectedFlag.resolved_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
                   </div>
@@ -1810,12 +1810,12 @@ export default function DashboardPage() {
                     </div>
                   )}
                   {selectedFlag.resolved_vendor && (
-                    <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 4 }}>
+                    <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 4 }}>
                       Vendor: {selectedFlag.resolved_vendor}
                     </div>
                   )}
                   {selectedFlag.resolved_cost != null && (
-                    <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 2 }}>
+                    <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>
                       Cost: ${selectedFlag.resolved_cost}
                     </div>
                   )}
@@ -1838,7 +1838,7 @@ export default function DashboardPage() {
                         style={{ display: 'block', maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover', marginTop: c.text ? 6 : 0 }}
                       />
                     )}
-                    <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 4, fontFamily: 'DM Mono' }}>
+                    <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 4, fontFamily: 'Inter' }}>
                       {c.created_by_name && `${c.created_by_name} · `}{fmtTime(c.created_at)}
                     </div>
                   </div>
@@ -1865,12 +1865,12 @@ export default function DashboardPage() {
                 style={{
                   width: '100%', padding: '8px', fontSize: 11,
                   background: 'var(--surface2)', border: '1px solid var(--border)',
-                  borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono',
+                  borderRadius: 6, color: 'var(--text)', fontFamily: 'Inter',
                   outline: 'none', resize: 'none', boxSizing: 'border-box',
                 }}
               />
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, marginBottom: 8 }}>
-                <label style={{ display: 'inline-block', fontSize: 10, color: 'var(--text3)', cursor: 'pointer', fontFamily: 'DM Mono' }}>
+                <label style={{ display: 'inline-block', fontSize: 10, color: 'var(--text3)', cursor: 'pointer', fontFamily: 'Inter' }}>
                   {flagCommentPhoto ? flagCommentPhoto.name : '+ Attach photo'}
                   <input
                     ref={flagCommentPhotoRef}
@@ -1884,7 +1884,7 @@ export default function DashboardPage() {
                   <button
                     onClick={handleFlagComment}
                     disabled={flagSubmitting}
-                    style={{ fontSize: 10, fontFamily: 'DM Mono', padding: '4px 10px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}
+                    style={{ fontSize: 10, fontFamily: 'Inter', padding: '4px 10px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}
                   >
                     Submit
                   </button>
@@ -1896,16 +1896,16 @@ export default function DashboardPage() {
                 {/* Delete flow — left side */}
                 {confirmDeleteFlag ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono' }}>Confirm delete?</span>
+                    <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>Confirm delete?</span>
                     <button
                       onClick={handleDeleteFlag}
-                      style={{ padding: '6px 12px', fontSize: 11, fontFamily: 'DM Mono', background: 'var(--hot)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                      style={{ padding: '6px 12px', fontSize: 11, fontFamily: 'Inter', background: 'var(--hot)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
                     >
                       Yes, delete
                     </button>
                     <button
                       onClick={() => setConfirmDeleteFlag(false)}
-                      style={{ padding: '6px 12px', fontSize: 11, fontFamily: 'DM Mono', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}
+                      style={{ padding: '6px 12px', fontSize: 11, fontFamily: 'Inter', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}
                     >
                       Cancel
                     </button>
@@ -1913,7 +1913,7 @@ export default function DashboardPage() {
                 ) : (
                   <button
                     onClick={() => setConfirmDeleteFlag(true)}
-                    style={{ padding: '6px 12px', fontSize: 11, fontFamily: 'DM Mono', background: 'transparent', color: 'var(--hot)', border: '1px solid var(--hot)', borderRadius: 6, cursor: 'pointer' }}
+                    style={{ padding: '6px 12px', fontSize: 11, fontFamily: 'Inter', background: 'transparent', color: 'var(--hot)', border: '1px solid var(--hot)', borderRadius: 6, cursor: 'pointer' }}
                   >
                     Delete
                   </button>
@@ -1927,7 +1927,7 @@ export default function DashboardPage() {
                         onClick={handleAcknowledgeFlag}
                         disabled={flagSubmitting || !canAck}
                         style={{
-                          padding: '8px 16px', fontSize: 11, fontFamily: 'DM Mono',
+                          padding: '8px 16px', fontSize: 11, fontFamily: 'Inter',
                           background: canAck ? 'var(--accent)' : 'var(--surface2)',
                           color: canAck ? 'var(--bg)' : 'var(--text3)',
                           border: 'none', borderRadius: 6,
@@ -1944,7 +1944,7 @@ export default function DashboardPage() {
                       onClick={handleSaveFlag}
                       disabled={flagSubmitting}
                       style={{
-                        padding: '8px 16px', fontSize: 11, fontFamily: 'DM Mono',
+                        padding: '8px 16px', fontSize: 11, fontFamily: 'Inter',
                         background: 'var(--accent)',
                         color: 'var(--bg)',
                         border: 'none', borderRadius: 6,
@@ -1993,7 +1993,7 @@ export default function DashboardPage() {
                   style={{
                     width: '100%', padding: '10px 12px', fontSize: 13,
                     background: 'var(--surface2)', border: '1px solid var(--border)',
-                    borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono',
+                    borderRadius: 6, color: 'var(--text)', fontFamily: 'Inter',
                     outline: 'none', resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.5,
                   }}
                 />
@@ -2009,7 +2009,7 @@ export default function DashboardPage() {
                     style={{
                       width: '100%', padding: '10px 12px', fontSize: 13,
                       background: 'var(--surface2)', border: '1px solid var(--border)',
-                      borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono',
+                      borderRadius: 6, color: 'var(--text)', fontFamily: 'Inter',
                       outline: 'none', boxSizing: 'border-box',
                     }}
                   >
@@ -2033,7 +2033,7 @@ export default function DashboardPage() {
                     style={{ display: 'block', maxHeight: 80, borderRadius: 4, objectFit: 'cover', marginBottom: 8 }}
                   />
                 )}
-                <label style={{ display: 'inline-block', fontSize: 11, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'DM Mono', padding: '9px 14px', border: '1px dashed var(--border)', borderRadius: 6 }}>
+                <label style={{ display: 'inline-block', fontSize: 11, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'Inter', padding: '9px 14px', border: '1px dashed var(--border)', borderRadius: 6 }}>
                   {newTaskPhoto ? newTaskPhoto.name : '+ Add Photo'}
                   <input
                     ref={newTaskPhotoRef}
@@ -2048,7 +2048,7 @@ export default function DashboardPage() {
                 <button
                   onClick={closeAddTask}
                   style={{
-                    flex: 1, padding: '11px', fontSize: 12, fontFamily: 'DM Mono',
+                    flex: 1, padding: '11px', fontSize: 12, fontFamily: 'Inter',
                     background: 'transparent', border: '1px solid var(--border)',
                     borderRadius: 6, cursor: 'pointer', color: 'var(--text2)',
                   }}
@@ -2059,7 +2059,7 @@ export default function DashboardPage() {
                   onClick={handleAddTask}
                   disabled={taskSubmitting || !newTaskText.trim()}
                   style={{
-                    flex: 1, padding: '11px', fontSize: 12, fontFamily: 'DM Mono',
+                    flex: 1, padding: '11px', fontSize: 12, fontFamily: 'Inter',
                     background: newTaskText.trim() ? 'var(--accent)' : 'var(--surface2)',
                     color: newTaskText.trim() ? 'var(--bg)' : 'var(--text3)',
                     border: 'none', borderRadius: 6,
@@ -2104,7 +2104,7 @@ export default function DashboardPage() {
                   style={{
                     width: '100%', padding: '8px', fontSize: 11,
                     background: 'var(--surface2)', border: '1px solid var(--border)',
-                    borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono',
+                    borderRadius: 6, color: 'var(--text)', fontFamily: 'Inter',
                     outline: 'none', resize: 'none', boxSizing: 'border-box',
                   }}
                 />
@@ -2121,7 +2121,7 @@ export default function DashboardPage() {
                   style={{
                     width: '100%', padding: '8px', fontSize: 11,
                     background: 'var(--surface2)', border: '1px solid var(--border)',
-                    borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono',
+                    borderRadius: 6, color: 'var(--text)', fontFamily: 'Inter',
                     outline: 'none', boxSizing: 'border-box',
                   }}
                 />
@@ -2131,7 +2131,7 @@ export default function DashboardPage() {
                   Cost
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'DM Mono' }}>$</span>
+                  <span style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'Inter' }}>$</span>
                   <input
                     type="number"
                     value={resolveCost}
@@ -2140,7 +2140,7 @@ export default function DashboardPage() {
                     style={{
                       flex: 1, padding: '8px', fontSize: 11,
                       background: 'var(--surface2)', border: '1px solid var(--border)',
-                      borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono',
+                      borderRadius: 6, color: 'var(--text)', fontFamily: 'Inter',
                       outline: 'none', boxSizing: 'border-box',
                     }}
                   />
@@ -2150,7 +2150,7 @@ export default function DashboardPage() {
                 <button
                   onClick={() => setShowResolveModal(false)}
                   style={{
-                    flex: 1, padding: '9px', fontSize: 11, fontFamily: 'DM Mono',
+                    flex: 1, padding: '9px', fontSize: 11, fontFamily: 'Inter',
                     background: 'transparent', border: '1px solid var(--border)',
                     borderRadius: 6, cursor: 'pointer', color: 'var(--text2)',
                   }}
@@ -2161,7 +2161,7 @@ export default function DashboardPage() {
                   onClick={handleResolveFlag}
                   disabled={flagSubmitting || !resolveNote.trim()}
                   style={{
-                    flex: 1, padding: '9px', fontSize: 11, fontFamily: 'DM Mono',
+                    flex: 1, padding: '9px', fontSize: 11, fontFamily: 'Inter',
                     background: resolveNote.trim() ? 'var(--accent)' : 'var(--surface2)',
                     color: resolveNote.trim() ? 'var(--bg)' : 'var(--text3)',
                     border: 'none', borderRadius: 6,

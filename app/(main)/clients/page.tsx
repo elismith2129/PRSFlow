@@ -149,11 +149,11 @@ export function ClientsPageInner({ initialClientId, embedded }: { initialClientI
             <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 11, color: 'var(--accent)', letterSpacing: '0.06em' }}>
               {pendingRegs.length} new registration{pendingRegs.length !== 1 ? 's' : ''} need{pendingRegs.length === 1 ? 's' : ''} review
             </span>
-            <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 1 }}>
+            <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 1 }}>
               Click to confirm client profiles
             </div>
           </div>
-          <span style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'DM Mono' }}>Review →</span>
+          <span style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'Inter' }}>Review →</span>
         </div>
       )}
 
@@ -264,7 +264,7 @@ function RegistrationReviewModal({ regs, onClose, onNavigate }: {
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 1 }}>
             <div>
               <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15 }}>New Registrations</div>
-              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 2 }}>
+              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>
                 {regs.length} pending — review ID and confirm to create client profile
               </div>
             </div>
@@ -293,7 +293,7 @@ function RegistrationReviewModal({ regs, onClose, onNavigate }: {
                       {!reg.id_file_url ? (
                         <div style={{ width: 80, height: 80, borderRadius: 7, background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                           <span style={{ fontSize: 22, opacity: 0.25 }}>🪪</span>
-                          <span style={{ fontSize: 8, fontFamily: 'DM Mono', color: 'var(--text3)', textAlign: 'center' as const }}>No ID{'\n'}uploaded</span>
+                          <span style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--text3)', textAlign: 'center' as const }}>No ID{'\n'}uploaded</span>
                         </div>
                       ) : hasImage && signedUrl ? (
                         <img
@@ -313,19 +313,19 @@ function RegistrationReviewModal({ regs, onClose, onNavigate }: {
                         <div style={{ width: 80, height: 80, borderRadius: 7, background: 'var(--surface)', border: '1px solid var(--border)', animation: 'shimmer 1.4s ease-in-out infinite' }} />
                       )}
                       {hasImage && signedUrl && (
-                        <div style={{ textAlign: 'center' as const, marginTop: 4, fontSize: 8, color: 'var(--text3)', fontFamily: 'DM Mono' }}>tap to enlarge</div>
+                        <div style={{ textAlign: 'center' as const, marginTop: 4, fontSize: 8, color: 'var(--text3)', fontFamily: 'Inter' }}>tap to enlarge</div>
                       )}
                     </div>
 
                     {/* Identity + contact */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontFamily: 'DM Serif Display', fontSize: 18, lineHeight: 1.2, marginBottom: 6 }}>{reg.name}</div>
-                      <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)', lineHeight: 1.8 }}>
+                      <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.8 }}>
                         {reg.email && <div>{reg.email}</div>}
                         {reg.phone && <div>{reg.phone}</div>}
                         {reg.instagram && <div>@{reg.instagram.replace(/^@/, '')}</div>}
                       </div>
-                      <div style={{ marginTop: 6, fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)' }}>
+                      <div style={{ marginTop: 6, fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)' }}>
                         Registered {regDate}
                       </div>
                     </div>
@@ -335,13 +335,13 @@ function RegistrationReviewModal({ regs, onClose, onNavigate }: {
                   {(addressLine || cityLine || reg.how_heard) && (
                     <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', background: 'rgba(0,0,0,0.15)' }}>
                       {(addressLine || cityLine) && (
-                        <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)', lineHeight: 1.6, marginBottom: reg.how_heard ? 6 : 0 }}>
+                        <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.6, marginBottom: reg.how_heard ? 6 : 0 }}>
                           {addressLine && <div>{addressLine}</div>}
                           {cityLine && <div>{cityLine}</div>}
                         </div>
                       )}
                       {reg.how_heard && (
-                        <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text3)' }}>
+                        <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)' }}>
                           How heard: <span style={{ color: 'var(--text2)' }}>{reg.how_heard}</span>
                         </div>
                       )}
@@ -391,7 +391,7 @@ function RegistrationReviewModal({ regs, onClose, onNavigate }: {
         <div onClick={() => setLightboxUrl(null)} style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '92vw', maxHeight: '90vh' }}>
             <img src={lightboxUrl} alt="ID document" style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: 8, display: 'block' }} />
-            <button onClick={() => setLightboxUrl(null)} style={{ position: 'absolute', top: -16, right: -16, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, fontFamily: 'DM Mono', flexShrink: 0 }}>×</button>
+            <button onClick={() => setLightboxUrl(null)} style={{ position: 'absolute', top: -16, right: -16, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, fontFamily: 'Inter', flexShrink: 0 }}>×</button>
           </div>
         </div>
       )}
@@ -526,7 +526,7 @@ function NewClientModal({ onClose, onCreated }: {
   const overlay: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }
   const modal: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, width: '100%', maxWidth: 500, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }
   const fL: React.CSSProperties = { fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 3, display: 'block' }
-  const inp: React.CSSProperties = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '6px 9px', outline: 'none', boxSizing: 'border-box' }
+  const inp: React.CSSProperties = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '6px 9px', outline: 'none', boxSizing: 'border-box' }
   const valid = (fname.trim() || lname.trim() || (isLabel && company.trim())) && (email.trim() || phone.trim())
 
   return (
@@ -635,10 +635,10 @@ function NewClientModal({ onClose, onCreated }: {
                   {matches.map(m => (
                     <div key={m.id} onClick={() => { setDupTarget(m); setShowDupModal(true) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 5, cursor: 'pointer' }}>
                       <div>
-                        <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)' }}>{m.name || [m.fname, m.lname].filter(Boolean).join(' ')}</div>
-                        <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)', marginTop: 1 }}>{[m.email, m.phone].filter(Boolean).join(' · ')}</div>
+                        <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text)' }}>{m.name || [m.fname, m.lname].filter(Boolean).join(' ')}</div>
+                        <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)', marginTop: 1 }}>{[m.email, m.phone].filter(Boolean).join(' · ')}</div>
                       </div>
-                      <span style={{ fontSize: 9, color: 'var(--warm)', fontFamily: 'DM Mono' }}>view →</span>
+                      <span style={{ fontSize: 9, color: 'var(--warm)', fontFamily: 'Inter' }}>view →</span>
                     </div>
                   ))}
                 </div>
@@ -646,7 +646,7 @@ function NewClientModal({ onClose, onCreated }: {
             )}
 
             {saveError && (
-              <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'DM Mono', padding: '6px 10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 4 }}>
+              <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'Inter', padding: '6px 10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 4 }}>
                 {saveError}
               </div>
             )}
@@ -655,12 +655,12 @@ function NewClientModal({ onClose, onCreated }: {
           {/* Footer */}
           <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             {matches.length > 0 && !forceCreate ? (
-              <button onClick={() => setForceCreate(true)} style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', textDecoration: 'underline' }}>
+              <button onClick={() => setForceCreate(true)} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', textDecoration: 'underline' }}>
                 Create anyway
               </button>
             ) : <div />}
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={onClose} style={{ padding: '7px 16px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 5, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>
+              <button onClick={onClose} style={{ padding: '7px 16px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 5, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>
                 Cancel
               </button>
               <button
@@ -686,16 +686,16 @@ function NewClientModal({ onClose, onCreated }: {
         <div style={{ position: 'fixed', inset: 0, zIndex: 4000, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, width: '100%', maxWidth: 380, padding: '20px' }}>
             <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 12, color: 'var(--warm)', marginBottom: 6 }}>Client Already Exists</div>
-            <div style={{ fontFamily: 'DM Mono', fontSize: 11, color: 'var(--text)', marginBottom: 4 }}>{dupTarget.name || [dupTarget.fname, dupTarget.lname].filter(Boolean).join(' ')}</div>
-            <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'var(--text3)', marginBottom: 16 }}>{[dupTarget.email, dupTarget.phone].filter(Boolean).join(' · ')}</div>
+            <div style={{ fontFamily: 'Inter', fontSize: 11, color: 'var(--text)', marginBottom: 4 }}>{dupTarget.name || [dupTarget.fname, dupTarget.lname].filter(Boolean).join(' ')}</div>
+            <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--text3)', marginBottom: 16 }}>{[dupTarget.email, dupTarget.phone].filter(Boolean).join(' · ')}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <button onClick={() => onCreated(dupTarget.id)} style={{ padding: '8px 0', background: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', cursor: 'pointer' }}>
                 Open Existing Profile
               </button>
-              <button onClick={() => { setShowDupModal(false); setForceCreate(true) }} style={{ padding: '8px 0', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 5, fontFamily: 'DM Mono', fontSize: 10, cursor: 'pointer' }}>
+              <button onClick={() => { setShowDupModal(false); setForceCreate(true) }} style={{ padding: '8px 0', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 5, fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
                 Create Duplicate Anyway
               </button>
-              <button onClick={() => setShowDupModal(false)} style={{ padding: '6px 0', background: 'none', border: 'none', color: 'var(--text3)', fontFamily: 'DM Mono', fontSize: 10, cursor: 'pointer' }}>
+              <button onClick={() => setShowDupModal(false)} style={{ padding: '6px 0', background: 'none', border: 'none', color: 'var(--text3)', fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
                 Go Back
               </button>
             </div>

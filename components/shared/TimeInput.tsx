@@ -128,7 +128,7 @@ export default function TimeInput({ value, onChange, onBlur, placeholder = '—'
         color: raw ? '#f0f0f0' : '#555',
         border: 'none',
         fontSize: 11,
-        fontFamily: 'DM Mono, monospace',
+        fontFamily: 'Inter',
         padding: '2px 0',
         width: '100%',
         outline: 'none',

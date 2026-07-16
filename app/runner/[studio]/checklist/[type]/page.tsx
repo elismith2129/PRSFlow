@@ -243,9 +243,9 @@ export default function ChecklistPage() {
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>{isOpening ? 'Opening' : 'Closing'} Checklist</span>
-            {isSubmitted && <span style={{ fontSize: 10, color: 'var(--booked)', fontFamily: 'DM Mono, monospace' }}>● submitted</span>}
+            {isSubmitted && <span style={{ fontSize: 10, color: 'var(--booked)', fontFamily: 'Inter' }}>● submitted</span>}
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>{meta.label} · {completedCount}/{allItems.length} checked</div>
+          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>{meta.label} · {completedCount}/{allItems.length} checked</div>
         </div>
         <div style={{ width: 60, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${allItems.length > 0 ? (completedCount / allItems.length) * 100 : 0}%`, background: 'var(--accent)', transition: 'width 0.2s' }} />
@@ -254,13 +254,13 @@ export default function ChecklistPage() {
 
       <div style={{ padding: '16px' }}>
 
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono, monospace', lineHeight: 1.5 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', lineHeight: 1.5 }}>
           Tap items as you complete them — saves instantly. Only check what&apos;s done.
         </div>
 
         {sections.map(sec => (
           <div key={sec.section} style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text2)', fontFamily: 'DM Mono, monospace', marginBottom: 8, paddingLeft: 4 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text2)', fontFamily: 'Inter', marginBottom: 8, paddingLeft: 4 }}>
               {sec.section}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -304,7 +304,7 @@ export default function ChecklistPage() {
               <span style={{ fontSize: 14, color: 'var(--warm)', flexShrink: 0 }}>⚠</span>
               <div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--warm)', fontFamily: 'Syne, sans-serif' }}>Flagged for management attention</div>
-                <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>Management will be notified when you submit</div>
+                <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter', marginTop: 2 }}>Management will be notified when you submit</div>
               </div>
             </div>
           )}
@@ -318,7 +318,7 @@ export default function ChecklistPage() {
               width: '100%', boxSizing: 'border-box',
               background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10,
               padding: '12px 14px', color: 'var(--text)', fontSize: 13,
-              fontFamily: 'DM Mono, monospace', outline: 'none', resize: 'vertical',
+              fontFamily: 'Inter', outline: 'none', resize: 'vertical',
               lineHeight: 1.5, marginBottom: 12,
             }}
           />
@@ -356,7 +356,7 @@ export default function ChecklistPage() {
       {/* Fixed footer — submitted state shows back button, not Submit */}
       {isSubmitted ? (
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: 'var(--bg)', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--booked)', fontFamily: 'DM Mono, monospace' }}>
+          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--booked)', fontFamily: 'Inter' }}>
             ✓ Shift complete · {completedCount}/{allItems.length} checked
           </div>
           <button
@@ -374,10 +374,10 @@ export default function ChecklistPage() {
               onChange={e => { setStaffName(e.target.value.toUpperCase()); if (e.target.value.trim()) setShowInitialsHint(false) }}
               placeholder="Initials"
               maxLength={4}
-              style={{ width: 70, padding: '10px 8px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono, monospace', textAlign: 'center', outline: 'none' }}
+              style={{ width: 70, padding: '10px 8px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontSize: 13, fontFamily: 'Inter', textAlign: 'center', outline: 'none' }}
             />
             {showInitialsHint && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, fontSize: 9, color: 'var(--hot)', fontFamily: 'DM Mono, monospace', marginTop: 3, whiteSpace: 'nowrap' }}>
+              <div style={{ position: 'absolute', top: '100%', left: 0, fontSize: 9, color: 'var(--hot)', fontFamily: 'Inter', marginTop: 3, whiteSpace: 'nowrap' }}>
                 Required to submit
               </div>
             )}

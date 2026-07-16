@@ -19,7 +19,7 @@ const ROLE_COLORS: Record<EngineerRole, string> = {
 
 const inp: React.CSSProperties = {
   background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)',
-  fontFamily: 'DM Mono', fontSize: 11, padding: '6px 10px', borderRadius: 4,
+  fontFamily: 'Inter', fontSize: 11, padding: '6px 10px', borderRadius: 4,
   width: '100%', outline: 'none',
 }
 
@@ -142,7 +142,7 @@ function EngModal({
           </div>
 
           {error && (
-            <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'DM Mono', padding: '4px 8px', background: 'rgba(239,68,68,0.1)', borderRadius: 4, border: '1px solid rgba(239,68,68,0.3)' }}>
+            <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'Inter', padding: '4px 8px', background: 'rgba(239,68,68,0.1)', borderRadius: 4, border: '1px solid rgba(239,68,68,0.3)' }}>
               {error}
             </div>
           )}
@@ -150,10 +150,10 @@ function EngModal({
 
         {/* Footer */}
         <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button onClick={onClose} style={{ padding: '6px 16px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer' }}>
+          <button onClick={onClose} style={{ padding: '6px 16px', borderRadius: 4, fontSize: 11, fontFamily: 'Inter', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer' }}>
             Cancel
           </button>
-          <button onClick={handleSave} disabled={saving} style={{ padding: '6px 20px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', background: 'var(--accent)', border: 'none', color: 'var(--bg)', fontWeight: 700, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+          <button onClick={handleSave} disabled={saving} style={{ padding: '6px 20px', borderRadius: 4, fontSize: 11, fontFamily: 'Inter', background: 'var(--accent)', border: 'none', color: 'var(--bg)', fontWeight: 700, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>
             {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
@@ -345,7 +345,7 @@ export default function AdminPage() {
               style={{
                 display: 'block', width: '100%', textAlign: 'left',
                 padding: '8px 20px', border: 'none', cursor: 'pointer',
-                fontFamily: 'DM Mono', fontSize: 12,
+                fontFamily: 'Inter', fontSize: 12,
                 background: active ? 'var(--surface2)' : 'transparent',
                 color: active ? 'var(--text)' : 'var(--text2)',
                 borderLeft: active ? '2px solid var(--accent)' : '2px solid transparent',
@@ -366,13 +366,13 @@ export default function AdminPage() {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button
               onClick={() => setShowInactive(v => !v)}
-              style={{ padding: '4px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', background: showInactive ? 'var(--surface2)' : 'transparent', border: `1px solid ${showInactive ? 'var(--border)' : 'transparent'}`, color: 'var(--text2)' }}
+              style={{ padding: '4px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', background: showInactive ? 'var(--surface2)' : 'transparent', border: `1px solid ${showInactive ? 'var(--border)' : 'transparent'}`, color: 'var(--text2)' }}
             >
               {showInactive ? 'Hide inactive' : 'Show inactive'}
             </button>
             <button
               onClick={openAdd}
-              style={{ padding: '6px 16px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer', background: 'var(--accent)', border: 'none', color: 'var(--bg)' }}
+              style={{ padding: '6px 16px', borderRadius: 4, fontSize: 11, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: 'var(--accent)', border: 'none', color: 'var(--bg)' }}
             >
               + Add
             </button>
@@ -393,9 +393,9 @@ export default function AdminPage() {
         </div>
 
         {loading ? (
-          <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono' }}>Loading…</div>
+          <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>Loading…</div>
         ) : filtered.length === 0 ? (
-          <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono', padding: '24px 0' }}>No engineers found.</div>
+          <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter', padding: '24px 0' }}>No engineers found.</div>
         ) : (
           <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
             {/* Table header */}
@@ -431,7 +431,7 @@ export default function AdminPage() {
 
                   {/* Name */}
                   <div>
-                    <div style={{ fontSize: 12, fontFamily: 'DM Mono', color: 'var(--text)', fontWeight: 500 }}>{eng.first_name} {eng.last_name}</div>
+                    <div style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--text)', fontWeight: 500 }}>{eng.first_name} {eng.last_name}</div>
                   </div>
 
                   {/* Role */}
@@ -442,38 +442,38 @@ export default function AdminPage() {
                   </div>
 
                   {/* Email */}
-                  <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {eng.email || <span style={{ color: 'var(--text3)' }}>—</span>}
                   </div>
 
                   {/* Phone */}
-                  <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)' }}>
+                  <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)' }}>
                     {eng.phone || <span style={{ color: 'var(--text3)' }}>—</span>}
                   </div>
 
                   {/* Status */}
                   <div>
-                    <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: eng.active ? 'var(--booked)' : 'var(--text3)', background: eng.active ? 'rgba(20,184,166,0.1)' : 'rgba(74,79,100,0.15)', padding: '2px 7px', borderRadius: 3, border: `1px solid ${eng.active ? 'rgba(20,184,166,0.25)' : 'var(--border)'}` }}>
+                    <span style={{ fontSize: 9, fontFamily: 'Inter', color: eng.active ? 'var(--booked)' : 'var(--text3)', background: eng.active ? 'rgba(20,184,166,0.1)' : 'rgba(74,79,100,0.15)', padding: '2px 7px', borderRadius: 3, border: `1px solid ${eng.active ? 'rgba(20,184,166,0.25)' : 'var(--border)'}` }}>
                       {eng.active ? 'Active' : 'Inactive'}
                     </span>
                   </div>
 
                   {/* Actions */}
                   <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
-                    <button onClick={() => openEdit(eng)} style={{ padding: '3px 10px', borderRadius: 3, fontSize: 10, fontFamily: 'DM Mono', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer' }}>
+                    <button onClick={() => openEdit(eng)} style={{ padding: '3px 10px', borderRadius: 3, fontSize: 10, fontFamily: 'Inter', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer' }}>
                       Edit
                     </button>
                     {confirmDeactivate === eng.id ? (
                       <div style={{ display: 'flex', gap: 4 }}>
-                        <button onClick={() => toggleActive(eng)} style={{ padding: '3px 8px', borderRadius: 3, fontSize: 10, fontFamily: 'DM Mono', background: eng.active ? 'var(--hot)' : 'var(--booked)', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>
+                        <button onClick={() => toggleActive(eng)} style={{ padding: '3px 8px', borderRadius: 3, fontSize: 10, fontFamily: 'Inter', background: eng.active ? 'var(--hot)' : 'var(--booked)', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>
                           {eng.active ? 'Yes' : 'Yes'}
                         </button>
-                        <button onClick={() => setConfirmDeactivate(null)} style={{ padding: '3px 8px', borderRadius: 3, fontSize: 10, fontFamily: 'DM Mono', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer' }}>
+                        <button onClick={() => setConfirmDeactivate(null)} style={{ padding: '3px 8px', borderRadius: 3, fontSize: 10, fontFamily: 'Inter', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer' }}>
                           No
                         </button>
                       </div>
                     ) : (
-                      <button onClick={() => setConfirmDeactivate(eng.id)} style={{ padding: '3px 10px', borderRadius: 3, fontSize: 10, fontFamily: 'DM Mono', background: 'transparent', border: `1px solid ${eng.active ? 'rgba(239,68,68,0.3)' : 'rgba(20,184,166,0.3)'}`, color: eng.active ? 'var(--hot)' : 'var(--booked)', cursor: 'pointer' }}>
+                      <button onClick={() => setConfirmDeactivate(eng.id)} style={{ padding: '3px 10px', borderRadius: 3, fontSize: 10, fontFamily: 'Inter', background: 'transparent', border: `1px solid ${eng.active ? 'rgba(239,68,68,0.3)' : 'rgba(20,184,166,0.3)'}`, color: eng.active ? 'var(--hot)' : 'var(--booked)', cursor: 'pointer' }}>
                         {eng.active ? 'Deactivate' : 'Reactivate'}
                       </button>
                     )}
@@ -486,7 +486,7 @@ export default function AdminPage() {
 
         {/* Summary */}
         {!loading && engineers.length > 0 && (
-          <div style={{ marginTop: 10, fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+          <div style={{ marginTop: 10, fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
             {engineers.filter(e => e.active).length} active · {engineers.filter(e => !e.active).length} inactive
           </div>
         )}
@@ -509,7 +509,7 @@ export default function AdminPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
               <button
                 onClick={() => { setSelectedEng(null); setEngSessions([]) }}
-                style={{ padding: '5px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)' }}
+                style={{ padding: '5px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)' }}
               >
                 ← Back
               </button>
@@ -519,7 +519,7 @@ export default function AdminPage() {
                 </div>
                 <div>
                   <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{fullName}</div>
-                  <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)', marginTop: 1 }}>
+                  <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)', marginTop: 1 }}>
                     {engSessions.length} session{engSessions.length !== 1 ? 's' : ''} total
                   </div>
                 </div>
@@ -527,9 +527,9 @@ export default function AdminPage() {
             </div>
 
             {engSessionsLoading ? (
-              <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono' }}>Loading…</div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>Loading…</div>
             ) : engSessions.length === 0 ? (
-              <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono', padding: '24px 0' }}>No sessions found for {fullName}.</div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter', padding: '24px 0' }}>No sessions found for {fullName}.</div>
             ) : (
               <>
                 <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', marginBottom: 14 }}>
@@ -552,20 +552,20 @@ export default function AdminPage() {
                           borderBottom: idx < pageSlice.length - 1 ? '1px solid var(--border)' : 'none',
                         }}
                       >
-                        <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text2)' }}>{fmtSessionDate(bk.start_date)}</div>
-                        <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--cold)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{timeStr}</div>
-                        <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text2)' }}>{fmtSessionDate(bk.start_date)}</div>
+                        <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--cold)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{timeStr}</div>
+                        <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {bk.location} {bk.studio ? `· ${bk.studio}` : ''}
                         </div>
                         <div style={{ overflow: 'hidden' }}>
-                          <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bk.client_name || <span style={{ color: 'var(--text3)' }}>—</span>}</div>
-                          {bk.artist && <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--cold)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bk.artist}</div>}
+                          <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bk.client_name || <span style={{ color: 'var(--text3)' }}>—</span>}</div>
+                          {bk.artist && <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--cold)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bk.artist}</div>}
                         </div>
                         <div>
                           <StatusBadge status={bk.status} />
                         </div>
                         <div>
-                          <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: isEng ? 'var(--warm)' : 'var(--hot)', background: isEng ? 'rgba(249,115,22,0.12)' : 'rgba(239,68,68,0.12)', padding: '2px 7px', borderRadius: 3, border: `1px solid ${isEng ? 'rgba(249,115,22,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
+                          <span style={{ fontSize: 9, fontFamily: 'Inter', color: isEng ? 'var(--warm)' : 'var(--hot)', background: isEng ? 'rgba(249,115,22,0.12)' : 'rgba(239,68,68,0.12)', padding: '2px 7px', borderRadius: 3, border: `1px solid ${isEng ? 'rgba(249,115,22,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
                             {isEng ? '1st' : '2nd'}
                           </span>
                         </div>
@@ -580,7 +580,7 @@ export default function AdminPage() {
                     <button
                       onClick={() => setEngSessionsPage(p => Math.max(0, p - 1))}
                       disabled={engSessionsPage === 0}
-                      style={{ padding: '4px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: engSessionsPage === 0 ? 'default' : 'pointer', background: 'var(--surface2)', border: '1px solid var(--border)', color: engSessionsPage === 0 ? 'var(--text3)' : 'var(--text2)' }}
+                      style={{ padding: '4px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: engSessionsPage === 0 ? 'default' : 'pointer', background: 'var(--surface2)', border: '1px solid var(--border)', color: engSessionsPage === 0 ? 'var(--text3)' : 'var(--text2)' }}
                     >
                       ← Prev
                     </button>
@@ -588,7 +588,7 @@ export default function AdminPage() {
                       <button
                         key={i}
                         onClick={() => setEngSessionsPage(i)}
-                        style={{ padding: '4px 10px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', background: engSessionsPage === i ? 'var(--accent)' : 'var(--surface2)', border: `1px solid ${engSessionsPage === i ? 'var(--accent)' : 'var(--border)'}`, color: engSessionsPage === i ? 'var(--bg)' : 'var(--text2)', fontWeight: engSessionsPage === i ? 700 : 400 }}
+                        style={{ padding: '4px 10px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', background: engSessionsPage === i ? 'var(--accent)' : 'var(--surface2)', border: `1px solid ${engSessionsPage === i ? 'var(--accent)' : 'var(--border)'}`, color: engSessionsPage === i ? 'var(--bg)' : 'var(--text2)', fontWeight: engSessionsPage === i ? 700 : 400 }}
                       >
                         {i + 1}
                       </button>
@@ -596,11 +596,11 @@ export default function AdminPage() {
                     <button
                       onClick={() => setEngSessionsPage(p => Math.min(totalPages - 1, p + 1))}
                       disabled={engSessionsPage === totalPages - 1}
-                      style={{ padding: '4px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: engSessionsPage === totalPages - 1 ? 'default' : 'pointer', background: 'var(--surface2)', border: '1px solid var(--border)', color: engSessionsPage === totalPages - 1 ? 'var(--text3)' : 'var(--text2)' }}
+                      style={{ padding: '4px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: engSessionsPage === totalPages - 1 ? 'default' : 'pointer', background: 'var(--surface2)', border: '1px solid var(--border)', color: engSessionsPage === totalPages - 1 ? 'var(--text3)' : 'var(--text2)' }}
                     >
                       Next →
                     </button>
-                    <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text3)', marginLeft: 4 }}>
+                    <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)', marginLeft: 4 }}>
                       {engSessionsPage * ENG_PAGE_SIZE + 1}–{Math.min((engSessionsPage + 1) * ENG_PAGE_SIZE, engSessions.length)} of {engSessions.length}
                     </span>
                   </div>
@@ -633,18 +633,18 @@ export default function AdminPage() {
               {srsMonthFilter !== 'all' && srsUnpaidCount > 0 && (
                 confirmMarkAll ? (
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)' }}>
+                    <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)' }}>
                       Mark {srsUnpaidCount} as paid?
                     </span>
                     <button
                       onClick={() => markAllPaid(srsMonthFilter)}
-                      style={{ padding: '5px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer', background: 'var(--accent)', border: 'none', color: 'var(--bg)' }}
+                      style={{ padding: '5px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: 'var(--accent)', border: 'none', color: 'var(--bg)' }}
                     >
                       Confirm
                     </button>
                     <button
                       onClick={() => setConfirmMarkAll(false)}
-                      style={{ padding: '5px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)' }}
+                      style={{ padding: '5px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)' }}
                     >
                       Cancel
                     </button>
@@ -652,7 +652,7 @@ export default function AdminPage() {
                 ) : (
                   <button
                     onClick={() => setConfirmMarkAll(true)}
-                    style={{ padding: '6px 14px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', cursor: 'pointer', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)' }}
+                    style={{ padding: '6px 14px', borderRadius: 4, fontSize: 11, fontFamily: 'Inter', cursor: 'pointer', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)' }}
                   >
                     Mark all paid
                   </button>
@@ -670,7 +670,7 @@ export default function AdminPage() {
               ].map(card => (
                 <div key={card.label} style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '14px 18px' }}>
                   <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>{card.label}</div>
-                  <div style={{ fontSize: 18, fontFamily: 'DM Mono', color: 'var(--text)', fontWeight: 700 }}>{card.value}</div>
+                  <div style={{ fontSize: 18, fontFamily: 'Inter', color: 'var(--text)', fontWeight: 700 }}>{card.value}</div>
                 </div>
               ))}
             </div>
@@ -678,9 +678,9 @@ export default function AdminPage() {
 
           {/* Table */}
           {srsLoading ? (
-            <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono' }}>Loading…</div>
+            <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>Loading…</div>
           ) : filteredSrs.length === 0 ? (
-            <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono', padding: '24px 0' }}>No SRS bookings found.</div>
+            <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter', padding: '24px 0' }}>No SRS bookings found.</div>
           ) : (
             <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
               {/* Table header */}
@@ -701,17 +701,17 @@ export default function AdminPage() {
                     }}
                   >
                     {/* Date */}
-                    <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text2)' }}>
+                    <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text2)' }}>
                       {bk ? fmtDate(bk.start_date) : '—'}
                     </div>
                     {/* Client */}
-                    <div style={{ fontSize: 12, fontFamily: 'DM Mono', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {bk?.client_name || <span style={{ color: 'var(--text3)' }}>—</span>}
                     </div>
                     {/* Room fees — TODO: populate from studio_time table once WO digitization is complete */}
-                    <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text3)' }}>—</div>
+                    <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)' }}>—</div>
                     {/* SRS fee */}
-                    <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: bk?.srs_fee_amount != null ? 'var(--text)' : 'var(--text3)' }}>
+                    <div style={{ fontSize: 11, fontFamily: 'Inter', color: bk?.srs_fee_amount != null ? 'var(--text)' : 'var(--text3)' }}>
                       {bk?.srs_fee_amount != null ? `$${Number(bk.srs_fee_amount).toFixed(2)}` : '—'}
                     </div>
                     {/* Status toggle */}
@@ -720,7 +720,7 @@ export default function AdminPage() {
                         onClick={() => toggleSrsPaid(entry)}
                         style={{
                           padding: '3px 10px', borderRadius: 12, border: 'none', cursor: 'pointer',
-                          fontFamily: 'DM Mono', fontSize: 10, fontWeight: 700,
+                          fontFamily: 'Inter', fontSize: 10, fontWeight: 700,
                           background: entry.paid ? 'rgba(20,184,166,0.12)' : 'rgba(239,68,68,0.12)',
                           color: entry.paid ? 'var(--booked)' : 'var(--hot)',
                         }}

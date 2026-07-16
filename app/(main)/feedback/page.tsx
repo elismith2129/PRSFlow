@@ -87,7 +87,7 @@ export default function FeedbackPage() {
   }
 
   const labelStyle: React.CSSProperties = {
-    fontSize: 11, fontFamily: 'DM Mono', fontWeight: 500, letterSpacing: '0.08em',
+    fontSize: 11, fontFamily: 'Inter', fontWeight: 500, letterSpacing: '0.08em',
     textTransform: 'uppercase', color: 'var(--text2)', marginBottom: 8,
   }
 
@@ -96,7 +96,7 @@ export default function FeedbackPage() {
       {/* TEMPORARY: remove when rollout period ends — banner */}
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 20, padding: '8px 12px', border: '1px dashed rgba(var(--accent-rgb),0.4)', borderRadius: 8, background: 'rgba(var(--accent-rgb),0.06)' }}>
         <span style={{ fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent)' }}>Temporary</span>
-        <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text2)' }}>
+        <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text2)' }}>
           Rollout feedback board — report bugs, suggestions, and questions about the app.
         </span>
       </div>
@@ -139,14 +139,14 @@ export default function FeedbackPage() {
           placeholder="Describe the bug, suggestion, or question…"
           rows={4}
           style={{
-            width: '100%', padding: 10, fontSize: 12, fontFamily: 'DM Mono',
+            width: '100%', padding: 10, fontSize: 12, fontFamily: 'Inter',
             background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8,
             color: 'var(--text)', outline: 'none', resize: 'vertical', boxSizing: 'border-box',
           }}
         />
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, gap: 12 }}>
-          <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text3)' }}>
+          <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)' }}>
             Posting as {authorName}
           </span>
           <button
@@ -168,9 +168,9 @@ export default function FeedbackPage() {
       {/* ── Feed ─────────────────────────────── */}
       <div style={labelStyle}>Feed</div>
       {loading ? (
-        <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11, fontFamily: 'DM Mono' }}>Loading…</div>
+        <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11, fontFamily: 'Inter' }}>Loading…</div>
       ) : items.length === 0 ? (
-        <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11, fontFamily: 'DM Mono' }}>No feedback yet.</div>
+        <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11, fontFamily: 'Inter' }}>No feedback yet.</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {items.map(item => {
@@ -194,7 +194,7 @@ export default function FeedbackPage() {
                   <span style={{ fontSize: 12, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text)' }}>
                     {item.author_name || 'Staff'}
                   </span>
-                  <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text3)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
                     {fmtWhen(item.created_at)}
                   </span>
                   {/* TEMPORARY: remove when rollout period ends — owner/manager-only resolve toggle */}
@@ -214,7 +214,7 @@ export default function FeedbackPage() {
                     </button>
                   )}
                 </div>
-                <div style={{ fontSize: 13, fontFamily: 'DM Mono', color: 'var(--text)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                <div style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--text)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                   {item.note}
                 </div>
               </div>

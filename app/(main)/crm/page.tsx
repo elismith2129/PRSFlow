@@ -74,7 +74,7 @@ type TouchMethod = typeof TOUCH_METHODS[number]
 
 const aBtnStyle = (color: string): React.CSSProperties => ({
   padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)',
-  background: 'var(--surface)', color, fontFamily: 'DM Mono', fontSize: 9,
+  background: 'var(--surface)', color, fontFamily: 'Inter', fontSize: 9,
   textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap' as const,
 })
 
@@ -497,7 +497,7 @@ export default function CRMPage() {
                 return (
                   <button key={v} onClick={() => setView(v)} style={{
                     position: 'relative', padding: '7px 18px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                    fontFamily: 'DM Mono', fontSize: 11, fontWeight: 500,
+                    fontFamily: 'Inter', fontSize: 11, fontWeight: 500,
                     background: active ? 'var(--surface2)' : 'transparent',
                     color: active ? 'var(--accent)' : 'var(--text2)',
                     transition: 'all 0.15s',
@@ -508,7 +508,7 @@ export default function CRMPage() {
                         position: 'absolute', top: 2, right: 2,
                         background: 'var(--hot)', color: '#fff',
                         borderRadius: '50%', minWidth: 16, height: 16,
-                        fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
+                        fontSize: 9, fontFamily: 'Inter', fontWeight: 700,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         padding: '0 3px', lineHeight: 1,
                       }}>
@@ -661,7 +661,7 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel }: {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <div
           title="Logged in as"
-          style={{ width: 70, background: 'var(--surface2)', border: '1px solid var(--border)', color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
+          style={{ width: 70, background: 'var(--surface2)', border: '1px solid var(--border)', color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
         >
           {myInitials || '—'}
         </div>
@@ -688,13 +688,13 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel }: {
         onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
         placeholder="Optional: add context about this touch"
         rows={2}
-        style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
+        style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
       />
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? 'var(--accent)' : 'var(--surface)', color: canSubmit ? 'var(--bg)' : 'var(--text3)', border: `1px solid ${canSubmit ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
           {submitting ? '…' : 'Log Touch'}
         </button>
-        <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}>
+        <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}>
           Cancel
         </button>
       </div>
@@ -731,7 +731,7 @@ function KeepHotPrompt({ leadId, onSubmit, onCancel, label = 'Keep Hot', status 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div
           title="Logged in as"
-          style={{ width: 70, background: 'var(--surface2)', border: `1px solid ${color}`, color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
+          style={{ width: 70, background: 'var(--surface2)', border: `1px solid ${color}`, color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
         >
           {myInitials || '—'}
         </div>
@@ -742,13 +742,13 @@ function KeepHotPrompt({ leadId, onSubmit, onCancel, label = 'Keep Hot', status 
         onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
         placeholder="Optional: add context (e.g. waiting on budget approval)"
         rows={2}
-        style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
+        style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
       />
       <div style={{ display: 'flex', gap: 6 }}>
         <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? color : 'var(--surface)', color: canSubmit ? '#fff' : 'var(--text3)', border: `1px solid ${canSubmit ? color : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
           {submitting ? '…' : label}
         </button>
-        <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}>
+        <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}>
           Cancel
         </button>
       </div>
@@ -777,17 +777,17 @@ function DeadLeadPrompt({ leadId, onSubmit, onCancel }: {
 
   return (
     <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: 'rgba(58,63,82,0.5)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginRight: 4 }}>Mark dead?</span>
+      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginRight: 4 }}>Mark dead?</span>
       <div
         title="Logged in as"
-        style={{ width: 70, background: 'var(--surface2)', border: '1px solid var(--dead)', color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
+        style={{ width: 70, background: 'var(--surface2)', border: '1px solid var(--dead)', color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
       >
         {myInitials || '—'}
       </div>
       <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? 'var(--dead)' : 'var(--surface)', color: canSubmit ? 'var(--text2)' : 'var(--text3)', border: `1px solid ${canSubmit ? 'var(--border)' : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
         {submitting ? '…' : 'Confirm'}
       </button>
-      <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}>
+      <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}>
         Cancel
       </button>
     </div>
@@ -1095,7 +1095,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder={`Search ${activeLeads.length} leads…`}
-            style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 10px', borderRadius: 5, fontFamily: 'DM Mono', fontSize: 11, outline: 'none' }}
+            style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 10px', borderRadius: 5, fontFamily: 'Inter', fontSize: 11, outline: 'none' }}
           />
         </div>
       </div>
@@ -1182,14 +1182,14 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
       {filtered.length > PAGE_SIZE && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
           <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1}
-            style={{ background: 'none', border: 'none', cursor: safePage <= 1 ? 'default' : 'pointer', fontFamily: 'DM Mono', fontSize: 10, color: safePage <= 1 ? 'var(--text3)' : 'var(--text2)', padding: '2px 4px' }}>
+            style={{ background: 'none', border: 'none', cursor: safePage <= 1 ? 'default' : 'pointer', fontFamily: 'Inter', fontSize: 10, color: safePage <= 1 ? 'var(--text3)' : 'var(--text2)', padding: '2px 4px' }}>
             ← Prev
           </button>
-          <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+          <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
             {startIdx + 1}–{Math.min(startIdx + PAGE_SIZE, filtered.length)} of {filtered.length}
           </span>
           <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}
-            style={{ background: 'none', border: 'none', cursor: safePage >= totalPages ? 'default' : 'pointer', fontFamily: 'DM Mono', fontSize: 10, color: safePage >= totalPages ? 'var(--text3)' : 'var(--text2)', padding: '2px 4px' }}>
+            style={{ background: 'none', border: 'none', cursor: safePage >= totalPages ? 'default' : 'pointer', fontFamily: 'Inter', fontSize: 10, color: safePage >= totalPages ? 'var(--text3)' : 'var(--text2)', padding: '2px 4px' }}>
             Next →
           </button>
         </div>
@@ -1414,7 +1414,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
 
   const selStyle: React.CSSProperties = {
     background: 'var(--surface2)', border: '1px solid var(--border)',
-    color: 'var(--text)', padding: '4px 6px', fontFamily: 'DM Mono',
+    color: 'var(--text)', padding: '4px 6px', fontFamily: 'Inter',
     fontSize: 12, outline: 'none', borderRadius: 4, cursor: 'pointer', flex: 1, minWidth: 0,
   }
 
@@ -1496,7 +1496,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
     return {
       background: focusedInput === key ? 'var(--surface2)' : 'transparent',
       border: 'none', color: 'var(--text)', padding: '4px 6px',
-      fontFamily: 'DM Mono', fontSize: 12, outline: 'none',
+      fontFamily: 'Inter', fontSize: 12, outline: 'none',
       width: '100%', borderRadius: 4, transition: 'background 0.1s',
     }
   }
@@ -1520,7 +1520,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
   }
   const ddItemStyle: React.CSSProperties = {
     padding: '7px 8px', cursor: 'pointer', fontSize: 11,
-    borderBottom: '1px solid var(--border)', fontFamily: 'DM Mono',
+    borderBottom: '1px solid var(--border)', fontFamily: 'Inter',
   }
 
   return (
@@ -1583,7 +1583,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
         </>)}
       </div>
 
-      {savedField && <span style={{ fontSize: 9, color: 'var(--booked)', fontFamily: 'DM Mono', display: 'block', marginBottom: 4 }}>saved</span>}
+      {savedField && <span style={{ fontSize: 9, color: 'var(--booked)', fontFamily: 'Inter', display: 'block', marginBottom: 4 }}>saved</span>}
 
       {/* ─── Missing warning ─────────────────────────────── */}
       {missing.length > 0 && (
@@ -1671,15 +1671,15 @@ const parsedLoc0 = parseLocation(lead.location || '')
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginTop: 4 }}>
             {lead.billing !== 'Billing' && (regTokenDates?.used_at ? (
-              <button onClick={() => setRegViewOpen(true)} style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.12)', color: 'var(--booked)', border: '1px solid rgba(20,184,166,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 10, cursor: 'pointer' }}>
+              <button onClick={() => setRegViewOpen(true)} style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.12)', color: 'var(--booked)', border: '1px solid rgba(20,184,166,0.35)', borderRadius: 4, fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
                 ✓ Registered
               </button>
             ) : existingTokenStr ? (
-              <button onClick={async () => { const done = await refreshRegStatus(); if (!done) setRegPanelOpen(v => !v) }} style={{ padding: '5px 12px', background: regPanelOpen ? 'rgba(249,115,22,0.18)' : 'rgba(249,115,22,0.08)', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 10, cursor: 'pointer' }}>
+              <button onClick={async () => { const done = await refreshRegStatus(); if (!done) setRegPanelOpen(v => !v) }} style={{ padding: '5px 12px', background: regPanelOpen ? 'rgba(249,115,22,0.18)' : 'rgba(249,115,22,0.08)', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.35)', borderRadius: 4, fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
                 Reg Sent
               </button>
             ) : (
-              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '5px 12px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 10, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
+              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '5px 12px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Inter', fontSize: 10, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
                 {regLinkGenerating ? '…' : 'Send Reg'}
               </button>
             ))}
@@ -1690,10 +1690,10 @@ const parsedLoc0 = parseLocation(lead.location || '')
         {regPanelOpen && regLinkUrl && !regTokenDates?.used_at && (
           <div style={{ marginBottom: 8, background: 'var(--surface2)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 5, padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+              <span style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                 {regLinkUrl}
               </span>
-              <button onClick={() => setRegPanelOpen(false)} style={{ padding: '2px 6px', background: 'transparent', color: 'var(--text3)', border: 'none', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer', flexShrink: 0, lineHeight: 1 }}>
+              <button onClick={() => setRegPanelOpen(false)} style={{ padding: '2px 6px', background: 'transparent', color: 'var(--text3)', border: 'none', borderRadius: 3, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer', flexShrink: 0, lineHeight: 1 }}>
                 ✕
               </button>
             </div>
@@ -1701,10 +1701,10 @@ const parsedLoc0 = parseLocation(lead.location || '')
               <button onClick={copyRegLink} style={{ padding: '3px 10px', background: 'var(--text)', color: 'var(--bg)', border: 'none', borderRadius: 3, fontFamily: 'Syne', fontWeight: 700, fontSize: 8, letterSpacing: '0.08em', cursor: 'pointer' }}>
                 {regLinkCopied ? 'Copied!' : 'Copy Link'}
               </button>
-              <button onClick={emailRegLink} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
+              <button onClick={emailRegLink} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 3, fontFamily: 'Inter', fontSize: 8, cursor: 'pointer' }}>
                 Email
               </button>
-              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.4)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
+              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.4)', borderRadius: 3, fontFamily: 'Inter', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
                 {regLinkGenerating ? '…' : 'Resend'}
               </button>
             </div>
@@ -1715,7 +1715,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
         {lead.billing !== 'COD' && (
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 6, minWidth: 0, flexWrap: 'wrap' }}>
             <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
-              <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Mono', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
+              <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
                 {fnameVal || 'First'}
               </span>
               <input
@@ -1725,11 +1725,11 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
                 onBlur={() => { setFocusedInput(null); save('fname', fnameVal.trim()) }}
                 placeholder="First"
-                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text2)', fontFamily: 'DM Mono', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
+                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text2)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
               />
             </div>
             <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
-              <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Mono', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
+              <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
                 {lnameVal || 'Last'}
               </span>
               <input
@@ -1739,10 +1739,10 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
                 onBlur={() => { setFocusedInput(null); save('lname', lnameVal.trim()) }}
                 placeholder="Last"
-                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'lname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text2)', fontFamily: 'DM Mono', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
+                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'lname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text2)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
               />
             </div>
-            <span style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, fontFamily: 'DM Mono', flexShrink: 0 }}>A&amp;R</span>
+            <span style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, fontFamily: 'Inter', flexShrink: 0 }}>A&amp;R</span>
           </div>
         )}
 
@@ -1889,7 +1889,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
         onChange={e => setNotesVal(e.target.value)}
         onBlur={() => { if (notesDirty) save('notes', notesVal) }}
         placeholder="Add notes…"
-        style={{ width: '100%', minHeight: 70, marginTop: 16, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '6px 10px', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, resize: 'vertical', outline: 'none', lineHeight: 1.6 }}
+        style={{ width: '100%', minHeight: 70, marginTop: 16, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '6px 10px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, resize: 'vertical', outline: 'none', lineHeight: 1.6 }}
       />
       {notesDirty && (
         <button
@@ -1906,7 +1906,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: entry.color, flexShrink: 0, marginTop: 3 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>{fmtActivityTime(entry.ts)} · </span>
-              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>{entry.label}</span>
+              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>{entry.label}</span>
             </div>
           </div>
         ))}
@@ -1915,7 +1915,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--text2)', flexShrink: 0, marginTop: 3 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>{fmtActivityTime(lead.created_at)} · </span>
-            <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>{creationLabel}</span>
+            <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>{creationLabel}</span>
           </div>
         </div>
       </div>
@@ -1923,7 +1923,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
       <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          style={{ background: 'rgba(239,68,68,0.12)', color: 'var(--hot)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 4, padding: '4px 10px', fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}
+          style={{ background: 'rgba(239,68,68,0.12)', color: 'var(--hot)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 4, padding: '4px 10px', fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}
         >
           Delete Lead
         </button>
@@ -1935,11 +1935,11 @@ const parsedLoc0 = parseLocation(lead.location || '')
             <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 14, marginBottom: 8 }}>
               Delete {[lead.fname, lead.lname].filter(Boolean).join(' ') || 'this lead'}?
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono', lineHeight: 1.7, marginBottom: 20 }}>
+            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', lineHeight: 1.7, marginBottom: 20 }}>
               This will permanently delete this lead and all contact log entries. This action cannot be undone.
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowDeleteConfirm(false)} style={{ background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 14px', fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={() => setShowDeleteConfirm(false)} style={{ background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 14px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}>Cancel</button>
               <button
                 onClick={async () => {
                   setDeleting(true)
@@ -1951,7 +1951,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                   onDelete?.()
                 }}
                 disabled={deleting}
-                style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--hot)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 4, padding: '6px 16px', fontSize: 10, fontFamily: 'DM Mono', cursor: deleting ? 'default' : 'pointer', opacity: deleting ? 0.7 : 1 }}
+                style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--hot)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 4, padding: '6px 16px', fontSize: 10, fontFamily: 'Inter', cursor: deleting ? 'default' : 'pointer', opacity: deleting ? 0.7 : 1 }}
               >
                 {deleting ? 'Deleting…' : 'Delete Permanently'}
               </button>
@@ -1961,7 +1961,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
       )}
 
       {showBookingToast && (
-        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 3000, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 4px 24px rgba(0,0,0,0.5)', maxWidth: 320, fontFamily: 'DM Mono', fontSize: 11 }}>
+        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 3000, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 4px 24px rgba(0,0,0,0.5)', maxWidth: 320, fontFamily: 'Inter', fontSize: 11 }}>
           <span style={{ color: 'var(--accent)', fontSize: 14 }}>🗓</span>
           <span style={{ color: 'var(--text)', flex: 1 }}>Navigate to Calendar to book this client.</span>
           <button onClick={() => setShowBookingToast(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
@@ -1988,7 +1988,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
         >
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '22px 24px', maxWidth: 420, width: '100%' }}>
             <div style={{ fontFamily: 'DM Serif Display', fontSize: 18, color: 'var(--text)', marginBottom: 8 }}>Client Account Created</div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono', lineHeight: 1.7, marginBottom: 20 }}>New client account created successfully. Proceed to standard booking protocols.</div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', lineHeight: 1.7, marginBottom: 20 }}>New client account created successfully. Proceed to standard booking protocols.</div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setShowSuccessModal(false)}
@@ -2008,7 +2008,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
         >
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '22px 24px', maxWidth: 420, width: '100%' }}>
             <div style={{ fontFamily: 'DM Serif Display', fontSize: 18, color: 'var(--text)', marginBottom: 8 }}>Mark as Booked</div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono', lineHeight: 1.7, marginBottom: 20 }}>This client has been marked as booked. Proceed to standard booking protocols.</div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', lineHeight: 1.7, marginBottom: 20 }}>This client has been marked as booked. Proceed to standard booking protocols.</div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 onClick={async () => {
@@ -2086,7 +2086,7 @@ function ConfirmClientModal({ lead, onClose, onCreated }: {
 
   const overlay: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }
   const fL: React.CSSProperties = { fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 3, display: 'block' as const }
-  const inp: React.CSSProperties = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '6px 9px', outline: 'none', boxSizing: 'border-box' as const }
+  const inp: React.CSSProperties = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '6px 9px', outline: 'none', boxSizing: 'border-box' as const }
 
   return (
     <div style={overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -2094,7 +2094,7 @@ function ConfirmClientModal({ lead, onClose, onCreated }: {
         <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
             <div style={{ fontFamily: 'DM Serif Display', fontSize: 18, color: 'var(--text)' }}>Confirm Client Account</div>
-            <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text3)', marginTop: 2 }}>Review and complete before starting booking</div>
+            <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)', marginTop: 2 }}>Review and complete before starting booking</div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
         </div>
@@ -2165,19 +2165,19 @@ function ConfirmClientModal({ lead, onClose, onCreated }: {
           </div>
 
           {!hasContact && (
-            <div style={{ fontSize: 10, color: 'var(--warm)', fontFamily: 'DM Mono', padding: '6px 10px', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 4 }}>
+            <div style={{ fontSize: 10, color: 'var(--warm)', fontFamily: 'Inter', padding: '6px 10px', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 4 }}>
               Requires at minimum a name and email or phone number.
             </div>
           )}
           {error && (
-            <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'DM Mono', padding: '6px 10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 4 }}>
+            <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'Inter', padding: '6px 10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 4 }}>
               {error}
             </div>
           )}
         </div>
 
         <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8, flexShrink: 0 }}>
-          <button onClick={onClose} style={{ padding: '7px 16px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 5, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>
+          <button onClick={onClose} style={{ padding: '7px 16px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 5, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>
             Cancel
           </button>
           <button
@@ -2578,14 +2578,14 @@ function NewLeadModal({ leads, onClose, onSave }: {
     }
   }
 
-  const inputStyle: React.CSSProperties = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '7px 10px', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 12, outline: 'none' }
+  const inputStyle: React.CSSProperties = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '7px 10px', borderRadius: 6, fontFamily: 'Inter', fontSize: 12, outline: 'none' }
   const labelS: React.CSSProperties = { fontSize: 9, color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4, display: 'block' }
 
   const modeToggle = (
     <div style={{ display: 'flex', justifyContent: 'center' }}>
       <div style={{ display: 'flex', gap: 2, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
         {(['cod', 'label'] as const).map(m => (
-          <button key={m} type="button" onClick={() => setMode(m)} style={{ padding: '7px 28px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 500, background: mode === m ? 'var(--surface2)' : 'transparent', color: mode === m ? 'var(--text)' : 'var(--text2)', transition: 'all 0.15s', letterSpacing: '0.04em' }}>
+          <button key={m} type="button" onClick={() => setMode(m)} style={{ padding: '7px 28px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, fontWeight: 500, background: mode === m ? 'var(--surface2)' : 'transparent', color: mode === m ? 'var(--text)' : 'var(--text2)', transition: 'all 0.15s', letterSpacing: '0.04em' }}>
             {m === 'cod' ? 'COD' : 'Label/Billing'}
           </button>
         ))}
@@ -2700,7 +2700,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                               {isClient ? '★ Client' : 'Prev. Inquiry'}
                             </span>
                           </div>
-                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
                             {r.email && <span>{r.email}</span>}
                             {r.phone && <span>{r.phone}</span>}
                             {!isClient && (r as Lead).booking && <span>{(r as Lead).booking}</span>}
@@ -2717,7 +2717,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                 {matchedClientId && (
                   <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.2)', borderRadius: 6 }}>
                     <span style={{ color: 'var(--booked)', fontSize: 12 }}>★</span>
-                    <span style={{ fontSize: 11, color: 'var(--booked)', fontFamily: 'DM Mono', flex: 1 }}>Matched to existing client profile</span>
+                    <span style={{ fontSize: 11, color: 'var(--booked)', fontFamily: 'Inter', flex: 1 }}>Matched to existing client profile</span>
                     <button onMouseDown={() => setMatchedClientId(null)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
                   </div>
                 )}
@@ -2785,7 +2785,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   style={inputStyle}
                 />
                 {labelClientId && (
-                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--booked)', fontFamily: 'DM Mono' }}>
+                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--booked)', fontFamily: 'Inter' }}>
                     <span>★ Linked to label client</span>
                     <button onMouseDown={() => { setLabelClientId(null); setAnrContactId(null); setSelectedAnr(null); setAnrQuery(''); setAnrHighlight(-1) }} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 0 }}>×</button>
                   </div>
@@ -2808,7 +2808,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                     {anrFiltered.map((c, i) => (
                       <div key={c.id} onMouseDown={() => selectAnr(c)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i === anrHighlight ? 'var(--surface)' : 'transparent' }}>
                         <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 2 }}>{c.fname} {c.lname}</div>
-                        <div style={{ display: 'flex', gap: 10, fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+                        <div style={{ display: 'flex', gap: 10, fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
                           {c.email && <span>{c.email}</span>}
                           {c.phone && <span>{c.phone}</span>}
                         </div>
@@ -2837,7 +2837,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                 {showArtistDD && (artistSuggestions.length > 0 || (artistQuery.trim().length >= 2 && !labelArtists.some(a => a.toLowerCase() === artistQuery.trim().toLowerCase()))) && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
                     {artistSuggestions.map((a, i) => (
-                      <div key={a} onMouseDown={() => { setArtistQuery(a); set('artist_name', a); setShowArtistDD(false); setArtistHighlight(-1) }} style={{ padding: '9px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 12, fontFamily: 'DM Mono', background: i === artistHighlight ? 'var(--surface)' : 'transparent' }}>{a}</div>
+                      <div key={a} onMouseDown={() => { setArtistQuery(a); set('artist_name', a); setShowArtistDD(false); setArtistHighlight(-1) }} style={{ padding: '9px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 12, fontFamily: 'Inter', background: i === artistHighlight ? 'var(--surface)' : 'transparent' }}>{a}</div>
                     ))}
                     {artistQuery.trim().length >= 2 && !labelArtists.some(a => a.toLowerCase() === artistQuery.trim().toLowerCase()) && (
                       <div onMouseDown={() => addArtistImmediately(artistQuery.trim())} style={{ padding: '9px 14px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: artistSuggestions.length > 0 ? '1px solid var(--border)' : undefined, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -2875,13 +2875,13 @@ function NewLeadModal({ leads, onClose, onSave }: {
 
         <div style={{ padding: '12px 20px 20px', position: 'sticky', bottom: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
           {bookingError && (
-            <div style={{ marginBottom: 8, fontSize: 11, color: 'var(--hot)', fontFamily: 'DM Mono' }}>{bookingError}</div>
+            <div style={{ marginBottom: 8, fontSize: 11, color: 'var(--hot)', fontFamily: 'Inter' }}>{bookingError}</div>
           )}
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '9px 0', background: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: saving ? 0.6 : 1 }}>
               {saving ? 'Saving…' : temperature === 'booking' ? 'Save & Go to Booking →' : 'Create Lead'}
             </button>
-            <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
+            <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
           </div>
         </div>
       </div>
@@ -2910,19 +2910,19 @@ function EmailModal({ lead, onClose }: { lead: Lead, onClose: () => void }) {
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15 }}>Email {lead.fname} {lead.lname}</div>
-            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2, fontFamily: 'DM Mono' }}>{lead.email || 'No email on file'}</div>
+            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2, fontFamily: 'Inter' }}>{lead.email || 'No email on file'}</div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
         </div>
         <div style={{ padding: '16px 20px' }}>
           <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Subject: {subject}</div>
-          <textarea value={body} onChange={e => setBody(e.target.value)} style={{ width: '100%', height: 220, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '10px 12px', borderRadius: 7, fontFamily: 'DM Mono', fontSize: 11, resize: 'none', outline: 'none', lineHeight: 1.6 }} />
+          <textarea value={body} onChange={e => setBody(e.target.value)} style={{ width: '100%', height: 220, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '10px 12px', borderRadius: 7, fontFamily: 'Inter', fontSize: 11, resize: 'none', outline: 'none', lineHeight: 1.6 }} />
         </div>
         <div style={{ padding: '0 20px 20px', display: 'flex', gap: 8 }}>
           <button onClick={handleCopyAndOpen} disabled={!lead.email} style={{ flex: 1, padding: '9px 0', background: lead.email ? 'var(--accent)' : 'var(--surface2)', color: lead.email ? 'var(--bg)' : 'var(--text3)', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: lead.email ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
             {copied ? '✓ Copied!' : '✉ Copy & Open Mail'}
           </button>
-          <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
         </div>
       </div>
     </div>
@@ -2981,7 +2981,7 @@ function ChartCard({ title, subtitle, segments }: {
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 20 }}>
       <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{title}</div>
-      <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 16, fontFamily: 'DM Mono' }}>{subtitle}</div>
+      <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 16, fontFamily: 'Inter' }}>{subtitle}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <DonutChart segments={segments} size={90} />
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -2989,13 +2989,13 @@ function ChartCard({ title, subtitle, segments }: {
             <div key={seg.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 7, height: 7, borderRadius: '50%', background: seg.color, flexShrink: 0 }} />
               <span style={{ fontSize: 10, color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{seg.label}</span>
-              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', flexShrink: 0 }}>
+              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', flexShrink: 0 }}>
                 {seg.value} <span style={{ opacity: 0.6 }}>({total ? Math.round(seg.value / total * 100) : 0}%)</span>
               </span>
             </div>
           ))}
           {segments.length > 6 && (
-            <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono' }}>+{segments.length - 6} more</div>
+            <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter' }}>+{segments.length - 6} more</div>
           )}
         </div>
       </div>
@@ -3027,7 +3027,7 @@ function AnalyticsView({ leads }: { leads: Lead[] }) {
         <h1 style={{ fontFamily: 'DM Serif Display', fontSize: 32, letterSpacing: -1 }}>
           Analytics <em style={{ fontStyle: 'italic', color: 'var(--accent)' }}>&amp; Insights</em>
         </h1>
-        <select style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', padding: '6px 12px', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
+        <select style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', padding: '6px 12px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
           <option>All Time</option>
         </select>
       </div>

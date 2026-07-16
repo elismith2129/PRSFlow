@@ -205,7 +205,7 @@ export default function MicsPage() {
       >
         <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne, sans-serif' }}>{label}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>{count}</span>
+          <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>{count}</span>
           <span style={{ fontSize: 11, color: 'var(--text2)', display: 'inline-block', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
         </div>
       </button>
@@ -222,12 +222,12 @@ export default function MicsPage() {
     return (
       <div style={{ borderBottom: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', gap: 8 }}>
-          <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'DM Mono, monospace', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Inter', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {mic.name}
           </span>
           <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
             <button onClick={() => setStatus(mic.id, 'here')}
-              style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isHere ? 'var(--booked)' : 'var(--border)'}`, background: isHere ? 'rgba(20,184,166,0.13)' : 'transparent', color: isHere ? 'var(--booked)' : 'var(--text2)', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
+              style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isHere ? 'var(--booked)' : 'var(--border)'}`, background: isHere ? 'rgba(20,184,166,0.13)' : 'transparent', color: isHere ? 'var(--booked)' : 'var(--text2)', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter' }}>
               HERE
             </button>
             <button onClick={() => {
@@ -238,21 +238,21 @@ export default function MicsPage() {
                 setRoomPickerOpen(prev => ({ ...prev, [mic.id]: !prev[mic.id] }))
               }
             }}
-              style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isRoom ? 'var(--uncontacted)' : 'var(--border)'}`, background: isRoom ? 'rgba(123,167,188,0.13)' : 'transparent', color: isRoom ? 'var(--uncontacted)' : 'var(--text2)', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
+              style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isRoom ? 'var(--uncontacted)' : 'var(--border)'}`, background: isRoom ? 'rgba(123,167,188,0.13)' : 'transparent', color: isRoom ? 'var(--uncontacted)' : 'var(--text2)', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter' }}>
               {isRoom && state.room ? state.room.replace('Studio ', '') + ' ▾' : 'ROOM ▾'}
             </button>
             <button onClick={() => setStatus(mic.id, 'missing')}
-              style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isMissing ? 'var(--hot)' : 'var(--border)'}`, background: isMissing ? 'rgba(239,68,68,0.13)' : 'transparent', color: isMissing ? 'var(--hot)' : 'var(--text2)', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
+              style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isMissing ? 'var(--hot)' : 'var(--border)'}`, background: isMissing ? 'rgba(239,68,68,0.13)' : 'transparent', color: isMissing ? 'var(--hot)' : 'var(--text2)', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter' }}>
               MISS
             </button>
           </div>
         </div>
         {pickerOpen && (
           <div style={{ padding: '0 14px 10px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>Room:</span>
+            <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>Room:</span>
             {rooms.map(r => (
               <button key={r} onClick={() => setRoom(mic.id, r)}
-                style={{ padding: '3px 9px', borderRadius: 6, border: `1px solid ${state.room === r ? 'var(--uncontacted)' : 'var(--border)'}`, background: state.room === r ? 'rgba(123,167,188,0.13)' : 'transparent', color: state.room === r ? 'var(--uncontacted)' : 'var(--text2)', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Mono, monospace', whiteSpace: 'nowrap' }}>
+                style={{ padding: '3px 9px', borderRadius: 6, border: `1px solid ${state.room === r ? 'var(--uncontacted)' : 'var(--border)'}`, background: state.room === r ? 'rgba(123,167,188,0.13)' : 'transparent', color: state.room === r ? 'var(--uncontacted)' : 'var(--text2)', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter', whiteSpace: 'nowrap' }}>
                 {r}
               </button>
             ))}
@@ -266,13 +266,13 @@ export default function MicsPage() {
     const qty = quantities[mic.id] ?? 0
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid var(--border)', gap: 8 }}>
-        <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'DM Mono, monospace', flex: 1 }}>{mic.name}</span>
+        <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Inter', flex: 1 }}>{mic.name}</span>
         <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
           <button onClick={() => adjustQty(mic.id, -1)}
             style={{ width: 32, height: 32, background: 'transparent', border: 'none', color: qty === 0 ? '#3a3e4d' : 'var(--text)', fontSize: 18, cursor: qty === 0 ? 'default' : 'pointer', lineHeight: 1 }}>
             −
           </button>
-          <span style={{ minWidth: 28, textAlign: 'center', fontSize: 13, fontWeight: 700, color: qty > 0 ? 'var(--text)' : 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>
+          <span style={{ minWidth: 28, textAlign: 'center', fontSize: 13, fontWeight: 700, color: qty > 0 ? 'var(--text)' : 'var(--text2)', fontFamily: 'Inter' }}>
             {qty}
           </span>
           <button onClick={() => adjustQty(mic.id, 1)}
@@ -292,7 +292,7 @@ export default function MicsPage() {
         <button onClick={() => router.push(`/runner/${studio}`)} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>←</button>
         <div>
           <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>Mic Inventory</div>
-          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>{meta.label} · {today}</div>
+          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>{meta.label} · {today}</div>
         </div>
       </div>
 
@@ -313,7 +313,7 @@ export default function MicsPage() {
           {openSections.other && (
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
               {otherMics.length === 0
-                ? <div style={{ padding: '16px 14px', fontSize: 12, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>No stray mics to report.</div>
+                ? <div style={{ padding: '16px 14px', fontSize: 12, color: 'var(--text2)', fontFamily: 'Inter' }}>No stray mics to report.</div>
                 : otherMics.map(m => <MicRow key={m.id} mic={m} />)
               }
             </div>
@@ -348,10 +348,10 @@ export default function MicsPage() {
             onChange={e => { setInitials(e.target.value.toUpperCase()); if (e.target.value.trim()) setShowInitialsHint(false) }}
             placeholder="Initials"
             maxLength={4}
-            style={{ width: 70, padding: '10px 8px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono, monospace', textAlign: 'center', outline: 'none' }}
+            style={{ width: 70, padding: '10px 8px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontSize: 13, fontFamily: 'Inter', textAlign: 'center', outline: 'none' }}
           />
           {showInitialsHint && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, fontSize: 9, color: 'var(--hot)', fontFamily: 'DM Mono, monospace', marginTop: 3, whiteSpace: 'nowrap' }}>
+            <div style={{ position: 'absolute', top: '100%', left: 0, fontSize: 9, color: 'var(--hot)', fontFamily: 'Inter', marginTop: 3, whiteSpace: 'nowrap' }}>
               Required to submit
             </div>
           )}

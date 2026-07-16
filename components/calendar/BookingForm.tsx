@@ -46,7 +46,7 @@ const fL: React.CSSProperties = {
 }
 const inp: React.CSSProperties = {
   background: 'var(--surface2)', border: '1px solid var(--border)',
-  color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11,
+  color: 'var(--text)', fontFamily: 'Inter', fontSize: 11,
   padding: '4px 8px', borderRadius: 4, width: '100%', outline: 'none',
 }
 
@@ -156,7 +156,7 @@ function ContactInfoPopover({ contact, children }: { contact: ClientContact; chi
     <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
       <button
         onMouseDown={e => { e.preventDefault(); setOpen(o => !o) }}
-        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: children ? 'var(--text)' : 'var(--accent)', fontSize: children ? 11 : 9, fontFamily: 'DM Mono', lineHeight: 1, textDecoration: children ? 'underline' : 'none', textDecorationColor: 'rgba(255,255,255,0.25)', textUnderlineOffset: '3px' }}
+        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: children ? 'var(--text)' : 'var(--accent)', fontSize: children ? 11 : 9, fontFamily: 'Inter', lineHeight: 1, textDecoration: children ? 'underline' : 'none', textDecorationColor: 'rgba(255,255,255,0.25)', textUnderlineOffset: '3px' }}
         title="Contact info"
       >
         {children ?? '↗'}
@@ -174,22 +174,22 @@ function ContactInfoPopover({ contact, children }: { contact: ClientContact; chi
           <div style={{ display: 'flex', gap: 6 }}>
             {phone && (
               <>
-                <a href={`tel:${phone}`} style={{ flex: 1, textAlign: 'center', padding: '4px 6px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--booked)', fontFamily: 'DM Mono', fontSize: 9, textDecoration: 'none', cursor: 'pointer' }}>
+                <a href={`tel:${phone}`} style={{ flex: 1, textAlign: 'center', padding: '4px 6px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--booked)', fontFamily: 'Inter', fontSize: 9, textDecoration: 'none', cursor: 'pointer' }}>
                   Call
                 </a>
-                <a href={`sms:${phone}`} style={{ flex: 1, textAlign: 'center', padding: '4px 6px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--warm)', fontFamily: 'DM Mono', fontSize: 9, textDecoration: 'none', cursor: 'pointer' }}>
+                <a href={`sms:${phone}`} style={{ flex: 1, textAlign: 'center', padding: '4px 6px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--warm)', fontFamily: 'Inter', fontSize: 9, textDecoration: 'none', cursor: 'pointer' }}>
                   Text
                 </a>
               </>
             )}
             {contact.email && (
-              <a href={`mailto:${contact.email}`} style={{ flex: 1, textAlign: 'center', padding: '4px 6px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text2)', fontFamily: 'DM Mono', fontSize: 9, textDecoration: 'none', cursor: 'pointer' }}>
+              <a href={`mailto:${contact.email}`} style={{ flex: 1, textAlign: 'center', padding: '4px 6px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text2)', fontFamily: 'Inter', fontSize: 9, textDecoration: 'none', cursor: 'pointer' }}>
                 Email
               </a>
             )}
           </div>
           {!phone && !contact.email && (
-            <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono' }}>No contact info on file.</div>
+            <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter' }}>No contact info on file.</div>
           )}
         </div>
       )}
@@ -220,10 +220,10 @@ function ClientCardField({
             e.currentTarget.style.borderBottomColor = 'var(--border)'
             if (local !== value) onEdit(fieldKey, local)
           }}
-          style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5, transition: 'border-color 0.15s' }}
+          style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5, transition: 'border-color 0.15s' }}
         />
       ) : (
-        <div style={{ color: value ? 'var(--text)' : 'var(--text3)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5, minHeight: 18 }}>
+        <div style={{ color: value ? 'var(--text)' : 'var(--text3)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5, minHeight: 18 }}>
           {value || '—'}
         </div>
       )}
@@ -753,12 +753,12 @@ export function BookingForm({
                 {form.artist || form.label || 'New Booking'}
               </div>
               {form.client_name && (
-                <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text2)', marginTop: 3 }}>
+                <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text2)', marginTop: 3 }}>
                   {form.client_name}
                 </div>
               )}
               {form.label && form.artist && (
-                <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text2)', marginTop: 1 }}>
+                <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text2)', marginTop: 1 }}>
                   {form.label}
                 </div>
               )}
@@ -775,7 +775,7 @@ export function BookingForm({
           )}
           {form.invoice_num && (
             <div style={{
-              fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)',
+              fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)',
               border: '1px solid var(--border)', borderRadius: 4, padding: '2px 8px', flexShrink: 0,
             }}>
               #{form.invoice_num}
@@ -794,7 +794,7 @@ export function BookingForm({
         }}>
           {Object.entries(STATUS_LABELS).map(([s, label]) => (
             <button key={s} onClick={() => set('status', s)} style={{
-              padding: '4px 14px', borderRadius: 20, fontSize: 10, fontFamily: 'DM Mono',
+              padding: '4px 14px', borderRadius: 20, fontSize: 10, fontFamily: 'Inter',
               fontWeight: 600, cursor: 'pointer', border: 'none', transition: 'all 0.1s',
               background: form.status === s ? STATUS_TOP_COLORS[s] : 'var(--surface2)',
               color: form.status === s ? '#fff' : 'var(--text2)',
@@ -862,7 +862,7 @@ export function BookingForm({
                   {Object.entries(SESSION_TYPE_LABELS).map(([k, v]) => (
                     <button key={k} onClick={() => set('session_type', k)} style={{
                       flex: 1, padding: '4px 6px', borderRadius: 4, fontSize: 9,
-                      fontFamily: 'DM Mono', cursor: 'pointer',
+                      fontFamily: 'Inter', cursor: 'pointer',
                       border: form.session_type === k ? '1px solid var(--accent)' : '1px solid var(--border)',
                       background: form.session_type === k ? 'rgba(var(--accent-rgb),0.08)' : 'var(--surface2)',
                       color: form.session_type === k ? 'var(--accent)' : 'var(--text2)',
@@ -886,7 +886,7 @@ export function BookingForm({
                   <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 2 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
                       <input type="checkbox" checked={false} onChange={() => setMultiDay(true)} style={{ accentColor: 'var(--accent)', cursor: 'pointer' }} />
-                      <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>Multi-day</span>
+                      <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>Multi-day</span>
                     </label>
                   </div>
                 )}
@@ -906,7 +906,7 @@ export function BookingForm({
                     type="button"
                     onClick={() => { setTimeTBD(t => !t); if (!timeTBD) { set('from_time', ''); set('to_time', '') } }}
                     style={{
-                      padding: '4px 14px', borderRadius: 20, fontSize: 10, fontFamily: 'DM Mono',
+                      padding: '4px 14px', borderRadius: 20, fontSize: 10, fontFamily: 'Inter',
                       fontWeight: 600, cursor: 'pointer', border: 'none',
                       background: timeTBD ? '#c2410c' : 'var(--surface2)',
                       color: timeTBD ? '#fff' : 'var(--text3)',
@@ -973,12 +973,12 @@ export function BookingForm({
                             else if (e.key === 'Enter') { e.preventDefault(); if (engHighlight >= 0) applyEng(engSuggestions[engHighlight]); else if (engQuery.trim()) applyEng(engQuery.trim()) }
                             else if (e.key === 'Escape') { engApplied.current = true; setEngQuery(''); setShowEngDD(false); setEngEditing(false); set('engineer_status', engPrevStatus.current) }
                           }}
-                          style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '5px 8px', borderRadius: 4, flex: 1, minWidth: 0, outline: 'none' }}
+                          style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '5px 8px', borderRadius: 4, flex: 1, minWidth: 0, outline: 'none' }}
                           autoComplete="off"
                         />
                       )}
                       {engOn && form.engineer_name && !engEditing && (
-                        <button type="button" onClick={() => set('engineer_status', cycleEng(form.engineer_status))} style={{ padding: '4px 8px', borderRadius: 20, fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer', border: 'none', background: ENG_STATUS_COLORS[form.engineer_status] + '22', color: ENG_STATUS_COLORS[form.engineer_status], outline: `1px solid ${ENG_STATUS_COLORS[form.engineer_status]}55`, flexShrink: 0 }}>
+                        <button type="button" onClick={() => set('engineer_status', cycleEng(form.engineer_status))} style={{ padding: '4px 8px', borderRadius: 20, fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', border: 'none', background: ENG_STATUS_COLORS[form.engineer_status] + '22', color: ENG_STATUS_COLORS[form.engineer_status], outline: `1px solid ${ENG_STATUS_COLORS[form.engineer_status]}55`, flexShrink: 0 }}>
                           {ENG_STATUS_LABELS[form.engineer_status]}
                         </button>
                       )}
@@ -990,8 +990,8 @@ export function BookingForm({
                       <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
                         {engSuggestions.map((eng, i) => (
                           <div key={eng.id} onMouseDown={() => applyEng(eng)} style={{ padding: '7px 12px', cursor: 'pointer', background: i === engHighlight ? 'var(--surface2)' : 'transparent', borderBottom: i < engSuggestions.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                            <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)' }}>{eng.first_name} {eng.last_name}</div>
-                            <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)', marginTop: 1 }}>{eng.initials ?? ''}{eng.initials ? ' · ' : ''}{eng.role}</div>
+                            <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text)' }}>{eng.first_name} {eng.last_name}</div>
+                            <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)', marginTop: 1 }}>{eng.initials ?? ''}{eng.initials ? ' · ' : ''}{eng.role}</div>
                           </div>
                         ))}
                       </div>
@@ -1006,7 +1006,7 @@ export function BookingForm({
                         onChange={e => set('engineer_rate', e.target.value)}
                         onBlur={e => set('engineer_rate', fmtMoney(e.target.value))}
                         placeholder=""
-                        style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '5px 8px', borderRadius: 4, width: 60, outline: 'none' }}
+                        style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '5px 8px', borderRadius: 4, width: 60, outline: 'none' }}
                       />
                     </div>
                   )}
@@ -1052,12 +1052,12 @@ export function BookingForm({
                             else if (e.key === 'Enter') { e.preventDefault(); if (asstHighlight >= 0) applyAsst(asstSuggestions[asstHighlight]); else if (asstQuery.trim()) applyAsst(asstQuery.trim()) }
                             else if (e.key === 'Escape') { setAsstQuery(''); setShowAsstDD(false) }
                           }}
-                          style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '5px 8px', borderRadius: 4, flex: 1, minWidth: 0, outline: 'none' }}
+                          style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '5px 8px', borderRadius: 4, flex: 1, minWidth: 0, outline: 'none' }}
                           autoComplete="off"
                         />
                       )}
                       {asstOn && form.assistant_name && (
-                        <button type="button" onClick={() => set('assistant_status', cycleEng(form.assistant_status))} style={{ padding: '4px 8px', borderRadius: 20, fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer', border: 'none', background: ENG_STATUS_COLORS[form.assistant_status] + '22', color: ENG_STATUS_COLORS[form.assistant_status], outline: `1px solid ${ENG_STATUS_COLORS[form.assistant_status]}55`, flexShrink: 0 }}>
+                        <button type="button" onClick={() => set('assistant_status', cycleEng(form.assistant_status))} style={{ padding: '4px 8px', borderRadius: 20, fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', border: 'none', background: ENG_STATUS_COLORS[form.assistant_status] + '22', color: ENG_STATUS_COLORS[form.assistant_status], outline: `1px solid ${ENG_STATUS_COLORS[form.assistant_status]}55`, flexShrink: 0 }}>
                           {ENG_STATUS_LABELS[form.assistant_status]}
                         </button>
                       )}
@@ -1069,8 +1069,8 @@ export function BookingForm({
                       <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
                         {asstSuggestions.map((eng, i) => (
                           <div key={eng.id} onMouseDown={() => applyAsst(eng)} style={{ padding: '7px 12px', cursor: 'pointer', background: i === asstHighlight ? 'var(--surface2)' : 'transparent', borderBottom: i < asstSuggestions.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                            <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)' }}>{eng.first_name} {eng.last_name}</div>
-                            <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)', marginTop: 1 }}>{eng.initials ?? ''}{eng.initials ? ' · ' : ''}{eng.role}</div>
+                            <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text)' }}>{eng.first_name} {eng.last_name}</div>
+                            <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)', marginTop: 1 }}>{eng.initials ?? ''}{eng.initials ? ' · ' : ''}{eng.role}</div>
                           </div>
                         ))}
                       </div>
@@ -1156,7 +1156,7 @@ export function BookingForm({
                       }}
                       style={{
                         padding: '7px 16px', borderRadius: 6, border: form.is_srs ? '1px solid rgba(255,59,59,0.4)' : '1px solid rgba(255,255,255,0.12)',
-                        cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700,
+                        cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, fontWeight: 700,
                         background: form.is_srs ? 'rgba(255,59,59,0.12)' : 'transparent',
                         color: form.is_srs ? '#ff3b3b' : 'var(--cold)',
                         letterSpacing: '0.08em', transition: 'all 0.15s',
@@ -1176,7 +1176,7 @@ export function BookingForm({
                           set('payment_type', m)
                         }} style={{
                           padding: '7px 28px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                          fontFamily: 'DM Mono', fontSize: 11, fontWeight: 500,
+                          fontFamily: 'Inter', fontSize: 11, fontWeight: 500,
                           background: form.payment_type === m ? 'var(--surface2)' : 'transparent',
                           color: form.payment_type === m ? 'var(--text)' : 'var(--text2)',
                           transition: 'all 0.15s', letterSpacing: '0.04em',
@@ -1201,7 +1201,7 @@ export function BookingForm({
                         <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: 'var(--text)', marginBottom: 10 }}>
                           SRS Referral
                         </div>
-                        <div style={{ fontFamily: 'DM Mono', fontSize: 12, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 24 }}>
+                        <div style={{ fontFamily: 'Inter', fontSize: 12, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 24 }}>
                           Apply this to the client&apos;s profile so all future bookings are automatically flagged as SRS?
                         </div>
                         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -1213,7 +1213,7 @@ export function BookingForm({
                             }}
                             style={{
                               padding: '8px 18px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)',
-                              cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11,
+                              cursor: 'pointer', fontFamily: 'Inter', fontSize: 11,
                               background: 'transparent', color: 'var(--text2)',
                             }}
                           >
@@ -1230,7 +1230,7 @@ export function BookingForm({
                             }}
                             style={{
                               padding: '8px 18px', borderRadius: 6, border: 'none',
-                              cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700,
+                              cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, fontWeight: 700,
                               background: 'var(--accent)', color: 'var(--bg)',
                             }}
                           >
@@ -1276,8 +1276,8 @@ export function BookingForm({
                                 borderBottom: i < clientSuggestions.length - 1 ? '1px solid var(--border)' : 'none',
                               }}
                             >
-                              <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)' }}>{s.label}</div>
-                              {s.sub && <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)', marginTop: 1 }}>{s.sub}</div>}
+                              <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text)' }}>{s.label}</div>
+                              {s.sub && <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)', marginTop: 1 }}>{s.sub}</div>}
                             </div>
                           ))}
                         </div>
@@ -1302,7 +1302,7 @@ export function BookingForm({
                               {displayName}
                             </div>
                             {form.label && form.label !== displayName && (
-                              <div style={{ fontSize: 12, fontFamily: 'DM Mono', color: nameColor, marginTop: 3, opacity: 0.75 }}>
+                              <div style={{ fontSize: 12, fontFamily: 'Inter', color: nameColor, marginTop: 3, opacity: 0.75 }}>
                                 {form.label}
                               </div>
                             )}
@@ -1329,7 +1329,7 @@ export function BookingForm({
                                 onFocus={() => setShowArtistDD(true)}
                                 onBlur={() => setTimeout(() => setShowArtistDD(false), 150)}
                                 placeholder="—"
-                                style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                                style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
                               />
                               {showArtistDD && (clientArtists.filter(a => !form.artist || a.toLowerCase().includes(form.artist.toLowerCase())).length > 0 || form.artist.trim().length >= 2) && (
                                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
@@ -1337,7 +1337,7 @@ export function BookingForm({
                                     .filter(a => !form.artist || a.toLowerCase().includes(form.artist.toLowerCase()))
                                     .map((a, i) => (
                                       <div key={i} onMouseDown={e => { e.preventDefault(); set('artist', a); setShowArtistDD(false) }}
-                                        style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent' }}
+                                        style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'Inter', color: 'var(--text)', background: 'transparent' }}
                                         onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
                                         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                       >{a}</div>
@@ -1361,8 +1361,8 @@ export function BookingForm({
 
                             {/* 2. A&R — always-visible name + inline email + phone */}
                             {(() => {
-                              const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 10, padding: '1px 0' }
-                              const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)', background: 'transparent', color, fontFamily: 'DM Mono', fontSize: 9, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' as const })
+                              const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 10, padding: '1px 0' }
+                              const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)', background: 'transparent', color, fontFamily: 'Inter', fontSize: 9, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' as const })
                               const anrPh = anrPhone.replace(/\D/g, '')
                               return (
                                 <div style={{ marginBottom: 10 }}>
@@ -1374,7 +1374,7 @@ export function BookingForm({
                                       onFocus={() => setShowAnrDD(true)}
                                       onBlur={() => { setTimeout(() => setShowAnrDD(false), 150); set('ordered_by', anrQuery) }}
                                       placeholder="—"
-                                      style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                                      style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
                                     />
                                     {showAnrDD && (labelContacts.filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase())).length > 0 || anrQuery.trim().length >= 2) && (
                                       <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
@@ -1388,7 +1388,7 @@ export function BookingForm({
                                               setAnrEmail(c.email || ''); setAnrPhone(c.phone || '')
                                               set('email', c.email || ''); set('phone', c.phone || '')
                                               setShowAnrDD(false)
-                                            }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent', borderBottom: i < labelContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
+                                            }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'Inter', color: 'var(--text)', background: 'transparent', borderBottom: i < labelContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
                                               onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
                                               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                             >
@@ -1431,8 +1431,8 @@ export function BookingForm({
 
                             {/* 3. Admin — identical layout to A&R */}
                             {(() => {
-                              const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 10, padding: '1px 0' }
-                              const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)', background: 'transparent', color, fontFamily: 'DM Mono', fontSize: 9, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' as const })
+                              const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 10, padding: '1px 0' }
+                              const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)', background: 'transparent', color, fontFamily: 'Inter', fontSize: 9, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' as const })
                               const adminPh = adminPhone.replace(/\D/g, '')
                               return (
                                 <div style={{ marginBottom: 8 }}>
@@ -1444,7 +1444,7 @@ export function BookingForm({
                                       onFocus={() => setShowAdminDD(true)}
                                       onBlur={() => setTimeout(() => setShowAdminDD(false), 150)}
                                       placeholder="—"
-                                      style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                                      style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
                                     />
                                     {showAdminDD && (labelAdminContacts.filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase())).length > 0 || adminQuery.trim().length >= 2) && (
                                       <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
@@ -1456,7 +1456,7 @@ export function BookingForm({
                                               setAdminQuery(name); set('anr_admin_contact_id', c.id); setAdminContact(c)
                                               setAdminEmail(c.email || ''); setAdminPhone(c.phone || '')
                                               setShowAdminDD(false)
-                                            }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent', borderBottom: i < labelAdminContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
+                                            }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'Inter', color: 'var(--text)', background: 'transparent', borderBottom: i < labelAdminContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
                                               onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
                                               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                             >
@@ -1502,12 +1502,12 @@ export function BookingForm({
                               <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <div style={{ background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '24px 28px', width: 340, maxWidth: '90vw', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
                                   <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: 'var(--text)', marginBottom: 8 }}>Update client profile or just this session?</div>
-                                  <div style={{ fontFamily: 'DM Mono', fontSize: 11, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 20 }}>
+                                  <div style={{ fontFamily: 'Inter', fontSize: 11, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 20 }}>
                                     Save the new {contactUpdatePrompt.column} back to the contact record, or keep it for this booking only.
                                   </div>
                                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                                    <button type="button" onClick={() => setContactUpdatePrompt(null)} style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, background: 'transparent', color: 'var(--text2)' }}>Just this session</button>
-                                    <button type="button" onClick={async () => { await supabase.from('client_contacts').update({ [contactUpdatePrompt.column]: contactUpdatePrompt.value }).eq('id', contactUpdatePrompt.contactId); contactUpdatePrompt.onUpdate(); setContactUpdatePrompt(null) }} style={{ padding: '7px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700, background: 'var(--accent)', color: 'var(--bg)' }}>Update profile</button>
+                                    <button type="button" onClick={() => setContactUpdatePrompt(null)} style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, background: 'transparent', color: 'var(--text2)' }}>Just this session</button>
+                                    <button type="button" onClick={async () => { await supabase.from('client_contacts').update({ [contactUpdatePrompt.column]: contactUpdatePrompt.value }).eq('id', contactUpdatePrompt.contactId); contactUpdatePrompt.onUpdate(); setContactUpdatePrompt(null) }} style={{ padding: '7px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, background: 'var(--accent)', color: 'var(--bg)' }}>Update profile</button>
                                   </div>
                                 </div>
                               </div>
@@ -1528,7 +1528,7 @@ export function BookingForm({
                               marginTop: 10, width: '100%', padding: '6px 10px', borderRadius: 4,
                               background: 'transparent', border: '1px solid var(--border)',
                               color: form.client_db_id ? 'var(--text2)' : 'var(--text3)',
-                              fontFamily: 'DM Mono', fontSize: 10,
+                              fontFamily: 'Inter', fontSize: 10,
                               cursor: form.client_db_id ? 'pointer' : 'default', textAlign: 'center',
                             }}
                           >
@@ -1578,20 +1578,20 @@ export function BookingForm({
           <div>
             {bookingId && !confirmDelete && (
               <button onClick={() => setConfirmDelete(true)} style={{
-                padding: '6px 14px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono',
+                padding: '6px 14px', borderRadius: 4, fontSize: 11, fontFamily: 'Inter',
                 cursor: 'pointer', background: 'transparent',
                 border: '1px solid var(--hot)', color: 'var(--hot)',
               }}>Delete</button>
             )}
             {bookingId && confirmDelete && (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--hot)' }}>Confirm delete?</span>
+                <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--hot)' }}>Confirm delete?</span>
                 <button onClick={handleDelete} style={{
-                  padding: '6px 12px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono',
+                  padding: '6px 12px', borderRadius: 4, fontSize: 11, fontFamily: 'Inter',
                   cursor: 'pointer', background: 'var(--hot)', border: 'none', color: '#fff',
                 }}>Yes, delete</button>
                 <button onClick={() => setConfirmDelete(false)} style={{
-                  padding: '6px 12px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono',
+                  padding: '6px 12px', borderRadius: 4, fontSize: 11, fontFamily: 'Inter',
                   cursor: 'pointer', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)',
                 }}>Cancel</button>
               </div>
@@ -1599,18 +1599,18 @@ export function BookingForm({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: isMobile ? 'wrap' : 'nowrap', width: isMobile ? '100%' : undefined }}>
             {saveError && (
-              <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'DM Mono', padding: '3px 8px', background: 'rgba(240,78,122,0.1)', borderRadius: 4, border: '1px solid rgba(240,78,122,0.3)', width: isMobile ? '100%' : undefined }}>
+              <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'Inter', padding: '3px 8px', background: 'rgba(240,78,122,0.1)', borderRadius: 4, border: '1px solid rgba(240,78,122,0.3)', width: isMobile ? '100%' : undefined }}>
                 {saveError}
               </div>
             )}
             <button onClick={onClose} style={{
-              padding: '6px 16px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono',
+              padding: '6px 16px', borderRadius: 4, fontSize: 11, fontFamily: 'Inter',
               cursor: 'pointer', background: 'var(--surface2)',
               border: '1px solid var(--border)', color: 'var(--text2)',
               ...(isMobile ? { flex: '1 1 40%', minHeight: 44, fontSize: 13 } : {}),
             }}>Cancel</button>
             <button onClick={handleSave} disabled={saving} style={{
-              padding: '6px 20px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono',
+              padding: '6px 20px', borderRadius: 4, fontSize: 11, fontFamily: 'Inter',
               cursor: saving ? 'default' : 'pointer', background: '#1e40af',
               border: 'none', color: '#fff', fontWeight: 700, opacity: saving ? 0.6 : 1,
               ...(isMobile ? { flex: '1 1 50%', minHeight: 44, fontSize: 13 } : {}),
@@ -1624,11 +1624,11 @@ export function BookingForm({
         <div onClick={e => { e.stopPropagation(); exitCardEditMode() }} style={{ position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 3000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '20px 24px', maxWidth: 360, width: '100%' }}>
             <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Update client profile?</div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono', lineHeight: 1.6, marginBottom: 18 }}>
+            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', lineHeight: 1.6, marginBottom: 18 }}>
               You edited contact details on this booking. Save those changes to the full client profile too?
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => exitCardEditMode()} style={{ padding: '6px 14px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer' }}>
+              <button onClick={() => exitCardEditMode()} style={{ padding: '6px 14px', borderRadius: 4, fontSize: 11, fontFamily: 'Inter', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer' }}>
                 Just this session
               </button>
               <button
@@ -1640,7 +1640,7 @@ export function BookingForm({
                   }
                   exitCardEditMode()
                 }}
-                style={{ padding: '6px 14px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', background: '#1e40af', border: 'none', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
+                style={{ padding: '6px 14px', borderRadius: 4, fontSize: 11, fontFamily: 'Inter', background: '#1e40af', border: 'none', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
               >
                 Update profile
               </button>

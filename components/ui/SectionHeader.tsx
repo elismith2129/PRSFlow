@@ -37,7 +37,7 @@ export function SectionHeader({
           letterSpacing: '0.12em',
           textTransform: 'uppercase',
           color: 'var(--text2)',
-          fontFamily: 'DM Mono',
+          fontFamily: 'Inter',
         }}
       >
         {title}
@@ -77,7 +77,7 @@ export function SectionHeader({
               background: 'none',
               border: 'none',
               padding: 0,
-              fontFamily: 'DM Mono',
+              fontFamily: 'Inter',
             }}
           >
             {action.label}

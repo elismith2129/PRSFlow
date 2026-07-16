@@ -70,7 +70,7 @@ export function SopGate() {
           Before you start
         </div>
 
-        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: 'var(--text2)', lineHeight: 1.7, marginTop: 14, maxWidth: 360 }}>
+        <div style={{ fontFamily: 'Inter', fontSize: 13, color: 'var(--text2)', lineHeight: 1.7, marginTop: 14, maxWidth: 360 }}>
           Read the CRM Standard Operating Procedure before using the system. It covers everything you need to know.
         </div>
 
@@ -86,7 +86,7 @@ export function SopGate() {
             border: 'none',
             borderRadius: 6,
             padding: '14px',
-            fontFamily: "'DM Mono', monospace",
+            fontFamily: 'Inter',
             fontSize: 12,
             fontWeight: 700,
             letterSpacing: '0.1em',

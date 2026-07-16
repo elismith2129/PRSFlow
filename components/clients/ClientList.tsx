@@ -89,7 +89,7 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
             style={{
               background: 'var(--surface2)', border: '1px solid var(--border)',
               color: 'var(--text2)', padding: '3px 8px', borderRadius: 5,
-              fontFamily: 'DM Mono', fontSize: 10, outline: 'none', cursor: 'pointer',
+              fontFamily: 'Inter', fontSize: 10, outline: 'none', cursor: 'pointer',
             }}
           >
             <option value="alpha">A–Z</option>
@@ -105,7 +105,7 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
             style={{
               width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
               color: 'var(--text)', padding: '5px 10px', borderRadius: 5,
-              fontFamily: 'DM Mono', fontSize: 11, outline: 'none',
+              fontFamily: 'Inter', fontSize: 11, outline: 'none',
             }}
           />
         </div>
@@ -162,7 +162,7 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
                     {CLIENT_TYPE_LABELS[c.type].toUpperCase()}
                   </span>
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+                <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
                   {isLabel
                     ? `${contacts.length} contact${contacts.length !== 1 ? 's' : ''} · ${(c.artists || []).length} artist${(c.artists || []).length !== 1 ? 's' : ''}`
                     : c.email || c.phone || '—'
@@ -171,7 +171,7 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
               </div>
               {bookings > 0 && (
                 <span style={{
-                  fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)',
+                  fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)',
                   background: 'var(--surface2)', padding: '2px 7px', borderRadius: 3,
                   border: '1px solid var(--border)', flexShrink: 0, whiteSpace: 'nowrap',
                 }}>
@@ -188,17 +188,17 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={safePage <= 1}
-            style={{ background: 'none', border: 'none', cursor: safePage <= 1 ? 'default' : 'pointer', fontFamily: 'DM Mono', fontSize: 10, color: safePage <= 1 ? 'var(--text3)' : 'var(--text2)', padding: '2px 4px' }}
+            style={{ background: 'none', border: 'none', cursor: safePage <= 1 ? 'default' : 'pointer', fontFamily: 'Inter', fontSize: 10, color: safePage <= 1 ? 'var(--text3)' : 'var(--text2)', padding: '2px 4px' }}
           >
             ← Prev
           </button>
-          <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+          <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
             {startIdx + 1}–{Math.min(startIdx + PAGE_SIZE, filtered.length)} of {filtered.length}
           </span>
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={safePage >= totalPages}
-            style={{ background: 'none', border: 'none', cursor: safePage >= totalPages ? 'default' : 'pointer', fontFamily: 'DM Mono', fontSize: 10, color: safePage >= totalPages ? 'var(--text3)' : 'var(--text2)', padding: '2px 4px' }}
+            style={{ background: 'none', border: 'none', cursor: safePage >= totalPages ? 'default' : 'pointer', fontFamily: 'Inter', fontSize: 10, color: safePage >= totalPages ? 'var(--text3)' : 'var(--text2)', padding: '2px 4px' }}
           >
             Next →
           </button>

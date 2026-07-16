@@ -56,7 +56,7 @@ function CheckBox({ label, checked, color = 'var(--booked)' }: { label: string; 
         {checked && <span style={{ fontSize: 7, color: 'var(--bg)', fontWeight: 900, lineHeight: 1 }}>✓</span>}
       </div>
       <span style={{
-        fontSize: 9, fontFamily: 'DM Mono, monospace', fontWeight: 700,
+        fontSize: 9, fontFamily: 'Inter', fontWeight: 700,
         letterSpacing: '0.05em', color: checked ? color : 'var(--cold)',
       }}>
         {label}
@@ -180,7 +180,7 @@ export function DailyOpsLogSection() {
         <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 16, color: 'var(--text)', marginBottom: 4 }}>
           Daily Ops Log
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
+        <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>
           Historical daily operations by studio
         </div>
       </div>
@@ -218,11 +218,11 @@ export function DailyOpsLogSection() {
       {/* Date list */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
         {datesLoading ? (
-          <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: 12, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
+          <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: 12, color: 'var(--text3)', fontFamily: 'Inter' }}>
             Loading…
           </div>
         ) : dates.length === 0 ? (
-          <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: 12, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
+          <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: 12, color: 'var(--text3)', fontFamily: 'Inter' }}>
             No activity found for {meta.label}
           </div>
         ) : (
@@ -244,7 +244,7 @@ export function DailyOpsLogSection() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <StatusDot status={status} />
-                    <span style={{ fontSize: 13, fontFamily: 'DM Mono, monospace', color: 'var(--text)' }}>
+                    <span style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--text)' }}>
                       {fmtDate(date)}
                     </span>
                   </div>
@@ -259,7 +259,7 @@ export function DailyOpsLogSection() {
                   style={{
                     background: 'none', border: '1px solid var(--border)', borderRadius: 6,
                     padding: '6px 20px', color: 'var(--text3)', fontSize: 11,
-                    fontFamily: 'DM Mono, monospace', cursor: 'pointer',
+                    fontFamily: 'Inter', cursor: 'pointer',
                   }}
                 >
                   Load More ({dates.length - visibleCount} remaining)
@@ -295,7 +295,7 @@ export function DailyOpsLogSection() {
                 <div style={{ fontFamily: 'Syne', fontWeight: 900, fontSize: 18, color: 'var(--text)' }}>
                   {meta.label}
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+                <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>
                   {fmtDate(selectedDate)} · Daily Ops
                 </div>
               </div>
@@ -344,23 +344,23 @@ export function DailyOpsLogSection() {
                                   {booking.artist || booking.client_name || '—'}
                                 </div>
                                 {booking.artist && booking.client_name && (
-                                  <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1, fontFamily: 'DM Mono, monospace' }}>
+                                  <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1, fontFamily: 'Inter' }}>
                                     {booking.client_name}
                                   </div>
                                 )}
                               </div>
                               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                                 {needsAttn && (
-                                  <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--warm)', background: '#F9731622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>
+                                  <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--warm)', background: '#F9731622', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>
                                     ⚠ Needs Attention
                                   </span>
                                 )}
                                 {completed ? (
-                                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--booked)', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>
+                                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--booked)', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>
                                     COMPLETED
                                   </span>
                                 ) : (
-                                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--cold)', background: '#6B728022', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>
+                                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--cold)', background: '#6B728022', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>
                                     OPEN
                                   </span>
                                 )}
@@ -368,22 +368,22 @@ export function DailyOpsLogSection() {
                             </div>
                             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 10 }}>
                               {booking.from_time && (
-                                <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>
+                                <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>
                                   {booking.from_time}–{booking.to_time ?? '?'}
                                 </span>
                               )}
                               {booking.studio && (
-                                <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>
+                                <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>
                                   Studio {booking.studio}
                                 </span>
                               )}
                               {booking.session_type && (
-                                <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px' }}>
+                                <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px' }}>
                                   {SESSION_TYPE_LABELS[booking.session_type] ?? booking.session_type}
                                 </span>
                               )}
                               {booking.engineer_name && (
-                                <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>
+                                <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>
                                   Eng: {booking.engineer_name}
                                 </span>
                               )}
@@ -406,7 +406,7 @@ export function DailyOpsLogSection() {
                       })}
                     </div>
                   ) : (
-                    <div style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', padding: '8px 0' }}>
+                    <div style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'Inter', padding: '8px 0' }}>
                       No confirmed sessions for this date.
                     </div>
                   )}
@@ -443,12 +443,12 @@ export function DailyOpsLogSection() {
                               {cat.label}
                             </div>
                             {isChecklist && totalCount > 0 && (
-                              <div style={{ fontSize: 9, color: runnerDone ? '#4ade80' : 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+                              <div style={{ fontSize: 9, color: runnerDone ? '#4ade80' : 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>
                                 {checkedCount}/{totalCount} checked
                               </div>
                             )}
                             {row?.staff_name && (
-                              <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+                              <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>
                                 {row.staff_name}{row.submitted_at ? ` · ${fmtTime(row.submitted_at)}` : ''}
                               </div>
                             )}

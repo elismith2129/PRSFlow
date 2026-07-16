@@ -695,8 +695,8 @@ export default function RunnerWOPage() {
   if (woMissing) return (
     <div style={{ minHeight: '100dvh', maxWidth: '100vw', overflowX: 'hidden', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'Syne, sans-serif' }}>
       <div style={{ maxWidth: 320, padding: 24, background: 'var(--surface)', border: '1px solid rgba(240,78,122,0.35)', borderRadius: 12, textAlign: 'center' }}>
-        <div style={{ color: '#f04e7a', fontFamily: 'DM Mono, monospace', fontSize: 12, marginBottom: 14, lineHeight: 1.5 }}>{woMissing}</div>
-        <button onClick={() => router.back()} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 6, padding: '8px 18px', fontFamily: 'DM Mono, monospace', fontSize: 11, cursor: 'pointer' }}>Back</button>
+        <div style={{ color: '#f04e7a', fontFamily: 'Inter', fontSize: 12, marginBottom: 14, lineHeight: 1.5 }}>{woMissing}</div>
+        <button onClick={() => router.back()} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 6, padding: '8px 18px', fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>Back</button>
       </div>
     </div>
   )
@@ -717,7 +717,7 @@ export default function RunnerWOPage() {
             value={notesModalText}
             onChange={e => setNotesModalText(e.target.value)}
             placeholder="Song names, notes, instructions…"
-            style={{ flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono, monospace', fontSize: 13, paddingTop: 0, paddingBottom: 0, paddingLeft: 16, paddingRight: 16, resize: 'none', lineHeight: 1.6, overflowY: 'auto' }}
+            style={{ flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 13, paddingTop: 0, paddingBottom: 0, paddingLeft: 16, paddingRight: 16, resize: 'none', lineHeight: 1.6, overflowY: 'auto' }}
             autoFocus
           />
           <div style={{ width: '100%', boxSizing: 'border-box', display: 'flex', gap: 10, paddingTop: 10, paddingLeft: 16, paddingRight: 16, paddingBottom: 'calc(16px + env(safe-area-inset-bottom))', flexShrink: 0 }}>
@@ -731,7 +731,7 @@ export default function RunnerWOPage() {
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 98 }} onClick={() => { setExpandedEngRow(null); setEngPopoverPos(null) }} />
           <div style={{ position: 'fixed', top: engPopoverPos.top - 8, left: engPopoverPos.left, transform: 'translateY(-100%)', zIndex: 99, background: 'var(--surface2)', border: '1px solid var(--accent)', borderRadius: 6, padding: '6px 10px', whiteSpace: 'nowrap' }}>
-            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: 'var(--accent)' }}>{wo?.engineer || booking?.engineer_name || ''}</span>
+            <span style={{ fontFamily: 'Inter', fontSize: 12, color: 'var(--accent)' }}>{wo?.engineer || booking?.engineer_name || ''}</span>
           </div>
         </>
       )}
@@ -746,7 +746,7 @@ export default function RunnerWOPage() {
           <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>
             Work Order
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>
+          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
             {booking?.client_name || wo?.client_name || wo?.client || '—'} · {booking?.start_date || wo?.session_date || ''}
           </div>
         </div>
@@ -755,7 +755,7 @@ export default function RunnerWOPage() {
       {isCompleted && (
         <div style={{ background: 'rgba(20,184,166,0.12)', borderBottom: '1px solid rgba(20,184,166,0.3)', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 13, color: 'var(--booked)' }}>✓</span>
-          <span style={{ fontSize: 12, color: 'var(--booked)', fontFamily: 'DM Mono, monospace', fontWeight: 700 }}>This work order has been completed by admin. It is now read-only.</span>
+          <span style={{ fontSize: 12, color: 'var(--booked)', fontFamily: 'Inter', fontWeight: 700 }}>This work order has been completed by admin. It is now read-only.</span>
         </div>
       )}
 
@@ -780,8 +780,8 @@ export default function RunnerWOPage() {
             ['Studio',   booking?.studio || (wo?.studios ?? []).join(', ')],
           ].filter(([, v]) => v).map(([l, v]) => (
             <div key={String(l)} style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
-              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace', minWidth: 60 }}>{l}</span>
-              <span style={{ fontSize: 11, color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{v}</span>
+              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter', minWidth: 60 }}>{l}</span>
+              <span style={{ fontSize: 11, color: 'var(--text)', fontFamily: 'Inter' }}>{v}</span>
             </div>
           ))}
         </div>
@@ -794,7 +794,7 @@ export default function RunnerWOPage() {
             borderRight: '1px solid var(--border)', whiteSpace: 'nowrap', overflow: 'hidden',
           }
           const tdStyle: React.CSSProperties = {
-            padding: '8px 6px', fontSize: 11, fontFamily: 'DM Mono, monospace', color: 'var(--text)',
+            padding: '8px 6px', fontSize: 11, fontFamily: 'Inter', color: 'var(--text)',
             borderRight: '1px solid var(--border)', display: 'flex', alignItems: 'center', overflow: 'hidden',
           }
 
@@ -804,7 +804,7 @@ export default function RunnerWOPage() {
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)', padding: '12px 14px 8px' }}>Studio Time</div>
               {stRows.length === 0 ? (
-                <div style={{ padding: '14px', color: 'var(--text2)', fontSize: 12, fontFamily: 'DM Mono, monospace', textAlign: 'center' }}>
+                <div style={{ padding: '14px', color: 'var(--text2)', fontSize: 12, fontFamily: 'Inter', textAlign: 'center' }}>
                   Session times will appear here
                 </div>
               ) : (
@@ -844,7 +844,7 @@ export default function RunnerWOPage() {
                           rowTotal = base != null ? parseFloat((base + otCharge).toFixed(2)) : null
                         }
 
-                        const tSel = { background: 'transparent', color: 'var(--text)', border: 'none', fontSize: 10, fontFamily: 'DM Mono, monospace', width: '100%' }
+                        const tSel = { background: 'transparent', color: 'var(--text)', border: 'none', fontSize: 10, fontFamily: 'Inter', width: '100%' }
                         const initials = engName ? getInitials(engName) : ''
                         const engExpanded = expandedEngRow === r.id
                         const hasNotes = !!(r.session_info || '').trim()
@@ -926,7 +926,7 @@ export default function RunnerWOPage() {
                                         setEngPopoverPos({ top: rect.top, left: rect.left })
                                       }
                                     }}
-                                    style={{ padding: '2px 5px', border: '1px solid var(--accent)', borderRadius: 4, background: 'rgba(var(--accent-rgb),0.08)', color: 'var(--accent)', fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer' }}
+                                    style={{ padding: '2px 5px', border: '1px solid var(--accent)', borderRadius: 4, background: 'rgba(var(--accent-rgb),0.08)', color: 'var(--accent)', fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}
                                   >{initials}</button>
                                 </div>
                                 <div style={{ ...tdStyle }} />
@@ -952,16 +952,16 @@ export default function RunnerWOPage() {
               )}
               {stRows.length > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 14px', borderTop: '1px solid var(--border)', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-                  <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: 'var(--text)' }}>
+                  <span style={{ fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: 'var(--text)' }}>
                     Studio: <span style={{ color: 'var(--accent)' }}>${stTotal.toFixed(2)}</span>
                   </span>
                   {engTotal > 0 && (
-                    <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: 'var(--text)' }}>
+                    <span style={{ fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: 'var(--text)' }}>
                       Eng: <span style={{ color: 'var(--accent)' }}>${engTotal.toFixed(2)}</span>
                     </span>
                   )}
                   {engTotal > 0 && (
-                    <span style={{ fontSize: 13, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: 'var(--text)', borderTop: '1px solid var(--border)', paddingTop: 4 }}>
+                    <span style={{ fontSize: 13, fontFamily: 'Inter', fontWeight: 700, color: 'var(--text)', borderTop: '1px solid var(--border)', paddingTop: 4 }}>
                       Total: <span style={{ color: 'var(--accent)' }}>${(stTotal + engTotal).toFixed(2)}</span>
                     </span>
                   )}
@@ -985,7 +985,7 @@ export default function RunnerWOPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
                   <div style={{ padding: '5px 8px', fontSize: 8, fontFamily: 'Syne, sans-serif', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--text2)', borderRight: '1px solid var(--border)', position: 'sticky' as const, left: 0, background: 'var(--bg)', zIndex: 1 }}>Equipment</div>
                   {sessionDates.map(d => (
-                    <div key={d} style={{ padding: '5px 8px', fontSize: 9, fontFamily: 'DM Mono, monospace', color: 'var(--text2)', borderRight: '1px solid var(--border)', textAlign: 'center' as const }}>{d}</div>
+                    <div key={d} style={{ padding: '5px 8px', fontSize: 9, fontFamily: 'Inter', color: 'var(--text2)', borderRight: '1px solid var(--border)', textAlign: 'center' as const }}>{d}</div>
                   ))}
                 </div>
                 {/* Equipment rows */}
@@ -1026,7 +1026,7 @@ export default function RunnerWOPage() {
                             }}
                             onBlur={e => upsertEquipNote(`${eq}||${openDate}`, eq, openDate, { note: e.target.value })}
                             placeholder="Describe the issue…"
-                            style={{ width: '100%', background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono, monospace', fontSize: 12, padding: '8px 10px', resize: 'vertical', outline: 'none', boxSizing: 'border-box', minHeight: 64 }}
+                            style={{ width: '100%', background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'Inter', fontSize: 12, padding: '8px 10px', resize: 'vertical', outline: 'none', boxSizing: 'border-box', minHeight: 64 }}
                           />
                           {(equipNotes[`${eq}||${openDate}`]?.photo_urls?.length ?? 0) > 0 && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
@@ -1064,7 +1064,7 @@ export default function RunnerWOPage() {
             style={{
               width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
               borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 12,
-              fontFamily: 'DM Mono, monospace', resize: 'vertical', minHeight: 80,
+              fontFamily: 'Inter', resize: 'vertical', minHeight: 80,
               outline: 'none', boxSizing: 'border-box',
             }}
           />
@@ -1081,7 +1081,7 @@ export default function RunnerWOPage() {
                   <select
                     value={p.payment_type}
                     onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, payment_type: e.target.value, last_four: '' } : x))}
-                    style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, color: p.payment_type ? 'var(--text)' : 'var(--text2)', fontFamily: 'DM Mono, monospace', fontSize: 11, padding: '6px 8px', outline: 'none' }}
+                    style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, color: p.payment_type ? 'var(--text)' : 'var(--text2)', fontFamily: 'Inter', fontSize: 11, padding: '6px 8px', outline: 'none' }}
                   >
                     <option value="">— type —</option>
                     {['Cash', 'Zelle', 'Credit Card', 'Debit Card', 'Check', 'Other'].map(t => <option key={t} value={t}>{t}</option>)}
@@ -1092,7 +1092,7 @@ export default function RunnerWOPage() {
                     onBlur={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: formatCurrency(e.target.value) } : x))}
                     placeholder="0.00"
                     inputMode="decimal"
-                    style={{ width: 80, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono, monospace', fontSize: 11, padding: '6px 8px', outline: 'none', textAlign: 'right' }}
+                    style={{ width: 80, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '6px 8px', outline: 'none', textAlign: 'right' }}
                   />
                   <button
                     onClick={() => setPayRows(prev => prev.filter(x => x.id !== p.id))}
@@ -1104,7 +1104,7 @@ export default function RunnerWOPage() {
                     value={p.memo}
                     onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))}
                     placeholder="Memo"
-                    style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono, monospace', fontSize: 11, padding: '6px 8px', outline: 'none' }}
+                    style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '6px 8px', outline: 'none' }}
                   />
                   {needsLast4 && (
                     <input
@@ -1113,7 +1113,7 @@ export default function RunnerWOPage() {
                       placeholder="Last 4"
                       inputMode="numeric"
                       maxLength={4}
-                      style={{ width: 72, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'DM Mono, monospace', fontSize: 11, padding: '6px 8px', outline: 'none' }}
+                      style={{ width: 72, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '6px 8px', outline: 'none' }}
                     />
                   )}
                 </div>
@@ -1123,7 +1123,7 @@ export default function RunnerWOPage() {
           <div style={{ padding: '10px 14px' }}>
             <button
               onClick={() => setPayRows(prev => [...prev, { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '' }])}
-              style={{ background: 'none', border: 'none', color: 'var(--text2)', fontFamily: 'DM Mono, monospace', fontSize: 11, cursor: 'pointer', padding: 0 }}
+              style={{ background: 'none', border: 'none', color: 'var(--text2)', fontFamily: 'Inter', fontSize: 11, cursor: 'pointer', padding: 0 }}
             >+ Add payment</button>
           </div>
         </div>
@@ -1141,8 +1141,8 @@ export default function RunnerWOPage() {
               { label: 'Balance Due', value: balanceDue, color: balanceDue > 0 ? 'var(--hot)' : 'var(--booked)', bold: true },
             ] as { label: string; value: number; color: string; bold: boolean }[]).map(({ label, value, color, bold }) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', borderTop: '1px solid var(--border)' }}>
-                <span style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: 'var(--text2)' }}>{label}</span>
-                <span style={{ fontSize: bold ? 13 : 11, fontFamily: 'DM Mono, monospace', color, fontWeight: bold ? 700 : 400 }}>${value.toFixed(2)}</span>
+                <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)' }}>{label}</span>
+                <span style={{ fontSize: bold ? 13 : 11, fontFamily: 'Inter', color, fontWeight: bold ? 700 : 400 }}>${value.toFixed(2)}</span>
               </div>
             ))}
           </div>
@@ -1151,31 +1151,31 @@ export default function RunnerWOPage() {
         {/* Legal + Signature — COD only */}
         {isCOD && (
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px', marginBottom: 16 }}>
-            <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', color: 'var(--text3)', lineHeight: 1.8, marginBottom: 14 }}>
+            <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)', lineHeight: 1.8, marginBottom: 14 }}>
               By signing below, I acknowledge that I am authorized to approve charges for this session. I accept responsibility for all associated costs and understand that payment is due in full at the time of service unless otherwise agreed. I also acknowledge that Paramount Recording is not responsible for any media, personal items, or equipment left behind.
               <br /><br />
               <em>No Tapes, CDs, DVDs, Thumb Drives, Computer Drives or other Recording Media will be released until payment in full is received.</em>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>Date</span>
-                <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>Date</span>
+                <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Inter' }}>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>Print Name</span>
+                <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>Print Name</span>
                 <input
                   value={printName}
                   onChange={e => setPrintName(e.target.value)}
                   placeholder="Full name"
-                  style={{ background: 'transparent', border: 'none', borderBottom: '1px solid #3a3f52', color: 'var(--text)', fontFamily: 'DM Mono, monospace', fontSize: 12, padding: '4px 2px', outline: 'none', width: '100%' }}
+                  style={{ background: 'transparent', border: 'none', borderBottom: '1px solid #3a3f52', color: 'var(--text)', fontFamily: 'Inter', fontSize: 12, padding: '4px 2px', outline: 'none', width: '100%' }}
                 />
               </div>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>Signature</span>
+                  <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>Signature</span>
                   <button
                     onClick={clearSignature}
-                    style={{ background: 'none', border: '1px solid #3a3f52', borderRadius: 6, padding: '3px 10px', color: 'var(--text2)', fontSize: 10, cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}
+                    style={{ background: 'none', border: '1px solid #3a3f52', borderRadius: 6, padding: '3px 10px', color: 'var(--text2)', fontSize: 10, cursor: 'pointer', fontFamily: 'Inter' }}
                   >
                     Clear
                   </button>
@@ -1194,7 +1194,7 @@ export default function RunnerWOPage() {
                   style={{ width: '100%', height: 100, background: 'var(--bg)', borderRadius: 8, border: '1px solid #3a3f52', display: 'block', touchAction: 'none', cursor: 'crosshair' }}
                 />
                 {signatureData && (
-                  <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 4 }}>Signature captured ✓</div>
+                  <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 4 }}>Signature captured ✓</div>
                 )}
               </div>
             </div>
@@ -1213,7 +1213,7 @@ export default function RunnerWOPage() {
             style={{
               width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
               borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 12,
-              fontFamily: 'DM Mono, monospace', resize: 'vertical', minHeight: 80,
+              fontFamily: 'Inter', resize: 'vertical', minHeight: 80,
               outline: 'none', boxSizing: 'border-box', marginBottom: 10,
             }}
           />
@@ -1265,5 +1265,5 @@ export default function RunnerWOPage() {
 const inputStyle: React.CSSProperties = {
   background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8,
   padding: '8px 10px', color: 'var(--text)', fontSize: 12,
-  fontFamily: 'DM Mono, monospace', outline: 'none', width: '100%',
+  fontFamily: 'Inter', outline: 'none', width: '100%',
 }

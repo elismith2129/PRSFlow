@@ -313,7 +313,7 @@ export default function LoginPage() {
           </div>
           <div
             style={{
-              fontFamily: "'DM Mono', monospace",
+              fontFamily: 'Inter',
               fontSize: 11,
               letterSpacing: '0.2em',
               color: 'var(--cold)',
@@ -359,7 +359,7 @@ export default function LoginPage() {
               style={{
                 minHeight: 18,
                 marginBottom: 18,
-                fontFamily: "'DM Mono', monospace",
+                fontFamily: 'Inter',
                 fontSize: 12,
                 textAlign: 'center',
                 color: displayMsg?.color ?? 'transparent',
@@ -406,7 +406,7 @@ export default function LoginPage() {
               onClick={() => { setMode('email'); setPin(''); setPinMsg(null) }}
               style={{
                 marginTop: 28,
-                fontFamily: "'DM Mono', monospace",
+                fontFamily: 'Inter',
                 fontSize: 11,
                 color: 'var(--cold)',
                 cursor: 'pointer',
@@ -488,7 +488,7 @@ export default function LoginPage() {
             <div
               onClick={handleForgotPassword}
               style={{
-                fontFamily: "'DM Mono', monospace",
+                fontFamily: 'Inter',
                 fontSize: 11,
                 color: 'var(--cold)',
                 cursor: 'pointer',
@@ -503,7 +503,7 @@ export default function LoginPage() {
             {error && (
               <div
                 style={{
-                  fontFamily: "'DM Mono', monospace",
+                  fontFamily: 'Inter',
                   fontSize: 11,
                   color: 'var(--hot)',
                   textAlign: 'center',
@@ -516,7 +516,7 @@ export default function LoginPage() {
             {success && (
               <div
                 style={{
-                  fontFamily: "'DM Mono', monospace",
+                  fontFamily: 'Inter',
                   fontSize: 11,
                   color: 'var(--accent)',
                   textAlign: 'center',
@@ -529,7 +529,7 @@ export default function LoginPage() {
             <div
               onClick={() => { setMode('pin'); setError(''); setSuccess('') }}
               style={{
-                fontFamily: "'DM Mono', monospace",
+                fontFamily: 'Inter',
                 fontSize: 11,
                 color: 'var(--cold)',
                 cursor: 'pointer',
@@ -576,7 +576,7 @@ const authInputStyle: React.CSSProperties = {
   borderRadius: 6,
   padding: '12px 14px',
   color: 'var(--text)',
-  fontFamily: "'DM Mono', monospace",
+  fontFamily: 'Inter',
   fontSize: 13,
   outline: 'none',
   boxSizing: 'border-box',
@@ -587,7 +587,7 @@ const authButtonStyle: React.CSSProperties = {
   maxWidth: 380,
   background: 'transparent',
   color: 'var(--text)',
-  fontFamily: "'DM Mono', monospace",
+  fontFamily: 'Inter',
   fontSize: 12,
   fontWeight: 700,
   letterSpacing: '0.1em',

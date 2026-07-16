@@ -1253,11 +1253,11 @@ export function WorkOrderPopup({
 
   const inp: React.CSSProperties = {
     background: 'transparent', border: 'none',
-    color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 11,
+    color: '#f0f0f0', fontFamily: 'Inter', fontSize: 11,
     padding: '1px 0', outline: 'none', width: '100%', lineHeight: 1.4,
   }
   const cellS: React.CSSProperties = {
-    padding: '4px 8px', fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0',
+    padding: '4px 8px', fontSize: 11, fontFamily: 'Inter', color: '#f0f0f0',
     display: 'flex', alignItems: 'center',
   }
   const thS: React.CSSProperties = {
@@ -1281,7 +1281,7 @@ export function WorkOrderPopup({
     <div style={inline
       ? { position: 'static', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }
       : { position: 'fixed', top: isMobile ? 0 : 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 12 }}>Loading work order…</div>
+      <div style={{ color: '#f0f0f0', fontFamily: 'Inter', fontSize: 12 }}>Loading work order…</div>
     </div>
   )
 
@@ -1290,8 +1290,8 @@ export function WorkOrderPopup({
       ? { position: 'static', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }
       : { position: 'fixed', top: isMobile ? 0 : 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ maxWidth: 360, padding: 24, background: 'var(--surface)', border: '1px solid rgba(240,78,122,0.35)', borderRadius: 12, textAlign: 'center' }}>
-        <div style={{ color: '#f04e7a', fontFamily: 'DM Mono', fontSize: 12, marginBottom: 14, lineHeight: 1.5 }}>{woMissing}</div>
-        <button onClick={onClose} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 6, padding: '7px 18px', fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>Close</button>
+        <div style={{ color: '#f04e7a', fontFamily: 'Inter', fontSize: 12, marginBottom: 14, lineHeight: 1.5 }}>{woMissing}</div>
+        <button onClick={onClose} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 6, padding: '7px 18px', fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>Close</button>
       </div>
     </div>
   )
@@ -1341,7 +1341,7 @@ export function WorkOrderPopup({
               <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne, sans-serif' }}>
                 Work Order{wo.invoice_number ? ` — #${wo.invoice_number}` : ''}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono, monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {(booking.client_name || wo.client || '—')} · {(booking.start_date || wo.session_date || '')}
               </div>
             </div>
@@ -1426,8 +1426,8 @@ export function WorkOrderPopup({
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)', marginBottom: 10 }}>Session Info</div>
                 {sessionRows.filter(([, v]) => v).map(([l, v]) => (
                   <div key={l} style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
-                    <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace', minWidth: 60 }}>{l}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{v}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter', minWidth: 60 }}>{l}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text)', fontFamily: 'Inter' }}>{v}</span>
                   </div>
                 ))}
               </div>
@@ -1437,12 +1437,12 @@ export function WorkOrderPopup({
           {/* BRANDING — hidden on mobile (letterhead; not part of the runner layout) */}
           <div style={{ textAlign: 'center', paddingBottom: 20, borderBottom: '1px solid rgba(255,255,255,0.07)', display: isMobile ? 'none' : 'block' }}>
             <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15, color: '#f0f0f0', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Paramount Recording Group</div>
-            <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'var(--text2)', marginTop: 3 }}>Paramount · Encore · Ameraycan · Wilder · Track · Enterprise</div>
+            <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--text2)', marginTop: 3 }}>Paramount · Encore · Ameraycan · Wilder · Track · Enterprise</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-              <span style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'var(--text2)' }}>Recording Studios (323) 465-4000</span>
+              <span style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--text2)' }}>Recording Studios (323) 465-4000</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'var(--text2)' }}>Invoice #</span>
-                <input value={wo.invoice_number} onChange={e => { setDirtyFields(prev => new Set(prev).add('invoice_number')); setWo(w => w ? { ...w, invoice_number: e.target.value } : w) }} style={{ ...inp, width: 90, borderBottom: '1px solid rgba(255,255,255,0.2)' }} />
+                <span style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--text2)' }}>Invoice #</span>
+                <input value={wo.invoice_number} onChange={e => { setDirtyFields(prev => new Set(prev).add('invoice_number')); setWo(w => w ? { ...w, invoice_number: e.target.value } : w) }} style={{ ...inp, width: 90, fontFamily: 'DM Mono', borderBottom: '1px solid rgba(255,255,255,0.2)' }} />
               </div>
             </div>
           </div>
@@ -1471,7 +1471,7 @@ export function WorkOrderPopup({
               {booking.location && (
                 <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
                   <div style={metaLabel}>Location</div>
-                  <div style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#f0f0f0', padding: '2px 4px' }}>{booking.location}</div>
+                  <div style={{ fontFamily: 'Inter', fontSize: 11, color: '#f0f0f0', padding: '2px 4px' }}>{booking.location}</div>
                 </div>
               )}
               {/* Studios multi-select */}
@@ -1498,7 +1498,7 @@ export function WorkOrderPopup({
                   {['COD', 'Billing'].map(p => (
                     <label key={p} style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
                       <input type="radio" checked={wo.payment_status === p} onChange={() => { setDirtyFields(prev => new Set(prev).add('payment_status')); setWo(w => w ? { ...w, payment_status: p } : w) }} style={{ accentColor: 'var(--accent)', cursor: 'pointer' }} />
-                      <span style={{ fontFamily: 'DM Mono', fontSize: 11, color: wo.payment_status === p ? '#f0f0f0' : 'var(--text2)' }}>{p}</span>
+                      <span style={{ fontFamily: 'Inter', fontSize: 11, color: wo.payment_status === p ? '#f0f0f0' : 'var(--text2)' }}>{p}</span>
                     </label>
                   ))}
                 </div>
@@ -1507,7 +1507,7 @@ export function WorkOrderPopup({
               <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
                 <div style={metaLabel}>Food Budget</div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button type="button" onClick={() => { setDirtyFields(prev => new Set(prev).add('food_budget')); setWo(w => w ? { ...w, food_budget: !w.food_budget } : w) }} style={{ padding: '2px 10px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', border: `1px solid ${wo.food_budget ? 'var(--accent)' : 'rgba(255,255,255,0.12)'}`, background: wo.food_budget ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: wo.food_budget ? 'var(--accent)' : 'var(--text2)' }}>
+                  <button type="button" onClick={() => { setDirtyFields(prev => new Set(prev).add('food_budget')); setWo(w => w ? { ...w, food_budget: !w.food_budget } : w) }} style={{ padding: '2px 10px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', border: `1px solid ${wo.food_budget ? 'var(--accent)' : 'rgba(255,255,255,0.12)'}`, background: wo.food_budget ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: wo.food_budget ? 'var(--accent)' : 'var(--text2)' }}>
                     {wo.food_budget ? 'Yes' : 'No'}
                   </button>
                   {wo.food_budget && <input value={wo.food_amount} onChange={e => { setDirtyFields(prev => new Set(prev).add('food_amount')); setWo(w => w ? { ...w, food_amount: e.target.value } : w) }} placeholder="$0.00" style={{ ...inp, width: 70 }} />}
@@ -1555,7 +1555,7 @@ export function WorkOrderPopup({
                   const engCharge = engHrs != null && engHrs > 0 && engRateNum > 0 ? parseFloat((engHrs * engRateNum).toFixed(2)) : null
                   const rowTotal = (r.charge ?? 0) + (r.ot_charge ?? 0)
                   const toggleStyle = (active: boolean): React.CSSProperties => ({
-                    fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, padding: '2px 5px',
+                    fontSize: 9, fontFamily: 'Inter', fontWeight: 700, padding: '2px 5px',
                     borderRadius: 3, border: 'none', cursor: 'pointer',
                     background: active ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
                     color: active ? 'var(--bg)' : 'var(--text2)',
@@ -1610,7 +1610,7 @@ export function WorkOrderPopup({
                                 onChange={e => setSiPopoverText(e.target.value)}
                                 autoFocus
                                 rows={4}
-                                style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'vertical', color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 11, lineHeight: 1.5, marginBottom: 8, boxSizing: 'border-box' }}
+                                style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'vertical', color: '#f0f0f0', fontFamily: 'Inter', fontSize: 11, lineHeight: 1.5, marginBottom: 8, boxSizing: 'border-box' }}
                                 placeholder="Session notes…"
                               />
                               <div style={{ display: 'flex', gap: 6 }}>
@@ -1662,7 +1662,7 @@ export function WorkOrderPopup({
                             type="button"
                             onClick={() => handleToggleLock(r.id, r.admin_locked)}
                             style={{
-                              fontSize: 8, fontFamily: 'DM Mono', fontWeight: 700, padding: '2px 5px',
+                              fontSize: 8, fontFamily: 'Inter', fontWeight: 700, padding: '2px 5px',
                               borderRadius: 3, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
                               background: r.admin_locked ? 'var(--booked)' : 'rgba(255,255,255,0.06)',
                               color: r.admin_locked ? 'var(--bg)' : 'var(--cold)',
@@ -1673,29 +1673,29 @@ export function WorkOrderPopup({
                         <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto' }}>
                           {!readOnly && (confirmDeleteRowId === r.id ? (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                              <span style={{ fontSize: 7, color: 'var(--warm)', fontFamily: 'DM Mono', whiteSpace: 'nowrap' }}>Del?</span>
+                              <span style={{ fontSize: 7, color: 'var(--warm)', fontFamily: 'Inter', whiteSpace: 'nowrap' }}>Del?</span>
                               <div style={{ display: 'flex', gap: 3 }}>
-                                <button type="button" onClick={() => deleteStRow(r.id)} style={{ fontSize: 8, fontFamily: 'DM Mono', color: 'var(--warm)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 700 }}>Y</button>
-                                <button type="button" onClick={() => setConfirmDeleteRowId(null)} style={{ fontSize: 8, fontFamily: 'DM Mono', color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>N</button>
+                                <button type="button" onClick={() => deleteStRow(r.id)} style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--warm)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 700 }}>Y</button>
+                                <button type="button" onClick={() => setConfirmDeleteRowId(null)} style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>N</button>
                               </div>
                             </div>
                           ) : (
-                            <button type="button" onClick={() => setConfirmDeleteRowId(r.id)} style={{ fontSize: 13, fontFamily: 'DM Mono', color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
+                            <button type="button" onClick={() => setConfirmDeleteRowId(r.id)} style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
                           ))}
                         </div>
                       </div>}
                       {!isEngOnly && pendingLockedEdits[r.id] && (
-                        <div style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.08)', borderBottom: '1px solid rgba(20,184,166,0.2)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'DM Mono', color: 'var(--booked)' }}>
+                        <div style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.08)', borderBottom: '1px solid rgba(20,184,166,0.2)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'Inter', color: 'var(--booked)' }}>
                           <span>Editing a locked row —</span>
                           <button
                             type="button"
                             onClick={() => { handleToggleLock(r.id, true); setPendingLockedEdits(p => { const n = { ...p }; delete n[r.id]; return n }) }}
-                            style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid var(--booked)', background: 'rgba(20,184,166,0.15)', color: 'var(--booked)', fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer' }}
+                            style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid var(--booked)', background: 'rgba(20,184,166,0.15)', color: 'var(--booked)', fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}
                           >Update</button>
                           <button
                             type="button"
                             onClick={() => { const orig = pendingLockedEdits[r.id]; setStRows(prev => prev.map(row => row.id === r.id ? orig : row)); setPendingLockedEdits(p => { const n = { ...p }; delete n[r.id]; return n }) }}
-                            style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'var(--text2)', fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}
+                            style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'var(--text2)', fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}
                           >Revert</button>
                         </div>
                       )}
@@ -1738,18 +1738,18 @@ export function WorkOrderPopup({
                             </div>
                             {/* Eng lock */}
                             <div style={{ ...cellS, justifyContent: 'center', padding: '3px 4px', pointerEvents: 'auto' }}>
-                              <button type="button" onClick={() => handleToggleLock(r.id, r.admin_locked)} style={{ fontSize: 8, fontFamily: 'DM Mono', fontWeight: 700, padding: '2px 5px', borderRadius: 3, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', background: r.admin_locked ? 'var(--booked)' : 'rgba(255,255,255,0.06)', color: r.admin_locked ? 'var(--bg)' : 'var(--cold)' }}>{r.admin_locked ? '🔒' : '✓'}</button>
+                              <button type="button" onClick={() => handleToggleLock(r.id, r.admin_locked)} style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, padding: '2px 5px', borderRadius: 3, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', background: r.admin_locked ? 'var(--booked)' : 'rgba(255,255,255,0.06)', color: r.admin_locked ? 'var(--bg)' : 'var(--cold)' }}>{r.admin_locked ? '🔒' : '✓'}</button>
                             </div>
                             {/* Eng delete × */}
                             <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto' }}>
-                              {!readOnly && <button type="button" onClick={() => setConfirmClearEngId(r.id)} style={{ fontSize: 13, fontFamily: 'DM Mono', color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>}
+                              {!readOnly && <button type="button" onClick={() => setConfirmClearEngId(r.id)} style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>}
                             </div>
                           </div>
                           {confirmClearEngId === r.id && (
-                            <div style={{ padding: '5px 12px', background: 'rgba(249,115,22,0.08)', borderBottom: '1px solid rgba(249,115,22,0.2)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'DM Mono', color: 'var(--warm)' }}>
+                            <div style={{ padding: '5px 12px', background: 'rgba(249,115,22,0.08)', borderBottom: '1px solid rgba(249,115,22,0.2)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'Inter', color: 'var(--warm)' }}>
                               <span>Delete engineer row?</span>
-                              <button type="button" onClick={() => isEngOnly ? deleteStRow(r.id) : clearEngRow(r.id)} style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid var(--warm)', background: 'rgba(249,115,22,0.15)', color: 'var(--warm)', fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer' }}>Y</button>
-                              <button type="button" onClick={() => setConfirmClearEngId(null)} style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'var(--text2)', fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}>N</button>
+                              <button type="button" onClick={() => isEngOnly ? deleteStRow(r.id) : clearEngRow(r.id)} style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid var(--warm)', background: 'rgba(249,115,22,0.15)', color: 'var(--warm)', fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}>Y</button>
+                              <button type="button" onClick={() => setConfirmClearEngId(null)} style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'var(--text2)', fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}>N</button>
                             </div>
                           )}
                         </>
@@ -1761,17 +1761,17 @@ export function WorkOrderPopup({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: 'var(--surface2)', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 {!readOnly ? (
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                  <button type="button" onClick={addStRow} style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add Studio Time</button>
-                  <button type="button" onClick={addEngRow} style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#c8f04e88', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add Eng</button>
+                  <button type="button" onClick={addStRow} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add Studio Time</button>
+                  <button type="button" onClick={addEngRow} style={{ fontSize: 10, fontFamily: 'Inter', color: '#c8f04e88', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add Eng</button>
                 </div>
                 ) : <div />}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
-                  <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0' }}>Studio: ${stTotal.toFixed(2)}</span>
+                  <span style={{ fontSize: 11, fontFamily: 'Inter', color: '#f0f0f0' }}>Studio: ${stTotal.toFixed(2)}</span>
                   {engTotal > 0 && (
-                    <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--accent)' }}>Eng: ${engTotal.toFixed(2)}</span>
+                    <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--accent)' }}>Eng: ${engTotal.toFixed(2)}</span>
                   )}
                   {engTotal > 0 && (
-                    <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0', fontWeight: 700 }}>Total: ${(stTotal + engTotal).toFixed(2)}</span>
+                    <span style={{ fontSize: 11, fontFamily: 'Inter', color: '#f0f0f0', fontWeight: 700 }}>Total: ${(stTotal + engTotal).toFixed(2)}</span>
                   )}
                 </div>
               </div>
@@ -1832,7 +1832,7 @@ export function WorkOrderPopup({
                             }}
                             onBlur={e => upsertEquipNote(`${eq}||${openDate}`, eq, openDate, { note: e.target.value })}
                             placeholder="Note about this issue…"
-                            style={{ width: '100%', background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 10, padding: '5px 7px', resize: 'none', outline: 'none', boxSizing: 'border-box', minHeight: 56 }}
+                            style={{ width: '100%', background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, color: '#f0f0f0', fontFamily: 'Inter', fontSize: 10, padding: '5px 7px', resize: 'none', outline: 'none', boxSizing: 'border-box', minHeight: 56 }}
                           />
                           {(equipNotes[`${eq}||${openDate}`]?.photo_urls?.length ?? 0) > 0 && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
@@ -1881,8 +1881,8 @@ export function WorkOrderPopup({
                 </div>
               ))}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: 'var(--surface2)', borderTop: '1px solid rgba(255,255,255,0.06)', minWidth: isMobile ? 540 : undefined }}>
-                {!readOnly ? <button type="button" onClick={() => setRentRows(p => [...p, { id: crypto.randomUUID(), qty: '', item: '', supplier: '', dates_used: '', rate: '', charge: '' }])} style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button> : <span />}
-                <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0', fontWeight: 700 }}>Total: ${rentTotal.toFixed(2)}</span>
+                {!readOnly ? <button type="button" onClick={() => setRentRows(p => [...p, { id: crypto.randomUUID(), qty: '', item: '', supplier: '', dates_used: '', rate: '', charge: '' }])} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button> : <span />}
+                <span style={{ fontSize: 11, fontFamily: 'Inter', color: '#f0f0f0', fontWeight: 700 }}>Total: ${rentTotal.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -1897,18 +1897,18 @@ export function WorkOrderPopup({
               <div>
                 <SectionHeader title="Session Notes" />
                 <textarea value={wo.session_notes} onChange={e => setWo(w => w ? { ...w, session_notes: e.target.value } : w)}
-                  style={{ width: '100%', minHeight: 90, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 5, color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }} />
+                  style={{ width: '100%', minHeight: 90, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 5, color: '#f0f0f0', fontFamily: 'Inter', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }} />
               </div>
               {wo.payment_status === 'COD' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text3)', lineHeight: 1.8, padding: '10px 12px', background: 'var(--surface2)', borderRadius: 5, border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)', lineHeight: 1.8, padding: '10px 12px', background: 'var(--surface2)', borderRadius: 5, border: '1px solid rgba(255,255,255,0.05)' }}>
                     By signing below, I acknowledge that I am authorized to approve charges for this session. I accept responsibility for all associated costs and understand that payment is due in full at the time of service unless otherwise agreed. I also acknowledge that Paramount Recording is not responsible for any media, personal items, or equipment left behind.
                     <br /><br />
                     <em>No Tapes, CDs, DVDs, Thumb Drives, Computer Drives or other Recording Media will be released until payment in full is received.</em>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
                     <div style={metaLabel}>Date</div>
-                    <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#f0f0f0' }}>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    <span style={{ fontSize: 11, fontFamily: 'Inter', color: '#f0f0f0' }}>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
                     <div style={metaLabel}>Print Name</div>
@@ -1917,7 +1917,7 @@ export function WorkOrderPopup({
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <div style={metaLabel}>Signature</div>
-                      {!readOnly && <button type="button" onClick={clearAdminSignature} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '2px 8px', color: 'var(--text2)', fontSize: 10, cursor: 'pointer', fontFamily: 'DM Mono' }}>Clear</button>}
+                      {!readOnly && <button type="button" onClick={clearAdminSignature} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '2px 8px', color: 'var(--text2)', fontSize: 10, cursor: 'pointer', fontFamily: 'Inter' }}>Clear</button>}
                     </div>
                     {!readOnly && (
                     <canvas
@@ -1934,7 +1934,7 @@ export function WorkOrderPopup({
                       style={{ width: '100%', height: 100, background: 'var(--bg)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', display: 'block', touchAction: 'none', cursor: 'crosshair' }}
                     />
                     )}
-                    {wo.signature_data && <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono', marginTop: 4 }}>Signature captured ✓</div>}
+                    {wo.signature_data && <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 4 }}>Signature captured ✓</div>}
                   </div>
                 </div>
               )}
@@ -1967,7 +1967,7 @@ export function WorkOrderPopup({
                     )
                   })}
                   <div style={{ padding: '7px 10px' }}>
-                    {!readOnly && <button type="button" onClick={() => setPayRows(p => [...p, { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '' }])} style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add payment</button>}
+                    {!readOnly && <button type="button" onClick={() => setPayRows(p => [...p, { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '' }])} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add payment</button>}
                   </div>
                 </div>
               </div>
@@ -1982,8 +1982,8 @@ export function WorkOrderPopup({
                   { label: 'Balance Due', value: balanceDue, color: balanceDue > 0 ? 'var(--hot)' : 'var(--booked)', bold: true },
                 ].map(({ label, value, color, bold }) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                    <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)' }}>{label}</span>
-                    <span style={{ fontSize: bold ? 13 : 11, fontFamily: 'DM Mono', color, fontWeight: bold ? 700 : 400 }}>${value.toFixed(2)}</span>
+                    <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)' }}>{label}</span>
+                    <span style={{ fontSize: bold ? 13 : 11, fontFamily: 'Inter', color, fontWeight: bold ? 700 : 400 }}>${value.toFixed(2)}</span>
                   </div>
                 ))}
               </div>
@@ -1999,7 +1999,7 @@ export function WorkOrderPopup({
               value={wo.needs_attention_notes}
               onChange={e => setWo(w => w ? { ...w, needs_attention_notes: e.target.value } : w)}
               placeholder="Internal notes only — never appears on the PDF export…"
-              style={{ width: '100%', minHeight: 80, background: 'var(--surface2)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 5, color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }}
+              style={{ width: '100%', minHeight: 80, background: 'var(--surface2)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 5, color: '#f0f0f0', fontFamily: 'Inter', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }}
             />
             {wo.needs_attention_photos?.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>

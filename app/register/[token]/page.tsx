@@ -250,7 +250,7 @@ export default function RegisterPage() {
 
   if (pageState === 'loading') {
     return shell(
-      <p style={{ color: 'var(--text3)', fontFamily: 'DM Mono', fontSize: 13, textAlign: 'center' }}>
+      <p style={{ color: 'var(--text3)', fontFamily: 'Inter', fontSize: 13, textAlign: 'center' }}>
         Verifying link…
       </p>
     )
@@ -288,10 +288,10 @@ export default function RegisterPage() {
           <p style={{ fontFamily: 'Syne', fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 12 }}>
             {headline}
           </p>
-          <p style={{ fontFamily: 'DM Mono', fontSize: 13, color: 'var(--text2)', lineHeight: 1.6 }}>
+          <p style={{ fontFamily: 'Inter', fontSize: 13, color: 'var(--text2)', lineHeight: 1.6 }}>
             {body}
           </p>
-          <p style={{ fontFamily: 'DM Mono', fontSize: 12, color: 'var(--text3)', marginTop: 20 }}>
+          <p style={{ fontFamily: 'Inter', fontSize: 12, color: 'var(--text3)', marginTop: 20 }}>
             (310) 555-0000 · studio@paramountrecording.com
           </p>
         </div>
@@ -310,12 +310,12 @@ export default function RegisterPage() {
           <p style={{ fontFamily: 'Syne', fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>
             Account already exists
           </p>
-          <p style={{ fontFamily: 'DM Mono', fontSize: 12, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 16 }}>
+          <p style={{ fontFamily: 'Inter', fontSize: 12, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 16 }}>
             An account registered with <strong style={{ color: 'var(--text)' }}>{form.email}</strong> already exists.
           </p>
           <div style={{ padding: '14px 16px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, marginBottom: 20 }}>
             <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: 'var(--text)', marginBottom: 4 }}>{cName}</div>
-            <div style={{ fontFamily: 'DM Mono', fontSize: 11, color: 'var(--text3)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div style={{ fontFamily: 'Inter', fontSize: 11, color: 'var(--text3)', display: 'flex', flexDirection: 'column', gap: 2 }}>
               {matchedClient.email && <span>{matchedClient.email}</span>}
               {matchedClient.phone && <span>{displayPhone(matchedClient.phone)}</span>}
               {matchedClient.registered_at && (
@@ -324,7 +324,7 @@ export default function RegisterPage() {
             </div>
           </div>
           {submitError && (
-            <p style={{ fontFamily: 'DM Mono', fontSize: 11, color: 'var(--hot)', marginBottom: 12 }}>{submitError}</p>
+            <p style={{ fontFamily: 'Inter', fontSize: 11, color: 'var(--hot)', marginBottom: 12 }}>{submitError}</p>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <button
@@ -335,7 +335,7 @@ export default function RegisterPage() {
             </button>
             <button
               onClick={handleCreateNew}
-              style={{ width: '100%', padding: '12px 0', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 12, cursor: 'pointer' }}
+              style={{ width: '100%', padding: '12px 0', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 6, fontFamily: 'Inter', fontSize: 12, cursor: 'pointer' }}
             >
               Create new account anyway
             </button>
@@ -382,7 +382,7 @@ export default function RegisterPage() {
             You&apos;re all set{submittedName ? `, ${submittedName}` : ''}.
           </p>
           <p style={{
-            fontFamily: 'DM Mono',
+            fontFamily: 'Inter',
             fontSize: 13,
             color: 'var(--text2)',
             lineHeight: 1.7,
@@ -415,7 +415,7 @@ export default function RegisterPage() {
       <Header />
 
       <p style={{
-        fontFamily: 'DM Mono',
+        fontFamily: 'Inter',
         fontSize: 13,
         color: 'var(--text2)',
         lineHeight: 1.7,
@@ -432,7 +432,7 @@ export default function RegisterPage() {
           border: '1px solid rgba(240, 78, 122, 0.35)',
           borderRadius: 6,
           marginBottom: 24,
-          fontFamily: 'DM Mono',
+          fontFamily: 'Inter',
           fontSize: 12,
           color: 'var(--hot)',
           lineHeight: 1.5,
@@ -583,7 +583,7 @@ export default function RegisterPage() {
         {/* ID Upload */}
         <SectionLabel>Government-Issued ID</SectionLabel>
         <p style={{
-          fontFamily: 'DM Mono',
+          fontFamily: 'Inter',
           fontSize: 11,
           color: 'var(--text3)',
           marginBottom: 10,
@@ -627,7 +627,7 @@ export default function RegisterPage() {
               }}
             />
             <span style={{
-              fontFamily: 'DM Mono',
+              fontFamily: 'Inter',
               fontSize: 12,
               color: 'var(--text2)',
               lineHeight: 1.6,
@@ -644,7 +644,7 @@ export default function RegisterPage() {
         {/* Signature */}
         <SectionLabel>Signature</SectionLabel>
         <p style={{
-          fontFamily: 'DM Mono',
+          fontFamily: 'Inter',
           fontSize: 11,
           color: 'var(--text3)',
           marginBottom: 10,
@@ -686,7 +686,7 @@ export default function RegisterPage() {
         </div>
 
         <p style={{
-          fontFamily: 'DM Mono',
+          fontFamily: 'Inter',
           fontSize: 11,
           color: 'var(--text3)',
           textAlign: 'center',
@@ -749,7 +749,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function OptionalTag() {
   return (
     <span style={{
-      fontFamily: 'DM Mono',
+      fontFamily: 'Inter',
       fontSize: 10,
       fontWeight: 400,
       letterSpacing: '0.04em',
@@ -765,7 +765,7 @@ function OptionalTag() {
 function FieldError({ children }: { children: React.ReactNode }) {
   return (
     <p style={{
-      fontFamily: 'DM Mono',
+      fontFamily: 'Inter',
       fontSize: 11,
       color: 'var(--hot)',
       marginTop: 4,
@@ -805,7 +805,7 @@ function Input({ value, onChange, placeholder, disabled, error, type = 'text', i
         background: 'var(--surface)',
         border: `1px solid ${error ? 'var(--hot)' : 'var(--border)'}`,
         borderRadius: 6,
-        fontFamily: 'DM Mono',
+        fontFamily: 'Inter',
         fontSize: 13,
         color: 'var(--text)',
         outline: 'none',
@@ -836,7 +836,7 @@ function TermsScroller() {
         {TERMS_SECTIONS.map((section, i) => (
           <div key={section.heading} style={{ marginTop: i === 0 ? 0 : 12 }}>
             <p style={{
-              fontFamily: 'DM Mono',
+              fontFamily: 'Inter',
               fontSize: 12,
               fontWeight: 700,
               textTransform: 'uppercase',
@@ -847,7 +847,7 @@ function TermsScroller() {
               {section.heading}
             </p>
             <p style={{
-              fontFamily: 'DM Mono',
+              fontFamily: 'Inter',
               fontSize: 13,
               color: 'var(--text3)',
               lineHeight: 1.65,
@@ -912,7 +912,7 @@ function FileUpload({ file, onChange, disabled, error }: FileUploadProps) {
           Choose file
         </span>
         <span style={{
-          fontFamily: 'DM Mono',
+          fontFamily: 'Inter',
           fontSize: 12,
           color: file ? 'var(--text)' : 'var(--text3)',
           overflow: 'hidden',

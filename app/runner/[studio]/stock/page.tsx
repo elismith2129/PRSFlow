@@ -80,7 +80,7 @@ export default function StockPage() {
         <button onClick={() => router.push(`/runner/${studio}`)} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>←</button>
         <div>
           <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>Stock List</div>
-          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>{meta.label}{lowCount > 0 ? ` · ${lowCount} low` : ''}</div>
+          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>{meta.label}{lowCount > 0 ? ` · ${lowCount} low` : ''}</div>
         </div>
       </div>
 
@@ -103,13 +103,13 @@ export default function StockPage() {
                   placeholder="Qty"
                   value={it.qty}
                   onChange={e => setItems(prev => prev.map((x, j) => j === i ? { ...x, qty: e.target.value } : x))}
-                  style={{ width: 70, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 8px', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none' }}
+                  style={{ width: 70, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 8px', color: 'var(--text)', fontSize: 12, fontFamily: 'Inter', outline: 'none' }}
                 />
                 <input
                   placeholder="Notes"
                   value={it.notes}
                   onChange={e => setItems(prev => prev.map((x, j) => j === i ? { ...x, notes: e.target.value } : x))}
-                  style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none' }}
+                  style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', color: 'var(--text)', fontSize: 12, fontFamily: 'Inter', outline: 'none' }}
                 />
               </div>
             </div>

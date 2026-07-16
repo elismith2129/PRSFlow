@@ -124,7 +124,7 @@ export default function InquiryPage() {
           </div>
           <div
             style={{
-              fontFamily: "'DM Mono', monospace",
+              fontFamily: 'Inter',
               fontSize: 11,
               letterSpacing: '0.2em',
               color: 'var(--cold)',
@@ -238,7 +238,7 @@ export default function InquiryPage() {
             {error && (
               <div
                 style={{
-                  fontFamily: "'DM Mono', monospace",
+                  fontFamily: 'Inter',
                   fontSize: 11,
                   color: 'var(--hot)',
                   textAlign: 'center',
@@ -262,7 +262,7 @@ const inquiryInputStyle: React.CSSProperties = {
   borderRadius: 6,
   padding: '12px 14px',
   color: 'var(--text)',
-  fontFamily: "'DM Mono', monospace",
+  fontFamily: 'Inter',
   fontSize: 13,
   outline: 'none',
   boxSizing: 'border-box',
@@ -273,7 +273,7 @@ const inquiryButtonStyle: React.CSSProperties = {
   maxWidth: 380,
   background: 'transparent',
   color: 'var(--text)',
-  fontFamily: "'DM Mono', monospace",
+  fontFamily: 'Inter',
   fontSize: 12,
   fontWeight: 700,
   letterSpacing: '0.1em',

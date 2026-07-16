@@ -57,7 +57,7 @@ export function StatusBadge({ status }: { status: string }) {
         padding: '3px 8px',
         borderRadius: 4,
         fontSize: 10,
-        fontFamily: 'DM Mono',
+        fontFamily: 'Inter',
         fontWeight: 600,
         letterSpacing: '0.08em',
         textTransform: 'uppercase',

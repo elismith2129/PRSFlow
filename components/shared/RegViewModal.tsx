@@ -6,7 +6,7 @@ export function RegField({ label, value }: { label: string; value: string | null
   return (
     <div>
       <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 12, fontFamily: 'DM Mono', color: value ? 'var(--text)' : 'var(--text3)' }}>{value || '—'}</div>
+      <div style={{ fontSize: 12, fontFamily: 'Inter', color: value ? 'var(--text)' : 'var(--text3)' }}>{value || '—'}</div>
     </div>
   )
 }
@@ -45,7 +45,7 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
           <div>
             <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>Registration Record</div>
             {client?.registered_at && (
-              <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>
+              <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>
                 Submitted {fmtSubmitted(client.registered_at)}
               </div>
             )}
@@ -64,9 +64,9 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
         {/* Body */}
         <div style={{ padding: '18px', overflowY: 'auto', flex: 1 }}>
           {loading ? (
-            <div style={{ color: 'var(--text3)', fontFamily: 'DM Mono', fontSize: 11, textAlign: 'center', padding: 40 }}>Loading…</div>
+            <div style={{ color: 'var(--text3)', fontFamily: 'Inter', fontSize: 11, textAlign: 'center', padding: 40 }}>Loading…</div>
           ) : !client ? (
-            <div style={{ color: 'var(--hot)', fontFamily: 'DM Mono', fontSize: 11 }}>Could not load registration data.</div>
+            <div style={{ color: 'var(--hot)', fontFamily: 'Inter', fontSize: 11 }}>Could not load registration data.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -90,7 +90,7 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 2 }}>
                 <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--text3)' }}>Terms & Conditions</span>
-                <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 9, fontFamily: 'DM Mono', background: client.terms_accepted ? 'rgba(78,240,162,0.12)' : 'rgba(240,78,122,0.12)', color: client.terms_accepted ? 'var(--booked)' : 'var(--hot)', border: `1px solid ${client.terms_accepted ? 'rgba(78,240,162,0.3)' : 'rgba(240,78,122,0.3)'}` }}>
+                <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 9, fontFamily: 'Inter', background: client.terms_accepted ? 'rgba(78,240,162,0.12)' : 'rgba(240,78,122,0.12)', color: client.terms_accepted ? 'var(--booked)' : 'var(--hot)', border: `1px solid ${client.terms_accepted ? 'rgba(78,240,162,0.3)' : 'rgba(240,78,122,0.3)'}` }}>
                   {client.terms_accepted ? '✓ Accepted' : 'Not accepted'}
                   {client.terms_accepted_at ? ` · ${new Date(client.terms_accepted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
                 </span>
@@ -100,7 +100,7 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
                 {idUrl ? (
                   <img src={idUrl} alt="Client ID" style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 6, border: '1px solid var(--border)', objectFit: 'contain', display: 'block' }} />
                 ) : (
-                  <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text3)' }}>No ID on file</div>
+                  <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)' }}>No ID on file</div>
                 )}
               </div>
             </div>

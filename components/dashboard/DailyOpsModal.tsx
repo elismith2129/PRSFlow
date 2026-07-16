@@ -217,7 +217,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
               </span>
             </div>
             {notesText && (
-              <div style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'DM Mono, monospace', lineHeight: 1.6, background: '#0d0f1488', borderRadius: 8, padding: '10px 12px', marginBottom: photosToShow.length > 0 ? 10 : 0 }}>
+              <div style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Inter', lineHeight: 1.6, background: '#0d0f1488', borderRadius: 8, padding: '10px 12px', marginBottom: photosToShow.length > 0 ? 10 : 0 }}>
                 {notesText}
               </div>
             )}
@@ -233,11 +233,11 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
 
         {/* Progress */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>
+          <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
             {`${doneCount} / ${totalItems} checked`}
           </span>
           {checklistData?.staff_name && (
-            <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
+            <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
               {checklistData.staff_name}
               {checklistData.completed_at && ` · ${fmtTime(checklistData.completed_at)}`}
             </span>
@@ -281,7 +281,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
         {notesText && !flagged && (
           <div>
             <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'Syne, sans-serif', marginBottom: 6 }}>Notes</div>
-            <div style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'DM Mono, monospace', lineHeight: 1.6, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
+            <div style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Inter', lineHeight: 1.6, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
               {notesText}
             </div>
           </div>
@@ -323,7 +323,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
               padding: '6px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none',
             }}>
               <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Syne, sans-serif' }}>{l}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: c, fontFamily: 'DM Mono, monospace' }}>{v}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: c, fontFamily: 'Inter' }}>{v}</span>
             </div>
           ))}
         </div>
@@ -342,16 +342,16 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
                 padding: '9px 14px',
                 borderBottom: i < cashEntries.length - 1 ? '1px solid var(--border)' : 'none',
               }}>
-                <span style={{ fontSize: 11, color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{e.description || '—'}</span>
-                <span style={{ fontSize: 11, fontWeight: 600, fontFamily: 'DM Mono, monospace', color: e.type === 'in' ? '#4ade80' : '#f87171' }}>
+                <span style={{ fontSize: 11, color: 'var(--text)', fontFamily: 'Inter' }}>{e.description || '—'}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, fontFamily: 'Inter', color: e.type === 'in' ? '#4ade80' : '#f87171' }}>
                   {e.type === 'in' ? '+' : '−'}${Number(e.amount).toFixed(2)}
                 </span>
-                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>{e.type}</span>
+                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>{e.type}</span>
               </div>
             ))}
           </div>
         ) : (
-          <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>No transactions recorded.</div>
+          <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>No transactions recorded.</div>
         )}
       </div>
     )
@@ -367,7 +367,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {lowCount > 0 && (
           <div style={{ background: '#f0a24e18', border: '1px solid #f0a24e44', borderRadius: 8, padding: '8px 12px', marginBottom: 6 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#f0a24e', fontFamily: 'DM Mono, monospace' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#f0a24e', fontFamily: 'Inter' }}>
               ⚠ {lowCount} item{lowCount !== 1 ? 's' : ''} flagged low
             </span>
           </div>
@@ -380,14 +380,14 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
           }}>
             <div>
               <div style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Syne, sans-serif' }}>{it.item}</div>
-              {it.notes && <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>{it.notes}</div>}
+              {it.notes && <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>{it.notes}</div>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {it.qty != null && (
-                <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>×{it.qty}</span>
+                <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>×{it.qty}</span>
               )}
               <span style={{
-                fontSize: 9, fontWeight: 700, fontFamily: 'DM Mono, monospace',
+                fontSize: 9, fontWeight: 700, fontFamily: 'Inter',
                 padding: '2px 7px', borderRadius: 4,
                 color: it.low ? '#f0a24e' : '#4ade80',
                 background: it.low ? '#f0a24e22' : '#4ade8022',
@@ -413,7 +413,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
               {g.mics.map(name => (
                 <div key={name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 12px', marginBottom: 4 }}>
                   <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Syne, sans-serif' }}>{name}</span>
-                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>—</span>
+                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>—</span>
                 </div>
               ))}
             </div>
@@ -445,13 +445,13 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
               }}>
                 <div>
                   <div style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Syne, sans-serif' }}>{mic.name}</div>
-                  <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+                  <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>
                     {[mic.serial && `S/N: ${mic.serial}`, mic.location].filter(Boolean).join(' · ')}
                   </div>
                 </div>
                 {mic.condition && (
                   <span style={{
-                    fontSize: 10, fontWeight: 700, fontFamily: 'DM Mono, monospace',
+                    fontSize: 10, fontWeight: 700, fontFamily: 'Inter',
                     color: CONDITION_COLORS[mic.condition] ?? 'var(--text3)',
                     background: (CONDITION_COLORS[mic.condition] ?? 'var(--text2)') + '22',
                     padding: '2px 8px', borderRadius: 4,
@@ -470,7 +470,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
   function renderHistory() {
     if (history.length === 0) {
       return (
-        <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
+        <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>
           No submissions in the last 7 days.
         </div>
       )
@@ -483,17 +483,17 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
             background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 12px',
           }}>
             <div>
-              <div style={{ fontSize: 11, color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{fmtShortDate(h.date)}</div>
-              {h.staff_name && <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>{h.staff_name}</div>}
+              <div style={{ fontSize: 11, color: 'var(--text)', fontFamily: 'Inter' }}>{fmtShortDate(h.date)}</div>
+              {h.staff_name && <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>{h.staff_name}</div>}
             </div>
             <div style={{ display: 'flex', gap: 5 }}>
               {h.submitted_at ? (
-                <span style={{ fontSize: 9, fontWeight: 700, color: '#4ade80', background: '#4ade8022', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>Submitted</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#4ade80', background: '#4ade8022', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>Submitted</span>
               ) : (
-                <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text3)', background: 'var(--surface2)', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>Pending</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text3)', background: 'var(--surface2)', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>Pending</span>
               )}
               {h.admin_approved_at && (
-                <span style={{ fontSize: 9, fontWeight: 700, color, background: color + '22', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>Approved</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color, background: color + '22', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>Approved</span>
               )}
             </div>
           </div>
@@ -536,7 +536,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
               <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 16, color: 'var(--text)' }}>
                 {CATEGORY_LABELS[category] ?? category}
               </div>
-              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>
                 {category === 'mic_inventory' ? 'Global' : studioLabel}
                 {' · '}
                 {fmtShortDate(today)}
@@ -553,14 +553,14 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{
               fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
-              padding: '3px 10px', borderRadius: 6, fontFamily: 'DM Mono, monospace',
+              padding: '3px 10px', borderRadius: 6, fontFamily: 'Inter',
               color: isApproved ? color : isSubmitted ? '#4ade80' : hasLiveProgress ? 'var(--text2)' : '#f0a24e',
               background: isApproved ? color + '22' : isSubmitted ? '#4ade8022' : hasLiveProgress ? '#8b90a822' : '#f0a24e22',
             }}>
               {isApproved ? 'Approved' : isSubmitted ? 'Submitted' : hasLiveProgress ? 'In Progress' : 'Not Started'}
             </span>
             {submission?.staff_name && (
-              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
+              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
                 {submission.staff_name}
                 {submission.submitted_at && ` · ${fmtTime(submission.submitted_at)}`}
               </span>
@@ -575,12 +575,12 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
                 <div style={{ fontSize: 13, color: 'var(--text2)', fontFamily: 'Syne, sans-serif', marginBottom: 6 }}>
                   Awaiting runner submission
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
+                <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
                   The runner has not submitted this form yet today.
                 </div>
               </div>
             ) : loadingDetail ? (
-              <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>Loading…</div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>Loading…</div>
             ) : (
               <>
                 {(category === 'opening_checklist' || category === 'closing_checklist') && renderChecklist()}
@@ -600,7 +600,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
           {/* ── Approve button — BOTTOM ONLY, after all content ── */}
           {isSubmitted && !isApproved && canApprove && (
             <div style={{ paddingTop: 20, borderTop: '2px solid var(--border)' }}>
-              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginBottom: 14, lineHeight: 1.6 }}>
+              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginBottom: 14, lineHeight: 1.6 }}>
                 You have reviewed all submitted content above. Approving confirms this submission is complete and accurate.
               </div>
               <button
@@ -621,7 +621,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
           )}
 
           {isApproved && submission?.admin_approved_at && (
-            <div style={{ textAlign: 'center', padding: '12px 0', borderTop: '1px solid var(--border)', fontSize: 10, color: color, fontFamily: 'DM Mono, monospace' }}>
+            <div style={{ textAlign: 'center', padding: '12px 0', borderTop: '1px solid var(--border)', fontSize: 10, color: color, fontFamily: 'Inter' }}>
               ✓ Approved {fmtTime(submission.admin_approved_at)}
               {submission.admin_approved_by ? ` by ${submission.admin_approved_by}` : ''}
             </div>

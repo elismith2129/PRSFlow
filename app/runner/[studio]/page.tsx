@@ -149,7 +149,7 @@ export default function StudioDailyOpsPage() {
         background: (colors[status] ?? 'var(--text2)') + '22',
         padding: '2px 7px',
         borderRadius: 4,
-        fontFamily: 'DM Mono, monospace',
+        fontFamily: 'Inter',
       }}>
         {status}
       </span>
@@ -157,7 +157,7 @@ export default function StudioDailyOpsPage() {
   }
 
   function woStatusBadge(wo: WOStatus) {
-    if (!wo) return <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>No WO</span>
+    if (!wo) return <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>No WO</span>
     if (wo.status === 'completed') return null
     const colors: Record<string, string> = { draft: 'var(--text2)', submitted: '#f0a24e', approved: 'var(--accent)' }
     const c = colors[wo.status] ?? 'var(--text2)'
@@ -165,7 +165,7 @@ export default function StudioDailyOpsPage() {
       <span style={{
         fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
         color: c, background: c + '22', padding: '2px 7px', borderRadius: 4,
-        fontFamily: 'DM Mono, monospace',
+        fontFamily: 'Inter',
       }}>
         {wo.status}
       </span>
@@ -202,13 +202,13 @@ export default function StudioDailyOpsPage() {
         <div style={{
           width: 40, height: 40, borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 800, color: 'rgba(232,234,240,0.7)', fontFamily: 'DM Mono, monospace',
+          fontSize: 11, fontWeight: 800, color: 'rgba(232,234,240,0.7)', fontFamily: 'Inter',
         }}>
           {meta.abbr}
         </div>
         <div>
           <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{meta.label}</div>
-          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>
+          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
             {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
           </div>
         </div>
@@ -261,21 +261,21 @@ export default function StudioDailyOpsPage() {
                         )}
                       </div>
                       {completed && (
-                        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--booked)', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>COMPLETED</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--booked)', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>COMPLETED</span>
                       )}
                     </div>
 
                     <div style={{ display: 'flex', gap: 16, marginBottom: 10, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>
+                      <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
                         {b.from_time ?? '?'} – {b.to_time ?? '?'}
                       </span>
                       {b.studio && (
-                        <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>
+                        <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
                           Studio {b.studio}
                         </span>
                       )}
                       {b.engineer_name && (
-                        <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>
+                        <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
                           Eng: {b.engineer_name}
                         </span>
                       )}

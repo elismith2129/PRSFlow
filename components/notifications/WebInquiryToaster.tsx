@@ -97,7 +97,7 @@ function ToastItem({
         <div
           style={{
             fontSize: 9,
-            fontFamily: 'DM Mono, monospace',
+            fontFamily: 'Inter',
             letterSpacing: '0.1em',
             textTransform: 'uppercase',
             color: 'var(--accent)',

@@ -136,7 +136,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
               style={{
                 position: 'relative', display: 'flex', alignItems: 'center', height: '100%',
                 padding: '0 10px', fontSize: 11,
-                fontFamily: 'DM Mono', fontWeight: 500, letterSpacing: '0.04em',
+                fontFamily: 'Inter', fontWeight: 500, letterSpacing: '0.04em',
                 background: 'transparent',
                 color: isFeedback ? 'var(--accent)' : active ? 'var(--text)' : 'var(--cold)',
                 borderBottom: active ? '2px solid var(--accent)' : 'none',
@@ -150,7 +150,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
                   position: 'absolute', top: 2, right: 2,
                   background: 'var(--hot)', color: '#fff',
                   borderRadius: '50%', minWidth: 16, height: 16,
-                  fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
+                  fontSize: 9, fontFamily: 'Inter', fontWeight: 700,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   padding: '0 3px', lineHeight: 1,
                 }}>
@@ -187,7 +187,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
             background: 'transparent', border: 'none',
             borderLeft: '1px solid rgba(255,255,255,0.08)',
             padding: 0, paddingLeft: 12, marginLeft: 8,
-            fontFamily: 'DM Mono', fontSize: 10, fontWeight: 500,
+            fontFamily: 'Inter', fontSize: 10, fontWeight: 500,
             letterSpacing: '0.08em', textTransform: 'uppercase',
             color: 'var(--cold)', cursor: 'pointer', transition: 'color 0.15s ease',
           }}
@@ -210,7 +210,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
                   href={item.href}
                   style={{
                     display: 'flex', alignItems: 'center', height: 44, padding: '0 8px',
-                    fontFamily: 'DM Mono', fontSize: 12, fontWeight: 500, letterSpacing: '0.04em',
+                    fontFamily: 'Inter', fontSize: 12, fontWeight: 500, letterSpacing: '0.04em',
                     textDecoration: 'none', whiteSpace: 'nowrap',
                     color: active ? 'var(--text)' : 'var(--cold)',
                     borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
@@ -258,7 +258,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
                   onClick={() => setMenuOpen(false)}
                   style={{
                     display: 'flex', alignItems: 'center', height: 48, paddingLeft: 16,
-                    fontFamily: 'DM Mono', fontSize: 13, textDecoration: 'none',
+                    fontFamily: 'Inter', fontSize: 13, textDecoration: 'none',
                     color: isFeedback ? 'var(--accent)' : active ? 'var(--text)' : 'var(--text2)',
                     borderLeft: active ? '2px solid var(--accent)' : '2px solid transparent',
                   }}
@@ -271,7 +271,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
               onClick={toggleTheme}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10, height: 48, width: '100%', paddingLeft: 16,
-                fontFamily: 'DM Mono', fontSize: 13, color: 'var(--text2)',
+                fontFamily: 'Inter', fontSize: 13, color: 'var(--text2)',
                 background: 'transparent', border: 'none', borderTop: '1px solid rgba(255,255,255,0.06)',
                 cursor: 'pointer', textAlign: 'left',
               }}
@@ -284,7 +284,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
               data-signout=""
               style={{
                 display: 'flex', alignItems: 'center', height: 48, width: '100%', paddingLeft: 16,
-                fontFamily: 'DM Mono', fontSize: 13, color: 'var(--hot)',
+                fontFamily: 'Inter', fontSize: 13, color: 'var(--hot)',
                 background: 'transparent', border: 'none', borderTop: '1px solid rgba(255,255,255,0.06)',
                 cursor: 'pointer', textAlign: 'left',
               }}

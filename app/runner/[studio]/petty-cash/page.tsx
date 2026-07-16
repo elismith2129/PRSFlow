@@ -116,7 +116,7 @@ export default function PettyCashPage() {
         <button onClick={() => router.push(`/runner/${studio}`)} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>←</button>
         <div>
           <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>Petty Cash</div>
-          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>{meta.label} · Running Ledger</div>
+          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>{meta.label} · Running Ledger</div>
         </div>
       </div>
 
@@ -131,13 +131,13 @@ export default function PettyCashPage() {
               value={openingBalance}
               onChange={e => setOpeningBalance(e.target.value)}
               placeholder="0.00"
-              style={{ width: 80, textAlign: 'right', background: 'var(--border)', border: 'none', borderRadius: 6, padding: '4px 8px', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none' }}
+              style={{ width: 80, textAlign: 'right', background: 'var(--border)', border: 'none', borderRadius: 6, padding: '4px 8px', color: 'var(--text)', fontSize: 12, fontFamily: 'Inter', outline: 'none' }}
             />
           </div>
           {[['Cash In', `+$${totalIn.toFixed(2)}`, 'var(--booked)'], ['Cash Out', `-$${totalOut.toFixed(2)}`, 'var(--hot)'], ['Closing Balance', `$${closing.toFixed(2)}`, 'var(--accent)']].map(([l, v, c]) => (
             <div key={String(l)} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
               <span style={{ fontSize: 12, color: 'var(--text2)' }}>{l}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: String(c), fontFamily: 'DM Mono, monospace' }}>{v}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: String(c), fontFamily: 'Inter' }}>{v}</span>
             </div>
           ))}
         </div>
@@ -158,19 +158,19 @@ export default function PettyCashPage() {
                   placeholder="Description"
                   value={e.description}
                   onChange={ev => setEntries(prev => prev.map((x, j) => j === i ? { ...x, description: ev.target.value } : x))}
-                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none' }}
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', color: 'var(--text)', fontSize: 12, fontFamily: 'Inter', outline: 'none' }}
                 />
                 <input
                   type="number"
                   placeholder="$"
                   value={e.amount}
                   onChange={ev => setEntries(prev => prev.map((x, j) => j === i ? { ...x, amount: ev.target.value } : x))}
-                  style={{ width: 70, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 8px', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none' }}
+                  style={{ width: 70, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 8px', color: 'var(--text)', fontSize: 12, fontFamily: 'Inter', outline: 'none' }}
                 />
                 <button
                   type="button"
                   onClick={() => { dirtyRef.current = true; setEntries(prev => prev.map((x, j) => j === i ? { ...x, type: x.type === 'in' ? 'out' : 'in' } : x)) }}
-                  style={{ background: 'var(--bg)', border: `1px solid ${e.type === 'in' ? 'var(--booked)' : 'var(--hot)'}`, borderRadius: 8, padding: '7px 10px', color: e.type === 'in' ? 'var(--booked)' : 'var(--hot)', fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', cursor: 'pointer', minWidth: 44 }}
+                  style={{ background: 'var(--bg)', border: `1px solid ${e.type === 'in' ? 'var(--booked)' : 'var(--hot)'}`, borderRadius: 8, padding: '7px 10px', color: e.type === 'in' ? 'var(--booked)' : 'var(--hot)', fontSize: 12, fontWeight: 700, fontFamily: 'Inter', cursor: 'pointer', minWidth: 44 }}
                 >
                   {e.type === 'in' ? 'In' : 'Out'}
                 </button>
@@ -182,7 +182,7 @@ export default function PettyCashPage() {
 
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: 'var(--bg)', borderTop: '1px solid var(--border)' }}>
         {saveError && (
-          <div style={{ fontSize: 11, color: '#f87171', fontFamily: 'DM Mono, monospace', textAlign: 'center', marginBottom: 8, padding: '6px 10px', background: '#f8717122', borderRadius: 8 }}>
+          <div style={{ fontSize: 11, color: '#f87171', fontFamily: 'Inter', textAlign: 'center', marginBottom: 8, padding: '6px 10px', background: '#f8717122', borderRadius: 8 }}>
             {saveError}
           </div>
         )}

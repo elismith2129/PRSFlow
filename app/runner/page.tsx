@@ -136,7 +136,7 @@ export default function RunnerPage() {
               fontWeight: 800,
               color: 'rgba(232,234,240,0.7)',
               letterSpacing: '0.05em',
-              fontFamily: 'DM Mono, monospace',
+              fontFamily: 'Inter',
             }}>
               {s.abbr}
             </div>
@@ -145,7 +145,7 @@ export default function RunnerPage() {
               <div style={{
                 fontSize: 11,
                 color: counts[s.key] > 0 ? 'var(--accent)' : 'var(--cold)',
-                fontFamily: 'DM Mono, monospace',
+                fontFamily: 'Inter',
               }}>
                 {counts[s.key] > 0
                   ? `${counts[s.key]} session${counts[s.key] !== 1 ? 's' : ''} today`

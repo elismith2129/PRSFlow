@@ -79,7 +79,7 @@ function TwoCheckbox({ label, checked, clickable = false, loading = false, onCli
       }}>
         {checked && <span style={{ fontSize: 7, color: 'var(--bg)', fontWeight: 900, lineHeight: 1 }}>✓</span>}
       </div>
-      <span style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', fontWeight: 700, letterSpacing: '0.05em', color: checked ? color : 'var(--text3, #666)' }}>
+      <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 700, letterSpacing: '0.05em', color: checked ? color : 'var(--text3, #666)' }}>
         {loading ? '…' : label}
       </span>
     </button>
@@ -287,18 +287,18 @@ export function LocationStrip() {
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {needsAttention && (
-              <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--warm)', background: '#f9731622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>⚠ Needs Attention</span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--warm)', background: '#f9731622', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>⚠ Needs Attention</span>
             )}
             {completed && (
-              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--booked)', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>COMPLETED</span>
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--booked)', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>COMPLETED</span>
             )}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 10 }}>
-          {b.from_time && <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>{b.from_time}–{b.to_time ?? '?'}</span>}
-          {(b as any).studio && <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>Studio {(b as any).studio}</span>}
-          {(b as any).engineer_name && <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono, monospace' }}>Eng: {(b as any).engineer_name}</span>}
-          {(b as any).payment_type && <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px' }}>{(b as any).payment_type}</span>}
+          {b.from_time && <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>{b.from_time}–{b.to_time ?? '?'}</span>}
+          {(b as any).studio && <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>Studio {(b as any).studio}</span>}
+          {(b as any).engineer_name && <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>Eng: {(b as any).engineer_name}</span>}
+          {(b as any).payment_type && <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px' }}>{(b as any).payment_type}</span>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingTop: 9, borderTop: '1px solid var(--border)' }}>
           <a href={wo ? `/wo/${wo.id}/print` : '#'} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Syne, sans-serif', textDecoration: 'none', padding: '4px 9px', border: '1px solid var(--border)', borderRadius: 6 }}>PDF</a>
@@ -313,7 +313,7 @@ export function LocationStrip() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: c, fontFamily: 'Syne', whiteSpace: 'nowrap' }}>{label}</div>
         <div style={{ flex: 1, height: 1, background: orange ? '#f0a24e33' : 'var(--border)' }} />
-        <div style={{ fontSize: 9, color: orange ? '#f0a24e88' : 'var(--text3)', fontFamily: 'DM Mono, monospace', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: 9, color: orange ? '#f0a24e88' : 'var(--text3)', fontFamily: 'Inter', whiteSpace: 'nowrap' }}>
           {new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
         </div>
       </div>
@@ -369,7 +369,7 @@ export function LocationStrip() {
             <div style={{ padding: '18px 26px 14px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
               <div>
                 <div style={{ fontFamily: 'Syne', fontWeight: 900, fontSize: 20, color: 'var(--text)' }}>{selectedLoc.label}</div>
-                <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+                <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>
                   {new Date(today + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} · Daily Ops
                 </div>
               </div>
@@ -388,7 +388,7 @@ export function LocationStrip() {
                   <div data-ops-col="yesterday" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
                       <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'Syne' }}>Yesterday</span>
-                      <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
+                      <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter' }}>
                         {new Date(yesterday + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                       </span>
                     </div>
@@ -420,10 +420,10 @@ export function LocationStrip() {
                                   <div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                                       <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Syne', fontWeight: 600 }}>{cat.label}</span>
-                                      {needsReview && <span style={{ fontSize: 9, fontWeight: 700, color: '#f0a24e', background: '#f0a24e22', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>Review</span>}
+                                      {needsReview && <span style={{ fontSize: 9, fontWeight: 700, color: '#f0a24e', background: '#f0a24e22', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>Review</span>}
                                     </div>
                                     {row?.staff_name && (
-                                      <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+                                      <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>
                                         {row.staff_name}{row.submitted_at && ` · ${new Date(row.submitted_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`}
                                       </div>
                                     )}
@@ -446,7 +446,7 @@ export function LocationStrip() {
                   <div data-ops-col="today" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
                       <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'Syne' }}>Today</span>
-                      <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
+                      <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter' }}>
                         {new Date(today + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                       </span>
                     </div>
@@ -484,16 +484,16 @@ export function LocationStrip() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Syne', fontWeight: 600 }}>{cat.label}</span>
                                 {isChecklist && checklistProgress[cat.key]?.needsAttention && !adminDone && (
-                                  <span style={{ fontSize: 9, fontWeight: 700, color: '#f0a24e', background: '#f0a24e22', padding: '2px 6px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>⚠</span>
+                                  <span style={{ fontSize: 9, fontWeight: 700, color: '#f0a24e', background: '#f0a24e22', padding: '2px 6px', borderRadius: 4, fontFamily: 'Inter' }}>⚠</span>
                                 )}
                               </div>
                               {isChecklist && prog && (
-                                <div style={{ fontSize: 9, color: runnerDone ? '#4ade80' : 'var(--text2)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+                                <div style={{ fontSize: 9, color: runnerDone ? '#4ade80' : 'var(--text2)', fontFamily: 'Inter', marginTop: 2 }}>
                                   {prog.checked}/{prog.total} checked
                                 </div>
                               )}
                               {row?.staff_name && (
-                                <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+                                <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>
                                   {row.staff_name}{row.submitted_at && ` · ${new Date(row.submitted_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`}
                                 </div>
                               )}

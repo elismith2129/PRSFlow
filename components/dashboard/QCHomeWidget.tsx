@@ -18,7 +18,7 @@ export function QCHomeWidget({ reports }: { reports: QCReport[] }) {
         <button onClick={() => router.push('/qc')} style={{
           padding: '4px 10px', background: 'transparent',
           border: '1px solid var(--accent2)', color: 'var(--accent2)',
-          borderRadius: 5, fontFamily: 'DM Mono', fontSize: 9, cursor: 'pointer'
+          borderRadius: 5, fontFamily: 'Inter', fontSize: 9, cursor: 'pointer'
         }}>Open →</button>
       </div>
       <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
