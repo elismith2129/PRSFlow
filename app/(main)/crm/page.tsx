@@ -1800,7 +1800,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div>
             <div style={fieldLabelStyle}>Location · Studio</div>
-            <div style={{ maxWidth: 200 }}>
+            <div style={{ maxWidth: isMobile ? '100%' : 180 }}>
               <StudioSelect
                 location={localVenue}
                 studio={localStudio}

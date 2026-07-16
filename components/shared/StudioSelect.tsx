@@ -50,7 +50,7 @@ export default function StudioSelect({ location, studio, onChange, selectStyle, 
       {STUDIO_LOCATIONS.flatMap(l =>
         l.rooms.map(r => (
           <option key={`${l.name}|${r}`} value={`${l.name}|${r}`}>
-            {shortCodes ? `${STUDIO_CODES[l.name] || l.name} — ${r}` : `${l.name} — ${r}`}
+            {shortCodes ? `${STUDIO_CODES[l.name] || l.name} · ${r}` : `${l.name} — ${r}`}
           </option>
         ))
       )}
