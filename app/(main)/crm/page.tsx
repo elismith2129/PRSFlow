@@ -272,6 +272,7 @@ export default function CRMPage() {
   const [toast, setToast] = useState<{ clientId: string } | null>(null)
   const router = useRouter()
   const isMobile = useIsMobile()
+  const { profile } = useUserProfile()
   // Real-time: leadsVersion bumps on any realtime leads INSERT/UPDATE (from the
   // shared WebInquiryProvider channel), so the leads list re-fetches live.
   const { leadsVersion } = useWebInquiries()
@@ -422,7 +423,7 @@ export default function CRMPage() {
   }
 
   async function createLead(data: Partial<Lead>) {
-    const insertData: Partial<Lead> = { ...data }
+    const insertData: Partial<Lead> = { ...data, created_by: profile?.id ?? null }
     if (!insertData.status) insertData.status = 'uncontacted'
     if (insertData.status === 'hot') {
       const khu = new Date(); khu.setDate(khu.getDate() + 5)
@@ -1339,11 +1340,12 @@ const parsedLoc0 = parseLocation(lead.location || '')
 
   // Resolve the creator's initials for the dedicated "Lead Created" row.
   // Web Inquiry rows are attributed to "Inquiry" (no staff lookup). Otherwise
-  // join created_by → user_profiles.auth_user_id for initials / display_name.
+  // join created_by → user_profiles.id (the surrogate PK stored at insert) for
+  // initials / display_name.
   useEffect(() => {
     setCreatorInitials(null)
     if (!lead.created_by || lead.source === 'Web Inquiry') return
-    supabase.from('user_profiles').select('initials, display_name').eq('auth_user_id', lead.created_by).maybeSingle()
+    supabase.from('user_profiles').select('initials, display_name').eq('id', lead.created_by).maybeSingle()
       .then(({ data }) => {
         if (data) setCreatorInitials(data.initials || profileInitials(data.display_name) || null)
       })
