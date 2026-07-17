@@ -1096,9 +1096,9 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
               <button key={f.key} onClick={() => toggleFilter(f.key)} style={{
                 padding: isMobile ? '4px 8px' : '4px 10px', cursor: 'pointer', borderRadius: 20,
                 fontFamily: 'Syne', fontWeight: isActive ? 700 : 600, fontSize: isMobile ? 10 : 9, letterSpacing: '0.08em', textTransform: 'uppercase',
-                background: isActive ? `${f.color}33` : 'transparent',
-                border: `1px solid ${isActive ? f.color : `${f.color}80`}`,
-                color: isActive ? f.color : `${f.color}b3`,
+                background: isActive ? `color-mix(in srgb, ${f.color} 20%, transparent)` : 'transparent',
+                border: `1px solid ${isActive ? f.color : `color-mix(in srgb, ${f.color} 50%, transparent)`}`,
+                color: isActive ? f.color : `color-mix(in srgb, ${f.color} 70%, transparent)`,
                 flexShrink: isMobile ? 0 : undefined, whiteSpace: isMobile ? 'nowrap' : undefined,
                 transition: 'all 0.15s',
               }}>
@@ -1549,7 +1549,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
           <button
             type="button"
             onClick={() => setStatusDDOpen(o => !o)}
-            style={{ ...pillBase, gap: 5, background: `${LEAD_AVATAR_COLORS[local.status || lead.status] || LEAD_AVATAR_COLORS.uncontacted}22`, color: LEAD_AVATAR_COLORS[local.status || lead.status] || LEAD_AVATAR_COLORS.uncontacted, border: 'none' }}
+            style={{ ...pillBase, gap: 5, background: `color-mix(in srgb, ${LEAD_AVATAR_COLORS[local.status || lead.status] || LEAD_AVATAR_COLORS.uncontacted} 13%, transparent)`, color: LEAD_AVATAR_COLORS[local.status || lead.status] || LEAD_AVATAR_COLORS.uncontacted, border: 'none' }}
           >
             <span>{statusLabel(local.status || lead.status)}</span>
             <span style={{ fontSize: 8, lineHeight: 1, transform: statusDDOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
@@ -2618,7 +2618,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
           { key: 'warm', label: 'Warm', color: 'var(--warm)' },
           { key: 'booking', label: 'Move to Booking', color: 'var(--booked)' },
         ] as const).map(opt => (
-          <button key={opt.key} type="button" onClick={() => setTemperature(opt.key)} style={{ flex: opt.key === 'booking' ? 2 : 1, padding: '7px 0', borderRadius: 6, border: `1px solid ${temperature === opt.key ? opt.color : 'var(--border)'}`, background: temperature === opt.key ? `${opt.color}22` : 'transparent', color: temperature === opt.key ? opt.color : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.15s' }}>
+          <button key={opt.key} type="button" onClick={() => setTemperature(opt.key)} style={{ flex: opt.key === 'booking' ? 2 : 1, padding: '7px 0', borderRadius: 6, border: `1px solid ${temperature === opt.key ? opt.color : 'var(--border)'}`, background: temperature === opt.key ? `color-mix(in srgb, ${opt.color} 13%, transparent)` : 'transparent', color: temperature === opt.key ? opt.color : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.15s' }}>
             {opt.label}
           </button>
         ))}
