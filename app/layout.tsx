@@ -29,7 +29,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body style={{ background: 'var(--bg)', minHeight: '100vh' }}>
+      <body>
+        {/* Apply the saved theme before first paint (default: light). Runs on every
+            route — including login/splash, which have no Nav to set data-theme. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('prsflo-theme');if(t!=='dark'){document.documentElement.setAttribute('data-theme','light')}}catch(e){}`,
+          }}
+        />
         {children}
       </body>
     </html>

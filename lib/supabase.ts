@@ -45,6 +45,7 @@ export interface Lead {
   session_start: string | null
   session_end: string | null
   engineer_needed: boolean | null
+  created_by: string | null
   created_at: string
   updated_at: string | null
 }

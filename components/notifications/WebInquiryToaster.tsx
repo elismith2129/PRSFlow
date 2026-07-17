@@ -69,15 +69,15 @@ function ToastItem({
         width: 260,
         boxSizing: 'border-box',
         cursor: 'pointer',
-        background: '#161920',
-        borderLeft: '3px solid #c8f04e',
+        background: 'var(--surface)',
+        borderLeft: '3px solid var(--accent)',
         borderRadius: 8,
         boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
         padding: '12px 14px',
         display: 'flex',
         alignItems: 'center',
         gap: 10,
-        color: '#e8eaf0',
+        color: 'var(--text)',
         transform: offscreen ? 'translateX(120%)' : 'translateX(0)',
         opacity: offscreen ? 0 : 1,
         transition: `transform ${EXIT_MS}ms ease, opacity ${EXIT_MS}ms ease, top 0.2s ease`,
@@ -88,19 +88,19 @@ function ToastItem({
           width: 8,
           height: 8,
           borderRadius: '50%',
-          background: '#c8f04e',
+          background: 'var(--accent)',
           flexShrink: 0,
-          boxShadow: '0 0 6px rgba(200,240,78,0.8)',
+          boxShadow: '0 0 6px rgba(var(--accent-rgb),0.8)',
         }}
       />
       <div style={{ minWidth: 0 }}>
         <div
           style={{
             fontSize: 9,
-            fontFamily: 'DM Mono, monospace',
+            fontFamily: 'Inter',
             letterSpacing: '0.1em',
             textTransform: 'uppercase',
-            color: '#c8f04e',
+            color: 'var(--accent)',
             marginBottom: 3,
           }}
         >

@@ -13,9 +13,9 @@ const LOCKOUT_KEY = 'pin_lockout'
 const MAX_FAILS = 5
 const LOCKOUT_MS = 30_000
 
-const COLOR_ERROR = '#ef4444'
-const COLOR_SUCCESS = '#c8f04e'
-const COLOR_LOCK = '#F97316'
+const COLOR_ERROR = 'var(--hot)'
+const COLOR_SUCCESS = 'var(--accent)'
+const COLOR_LOCK = 'var(--warm)'
 
 type LockoutStore = { attempts: number; lockedUntil: number | null }
 
@@ -273,7 +273,7 @@ export default function LoginPage() {
     <div
       style={{
         minHeight: '100vh',
-        background: '#0d0f14',
+        background: 'var(--bg)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -313,10 +313,10 @@ export default function LoginPage() {
           </div>
           <div
             style={{
-              fontFamily: "'DM Mono', monospace",
+              fontFamily: 'Inter',
               fontSize: 11,
               letterSpacing: '0.2em',
-              color: '#6B7280',
+              color: 'var(--cold)',
               textTransform: 'uppercase',
               textAlign: 'center',
               marginTop: 6,
@@ -347,7 +347,7 @@ export default function LoginPage() {
                     height: 14,
                     borderRadius: '50%',
                     background: i < pin.length ? COLOR_SUCCESS : 'transparent',
-                    border: `2px solid ${i < pin.length ? COLOR_SUCCESS : '#2a2e3d'}`,
+                    border: `2px solid ${i < pin.length ? COLOR_SUCCESS : 'var(--border)'}`,
                     transition: 'background 0.12s ease, border-color 0.12s ease',
                   }}
                 />
@@ -359,7 +359,7 @@ export default function LoginPage() {
               style={{
                 minHeight: 18,
                 marginBottom: 18,
-                fontFamily: "'DM Mono', monospace",
+                fontFamily: 'Inter',
                 fontSize: 12,
                 textAlign: 'center',
                 color: displayMsg?.color ?? 'transparent',
@@ -387,12 +387,13 @@ export default function LoginPage() {
                 return (
                   <button
                     key={key}
+                    data-login-key=""
                     type="button"
                     onClick={() => (isBack ? pressBack() : pressDigit(key))}
                     style={numKeyStyle}
-                    onMouseDown={(e) => (e.currentTarget.style.background = '#20242f')}
-                    onMouseUp={(e) => (e.currentTarget.style.background = '#161920')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = '#161920')}
+                    onMouseDown={(e) => (e.currentTarget.style.background = 'var(--surface2)')}
+                    onMouseUp={(e) => (e.currentTarget.style.background = 'var(--surface)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--surface)')}
                   >
                     {key}
                   </button>
@@ -405,9 +406,9 @@ export default function LoginPage() {
               onClick={() => { setMode('email'); setPin(''); setPinMsg(null) }}
               style={{
                 marginTop: 28,
-                fontFamily: "'DM Mono', monospace",
+                fontFamily: 'Inter',
                 fontSize: 11,
-                color: '#6B7280',
+                color: 'var(--cold)',
                 cursor: 'pointer',
                 textAlign: 'center',
               }}
@@ -435,7 +436,7 @@ export default function LoginPage() {
               autoComplete="email"
               className="auth-input"
               style={authInputStyle}
-              onFocus={(e) => (e.currentTarget.style.borderColor = '#c8f04e')}
+              onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
               onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
             />
             <div style={{ position: 'relative', width: '100%' }}>
@@ -447,7 +448,7 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 className="auth-input"
                 style={{ ...authInputStyle, paddingRight: 44 }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = '#c8f04e')}
+                onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
                 onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
               />
               <button
@@ -463,7 +464,7 @@ export default function LoginPage() {
                   border: 'none',
                   padding: 6,
                   cursor: 'pointer',
-                  color: '#6B7280',
+                  color: 'var(--cold)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -475,6 +476,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
+              data-login-submit=""
               disabled={loading}
               style={authButtonStyle}
               onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
@@ -486,9 +488,9 @@ export default function LoginPage() {
             <div
               onClick={handleForgotPassword}
               style={{
-                fontFamily: "'DM Mono', monospace",
+                fontFamily: 'Inter',
                 fontSize: 11,
-                color: '#6B7280',
+                color: 'var(--cold)',
                 cursor: 'pointer',
                 textAlign: 'center',
                 textDecoration: 'none',
@@ -501,9 +503,9 @@ export default function LoginPage() {
             {error && (
               <div
                 style={{
-                  fontFamily: "'DM Mono', monospace",
+                  fontFamily: 'Inter',
                   fontSize: 11,
-                  color: '#ef4444',
+                  color: 'var(--hot)',
                   textAlign: 'center',
                 }}
               >
@@ -514,9 +516,9 @@ export default function LoginPage() {
             {success && (
               <div
                 style={{
-                  fontFamily: "'DM Mono', monospace",
+                  fontFamily: 'Inter',
                   fontSize: 11,
-                  color: '#c8f04e',
+                  color: 'var(--accent)',
                   textAlign: 'center',
                 }}
               >
@@ -527,9 +529,9 @@ export default function LoginPage() {
             <div
               onClick={() => { setMode('pin'); setError(''); setSuccess('') }}
               style={{
-                fontFamily: "'DM Mono', monospace",
+                fontFamily: 'Inter',
                 fontSize: 11,
-                color: '#6B7280',
+                color: 'var(--cold)',
                 cursor: 'pointer',
                 textAlign: 'center',
                 marginTop: 6,
@@ -551,10 +553,10 @@ function fadeUpStyle(delay: number, duration: number): React.CSSProperties {
 
 const numKeyStyle: React.CSSProperties = {
   height: 68,
-  background: '#161920',
-  border: '1px solid #2a2e3d',
+  background: 'var(--surface)',
+  border: '1px solid var(--border)',
   borderRadius: 12,
-  color: '#e8eaf0',
+  color: 'var(--text)',
   fontFamily: "'DM Mono', monospace",
   fontSize: 24,
   fontWeight: 500,
@@ -574,7 +576,7 @@ const authInputStyle: React.CSSProperties = {
   borderRadius: 6,
   padding: '12px 14px',
   color: 'var(--text)',
-  fontFamily: "'DM Mono', monospace",
+  fontFamily: 'Inter',
   fontSize: 13,
   outline: 'none',
   boxSizing: 'border-box',
@@ -584,8 +586,8 @@ const authButtonStyle: React.CSSProperties = {
   width: '100%',
   maxWidth: 380,
   background: 'transparent',
-  color: '#e8eaf0',
-  fontFamily: "'DM Mono', monospace",
+  color: 'var(--text)',
+  fontFamily: 'Inter',
   fontSize: 12,
   fontWeight: 700,
   letterSpacing: '0.1em',

@@ -20,8 +20,8 @@ type WoEntry = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<WoStatus, string> = {
-  open:      '#6B7280',
-  completed: '#14B8A6',
+  open:      'var(--cold)',
+  completed: 'var(--booked)',
 }
 
 
@@ -189,10 +189,10 @@ export default function WoHubPage() {
       padding: '5px 14px',
       borderRadius: 20,
       border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-      background: active ? 'rgba(200,240,78,0.12)' : 'transparent',
+      background: active ? 'rgba(var(--accent-rgb),0.12)' : 'transparent',
       color: active ? 'var(--accent)' : 'var(--text3)',
       fontSize: 11,
-      fontFamily: 'DM Mono',
+      fontFamily: 'Inter',
       fontWeight: 500,
       cursor: 'pointer',
       transition: 'all 0.1s',
@@ -213,7 +213,7 @@ export default function WoHubPage() {
         </h1>
         <p style={{
           margin: '4px 0 0', fontSize: 12,
-          color: 'var(--text3)', fontFamily: 'DM Mono',
+          color: 'var(--text3)', fontFamily: 'Inter',
         }}>
           All work orders across all studios
         </p>
@@ -245,14 +245,14 @@ export default function WoHubPage() {
       {loading ? (
         <div style={{
           textAlign: 'center', color: 'var(--text3)',
-          fontFamily: 'DM Mono', fontSize: 13, padding: '60px 0',
+          fontFamily: 'Inter', fontSize: 13, padding: '60px 0',
         }}>
           Loading…
         </div>
       ) : filtered.length === 0 ? (
         <div style={{
           textAlign: 'center', color: 'var(--text3)',
-          fontFamily: 'DM Mono', fontSize: 13, padding: '60px 0',
+          fontFamily: 'Inter', fontSize: 13, padding: '60px 0',
         }}>
           No work orders found
         </div>
@@ -295,7 +295,7 @@ export default function WoHubPage() {
                   {/* Client + artist — flexible, takes remaining space */}
                   <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
                     <div style={{
-                      fontFamily: 'DM Mono', fontWeight: 700, fontSize: 13,
+                      fontFamily: 'Inter', fontWeight: 700, fontSize: 13,
                       color: 'var(--text)',
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>
@@ -304,7 +304,7 @@ export default function WoHubPage() {
                     {e.booking.artist && e.booking.artist !== e.booking.client_name && (
                       <div style={{
                         fontSize: 11, color: 'var(--text2)',
-                        fontFamily: 'DM Mono', marginTop: 2,
+                        fontFamily: 'Inter', marginTop: 2,
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       }}>
                         {e.booking.artist}
@@ -319,7 +319,7 @@ export default function WoHubPage() {
                   }}>
                     {pill ? (
                       <div style={{
-                        fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
+                        fontSize: 9, fontFamily: 'Inter', fontWeight: 700,
                         letterSpacing: '0.06em',
                         background: 'var(--surface2)', color: 'var(--text2)',
                         border: '1px solid var(--border)',
@@ -328,7 +328,7 @@ export default function WoHubPage() {
                         {pill}
                       </div>
                     ) : (
-                      <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'DM Mono' }}>—</span>
+                      <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>—</span>
                     )}
                   </div>
 
@@ -336,7 +336,7 @@ export default function WoHubPage() {
                   <div style={{
                     width: 120, flexShrink: 0,
                     fontSize: 11, color: 'var(--text2)',
-                    fontFamily: 'DM Mono', whiteSpace: 'nowrap',
+                    fontFamily: 'Inter', whiteSpace: 'nowrap',
                   }}>
                     {fmtDateRange(e.booking.start_date, e.booking.end_date)}
                   </div>
@@ -355,7 +355,7 @@ export default function WoHubPage() {
                     display: 'flex', justifyContent: 'center',
                   }}>
                     <div style={{
-                      fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
+                      fontSize: 9, fontFamily: 'Inter', fontWeight: 700,
                       letterSpacing: '0.06em',
                       background: cod ? 'rgba(109,127,199,0.15)' : 'rgba(150,169,255,0.15)',
                       color: cod ? '#6D7FC7' : '#96A9FF',
@@ -369,7 +369,7 @@ export default function WoHubPage() {
                   {/* Total — 90px fixed, right-aligned */}
                   <div style={{
                     width: 90, flexShrink: 0,
-                    fontSize: 13, fontFamily: 'DM Mono', fontWeight: 700,
+                    fontSize: 13, fontFamily: 'Inter', fontWeight: 700,
                     color: 'var(--text)', textAlign: 'right',
                   }}>
                     {e.total > 0 ? fmtMoney(e.total) : '—'}

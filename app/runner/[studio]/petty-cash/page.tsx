@@ -108,69 +108,69 @@ export default function PettyCashPage() {
   const totalOut = entries.filter(e => e.type === 'out').reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)
   const closing = (parseFloat(openingBalance) || 0) + totalIn - totalOut
 
-  if (loading) return <div style={{ minHeight: '100dvh', background: '#0d0f14', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b90a8', fontFamily: 'Syne, sans-serif' }}>Loading…</div>
+  if (loading) return <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text2)', fontFamily: 'Syne, sans-serif' }}>Loading…</div>
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#0d0f14', fontFamily: 'Syne, sans-serif', paddingBottom: 100 }}>
-      <div style={{ background: '#161920', borderBottom: '1px solid var(--border)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 }}>
-        <button onClick={() => router.push(`/runner/${studio}`)} style={{ background: 'none', border: 'none', color: '#8b90a8', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>←</button>
+    <div style={{ minHeight: '100dvh', background: 'var(--bg)', fontFamily: 'Syne, sans-serif', paddingBottom: 100 }}>
+      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 }}>
+        <button onClick={() => router.push(`/runner/${studio}`)} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>←</button>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: '#e8eaf2' }}>Petty Cash</div>
-          <div style={{ fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>{meta.label} · Running Ledger</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>Petty Cash</div>
+          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>{meta.label} · Running Ledger</div>
         </div>
       </div>
 
       <div style={{ padding: '16px' }} onChangeCapture={() => { dirtyRef.current = true }}>
         {/* Balances */}
-        <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, padding: '14px', marginBottom: 16 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', marginBottom: 12 }}>Balances</div>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px', marginBottom: 16 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)', marginBottom: 12 }}>Balances</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span style={{ fontSize: 12, color: '#8b90a8' }}>Opening Balance</span>
+            <span style={{ fontSize: 12, color: 'var(--text2)' }}>Opening Balance</span>
             <input
               type="number"
               value={openingBalance}
               onChange={e => setOpeningBalance(e.target.value)}
               placeholder="0.00"
-              style={{ width: 80, textAlign: 'right', background: '#2a2e3d', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#e8eaf2', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none' }}
+              style={{ width: 80, textAlign: 'right', background: 'var(--border)', border: 'none', borderRadius: 6, padding: '4px 8px', color: 'var(--text)', fontSize: 12, fontFamily: 'Inter', outline: 'none' }}
             />
           </div>
-          {[['Cash In', `+$${totalIn.toFixed(2)}`, '#14B8A6'], ['Cash Out', `-$${totalOut.toFixed(2)}`, '#EF4444'], ['Closing Balance', `$${closing.toFixed(2)}`, '#c8f04e']].map(([l, v, c]) => (
+          {[['Cash In', `+$${totalIn.toFixed(2)}`, 'var(--booked)'], ['Cash Out', `-$${totalOut.toFixed(2)}`, 'var(--hot)'], ['Closing Balance', `$${closing.toFixed(2)}`, 'var(--accent)']].map(([l, v, c]) => (
             <div key={String(l)} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontSize: 12, color: '#8b90a8' }}>{l}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: String(c), fontFamily: 'DM Mono, monospace' }}>{v}</span>
+              <span style={{ fontSize: 12, color: 'var(--text2)' }}>{l}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: String(c), fontFamily: 'Inter' }}>{v}</span>
             </div>
           ))}
         </div>
 
         {/* Entries */}
-        <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 12, padding: '14px', marginBottom: 16 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px', marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8' }}>Transactions</div>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)' }}>Transactions</div>
             <button onClick={addEntry} style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>+ Add</button>
           </div>
 
-          {entries.length === 0 && <div style={{ fontSize: 12, color: '#8b90a8', textAlign: 'center', padding: '12px 0' }}>No entries yet</div>}
+          {entries.length === 0 && <div style={{ fontSize: 12, color: 'var(--text2)', textAlign: 'center', padding: '12px 0' }}>No entries yet</div>}
 
           {entries.map((e, i) => (
-            <div key={i} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: i < entries.length - 1 ? '1px solid #2a2e3d' : 'none' }}>
+            <div key={i} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: i < entries.length - 1 ? '1px solid var(--border)' : 'none' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, marginBottom: 6 }}>
                 <input
                   placeholder="Description"
                   value={e.description}
                   onChange={ev => setEntries(prev => prev.map((x, j) => j === i ? { ...x, description: ev.target.value } : x))}
-                  style={{ background: '#0d0f14', border: '1px solid #2a2e3d', borderRadius: 8, padding: '7px 10px', color: '#e8eaf2', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none' }}
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', color: 'var(--text)', fontSize: 12, fontFamily: 'Inter', outline: 'none' }}
                 />
                 <input
                   type="number"
                   placeholder="$"
                   value={e.amount}
                   onChange={ev => setEntries(prev => prev.map((x, j) => j === i ? { ...x, amount: ev.target.value } : x))}
-                  style={{ width: 70, background: '#0d0f14', border: '1px solid #2a2e3d', borderRadius: 8, padding: '7px 8px', color: '#e8eaf2', fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none' }}
+                  style={{ width: 70, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 8px', color: 'var(--text)', fontSize: 12, fontFamily: 'Inter', outline: 'none' }}
                 />
                 <button
                   type="button"
                   onClick={() => { dirtyRef.current = true; setEntries(prev => prev.map((x, j) => j === i ? { ...x, type: x.type === 'in' ? 'out' : 'in' } : x)) }}
-                  style={{ background: '#0d0f14', border: `1px solid ${e.type === 'in' ? '#14B8A6' : '#EF4444'}`, borderRadius: 8, padding: '7px 10px', color: e.type === 'in' ? '#14B8A6' : '#EF4444', fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', cursor: 'pointer', minWidth: 44 }}
+                  style={{ background: 'var(--bg)', border: `1px solid ${e.type === 'in' ? 'var(--booked)' : 'var(--hot)'}`, borderRadius: 8, padding: '7px 10px', color: e.type === 'in' ? 'var(--booked)' : 'var(--hot)', fontSize: 12, fontWeight: 700, fontFamily: 'Inter', cursor: 'pointer', minWidth: 44 }}
                 >
                   {e.type === 'in' ? 'In' : 'Out'}
                 </button>
@@ -180,9 +180,9 @@ export default function PettyCashPage() {
         </div>
       </div>
 
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: '#0d0f14', borderTop: '1px solid #2a2e3d' }}>
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: 'var(--bg)', borderTop: '1px solid var(--border)' }}>
         {saveError && (
-          <div style={{ fontSize: 11, color: '#f87171', fontFamily: 'DM Mono, monospace', textAlign: 'center', marginBottom: 8, padding: '6px 10px', background: '#f8717122', borderRadius: 8 }}>
+          <div style={{ fontSize: 11, color: '#f87171', fontFamily: 'Inter', textAlign: 'center', marginBottom: 8, padding: '6px 10px', background: '#f8717122', borderRadius: 8 }}>
             {saveError}
           </div>
         )}

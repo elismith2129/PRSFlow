@@ -229,38 +229,38 @@ export default function ChecklistPage() {
   }
 
   if (pageLoading) return (
-    <div style={{ minHeight: '100dvh', background: '#0d0f14', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Syne, sans-serif', color: '#8b90a8' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Syne, sans-serif', color: 'var(--text2)' }}>
       Loading…
     </div>
   )
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#0d0f14', fontFamily: 'Syne, sans-serif', paddingBottom: 120 }} onChangeCapture={() => { dirtyRef.current = true }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--bg)', fontFamily: 'Syne, sans-serif', paddingBottom: 120 }} onChangeCapture={() => { dirtyRef.current = true }}>
 
       {/* Sticky header */}
-      <div style={{ background: '#161920', borderBottom: '1px solid var(--border)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 }}>
-        <button onClick={() => router.push(`/runner/${studio}`)} style={{ background: 'none', border: 'none', color: '#8b90a8', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>←</button>
+      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 }}>
+        <button onClick={() => router.push(`/runner/${studio}`)} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>←</button>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 15, fontWeight: 800, color: '#e8eaf2' }}>{isOpening ? 'Opening' : 'Closing'} Checklist</span>
-            {isSubmitted && <span style={{ fontSize: 10, color: '#14B8A6', fontFamily: 'DM Mono, monospace' }}>● submitted</span>}
+            <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>{isOpening ? 'Opening' : 'Closing'} Checklist</span>
+            {isSubmitted && <span style={{ fontSize: 10, color: 'var(--booked)', fontFamily: 'Inter' }}>● submitted</span>}
           </div>
-          <div style={{ fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>{meta.label} · {completedCount}/{allItems.length} checked</div>
+          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>{meta.label} · {completedCount}/{allItems.length} checked</div>
         </div>
-        <div style={{ width: 60, height: 4, background: '#2a2e3d', borderRadius: 2, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${allItems.length > 0 ? (completedCount / allItems.length) * 100 : 0}%`, background: '#c8f04e', transition: 'width 0.2s' }} />
+        <div style={{ width: 60, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${allItems.length > 0 ? (completedCount / allItems.length) * 100 : 0}%`, background: 'var(--accent)', transition: 'width 0.2s' }} />
         </div>
       </div>
 
       <div style={{ padding: '16px' }}>
 
-        <div style={{ background: '#161920', border: '1px solid #2a2e3d', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace', lineHeight: 1.5 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', lineHeight: 1.5 }}>
           Tap items as you complete them — saves instantly. Only check what&apos;s done.
         </div>
 
         {sections.map(sec => (
           <div key={sec.section} style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#8b90a8', fontFamily: 'DM Mono, monospace', marginBottom: 8, paddingLeft: 4 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text2)', fontFamily: 'Inter', marginBottom: 8, paddingLeft: 4 }}>
               {sec.section}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -268,22 +268,22 @@ export default function ChecklistPage() {
                 const on = checked[item] ?? false
                 return (
                   <button key={item} onClick={() => toggle(item)} style={{
-                    background: on ? '#c8f04e15' : '#161920',
-                    border: `1px solid ${on ? '#c8f04e55' : '#2a2e3d'}`,
+                    background: on ? '#c8f04e15' : 'var(--surface)',
+                    border: `1px solid ${on ? '#c8f04e55' : 'var(--border)'}`,
                     borderRadius: 10, padding: '11px 14px', cursor: 'pointer',
                     display: 'flex', alignItems: 'flex-start', gap: 12, textAlign: 'left',
                     transition: 'all 0.12s',
                   }}>
                     <div style={{
                       width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 1,
-                      background: on ? '#c8f04e' : '#2a2e3d',
+                      background: on ? 'var(--accent)' : 'var(--border)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 13, color: '#0d0f14', fontWeight: 700,
+                      fontSize: 13, color: 'var(--bg)', fontWeight: 700,
                       transition: 'background 0.12s',
                     }}>
                       {on ? '✓' : ''}
                     </div>
-                    <span style={{ fontSize: 13, color: on ? '#e8eaf2' : '#8b90a8', lineHeight: 1.45, textDecoration: on ? 'line-through' : 'none', flex: 1 }}>
+                    <span style={{ fontSize: 13, color: on ? 'var(--text)' : 'var(--text2)', lineHeight: 1.45, textDecoration: on ? 'line-through' : 'none', flex: 1 }}>
                       {item}
                     </span>
                   </button>
@@ -294,17 +294,17 @@ export default function ChecklistPage() {
         ))}
 
         {/* Needs Attention */}
-        <div style={{ background: '#161920', border: `1px solid ${(notes.trim() || photos.length > 0) ? '#f9731640' : '#2a2e3d'}`, borderRadius: 12, padding: '16px', marginTop: 8 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: (notes.trim() || photos.length > 0) ? '#f97316' : '#8b90a8', marginBottom: 14 }}>
+        <div style={{ background: 'var(--surface)', border: `1px solid ${(notes.trim() || photos.length > 0) ? '#f9731640' : 'var(--border)'}`, borderRadius: 12, padding: '16px', marginTop: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: (notes.trim() || photos.length > 0) ? 'var(--warm)' : 'var(--text2)', marginBottom: 14 }}>
             Needs Attention / Runner Notes
           </div>
 
           {(notes.trim() || photos.length > 0) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f9731615', border: '1px solid #f9731640', borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
-              <span style={{ fontSize: 14, color: '#f97316', flexShrink: 0 }}>⚠</span>
+              <span style={{ fontSize: 14, color: 'var(--warm)', flexShrink: 0 }}>⚠</span>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#f97316', fontFamily: 'Syne, sans-serif' }}>Flagged for management attention</div>
-                <div style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>Management will be notified when you submit</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--warm)', fontFamily: 'Syne, sans-serif' }}>Flagged for management attention</div>
+                <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter', marginTop: 2 }}>Management will be notified when you submit</div>
               </div>
             </div>
           )}
@@ -316,9 +316,9 @@ export default function ChecklistPage() {
             rows={4}
             style={{
               width: '100%', boxSizing: 'border-box',
-              background: '#0d0f14', border: '1px solid #2a2e3d', borderRadius: 10,
-              padding: '12px 14px', color: '#e8eaf2', fontSize: 13,
-              fontFamily: 'DM Mono, monospace', outline: 'none', resize: 'vertical',
+              background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10,
+              padding: '12px 14px', color: 'var(--text)', fontSize: 13,
+              fontFamily: 'Inter', outline: 'none', resize: 'vertical',
               lineHeight: 1.5, marginBottom: 12,
             }}
           />
@@ -328,8 +328,8 @@ export default function ChecklistPage() {
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
             style={{
-              background: '#2a2e3d', border: '1px solid #3a3e4d', borderRadius: 8,
-              padding: '10px 16px', color: '#e8eaf2', fontSize: 12, fontWeight: 600,
+              background: 'var(--border)', border: '1px solid #3a3e4d', borderRadius: 8,
+              padding: '10px 16px', color: 'var(--text)', fontSize: 12, fontWeight: 600,
               cursor: uploading ? 'not-allowed' : 'pointer', fontFamily: 'Syne, sans-serif',
               opacity: uploading ? 0.7 : 1,
             }}
@@ -341,10 +341,10 @@ export default function ChecklistPage() {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
               {photos.map((url, i) => (
                 <div key={i} style={{ position: 'relative' }}>
-                  <SignedImage path={url} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid #2a2e3d' }} />
+                  <SignedImage path={url} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
                   <button
                     onClick={() => { dirtyRef.current = true; attentionChangedRef.current = true; setPhotos(prev => prev.filter((_, j) => j !== i)) }}
-                    style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: 9, background: '#EF4444', border: 'none', color: '#fff', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}
+                    style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: 9, background: 'var(--hot)', border: 'none', color: '#fff', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}
                   >✕</button>
                 </div>
               ))}
@@ -355,29 +355,29 @@ export default function ChecklistPage() {
 
       {/* Fixed footer — submitted state shows back button, not Submit */}
       {isSubmitted ? (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: '#0d0f14', borderTop: '1px solid #2a2e3d', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ textAlign: 'center', fontSize: 12, color: '#14B8A6', fontFamily: 'DM Mono, monospace' }}>
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: 'var(--bg)', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--booked)', fontFamily: 'Inter' }}>
             ✓ Shift complete · {completedCount}/{allItems.length} checked
           </div>
           <button
             onClick={() => router.push(`/runner/${studio}`)}
-            style={{ width: '100%', padding: '14px 0', background: '#161920', color: '#e8eaf2', border: '1px solid #2a2e3d', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
+            style={{ width: '100%', padding: '14px 0', background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
           >
             Back to {meta.label}
           </button>
         </div>
       ) : (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#0d0f14', borderTop: '1px solid #2a2e3d', padding: '12px 20px', display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--bg)', borderTop: '1px solid var(--border)', padding: '12px 20px', display: 'flex', gap: 10, alignItems: 'center' }}>
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <input
               value={staffName}
               onChange={e => { setStaffName(e.target.value.toUpperCase()); if (e.target.value.trim()) setShowInitialsHint(false) }}
               placeholder="Initials"
               maxLength={4}
-              style={{ width: 70, padding: '10px 8px', background: '#161920', border: '1px solid #2a2e3d', borderRadius: 8, color: '#e8eaf2', fontSize: 13, fontFamily: 'DM Mono, monospace', textAlign: 'center', outline: 'none' }}
+              style={{ width: 70, padding: '10px 8px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontSize: 13, fontFamily: 'Inter', textAlign: 'center', outline: 'none' }}
             />
             {showInitialsHint && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, fontSize: 9, color: '#ef4444', fontFamily: 'DM Mono, monospace', marginTop: 3, whiteSpace: 'nowrap' }}>
+              <div style={{ position: 'absolute', top: '100%', left: 0, fontSize: 9, color: 'var(--hot)', fontFamily: 'Inter', marginTop: 3, whiteSpace: 'nowrap' }}>
                 Required to submit
               </div>
             )}
@@ -385,14 +385,14 @@ export default function ChecklistPage() {
           <button
             onClick={handleSave}
             disabled={submitting}
-            style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #2a2e3d', borderRadius: 12, color: '#8b90a8', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
+            style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 12, color: 'var(--text2)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
           >
             Save
           </button>
           <button
             onClick={() => { if (!staffName.trim()) { setShowInitialsHint(true); return } handleSubmit() }}
             disabled={submitting}
-            style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 12, color: staffName.trim() ? 'var(--text)' : '#4b5563', fontSize: 13, fontWeight: 800, cursor: staffName.trim() ? 'pointer' : 'default', opacity: staffName.trim() ? 1 : 0.6, fontFamily: 'Syne, sans-serif' }}
+            style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 12, color: staffName.trim() ? 'var(--text)' : 'var(--text3)', fontSize: 13, fontWeight: 800, cursor: staffName.trim() ? 'pointer' : 'default', opacity: staffName.trim() ? 1 : 0.6, fontFamily: 'Syne, sans-serif' }}
           >
             {submitting ? 'Submitting…' : `Submit ${isOpening ? 'Opening' : 'Closing'} Checklist`}
           </button>

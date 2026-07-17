@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Syne:wght@400;500;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Syne:wght@400;500;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -13,6 +13,7 @@
   --text2: #8b90a8;
   --text3: #4a4f64;
   --accent: #c8f04e;
+  --accent-rgb: 200, 240, 78;
   --accent2: #4e8ff0;
   --hot: #EF4444;
   --warm: #F97316;
@@ -22,16 +23,283 @@
   --dead: #6B7280;
 }
 
+/* ═══ LIGHT THEME ═══════════════════════════════════════════════════════════
+   Applied when <html> carries data-theme="light" (set by the Nav toggle).
+   Glassmorphism reference: soft gradient bg + frosted cards + blue accent. */
+[data-theme="light"] {
+  /* (PART 2.2) surface hierarchy: transparent page bg (the <html> gradient shows
+     through), solid white panels, light blue-grey inner surfaces. */
+  --bg: transparent;
+  --surface: #ffffff;
+  --surface2: #f1f5f9;
+  /* (PART 2.1) visible slate borders/dividers everywhere (cascades to all
+     var(--border) references, so row border-bottoms show as real lines). */
+  --border: #cbd5e1;
+  --text: #1e293b;
+  --text2: #475569;
+  /* (FIX 4) darkened from #94a3b8 so faint labels / tertiary text stay readable. */
+  --text3: #64748b;
+  /* (PART 2.4) blue accent replaces lime in light mode. */
+  --accent: #3b82f6;
+  /* (FIX 2) accent as an RGB triple so rgba(var(--accent-rgb), a) tints follow the
+     theme — lime in dark, blue in light — instead of the hardcoded lime literal. */
+  --accent-rgb: 59, 130, 246;
+  --accent2: #0ea5e9;
+  --hot: #dc2626;
+  --warm: #ea580c;
+  --cold: #64748b;
+  --booked: #0d9488;
+  --uncontacted: #3b82f6;
+  --dead: #94a3b8;
+}
+
+/* (STEP 2) Page gradient on <html> (which carries data-theme). The body must be
+   transparent in light mode, otherwise its opaque --bg would hide the gradient. */
+html[data-theme="light"] {
+  background: linear-gradient(135deg, #dbeafe 0%, #ffe4e6 100%);
+}
+[data-theme="light"] body {
+  background-color: transparent;
+}
+
+/* (STEP 3) Frosted-glass cards/panels in light mode. */
+[data-theme="light"] .panel,
+[data-theme="light"] [style*="background: var(--surface)"],
+[data-theme="light"] [style*="background:var(--surface)"] {
+  background: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* (FIX 3) Modals fully opaque in light mode: a var(--surface) card nested inside a
+   position:fixed overlay is a modal — make it solid white, no blur. Higher
+   specificity than the glass-card rule above, so it wins. */
+[data-theme="light"] [style*="position:fixed"] [style*="background:var(--surface)"],
+[data-theme="light"] [style*="position: fixed"] [style*="background: var(--surface)"] {
+  background: #ffffff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* (DECISION 2) Nav becomes white glass in light mode; its text switches to dark.
+   Overrides the inline dark gradient/box-shadow set in Nav.tsx (needs !important). */
+[data-theme="light"] nav {
+  background: rgba(255, 255, 255, 1) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.08) !important;
+}
+[data-theme="light"] nav a,
+[data-theme="light"] nav button {
+  color: var(--text) !important;
+}
+/* Keep the Feedback link lime and Sign Out red even in light mode — higher
+   specificity than the blanket nav-text rule above, so these two win. */
+[data-theme="light"] nav [data-feedback] { color: #c8f04e !important; }
+[data-theme="light"] nav [data-signout] { color: #ef4444 !important; }
+
+/* (PART 3) Unique per-panel gradients in light mode. Declared after the glass-card
+   rule so they win at equal specificity; the frosted border/shadow still apply. */
+[data-theme="light"] [data-panel="needs-action"]   { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
+[data-theme="light"] [data-panel="today-sessions"] { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
+[data-theme="light"] [data-panel="tasks"]          { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
+[data-theme="light"] [data-panel="flags"]          { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
+[data-theme="light"] [data-panel="crm-leads"]      { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
+[data-theme="light"] [data-panel="crm-detail"]     { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
+[data-theme="light"] [data-panel="clients-list"]   { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
+[data-theme="light"] [data-panel="clients-detail"] { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
+[data-theme="light"] [data-panel="admin-sidebar"]  { background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important; }
+
+/* (FIX 2) Dashboard session room cells: clean white slots with visible borders in
+   light mode. Empty cells get a faint grey; occupied cells win via the
+   [data-session-active] rule below (light blue). */
+[data-theme="light"] [data-room-cell] {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* (PART 2.6) Active/occupied session cards read light-blue in light mode instead of
+   the dark-teal accent used in dark mode (dashboard room cards + calendar chips). */
+[data-theme="light"] [data-session-active] {
+  background: #eff6ff !important;
+  border-color: #3b82f6 !important;
+  box-shadow: inset 0 0 18px rgba(59, 130, 246, 0.10) !important;
+}
+
+/* (FIX 4) Daily-ops modal + drawer cards are solid white in light mode (their inline
+   background is var(--bg) = transparent, which was showing the dark overlay). */
+[data-theme="light"] [data-ops-modal] { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
+
+/* (FIX 4) Yesterday vs Today: Today reads brighter/whiter to mark the current day. */
+[data-theme="light"] [data-ops-col="yesterday"] {
+  background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+}
+[data-theme="light"] [data-ops-col="today"] {
+  background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.05);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+/* (LIGHT LOGIN) Clean the login controls in light mode — the glass-card rule would
+   otherwise frost the PIN keys / inputs (they use var(--surface)). */
+[data-theme="light"] [data-login-key] {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #1e293b !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+[data-theme="light"] .auth-input {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #1e293b !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+[data-theme="light"] [data-login-submit] {
+  background: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+/* (LIGHT) The welcome splash + AuthGuard hold use var(--bg) (transparent in light),
+   so give them the app's light gradient to stay opaque full-screen covers. */
+[data-theme="light"] [data-splash],
+[data-theme="light"] [data-auth-hold] {
+  background: linear-gradient(135deg, #dbeafe 0%, #ffe4e6 100%) !important;
+}
+
+
+/* (FIX 1/6) Text set to color:var(--bg) is "contrast text on an accent fill" — but
+   var(--bg) is transparent in light, so it disappears (submit buttons, the TASKS
+   count bubble, the /tasks active tab). Force it white. Matches `color` only (not
+   `background-color`) via a start/semicolon boundary; both style serializations. */
+[data-theme="light"] [style^="color: var(--bg)"],
+[data-theme="light"] [style*="; color: var(--bg)"],
+[data-theme="light"] [style^="color:var(--bg)"],
+[data-theme="light"] [style*=";color:var(--bg)"] {
+  color: #ffffff !important;
+}
+
+/* (FIX 2) The active ENGINEER NEEDED badge is solid blue with white text in light. */
+[data-theme="light"] [data-eng-needed] {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+  border-color: #3b82f6 !important;
+}
+
+/* (FIX 5) Inputs inside modals (fixed-overlay descendants) get a faint fill + a
+   visible slate border so they stand out from the white modal card in light mode. */
+[data-theme="light"] [style*="position:fixed"] input,
+[data-theme="light"] [style*="position:fixed"] textarea,
+[data-theme="light"] [style*="position:fixed"] select,
+[data-theme="light"] [style*="position: fixed"] input,
+[data-theme="light"] [style*="position: fixed"] textarea,
+[data-theme="light"] [style*="position: fixed"] select {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+/* (FIX 2/3) Finarrow-style gradient on the booking / new-lead modal cards in light
+   mode. Uses the fixed-overlay context so it outranks the modal-opaque rule (equal
+   specificity, declared later → wins). */
+[data-theme="light"] [style*="position:fixed"] [data-modal-gradient],
+[data-theme="light"] [style*="position: fixed"] [data-modal-gradient] {
+  background: linear-gradient(160deg, #dbeafe 0%, #ffffff 40%, #ffe4e6 100%) !important;
+}
+
+/* (FIX 2) Elevated SESSION / CLIENT section headers in light mode. */
+[data-theme="light"] [data-section-head] {
+  background: rgba(255, 255, 255, 0.8);
+  border-bottom: 1px solid #e2e8f0;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+/* (FIX 4) Distinct glass treatment for the dashboard studio cards in light mode. */
+[data-theme="light"] [data-studio-card] {
+  background: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* (FIX 5) Selected lead row: subtle blue tint + a blue left bar (inset shadow, so no
+   layout shift) in light mode. */
+[data-theme="light"] [data-selected] {
+  background: rgba(59, 130, 246, 0.08) !important;
+  box-shadow: inset 3px 0 0 #3b82f6 !important;
+}
+
+/* (FIX 1) Unique alternating gradients per studio card in light mode. Declared after
+   [data-studio-card] so the gradient replaces the bg while the glass backdrop-filter /
+   border / shadow remain. */
+[data-theme="light"] [data-studio-index="0"] { background: linear-gradient(135deg, #dbeafe 0%, rgba(255,255,255,0.7) 100%) !important; }
+[data-theme="light"] [data-studio-index="1"] { background: linear-gradient(135deg, #ffe4e6 0%, rgba(255,255,255,0.7) 100%) !important; }
+[data-theme="light"] [data-studio-index="2"] { background: linear-gradient(135deg, #dbeafe 0%, rgba(255,255,255,0.7) 100%) !important; }
+[data-theme="light"] [data-studio-index="3"] { background: linear-gradient(135deg, #ffe4e6 0%, rgba(255,255,255,0.7) 100%) !important; }
+
+/* (FIX 2) Daily Ops session cards — Yesterday blue / Today rose. Fixed-overlay
+   context so they outrank the modal-opaque rule (equal specificity, later → wins). */
+[data-theme="light"] [style*="position:fixed"] [data-session-card="yesterday"],
+[data-theme="light"] [style*="position: fixed"] [data-session-card="yesterday"] { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
+[data-theme="light"] [style*="position:fixed"] [data-session-card="today"],
+[data-theme="light"] [style*="position: fixed"] [data-session-card="today"] { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
+
+/* (FIX 3) Daily Ops grouped-checklist containers — subtle light-blue gradient. */
+[data-theme="light"] [style*="position:fixed"] [data-checklist-section],
+[data-theme="light"] [style*="position: fixed"] [data-checklist-section] { background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%) !important; }
+
+/* (light) CRM lead cards read stronger: bolder names, and darker secondary/tertiary
+   metadata. The scoped --text2/--text3 override darkens only this card's text
+   (secondary → #334155, tertiary → #475569) without touching those tokens elsewhere. */
+[data-theme="light"] [data-lead-name] { font-weight: 600 !important; }
+[data-theme="light"] [data-lead-content] { --text2: #334155; --text3: #475569; }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
-  background: var(--bg);
   color: var(--text);
-  font-family: 'DM Mono', monospace;
-  font-size: 13px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
   line-height: 1.5;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Base background color on html so overscroll/rubber-band shows the theme bg */
+html { background-color: var(--bg); }
+
+body {
+  background-color: var(--bg);
+}
+
+/* (2) RADIAL GLOW — soft teal→lime glow from top-center, fixed so it stays put
+   while scrolling; z-index:-1 keeps it above the dot grid but behind content */
+:root:not([data-theme="light"]) body::before {
+  content: '';
+  position: fixed;
+  top: -150px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1100px;
+  height: 700px;
+  background: radial-gradient(ellipse at center,
+    rgba(20, 184, 166, 0.18) 0%,
+    rgba(200, 240, 78, 0.08) 40%,
+    transparent 65%);
+  pointer-events: none;
+  z-index: -1;
 }
 
 ::-webkit-scrollbar { width: 4px; height: 4px; }
@@ -41,6 +309,10 @@ html, body {
 /* Visually hide the scrollbar while keeping the element scrollable */
 .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Keep DM Mono on code-like elements (activity-log timestamps, avatar initials,
+   invoice numbers / IDs, PIN numpad digits). Everything else uses Inter. */
+.font-mono { font-family: 'DM Mono', monospace; }
 
 /* ── Mobile (≤768px) ──────────────────────────────────────────────────────
    Tighten the shared (main) page gutter so content has room on a phone, and
@@ -57,6 +329,19 @@ select {
   -webkit-appearance: none;
   appearance: none;
   outline: none;
+}
+
+/* (5) INPUT DEPTH — recessed inset shadow on all form fields */
+input, textarea, select {
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* (FIX 1) In light mode the dark inset shadow reads as a distracting box outline —
+   remove it on all inputs. */
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  box-shadow: none !important;
 }
 
 @keyframes shimmer {

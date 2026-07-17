@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { Sun, Moon } from 'lucide-react'
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
@@ -25,6 +26,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
   const [tentativeCount, setTentativeCount] = useState(0)
   const isMobile = useIsMobile()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const { profile } = useUserProfile()
   // Tech gets the full nav minus CRM; every other role sees all items.
   const visibleNavItems = profile?.role === 'tech'
@@ -51,6 +53,25 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
     return () => { supabase.removeChannel(channel) }
   }, [])
 
+  // Apply the saved theme on mount (default light). data-theme lives on <html>.
+  useEffect(() => {
+    const saved = localStorage.getItem('prsflo-theme')
+    const t = saved === 'dark' ? 'dark' : 'light'
+    setTheme(t)
+    const root = document.documentElement
+    if (t === 'light') root.setAttribute('data-theme', 'light')
+    else root.removeAttribute('data-theme')
+  }, [])
+
+  function toggleTheme() {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    const root = document.documentElement
+    if (next === 'light') root.setAttribute('data-theme', 'light')
+    else root.removeAttribute('data-theme')
+    localStorage.setItem('prsflo-theme', next)
+  }
+
   async function handleSignOut() {
     await supabase.auth.signOut()
     router.replace('/login')
@@ -76,8 +97,9 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
   return (
     <nav style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '0 32px', height: 52,
-      background: 'var(--surface)', borderBottom: '1px solid var(--border)',
+      padding: isMobile ? '0 12px' : '0 32px', height: 52,
+      background: 'linear-gradient(180deg, var(--surface2) 0%, var(--bg) 100%)', borderBottom: '1px solid var(--border)',
+      boxShadow: '0 1px 0 rgba(var(--accent-rgb), 0.07), 0 4px 24px rgba(0, 0, 0, 0.5)',
       position: 'sticky', top: 0, zIndex: 99999,
       // Hidden during the fresh-login welcome splash so it doesn't flash before the
       // splash covers it; fades in with the dashboard once the splash dismisses.
@@ -108,15 +130,16 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
             <Link
               key={item.href}
               href={item.href}
-              onMouseEnter={active || isFeedback ? undefined : (e) => { e.currentTarget.style.color = '#9ca3af' }}
-              onMouseLeave={active || isFeedback ? undefined : (e) => { e.currentTarget.style.color = '#6B7280' }}
+              data-feedback={isFeedback ? '' : undefined}
+              onMouseEnter={active || isFeedback ? undefined : (e) => { e.currentTarget.style.color = 'var(--text2)' }}
+              onMouseLeave={active || isFeedback ? undefined : (e) => { e.currentTarget.style.color = 'var(--cold)' }}
               style={{
                 position: 'relative', display: 'flex', alignItems: 'center', height: '100%',
                 padding: '0 10px', fontSize: 11,
-                fontFamily: 'DM Mono', fontWeight: 500, letterSpacing: '0.04em',
+                fontFamily: 'Inter', fontWeight: 500, letterSpacing: '0.04em',
                 background: 'transparent',
-                color: isFeedback ? '#c8f04e' : active ? '#e8eaf0' : '#6B7280',
-                borderBottom: active ? '2px solid #c8f04e' : 'none',
+                color: isFeedback ? 'var(--accent)' : active ? 'var(--text)' : 'var(--cold)',
+                borderBottom: active ? '2px solid var(--accent)' : 'none',
                 borderRadius: 0,
                 textDecoration: 'none', transition: 'color 0.15s ease',
               }}
@@ -127,7 +150,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
                   position: 'absolute', top: 2, right: 2,
                   background: 'var(--hot)', color: '#fff',
                   borderRadius: '50%', minWidth: 16, height: 16,
-                  fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
+                  fontSize: 9, fontFamily: 'Inter', fontWeight: 700,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   padding: '0 3px', lineHeight: 1,
                 }}>
@@ -143,16 +166,30 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
       {!isMobile && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <button
+          onClick={toggleTheme}
+          aria-label="Toggle light/dark theme"
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--cold)' }}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            color: 'var(--cold)', padding: 0, transition: 'color 0.15s ease',
+          }}
+        >
+          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
+        <button
           onClick={handleSignOut}
-          onMouseEnter={(e) => { e.currentTarget.style.color = '#e8eaf0' }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = '#6B7280' }}
+          data-signout=""
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--cold)' }}
           style={{
             background: 'transparent', border: 'none',
             borderLeft: '1px solid rgba(255,255,255,0.08)',
             padding: 0, paddingLeft: 12, marginLeft: 8,
-            fontFamily: 'DM Mono', fontSize: 10, fontWeight: 500,
+            fontFamily: 'Inter', fontSize: 10, fontWeight: 500,
             letterSpacing: '0.08em', textTransform: 'uppercase',
-            color: '#6B7280', cursor: 'pointer', transition: 'color 0.15s ease',
+            color: 'var(--cold)', cursor: 'pointer', transition: 'color 0.15s ease',
           }}
         >
           Sign Out
@@ -160,19 +197,41 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
       </div>
       )}
 
-      {/* Mobile: hamburger button (far right). Tap toggles the dropdown menu. */}
+      {/* Mobile: CRM + Calendar quick links, then the hamburger (far right). */}
       {isMobile && (
-        <button
-          onClick={() => setMenuOpen(o => !o)}
-          aria-label="Menu"
-          style={{
-            width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'transparent', border: 'none', cursor: 'pointer',
-            color: '#e8eaf0', fontSize: 24, lineHeight: 1, padding: 0,
-          }}
-        >
-          ≡
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {visibleNavItems
+            .filter(item => item.href === '/crm' || item.href === '/calendar')
+            .map(item => {
+              const active = pathname.startsWith(item.href)
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  style={{
+                    display: 'flex', alignItems: 'center', height: 44, padding: '0 8px',
+                    fontFamily: 'Inter', fontSize: 12, fontWeight: 500, letterSpacing: '0.04em',
+                    textDecoration: 'none', whiteSpace: 'nowrap',
+                    color: active ? 'var(--text)' : 'var(--cold)',
+                    borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
+                  }}
+                >
+                  {item.label}
+                </Link>
+              )
+            })}
+          <button
+            onClick={() => setMenuOpen(o => !o)}
+            aria-label="Menu"
+            style={{
+              width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              color: 'var(--text)', fontSize: 24, lineHeight: 1, padding: 0,
+            }}
+          >
+            ≡
+          </button>
+        </div>
       )}
 
       {/* Mobile: full-width dropdown menu + outside-tap overlay */}
@@ -184,7 +243,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
           />
           <div style={{
             position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 2,
-            background: '#161920', borderBottom: '1px solid rgba(255,255,255,0.1)',
+            background: 'var(--surface)', borderBottom: '1px solid rgba(255,255,255,0.1)',
             display: 'flex', flexDirection: 'column',
           }}>
             {visibleNavItems.map(item => {
@@ -195,12 +254,13 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
                 <Link
                   key={item.href}
                   href={item.href}
+                  data-feedback={isFeedback ? '' : undefined}
                   onClick={() => setMenuOpen(false)}
                   style={{
                     display: 'flex', alignItems: 'center', height: 48, paddingLeft: 16,
-                    fontFamily: 'DM Mono', fontSize: 13, textDecoration: 'none',
-                    color: isFeedback ? '#c8f04e' : active ? '#e8eaf0' : '#9ca3af',
-                    borderLeft: active ? '2px solid #c8f04e' : '2px solid transparent',
+                    fontFamily: 'Inter', fontSize: 13, textDecoration: 'none',
+                    color: isFeedback ? 'var(--accent)' : active ? 'var(--text)' : 'var(--text2)',
+                    borderLeft: active ? '2px solid var(--accent)' : '2px solid transparent',
                   }}
                 >
                   {item.label}
@@ -208,10 +268,23 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
               )
             })}
             <button
+              onClick={toggleTheme}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, height: 48, width: '100%', paddingLeft: 16,
+                fontFamily: 'Inter', fontSize: 13, color: 'var(--text2)',
+                background: 'transparent', border: 'none', borderTop: '1px solid rgba(255,255,255,0.06)',
+                cursor: 'pointer', textAlign: 'left',
+              }}
+            >
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            </button>
+            <button
               onClick={async () => { setMenuOpen(false); await handleSignOut() }}
+              data-signout=""
               style={{
                 display: 'flex', alignItems: 'center', height: 48, width: '100%', paddingLeft: 16,
-                fontFamily: 'DM Mono', fontSize: 13, color: '#ef4444',
+                fontFamily: 'Inter', fontSize: 13, color: 'var(--hot)',
                 background: 'transparent', border: 'none', borderTop: '1px solid rgba(255,255,255,0.06)',
                 cursor: 'pointer', textAlign: 'left',
               }}

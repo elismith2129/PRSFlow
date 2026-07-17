@@ -133,11 +133,11 @@ export default function StudioDailyOpsPage() {
 
   function statusBadge(status: string) {
     const colors: Record<string, string> = {
-      confirmed: '#c8f04e',
+      confirmed: 'var(--accent)',
       tentative: '#f0a24e',
-      tour: '#4e8ff0',
+      tour: 'var(--accent2)',
       tech: '#a24ef0',
-      open_hours: '#8b90a8',
+      open_hours: 'var(--text2)',
     }
     return (
       <span style={{
@@ -145,11 +145,11 @@ export default function StudioDailyOpsPage() {
         fontWeight: 700,
         letterSpacing: '0.08em',
         textTransform: 'uppercase',
-        color: colors[status] ?? '#8b90a8',
-        background: (colors[status] ?? '#8b90a8') + '22',
+        color: colors[status] ?? 'var(--text2)',
+        background: (colors[status] ?? 'var(--text2)') + '22',
         padding: '2px 7px',
         borderRadius: 4,
-        fontFamily: 'DM Mono, monospace',
+        fontFamily: 'Inter',
       }}>
         {status}
       </span>
@@ -157,15 +157,15 @@ export default function StudioDailyOpsPage() {
   }
 
   function woStatusBadge(wo: WOStatus) {
-    if (!wo) return <span style={{ fontSize: 10, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>No WO</span>
+    if (!wo) return <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>No WO</span>
     if (wo.status === 'completed') return null
-    const colors: Record<string, string> = { draft: '#8b90a8', submitted: '#f0a24e', approved: '#c8f04e' }
-    const c = colors[wo.status] ?? '#8b90a8'
+    const colors: Record<string, string> = { draft: 'var(--text2)', submitted: '#f0a24e', approved: 'var(--accent)' }
+    const c = colors[wo.status] ?? 'var(--text2)'
     return (
       <span style={{
         fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
         color: c, background: c + '22', padding: '2px 7px', borderRadius: 4,
-        fontFamily: 'DM Mono, monospace',
+        fontFamily: 'Inter',
       }}>
         {wo.status}
       </span>
@@ -177,13 +177,13 @@ export default function StudioDailyOpsPage() {
       minHeight: '100dvh',
       maxWidth: '100vw',
       overflowX: 'hidden',
-      background: '#0d0f14',
+      background: 'var(--bg)',
       fontFamily: 'Syne, sans-serif',
       padding: '0 0 80px',
     }}>
       {/* Header */}
       <div style={{
-        background: '#161920',
+        background: 'var(--surface)',
         borderBottom: '1px solid var(--border)',
         padding: '16px 20px',
         display: 'flex',
@@ -195,20 +195,20 @@ export default function StudioDailyOpsPage() {
       }}>
         <button
           onClick={() => router.push('/runner')}
-          style={{ background: 'none', border: 'none', color: '#8b90a8', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}
+          style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}
         >
           ←
         </button>
         <div style={{
           width: 40, height: 40, borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 800, color: 'rgba(232,234,240,0.7)', fontFamily: 'DM Mono, monospace',
+          fontSize: 11, fontWeight: 800, color: 'rgba(232,234,240,0.7)', fontFamily: 'Inter',
         }}>
           {meta.abbr}
         </div>
         <div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: '#e8eaf2' }}>{meta.label}</div>
-          <div style={{ fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{meta.label}</div>
+          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
             {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
           </div>
         </div>
@@ -217,14 +217,14 @@ export default function StudioDailyOpsPage() {
       <div style={{ padding: '20px 16px' }}>
         {/* Today's Sessions */}
         <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)', marginBottom: 12 }}>
             Today's Sessions{!loading && ` · ${bookings.length}`}
           </div>
 
           {loading ? (
-            <div style={{ color: '#8b90a8', fontSize: 13, textAlign: 'center', padding: 32 }}>Loading…</div>
+            <div style={{ color: 'var(--text2)', fontSize: 13, textAlign: 'center', padding: 32 }}>Loading…</div>
           ) : bookings.length === 0 ? (
-            <div style={{ color: '#8b90a8', fontSize: 13, textAlign: 'center', padding: 32, background: '#161920', borderRadius: 12, border: '1px solid #2a2e3d' }}>
+            <div style={{ color: 'var(--text2)', fontSize: 13, textAlign: 'center', padding: 32, background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)' }}>
               No sessions today
             </div>
           ) : (
@@ -243,8 +243,8 @@ export default function StudioDailyOpsPage() {
                       }
                     }}
                     style={{
-                      background: '#161920',
-                      border: completed ? '1px solid #14B8A6' : '1px solid #2a2e3d',
+                      background: 'var(--surface)',
+                      border: completed ? '1px solid var(--booked)' : '1px solid var(--border)',
                       borderRadius: 12,
                       padding: '14px 16px',
                       cursor: 'pointer',
@@ -253,29 +253,29 @@ export default function StudioDailyOpsPage() {
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                       <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#e8eaf2', marginBottom: 2 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>
                           {b.artist || b.client_name || '—'}
                         </div>
                         {b.artist && b.client_name && (
-                          <div style={{ fontSize: 11, color: '#8b90a8' }}>{b.client_name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text2)' }}>{b.client_name}</div>
                         )}
                       </div>
                       {completed && (
-                        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#14B8A6', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>COMPLETED</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--booked)', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>COMPLETED</span>
                       )}
                     </div>
 
                     <div style={{ display: 'flex', gap: 16, marginBottom: 10, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>
+                      <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
                         {b.from_time ?? '?'} – {b.to_time ?? '?'}
                       </span>
                       {b.studio && (
-                        <span style={{ fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>
+                        <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
                           Studio {b.studio}
                         </span>
                       )}
                       {b.engineer_name && (
-                        <span style={{ fontSize: 11, color: '#8b90a8', fontFamily: 'DM Mono, monospace' }}>
+                        <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
                           Eng: {b.engineer_name}
                         </span>
                       )}
@@ -291,7 +291,7 @@ export default function StudioDailyOpsPage() {
 
         {/* Quick Actions */}
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b90a8', marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)', marginBottom: 12 }}>
             Quick Actions
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -306,13 +306,13 @@ export default function StudioDailyOpsPage() {
                 key={a.route}
                 onClick={() => router.push(a.route)}
                 style={{
-                  background: '#161920',
-                  border: submittedCategories.has(a.category) ? '1px solid #14B8A6' : '1px solid #2a2e3d',
+                  background: 'var(--surface)',
+                  border: submittedCategories.has(a.category) ? '1px solid var(--booked)' : '1px solid var(--border)',
                   borderRadius: 12,
                   padding: '16px 12px',
                   cursor: 'pointer',
                   textAlign: 'left',
-                  color: '#e8eaf2',
+                  color: 'var(--text)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 6,

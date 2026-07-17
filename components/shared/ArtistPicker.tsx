@@ -13,7 +13,7 @@ interface Props {
 const inputStyle: React.CSSProperties = {
   width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
   color: 'var(--text)', padding: '7px 10px', borderRadius: 6,
-  fontFamily: 'DM Mono', fontSize: 12, outline: 'none',
+  fontFamily: 'Inter', fontSize: 12, outline: 'none',
 }
 const ddWrap: React.CSSProperties = {
   position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
@@ -24,7 +24,7 @@ const ddWrap: React.CSSProperties = {
 const ddRow: React.CSSProperties = {
   padding: '8px 10px', cursor: 'pointer',
   borderBottom: '1px solid var(--border)',
-  fontSize: 12, fontFamily: 'DM Mono',
+  fontSize: 12, fontFamily: 'Inter',
 }
 
 export function ArtistPicker({ clientId, value, onChange, onArtistAdded, placeholder = 'Type an artist name…' }: Props) {

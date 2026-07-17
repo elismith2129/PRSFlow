@@ -69,7 +69,7 @@ export default function RunnerPage() {
       minHeight: '100dvh',
       maxWidth: '100vw',
       overflowX: 'hidden',
-      background: '#0d0f14',
+      background: 'var(--bg)',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -85,13 +85,13 @@ export default function RunnerPage() {
             <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flo</span>
           </div>
         </div>
-        <div style={{ fontSize: 11, letterSpacing: '0.2em', color: '#8b90a8', textTransform: 'uppercase', marginBottom: 6 }}>
+        <div style={{ fontSize: 11, letterSpacing: '0.2em', color: 'var(--text2)', textTransform: 'uppercase', marginBottom: 6 }}>
           Paramount Recording Group
         </div>
-        <div style={{ fontSize: 24, fontWeight: 800, color: '#e8eaf2', letterSpacing: '0.04em' }}>
+        <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', letterSpacing: '0.04em' }}>
           Runner Hub
         </div>
-        <div style={{ fontSize: 12, color: '#8b90a8', marginTop: 4 }}>
+        <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>
           {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
         </div>
       </div>
@@ -108,7 +108,7 @@ export default function RunnerPage() {
             key={s.key}
             onClick={() => router.push(`/runner/${s.key}`)}
             style={{
-              background: '#161920',
+              background: 'var(--surface)',
               border: '1px solid var(--border)',
               borderRadius: 16,
               padding: '28px 16px',
@@ -136,16 +136,16 @@ export default function RunnerPage() {
               fontWeight: 800,
               color: 'rgba(232,234,240,0.7)',
               letterSpacing: '0.05em',
-              fontFamily: 'DM Mono, monospace',
+              fontFamily: 'Inter',
             }}>
               {s.abbr}
             </div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#e8eaf2' }}>{s.label}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{s.label}</div>
             {!loading && (
               <div style={{
                 fontSize: 11,
-                color: counts[s.key] > 0 ? '#c8f04e' : '#6B7280',
-                fontFamily: 'DM Mono, monospace',
+                color: counts[s.key] > 0 ? 'var(--accent)' : 'var(--cold)',
+                fontFamily: 'Inter',
               }}>
                 {counts[s.key] > 0
                   ? `${counts[s.key]} session${counts[s.key] !== 1 ? 's' : ''} today`

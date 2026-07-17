@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase'
 //
 // Fresh-login welcome hold: the login page sets a 'showWelcome' sessionStorage
 // flag before redirecting here. When that flag is present we render a full-screen
-// dark (#0d0f14) background while the session resolves — so the screen stays dark
+// dark (var(--bg)) background while the session resolves — so the screen stays dark
 // from the moment the page loads until the dashboard's welcome splash takes over,
 // with no visible flash in between. We only read the flag here (never remove it);
 // the dashboard clears it once its splash mounts.
@@ -54,7 +54,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     // Fresh login: hold a dark screen until the session resolves and the dashboard's
     // welcome splash takes over, so nothing flashes. Otherwise render nothing.
     return pendingWelcome ? (
-      <div style={{ position: 'fixed', inset: 0, background: '#0d0f14', zIndex: 100001 }} />
+      <div data-auth-hold="" style={{ position: 'fixed', inset: 0, background: 'var(--bg)', zIndex: 100001 }} />
     ) : null
   }
 

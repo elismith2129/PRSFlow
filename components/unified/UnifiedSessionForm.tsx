@@ -11,11 +11,11 @@ import { addArtistToLabel } from '@/lib/roster'
 // ─── COLOR TOKENS ────────────────────────────────────────────────────────────
 
 const STATUS_TOP_COLORS: Record<string, string> = {
-  confirmed:  '#14B8A6',
-  tentative:  '#f97316',
-  cancelled:  '#ef4444',
+  confirmed:  'var(--booked)',
+  tentative:  'var(--warm)',
+  cancelled:  'var(--hot)',
   tour:       '#a855f7',
-  tech:       '#6b7280',
+  tech:       'var(--cold)',
   open_hours: '#e2e8f0',
 }
 
@@ -34,7 +34,7 @@ const fL: React.CSSProperties = {
 }
 const inp: React.CSSProperties = {
   background: 'var(--surface2)', border: '1px solid var(--border)',
-  color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11,
+  color: 'var(--text)', fontFamily: 'Inter', fontSize: 11,
   padding: '4px 8px', borderRadius: 4, width: '100%', outline: 'none',
 }
 
@@ -112,10 +112,10 @@ function ClientCardField({
             e.currentTarget.style.borderBottomColor = 'var(--border)'
             if (local !== value) onEdit(fieldKey, local)
           }}
-          style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5, transition: 'border-color 0.15s' }}
+          style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5, transition: 'border-color 0.15s' }}
         />
       ) : (
-        <div style={{ color: value ? 'var(--text)' : 'var(--text3)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5, minHeight: 18 }}>
+        <div style={{ color: value ? 'var(--text)' : 'var(--text3)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5, minHeight: 18 }}>
           {value || '—'}
         </div>
       )}
@@ -478,7 +478,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
   if (loading || !booking) {
     return createPortal(
       <div style={{ position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10020, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#f0f0f0', fontFamily: 'DM Mono', fontSize: 12 }}>Loading session…</div>
+        <div style={{ color: '#f0f0f0', fontFamily: 'Inter', fontSize: 12 }}>Loading session…</div>
       </div>,
       document.body,
     )
@@ -516,12 +516,12 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                   {form.artist || form.label || 'New Session'}
                 </div>
                 {form.client_name && (
-                  <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text2)', marginTop: 3 }}>
+                  <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text2)', marginTop: 3 }}>
                     {form.client_name}
                   </div>
                 )}
                 {form.label && form.artist && (
-                  <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#96A9FF', marginTop: 1 }}>
+                  <div style={{ fontSize: 11, fontFamily: 'Inter', color: '#96A9FF', marginTop: 1 }}>
                     {form.label}
                   </div>
                 )}
@@ -541,7 +541,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
               fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em',
               padding: '4px 9px', borderRadius: 4, flexShrink: 0, marginTop: 4,
               textTransform: 'uppercase',
-              color: woStatus === 'completed' ? '#14B8A6' : '#F97316',
+              color: woStatus === 'completed' ? 'var(--booked)' : 'var(--warm)',
               border: `1px solid ${woStatus === 'completed' ? 'rgba(20,184,166,0.5)' : 'rgba(249,115,22,0.5)'}`,
               background: woStatus === 'completed' ? 'rgba(20,184,166,0.1)' : 'rgba(249,115,22,0.1)',
             }}>
@@ -549,7 +549,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
             </div>
             {form.invoice_num && (
               <div style={{
-                fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)',
+                fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)',
                 border: '1px solid var(--border)', borderRadius: 4, padding: '2px 8px', flexShrink: 0, marginTop: 4,
               }}>
                 #{form.invoice_num}
@@ -568,7 +568,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
           }}>
             {Object.entries(STATUS_LABELS).map(([s, label]) => (
               <button key={s} onClick={() => set('status', s)} style={{
-                padding: '4px 14px', borderRadius: 20, fontSize: 10, fontFamily: 'DM Mono',
+                padding: '4px 14px', borderRadius: 20, fontSize: 10, fontFamily: 'Inter',
                 fontWeight: 600, cursor: 'pointer', border: 'none', transition: 'all 0.1s',
                 background: form.status === s ? STATUS_TOP_COLORS[s] : 'var(--surface2)',
                 color: form.status === s ? '#fff' : 'var(--text2)',
@@ -609,9 +609,9 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                       }}
                       style={{
                         padding: '7px 16px', borderRadius: 6, border: form.is_srs ? '1px solid rgba(255,59,59,0.4)' : '1px solid rgba(255,255,255,0.12)',
-                        cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700,
+                        cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, fontWeight: 700,
                         background: form.is_srs ? 'rgba(255,59,59,0.12)' : 'transparent',
-                        color: form.is_srs ? '#ff3b3b' : '#6b7280',
+                        color: form.is_srs ? '#ff3b3b' : 'var(--cold)',
                         letterSpacing: '0.08em', transition: 'all 0.15s',
                       }}
                     >
@@ -628,7 +628,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                           set('payment_type', m)
                         }} style={{
                           padding: '7px 28px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                          fontFamily: 'DM Mono', fontSize: 11, fontWeight: 500,
+                          fontFamily: 'Inter', fontSize: 11, fontWeight: 500,
                           background: form.payment_type === m ? 'var(--surface2)' : 'transparent',
                           color: form.payment_type === m ? (m === 'COD' ? '#7BBFFF' : '#96A9FF') : 'var(--text2)',
                           transition: 'all 0.15s', letterSpacing: '0.04em',
@@ -646,14 +646,14 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                       background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                       <div style={{
-                        background: '#13161d', border: '1px solid rgba(255,255,255,0.08)',
+                        background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.08)',
                         borderRadius: 10, padding: '28px 32px', width: 380, maxWidth: '90vw',
                         boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
                       }}>
-                        <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: '#e8eaf0', marginBottom: 10 }}>
+                        <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: 'var(--text)', marginBottom: 10 }}>
                           SRS Referral
                         </div>
-                        <div style={{ fontFamily: 'DM Mono', fontSize: 12, color: '#8b90a8', lineHeight: 1.6, marginBottom: 24 }}>
+                        <div style={{ fontFamily: 'Inter', fontSize: 12, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 24 }}>
                           Apply this to the client&apos;s profile so all future bookings are automatically flagged as SRS?
                         </div>
                         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -665,8 +665,8 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                             }}
                             style={{
                               padding: '8px 18px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)',
-                              cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11,
-                              background: 'transparent', color: '#8b90a8',
+                              cursor: 'pointer', fontFamily: 'Inter', fontSize: 11,
+                              background: 'transparent', color: 'var(--text2)',
                             }}
                           >
                             Just this session
@@ -682,8 +682,8 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                             }}
                             style={{
                               padding: '8px 18px', borderRadius: 6, border: 'none',
-                              cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700,
-                              background: '#c8f04e', color: '#0d0f14',
+                              cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, fontWeight: 700,
+                              background: 'var(--accent)', color: 'var(--bg)',
                             }}
                           >
                             Apply to profile
@@ -728,8 +728,8 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                                 borderBottom: i < clientSuggestions.length - 1 ? '1px solid var(--border)' : 'none',
                               }}
                             >
-                              <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)' }}>{s.label}</div>
-                              {s.sub && <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#96A9FF', marginTop: 1 }}>{s.sub}</div>}
+                              <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text)' }}>{s.label}</div>
+                              {s.sub && <div style={{ fontSize: 9, fontFamily: 'Inter', color: '#96A9FF', marginTop: 1 }}>{s.sub}</div>}
                             </div>
                           ))}
                         </div>
@@ -754,7 +754,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                               {displayName}
                             </div>
                             {form.label && form.label !== displayName && (
-                              <div style={{ fontSize: 12, fontFamily: 'DM Mono', color: nameColor, marginTop: 3, opacity: 0.75 }}>
+                              <div style={{ fontSize: 12, fontFamily: 'Inter', color: nameColor, marginTop: 3, opacity: 0.75 }}>
                                 {form.label}
                               </div>
                             )}
@@ -781,7 +781,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                                 onFocus={() => setShowArtistDD(true)}
                                 onBlur={() => setTimeout(() => setShowArtistDD(false), 150)}
                                 placeholder="—"
-                                style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                                style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
                               />
                               {showArtistDD && (clientArtists.filter(a => !form.artist || a.toLowerCase().includes(form.artist.toLowerCase())).length > 0 || form.artist.trim().length >= 2) && (
                                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
@@ -789,7 +789,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                                     .filter(a => !form.artist || a.toLowerCase().includes(form.artist.toLowerCase()))
                                     .map((a, i) => (
                                       <div key={i} onMouseDown={e => { e.preventDefault(); set('artist', a); setShowArtistDD(false) }}
-                                        style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent' }}
+                                        style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'Inter', color: 'var(--text)', background: 'transparent' }}
                                         onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
                                         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                       >{a}</div>
@@ -813,8 +813,8 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
 
                             {/* 2. A&R — always-visible name + inline email + phone */}
                             {(() => {
-                              const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 10, padding: '1px 0' }
-                              const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)', background: 'transparent', color, fontFamily: 'DM Mono', fontSize: 9, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' as const })
+                              const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 10, padding: '1px 0' }
+                              const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)', background: 'transparent', color, fontFamily: 'Inter', fontSize: 9, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' as const })
                               const anrPh = anrPhone.replace(/\D/g, '')
                               return (
                                 <div style={{ marginBottom: 10 }}>
@@ -826,7 +826,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                                       onFocus={() => setShowAnrDD(true)}
                                       onBlur={() => { setTimeout(() => setShowAnrDD(false), 150); set('ordered_by', anrQuery) }}
                                       placeholder="—"
-                                      style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                                      style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
                                     />
                                     {showAnrDD && (labelContacts.filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase())).length > 0 || anrQuery.trim().length >= 2) && (
                                       <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
@@ -840,7 +840,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                                               setAnrEmail(c.email || ''); setAnrPhone(c.phone || '')
                                               set('email', c.email || ''); set('phone', c.phone || '')
                                               setShowAnrDD(false)
-                                            }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent', borderBottom: i < labelContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
+                                            }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'Inter', color: 'var(--text)', background: 'transparent', borderBottom: i < labelContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
                                               onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
                                               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                             >
@@ -883,8 +883,8 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
 
                             {/* 3. Admin — identical layout to A&R */}
                             {(() => {
-                              const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 10, padding: '1px 0' }
-                              const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)', background: 'transparent', color, fontFamily: 'DM Mono', fontSize: 9, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' as const })
+                              const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 10, padding: '1px 0' }
+                              const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)', background: 'transparent', color, fontFamily: 'Inter', fontSize: 9, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' as const })
                               const adminPh = adminPhone.replace(/\D/g, '')
                               return (
                                 <div style={{ marginBottom: 8 }}>
@@ -896,7 +896,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                                       onFocus={() => setShowAdminDD(true)}
                                       onBlur={() => setTimeout(() => setShowAdminDD(false), 150)}
                                       placeholder="—"
-                                      style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                                      style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
                                     />
                                     {showAdminDD && (labelAdminContacts.filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase())).length > 0 || adminQuery.trim().length >= 2) && (
                                       <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
@@ -908,7 +908,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                                               setAdminQuery(name); set('anr_admin_contact_id', c.id); setAdminContact(c)
                                               setAdminEmail(c.email || ''); setAdminPhone(c.phone || '')
                                               setShowAdminDD(false)
-                                            }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'DM Mono', color: 'var(--text)', background: 'transparent', borderBottom: i < labelAdminContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
+                                            }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'Inter', color: 'var(--text)', background: 'transparent', borderBottom: i < labelAdminContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
                                               onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
                                               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                             >
@@ -952,14 +952,14 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                             {/* Contact update prompt — "Update profile or just this session?" */}
                             {contactUpdatePrompt && (
                               <div style={{ position: 'fixed', inset: 0, zIndex: 10040, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <div style={{ background: '#13161d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '24px 28px', width: 340, maxWidth: '90vw', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
-                                  <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: '#e8eaf0', marginBottom: 8 }}>Update client profile or just this session?</div>
-                                  <div style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#8b90a8', lineHeight: 1.6, marginBottom: 20 }}>
+                                <div style={{ background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '24px 28px', width: 340, maxWidth: '90vw', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
+                                  <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: 'var(--text)', marginBottom: 8 }}>Update client profile or just this session?</div>
+                                  <div style={{ fontFamily: 'Inter', fontSize: 11, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 20 }}>
                                     Save the new {contactUpdatePrompt.column} back to the contact record, or keep it for this booking only.
                                   </div>
                                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                                    <button type="button" onClick={() => setContactUpdatePrompt(null)} style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, background: 'transparent', color: '#8b90a8' }}>Just this session</button>
-                                    <button type="button" onClick={async () => { await supabase.from('client_contacts').update({ [contactUpdatePrompt.column]: contactUpdatePrompt.value }).eq('id', contactUpdatePrompt.contactId); contactUpdatePrompt.onUpdate(); setContactUpdatePrompt(null) }} style={{ padding: '7px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 700, background: 'var(--accent)', color: '#0d0f14' }}>Update profile</button>
+                                    <button type="button" onClick={() => setContactUpdatePrompt(null)} style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, background: 'transparent', color: 'var(--text2)' }}>Just this session</button>
+                                    <button type="button" onClick={async () => { await supabase.from('client_contacts').update({ [contactUpdatePrompt.column]: contactUpdatePrompt.value }).eq('id', contactUpdatePrompt.contactId); contactUpdatePrompt.onUpdate(); setContactUpdatePrompt(null) }} style={{ padding: '7px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, background: 'var(--accent)', color: 'var(--bg)' }}>Update profile</button>
                                   </div>
                                 </div>
                               </div>
@@ -980,7 +980,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                               marginTop: 10, width: '100%', padding: '6px 10px', borderRadius: 4,
                               background: 'transparent', border: '1px solid var(--border)',
                               color: form.client_db_id ? 'var(--text2)' : 'var(--text3)',
-                              fontFamily: 'DM Mono', fontSize: 10,
+                              fontFamily: 'Inter', fontSize: 10,
                               cursor: form.client_db_id ? 'pointer' : 'default', textAlign: 'center',
                             }}
                           >
@@ -1026,11 +1026,11 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
         <div onClick={() => setShowProfileUpdate(false)} style={{ position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10040, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '20px 24px', maxWidth: 360, width: '100%' }}>
             <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Update client profile?</div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono', lineHeight: 1.6, marginBottom: 18 }}>
+            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', lineHeight: 1.6, marginBottom: 18 }}>
               You edited contact details on this booking. Save those changes to the full client profile too?
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => { setShowProfileUpdate(false); setClientEdits({}) }} style={{ padding: '6px 14px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer' }}>
+              <button onClick={() => { setShowProfileUpdate(false); setClientEdits({}) }} style={{ padding: '6px 14px', borderRadius: 4, fontSize: 11, fontFamily: 'Inter', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer' }}>
                 Just this session
               </button>
               <button
@@ -1043,7 +1043,7 @@ export function UnifiedSessionForm({ bookingId, onClose }: { bookingId: string |
                   setShowProfileUpdate(false)
                   setClientEdits({})
                 }}
-                style={{ padding: '6px 14px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', background: '#1e40af', border: 'none', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
+                style={{ padding: '6px 14px', borderRadius: 4, fontSize: 11, fontFamily: 'Inter', background: '#1e40af', border: 'none', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
               >
                 Update profile
               </button>

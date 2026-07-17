@@ -24,12 +24,12 @@ const STATUS_COLORS: Record<string, string> = {
 
 // Temperature color per status — used for both the avatar ring and its text.
 const LEAD_AVATAR_COLORS: Record<string, string> = {
-  hot: '#EF4444',
-  warm: '#F97316',
-  uncontacted: '#7BA7BC',
-  booked: '#14B8A6',
-  cold: '#4B5563',
-  dead: '#4B5563',
+  hot: 'var(--hot)',
+  warm: 'var(--warm)',
+  uncontacted: 'var(--uncontacted)',
+  booked: 'var(--booked)',
+  cold: 'var(--text3)',
+  dead: 'var(--text3)',
 }
 
 // First letter of fname + first letter of lname, uppercased.
@@ -74,7 +74,7 @@ type TouchMethod = typeof TOUCH_METHODS[number]
 
 const aBtnStyle = (color: string): React.CSSProperties => ({
   padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)',
-  background: 'var(--surface)', color, fontFamily: 'DM Mono', fontSize: 9,
+  background: 'var(--surface)', color, fontFamily: 'Inter', fontSize: 9,
   textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap' as const,
 })
 
@@ -103,14 +103,14 @@ function fmtActivityTime(ts: string) {
 
 function activityColor(note: string): string {
   const n = (note || '').toLowerCase()
-  if (n.includes('call')) return '#EF4444'
-  if (n.includes('text')) return '#F97316'
-  if (n.includes('email')) return '#7BA7BC'
-  if (n.includes('kept hot') || n.includes('keep hot')) return '#EF4444'
-  if (n.includes('kept warm') || n.includes('keep warm')) return '#F97316'
-  if (n.includes('registration returned') || n.includes('reg returned')) return '#14B8A6'
-  if (n.includes('registration') || n.includes('reg link') || n.includes('reg sent')) return '#c8f04e'
-  return '#8b90a8'
+  if (n.includes('call')) return 'var(--hot)'
+  if (n.includes('text')) return 'var(--warm)'
+  if (n.includes('email')) return 'var(--uncontacted)'
+  if (n.includes('kept hot') || n.includes('keep hot')) return 'var(--hot)'
+  if (n.includes('kept warm') || n.includes('keep warm')) return 'var(--warm)'
+  if (n.includes('registration returned') || n.includes('reg returned')) return 'var(--booked)'
+  if (n.includes('registration') || n.includes('reg link') || n.includes('reg sent')) return 'var(--accent)'
+  return 'var(--text2)'
 }
 
 function fmtDate(d: string) {
@@ -272,6 +272,7 @@ export default function CRMPage() {
   const [toast, setToast] = useState<{ clientId: string } | null>(null)
   const router = useRouter()
   const isMobile = useIsMobile()
+  const { profile } = useUserProfile()
   // Real-time: leadsVersion bumps on any realtime leads INSERT/UPDATE (from the
   // shared WebInquiryProvider channel), so the leads list re-fetches live.
   const { leadsVersion } = useWebInquiries()
@@ -422,7 +423,7 @@ export default function CRMPage() {
   }
 
   async function createLead(data: Partial<Lead>) {
-    const insertData: Partial<Lead> = { ...data }
+    const insertData: Partial<Lead> = { ...data, created_by: profile?.id ?? null }
     if (!insertData.status) insertData.status = 'uncontacted'
     if (insertData.status === 'hot') {
       const khu = new Date(); khu.setDate(khu.getDate() + 5)
@@ -488,15 +489,15 @@ export default function CRMPage() {
       {tab === 'leads' && (
         <>
           {/* Sub-nav */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: isMobile ? 'wrap' : 'nowrap', marginBottom: 14, flexShrink: 0 }}>
-            <div style={{ display: 'flex', gap: 2, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 3, maxWidth: '100%', overflowX: isMobile ? 'auto' : undefined }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'nowrap', marginBottom: 14, flexShrink: 0 }}>
+            <div className={isMobile ? 'hide-scrollbar' : undefined} style={{ display: 'flex', gap: 2, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 3, maxWidth: '100%', flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : undefined, overflowX: isMobile ? 'auto' : undefined }}>
               {(['needs-action', 'all-leads', 'analytics'] as CrmView[]).map(v => {
                 const labels: Record<CrmView, string> = { 'needs-action': 'Needs Action', 'all-leads': 'All Leads', 'analytics': 'Analytics' }
                 const active = view === v
                 return (
                   <button key={v} onClick={() => setView(v)} style={{
                     position: 'relative', padding: '7px 18px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                    fontFamily: 'DM Mono', fontSize: 11, fontWeight: 500,
+                    fontFamily: 'Inter', fontSize: 11, fontWeight: 500,
                     background: active ? 'var(--surface2)' : 'transparent',
                     color: active ? 'var(--accent)' : 'var(--text2)',
                     transition: 'all 0.15s',
@@ -507,7 +508,7 @@ export default function CRMPage() {
                         position: 'absolute', top: 2, right: 2,
                         background: 'var(--hot)', color: '#fff',
                         borderRadius: '50%', minWidth: 16, height: 16,
-                        fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700,
+                        fontSize: 9, fontFamily: 'Inter', fontWeight: 700,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         padding: '0 3px', lineHeight: 1,
                       }}>
@@ -520,7 +521,7 @@ export default function CRMPage() {
             </div>
             {view !== 'analytics' && (
               <button onClick={() => setNewLeadOpen(true)} style={{
-                padding: '8px 20px', background: 'transparent', color: '#e8eaf0',
+                padding: '8px 20px', background: 'transparent', color: 'var(--text)',
                 border: '1px solid var(--border)', borderRadius: 6, fontFamily: 'Syne',
                 fontWeight: 700, fontSize: 11, cursor: 'pointer',
                 letterSpacing: '0.05em', textTransform: 'uppercase',
@@ -566,7 +567,7 @@ export default function CRMPage() {
 
               {/* Detail panel — full-screen on mobile, right column on desktop */}
               {(!isMobile || selected) && (
-                <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', minHeight: 0, flex: isMobile ? 1 : undefined }}>
+                <div data-panel="crm-detail" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', minHeight: 0, flex: isMobile ? 1 : undefined }}>
                   {isMobile && selected && (
                     <button
                       onClick={() => setSelectedId(null)}
@@ -649,9 +650,9 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel }: {
   }
 
   const methodDefs: { m: TouchMethod; color: string; actionHref?: string; actionLabel?: string }[] = [
-    { m: 'Call',  color: '#EF4444', actionHref: phone ? `tel:${phone.replace(/\D/g, '')}` : undefined,  actionLabel: '→ Dial' },
-    { m: 'Text',  color: '#F97316', actionHref: phone ? `sms:${phone.replace(/\D/g, '')}` : undefined,  actionLabel: '→ Text' },
-    { m: 'Email', color: '#8b90a8', actionHref: email ? `mailto:${email}` : undefined, actionLabel: '→ Mail' },
+    { m: 'Call',  color: 'var(--hot)', actionHref: phone ? `tel:${phone.replace(/\D/g, '')}` : undefined,  actionLabel: '→ Dial' },
+    { m: 'Text',  color: 'var(--warm)', actionHref: phone ? `sms:${phone.replace(/\D/g, '')}` : undefined,  actionLabel: '→ Text' },
+    { m: 'Email', color: 'var(--text2)', actionHref: email ? `mailto:${email}` : undefined, actionLabel: '→ Mail' },
   ]
 
   return (
@@ -660,7 +661,7 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel }: {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <div
           title="Logged in as"
-          style={{ width: 70, background: 'var(--surface2)', border: '1px solid var(--border)', color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
+          style={{ width: 70, background: 'var(--surface2)', border: '1px solid var(--border)', color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
         >
           {myInitials || '—'}
         </div>
@@ -687,13 +688,13 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel }: {
         onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
         placeholder="Optional: add context about this touch"
         rows={2}
-        style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
+        style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
       />
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? 'var(--accent)' : 'var(--surface)', color: canSubmit ? '#0d0f14' : 'var(--text3)', border: `1px solid ${canSubmit ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
+        <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? 'var(--accent)' : 'var(--surface)', color: canSubmit ? 'var(--bg)' : 'var(--text3)', border: `1px solid ${canSubmit ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
           {submitting ? '…' : 'Log Touch'}
         </button>
-        <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}>
+        <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}>
           Cancel
         </button>
       </div>
@@ -730,7 +731,7 @@ function KeepHotPrompt({ leadId, onSubmit, onCancel, label = 'Keep Hot', status 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div
           title="Logged in as"
-          style={{ width: 70, background: 'var(--surface2)', border: `1px solid ${color}`, color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
+          style={{ width: 70, background: 'var(--surface2)', border: `1px solid ${color}`, color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
         >
           {myInitials || '—'}
         </div>
@@ -741,13 +742,13 @@ function KeepHotPrompt({ leadId, onSubmit, onCancel, label = 'Keep Hot', status 
         onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
         placeholder="Optional: add context (e.g. waiting on budget approval)"
         rows={2}
-        style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
+        style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
       />
       <div style={{ display: 'flex', gap: 6 }}>
         <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? color : 'var(--surface)', color: canSubmit ? '#fff' : 'var(--text3)', border: `1px solid ${canSubmit ? color : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
           {submitting ? '…' : label}
         </button>
-        <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}>
+        <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}>
           Cancel
         </button>
       </div>
@@ -776,17 +777,17 @@ function DeadLeadPrompt({ leadId, onSubmit, onCancel }: {
 
   return (
     <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: 'rgba(58,63,82,0.5)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginRight: 4 }}>Mark dead?</span>
+      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginRight: 4 }}>Mark dead?</span>
       <div
         title="Logged in as"
-        style={{ width: 70, background: 'var(--surface2)', border: '1px solid var(--dead)', color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
+        style={{ width: 70, background: 'var(--surface2)', border: '1px solid var(--dead)', color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
       >
         {myInitials || '—'}
       </div>
       <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? 'var(--dead)' : 'var(--surface)', color: canSubmit ? 'var(--text2)' : 'var(--text3)', border: `1px solid ${canSubmit ? 'var(--border)' : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
         {submitting ? '…' : 'Confirm'}
       </button>
-      <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}>
+      <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}>
         Cancel
       </button>
     </div>
@@ -828,7 +829,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
   const totalCount = uncontacted.length + hotDue.length + warmDue.length + incompleteLeads.length
 
   const tabs: { key: NeedsActionTab; label: string; color: string; items: Lead[]; type: 'touch' | 'incomplete'; emptyMsg: string }[] = [
-    { key: 'uncontacted', label: 'Uncontacted', color: '#7BA7BC', items: uncontacted, type: 'touch', emptyMsg: 'No fresh uncontacted leads.' },
+    { key: 'uncontacted', label: 'Uncontacted', color: 'var(--uncontacted)', items: uncontacted, type: 'touch', emptyMsg: 'No fresh uncontacted leads.' },
     { key: 'hot', label: 'Hot', color: 'var(--hot)', items: hotDue, type: 'touch', emptyMsg: 'All hot leads are up to date.' },
     { key: 'warm', label: 'Warm', color: 'var(--warm)', items: warmDue, type: 'touch', emptyMsg: 'All warm leads are up to date.' },
     { key: 'incomplete', label: 'Incomplete', color: 'var(--text2)', items: incompleteLeads, type: 'incomplete', emptyMsg: 'All leads have complete info.' },
@@ -849,21 +850,22 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
   }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
+    <div data-panel="crm-leads" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
       {/* Header */}
       <div style={{ padding: '12px 16px 0', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <SectionHeader title="Needs Action" count={totalCount > 0 ? totalCount : undefined} />
         {/* Tab bar */}
-        <div style={{ display: 'flex', gap: 0 }}>
+        <div className={isMobile ? 'hide-scrollbar' : undefined} style={{ display: 'flex', gap: 0, overflowX: isMobile ? 'auto' : undefined }}>
           {tabs.map(tab => {
             const active = activeTab === tab.key
             return (
               <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
-                padding: '6px 12px', border: 'none', background: 'transparent', cursor: 'pointer',
+                padding: isMobile ? '6px 8px' : '6px 12px', border: 'none', background: 'transparent', cursor: 'pointer',
                 fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase',
                 color: tab.color,
                 borderBottom: active ? `3px solid ${tab.color}` : '3px solid transparent',
                 marginBottom: -1, transition: 'border-color 0.15s', whiteSpace: 'nowrap',
+                flexShrink: isMobile ? 0 : undefined,
                 opacity: active ? 1 : 0.6,
               }}>
                 {tab.label}
@@ -890,10 +892,10 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
           const keepColor = l.status === 'warm' ? 'var(--warm)' : 'var(--hot)'
           return (
             <React.Fragment key={l.id}>
-              <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(255,255,255,0.04)' : 'transparent', transition: 'background 0.15s' }}>
+              <div onClick={() => onSelect(l.id)} data-selected={selectedId === l.id ? '' : undefined} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(255,255,255,0.04)' : 'transparent', transition: 'background 0.15s' }}>
                 <LeadAvatar lead={l} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
+                <div data-lead-content style={{ flex: 1, minWidth: 0 }}>
+                  <div data-lead-name style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
                     {l.label && l.artist_name
                       ? <>{l.label} <span style={{ color: 'var(--text3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--text3)' }}>/</span> {l.artist_name}</>
                       : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--text3)', fontWeight: 400 }}> · {l.company}</span>}</>}
@@ -930,7 +932,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                     setTouchPromptId(isTouchPrompting ? null : l.id)
                     if (!isTouchPrompting) onSelect(l.id)
                   }}
-                  style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: '1px solid var(--border)', color: isTouchPrompting ? 'var(--text3)' : '#e8eaf0', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: '1px solid var(--border)', color: isTouchPrompting ? 'var(--text3)' : 'var(--text)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                   {isTouchPrompting ? 'Cancel' : 'Contact'}
                 </button>
               </div>
@@ -985,6 +987,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   onUpdateStatus: (id: number, status: string) => Promise<void>
   loading: boolean
 }) {
+  const isMobile = useIsMobile()
   const [active, setActive] = useState<Set<StatusFilter>>(() => new Set(DEFAULT_STATUS_FILTERS))
   const [search, setSearch] = useState('')
   const skipFilterReset = useRef(false)
@@ -1044,11 +1047,11 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   }
 
   const filterDefs: { key: StatusFilter; label: string; color: string }[] = [
-    { key: 'uncontacted', label: 'Uncontacted', color: '#7BA7BC' },
-    { key: 'hot', label: 'Hot', color: '#EF4444' },
-    { key: 'warm', label: 'Warm', color: '#F97316' },
-    { key: 'cold-dead', label: 'Cold/Dead', color: '#8b90a8' },
-    { key: 'booked', label: 'Booked', color: '#14B8A6' },
+    { key: 'uncontacted', label: 'Uncontacted', color: 'var(--uncontacted)' },
+    { key: 'hot', label: 'Hot', color: 'var(--hot)' },
+    { key: 'warm', label: 'Warm', color: 'var(--warm)' },
+    { key: 'cold-dead', label: 'Cold/Dead', color: 'var(--text2)' },
+    { key: 'booked', label: 'Booked', color: 'var(--booked)' },
   ]
 
   // Show leads matching ANY active status. Empty set falls back to all statuses
@@ -1067,19 +1070,20 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   const paginated = filtered.slice(startIdx, startIdx + PAGE_SIZE)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
+    <div data-panel="crm-leads" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
       {/* Header: filter pills + search */}
       <div style={{ padding: '10px 16px 0', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
+        <div className={isMobile ? 'hide-scrollbar' : undefined} style={{ display: 'flex', gap: 5, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : undefined, marginBottom: 8 }}>
           {filterDefs.map(f => {
             const isActive = active.has(f.key)
             return (
               <button key={f.key} onClick={() => toggleFilter(f.key)} style={{
-                padding: '4px 10px', cursor: 'pointer', borderRadius: 20,
-                fontFamily: 'Syne', fontWeight: isActive ? 700 : 600, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase',
+                padding: isMobile ? '4px 8px' : '4px 10px', cursor: 'pointer', borderRadius: 20,
+                fontFamily: 'Syne', fontWeight: isActive ? 700 : 600, fontSize: isMobile ? 10 : 9, letterSpacing: '0.08em', textTransform: 'uppercase',
                 background: isActive ? `${f.color}33` : 'transparent',
                 border: `1px solid ${isActive ? f.color : `${f.color}80`}`,
                 color: isActive ? f.color : `${f.color}b3`,
+                flexShrink: isMobile ? 0 : undefined, whiteSpace: isMobile ? 'nowrap' : undefined,
                 transition: 'all 0.15s',
               }}>
                 {f.label} ({filterMap[f.key].length})
@@ -1091,7 +1095,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder={`Search ${activeLeads.length} leads…`}
-            style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 10px', borderRadius: 5, fontFamily: 'DM Mono', fontSize: 11, outline: 'none' }}
+            style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 10px', borderRadius: 5, fontFamily: 'Inter', fontSize: 11, outline: 'none' }}
           />
         </div>
       </div>
@@ -1118,16 +1122,16 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
           return (
             <React.Fragment key={l.id}>
               {showDateSep && (
-                <div style={{ display: 'flex', alignItems: 'center', margin: '16px 16px 0', color: '#4a4f64', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  <span style={{ flex: 1, borderBottom: '1px solid #2a2e3d' }} />
+                <div style={{ display: 'flex', alignItems: 'center', margin: '16px 16px 0', color: 'var(--text3)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <span style={{ flex: 1, borderBottom: '1px solid var(--border)' }} />
                   <span style={{ margin: '0 12px' }}>{dateSepLabel(l.created_at)}</span>
-                  <span style={{ flex: 1, borderBottom: '1px solid #2a2e3d' }} />
+                  <span style={{ flex: 1, borderBottom: '1px solid var(--border)' }} />
                 </div>
               )}
-              <div onClick={() => onSelect(l.id)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(255,255,255,0.04)' : 'transparent', transition: 'background 0.15s' }}>
+              <div onClick={() => onSelect(l.id)} data-selected={selectedId === l.id ? '' : undefined} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(255,255,255,0.04)' : 'transparent', transition: 'background 0.15s' }}>
                 <LeadAvatar lead={l} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
+                <div data-lead-content style={{ flex: 1, minWidth: 0 }}>
+                  <div data-lead-name style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
                     {l.label && l.artist_name
                       ? <>{l.label} <span style={{ color: 'var(--text3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--text3)' }}>/</span> {l.artist_name}</>
                       : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--text3)', fontWeight: 400 }}> · {l.company}</span>}</>}
@@ -1151,7 +1155,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                   </button>
                 )}
                 <button onClick={e => { e.stopPropagation(); setKeepHotPromptId(null); setTouchPromptId(isTouchPrompting ? null : l.id); if (!isTouchPrompting) onSelect(l.id) }}
-                  style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: '1px solid var(--border)', color: isTouchPrompting ? 'var(--text3)' : '#e8eaf0', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: '1px solid var(--border)', color: isTouchPrompting ? 'var(--text3)' : 'var(--text)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                   {isTouchPrompting ? 'Cancel' : 'Contact'}
                 </button>
               </div>
@@ -1178,14 +1182,14 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
       {filtered.length > PAGE_SIZE && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
           <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1}
-            style={{ background: 'none', border: 'none', cursor: safePage <= 1 ? 'default' : 'pointer', fontFamily: 'DM Mono', fontSize: 10, color: safePage <= 1 ? 'var(--text3)' : 'var(--text2)', padding: '2px 4px' }}>
+            style={{ background: 'none', border: 'none', cursor: safePage <= 1 ? 'default' : 'pointer', fontFamily: 'Inter', fontSize: 10, color: safePage <= 1 ? 'var(--text3)' : 'var(--text2)', padding: '2px 4px' }}>
             ← Prev
           </button>
-          <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+          <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
             {startIdx + 1}–{Math.min(startIdx + PAGE_SIZE, filtered.length)} of {filtered.length}
           </span>
           <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}
-            style={{ background: 'none', border: 'none', cursor: safePage >= totalPages ? 'default' : 'pointer', fontFamily: 'DM Mono', fontSize: 10, color: safePage >= totalPages ? 'var(--text3)' : 'var(--text2)', padding: '2px 4px' }}>
+            style={{ background: 'none', border: 'none', cursor: safePage >= totalPages ? 'default' : 'pointer', fontFamily: 'Inter', fontSize: 10, color: safePage >= totalPages ? 'var(--text3)' : 'var(--text2)', padding: '2px 4px' }}>
             Next →
           </button>
         </div>
@@ -1231,6 +1235,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   onSendEmail?: () => void
   onDelete?: () => void
 }) {
+  const isMobile = useIsMobile()
   const [local, setLocal] = useState<Partial<Lead>>({ ...lead })
   const [notesVal, setNotesVal] = useState(lead.notes || '')
   const [savedField, setSavedField] = useState<string | null>(null)
@@ -1259,6 +1264,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
   const [localStudio, setLocalStudio] = useState(parsedLoc0.studio)
   const [detailRateType, setDetailRateType] = useState<'hourly' | 'daily'>(() => lead.rate_daily ? 'daily' : 'hourly')
   const [activityLog, setActivityLog] = useState<Array<{ ts: string; label: string; color: string }>>([])
+  const [creatorInitials, setCreatorInitials] = useState<string | null>(null)
   const [regTokenDates, setRegTokenDates] = useState<{ created_at: string; used_at: string | null } | null>(null)
   const [statusDDOpen, setStatusDDOpen] = useState(false)
   const statusPillRef = useRef<HTMLDivElement>(null)
@@ -1323,15 +1329,33 @@ const parsedLoc0 = parseLocation(lead.location || '')
           label: row.note || '',
           color: activityColor(row.note || ''),
         }))
-        const synth: Array<{ ts: string; label: string; color: string }> = [
-          { ts: lead.created_at, label: 'Lead Created', color: '#8b90a8' },
-        ]
-        if (regTokenDates?.created_at) synth.push({ ts: regTokenDates.created_at, label: 'Reg Link Sent', color: '#c8f04e' })
-        if (regTokenDates?.used_at) synth.push({ ts: regTokenDates.used_at, label: 'Registration Returned', color: '#14B8A6' })
+        // Lead Created is rendered as a dedicated always-last row below the log, not injected here.
+        const synth: Array<{ ts: string; label: string; color: string }> = []
+        if (regTokenDates?.created_at) synth.push({ ts: regTokenDates.created_at, label: 'Reg Link Sent', color: 'var(--accent)' })
+        if (regTokenDates?.used_at) synth.push({ ts: regTokenDates.used_at, label: 'Registration Returned', color: 'var(--booked)' })
         const all = [...items, ...synth].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
         setActivityLog(all)
       })
   }, [lead.id, lead.last_contact, regTokenDates])
+
+  // Resolve the creator's initials for the dedicated "Lead Created" row.
+  // Web Inquiry rows are attributed to "Inquiry" (no staff lookup). Otherwise
+  // join created_by → user_profiles.id (the surrogate PK stored at insert) for
+  // initials / display_name.
+  useEffect(() => {
+    setCreatorInitials(null)
+    if (!lead.created_by || lead.source === 'Web Inquiry') return
+    supabase.from('user_profiles').select('initials, display_name').eq('id', lead.created_by).maybeSingle()
+      .then(({ data }) => {
+        if (data) setCreatorInitials(data.initials || profileInitials(data.display_name) || null)
+      })
+  }, [lead.id, lead.created_by, lead.source])
+
+  const creationLabel = lead.source === 'Web Inquiry'
+    ? 'Inquiry · Lead Created'
+    : creatorInitials
+      ? `${creatorInitials} · Lead Created`
+      : 'Lead Created'
 
   useEffect(() => {
     if (!focusField) return
@@ -1388,12 +1412,9 @@ const parsedLoc0 = parseLocation(lead.location || '')
     setTimeout(() => setSavedField(null), 600)
   }
 
-const khuDays = daysUntilKhu(lead)
-  const khuColor = khuDays === null ? 'var(--text3)' : khuDays < 1 ? 'var(--hot)' : khuDays <= 2 ? 'var(--warm)' : 'var(--booked)'
-
   const selStyle: React.CSSProperties = {
     background: 'var(--surface2)', border: '1px solid var(--border)',
-    color: 'var(--text)', padding: '4px 6px', fontFamily: 'DM Mono',
+    color: 'var(--text)', padding: '4px 6px', fontFamily: 'Inter',
     fontSize: 12, outline: 'none', borderRadius: 4, cursor: 'pointer', flex: 1, minWidth: 0,
   }
 
@@ -1475,7 +1496,7 @@ const khuDays = daysUntilKhu(lead)
     return {
       background: focusedInput === key ? 'var(--surface2)' : 'transparent',
       border: 'none', color: 'var(--text)', padding: '4px 6px',
-      fontFamily: 'DM Mono', fontSize: 12, outline: 'none',
+      fontFamily: 'Inter', fontSize: 12, outline: 'none',
       width: '100%', borderRadius: 4, transition: 'background 0.1s',
     }
   }
@@ -1499,13 +1520,13 @@ const khuDays = daysUntilKhu(lead)
   }
   const ddItemStyle: React.CSSProperties = {
     padding: '7px 8px', cursor: 'pointer', fontSize: 11,
-    borderBottom: '1px solid var(--border)', fontFamily: 'DM Mono',
+    borderBottom: '1px solid var(--border)', fontFamily: 'Inter',
   }
 
   return (
     <div>
-      {/* ═══ Zone 1 (bg #161920) — identity + contact ═══════════ */}
-      <div style={{ background: '#161920', margin: '0 -16px', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+      {/* ═══ Zone 1 (transparent — lets the panel gradient show through) — identity + contact ═══════════ */}
+      <div style={{ background: 'transparent', margin: '0 -16px', padding: isMobile ? '12px 16px 6px' : '12px 16px', borderBottom: '1px solid var(--border)' }}>
       {/* ─── Status strip ─────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 26, marginBottom: 10, borderBottom: '1px solid #1e2028' }}>
         <div ref={statusPillRef} style={{ position: 'relative', flexShrink: 0 }}>
@@ -1526,7 +1547,19 @@ const khuDays = daysUntilKhu(lead)
                   <button
                     key={s}
                     type="button"
-                    onClick={() => { update('status', s); saveStatus(s); setStatusDDOpen(false) }}
+                    onClick={() => {
+                      setStatusDDOpen(false)
+                      // TEMPORARY: remove when booking form is live — selecting Booked triggers the
+                      // client-confirmation flow (QC modal for a new client, "Mark as Booked" for a
+                      // returning client) instead of writing status directly; those modals set
+                      // status:'booked' on confirm. All other statuses update directly.
+                      if (s === 'booked') {
+                        if (lead.client_id) setShowBookedModal(true)
+                        else setShowConfirmModal(true)
+                        return
+                      }
+                      update('status', s); saveStatus(s)
+                    }}
                     onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface2)' }}
                     onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                     style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', background: active ? 'var(--surface2)' : 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: c }}
@@ -1540,26 +1573,21 @@ const khuDays = daysUntilKhu(lead)
           )}
         </div>
         {lead.needs_contact !== false && (<>
-          <span style={{ color: '#2d3140', fontSize: 9, flexShrink: 0 }}>·</span>
+          <span style={{ color: 'var(--text3)', fontSize: 9, flexShrink: 0 }}>·</span>
           <button
             onClick={() => { save('needs_contact', false); onUpdate('needs_contact', false) }}
-            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#6B7280', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, flexShrink: 0 }}
+            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--cold)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, flexShrink: 0 }}
           >
-            <span style={{ fontSize: 7 }}>●</span> Needs Contact
+            Needs Contact
           </button>
         </>)}
-        {(lead.status === 'hot' || lead.status === 'warm') && lead.keep_hot_until && (
-          <span style={{ marginLeft: 'auto', color: '#14B8A6', fontFamily: 'DM Mono', fontSize: 10, flexShrink: 0 }}>
-            {lead.status === 'warm' ? 'Keep warm until' : 'Keep hot until'} {fmtDateTime(lead.keep_hot_until)}
-          </span>
-        )}
       </div>
 
-      {savedField && <span style={{ fontSize: 9, color: 'var(--booked)', fontFamily: 'DM Mono', display: 'block', marginBottom: 4 }}>saved</span>}
+      {savedField && <span style={{ fontSize: 9, color: 'var(--booked)', fontFamily: 'Inter', display: 'block', marginBottom: 4 }}>saved</span>}
 
       {/* ─── Missing warning ─────────────────────────────── */}
       {missing.length > 0 && (
-        <div style={{ fontSize: 10, color: '#F97316', background: 'rgba(249,115,22,0.08)', padding: '6px 10px', borderRadius: 6, marginBottom: 6 }}>
+        <div style={{ fontSize: 10, color: 'var(--warm)', background: 'rgba(249,115,22,0.08)', padding: '6px 10px', borderRadius: 6, marginBottom: 6 }}>
           ⚠ Missing: {missing.join(', ')}
         </div>
       )}
@@ -1643,31 +1671,18 @@ const khuDays = daysUntilKhu(lead)
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginTop: 4 }}>
             {lead.billing !== 'Billing' && (regTokenDates?.used_at ? (
-              <button onClick={() => setRegViewOpen(true)} style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.12)', color: 'var(--booked)', border: '1px solid rgba(20,184,166,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 10, cursor: 'pointer' }}>
+              <button onClick={() => setRegViewOpen(true)} style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.12)', color: 'var(--booked)', border: '1px solid rgba(20,184,166,0.35)', borderRadius: 4, fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
                 ✓ Registered
               </button>
             ) : existingTokenStr ? (
-              <button onClick={async () => { const done = await refreshRegStatus(); if (!done) setRegPanelOpen(v => !v) }} style={{ padding: '5px 12px', background: regPanelOpen ? 'rgba(249,115,22,0.18)' : 'rgba(249,115,22,0.08)', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.35)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 10, cursor: 'pointer' }}>
+              <button onClick={async () => { const done = await refreshRegStatus(); if (!done) setRegPanelOpen(v => !v) }} style={{ padding: '5px 12px', background: regPanelOpen ? 'rgba(249,115,22,0.18)' : 'rgba(249,115,22,0.08)', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.35)', borderRadius: 4, fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
                 Reg Sent
               </button>
             ) : (
-              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '5px 12px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'DM Mono', fontSize: 10, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
+              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '5px 12px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Inter', fontSize: 10, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
                 {regLinkGenerating ? '…' : 'Send Reg'}
               </button>
             ))}
-            {/* TEMPORARY: remove when booking form is live */}
-            <button
-              onClick={() => {
-                if (lead.client_id) {
-                  setShowBookedModal(true)
-                } else {
-                  setShowConfirmModal(true)
-                }
-              }}
-              style={{ padding: '5px 12px', background: 'transparent', color: '#e8eaf0', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
-            >
-              Confirm Client Account
-            </button>
           </div>
         </div>
 
@@ -1675,21 +1690,21 @@ const khuDays = daysUntilKhu(lead)
         {regPanelOpen && regLinkUrl && !regTokenDates?.used_at && (
           <div style={{ marginBottom: 8, background: 'var(--surface2)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 5, padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+              <span style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                 {regLinkUrl}
               </span>
-              <button onClick={() => setRegPanelOpen(false)} style={{ padding: '2px 6px', background: 'transparent', color: 'var(--text3)', border: 'none', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer', flexShrink: 0, lineHeight: 1 }}>
+              <button onClick={() => setRegPanelOpen(false)} style={{ padding: '2px 6px', background: 'transparent', color: 'var(--text3)', border: 'none', borderRadius: 3, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer', flexShrink: 0, lineHeight: 1 }}>
                 ✕
               </button>
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
-              <button onClick={copyRegLink} style={{ padding: '3px 10px', background: '#e8eaf0', color: '#0d0f14', border: 'none', borderRadius: 3, fontFamily: 'Syne', fontWeight: 700, fontSize: 8, letterSpacing: '0.08em', cursor: 'pointer' }}>
+              <button onClick={copyRegLink} style={{ padding: '3px 10px', background: 'var(--text)', color: 'var(--bg)', border: 'none', borderRadius: 3, fontFamily: 'Syne', fontWeight: 700, fontSize: 8, letterSpacing: '0.08em', cursor: 'pointer' }}>
                 {regLinkCopied ? 'Copied!' : 'Copy Link'}
               </button>
-              <button onClick={emailRegLink} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: 'pointer' }}>
+              <button onClick={emailRegLink} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 3, fontFamily: 'Inter', fontSize: 8, cursor: 'pointer' }}>
                 Email
               </button>
-              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.4)', borderRadius: 3, fontFamily: 'DM Mono', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
+              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.4)', borderRadius: 3, fontFamily: 'Inter', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
                 {regLinkGenerating ? '…' : 'Resend'}
               </button>
             </div>
@@ -1700,7 +1715,7 @@ const khuDays = daysUntilKhu(lead)
         {lead.billing !== 'COD' && (
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 6, minWidth: 0, flexWrap: 'wrap' }}>
             <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
-              <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Mono', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
+              <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
                 {fnameVal || 'First'}
               </span>
               <input
@@ -1710,11 +1725,11 @@ const khuDays = daysUntilKhu(lead)
                 onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
                 onBlur={() => { setFocusedInput(null); save('fname', fnameVal.trim()) }}
                 placeholder="First"
-                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text2)', fontFamily: 'DM Mono', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
+                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text2)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
               />
             </div>
             <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
-              <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Mono', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
+              <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
                 {lnameVal || 'Last'}
               </span>
               <input
@@ -1724,65 +1739,72 @@ const khuDays = daysUntilKhu(lead)
                 onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
                 onBlur={() => { setFocusedInput(null); save('lname', lnameVal.trim()) }}
                 placeholder="Last"
-                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'lname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text2)', fontFamily: 'DM Mono', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
+                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'lname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text2)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
               />
             </div>
-            <span style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, fontFamily: 'DM Mono', flexShrink: 0 }}>A&amp;R</span>
+            <span style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, fontFamily: 'Inter', flexShrink: 0 }}>A&amp;R</span>
           </div>
         )}
 
         {/* Tight contact line: email + Email · phone + Call/Text */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 200px', minWidth: 0 }}>
+        <div style={isMobile
+          ? { display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 6, marginTop: 6 }
+          : { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+          <div style={isMobile
+            ? { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, minWidth: 0 }
+            : { display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 200px', minWidth: 0 }}>
             <input ref={emailRef} value={local.email || ''} onChange={e => update('email', e.target.value)}
               onFocus={() => setFocusedInput('email')} onBlur={e => { setFocusedInput(null); save('email', e.target.value) }}
-              onKeyDown={enterBlur} placeholder="Add email" style={{ ...iStyle('email'), flex: 1, minWidth: 0, paddingLeft: 0 }} />
+              onKeyDown={enterBlur} placeholder="Add email" style={{ ...iStyle('email'), ...(isMobile ? { flex: '0 1 auto', width: 190, minWidth: 0, paddingLeft: 0 } : { flex: 1, minWidth: 0, paddingLeft: 0 }) }} />
             {local.email && (
-              <a href={`mailto:${local.email}`} style={{ ...aBtnStyle('#8b90a8'), flexShrink: 0 }}>Email</a>
+              <a href={`mailto:${local.email}`} style={{ ...aBtnStyle('var(--text2)'), flexShrink: 0 }}>Email</a>
             )}
           </div>
-          <span style={{ color: 'var(--text3)', fontSize: 11, flexShrink: 0 }}>·</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 200px', minWidth: 0 }}>
+          {!isMobile && <span style={{ color: 'var(--text3)', fontSize: 11, flexShrink: 0 }}>·</span>}
+          <div style={isMobile
+            ? { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, minWidth: 0 }
+            : { display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 200px', minWidth: 0 }}>
             <input ref={phoneRef} value={focusedInput === 'phone' ? (local.phone || '') : fmtPhone(local.phone || '')} onChange={e => update('phone', e.target.value)}
               onFocus={() => setFocusedInput('phone')} onBlur={e => { setFocusedInput(null); const f = fmtPhone(e.target.value); if (f !== e.target.value) update('phone', f); save('phone', f) }}
-              onKeyDown={enterBlur} placeholder="Add phone" style={{ ...iStyle('phone'), flex: 1, minWidth: 0 }} />
+              onKeyDown={enterBlur} placeholder="Add phone" style={{ ...iStyle('phone'), ...(isMobile ? { flex: '0 0 auto', width: 132, minWidth: 0, paddingLeft: 0 } : { flex: 1, minWidth: 0 }) }} />
             {local.phone && (<>
-              <a href={`tel:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('#8b90a8'), flexShrink: 0 }}>Call</a>
-              <a href={`sms:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('#8b90a8'), flexShrink: 0 }}>Text</a>
+              <a href={`tel:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('var(--text2)'), flexShrink: 0 }}>Call</a>
+              <a href={`sms:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('var(--text2)'), flexShrink: 0 }}>Text</a>
             </>)}
           </div>
         </div>
 
         {/* Meta row: billing · session type · source — plain muted text chips */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: isMobile ? 6 : 8 }}>
           <button
             onClick={() => { const nb = (local.billing || lead.billing) === 'COD' ? 'Billing' : 'COD'; update('billing', nb); save('billing', nb) }}
-            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#6B7280', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>
+            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--cold)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>
             {local.billing || lead.billing || 'COD'}
           </button>
           {lead.booking && (<>
             <span style={{ color: '#2d3140', fontSize: 9 }}>·</span>
-            <span style={{ color: '#6B7280', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{lead.booking}</span>
+            <span style={{ color: 'var(--cold)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{lead.booking}</span>
           </>)}
           {lead.source && (<>
             <span style={{ color: '#2d3140', fontSize: 9 }}>·</span>
-            <span style={{ color: '#6B7280', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{lead.source}</span>
+            <span style={{ color: 'var(--cold)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{lead.source}</span>
           </>)}
         </div>
       </div>
       </div>
 
-      {/* ═══ Zone 2 (bg #1c1f27) — session info ═══════════════ */}
-      <div style={{ background: '#1c1f27', margin: '0 -16px', padding: '12px 16px' }}>
+      {/* ═══ Zone 2 (bg var(--surface2)) — session info ═══════════════ */}
+      <div style={{ background: 'var(--surface2)', margin: '0 -16px', padding: isMobile ? '6px 16px 12px' : '12px 16px' }}>
       {/* ─── Session & Quote ─────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 48px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div>
             <div style={fieldLabelStyle}>Location · Studio</div>
-            <div style={{ maxWidth: 200 }}>
+            <div style={{ maxWidth: isMobile ? '100%' : 180 }}>
               <StudioSelect
                 location={localVenue}
                 studio={localStudio}
+                shortCodes
                 onChange={(venue, studio) => {
                   setLocalVenue(venue)
                   setLocalStudio(studio)
@@ -1800,7 +1822,7 @@ const khuDays = daysUntilKhu(lead)
               type="date"
               value={local.session_date || ''}
               onChange={e => { update('session_date', e.target.value); save('session_date', e.target.value) }}
-              style={{ ...iStyle('session_date'), cursor: 'pointer' }}
+              style={{ ...iStyle('session_date'), cursor: 'pointer', paddingLeft: 0 }}
             />
           </div>
         </div>
@@ -1808,8 +1830,8 @@ const khuDays = daysUntilKhu(lead)
           <div>
             <div style={fieldLabelStyle}>Quote / Rate</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-              <button type="button" onClick={() => setDetailRateType('hourly')} style={{ padding: '3px 7px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '4px 0 0 4px', border: '1px solid var(--border)', background: detailRateType === 'hourly' ? 'rgba(200,240,78,0.12)' : 'transparent', color: detailRateType === 'hourly' ? 'var(--accent)' : 'var(--text3)' }}>/ hr</button>
-              <button type="button" onClick={() => setDetailRateType('daily')} style={{ padding: '3px 7px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '0 4px 4px 0', border: '1px solid var(--border)', borderLeft: 'none', background: detailRateType === 'daily' ? 'rgba(200,240,78,0.12)' : 'transparent', color: detailRateType === 'daily' ? 'var(--accent)' : 'var(--text3)' }}>/ day</button>
+              <button type="button" onClick={() => setDetailRateType('hourly')} style={{ padding: '3px 7px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '4px 0 0 4px', border: '1px solid var(--border)', background: detailRateType === 'hourly' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: detailRateType === 'hourly' ? 'var(--accent)' : 'var(--text3)' }}>/ hr</button>
+              <button type="button" onClick={() => setDetailRateType('daily')} style={{ padding: '3px 7px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '0 4px 4px 0', border: '1px solid var(--border)', borderLeft: 'none', background: detailRateType === 'daily' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: detailRateType === 'daily' ? 'var(--accent)' : 'var(--text3)' }}>/ day</button>
               <input
                 ref={quoteRef}
                 value={detailRateType === 'hourly' ? (local.quote || '') : (local.rate_daily || '')}
@@ -1853,7 +1875,8 @@ const khuDays = daysUntilKhu(lead)
       <div style={{ marginTop: 8 }}>
         <button
           onClick={() => { const v = !local.engineer_needed; update('engineer_needed', v); save('engineer_needed', v) }}
-          style={{ padding: '5px 14px', background: local.engineer_needed ? 'rgba(200,240,78,0.12)' : 'var(--surface2)', color: local.engineer_needed ? 'var(--accent)' : 'var(--text3)', border: `1px solid ${local.engineer_needed ? 'rgba(200,240,78,0.35)' : 'var(--border)'}`, borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer' }}
+          data-eng-needed={local.engineer_needed ? '' : undefined}
+          style={{ padding: '5px 14px', background: local.engineer_needed ? 'rgba(var(--accent-rgb),0.12)' : 'var(--surface2)', color: local.engineer_needed ? 'var(--accent)' : 'var(--text3)', border: `1px solid ${local.engineer_needed ? 'rgba(var(--accent-rgb),0.35)' : 'var(--border)'}`, borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer' }}
         >
           {local.engineer_needed ? '● Engineer Needed' : '○ Engineer Needed'}
         </button>
@@ -1866,7 +1889,7 @@ const khuDays = daysUntilKhu(lead)
         onChange={e => setNotesVal(e.target.value)}
         onBlur={() => { if (notesDirty) save('notes', notesVal) }}
         placeholder="Add notes…"
-        style={{ width: '100%', minHeight: 70, marginTop: 16, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '6px 10px', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, resize: 'vertical', outline: 'none', lineHeight: 1.6 }}
+        style={{ width: '100%', minHeight: 70, marginTop: 16, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '6px 10px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, resize: 'vertical', outline: 'none', lineHeight: 1.6 }}
       />
       {notesDirty && (
         <button
@@ -1878,23 +1901,29 @@ const khuDays = daysUntilKhu(lead)
 
       {/* ─── Activity Log ──────────────────────────────── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 16 }}>
-        {activityLog.length === 0 ? (
-          <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', padding: '4px 0' }}>No activity yet</div>
-        ) : activityLog.map((entry, i) => (
+        {activityLog.map((entry, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: entry.color, flexShrink: 0, marginTop: 3 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>{fmtActivityTime(entry.ts)} · </span>
-              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>{entry.label}</span>
+              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>{entry.label}</span>
             </div>
           </div>
         ))}
+        {/* Dedicated Lead Created row — always the oldest (last) entry */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--text2)', flexShrink: 0, marginTop: 3 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>{fmtActivityTime(lead.created_at)} · </span>
+            <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>{creationLabel}</span>
+          </div>
+        </div>
       </div>
 
       <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          style={{ background: 'rgba(239,68,68,0.12)', color: 'var(--hot)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 4, padding: '4px 10px', fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer' }}
+          style={{ background: 'rgba(239,68,68,0.12)', color: 'var(--hot)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 4, padding: '4px 10px', fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}
         >
           Delete Lead
         </button>
@@ -1906,11 +1935,11 @@ const khuDays = daysUntilKhu(lead)
             <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 14, marginBottom: 8 }}>
               Delete {[lead.fname, lead.lname].filter(Boolean).join(' ') || 'this lead'}?
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono', lineHeight: 1.7, marginBottom: 20 }}>
+            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', lineHeight: 1.7, marginBottom: 20 }}>
               This will permanently delete this lead and all contact log entries. This action cannot be undone.
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowDeleteConfirm(false)} style={{ background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 14px', fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={() => setShowDeleteConfirm(false)} style={{ background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 14px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}>Cancel</button>
               <button
                 onClick={async () => {
                   setDeleting(true)
@@ -1922,7 +1951,7 @@ const khuDays = daysUntilKhu(lead)
                   onDelete?.()
                 }}
                 disabled={deleting}
-                style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--hot)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 4, padding: '6px 16px', fontSize: 10, fontFamily: 'DM Mono', cursor: deleting ? 'default' : 'pointer', opacity: deleting ? 0.7 : 1 }}
+                style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--hot)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 4, padding: '6px 16px', fontSize: 10, fontFamily: 'Inter', cursor: deleting ? 'default' : 'pointer', opacity: deleting ? 0.7 : 1 }}
               >
                 {deleting ? 'Deleting…' : 'Delete Permanently'}
               </button>
@@ -1932,7 +1961,7 @@ const khuDays = daysUntilKhu(lead)
       )}
 
       {showBookingToast && (
-        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 3000, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 4px 24px rgba(0,0,0,0.5)', maxWidth: 320, fontFamily: 'DM Mono', fontSize: 11 }}>
+        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 3000, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 4px 24px rgba(0,0,0,0.5)', maxWidth: 320, fontFamily: 'Inter', fontSize: 11 }}>
           <span style={{ color: 'var(--accent)', fontSize: 14 }}>🗓</span>
           <span style={{ color: 'var(--text)', flex: 1 }}>Navigate to Calendar to book this client.</span>
           <button onClick={() => setShowBookingToast(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
@@ -1959,11 +1988,11 @@ const khuDays = daysUntilKhu(lead)
         >
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '22px 24px', maxWidth: 420, width: '100%' }}>
             <div style={{ fontFamily: 'DM Serif Display', fontSize: 18, color: 'var(--text)', marginBottom: 8 }}>Client Account Created</div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono', lineHeight: 1.7, marginBottom: 20 }}>New client account created successfully. Proceed to standard booking protocols.</div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', lineHeight: 1.7, marginBottom: 20 }}>New client account created successfully. Proceed to standard booking protocols.</div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setShowSuccessModal(false)}
-                style={{ padding: '7px 18px', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.05em', border: 'none', cursor: 'pointer', background: 'var(--accent)', color: '#0d0f14' }}
+                style={{ padding: '7px 18px', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.05em', border: 'none', cursor: 'pointer', background: 'var(--accent)', color: 'var(--bg)' }}
               >
                 Done
               </button>
@@ -1979,7 +2008,7 @@ const khuDays = daysUntilKhu(lead)
         >
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '22px 24px', maxWidth: 420, width: '100%' }}>
             <div style={{ fontFamily: 'DM Serif Display', fontSize: 18, color: 'var(--text)', marginBottom: 8 }}>Mark as Booked</div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono', lineHeight: 1.7, marginBottom: 20 }}>This client has been marked as booked. Proceed to standard booking protocols.</div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', lineHeight: 1.7, marginBottom: 20 }}>This client has been marked as booked. Proceed to standard booking protocols.</div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 onClick={async () => {
@@ -1991,7 +2020,7 @@ const khuDays = daysUntilKhu(lead)
                   setShowBookedModal(false)
                 }}
                 disabled={markingBooked}
-                style={{ padding: '7px 18px', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.05em', border: 'none', cursor: markingBooked ? 'default' : 'pointer', background: 'var(--accent)', color: '#0d0f14', opacity: markingBooked ? 0.7 : 1 }}
+                style={{ padding: '7px 18px', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.05em', border: 'none', cursor: markingBooked ? 'default' : 'pointer', background: 'var(--accent)', color: 'var(--bg)', opacity: markingBooked ? 0.7 : 1 }}
               >
                 {markingBooked ? 'Saving…' : 'Confirm'}
               </button>
@@ -2057,7 +2086,7 @@ function ConfirmClientModal({ lead, onClose, onCreated }: {
 
   const overlay: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }
   const fL: React.CSSProperties = { fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 3, display: 'block' as const }
-  const inp: React.CSSProperties = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '6px 9px', outline: 'none', boxSizing: 'border-box' as const }
+  const inp: React.CSSProperties = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '6px 9px', outline: 'none', boxSizing: 'border-box' as const }
 
   return (
     <div style={overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -2065,7 +2094,7 @@ function ConfirmClientModal({ lead, onClose, onCreated }: {
         <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
             <div style={{ fontFamily: 'DM Serif Display', fontSize: 18, color: 'var(--text)' }}>Confirm Client Account</div>
-            <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text3)', marginTop: 2 }}>Review and complete before starting booking</div>
+            <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)', marginTop: 2 }}>Review and complete before starting booking</div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
         </div>
@@ -2136,19 +2165,19 @@ function ConfirmClientModal({ lead, onClose, onCreated }: {
           </div>
 
           {!hasContact && (
-            <div style={{ fontSize: 10, color: 'var(--warm)', fontFamily: 'DM Mono', padding: '6px 10px', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 4 }}>
+            <div style={{ fontSize: 10, color: 'var(--warm)', fontFamily: 'Inter', padding: '6px 10px', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 4 }}>
               Requires at minimum a name and email or phone number.
             </div>
           )}
           {error && (
-            <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'DM Mono', padding: '6px 10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 4 }}>
+            <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'Inter', padding: '6px 10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 4 }}>
               {error}
             </div>
           )}
         </div>
 
         <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8, flexShrink: 0 }}>
-          <button onClick={onClose} style={{ padding: '7px 16px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 5, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>
+          <button onClick={onClose} style={{ padding: '7px 16px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 5, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>
             Cancel
           </button>
           <button
@@ -2159,7 +2188,7 @@ function ConfirmClientModal({ lead, onClose, onCreated }: {
               fontSize: 11, letterSpacing: '0.05em', border: 'none',
               cursor: (valid && !saving) ? 'pointer' : 'default',
               background: valid ? 'var(--accent)' : 'var(--surface2)',
-              color: valid ? '#0d0f14' : 'var(--text3)',
+              color: valid ? 'var(--bg)' : 'var(--text3)',
             }}
           >
             {saving ? 'Creating…' : 'Start Booking →'}
@@ -2549,14 +2578,14 @@ function NewLeadModal({ leads, onClose, onSave }: {
     }
   }
 
-  const inputStyle: React.CSSProperties = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '7px 10px', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 12, outline: 'none' }
+  const inputStyle: React.CSSProperties = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '7px 10px', borderRadius: 6, fontFamily: 'Inter', fontSize: 12, outline: 'none' }
   const labelS: React.CSSProperties = { fontSize: 9, color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4, display: 'block' }
 
   const modeToggle = (
     <div style={{ display: 'flex', justifyContent: 'center' }}>
       <div style={{ display: 'flex', gap: 2, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
         {(['cod', 'label'] as const).map(m => (
-          <button key={m} type="button" onClick={() => setMode(m)} style={{ padding: '7px 28px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'DM Mono', fontSize: 11, fontWeight: 500, background: mode === m ? 'var(--surface2)' : 'transparent', color: mode === m ? 'var(--text)' : 'var(--text2)', transition: 'all 0.15s', letterSpacing: '0.04em' }}>
+          <button key={m} type="button" onClick={() => setMode(m)} style={{ padding: '7px 28px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, fontWeight: 500, background: mode === m ? 'var(--surface2)' : 'transparent', color: mode === m ? 'var(--text)' : 'var(--text2)', transition: 'all 0.15s', letterSpacing: '0.04em' }}>
             {m === 'cod' ? 'COD' : 'Label/Billing'}
           </button>
         ))}
@@ -2585,7 +2614,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
     <button
       type="button"
       onClick={() => setNeedsContact(nc => !nc)}
-      style={{ alignSelf: 'flex-start', padding: '5px 14px', borderRadius: 20, border: `1px solid ${needsContact ? '#7BA7BC' : 'var(--border)'}`, background: needsContact ? 'rgba(123,167,188,0.12)' : 'transparent', color: needsContact ? '#7BA7BC' : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.15s' }}
+      style={{ alignSelf: 'flex-start', padding: '5px 14px', borderRadius: 20, border: `1px solid ${needsContact ? 'var(--uncontacted)' : 'var(--border)'}`, background: needsContact ? 'rgba(123,167,188,0.12)' : 'transparent', color: needsContact ? 'var(--uncontacted)' : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.15s' }}
     >
       {needsContact ? '● Needs Contact' : '○ Needs Contact'}
     </button>
@@ -2611,8 +2640,8 @@ function NewLeadModal({ leads, onClose, onSave }: {
         <div>
           <label style={labelS}>Quote / Rate</label>
           <div style={{ display: 'flex', gap: 0 }}>
-            <button type="button" onClick={() => setRateType('hourly')} style={{ padding: '4px 8px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '4px 0 0 4px', border: '1px solid var(--border)', background: rateType === 'hourly' ? 'rgba(200,240,78,0.12)' : 'transparent', color: rateType === 'hourly' ? 'var(--accent)' : 'var(--text3)' }}>/ hr</button>
-            <button type="button" onClick={() => setRateType('daily')} style={{ padding: '4px 8px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '0 4px 4px 0', border: '1px solid var(--border)', borderLeft: 'none', background: rateType === 'daily' ? 'rgba(200,240,78,0.12)' : 'transparent', color: rateType === 'daily' ? 'var(--accent)' : 'var(--text3)' }}>/ day</button>
+            <button type="button" onClick={() => setRateType('hourly')} style={{ padding: '4px 8px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '4px 0 0 4px', border: '1px solid var(--border)', background: rateType === 'hourly' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: rateType === 'hourly' ? 'var(--accent)' : 'var(--text3)' }}>/ hr</button>
+            <button type="button" onClick={() => setRateType('daily')} style={{ padding: '4px 8px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '0 4px 4px 0', border: '1px solid var(--border)', borderLeft: 'none', background: rateType === 'daily' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: rateType === 'daily' ? 'var(--accent)' : 'var(--text3)' }}>/ day</button>
             <input
               value={rateType === 'hourly' ? form.quote : form.rate_daily}
               onChange={e => set(rateType === 'hourly' ? 'quote' : 'rate_daily', e.target.value)}
@@ -2636,14 +2665,14 @@ function NewLeadModal({ leads, onClose, onSave }: {
   )
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 540, maxHeight: '88vh', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 1 }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '64px 20px 24px' }}>
+      <div onClick={e => e.stopPropagation()} data-modal-gradient="" style={{ width: 540, maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'var(--surface)' }}>
           <span style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15 }}>New Lead</span>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
         </div>
 
-        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', flex: 1, minHeight: 0 }}>
           {modeToggle}
           {mode === 'cod' ? (
             <>
@@ -2671,7 +2700,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                               {isClient ? '★ Client' : 'Prev. Inquiry'}
                             </span>
                           </div>
-                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
                             {r.email && <span>{r.email}</span>}
                             {r.phone && <span>{r.phone}</span>}
                             {!isClient && (r as Lead).booking && <span>{(r as Lead).booking}</span>}
@@ -2688,7 +2717,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                 {matchedClientId && (
                   <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.2)', borderRadius: 6 }}>
                     <span style={{ color: 'var(--booked)', fontSize: 12 }}>★</span>
-                    <span style={{ fontSize: 11, color: 'var(--booked)', fontFamily: 'DM Mono', flex: 1 }}>Matched to existing client profile</span>
+                    <span style={{ fontSize: 11, color: 'var(--booked)', fontFamily: 'Inter', flex: 1 }}>Matched to existing client profile</span>
                     <button onMouseDown={() => setMatchedClientId(null)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
                   </div>
                 )}
@@ -2756,7 +2785,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   style={inputStyle}
                 />
                 {labelClientId && (
-                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--booked)', fontFamily: 'DM Mono' }}>
+                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--booked)', fontFamily: 'Inter' }}>
                     <span>★ Linked to label client</span>
                     <button onMouseDown={() => { setLabelClientId(null); setAnrContactId(null); setSelectedAnr(null); setAnrQuery(''); setAnrHighlight(-1) }} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 0 }}>×</button>
                   </div>
@@ -2779,7 +2808,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                     {anrFiltered.map((c, i) => (
                       <div key={c.id} onMouseDown={() => selectAnr(c)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i === anrHighlight ? 'var(--surface)' : 'transparent' }}>
                         <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 2 }}>{c.fname} {c.lname}</div>
-                        <div style={{ display: 'flex', gap: 10, fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+                        <div style={{ display: 'flex', gap: 10, fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
                           {c.email && <span>{c.email}</span>}
                           {c.phone && <span>{c.phone}</span>}
                         </div>
@@ -2808,7 +2837,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                 {showArtistDD && (artistSuggestions.length > 0 || (artistQuery.trim().length >= 2 && !labelArtists.some(a => a.toLowerCase() === artistQuery.trim().toLowerCase()))) && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
                     {artistSuggestions.map((a, i) => (
-                      <div key={a} onMouseDown={() => { setArtistQuery(a); set('artist_name', a); setShowArtistDD(false); setArtistHighlight(-1) }} style={{ padding: '9px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 12, fontFamily: 'DM Mono', background: i === artistHighlight ? 'var(--surface)' : 'transparent' }}>{a}</div>
+                      <div key={a} onMouseDown={() => { setArtistQuery(a); set('artist_name', a); setShowArtistDD(false); setArtistHighlight(-1) }} style={{ padding: '9px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 12, fontFamily: 'Inter', background: i === artistHighlight ? 'var(--surface)' : 'transparent' }}>{a}</div>
                     ))}
                     {artistQuery.trim().length >= 2 && !labelArtists.some(a => a.toLowerCase() === artistQuery.trim().toLowerCase()) && (
                       <div onMouseDown={() => addArtistImmediately(artistQuery.trim())} style={{ padding: '9px 14px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: artistSuggestions.length > 0 ? '1px solid var(--border)' : undefined, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -2844,15 +2873,15 @@ function NewLeadModal({ leads, onClose, onSave }: {
           </div>
         </div>
 
-        <div style={{ padding: '12px 20px 20px', position: 'sticky', bottom: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
+        <div style={{ padding: '12px 20px 20px', flexShrink: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
           {bookingError && (
-            <div style={{ marginBottom: 8, fontSize: 11, color: 'var(--hot)', fontFamily: 'DM Mono' }}>{bookingError}</div>
+            <div style={{ marginBottom: 8, fontSize: 11, color: 'var(--hot)', fontFamily: 'Inter' }}>{bookingError}</div>
           )}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '9px 0', background: 'var(--accent)', color: '#0d0f14', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: saving ? 0.6 : 1 }}>
+            <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '9px 0', background: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: saving ? 0.6 : 1 }}>
               {saving ? 'Saving…' : temperature === 'booking' ? 'Save & Go to Booking →' : 'Create Lead'}
             </button>
-            <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
+            <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
           </div>
         </div>
       </div>
@@ -2881,19 +2910,19 @@ function EmailModal({ lead, onClose }: { lead: Lead, onClose: () => void }) {
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15 }}>Email {lead.fname} {lead.lname}</div>
-            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2, fontFamily: 'DM Mono' }}>{lead.email || 'No email on file'}</div>
+            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2, fontFamily: 'Inter' }}>{lead.email || 'No email on file'}</div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
         </div>
         <div style={{ padding: '16px 20px' }}>
           <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Subject: {subject}</div>
-          <textarea value={body} onChange={e => setBody(e.target.value)} style={{ width: '100%', height: 220, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '10px 12px', borderRadius: 7, fontFamily: 'DM Mono', fontSize: 11, resize: 'none', outline: 'none', lineHeight: 1.6 }} />
+          <textarea value={body} onChange={e => setBody(e.target.value)} style={{ width: '100%', height: 220, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '10px 12px', borderRadius: 7, fontFamily: 'Inter', fontSize: 11, resize: 'none', outline: 'none', lineHeight: 1.6 }} />
         </div>
         <div style={{ padding: '0 20px 20px', display: 'flex', gap: 8 }}>
-          <button onClick={handleCopyAndOpen} disabled={!lead.email} style={{ flex: 1, padding: '9px 0', background: lead.email ? 'var(--accent)' : 'var(--surface2)', color: lead.email ? '#0d0f14' : 'var(--text3)', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: lead.email ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          <button onClick={handleCopyAndOpen} disabled={!lead.email} style={{ flex: 1, padding: '9px 0', background: lead.email ? 'var(--accent)' : 'var(--surface2)', color: lead.email ? 'var(--bg)' : 'var(--text3)', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: lead.email ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
             {copied ? '✓ Copied!' : '✉ Copy & Open Mail'}
           </button>
-          <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
         </div>
       </div>
     </div>
@@ -2915,14 +2944,14 @@ function DonutChart({ segments, size = 100 }: {
 
   if (total === 0) return (
     <svg width={size} height={size}>
-      <circle cx={cx} cy={cy} r={r} fill="transparent" stroke="var(--border)" strokeWidth={sw} />
+      <circle cx={cx} cy={cy} r={r} fill="transparent" style={{ stroke: 'var(--border)' }} strokeWidth={sw} />
     </svg>
   )
 
   let cumLen = 0
   return (
     <svg width={size} height={size} style={{ flexShrink: 0 }}>
-      <circle cx={cx} cy={cy} r={r} fill="transparent" stroke="var(--border)" strokeWidth={sw} />
+      <circle cx={cx} cy={cy} r={r} fill="transparent" style={{ stroke: 'var(--border)' }} strokeWidth={sw} />
       {segments.map((seg, i) => {
         const L = (seg.value / total) * C
         const dashOffset = C - cumLen
@@ -2930,7 +2959,7 @@ function DonutChart({ segments, size = 100 }: {
         if (L < 0.5) return null
         return (
           <circle key={i} cx={cx} cy={cy} r={r} fill="transparent"
-            stroke={seg.color} strokeWidth={sw}
+            style={{ stroke: seg.color }} strokeWidth={sw}
             strokeDasharray={`${L} ${C - L}`}
             strokeDashoffset={dashOffset}
             transform={`rotate(-90 ${cx} ${cy})`}
@@ -2952,7 +2981,7 @@ function ChartCard({ title, subtitle, segments }: {
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 20 }}>
       <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{title}</div>
-      <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 16, fontFamily: 'DM Mono' }}>{subtitle}</div>
+      <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 16, fontFamily: 'Inter' }}>{subtitle}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <DonutChart segments={segments} size={90} />
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -2960,13 +2989,13 @@ function ChartCard({ title, subtitle, segments }: {
             <div key={seg.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 7, height: 7, borderRadius: '50%', background: seg.color, flexShrink: 0 }} />
               <span style={{ fontSize: 10, color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{seg.label}</span>
-              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', flexShrink: 0 }}>
+              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', flexShrink: 0 }}>
                 {seg.value} <span style={{ opacity: 0.6 }}>({total ? Math.round(seg.value / total * 100) : 0}%)</span>
               </span>
             </div>
           ))}
           {segments.length > 6 && (
-            <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono' }}>+{segments.length - 6} more</div>
+            <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter' }}>+{segments.length - 6} more</div>
           )}
         </div>
       </div>
@@ -2998,7 +3027,7 @@ function AnalyticsView({ leads }: { leads: Lead[] }) {
         <h1 style={{ fontFamily: 'DM Serif Display', fontSize: 32, letterSpacing: -1 }}>
           Analytics <em style={{ fontStyle: 'italic', color: 'var(--accent)' }}>&amp; Insights</em>
         </h1>
-        <select style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', padding: '6px 12px', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
+        <select style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', padding: '6px 12px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
           <option>All Time</option>
         </select>
       </div>

@@ -12,20 +12,20 @@ import { SectionHeader } from '@/components/ui/SectionHeader'
 const ROLE_OPTIONS: EngineerRole[] = ['Engineer', 'Assistant', 'Both']
 
 const ROLE_COLORS: Record<EngineerRole, string> = {
-  Engineer: '#F97316',
-  Assistant: '#EF4444',
-  Both: '#c8f04e',
+  Engineer: 'var(--warm)',
+  Assistant: 'var(--hot)',
+  Both: 'var(--accent)',
 }
 
 const inp: React.CSSProperties = {
-  background: '#1a1d27', border: '1px solid #2a2e3d', color: '#e8eaf2',
-  fontFamily: 'DM Mono', fontSize: 11, padding: '6px 10px', borderRadius: 4,
+  background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)',
+  fontFamily: 'Inter', fontSize: 11, padding: '6px 10px', borderRadius: 4,
   width: '100%', outline: 'none',
 }
 
 const labelS: React.CSSProperties = {
   fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em',
-  textTransform: 'uppercase', color: '#4a4f64', display: 'block', marginBottom: 4,
+  textTransform: 'uppercase', color: 'var(--text3)', display: 'block', marginBottom: 4,
 }
 
 function autoInitials(first: string, last: string): string {
@@ -88,11 +88,11 @@ function EngModal({
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ background: '#13161e', border: '1px solid #2a2e3d', borderRadius: 8, width: '100%', maxWidth: 400, overflow: 'hidden' }}
+        style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, width: '100%', maxWidth: 400, overflow: 'hidden' }}
       >
         {/* Header */}
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid #2a2e3d', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: '#e8eaf2' }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
             {eng ? 'Edit Engineer' : 'Add Engineer'}
           </div>
           {initials && (
@@ -122,9 +122,9 @@ function EngModal({
                 <button key={r} type="button" onClick={() => set('role', r)} style={{
                   flex: 1, padding: '6px 8px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne',
                   fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
-                  background: form.role === r ? ROLE_COLORS[r] + '22' : '#1a1d27',
-                  color: form.role === r ? ROLE_COLORS[r] : '#8b90a8',
-                  border: `1px solid ${form.role === r ? ROLE_COLORS[r] + '55' : '#2a2e3d'}`,
+                  background: form.role === r ? ROLE_COLORS[r] + '22' : 'var(--surface2)',
+                  color: form.role === r ? ROLE_COLORS[r] : 'var(--text2)',
+                  border: `1px solid ${form.role === r ? ROLE_COLORS[r] + '55' : 'var(--border)'}`,
                 }}>{r}</button>
               ))}
             </div>
@@ -142,18 +142,18 @@ function EngModal({
           </div>
 
           {error && (
-            <div style={{ fontSize: 10, color: '#EF4444', fontFamily: 'DM Mono', padding: '4px 8px', background: 'rgba(239,68,68,0.1)', borderRadius: 4, border: '1px solid rgba(239,68,68,0.3)' }}>
+            <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'Inter', padding: '4px 8px', background: 'rgba(239,68,68,0.1)', borderRadius: 4, border: '1px solid rgba(239,68,68,0.3)' }}>
               {error}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '12px 20px', borderTop: '1px solid #2a2e3d', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button onClick={onClose} style={{ padding: '6px 16px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', background: '#1a1d27', border: '1px solid #2a2e3d', color: '#8b90a8', cursor: 'pointer' }}>
+        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button onClick={onClose} style={{ padding: '6px 16px', borderRadius: 4, fontSize: 11, fontFamily: 'Inter', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer' }}>
             Cancel
           </button>
-          <button onClick={handleSave} disabled={saving} style={{ padding: '6px 20px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', background: 'var(--accent)', border: 'none', color: '#0d0f14', fontWeight: 700, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+          <button onClick={handleSave} disabled={saving} style={{ padding: '6px 20px', borderRadius: 4, fontSize: 11, fontFamily: 'Inter', background: 'var(--accent)', border: 'none', color: 'var(--bg)', fontWeight: 700, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>
             {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
@@ -320,20 +320,20 @@ export default function AdminPage() {
   }
 
   const sectionHead: React.CSSProperties = {
-    fontSize: 9, fontFamily: 'Syne', fontWeight: 700, color: '#4a4f64',
+    fontSize: 9, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text3)',
     letterSpacing: '0.08em', textTransform: 'uppercase',
-    borderBottom: '1px solid #2a2e3d', paddingBottom: 7, marginBottom: 16,
+    borderBottom: '1px solid var(--border)', paddingBottom: 7, marginBottom: 16,
   }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
 
       {/* ─── Sidebar ──────────────────────────────────────────────── */}
-      <div style={{
-        width: 200, flexShrink: 0, borderRight: '1px solid #2a2e3d',
+      <div data-panel="admin-sidebar" style={{
+        width: 200, flexShrink: 0, borderRight: '1px solid var(--border)',
         padding: '28px 0', display: 'flex', flexDirection: 'column', gap: 2,
       }}>
-        <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#4a4f64', padding: '0 20px 12px' }}>
+        <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', padding: '0 20px 12px' }}>
           Admin
         </div>
         {visibleNav.map(({ key, label }) => {
@@ -345,10 +345,10 @@ export default function AdminPage() {
               style={{
                 display: 'block', width: '100%', textAlign: 'left',
                 padding: '8px 20px', border: 'none', cursor: 'pointer',
-                fontFamily: 'DM Mono', fontSize: 12,
-                background: active ? '#1a1d27' : 'transparent',
-                color: active ? '#e8eaf2' : '#8b90a8',
-                borderLeft: active ? '2px solid #c8f04e' : '2px solid transparent',
+                fontFamily: 'Inter', fontSize: 12,
+                background: active ? 'var(--surface2)' : 'transparent',
+                color: active ? 'var(--text)' : 'var(--text2)',
+                borderLeft: active ? '2px solid var(--accent)' : '2px solid transparent',
               }}
             >
               {label}
@@ -366,13 +366,13 @@ export default function AdminPage() {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button
               onClick={() => setShowInactive(v => !v)}
-              style={{ padding: '4px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', background: showInactive ? '#1a1d27' : 'transparent', border: `1px solid ${showInactive ? '#2a2e3d' : 'transparent'}`, color: '#8b90a8' }}
+              style={{ padding: '4px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', background: showInactive ? 'var(--surface2)' : 'transparent', border: `1px solid ${showInactive ? 'var(--border)' : 'transparent'}`, color: 'var(--text2)' }}
             >
               {showInactive ? 'Hide inactive' : 'Show inactive'}
             </button>
             <button
               onClick={openAdd}
-              style={{ padding: '6px 16px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer', background: 'var(--accent)', border: 'none', color: '#0d0f14' }}
+              style={{ padding: '6px 16px', borderRadius: 4, fontSize: 11, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: 'var(--accent)', border: 'none', color: 'var(--bg)' }}
             >
               + Add
             </button>
@@ -385,23 +385,23 @@ export default function AdminPage() {
             <button key={r} onClick={() => setRoleFilter(r)} style={{
               padding: '4px 14px', borderRadius: 20, fontSize: 10, fontFamily: 'Syne',
               fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
-              background: roleFilter === r ? (r === 'All' ? '#1a1d27' : ROLE_COLORS[r] + '22') : 'transparent',
-              color: roleFilter === r ? (r === 'All' ? '#e8eaf2' : ROLE_COLORS[r]) : '#8b90a8',
-              border: roleFilter === r ? `1px solid ${r === 'All' ? '#2a2e3d' : ROLE_COLORS[r] + '55'}` : '1px solid transparent',
+              background: roleFilter === r ? (r === 'All' ? 'var(--surface2)' : ROLE_COLORS[r] + '22') : 'transparent',
+              color: roleFilter === r ? (r === 'All' ? 'var(--text)' : ROLE_COLORS[r]) : 'var(--text2)',
+              border: roleFilter === r ? `1px solid ${r === 'All' ? 'var(--border)' : ROLE_COLORS[r] + '55'}` : '1px solid transparent',
             }}>{r}</button>
           ))}
         </div>
 
         {loading ? (
-          <div style={{ fontSize: 11, color: '#4a4f64', fontFamily: 'DM Mono' }}>Loading…</div>
+          <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>Loading…</div>
         ) : filtered.length === 0 ? (
-          <div style={{ fontSize: 11, color: '#4a4f64', fontFamily: 'DM Mono', padding: '24px 0' }}>No engineers found.</div>
+          <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter', padding: '24px 0' }}>No engineers found.</div>
         ) : (
-          <div style={{ border: '1px solid #2a2e3d', borderRadius: 6, overflow: 'hidden' }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
             {/* Table header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr 100px 140px 140px 80px 180px', background: '#1a1d27', borderBottom: '1px solid #2a2e3d', padding: '6px 16px', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr 100px 140px 140px 80px 180px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)', padding: '6px 16px', gap: 12 }}>
               {['', 'Name', 'Role', 'Email', 'Phone', 'Status', ''].map((h, i) => (
-                <div key={i} style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#4a4f64' }}>{h}</div>
+                <div key={i} style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)' }}>{h}</div>
               ))}
             </div>
 
@@ -415,13 +415,13 @@ export default function AdminPage() {
                   style={{
                     display: 'grid', gridTemplateColumns: '44px 1fr 100px 140px 140px 80px 180px',
                     padding: '10px 16px', gap: 12, alignItems: 'center',
-                    borderBottom: idx < filtered.length - 1 ? '1px solid #2a2e3d' : 'none',
+                    borderBottom: idx < filtered.length - 1 ? '1px solid var(--border)' : 'none',
                     background: eng.active ? 'transparent' : 'rgba(0,0,0,0.15)',
                     opacity: eng.active ? 1 : 0.5,
                     cursor: 'pointer',
                     transition: 'background 0.12s',
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.background = '#1a1d27')}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
                   onMouseLeave={e => (e.currentTarget.style.background = eng.active ? 'transparent' : 'rgba(0,0,0,0.15)')}
                 >
                   {/* Initials avatar */}
@@ -431,7 +431,7 @@ export default function AdminPage() {
 
                   {/* Name */}
                   <div>
-                    <div style={{ fontSize: 12, fontFamily: 'DM Mono', color: '#e8eaf2', fontWeight: 500 }}>{eng.first_name} {eng.last_name}</div>
+                    <div style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--text)', fontWeight: 500 }}>{eng.first_name} {eng.last_name}</div>
                   </div>
 
                   {/* Role */}
@@ -442,38 +442,38 @@ export default function AdminPage() {
                   </div>
 
                   {/* Email */}
-                  <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8b90a8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {eng.email || <span style={{ color: '#4a4f64' }}>—</span>}
+                  <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {eng.email || <span style={{ color: 'var(--text3)' }}>—</span>}
                   </div>
 
                   {/* Phone */}
-                  <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8b90a8' }}>
-                    {eng.phone || <span style={{ color: '#4a4f64' }}>—</span>}
+                  <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)' }}>
+                    {eng.phone || <span style={{ color: 'var(--text3)' }}>—</span>}
                   </div>
 
                   {/* Status */}
                   <div>
-                    <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: eng.active ? '#14B8A6' : '#4a4f64', background: eng.active ? 'rgba(20,184,166,0.1)' : 'rgba(74,79,100,0.15)', padding: '2px 7px', borderRadius: 3, border: `1px solid ${eng.active ? 'rgba(20,184,166,0.25)' : '#2a2e3d'}` }}>
+                    <span style={{ fontSize: 9, fontFamily: 'Inter', color: eng.active ? 'var(--booked)' : 'var(--text3)', background: eng.active ? 'rgba(20,184,166,0.1)' : 'rgba(74,79,100,0.15)', padding: '2px 7px', borderRadius: 3, border: `1px solid ${eng.active ? 'rgba(20,184,166,0.25)' : 'var(--border)'}` }}>
                       {eng.active ? 'Active' : 'Inactive'}
                     </span>
                   </div>
 
                   {/* Actions */}
                   <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
-                    <button onClick={() => openEdit(eng)} style={{ padding: '3px 10px', borderRadius: 3, fontSize: 10, fontFamily: 'DM Mono', background: '#1a1d27', border: '1px solid #2a2e3d', color: '#8b90a8', cursor: 'pointer' }}>
+                    <button onClick={() => openEdit(eng)} style={{ padding: '3px 10px', borderRadius: 3, fontSize: 10, fontFamily: 'Inter', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer' }}>
                       Edit
                     </button>
                     {confirmDeactivate === eng.id ? (
                       <div style={{ display: 'flex', gap: 4 }}>
-                        <button onClick={() => toggleActive(eng)} style={{ padding: '3px 8px', borderRadius: 3, fontSize: 10, fontFamily: 'DM Mono', background: eng.active ? '#EF4444' : '#14B8A6', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>
+                        <button onClick={() => toggleActive(eng)} style={{ padding: '3px 8px', borderRadius: 3, fontSize: 10, fontFamily: 'Inter', background: eng.active ? 'var(--hot)' : 'var(--booked)', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>
                           {eng.active ? 'Yes' : 'Yes'}
                         </button>
-                        <button onClick={() => setConfirmDeactivate(null)} style={{ padding: '3px 8px', borderRadius: 3, fontSize: 10, fontFamily: 'DM Mono', background: '#1a1d27', border: '1px solid #2a2e3d', color: '#8b90a8', cursor: 'pointer' }}>
+                        <button onClick={() => setConfirmDeactivate(null)} style={{ padding: '3px 8px', borderRadius: 3, fontSize: 10, fontFamily: 'Inter', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer' }}>
                           No
                         </button>
                       </div>
                     ) : (
-                      <button onClick={() => setConfirmDeactivate(eng.id)} style={{ padding: '3px 10px', borderRadius: 3, fontSize: 10, fontFamily: 'DM Mono', background: 'transparent', border: `1px solid ${eng.active ? 'rgba(239,68,68,0.3)' : 'rgba(20,184,166,0.3)'}`, color: eng.active ? '#EF4444' : '#14B8A6', cursor: 'pointer' }}>
+                      <button onClick={() => setConfirmDeactivate(eng.id)} style={{ padding: '3px 10px', borderRadius: 3, fontSize: 10, fontFamily: 'Inter', background: 'transparent', border: `1px solid ${eng.active ? 'rgba(239,68,68,0.3)' : 'rgba(20,184,166,0.3)'}`, color: eng.active ? 'var(--hot)' : 'var(--booked)', cursor: 'pointer' }}>
                         {eng.active ? 'Deactivate' : 'Reactivate'}
                       </button>
                     )}
@@ -486,7 +486,7 @@ export default function AdminPage() {
 
         {/* Summary */}
         {!loading && engineers.length > 0 && (
-          <div style={{ marginTop: 10, fontSize: 10, color: '#4a4f64', fontFamily: 'DM Mono' }}>
+          <div style={{ marginTop: 10, fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
             {engineers.filter(e => e.active).length} active · {engineers.filter(e => !e.active).length} inactive
           </div>
         )}
@@ -509,7 +509,7 @@ export default function AdminPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
               <button
                 onClick={() => { setSelectedEng(null); setEngSessions([]) }}
-                style={{ padding: '5px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', background: 'transparent', border: '1px solid #2a2e3d', color: '#8b90a8' }}
+                style={{ padding: '5px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)' }}
               >
                 ← Back
               </button>
@@ -518,8 +518,8 @@ export default function AdminPage() {
                   {selectedEng.initials ?? autoInitials(selectedEng.first_name, selectedEng.last_name)}
                 </div>
                 <div>
-                  <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 14, color: '#e8eaf2' }}>{fullName}</div>
-                  <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#4a4f64', marginTop: 1 }}>
+                  <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{fullName}</div>
+                  <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)', marginTop: 1 }}>
                     {engSessions.length} session{engSessions.length !== 1 ? 's' : ''} total
                   </div>
                 </div>
@@ -527,16 +527,16 @@ export default function AdminPage() {
             </div>
 
             {engSessionsLoading ? (
-              <div style={{ fontSize: 11, color: '#4a4f64', fontFamily: 'DM Mono' }}>Loading…</div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>Loading…</div>
             ) : engSessions.length === 0 ? (
-              <div style={{ fontSize: 11, color: '#4a4f64', fontFamily: 'DM Mono', padding: '24px 0' }}>No sessions found for {fullName}.</div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter', padding: '24px 0' }}>No sessions found for {fullName}.</div>
             ) : (
               <>
-                <div style={{ border: '1px solid #2a2e3d', borderRadius: 6, overflow: 'hidden', marginBottom: 14 }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', marginBottom: 14 }}>
                   {/* Table header */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '120px 90px 160px 1fr 90px 70px', background: '#1a1d27', borderBottom: '1px solid #2a2e3d', padding: '6px 16px', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '120px 90px 160px 1fr 90px 70px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)', padding: '6px 16px', gap: 12 }}>
                     {['Date', 'Time', 'Studio', 'Client / Artist', 'Status', 'Role'].map(h => (
-                      <div key={h} style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#4a4f64' }}>{h}</div>
+                      <div key={h} style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)' }}>{h}</div>
                     ))}
                   </div>
 
@@ -549,23 +549,23 @@ export default function AdminPage() {
                         style={{
                           display: 'grid', gridTemplateColumns: '120px 90px 160px 1fr 90px 70px',
                           padding: '10px 16px', gap: 12, alignItems: 'center',
-                          borderBottom: idx < pageSlice.length - 1 ? '1px solid #2a2e3d' : 'none',
+                          borderBottom: idx < pageSlice.length - 1 ? '1px solid var(--border)' : 'none',
                         }}
                       >
-                        <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#8b90a8' }}>{fmtSessionDate(bk.start_date)}</div>
-                        <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{timeStr}</div>
-                        <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#e8eaf2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text2)' }}>{fmtSessionDate(bk.start_date)}</div>
+                        <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--cold)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{timeStr}</div>
+                        <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {bk.location} {bk.studio ? `· ${bk.studio}` : ''}
                         </div>
                         <div style={{ overflow: 'hidden' }}>
-                          <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#e8eaf2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bk.client_name || <span style={{ color: '#4a4f64' }}>—</span>}</div>
-                          {bk.artist && <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bk.artist}</div>}
+                          <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bk.client_name || <span style={{ color: 'var(--text3)' }}>—</span>}</div>
+                          {bk.artist && <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--cold)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bk.artist}</div>}
                         </div>
                         <div>
                           <StatusBadge status={bk.status} />
                         </div>
                         <div>
-                          <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: isEng ? '#F97316' : '#EF4444', background: isEng ? 'rgba(249,115,22,0.12)' : 'rgba(239,68,68,0.12)', padding: '2px 7px', borderRadius: 3, border: `1px solid ${isEng ? 'rgba(249,115,22,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
+                          <span style={{ fontSize: 9, fontFamily: 'Inter', color: isEng ? 'var(--warm)' : 'var(--hot)', background: isEng ? 'rgba(249,115,22,0.12)' : 'rgba(239,68,68,0.12)', padding: '2px 7px', borderRadius: 3, border: `1px solid ${isEng ? 'rgba(249,115,22,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
                             {isEng ? '1st' : '2nd'}
                           </span>
                         </div>
@@ -580,7 +580,7 @@ export default function AdminPage() {
                     <button
                       onClick={() => setEngSessionsPage(p => Math.max(0, p - 1))}
                       disabled={engSessionsPage === 0}
-                      style={{ padding: '4px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: engSessionsPage === 0 ? 'default' : 'pointer', background: '#1a1d27', border: '1px solid #2a2e3d', color: engSessionsPage === 0 ? '#4a4f64' : '#8b90a8' }}
+                      style={{ padding: '4px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: engSessionsPage === 0 ? 'default' : 'pointer', background: 'var(--surface2)', border: '1px solid var(--border)', color: engSessionsPage === 0 ? 'var(--text3)' : 'var(--text2)' }}
                     >
                       ← Prev
                     </button>
@@ -588,7 +588,7 @@ export default function AdminPage() {
                       <button
                         key={i}
                         onClick={() => setEngSessionsPage(i)}
-                        style={{ padding: '4px 10px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', background: engSessionsPage === i ? '#c8f04e' : '#1a1d27', border: `1px solid ${engSessionsPage === i ? '#c8f04e' : '#2a2e3d'}`, color: engSessionsPage === i ? '#0d0f14' : '#8b90a8', fontWeight: engSessionsPage === i ? 700 : 400 }}
+                        style={{ padding: '4px 10px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', background: engSessionsPage === i ? 'var(--accent)' : 'var(--surface2)', border: `1px solid ${engSessionsPage === i ? 'var(--accent)' : 'var(--border)'}`, color: engSessionsPage === i ? 'var(--bg)' : 'var(--text2)', fontWeight: engSessionsPage === i ? 700 : 400 }}
                       >
                         {i + 1}
                       </button>
@@ -596,11 +596,11 @@ export default function AdminPage() {
                     <button
                       onClick={() => setEngSessionsPage(p => Math.min(totalPages - 1, p + 1))}
                       disabled={engSessionsPage === totalPages - 1}
-                      style={{ padding: '4px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: engSessionsPage === totalPages - 1 ? 'default' : 'pointer', background: '#1a1d27', border: '1px solid #2a2e3d', color: engSessionsPage === totalPages - 1 ? '#4a4f64' : '#8b90a8' }}
+                      style={{ padding: '4px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: engSessionsPage === totalPages - 1 ? 'default' : 'pointer', background: 'var(--surface2)', border: '1px solid var(--border)', color: engSessionsPage === totalPages - 1 ? 'var(--text3)' : 'var(--text2)' }}
                     >
                       Next →
                     </button>
-                    <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#4a4f64', marginLeft: 4 }}>
+                    <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)', marginLeft: 4 }}>
                       {engSessionsPage * ENG_PAGE_SIZE + 1}–{Math.min((engSessionsPage + 1) * ENG_PAGE_SIZE, engSessions.length)} of {engSessions.length}
                     </span>
                   </div>
@@ -633,18 +633,18 @@ export default function AdminPage() {
               {srsMonthFilter !== 'all' && srsUnpaidCount > 0 && (
                 confirmMarkAll ? (
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8b90a8' }}>
+                    <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)' }}>
                       Mark {srsUnpaidCount} as paid?
                     </span>
                     <button
                       onClick={() => markAllPaid(srsMonthFilter)}
-                      style={{ padding: '5px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer', background: '#c8f04e', border: 'none', color: '#0d0f14' }}
+                      style={{ padding: '5px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: 'var(--accent)', border: 'none', color: 'var(--bg)' }}
                     >
                       Confirm
                     </button>
                     <button
                       onClick={() => setConfirmMarkAll(false)}
-                      style={{ padding: '5px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', background: 'transparent', border: '1px solid #2a2e3d', color: '#8b90a8' }}
+                      style={{ padding: '5px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)' }}
                     >
                       Cancel
                     </button>
@@ -652,7 +652,7 @@ export default function AdminPage() {
                 ) : (
                   <button
                     onClick={() => setConfirmMarkAll(true)}
-                    style={{ padding: '6px 14px', borderRadius: 4, fontSize: 11, fontFamily: 'DM Mono', cursor: 'pointer', background: '#1a1d27', border: '1px solid #2a2e3d', color: '#8b90a8' }}
+                    style={{ padding: '6px 14px', borderRadius: 4, fontSize: 11, fontFamily: 'Inter', cursor: 'pointer', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)' }}
                   >
                     Mark all paid
                   </button>
@@ -668,9 +668,9 @@ export default function AdminPage() {
                 { label: 'Total SRS fee owed', value: srsTotalFee > 0 ? `$${srsTotalFee.toFixed(2)}` : '—' },
                 { label: 'Unpaid entries', value: String(srsUnpaidCount) },
               ].map(card => (
-                <div key={card.label} style={{ flex: 1, background: '#1a1d27', border: '1px solid #2a2e3d', borderRadius: 6, padding: '14px 18px' }}>
-                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#4a4f64', marginBottom: 6 }}>{card.label}</div>
-                  <div style={{ fontSize: 18, fontFamily: 'DM Mono', color: '#e8eaf2', fontWeight: 700 }}>{card.value}</div>
+                <div key={card.label} style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '14px 18px' }}>
+                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>{card.label}</div>
+                  <div style={{ fontSize: 18, fontFamily: 'Inter', color: 'var(--text)', fontWeight: 700 }}>{card.value}</div>
                 </div>
               ))}
             </div>
@@ -678,15 +678,15 @@ export default function AdminPage() {
 
           {/* Table */}
           {srsLoading ? (
-            <div style={{ fontSize: 11, color: '#4a4f64', fontFamily: 'DM Mono' }}>Loading…</div>
+            <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>Loading…</div>
           ) : filteredSrs.length === 0 ? (
-            <div style={{ fontSize: 11, color: '#4a4f64', fontFamily: 'DM Mono', padding: '24px 0' }}>No SRS bookings found.</div>
+            <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter', padding: '24px 0' }}>No SRS bookings found.</div>
           ) : (
-            <div style={{ border: '1px solid #2a2e3d', borderRadius: 6, overflow: 'hidden' }}>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
               {/* Table header */}
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 120px 120px 90px', background: '#1a1d27', borderBottom: '1px solid #2a2e3d', padding: '6px 16px', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 120px 120px 90px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)', padding: '6px 16px', gap: 12 }}>
                 {['Date', 'Client', 'Room fees', 'SRS fee (10%)', 'Status'].map(h => (
-                  <div key={h} style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#4a4f64' }}>{h}</div>
+                  <div key={h} style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)' }}>{h}</div>
                 ))}
               </div>
               {filteredSrs.map((entry, idx) => {
@@ -697,21 +697,21 @@ export default function AdminPage() {
                     style={{
                       display: 'grid', gridTemplateColumns: '140px 1fr 120px 120px 90px',
                       padding: '10px 16px', gap: 12, alignItems: 'center',
-                      borderBottom: idx < filteredSrs.length - 1 ? '1px solid #2a2e3d' : 'none',
+                      borderBottom: idx < filteredSrs.length - 1 ? '1px solid var(--border)' : 'none',
                     }}
                   >
                     {/* Date */}
-                    <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#8b90a8' }}>
+                    <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text2)' }}>
                       {bk ? fmtDate(bk.start_date) : '—'}
                     </div>
                     {/* Client */}
-                    <div style={{ fontSize: 12, fontFamily: 'DM Mono', color: '#e8eaf2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {bk?.client_name || <span style={{ color: '#4a4f64' }}>—</span>}
+                    <div style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {bk?.client_name || <span style={{ color: 'var(--text3)' }}>—</span>}
                     </div>
                     {/* Room fees — TODO: populate from studio_time table once WO digitization is complete */}
-                    <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#4a4f64' }}>—</div>
+                    <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)' }}>—</div>
                     {/* SRS fee */}
-                    <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: bk?.srs_fee_amount != null ? '#e8eaf2' : '#4a4f64' }}>
+                    <div style={{ fontSize: 11, fontFamily: 'Inter', color: bk?.srs_fee_amount != null ? 'var(--text)' : 'var(--text3)' }}>
                       {bk?.srs_fee_amount != null ? `$${Number(bk.srs_fee_amount).toFixed(2)}` : '—'}
                     </div>
                     {/* Status toggle */}
@@ -720,9 +720,9 @@ export default function AdminPage() {
                         onClick={() => toggleSrsPaid(entry)}
                         style={{
                           padding: '3px 10px', borderRadius: 12, border: 'none', cursor: 'pointer',
-                          fontFamily: 'DM Mono', fontSize: 10, fontWeight: 700,
+                          fontFamily: 'Inter', fontSize: 10, fontWeight: 700,
                           background: entry.paid ? 'rgba(20,184,166,0.12)' : 'rgba(239,68,68,0.12)',
-                          color: entry.paid ? '#14B8A6' : '#EF4444',
+                          color: entry.paid ? 'var(--booked)' : 'var(--hot)',
                         }}
                       >
                         {entry.paid ? 'Paid' : 'Unpaid'}

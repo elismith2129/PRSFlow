@@ -29,22 +29,22 @@ interface Props {
 // ─── Shared button styles ─────────────────────────────────────────────────────
 
 const accentBtn: React.CSSProperties = {
-  background: 'transparent', color: '#e8eaf0', border: '1px solid var(--border)', borderRadius: 4,
+  background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 4,
   padding: '5px 12px', fontSize: 10, fontFamily: 'Syne', fontWeight: 700,
   letterSpacing: '0.08em', cursor: 'pointer',
 }
 const ghostBtn: React.CSSProperties = {
   background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)',
-  borderRadius: 4, padding: '5px 12px', fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer',
+  borderRadius: 4, padding: '5px 12px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer',
 }
 const dangerBtn: React.CSSProperties = {
   background: 'rgba(239,68,68,0.15)', color: 'var(--hot)', border: '1px solid rgba(239,68,68,0.3)',
-  borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer',
+  borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer',
 }
 
 const aBtn = (color: string): React.CSSProperties => ({
   padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)',
-  background: 'var(--surface)', color, fontFamily: 'DM Mono', fontSize: 9,
+  background: 'var(--surface)', color, fontFamily: 'Inter', fontSize: 9,
   textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap' as const,
 })
 
@@ -72,7 +72,7 @@ function InlineField({ label, value, onSave, multiline = false, placeholder = '�
   const sharedStyle: React.CSSProperties = {
     width: '100%', background: 'transparent', border: 'none',
     borderBottom: '1px solid transparent', outline: 'none',
-    color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11,
+    color: 'var(--text)', fontFamily: 'Inter', fontSize: 11,
     padding: '2px 0', lineHeight: 1.5, resize: 'none' as const,
     transition: 'border-color 0.15s',
   }
@@ -148,21 +148,21 @@ function ContactRow({ contact, onSave, onDelete }: {
           </span>
           {contact.email && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
-              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>{contact.email}</span>
-              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Email</a>
+              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>{contact.email}</span>
+              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('var(--text2)')}>Email</a>
             </div>
           )}
           {contact.phone && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>{contact.phone}</span>
-              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Call</a>
-              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Text</a>
+              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>{contact.phone}</span>
+              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--text2)')}>Call</a>
+              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--text2)')}>Text</a>
             </div>
           )}
           {localArtists.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 4 }}>
               {localArtists.map((a, i) => (
-                <span key={i} style={{ fontSize: 8, fontFamily: 'DM Mono', color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '1px 5px', borderRadius: 3, lineHeight: 1.6 }}>
+                <span key={i} style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '1px 5px', borderRadius: 3, lineHeight: 1.6 }}>
                   {a}
                 </span>
               ))}
@@ -181,13 +181,13 @@ function ContactRow({ contact, onSave, onDelete }: {
                   {f === 'fname' ? 'First' : 'Last'}
                 </div>
                 <input type="text" value={draft[f] ?? ''} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
-                  style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0' }} />
+                  style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
               </div>
             ))}
             <div>
               <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Email</div>
               <input type="text" value={draft.email ?? ''} onChange={e => setDraft(d => ({ ...d, email: e.target.value }))}
-                style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0' }} />
+                style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
             </div>
             <div>
               <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Phone</div>
@@ -209,7 +209,7 @@ function ContactRow({ contact, onSave, onDelete }: {
                 type="text" placeholder="Artist name" value={newArtistInput}
                 onChange={e => setNewArtistInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { const n = newArtistInput.trim(); if (n) { setLocalArtists(p => [...p, n]); setNewArtistInput('') } } }}
-                style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 8px', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 10, outline: 'none' }}
+                style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 8px', color: 'var(--text)', fontFamily: 'Inter', fontSize: 10, outline: 'none' }}
               />
               <button onClick={() => { const n = newArtistInput.trim(); if (n) { setLocalArtists(p => [...p, n]); setNewArtistInput('') } }} style={{ ...ghostBtn, fontSize: 9, padding: '3px 8px' }}>+ Add</button>
             </div>
@@ -217,7 +217,7 @@ function ContactRow({ contact, onSave, onDelete }: {
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
             {confirmDelete ? (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10, color: 'var(--hot)', fontFamily: 'DM Mono' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10, color: 'var(--hot)', fontFamily: 'Inter' }}>
                 Remove?
                 <button onClick={() => onDelete(contact.id)} style={dangerBtn}>Yes</button>
                 <button onClick={() => setConfirmDelete(false)} style={ghostBtn}>Cancel</button>
@@ -247,7 +247,7 @@ function AddContactForm({ onAdd, onCancel }: { onAdd: (data: Partial<ClientConta
           <div key={f}>
             <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>{lbl}</div>
             <input type="text" value={draft[f]} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
-              style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0' }} />
+              style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
           </div>
         ))}
         <div>
@@ -289,14 +289,14 @@ function AdminRow({ contact, onSave, onDelete }: {
           )}
           {contact.email && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
-              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'DM Mono' }}>{contact.email}</span>
-              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Email</a>
+              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>{contact.email}</span>
+              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('var(--text2)')}>Email</a>
             </div>
           )}
           {contact.phone && (
             <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Call</a>
-              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('#8b90a8')}>Text</a>
+              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--text2)')}>Call</a>
+              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--text2)')}>Text</a>
             </div>
           )}
         </div>
@@ -312,14 +312,14 @@ function AdminRow({ contact, onSave, onDelete }: {
                   {f === 'fname' ? 'First' : 'Last'}
                 </div>
                 <input type="text" value={draft[f] ?? ''} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
-                  style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0' }} />
+                  style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
               </div>
             ))}
             {(['role', 'email'] as const).map(f => (
               <div key={f}>
                 <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>{f}</div>
                 <input type="text" value={draft[f] ?? ''} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
-                  style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0' }} />
+                  style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
               </div>
             ))}
             <div>
@@ -329,7 +329,7 @@ function AdminRow({ contact, onSave, onDelete }: {
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
             {confirmDelete ? (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10, color: 'var(--hot)', fontFamily: 'DM Mono' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10, color: 'var(--hot)', fontFamily: 'Inter' }}>
                 Remove?
                 <button onClick={() => onDelete(contact.id)} style={dangerBtn}>Yes</button>
                 <button onClick={() => setConfirmDelete(false)} style={ghostBtn}>Cancel</button>
@@ -359,7 +359,7 @@ function AddAdminForm({ onAdd, onCancel }: { onAdd: (data: Partial<ClientContact
           <div key={f}>
             <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>{lbl}</div>
             <input type="text" value={draft[f]} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
-              style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'DM Mono', fontSize: 11, padding: '2px 0' }} />
+              style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
           </div>
         ))}
         <div>
@@ -381,15 +381,15 @@ function ArtistChip({ name, onRemove }: { name: string; onRemove: () => void }) 
   const [confirming, setConfirming] = useState(false)
   if (confirming) {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontFamily: 'DM Mono', color: 'var(--hot)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', padding: '2px 7px', borderRadius: 4 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontFamily: 'Inter', color: 'var(--hot)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', padding: '2px 7px', borderRadius: 4 }}>
         Remove {name}?
-        <button onClick={onRemove} style={{ background: 'none', border: 'none', color: 'var(--hot)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'DM Mono', fontWeight: 700 }}>Yes</button>
-        <button onClick={() => setConfirming(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'DM Mono' }}>Cancel</button>
+        <button onClick={onRemove} style={{ background: 'none', border: 'none', color: 'var(--hot)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'Inter', fontWeight: 700 }}>Yes</button>
+        <button onClick={() => setConfirming(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'Inter' }}>Cancel</button>
       </span>
     )
   }
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)', background: 'var(--surface2)', border: '1px solid var(--border)', padding: '2px 7px', borderRadius: 4 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', background: 'var(--surface2)', border: '1px solid var(--border)', padding: '2px 7px', borderRadius: 4 }}>
       {name}
       <button onClick={() => setConfirming(true)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 0, fontSize: 11, lineHeight: 1 }} title="Remove">×</button>
     </span>
@@ -402,7 +402,7 @@ function BookingHistory({ leads }: { leads: BookingLead[] }) {
   if (leads.length === 0) {
     return (
       <div style={{ padding: '10px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6 }}>
-        <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>No bookings linked yet.</span>
+        <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>No bookings linked yet.</span>
       </div>
     )
   }
@@ -413,7 +413,7 @@ function BookingHistory({ leads }: { leads: BookingLead[] }) {
         const name = [l.fname, l.lname].filter(Boolean).join(' ') || '—'
         return (
           <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', background: 'var(--surface2)', borderRadius: 5, border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--text2)', minWidth: 72, flexShrink: 0 }}>{dateStr}</div>
+            <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', minWidth: 72, flexShrink: 0 }}>{dateStr}</div>
             <div style={{ fontSize: 10, color: 'var(--text)', flex: 1 }}>{name}</div>
             {l.booking && (
               <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '2px 5px', borderRadius: 3, flexShrink: 0 }}>
@@ -569,7 +569,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   // ── Loading skeleton ───────────────────────────────────────────────────────
   if (loading && !client) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
+      <div data-panel="clients-detail" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
         <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ height: 18, borderRadius: 4, background: 'var(--surface2)', animation: 'shimmer 1.4s ease-in-out infinite', width: '52%', marginBottom: 10 }} />
           <div style={{ height: 12, borderRadius: 3, background: 'var(--surface2)', animation: 'shimmer 1.4s ease-in-out infinite', width: '28%' }} />
@@ -589,7 +589,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   // ── Empty state ────────────────────────────────────────────────────────────
   if (!client) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--text3)', fontSize: 11, fontFamily: 'DM Mono' }}>
+      <div data-panel="clients-detail" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--text3)', fontSize: 11, fontFamily: 'Inter' }}>
         Select a client to view their profile
       </div>
     )
@@ -606,12 +606,12 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
+    <div data-panel="clients-detail" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
 
       {/* Header */}
       <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         {onBack && (
-          <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontFamily: 'DM Mono', fontSize: 10, cursor: 'pointer', padding: 0, marginBottom: 8, display: 'block' }}>
+          <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontFamily: 'Inter', fontSize: 10, cursor: 'pointer', padding: 0, marginBottom: 8, display: 'block' }}>
             ← Back
           </button>
         )}
@@ -639,7 +639,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
           )}
           <button
             onClick={() => router.push(`/calendar?newBooking=1&clientId=${client.id}`)}
-            style={{ ...accentBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0, background: 'transparent', color: '#e8eaf0' }}
+            style={{ ...accentBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0, background: 'transparent', color: 'var(--text)' }}
           >
             Start Booking
           </button>
@@ -647,7 +647,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const, alignItems: 'center' }}>
           <span style={typeBadgeStyle}>{typeLabel}</span>
           {bookingCount > 0 && (
-            <span style={{ fontSize: 8, fontFamily: 'DM Mono', color: 'var(--text3)', background: 'var(--surface2)', padding: '3px 7px', borderRadius: 3, border: '1px solid var(--border)' }}>
+            <span style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--text3)', background: 'var(--surface2)', padding: '3px 7px', borderRadius: 3, border: '1px solid var(--border)' }}>
               {bookingCount} booking{bookingCount !== 1 ? 's' : ''}
             </span>
           )}
@@ -661,7 +661,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
 
       {/* Start Booking toast */}
       {bookingToast && (
-        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 2000, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 4px 24px rgba(0,0,0,0.5)', maxWidth: 320, fontFamily: 'DM Mono', fontSize: 11 }}>
+        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 2000, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 4px 24px rgba(0,0,0,0.5)', maxWidth: 320, fontFamily: 'Inter', fontSize: 11 }}>
           <span style={{ color: 'var(--accent)', fontSize: 14 }}>🗓</span>
           <span style={{ color: 'var(--text)', flex: 1 }}>Booking flow coming in Chunk 6.</span>
           <button onClick={() => setBookingToast(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 16, lineHeight: 1, flexShrink: 0 }}>×</button>
@@ -691,7 +691,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
               ))}
               {anrContacts.length === 0 && !showAddContact && (
                 <div style={{ padding: '10px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>No A&Rs or reps on file yet.</span>
+                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>No A&Rs or reps on file yet.</span>
                   <button onClick={() => setShowAddContact(true)} style={{ ...accentBtn, fontSize: 9, padding: '3px 10px' }}>Add Contact</button>
                 </div>
               )}
@@ -712,7 +712,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
               ))}
               {adminContacts.length === 0 && !showAddAdmin && (
                 <div style={{ padding: '10px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>No admins on file yet.</span>
+                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>No admins on file yet.</span>
                   <button onClick={() => setShowAddAdmin(true)} style={{ ...accentBtn, fontSize: 9, padding: '3px 10px' }}>Add Admin</button>
                 </div>
               )}
@@ -730,7 +730,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                 <InlineField label="Email" value={client.email} onSave={v => saveClient({ email: v })} />
                 {client.email && (
                   <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-                    <a href={`mailto:${client.email}`} style={aBtn('#8b90a8')}>Email</a>
+                    <a href={`mailto:${client.email}`} style={aBtn('var(--text2)')}>Email</a>
                   </div>
                 )}
               </div>
@@ -738,8 +738,8 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                 <PhoneInlineField value={client.phone} onSave={v => saveClient({ phone: v })} />
                 {client.phone && (
                   <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-                    <a href={`tel:${client.phone.replace(/\D/g, '')}`} style={aBtn('#8b90a8')}>Call</a>
-                    <a href={`sms:${client.phone.replace(/\D/g, '')}`} style={aBtn('#8b90a8')}>Text</a>
+                    <a href={`tel:${client.phone.replace(/\D/g, '')}`} style={aBtn('var(--text2)')}>Call</a>
+                    <a href={`sms:${client.phone.replace(/\D/g, '')}`} style={aBtn('var(--text2)')}>Text</a>
                   </div>
                 )}
               </div>
@@ -768,7 +768,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                 <InlineField label="Zip" value={client.address_zip} onSave={v => saveClient({ address_zip: v })} />
               </div>
             ) : (
-              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', marginBottom: 4 }}>
+              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginBottom: 4 }}>
                 {client.address_street
                   ? `${client.address_street}${client.address_city ? ', ' + client.address_city : ''}`
                   : 'No address on file.'}
@@ -777,7 +777,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
 
             <SectionHeader label="Verification" />
             {client.registered_at ? (
-              <button onClick={() => setRegViewOpen(true)} style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--booked)', lineHeight: 1.8, marginBottom: 4, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' as const }}>
+              <button onClick={() => setRegViewOpen(true)} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--booked)', lineHeight: 1.8, marginBottom: 4, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' as const }}>
                 ✓ Registered {new Date(client.registered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 {client.terms_accepted && <span> · Terms accepted</span>}
                 {client.id_file_url && <span> · ID on file</span>}
@@ -786,7 +786,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
             ) : (
               <div style={{ marginBottom: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: regLinkUrl ? 6 : 0 }}>
-                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>Not yet registered</span>
+                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>Not yet registered</span>
                   <button
                     onClick={generateRegLink}
                     disabled={regLinkGenerating || !!regLinkUrl}
@@ -797,7 +797,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                 </div>
                 {regLinkUrl && (
                   <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 5, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                    <span style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                       {regLinkUrl}
                     </span>
                     <button onClick={copyRegLink} style={{ ...accentBtn, fontSize: 8, padding: '2px 8px', flexShrink: 0 }}>
@@ -823,7 +823,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
 
         {/* Footer */}
         <div style={{ marginTop: 16, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'DM Mono' }}>
+          <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter' }}>
             {!client.registered_at ? 'Migrated · ' : ''}
             Added {client.created_at ? new Date(client.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
           </div>
@@ -838,7 +838,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
         <div onClick={() => setShowDeleteConfirm(false)} style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px', maxWidth: 400, width: '100%' }}>
             <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 14, marginBottom: 8 }}>Delete {client.name}?</div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'DM Mono', lineHeight: 1.7, marginBottom: 20 }}>
+            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', lineHeight: 1.7, marginBottom: 20 }}>
               This will permanently delete this client and all associated contacts. Any linked leads will be unlinked but not deleted. This action cannot be undone.
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

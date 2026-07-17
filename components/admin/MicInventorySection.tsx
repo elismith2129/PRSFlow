@@ -38,12 +38,12 @@ const STUDIO_ROOMS: Record<string, string[]> = {
 }
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
-  here:    { label: 'Here',    color: '#14B8A6' },
-  room:    { label: 'Room',    color: '#F97316' },
-  missing: { label: 'Missing', color: '#ef4444' },
+  here:    { label: 'Here',    color: 'var(--booked)' },
+  room:    { label: 'Room',    color: 'var(--warm)' },
+  missing: { label: 'Missing', color: 'var(--hot)' },
 }
-const NONE_COLOR = '#4a4f64'
-const ADMIN_TEAL = '#14B8A6'
+const NONE_COLOR = 'var(--text3)'
+const ADMIN_TEAL = 'var(--booked)'
 
 // Missing first, then Room, then Here, then no-data.
 function statusRank(status: string | undefined): number {
@@ -114,12 +114,12 @@ function fmtShort(date: string): string {
 
 const labelS: React.CSSProperties = {
   fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em',
-  textTransform: 'uppercase', color: '#4a4f64',
+  textTransform: 'uppercase', color: 'var(--text3)',
 }
 
 const inputS: React.CSSProperties = {
-  background: '#0d0f14', border: '1px solid #2a2e3d', borderRadius: 6,
-  color: '#e8eaf2', fontSize: 11, fontFamily: 'DM Mono', padding: '6px 8px',
+  background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
+  color: 'var(--text)', fontSize: 11, fontFamily: 'Inter', padding: '6px 8px',
   outline: 'none', width: '100%', boxSizing: 'border-box',
 }
 
@@ -132,7 +132,7 @@ const GRID_COLS = '1fr 88px 84px 52px 116px 116px 124px'
 function AdminBadge() {
   return (
     <span style={{
-      fontSize: 8, fontFamily: 'DM Mono', fontWeight: 700, color: ADMIN_TEAL,
+      fontSize: 8, fontFamily: 'Inter', fontWeight: 700, color: ADMIN_TEAL,
       background: ADMIN_TEAL + '18', border: `1px solid ${ADMIN_TEAL}33`,
       borderRadius: 3, padding: '1px 5px', letterSpacing: '0.05em',
     }}>
@@ -450,7 +450,7 @@ export function MicInventorySection() {
   }
 
   if (loading) {
-    return <div style={{ fontSize: 11, color: '#4a4f64', fontFamily: 'DM Mono' }}>Loading…</div>
+    return <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>Loading…</div>
   }
 
   return (
@@ -459,12 +459,12 @@ export function MicInventorySection() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
         <SectionHeader title="Mic Inventory" />
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#4a4f64' }}>
+          <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)' }}>
             {activeMics.length} active{missingList.length > 0 ? ` · ${missingList.length} missing` : ''}
           </div>
           <button
             onClick={() => { setManageOpen(true); setManageTab('list'); setMngEditId(null) }}
-            style={{ padding: '5px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', background: 'transparent', border: '1px solid #2a2e3d', color: '#8b90a8' }}
+            style={{ padding: '5px 12px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)' }}
           >
             Manage Mics
           </button>
@@ -478,12 +478,12 @@ export function MicInventorySection() {
           borderRadius: 6, padding: '14px 18px', marginBottom: 20,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#ef4444' }}>
+            <div style={{ fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--hot)' }}>
               ⚠ {missingList.length} mic{missingList.length !== 1 ? 's' : ''} missing
             </div>
             <button
               onClick={() => setBannerDismissed(true)}
-              style={{ padding: '3px 10px', borderRadius: 4, fontSize: 10, fontFamily: 'DM Mono', background: 'transparent', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', cursor: 'pointer' }}
+              style={{ padding: '3px 10px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', background: 'transparent', border: '1px solid rgba(239,68,68,0.4)', color: 'var(--hot)', cursor: 'pointer' }}
             >
               Dismiss
             </button>
@@ -496,10 +496,10 @@ export function MicInventorySection() {
                 <div key={mic.id} style={{
                   display: 'grid', gridTemplateColumns: '1fr 120px 130px 110px', gap: 12, alignItems: 'center',
                 }}>
-                  <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#e8eaf2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mic.name}</div>
-                  <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#f0a3a3' }}>{STUDIO_META[checkin.studio]?.label ?? checkin.studio}</div>
-                  <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#f0a3a3' }}>{fmtDate(checkin.date)}</div>
-                  <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#f0a3a3', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mic.name}</div>
+                  <div style={{ fontSize: 10, fontFamily: 'Inter', color: '#f0a3a3' }}>{STUDIO_META[checkin.studio]?.label ?? checkin.studio}</div>
+                  <div style={{ fontSize: 10, fontFamily: 'Inter', color: '#f0a3a3' }}>{fmtDate(checkin.date)}</div>
+                  <div style={{ fontSize: 10, fontFamily: 'Inter', color: '#f0a3a3', display: 'flex', alignItems: 'center', gap: 6 }}>
                     {byName}
                     {checkin.source === 'admin' && <AdminBadge />}
                   </div>
@@ -511,7 +511,7 @@ export function MicInventorySection() {
       )}
 
       {/* ── Studio tabs ──────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #2a2e3d', marginBottom: 16, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 16, flexWrap: 'wrap' }}>
         {groups.map(group => {
           const active = activeTab === group.key
           const tabMissing = group.mics.filter(m => resolveStatus(group, m)?.status === 'missing').length
@@ -523,15 +523,15 @@ export function MicInventorySection() {
                 display: 'flex', alignItems: 'center', gap: 7,
                 padding: '8px 14px', border: 'none', cursor: 'pointer', background: 'transparent',
                 fontFamily: 'Syne', fontWeight: 700, fontSize: 12, letterSpacing: '0.03em',
-                color: active ? '#e8eaf2' : '#8b90a8',
-                borderBottom: `2px solid ${active ? '#c8f04e' : 'transparent'}`,
+                color: active ? 'var(--text)' : 'var(--text2)',
+                borderBottom: `2px solid ${active ? 'var(--accent)' : 'transparent'}`,
                 marginBottom: -1,
               }}
             >
               <span>{group.label}</span>
-              <span style={{ fontSize: 10, fontFamily: 'DM Mono', fontWeight: 400, color: '#4a4f64' }}>{group.mics.length}</span>
+              <span style={{ fontSize: 10, fontFamily: 'Inter', fontWeight: 400, color: 'var(--text3)' }}>{group.mics.length}</span>
               {tabMissing > 0 && (
-                <span style={{ fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 3, padding: '1px 6px' }}>
+                <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 700, color: 'var(--hot)', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 3, padding: '1px 6px' }}>
                   {tabMissing}
                 </span>
               )}
@@ -559,7 +559,7 @@ export function MicInventorySection() {
               {group.isStudio && (
                 <button
                   onClick={() => setShowHistory(v => !v)}
-                  style={{ padding: '4px 12px', borderRadius: 4, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer', background: showHistory ? '#c8f04e' : 'transparent', border: `1px solid ${showHistory ? '#c8f04e' : '#2a2e3d'}`, color: showHistory ? '#0d0f14' : '#8b90a8', fontWeight: showHistory ? 700 : 400 }}
+                  style={{ padding: '4px 12px', borderRadius: 4, fontSize: 9, fontFamily: 'Inter', cursor: 'pointer', background: showHistory ? 'var(--accent)' : 'transparent', border: `1px solid ${showHistory ? 'var(--accent)' : 'var(--border)'}`, color: showHistory ? 'var(--bg)' : 'var(--text2)', fontWeight: showHistory ? 700 : 400 }}
                 >
                   {showHistory ? 'Hide History' : 'Show History'}
                 </button>
@@ -567,11 +567,11 @@ export function MicInventorySection() {
             </div>
 
             {group.mics.length === 0 ? (
-              <div style={{ border: '1px solid #2a2e3d', borderRadius: 6, padding: '24px 16px', fontSize: 11, color: '#4a4f64', fontFamily: 'DM Mono' }}>No mics in this group.</div>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '24px 16px', fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>No mics in this group.</div>
             ) : (
-              <div style={{ border: '1px solid #2a2e3d', borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
                 {/* Column header */}
-                <div style={{ display: 'grid', gridTemplateColumns: GRID_COLS, gap: 12, padding: '6px 16px', background: '#1a1d27', borderBottom: '1px solid #2a2e3d' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: GRID_COLS, gap: 12, padding: '6px 16px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
                   {['Mic Name', 'Status', 'Room', 'Qty', 'Last Submitted By', 'Date', ''].map((h, hi) => (
                     <div key={hi} style={labelS}>{h}</div>
                   ))}
@@ -592,15 +592,15 @@ export function MicInventorySection() {
                   const isEditing = editingMicId === mic.id
 
                   return (
-                    <div key={mic.id} style={{ borderBottom: idx < sorted.length - 1 ? '1px solid #2a2e3d' : 'none' }}>
+                    <div key={mic.id} style={{ borderBottom: idx < sorted.length - 1 ? '1px solid var(--border)' : 'none' }}>
                       <div style={{
                         display: 'grid', gridTemplateColumns: GRID_COLS, gap: 12,
                         padding: isEditing ? '7px 16px' : '9px 16px', alignItems: 'center',
-                        borderLeft: isMissing ? '3px solid #ef4444' : isEditing ? '3px solid #c8f04e' : '3px solid transparent',
-                        background: isEditing ? 'rgba(200,240,78,0.05)' : isMissing ? 'rgba(239,68,68,0.06)' : 'transparent',
+                        borderLeft: isMissing ? '3px solid var(--hot)' : isEditing ? '3px solid var(--accent)' : '3px solid transparent',
+                        background: isEditing ? 'rgba(var(--accent-rgb),0.05)' : isMissing ? 'rgba(239,68,68,0.06)' : 'transparent',
                       }}>
                         {/* Mic name */}
-                        <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#e8eaf2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mic.name}</div>
+                        <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mic.name}</div>
                         {/* Status */}
                         <div>
                           {isEditing ? (
@@ -614,15 +614,15 @@ export function MicInventorySection() {
                               <option value="missing">Missing</option>
                             </select>
                           ) : statusMeta ? (
-                            <span style={{ fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, color: statusMeta.color, background: statusMeta.color + '18', border: `1px solid ${statusMeta.color}33`, borderRadius: 3, padding: '2px 7px', textTransform: 'uppercase' }}>
+                            <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 700, color: statusMeta.color, background: statusMeta.color + '18', border: `1px solid ${statusMeta.color}33`, borderRadius: 3, padding: '2px 7px', textTransform: 'uppercase' }}>
                               {statusMeta.label}
                             </span>
                           ) : (
-                            <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: NONE_COLOR }}>—</span>
+                            <span style={{ fontSize: 10, fontFamily: 'Inter', color: NONE_COLOR }}>—</span>
                           )}
                         </div>
                         {/* Room */}
-                        <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: c?.room ? '#8b90a8' : NONE_COLOR }}>
+                        <div style={{ fontSize: 10, fontFamily: 'Inter', color: c?.room ? 'var(--text2)' : NONE_COLOR }}>
                           {isEditing ? (
                             draftStatus === 'room' ? (() => {
                               const rStudio = group.isStudio ? group.key : (resolveStatus(group, mic)?.studio || mic.home_studio)
@@ -652,7 +652,7 @@ export function MicInventorySection() {
                           )}
                         </div>
                         {/* Qty */}
-                        <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: qty != null ? '#e8eaf2' : NONE_COLOR }}>
+                        <div style={{ fontSize: 10, fontFamily: 'Inter', color: qty != null ? 'var(--text)' : NONE_COLOR }}>
                           {isEditing ? (
                             <input
                               value={draftQty}
@@ -666,11 +666,11 @@ export function MicInventorySection() {
                           )}
                         </div>
                         {/* Submitted by */}
-                        <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: byName !== '—' ? '#8b90a8' : NONE_COLOR, display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
+                        <div style={{ fontSize: 10, fontFamily: 'Inter', color: byName !== '—' ? 'var(--text2)' : NONE_COLOR, display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
                           {isEditing ? (
                             <span
                               title="Logged in as"
-                              style={{ fontFamily: 'DM Mono', fontSize: 10, letterSpacing: '0.08em', color: (draftBy || myInitials) ? '#e8eaf2' : NONE_COLOR }}
+                              style={{ fontFamily: 'Inter', fontSize: 10, letterSpacing: '0.08em', color: (draftBy || myInitials) ? 'var(--text)' : NONE_COLOR }}
                             >
                               {draftBy || myInitials || '—'}
                             </span>
@@ -682,7 +682,7 @@ export function MicInventorySection() {
                           )}
                         </div>
                         {/* Date */}
-                        <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: c?.date ? '#8b90a8' : NONE_COLOR }}>
+                        <div style={{ fontSize: 10, fontFamily: 'Inter', color: c?.date ? 'var(--text2)' : NONE_COLOR }}>
                           {c?.date ? fmtDate(c.date) : '—'}
                         </div>
                         {/* Edit / actions */}
@@ -692,14 +692,14 @@ export function MicInventorySection() {
                               <button
                                 onClick={() => saveInlineEdit(group, mic)}
                                 disabled={savingEdit}
-                                style={{ padding: '5px 9px', borderRadius: 6, fontSize: 9, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer', background: '#c8f04e', border: 'none', color: '#0d0f14' }}
+                                style={{ padding: '5px 9px', borderRadius: 6, fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: 'var(--accent)', border: 'none', color: 'var(--bg)' }}
                               >
                                 {savingEdit ? '…' : 'Save'}
                               </button>
                               <button
                                 onClick={() => setEditingMicId(null)}
                                 disabled={savingEdit}
-                                style={{ padding: '5px 9px', borderRadius: 6, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer', background: 'transparent', border: '1px solid #2a2e3d', color: '#8b90a8' }}
+                                style={{ padding: '5px 9px', borderRadius: 6, fontSize: 9, fontFamily: 'Inter', cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)' }}
                               >
                                 Cancel
                               </button>
@@ -708,7 +708,7 @@ export function MicInventorySection() {
                             <button
                               onClick={() => startEdit(group, mic)}
                               title="Edit status"
-                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: 12, padding: '2px 4px', lineHeight: 1 }}
+                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--cold)', fontSize: 12, padding: '2px 4px', lineHeight: 1 }}
                             >
                               ✎
                             </button>
@@ -720,7 +720,7 @@ export function MicInventorySection() {
                       {showHistory && group.isStudio && (
                         <div style={{ padding: '2px 16px 10px 32px', display: 'flex', flexDirection: 'column', gap: 3 }}>
                           {hist.length === 0 ? (
-                            <div style={{ fontSize: 9, fontFamily: 'DM Mono', color: NONE_COLOR }}>No history</div>
+                            <div style={{ fontSize: 9, fontFamily: 'Inter', color: NONE_COLOR }}>No history</div>
                           ) : (
                             hist.map((h, hi) => {
                               const hm = STATUS_META[h.status]
@@ -729,13 +729,13 @@ export function MicInventorySection() {
                               const hBy = hAdmin ? (h.amended_by || '—') : (hsub?.by || '—')
                               return (
                                 <div key={hi} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                  <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#6b7280', width: 56 }}>{fmtShort(h.date)}</span>
+                                  <span style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--cold)', width: 56 }}>{fmtShort(h.date)}</span>
                                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: hm?.color ?? NONE_COLOR, flexShrink: 0 }} />
-                                  <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: hm?.color ?? NONE_COLOR, width: 52 }}>{hm?.label ?? '—'}</span>
+                                  <span style={{ fontSize: 9, fontFamily: 'Inter', color: hm?.color ?? NONE_COLOR, width: 52 }}>{hm?.label ?? '—'}</span>
                                   {h.status === 'room' && h.room && (
-                                    <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#6b7280' }}>{h.room.replace('Studio ', '')}</span>
+                                    <span style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--cold)' }}>{h.room.replace('Studio ', '')}</span>
                                   )}
-                                  <span style={{ fontSize: 9, fontFamily: 'DM Mono', color: '#4a4f64', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                  <span style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
                                     {hBy}
                                     {hAdmin && <AdminBadge />}
                                   </span>
@@ -762,28 +762,28 @@ export function MicInventorySection() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ width: '100%', maxWidth: 780, maxHeight: '84vh', overflow: 'auto', background: '#12151c', border: '1px solid #2a2e3d', borderRadius: 10, padding: 20 }}
+            style={{ width: '100%', maxWidth: 780, maxHeight: '84vh', overflow: 'auto', background: '#12151c', border: '1px solid var(--border)', borderRadius: 10, padding: 20 }}
           >
             {/* Modal header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: '#e8eaf2' }}>Manage Mics</div>
+              <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>Manage Mics</div>
               <button
                 onClick={() => { setManageOpen(false); setMngEditId(null) }}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#8b90a8', fontSize: 18, lineHeight: 1 }}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text2)', fontSize: 18, lineHeight: 1 }}
               >
                 ×
               </button>
             </div>
 
             {/* Modal tabs */}
-            <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #2a2e3d', marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 16 }}>
               {([['list', 'Master Mic List'], ['add', 'Add Mic']] as const).map(([key, label]) => {
                 const active = manageTab === key
                 return (
                   <button
                     key={key}
                     onClick={() => { setManageTab(key); setMngEditId(null) }}
-                    style={{ padding: '8px 14px', border: 'none', cursor: 'pointer', background: 'transparent', fontFamily: 'Syne', fontWeight: 700, fontSize: 12, color: active ? '#e8eaf2' : '#8b90a8', borderBottom: `2px solid ${active ? '#c8f04e' : 'transparent'}`, marginBottom: -1 }}
+                    style={{ padding: '8px 14px', border: 'none', cursor: 'pointer', background: 'transparent', fontFamily: 'Syne', fontWeight: 700, fontSize: 12, color: active ? 'var(--text)' : 'var(--text2)', borderBottom: `2px solid ${active ? 'var(--accent)' : 'transparent'}`, marginBottom: -1 }}
                   >
                     {label}
                   </button>
@@ -806,7 +806,7 @@ export function MicInventorySection() {
                 const qv = qtyAnyByMic[mic.id]
                 if (editing) {
                   return (
-                    <div key={mic.id} style={{ padding: '10px 12px', borderBottom: '1px solid #20242f', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div key={mic.id} style={{ padding: '10px 12px', borderBottom: '1px solid var(--surface2)', display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div style={{ display: 'grid', gridTemplateColumns: MIC_GRID, gap: 8, alignItems: 'center' }}>
                         <input value={mngDraft.name} onChange={e => setMngDraft(d => ({ ...d, name: e.target.value }))} placeholder="Name" style={inputS} />
                         <select value={mngDraft.home_studio} onChange={e => setMngDraft(d => ({ ...d, home_studio: e.target.value }))} style={inputS}>
@@ -815,27 +815,27 @@ export function MicInventorySection() {
                         <input value={mngDraft.category} onChange={e => setMngDraft(d => ({ ...d, category: e.target.value }))} placeholder="Category" style={inputS} />
                         <input value={mngDraft.qty} onChange={e => setMngDraft(d => ({ ...d, qty: e.target.value.replace(/[^0-9]/g, '') }))} placeholder="Qty" inputMode="numeric" style={inputS} />
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                          <button onClick={() => saveMicEdit(mic)} disabled={saving} style={{ padding: '6px 12px', borderRadius: 6, fontSize: 10, fontFamily: 'DM Mono', fontWeight: 700, cursor: 'pointer', background: '#c8f04e', border: 'none', color: '#0d0f14' }}>{saving ? '…' : 'Save'}</button>
-                          <button onClick={() => setMngEditId(null)} disabled={saving} style={{ padding: '6px 12px', borderRadius: 6, fontSize: 10, fontFamily: 'DM Mono', cursor: 'pointer', background: 'transparent', border: '1px solid #2a2e3d', color: '#8b90a8' }}>Cancel</button>
+                          <button onClick={() => saveMicEdit(mic)} disabled={saving} style={{ padding: '6px 12px', borderRadius: 6, fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: 'var(--accent)', border: 'none', color: 'var(--bg)' }}>{saving ? '…' : 'Save'}</button>
+                          <button onClick={() => setMngEditId(null)} disabled={saving} style={{ padding: '6px 12px', borderRadius: 6, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)' }}>Cancel</button>
                         </div>
                       </div>
-                      <div style={{ fontSize: 8, fontFamily: 'DM Mono', color: '#4a4f64' }}>Qty writes to today’s mic_inventory_quantities under {studioLabel(mngDraft.home_studio)}.</div>
+                      <div style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--text3)' }}>Qty writes to today’s mic_inventory_quantities under {studioLabel(mngDraft.home_studio)}.</div>
                     </div>
                   )
                 }
                 return (
-                  <div key={mic.id} style={{ display: 'grid', gridTemplateColumns: MIC_GRID, gap: 8, padding: '9px 12px', borderBottom: '1px solid #20242f', alignItems: 'center', opacity: isInactive ? 0.5 : 1 }}>
-                    <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: '#e8eaf2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mic.name}</div>
-                    <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8b90a8' }}>{studioLabel(mic.home_studio)}</div>
-                    <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: '#8b90a8' }}>{mic.category}</div>
-                    <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: qv ? '#e8eaf2' : NONE_COLOR }}>{qv ? qv.quantity : '—'}</div>
+                  <div key={mic.id} style={{ display: 'grid', gridTemplateColumns: MIC_GRID, gap: 8, padding: '9px 12px', borderBottom: '1px solid var(--surface2)', alignItems: 'center', opacity: isInactive ? 0.5 : 1 }}>
+                    <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mic.name}</div>
+                    <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)' }}>{studioLabel(mic.home_studio)}</div>
+                    <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)' }}>{mic.category}</div>
+                    <div style={{ fontSize: 10, fontFamily: 'Inter', color: qv ? 'var(--text)' : NONE_COLOR }}>{qv ? qv.quantity : '—'}</div>
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                       {isInactive ? (
-                        <button onClick={() => setMicActive(mic, true)} disabled={saving} style={{ padding: '5px 10px', borderRadius: 6, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(20,184,166,0.4)', color: ADMIN_TEAL }}>Reactivate</button>
+                        <button onClick={() => setMicActive(mic, true)} disabled={saving} style={{ padding: '5px 10px', borderRadius: 6, fontSize: 9, fontFamily: 'Inter', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(20,184,166,0.4)', color: ADMIN_TEAL }}>Reactivate</button>
                       ) : (
                         <>
-                          <button onClick={() => startMicEdit(mic)} style={{ padding: '5px 10px', borderRadius: 6, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer', background: 'transparent', border: '1px solid #2a2e3d', color: '#8b90a8' }}>Edit</button>
-                          <button onClick={() => setMicActive(mic, false)} disabled={saving} style={{ padding: '5px 10px', borderRadius: 6, fontSize: 9, fontFamily: 'DM Mono', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444' }}>Deactivate</button>
+                          <button onClick={() => startMicEdit(mic)} style={{ padding: '5px 10px', borderRadius: 6, fontSize: 9, fontFamily: 'Inter', cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)' }}>Edit</button>
+                          <button onClick={() => setMicActive(mic, false)} disabled={saving} style={{ padding: '5px 10px', borderRadius: 6, fontSize: 9, fontFamily: 'Inter', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(239,68,68,0.35)', color: 'var(--hot)' }}>Deactivate</button>
                         </>
                       )}
                     </div>
@@ -851,22 +851,22 @@ export function MicInventorySection() {
                     placeholder="Search by name or studio…"
                     style={{ ...inputS, width: '100%', marginBottom: 12, padding: '8px 10px' }}
                   />
-                  <div style={{ border: '1px solid #2a2e3d', borderRadius: 6, overflow: 'hidden' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: MIC_GRID, gap: 8, padding: '6px 12px', background: '#1a1d27', borderBottom: '1px solid #2a2e3d' }}>
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: MIC_GRID, gap: 8, padding: '6px 12px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
                       {['Name', 'Studio', 'Category', 'Qty', ''].map((h, hi) => <div key={hi} style={labelS}>{h}</div>)}
                     </div>
                     {activeRows.length === 0 && (
-                      <div style={{ padding: '16px 12px', fontSize: 11, fontFamily: 'DM Mono', color: '#4a4f64' }}>No active mics match.</div>
+                      <div style={{ padding: '16px 12px', fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)' }}>No active mics match.</div>
                     )}
                     {activeRows.map(m => renderRow(m, false))}
                   </div>
 
                   {inactiveRows.length > 0 && (
                     <div style={{ marginTop: 16 }}>
-                      <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#6b7280', marginBottom: 8 }}>
+                      <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--cold)', marginBottom: 8 }}>
                         Deactivated ({inactiveRows.length})
                       </div>
-                      <div style={{ border: '1px solid #20242f', borderRadius: 6, overflow: 'hidden' }}>
+                      <div style={{ border: '1px solid var(--surface2)', borderRadius: 6, overflow: 'hidden' }}>
                         {inactiveRows.map(m => renderRow(m, true))}
                       </div>
                     </div>
@@ -895,19 +895,19 @@ export function MicInventorySection() {
                 <div>
                   <div style={{ ...labelS, marginBottom: 5 }}>Quantity</div>
                   <input value={addDraft.qty} onChange={e => setAddDraft(d => ({ ...d, qty: e.target.value.replace(/[^0-9]/g, '') }))} placeholder="1" inputMode="numeric" style={inputS} />
-                  <div style={{ fontSize: 8, fontFamily: 'DM Mono', color: '#4a4f64', marginTop: 4 }}>Saved to today’s mic_inventory_quantities under {studioLabel(addDraft.home_studio)} when &gt; 0.</div>
+                  <div style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--text3)', marginTop: 4 }}>Saved to today’s mic_inventory_quantities under {studioLabel(addDraft.home_studio)} when &gt; 0.</div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
                     onClick={handleAddMic}
                     disabled={saving || !addDraft.name.trim()}
-                    style={{ padding: '9px 18px', borderRadius: 8, fontSize: 12, fontFamily: 'Syne', fontWeight: 700, cursor: addDraft.name.trim() ? 'pointer' : 'default', background: addDraft.name.trim() ? '#c8f04e' : '#1e2130', border: 'none', color: addDraft.name.trim() ? '#0d0f14' : '#4b5563' }}
+                    style={{ padding: '9px 18px', borderRadius: 8, fontSize: 12, fontFamily: 'Syne', fontWeight: 700, cursor: addDraft.name.trim() ? 'pointer' : 'default', background: addDraft.name.trim() ? 'var(--accent)' : 'var(--surface2)', border: 'none', color: addDraft.name.trim() ? 'var(--bg)' : 'var(--text3)' }}
                   >
                     {saving ? 'Saving…' : 'Add Mic'}
                   </button>
                   <button
                     onClick={() => setManageTab('list')}
-                    style={{ padding: '9px 18px', borderRadius: 8, fontSize: 12, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', background: 'transparent', border: '1px solid #2a2e3d', color: '#8b90a8' }}
+                    style={{ padding: '9px 18px', borderRadius: 8, fontSize: 12, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)' }}
                   >
                     Cancel
                   </button>
