@@ -28,9 +28,14 @@ const LEAD_AVATAR_COLORS: Record<string, string> = {
   warm: 'var(--warm)',
   uncontacted: 'var(--uncontacted)',
   booked: 'var(--booked)',
-  cold: 'var(--text3)',
+  cold: 'var(--cold-lead)',
   dead: 'var(--text3)',
 }
+
+// Display label per status. DB value stays 'dead'; UI shows "DNB" (Did Not Book),
+// mirroring the 'individual'→"COD" convention. Only overrides need entries.
+const STATUS_LABELS: Record<string, string> = { dead: 'DNB' }
+const statusLabel = (s: string) => STATUS_LABELS[s] || s
 
 // First letter of fname + first letter of lname, uppercased.
 function leadInitials(l: { fname?: string | null; lname?: string | null }): string {
@@ -413,7 +418,7 @@ export default function CRMPage() {
 
   async function markDead(id: number, initials: string) {
     await supabase.from('leads').update({ status: 'dead' }).eq('id', id)
-    await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: `${initials} - Marked Dead` })
+    await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: `${initials} - Marked DNB` })
     await load()
   }
 
@@ -777,7 +782,7 @@ function DeadLeadPrompt({ leadId, onSubmit, onCancel }: {
 
   return (
     <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: 'rgba(58,63,82,0.5)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginRight: 4 }}>Mark dead?</span>
+      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginRight: 4 }}>Mark DNB?</span>
       <div
         title="Logged in as"
         style={{ width: 70, background: 'var(--surface2)', border: '1px solid var(--dead)', color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
@@ -966,15 +971,15 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
 
 const PAGE_SIZE = 25
 
-type StatusFilter = 'uncontacted' | 'hot' | 'warm' | 'cold-dead' | 'booked'
+type StatusFilter = 'uncontacted' | 'hot' | 'warm' | 'cold' | 'dnb' | 'booked'
 
 // Maps a lead to its tab-filter key (cold + dead collapse into one bucket).
 function leadStatusKey(l: Lead): StatusFilter {
-  if (l.status === 'cold' || l.status === 'dead') return 'cold-dead'
+  if (l.status === 'dead') return 'dnb'
   return l.status as StatusFilter
 }
 
-const ALL_STATUS_FILTERS: StatusFilter[] = ['uncontacted', 'hot', 'warm', 'cold-dead', 'booked']
+const ALL_STATUS_FILTERS: StatusFilter[] = ['uncontacted', 'hot', 'warm', 'cold', 'dnb', 'booked']
 const DEFAULT_STATUS_FILTERS: StatusFilter[] = ['uncontacted', 'hot', 'warm']
 
 function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouched, onKeepHot, onUpdateStatus, loading }: {
@@ -1002,8 +1007,17 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
       if (a !== null || s) {
         skipFilterReset.current = true
         if (a !== null) {
-          const arr = JSON.parse(a) as StatusFilter[]
-          setActive(new Set(Array.isArray(arr) ? arr : DEFAULT_STATUS_FILTERS))
+          const raw = JSON.parse(a) as string[]
+          if (Array.isArray(raw)) {
+            const migrated = new Set<StatusFilter>()
+            for (const k of raw) {
+              if (k === 'cold-dead') { migrated.add('cold'); migrated.add('dnb') }
+              else if ((ALL_STATUS_FILTERS as string[]).includes(k)) migrated.add(k as StatusFilter)
+            }
+            setActive(migrated)
+          } else {
+            setActive(new Set(DEFAULT_STATUS_FILTERS))
+          }
         }
         if (s) setSearch(s)
       }
@@ -1038,19 +1052,21 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   const uncontactedLeads = leads.filter(l => l.status === 'uncontacted')
   const hotLeads = leads.filter(l => l.status !== 'uncontacted' && l.status === 'hot')
   const warmLeads = leads.filter(l => l.status !== 'uncontacted' && l.status === 'warm')
-  const coldDeadLeads = leads.filter(l => l.status === 'cold' || l.status === 'dead')
+  const coldLeads = leads.filter(l => l.status === 'cold')
+  const dnbLeads = leads.filter(l => l.status === 'dead')
   const bookedLeads = leads.filter(l => l.status === 'booked')
 
   // Per-status counts for the tab badges — independent of which tabs are active.
   const filterMap: Record<StatusFilter, Lead[]> = {
-    uncontacted: uncontactedLeads, hot: hotLeads, warm: warmLeads, 'cold-dead': coldDeadLeads, booked: bookedLeads,
+    uncontacted: uncontactedLeads, hot: hotLeads, warm: warmLeads, cold: coldLeads, dnb: dnbLeads, booked: bookedLeads,
   }
 
   const filterDefs: { key: StatusFilter; label: string; color: string }[] = [
     { key: 'uncontacted', label: 'Uncontacted', color: 'var(--uncontacted)' },
     { key: 'hot', label: 'Hot', color: 'var(--hot)' },
     { key: 'warm', label: 'Warm', color: 'var(--warm)' },
-    { key: 'cold-dead', label: 'Cold/Dead', color: 'var(--text2)' },
+    { key: 'cold', label: 'Cold', color: 'var(--cold-lead)' },
+    { key: 'dnb', label: 'DNB', color: 'var(--text3)' },
     { key: 'booked', label: 'Booked', color: 'var(--booked)' },
   ]
 
@@ -1535,7 +1551,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
             onClick={() => setStatusDDOpen(o => !o)}
             style={{ ...pillBase, gap: 5, background: `${LEAD_AVATAR_COLORS[local.status || lead.status] || LEAD_AVATAR_COLORS.uncontacted}22`, color: LEAD_AVATAR_COLORS[local.status || lead.status] || LEAD_AVATAR_COLORS.uncontacted, border: 'none' }}
           >
-            <span>{local.status || lead.status}</span>
+            <span>{statusLabel(local.status || lead.status)}</span>
             <span style={{ fontSize: 8, lineHeight: 1, transform: statusDDOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
           </button>
           {statusDDOpen && (
@@ -1565,7 +1581,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', background: active ? 'var(--surface2)' : 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: c }}
                   >
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: c, flexShrink: 0 }} />
-                    {s}
+                    {statusLabel(s)}
                   </button>
                 )
               })}
