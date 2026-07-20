@@ -73,6 +73,7 @@ export interface Client {
   registered_at: string | null
   source_lead_id: number | null
   notes: string | null
+  artist_name?: string | null
   srs_client: boolean
   created_at: string
   updated_at: string | null

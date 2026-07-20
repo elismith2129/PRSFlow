@@ -28,14 +28,9 @@ const LEAD_AVATAR_COLORS: Record<string, string> = {
   warm: 'var(--warm)',
   uncontacted: 'var(--uncontacted)',
   booked: 'var(--booked)',
-  cold: 'var(--cold-lead)',
+  cold: 'var(--text3)',
   dead: 'var(--text3)',
 }
-
-// Display label per status. DB value stays 'dead'; UI shows "DNB" (Did Not Book),
-// mirroring the 'individual'→"COD" convention. Only overrides need entries.
-const STATUS_LABELS: Record<string, string> = { dead: 'DNB' }
-const statusLabel = (s: string) => STATUS_LABELS[s] || s
 
 // First letter of fname + first letter of lname, uppercased.
 function leadInitials(l: { fname?: string | null; lname?: string | null }): string {
@@ -116,49 +111,6 @@ function activityColor(note: string): string {
   if (n.includes('registration returned') || n.includes('reg returned')) return 'var(--booked)'
   if (n.includes('registration') || n.includes('reg link') || n.includes('reg sent')) return 'var(--accent)'
   return 'var(--text2)'
-}
-
-type AnalyticsRangePreset = 'all' | 'this_month' | 'last_month' | 'this_quarter' | 'last_quarter' | 'this_year' | 'last_year' | 'custom'
-
-// Returns null for 'all' (no filter). Quarters are calendar quarters (Jan-Mar, Apr-Jun, Jul-Sep, Oct-Dec).
-// End of range is always end-of-day (23:59:59.999) so the end date is inclusive.
-function getAnalyticsRange(preset: AnalyticsRangePreset, customStart?: string, customEnd?: string): { start: Date; end: Date } | null {
-  const now = new Date()
-  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0)
-  const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
-  switch (preset) {
-    case 'all': return null
-    case 'this_month': return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: endOfDay(now) }
-    case 'last_month': {
-      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-      const end = new Date(now.getFullYear(), now.getMonth(), 0) // day 0 = last day of prev month
-      return { start, end: endOfDay(end) }
-    }
-    case 'this_quarter': {
-      const q = Math.floor(now.getMonth() / 3)
-      return { start: new Date(now.getFullYear(), q * 3, 1), end: endOfDay(now) }
-    }
-    case 'last_quarter': {
-      const q = Math.floor(now.getMonth() / 3) - 1
-      const year = q < 0 ? now.getFullYear() - 1 : now.getFullYear()
-      const qq = (q + 4) % 4
-      const start = new Date(year, qq * 3, 1)
-      const end = new Date(year, qq * 3 + 3, 0)
-      return { start, end: endOfDay(end) }
-    }
-    case 'this_year': return { start: new Date(now.getFullYear(), 0, 1), end: endOfDay(now) }
-    case 'last_year': return { start: new Date(now.getFullYear() - 1, 0, 1), end: endOfDay(new Date(now.getFullYear() - 1, 11, 31)) }
-    case 'custom': {
-      if (!customStart || !customEnd) return null
-      return { start: startOfDay(new Date(customStart + 'T00:00:00')), end: endOfDay(new Date(customEnd + 'T00:00:00')) }
-    }
-  }
-}
-
-const ANALYTICS_RANGE_LABELS: Record<AnalyticsRangePreset, string> = {
-  all: 'All Time', this_month: 'This Month', last_month: 'Last Month',
-  this_quarter: 'This Quarter', last_quarter: 'Last Quarter',
-  this_year: 'This Year', last_year: 'Last Year', custom: 'Custom Range',
 }
 
 function fmtDate(d: string) {
@@ -461,7 +413,7 @@ export default function CRMPage() {
 
   async function markDead(id: number, initials: string) {
     await supabase.from('leads').update({ status: 'dead' }).eq('id', id)
-    await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: `${initials} - Marked DNB` })
+    await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: `${initials} - Marked Dead` })
     await load()
   }
 
@@ -825,7 +777,7 @@ function DeadLeadPrompt({ leadId, onSubmit, onCancel }: {
 
   return (
     <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: 'rgba(58,63,82,0.5)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginRight: 4 }}>Mark DNB?</span>
+      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginRight: 4 }}>Mark dead?</span>
       <div
         title="Logged in as"
         style={{ width: 70, background: 'var(--surface2)', border: '1px solid var(--dead)', color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
@@ -946,9 +898,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                   <div data-lead-name style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
                     {l.label && l.artist_name
                       ? <>{l.label} <span style={{ color: 'var(--text3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--text3)' }}>/</span> {l.artist_name}</>
-                      : l.artist_name && !l.label
-                        ? <>{l.fname} {l.lname} <span style={{ color: 'var(--text3)' }}>·</span> {l.artist_name}</>
-                        : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--text3)', fontWeight: 400 }}> · {l.company}</span>}</>}
+                      : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--text3)', fontWeight: 400 }}> · {l.company}</span>}</>}
                   </div>
                   {fmtSessionLine(l) && (
                     <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1016,15 +966,15 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
 
 const PAGE_SIZE = 25
 
-type StatusFilter = 'uncontacted' | 'hot' | 'warm' | 'cold' | 'dnb' | 'booked'
+type StatusFilter = 'uncontacted' | 'hot' | 'warm' | 'cold-dead' | 'booked'
 
 // Maps a lead to its tab-filter key (cold + dead collapse into one bucket).
 function leadStatusKey(l: Lead): StatusFilter {
-  if (l.status === 'dead') return 'dnb'
+  if (l.status === 'cold' || l.status === 'dead') return 'cold-dead'
   return l.status as StatusFilter
 }
 
-const ALL_STATUS_FILTERS: StatusFilter[] = ['uncontacted', 'hot', 'warm', 'cold', 'dnb', 'booked']
+const ALL_STATUS_FILTERS: StatusFilter[] = ['uncontacted', 'hot', 'warm', 'cold-dead', 'booked']
 const DEFAULT_STATUS_FILTERS: StatusFilter[] = ['uncontacted', 'hot', 'warm']
 
 function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouched, onKeepHot, onUpdateStatus, loading }: {
@@ -1052,17 +1002,8 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
       if (a !== null || s) {
         skipFilterReset.current = true
         if (a !== null) {
-          const raw = JSON.parse(a) as string[]
-          if (Array.isArray(raw)) {
-            const migrated = new Set<StatusFilter>()
-            for (const k of raw) {
-              if (k === 'cold-dead') { migrated.add('cold'); migrated.add('dnb') }
-              else if ((ALL_STATUS_FILTERS as string[]).includes(k)) migrated.add(k as StatusFilter)
-            }
-            setActive(migrated)
-          } else {
-            setActive(new Set(DEFAULT_STATUS_FILTERS))
-          }
+          const arr = JSON.parse(a) as StatusFilter[]
+          setActive(new Set(Array.isArray(arr) ? arr : DEFAULT_STATUS_FILTERS))
         }
         if (s) setSearch(s)
       }
@@ -1097,21 +1038,19 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   const uncontactedLeads = leads.filter(l => l.status === 'uncontacted')
   const hotLeads = leads.filter(l => l.status !== 'uncontacted' && l.status === 'hot')
   const warmLeads = leads.filter(l => l.status !== 'uncontacted' && l.status === 'warm')
-  const coldLeads = leads.filter(l => l.status === 'cold')
-  const dnbLeads = leads.filter(l => l.status === 'dead')
+  const coldDeadLeads = leads.filter(l => l.status === 'cold' || l.status === 'dead')
   const bookedLeads = leads.filter(l => l.status === 'booked')
 
   // Per-status counts for the tab badges — independent of which tabs are active.
   const filterMap: Record<StatusFilter, Lead[]> = {
-    uncontacted: uncontactedLeads, hot: hotLeads, warm: warmLeads, cold: coldLeads, dnb: dnbLeads, booked: bookedLeads,
+    uncontacted: uncontactedLeads, hot: hotLeads, warm: warmLeads, 'cold-dead': coldDeadLeads, booked: bookedLeads,
   }
 
   const filterDefs: { key: StatusFilter; label: string; color: string }[] = [
     { key: 'uncontacted', label: 'Uncontacted', color: 'var(--uncontacted)' },
     { key: 'hot', label: 'Hot', color: 'var(--hot)' },
     { key: 'warm', label: 'Warm', color: 'var(--warm)' },
-    { key: 'cold', label: 'Cold', color: 'var(--cold-lead)' },
-    { key: 'dnb', label: 'DNB', color: 'var(--text3)' },
+    { key: 'cold-dead', label: 'Cold/Dead', color: 'var(--text2)' },
     { key: 'booked', label: 'Booked', color: 'var(--booked)' },
   ]
 
@@ -1141,9 +1080,9 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
               <button key={f.key} onClick={() => toggleFilter(f.key)} style={{
                 padding: isMobile ? '4px 8px' : '4px 10px', cursor: 'pointer', borderRadius: 20,
                 fontFamily: 'Syne', fontWeight: isActive ? 700 : 600, fontSize: isMobile ? 10 : 9, letterSpacing: '0.08em', textTransform: 'uppercase',
-                background: isActive ? `color-mix(in srgb, ${f.color} 20%, transparent)` : 'transparent',
-                border: `1px solid ${isActive ? f.color : `color-mix(in srgb, ${f.color} 50%, transparent)`}`,
-                color: isActive ? f.color : `color-mix(in srgb, ${f.color} 70%, transparent)`,
+                background: isActive ? `${f.color}33` : 'transparent',
+                border: `1px solid ${isActive ? f.color : `${f.color}80`}`,
+                color: isActive ? f.color : `${f.color}b3`,
                 flexShrink: isMobile ? 0 : undefined, whiteSpace: isMobile ? 'nowrap' : undefined,
                 transition: 'all 0.15s',
               }}>
@@ -1195,9 +1134,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                   <div data-lead-name style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
                     {l.label && l.artist_name
                       ? <>{l.label} <span style={{ color: 'var(--text3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--text3)' }}>/</span> {l.artist_name}</>
-                      : l.artist_name && !l.label
-                        ? <>{l.fname} {l.lname} <span style={{ color: 'var(--text3)' }}>·</span> {l.artist_name}</>
-                        : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--text3)', fontWeight: 400 }}> · {l.company}</span>}</>}
+                      : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--text3)', fontWeight: 400 }}> · {l.company}</span>}</>}
                   </div>
                   {fmtSessionLine(l) && (
                     <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1319,7 +1256,6 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   const [regLinkGenerating, setRegLinkGenerating] = useState(false)
   const [existingTokenStr, setExistingTokenStr] = useState<string | null>(null)
   const [regPanelOpen, setRegPanelOpen] = useState(false)
-  const [regActioned, setRegActioned] = useState(false)
   const [regViewOpen, setRegViewOpen] = useState(false)
   const [fnameVal, setFnameVal] = useState(lead.fname || '')
   const [lnameVal, setLnameVal] = useState(lead.lname || '')
@@ -1349,7 +1285,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
   useEffect(() => { setNotesVal(lead.notes || '') }, [lead.notes])
   useEffect(() => {
     setRegLinkUrl(null); setRegLinkCopied(false); setRegLinkGenerating(false); setExistingTokenStr(null)
-    setRegTokenDates(null); setRegPanelOpen(false); setRegActioned(false)
+    setRegTokenDates(null); setRegPanelOpen(false)
     const base = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
     (async () => {
       // 1. Try to find a token for this specific lead
@@ -1536,8 +1472,6 @@ const parsedLoc0 = parseLocation(lead.location || '')
     if (!regLinkUrl) return
     try { await navigator.clipboard.writeText(regLinkUrl) } catch (_) {}
     setRegLinkCopied(true)
-    setRegActioned(true)
-    setRegPanelOpen(false)
     setTimeout(() => setRegLinkCopied(false), 2000)
   }
 
@@ -1547,8 +1481,6 @@ const parsedLoc0 = parseLocation(lead.location || '')
     const body = encodeURIComponent(
       `Hi ${lead.fname || 'there'},\n\nPlease complete your registration for Paramount Recording Studios using the link below:\n\n${regLinkUrl}\n\nThis link expires in 7 days.\n\n— Paramount Recording Studios`
     )
-    setRegActioned(true)
-    setRegPanelOpen(false)
     window.location.href = `mailto:${lead.email || ''}?subject=${subject}&body=${body}`
   }
 
@@ -1601,9 +1533,9 @@ const parsedLoc0 = parseLocation(lead.location || '')
           <button
             type="button"
             onClick={() => setStatusDDOpen(o => !o)}
-            style={{ ...pillBase, gap: 5, background: `color-mix(in srgb, ${LEAD_AVATAR_COLORS[local.status || lead.status] || LEAD_AVATAR_COLORS.uncontacted} 13%, transparent)`, color: LEAD_AVATAR_COLORS[local.status || lead.status] || LEAD_AVATAR_COLORS.uncontacted, border: 'none' }}
+            style={{ ...pillBase, gap: 5, background: `${LEAD_AVATAR_COLORS[local.status || lead.status] || LEAD_AVATAR_COLORS.uncontacted}22`, color: LEAD_AVATAR_COLORS[local.status || lead.status] || LEAD_AVATAR_COLORS.uncontacted, border: 'none' }}
           >
-            <span>{statusLabel(local.status || lead.status)}</span>
+            <span>{local.status || lead.status}</span>
             <span style={{ fontSize: 8, lineHeight: 1, transform: statusDDOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
           </button>
           {statusDDOpen && (
@@ -1633,7 +1565,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', background: active ? 'var(--surface2)' : 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: c }}
                   >
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: c, flexShrink: 0 }} />
-                    {statusLabel(s)}
+                    {s}
                   </button>
                 )
               })}
@@ -1742,7 +1674,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
               <button onClick={() => setRegViewOpen(true)} style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.12)', color: 'var(--booked)', border: '1px solid rgba(20,184,166,0.35)', borderRadius: 4, fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
                 ✓ Registered
               </button>
-            ) : existingTokenStr && regActioned ? (
+            ) : existingTokenStr ? (
               <button onClick={async () => { const done = await refreshRegStatus(); if (!done) setRegPanelOpen(v => !v) }} style={{ padding: '5px 12px', background: regPanelOpen ? 'rgba(249,115,22,0.18)' : 'rgba(249,115,22,0.08)', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.35)', borderRadius: 4, fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
                 Reg Sent
               </button>
@@ -1758,9 +1690,9 @@ const parsedLoc0 = parseLocation(lead.location || '')
         {regPanelOpen && regLinkUrl && !regTokenDates?.used_at && (
           <div style={{ marginBottom: 8, background: 'var(--surface2)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 5, padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <a href={regLinkUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--booked)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-                Register Here
-              </a>
+              <span style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                {regLinkUrl}
+              </span>
               <button onClick={() => setRegPanelOpen(false)} style={{ padding: '2px 6px', background: 'transparent', color: 'var(--text3)', border: 'none', borderRadius: 3, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer', flexShrink: 0, lineHeight: 1 }}>
                 ✕
               </button>
@@ -1775,26 +1707,6 @@ const parsedLoc0 = parseLocation(lead.location || '')
               <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.4)', borderRadius: 3, fontFamily: 'Inter', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
                 {regLinkGenerating ? '…' : 'Resend'}
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* Stage name (COD only) */}
-        {lead.billing === 'COD' && (
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 6, minWidth: 0 }}>
-            <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
-              <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
-                {local.artist_name || 'Stage name'}
-              </span>
-              <input
-                value={local.artist_name || ''}
-                onChange={e => update('artist_name', e.target.value)}
-                onFocus={() => setFocusedInput('artist_name')}
-                onKeyDown={enterBlur}
-                onBlur={e => { setFocusedInput(null); save('artist_name', e.target.value) }}
-                placeholder="Stage name"
-                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'artist_name' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text2)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
-              />
             </div>
           </div>
         )}
@@ -1976,11 +1888,16 @@ const parsedLoc0 = parseLocation(lead.location || '')
         value={notesVal}
         onChange={e => setNotesVal(e.target.value)}
         onBlur={() => { if (notesDirty) save('notes', notesVal) }}
-        onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
-        ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px' } }}
         placeholder="Add notes…"
-        style={{ width: '100%', minHeight: 38, marginTop: 16, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '6px 10px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, resize: 'none', outline: 'none', lineHeight: 1.6, overflow: 'hidden' }}
+        style={{ width: '100%', minHeight: 70, marginTop: 16, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '6px 10px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, resize: 'vertical', outline: 'none', lineHeight: 1.6 }}
       />
+      {notesDirty && (
+        <button
+          onClick={() => save('notes', notesVal)}
+          style={{ marginTop: 6, padding: '5px 14px', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+          Save Notes
+        </button>
+      )}
 
       {/* ─── Activity Log ──────────────────────────────── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 16 }}>
@@ -2685,7 +2602,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
           { key: 'warm', label: 'Warm', color: 'var(--warm)' },
           { key: 'booking', label: 'Move to Booking', color: 'var(--booked)' },
         ] as const).map(opt => (
-          <button key={opt.key} type="button" onClick={() => setTemperature(opt.key)} style={{ flex: opt.key === 'booking' ? 2 : 1, padding: '7px 0', borderRadius: 6, border: `1px solid ${temperature === opt.key ? opt.color : 'var(--border)'}`, background: temperature === opt.key ? `color-mix(in srgb, ${opt.color} 13%, transparent)` : 'transparent', color: temperature === opt.key ? opt.color : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.15s' }}>
+          <button key={opt.key} type="button" onClick={() => setTemperature(opt.key)} style={{ flex: opt.key === 'booking' ? 2 : 1, padding: '7px 0', borderRadius: 6, border: `1px solid ${temperature === opt.key ? opt.color : 'var(--border)'}`, background: temperature === opt.key ? `${opt.color}22` : 'transparent', color: temperature === opt.key ? opt.color : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.15s' }}>
             {opt.label}
           </button>
         ))}
@@ -3089,62 +3006,35 @@ function ChartCard({ title, subtitle, segments }: {
 // ─── Analytics ────────────────────────────────────────────────────────────────
 
 function AnalyticsView({ leads }: { leads: Lead[] }) {
-  const [rangePreset, setRangePreset] = useState<AnalyticsRangePreset>('all')
-  const [customStart, setCustomStart] = useState('')
-  const [customEnd, setCustomEnd] = useState('')
-  const range = getAnalyticsRange(rangePreset, customStart, customEnd)
-  const leadsInRange = range
-    ? leads.filter(l => { const t = new Date(l.created_at).getTime(); return t >= range.start.getTime() && t <= range.end.getTime() })
-    : leads
-
-  const rangeLabel = ANALYTICS_RANGE_LABELS[rangePreset]
-  const rangeLabelLower = rangeLabel.toLowerCase()
-
-  const total = leadsInRange.length
-  const booked = leadsInRange.filter(l => l.status === 'booked').length
+  const total = leads.length
+  const booked = leads.filter(l => l.status === 'booked').length
   const convRate = total > 0 ? Math.round(booked / total * 100) : 0
-  const bookedLeads = leadsInRange.filter(l => l.status === 'booked')
+  const bookedLeads = leads.filter(l => l.status === 'booked')
   const labelLeads = bookedLeads.filter(l => l.label)
 
   const charts = [
-    { title: 'COD vs Billing', subtitle: `All inquiries, ${rangeLabelLower}`, segs: toSegments(groupBy(leadsInRange, 'billing')) },
-    { title: 'COD vs Billing (Booked)', subtitle: `Confirmed sessions, ${rangeLabelLower}`, segs: toSegments(groupBy(bookedLeads, 'billing')) },
-    { title: 'Booking Type', subtitle: `All inquiries, ${rangeLabelLower}`, segs: toSegments(groupBy(leadsInRange, 'booking')) },
-    { title: 'Booking Type (Booked)', subtitle: `Confirmed sessions, ${rangeLabelLower}`, segs: toSegments(groupBy(bookedLeads, 'booking')) },
-    { title: 'Inquiry Source', subtitle: `All inquiries, ${rangeLabelLower}`, segs: toSegments(groupBy(leadsInRange, 'source')) },
-    { title: 'Bookings by Label', subtitle: `${labelLeads.length} sessions with label data, ${rangeLabelLower}`, segs: toSegments(groupBy(labelLeads, 'label')) },
+    { title: 'COD vs Billing', subtitle: 'All inquiries, all time', segs: toSegments(groupBy(leads, 'billing')) },
+    { title: 'COD vs Billing (Booked)', subtitle: 'Confirmed sessions, all time', segs: toSegments(groupBy(bookedLeads, 'billing')) },
+    { title: 'Booking Type', subtitle: 'All inquiries, all time', segs: toSegments(groupBy(leads, 'booking')) },
+    { title: 'Booking Type (Booked)', subtitle: 'Confirmed sessions, all time', segs: toSegments(groupBy(bookedLeads, 'booking')) },
+    { title: 'Inquiry Source', subtitle: 'All inquiries, all time', segs: toSegments(groupBy(leads, 'source')) },
+    { title: 'Bookings by Label', subtitle: `${labelLeads.length} sessions with label data, all time`, segs: toSegments(groupBy(labelLeads, 'label')) },
   ]
-
-  const dateInputStyle = { background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', padding: '6px 10px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, outline: 'none', cursor: 'pointer' } as const
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 10, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <h1 style={{ fontFamily: 'DM Serif Display', fontSize: 32, letterSpacing: -1 }}>
           Analytics <em style={{ fontStyle: 'italic', color: 'var(--accent)' }}>&amp; Insights</em>
         </h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <select
-            value={rangePreset}
-            onChange={e => setRangePreset(e.target.value as AnalyticsRangePreset)}
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', padding: '6px 12px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, outline: 'none', cursor: 'pointer' }}
-          >
-            {(Object.keys(ANALYTICS_RANGE_LABELS) as AnalyticsRangePreset[]).map(p => (
-              <option key={p} value={p}>{ANALYTICS_RANGE_LABELS[p]}</option>
-            ))}
-          </select>
-          {rangePreset === 'custom' && (
-            <>
-              <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} style={dateInputStyle} />
-              <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} style={dateInputStyle} />
-            </>
-          )}
-        </div>
+        <select style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', padding: '6px 12px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
+          <option>All Time</option>
+        </select>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
         {[
-          { label: 'Total Leads', value: total.toLocaleString(), color: 'var(--accent)', sub: rangeLabel },
+          { label: 'Total Leads', value: total.toLocaleString(), color: 'var(--accent)', sub: 'All time' },
           { label: 'Booked', value: booked.toLocaleString(), color: 'var(--accent)', sub: 'Confirmed sessions' },
           { label: 'Conversion Rate', value: `${convRate}%`, color: 'var(--accent)', sub: 'Leads to booked' },
         ].map(stat => (
