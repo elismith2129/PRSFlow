@@ -1784,7 +1784,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 6, minWidth: 0 }}>
             <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
               <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
-                {local.artist_name || 'Stage name'}
+                {local.artist_name || 'Artist name'}
               </span>
               <input
                 value={local.artist_name || ''}
@@ -1792,7 +1792,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 onFocus={() => setFocusedInput('artist_name')}
                 onKeyDown={enterBlur}
                 onBlur={e => { setFocusedInput(null); save('artist_name', e.target.value) }}
-                placeholder="Stage name"
+                placeholder="Artist name"
                 style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'artist_name' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text2)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
               />
             </div>

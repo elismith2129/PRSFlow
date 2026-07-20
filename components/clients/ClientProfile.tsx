@@ -746,7 +746,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
               <InlineField label="Instagram" value={client.instagram} onSave={v => saveClient({ instagram: v })} />
               <InlineField label="How heard" value={client.how_heard} onSave={v => saveClient({ how_heard: v })} />
               <div style={{ gridColumn: '1 / -1' }}>
-                <InlineField label="Stage name" value={client.artist_name ?? null} onSave={v => saveClient({ artist_name: v })} placeholder="—" />
+                <InlineField label="Artist name" value={client.artist_name ?? null} onSave={v => saveClient({ artist_name: v })} placeholder="—" />
               </div>
             </div>
 
