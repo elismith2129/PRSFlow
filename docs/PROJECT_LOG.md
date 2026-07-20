@@ -1926,7 +1926,7 @@ Continues on `feature/light-mode`; all committed then merged to `main` (`fbed12c
 #### Still outstanding (manual, outside the repo)
 - **Run the two migrations** in the Supabase SQL editor before relying on those features in production: `20260709120000_flags_photo_url.sql` (flag photo uploads) and `20260713120000_app_feedback_temporary.sql` (feedback board). Both are idempotent / single-tab.
 - Confirm `SUPABASE_SERVICE_ROLE_KEY` is set in Vercel's server env for `/api/client-id-photo` (already required by the other service-role routes).
-- `leads.created_by` column: confirmed present; no action unless it's ever dropped.
+- ~~`leads.created_by` column: confirmed present; no action unless it's ever dropped.~~ **CORRECTION (2026-07-20):** This was wrong — the column was missing from the live DB when this entry was written. Every new-lead insert after `a11e6e5` was 400ing because `created_by` didn't exist yet. Hotfix `fa5ff77` removed the field from the insert to restore production (that commit was never pushed to `main` — it is a dangling commit). The column was added manually in the Supabase SQL editor on 2026-07-17 via `supabase/migrations/20260717120000_leads_created_by.sql` (`ALTER TABLE leads ADD COLUMN IF NOT EXISTS created_by uuid REFERENCES user_profiles(id) ON DELETE SET NULL`). **Column is now confirmed present as of 2026-07-20** (Eli verified via Supabase dashboard — uuid column exists, newer leads have UUIDs, older pre-feature leads have NULL as expected). The attribution feature is working.
 
 ### July 17, 2026 — "Dead" lead status displayed as "DNB"; Cold/Dead tab split (branch `crm-dnb-rename`)
 
