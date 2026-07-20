@@ -118,6 +118,49 @@ function activityColor(note: string): string {
   return 'var(--text2)'
 }
 
+type AnalyticsRangePreset = 'all' | 'this_month' | 'last_month' | 'this_quarter' | 'last_quarter' | 'this_year' | 'last_year' | 'custom'
+
+// Returns null for 'all' (no filter). Quarters are calendar quarters (Jan-Mar, Apr-Jun, Jul-Sep, Oct-Dec).
+// End of range is always end-of-day (23:59:59.999) so the end date is inclusive.
+function getAnalyticsRange(preset: AnalyticsRangePreset, customStart?: string, customEnd?: string): { start: Date; end: Date } | null {
+  const now = new Date()
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0)
+  const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
+  switch (preset) {
+    case 'all': return null
+    case 'this_month': return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: endOfDay(now) }
+    case 'last_month': {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const end = new Date(now.getFullYear(), now.getMonth(), 0) // day 0 = last day of prev month
+      return { start, end: endOfDay(end) }
+    }
+    case 'this_quarter': {
+      const q = Math.floor(now.getMonth() / 3)
+      return { start: new Date(now.getFullYear(), q * 3, 1), end: endOfDay(now) }
+    }
+    case 'last_quarter': {
+      const q = Math.floor(now.getMonth() / 3) - 1
+      const year = q < 0 ? now.getFullYear() - 1 : now.getFullYear()
+      const qq = (q + 4) % 4
+      const start = new Date(year, qq * 3, 1)
+      const end = new Date(year, qq * 3 + 3, 0)
+      return { start, end: endOfDay(end) }
+    }
+    case 'this_year': return { start: new Date(now.getFullYear(), 0, 1), end: endOfDay(now) }
+    case 'last_year': return { start: new Date(now.getFullYear() - 1, 0, 1), end: endOfDay(new Date(now.getFullYear() - 1, 11, 31)) }
+    case 'custom': {
+      if (!customStart || !customEnd) return null
+      return { start: startOfDay(new Date(customStart + 'T00:00:00')), end: endOfDay(new Date(customEnd + 'T00:00:00')) }
+    }
+  }
+}
+
+const ANALYTICS_RANGE_LABELS: Record<AnalyticsRangePreset, string> = {
+  all: 'All Time', this_month: 'This Month', last_month: 'Last Month',
+  this_quarter: 'This Quarter', last_quarter: 'Last Quarter',
+  this_year: 'This Year', last_year: 'Last Year', custom: 'Custom Range',
+}
+
 function fmtDate(d: string) {
   return d ? new Date(d).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' }) : '—'
 }
@@ -3022,35 +3065,62 @@ function ChartCard({ title, subtitle, segments }: {
 // ─── Analytics ────────────────────────────────────────────────────────────────
 
 function AnalyticsView({ leads }: { leads: Lead[] }) {
-  const total = leads.length
-  const booked = leads.filter(l => l.status === 'booked').length
+  const [rangePreset, setRangePreset] = useState<AnalyticsRangePreset>('all')
+  const [customStart, setCustomStart] = useState('')
+  const [customEnd, setCustomEnd] = useState('')
+  const range = getAnalyticsRange(rangePreset, customStart, customEnd)
+  const leadsInRange = range
+    ? leads.filter(l => { const t = new Date(l.created_at).getTime(); return t >= range.start.getTime() && t <= range.end.getTime() })
+    : leads
+
+  const rangeLabel = ANALYTICS_RANGE_LABELS[rangePreset]
+  const rangeLabelLower = rangeLabel.toLowerCase()
+
+  const total = leadsInRange.length
+  const booked = leadsInRange.filter(l => l.status === 'booked').length
   const convRate = total > 0 ? Math.round(booked / total * 100) : 0
-  const bookedLeads = leads.filter(l => l.status === 'booked')
+  const bookedLeads = leadsInRange.filter(l => l.status === 'booked')
   const labelLeads = bookedLeads.filter(l => l.label)
 
   const charts = [
-    { title: 'COD vs Billing', subtitle: 'All inquiries, all time', segs: toSegments(groupBy(leads, 'billing')) },
-    { title: 'COD vs Billing (Booked)', subtitle: 'Confirmed sessions, all time', segs: toSegments(groupBy(bookedLeads, 'billing')) },
-    { title: 'Booking Type', subtitle: 'All inquiries, all time', segs: toSegments(groupBy(leads, 'booking')) },
-    { title: 'Booking Type (Booked)', subtitle: 'Confirmed sessions, all time', segs: toSegments(groupBy(bookedLeads, 'booking')) },
-    { title: 'Inquiry Source', subtitle: 'All inquiries, all time', segs: toSegments(groupBy(leads, 'source')) },
-    { title: 'Bookings by Label', subtitle: `${labelLeads.length} sessions with label data, all time`, segs: toSegments(groupBy(labelLeads, 'label')) },
+    { title: 'COD vs Billing', subtitle: `All inquiries, ${rangeLabelLower}`, segs: toSegments(groupBy(leadsInRange, 'billing')) },
+    { title: 'COD vs Billing (Booked)', subtitle: `Confirmed sessions, ${rangeLabelLower}`, segs: toSegments(groupBy(bookedLeads, 'billing')) },
+    { title: 'Booking Type', subtitle: `All inquiries, ${rangeLabelLower}`, segs: toSegments(groupBy(leadsInRange, 'booking')) },
+    { title: 'Booking Type (Booked)', subtitle: `Confirmed sessions, ${rangeLabelLower}`, segs: toSegments(groupBy(bookedLeads, 'booking')) },
+    { title: 'Inquiry Source', subtitle: `All inquiries, ${rangeLabelLower}`, segs: toSegments(groupBy(leadsInRange, 'source')) },
+    { title: 'Bookings by Label', subtitle: `${labelLeads.length} sessions with label data, ${rangeLabelLower}`, segs: toSegments(groupBy(labelLeads, 'label')) },
   ]
+
+  const dateInputStyle = { background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', padding: '6px 10px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, outline: 'none', cursor: 'pointer' } as const
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 10, flexWrap: 'wrap' }}>
         <h1 style={{ fontFamily: 'DM Serif Display', fontSize: 32, letterSpacing: -1 }}>
           Analytics <em style={{ fontStyle: 'italic', color: 'var(--accent)' }}>&amp; Insights</em>
         </h1>
-        <select style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', padding: '6px 12px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
-          <option>All Time</option>
-        </select>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <select
+            value={rangePreset}
+            onChange={e => setRangePreset(e.target.value as AnalyticsRangePreset)}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', padding: '6px 12px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, outline: 'none', cursor: 'pointer' }}
+          >
+            {(Object.keys(ANALYTICS_RANGE_LABELS) as AnalyticsRangePreset[]).map(p => (
+              <option key={p} value={p}>{ANALYTICS_RANGE_LABELS[p]}</option>
+            ))}
+          </select>
+          {rangePreset === 'custom' && (
+            <>
+              <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} style={dateInputStyle} />
+              <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} style={dateInputStyle} />
+            </>
+          )}
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
         {[
-          { label: 'Total Leads', value: total.toLocaleString(), color: 'var(--accent)', sub: 'All time' },
+          { label: 'Total Leads', value: total.toLocaleString(), color: 'var(--accent)', sub: rangeLabel },
           { label: 'Booked', value: booked.toLocaleString(), color: 'var(--accent)', sub: 'Confirmed sessions' },
           { label: 'Conversion Rate', value: `${convRate}%`, color: 'var(--accent)', sub: 'Leads to booked' },
         ].map(stat => (
