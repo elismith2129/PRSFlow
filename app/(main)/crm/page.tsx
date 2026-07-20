@@ -697,10 +697,10 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel }: {
     setSubmitting(false)
   }
 
-  const methodDefs: { m: TouchMethod; color: string; actionHref?: string; actionLabel?: string }[] = [
-    { m: 'Call',  color: 'var(--hot)', actionHref: phone ? `tel:${phone.replace(/\D/g, '')}` : undefined,  actionLabel: '→ Dial' },
-    { m: 'Text',  color: 'var(--warm)', actionHref: phone ? `sms:${phone.replace(/\D/g, '')}` : undefined,  actionLabel: '→ Text' },
-    { m: 'Email', color: 'var(--text2)', actionHref: email ? `mailto:${email}` : undefined, actionLabel: '→ Mail' },
+  const methodDefs: { m: TouchMethod; actionHref?: string; actionLabel?: string }[] = [
+    { m: 'Call',  actionHref: phone ? `tel:${phone.replace(/\D/g, '')}` : undefined,  actionLabel: '→ Dial' },
+    { m: 'Text',  actionHref: phone ? `sms:${phone.replace(/\D/g, '')}` : undefined,  actionLabel: '→ Text' },
+    { m: 'Email', actionHref: email ? `mailto:${email}` : undefined, actionLabel: '→ Mail' },
   ]
 
   return (
@@ -714,15 +714,15 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel }: {
           {myInitials || '—'}
         </div>
         <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
-          {methodDefs.map(({ m, color, actionHref, actionLabel }) => {
+          {methodDefs.map(({ m, actionHref, actionLabel }) => {
             const active = method === m
             return (
               <React.Fragment key={m}>
-                <button onClick={() => setMethod(active ? null : m)} style={{ padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.05em', textTransform: 'uppercase', border: `1px solid ${active ? color : 'var(--border)'}`, background: active ? `color-mix(in srgb, ${color} 15%, transparent)` : 'transparent', color: active ? color : 'var(--text3)', transition: 'all 0.1s' }}>
+                <button onClick={() => setMethod(active ? null : m)} style={{ padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.05em', textTransform: 'uppercase', border: `1px solid ${active ? 'var(--text)' : 'var(--border)'}`, background: 'transparent', color: active ? 'var(--text)' : 'var(--text3)', transition: 'all 0.1s' }}>
                   {m}
                 </button>
                 {active && actionHref && (
-                  <a href={actionHref} style={{ padding: '3px 8px', borderRadius: 4, background: `color-mix(in srgb, ${color} 10%, transparent)`, border: `1px solid color-mix(in srgb, ${color} 35%, transparent)`, color, fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  <a href={actionHref} style={{ padding: '3px 8px', borderRadius: 4, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                     {actionLabel}
                   </a>
                 )}
