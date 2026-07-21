@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const FROM_ADDRESS = 'Paramount Recording Studios <studio@paramountrecording.com>'
+const FROM_ADDRESS = 'Paramount Recording Studios <info@paramountrecording.com>'
 
 interface Recipient {
   email: string
