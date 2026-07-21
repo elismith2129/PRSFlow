@@ -5,6 +5,7 @@ import { supabase, Client, ClientContact, CLIENT_TYPE_LABELS } from '@/lib/supab
 import PhoneInput from '@/components/shared/PhoneInput'
 import { addArtistToLabel } from '@/lib/roster'
 import { RegViewModal } from '@/components/shared/RegViewModal'
+import { STARTER_TAGS } from '@/lib/tags'
 
 interface BookingLead {
   id: number
@@ -444,6 +445,9 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   const [regViewOpen, setRegViewOpen] = useState(false)
   const [nameVal, setNameVal] = useState(client?.name || '')
   const [editingName, setEditingName] = useState(false)
+  const [clientTags, setClientTags] = useState<string[]>(client?.tags || [])
+  const [clientTagInput, setClientTagInput] = useState('')
+  const [clientTagDDOpen, setClientTagDDOpen] = useState(false)
 
   // Load bookings for selected client
   useEffect(() => {
@@ -471,6 +475,9 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
     setRegLinkGenerating(false)
     setNameVal(client?.name || '')
     setEditingName(false)
+    setClientTags(client?.tags || [])
+    setClientTagInput('')
+    setClientTagDDOpen(false)
   }, [client?.id])
 
   const saveClient = useCallback(async (fields: Partial<Client>) => {
@@ -478,6 +485,22 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
     await supabase.from('clients').update(fields).eq('id', client.id)
     onRefresh()
   }, [client, onRefresh])
+
+  const addClientTag = useCallback(async (tag: string) => {
+    if (!client) return
+    const trimmed = tag.trim()
+    if (!trimmed || clientTags.includes(trimmed)) return
+    const newTags = [...clientTags, trimmed]
+    setClientTags(newTags)
+    await supabase.from('clients').update({ tags: newTags }).eq('id', client.id)
+  }, [client, clientTags])
+
+  const removeClientTag = useCallback(async (tag: string) => {
+    if (!client) return
+    const newTags = clientTags.filter(t => t !== tag)
+    setClientTags(newTags)
+    await supabase.from('clients').update({ tags: newTags }).eq('id', client.id)
+  }, [client, clientTags])
 
   const saveContact = useCallback(async (contactId: string, data: Partial<ClientContact>) => {
     try {
@@ -823,6 +846,51 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
 
         <SectionHeader label="Notes" />
         <InlineField label="" value={client.notes} onSave={v => saveClient({ notes: v })} multiline placeholder="Add notes…" />
+
+        {/* ─── Tags ─────────────────────────────── */}
+        <div style={{ marginTop: 8 }}>
+          <SectionHeader label="Tags" />
+          {clientTags.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
+              {clientTags.map(tag => (
+                <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>
+                  {tag}
+                  <button onClick={() => removeClientTag(tag)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text3)', lineHeight: 1, fontSize: 11 }}>×</button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+            {STARTER_TAGS.filter(t => !clientTags.includes(t)).map(tag => (
+              <button key={tag} onClick={() => addClientTag(tag)} style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', cursor: 'pointer' }}>
+                + {tag}
+              </button>
+            ))}
+          </div>
+          <div style={{ position: 'relative' }}>
+            <input
+              value={clientTagInput}
+              onChange={e => { setClientTagInput(e.target.value); setClientTagDDOpen(e.target.value.trim().length > 0) }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && clientTagInput.trim()) { addClientTag(clientTagInput); setClientTagInput(''); setClientTagDDOpen(false) }
+                if (e.key === 'Escape') { setClientTagInput(''); setClientTagDDOpen(false) }
+              }}
+              onBlur={() => setTimeout(() => setClientTagDDOpen(false), 150)}
+              placeholder="Add custom tag…"
+              style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', fontSize: 10, color: 'var(--text)', fontFamily: 'Inter', outline: 'none', boxSizing: 'border-box' }}
+            />
+            {clientTagDDOpen && clientTagInput.trim() && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, zIndex: 100, marginTop: 2 }}>
+                <button
+                  onMouseDown={() => { addClientTag(clientTagInput); setClientTagInput(''); setClientTagDDOpen(false) }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '6px 10px', fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter', cursor: 'pointer' }}
+                >
+                  Add &ldquo;{clientTagInput.trim()}&rdquo;
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Footer */}
         <div style={{ marginTop: 16, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

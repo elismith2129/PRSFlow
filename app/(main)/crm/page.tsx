@@ -10,6 +10,7 @@ import TimeInput from '@/components/shared/TimeInput'
 import StudioSelect from '@/components/shared/StudioSelect'
 import { RegViewModal, RegField } from '@/components/shared/RegViewModal'
 import { combineLocation, parseLocation } from '@/lib/studios'
+import { STARTER_TAGS } from '@/lib/tags'
 import { addArtistToLabel } from '@/lib/roster'
 import { ClientsPageInner } from '@/app/(main)/clients/page'
 import { SectionHeader } from '@/components/ui/SectionHeader'
@@ -499,6 +500,7 @@ export default function CRMPage() {
 
   const distinctLabels = Array.from(new Set(leads.map(l => l.label).filter((v): v is string => !!v))).sort()
   const distinctCompanies = Array.from(new Set(leads.map(l => l.company).filter((v): v is string => !!v))).sort()
+  const allTags = Array.from(new Set([...STARTER_TAGS, ...leads.flatMap(l => l.tags || [])])).sort((a, b) => a.localeCompare(b))
 
   // Badge count for Needs Action tab
   const naUncontacted = leads.filter(l => (l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead'].includes(l.status))) && l.needs_contact !== false)
@@ -639,6 +641,7 @@ export default function CRMPage() {
                         onFocusConsumed={() => setFocusField(null)}
                         distinctLabels={distinctLabels}
                         distinctCompanies={distinctCompanies}
+                        allTags={allTags}
                         onUpdate={(field, val) => {
                           setLeads(prev => prev.map(l => l.id === selected.id ? { ...l, [field]: val } : l))
                         }}
@@ -1286,7 +1289,7 @@ function Field({ label, children }: { label: string, children: React.ReactNode }
 
 // ─── Lead detail ──────────────────────────────────────────────────────────────
 
-function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, distinctLabels, distinctCompanies, onUpdate, onSendEmail, onDelete }: {
+function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, distinctLabels, distinctCompanies, allTags, onUpdate, onSendEmail, onDelete }: {
   lead: Lead
   missing: string[]
   latestTouch?: { initials: string, method: string, created_at: string }
@@ -1294,6 +1297,7 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   onFocusConsumed?: () => void
   distinctLabels: string[]
   distinctCompanies: string[]
+  allTags: string[]
   onUpdate: (f: string, v: any) => void
   onSendEmail?: () => void
   onDelete?: () => void
@@ -1321,6 +1325,10 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   const [regPanelOpen, setRegPanelOpen] = useState(false)
   const [regActioned, setRegActioned] = useState(false)
   const [regViewOpen, setRegViewOpen] = useState(false)
+  const [localTags, setLocalTags] = useState<string[]>(lead.tags || [])
+  const [tagsOpen, setTagsOpen] = useState(false)
+  const [tagInput, setTagInput] = useState('')
+  const [tagDDOpen, setTagDDOpen] = useState(false)
   const [fnameVal, setFnameVal] = useState(lead.fname || '')
   const [lnameVal, setLnameVal] = useState(lead.lname || '')
 const parsedLoc0 = parseLocation(lead.location || '')
@@ -1345,6 +1353,9 @@ const parsedLoc0 = parseLocation(lead.location || '')
     setLocalVenue(loc.venue)
     setLocalStudio(loc.studio)
     setDetailRateType(lead.rate_daily ? 'daily' : 'hourly')
+    setLocalTags(lead.tags || [])
+    setTagInput('')
+    setTagsOpen(false)
   }, [lead.id])
   useEffect(() => { setNotesVal(lead.notes || '') }, [lead.notes])
   useEffect(() => {
@@ -1455,6 +1466,22 @@ const parsedLoc0 = parseLocation(lead.location || '')
     onUpdate(key, val)
     setSavedField(key)
     setTimeout(() => setSavedField(null), 600)
+  }
+
+  async function addTag(tag: string) {
+    const trimmed = tag.trim()
+    if (!trimmed || localTags.includes(trimmed)) return
+    const newTags = [...localTags, trimmed]
+    setLocalTags(newTags)
+    await supabase.from('leads').update({ tags: newTags }).eq('id', lead.id)
+    onUpdate('tags', newTags)
+  }
+
+  async function removeTag(tag: string) {
+    const newTags = localTags.filter(t => t !== tag)
+    setLocalTags(newTags)
+    await supabase.from('leads').update({ tags: newTags }).eq('id', lead.id)
+    onUpdate('tags', newTags)
   }
 
   async function saveStatus(newStatus: string) {
@@ -2003,6 +2030,71 @@ const parsedLoc0 = parseLocation(lead.location || '')
         </div>
       </div>
 
+      {/* ─── Tags ──────────────────────────────── */}
+      <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+        <button
+          onClick={() => setTagsOpen(o => !o)}
+          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: 'var(--text3)', fontFamily: 'Inter', fontSize: 10 }}
+        >
+          <span style={{ fontSize: 9, transform: tagsOpen ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block', transition: 'transform 0.15s' }}>▶</span>
+          TAGS {localTags.length > 0 && <span style={{ color: 'var(--text2)' }}>({localTags.length})</span>}
+        </button>
+        {tagsOpen && (
+          <div style={{ marginTop: 10 }}>
+            {/* Existing tags */}
+            {localTags.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
+                {localTags.map(tag => (
+                  <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>
+                    {tag}
+                    <button
+                      onClick={() => removeTag(tag)}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text3)', lineHeight: 1, fontSize: 11 }}
+                    >×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {/* Starter tag chips (not yet applied) */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+              {allTags.filter(t => !localTags.includes(t)).map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => addTag(tag)}
+                  style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', cursor: 'pointer' }}
+                >
+                  + {tag}
+                </button>
+              ))}
+            </div>
+            {/* Custom tag input */}
+            <div style={{ position: 'relative' }}>
+              <input
+                value={tagInput}
+                onChange={e => { setTagInput(e.target.value); setTagDDOpen(e.target.value.trim().length > 0) }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && tagInput.trim()) { addTag(tagInput); setTagInput(''); setTagDDOpen(false) }
+                  if (e.key === 'Escape') { setTagInput(''); setTagDDOpen(false) }
+                }}
+                onBlur={() => setTimeout(() => setTagDDOpen(false), 150)}
+                placeholder="Add custom tag…"
+                style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', fontSize: 10, color: 'var(--text)', fontFamily: 'Inter', outline: 'none', boxSizing: 'border-box' }}
+              />
+              {tagDDOpen && tagInput.trim() && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, zIndex: 100, marginTop: 2 }}>
+                  <button
+                    onMouseDown={() => { addTag(tagInput); setTagInput(''); setTagDDOpen(false) }}
+                    style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '6px 10px', fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter', cursor: 'pointer' }}
+                  >
+                    Add &ldquo;{tagInput.trim()}&rdquo;
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
         <button
           onClick={() => setShowDeleteConfirm(true)}
@@ -2160,6 +2252,7 @@ function ConfirmClientModal({ lead, onClose, onCreated }: {
       artists: artist ? [artist] : [],
       notes: notes || null,
       source_lead_id: lead.id,
+      tags: lead.tags || [],
       created_at: new Date().toISOString(),
     })
     if (err) { setError(err.message); setSaving(false); return }
@@ -2330,6 +2423,9 @@ function NewLeadModal({ leads, onClose, onSave }: {
   const [artistHighlight, setArtistHighlight] = useState(-1)
 
   const [saving, setSaving] = useState(false)
+  const [newLeadTags, setNewLeadTags] = useState<string[]>([])
+  const [newTagInput, setNewTagInput] = useState('')
+  const [newTagDDOpen, setNewTagDDOpen] = useState(false)
   const nameDebounce = useRef<ReturnType<typeof setTimeout>>()
   const uniDebounce = useRef<ReturnType<typeof setTimeout>>()
   const skipNameSearch = useRef(false)
@@ -2636,6 +2732,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
         billing: 'Billing',
         status,
         needs_contact: needsContact,
+        tags: newLeadTags,
       }
       const leadId = await onSave(data)
       setSaving(false)
@@ -2652,7 +2749,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
       setSaving(false)
       return
     }
-    const data: Partial<Lead> = { ...form, status, needs_contact: needsContact }
+    const data: Partial<Lead> = { ...form, status, needs_contact: needsContact, tags: newLeadTags }
     if (matchedClientId) data.client_id = matchedClientId
     const leadId = await onSave(data)
     setSaving(false)
@@ -2953,6 +3050,54 @@ function NewLeadModal({ leads, onClose, onSave }: {
           <div>
             <label style={labelS}>Notes</label>
             <textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={3} placeholder="e.g. recording session, mixing, overdubs, artist name, any special requirements…" style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }} />
+          </div>
+
+          {/* ─── Tags ─────────────────────────────── */}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+            <label style={labelS}>Tags</label>
+            {/* Applied tags */}
+            {newLeadTags.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
+                {newLeadTags.map(tag => (
+                  <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>
+                    {tag}
+                    <button onClick={() => setNewLeadTags(ts => ts.filter(t => t !== tag))} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text3)', lineHeight: 1, fontSize: 11 }}>×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {/* Starter chips */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+              {STARTER_TAGS.filter(t => !newLeadTags.includes(t)).map(tag => (
+                <button key={tag} type="button" onClick={() => setNewLeadTags(ts => [...ts, tag])} style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', cursor: 'pointer' }}>
+                  + {tag}
+                </button>
+              ))}
+            </div>
+            {/* Custom input */}
+            <div style={{ position: 'relative' }}>
+              <input
+                value={newTagInput}
+                onChange={e => { setNewTagInput(e.target.value); setNewTagDDOpen(e.target.value.trim().length > 0) }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') { e.preventDefault(); if (newTagInput.trim() && !newLeadTags.includes(newTagInput.trim())) setNewLeadTags(ts => [...ts, newTagInput.trim()]); setNewTagInput(''); setNewTagDDOpen(false) }
+                  if (e.key === 'Escape') { setNewTagInput(''); setNewTagDDOpen(false) }
+                }}
+                onBlur={() => setTimeout(() => setNewTagDDOpen(false), 150)}
+                placeholder="Add custom tag…"
+                style={{ ...inputStyle, padding: '5px 8px', fontSize: 10 }}
+              />
+              {newTagDDOpen && newTagInput.trim() && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, zIndex: 100, marginTop: 2 }}>
+                  <button
+                    onMouseDown={() => { if (!newLeadTags.includes(newTagInput.trim())) setNewLeadTags(ts => [...ts, newTagInput.trim()]); setNewTagInput(''); setNewTagDDOpen(false) }}
+                    style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '6px 10px', fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter', cursor: 'pointer' }}
+                  >
+                    Add &ldquo;{newTagInput.trim()}&rdquo;
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
