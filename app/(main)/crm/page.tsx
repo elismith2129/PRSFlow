@@ -522,7 +522,7 @@ export default function CRMPage() {
 
       {/* LEADS / CLIENTS / CAMPAIGNS toggle */}
       <div style={{ display: 'flex', gap: 20, marginBottom: 10, flexShrink: 0 }}>
-        {(['leads', 'clients', ...(profile?.email === 'srv2129@gmail.com' ? ['campaigns'] : [])] as const).map((t: 'leads' | 'clients' | 'campaigns') => (
+        {(['leads', 'clients', ...(profile?.role === 'owner' && (profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com') ? ['campaigns'] : [])] as const).map((t: 'leads' | 'clients' | 'campaigns') => (
           <button key={t} onClick={() => setTab(t)} style={{
             background: 'none', border: 'none',
             borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
@@ -674,7 +674,7 @@ export default function CRMPage() {
         </div>
       )}
 
-      {tab === 'campaigns' && profile?.email === 'srv2129@gmail.com' && (
+      {tab === 'campaigns' && profile?.role === 'owner' && (profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com') && (
         <CampaignsPanel leads={leads} allTags={allTags} profile={profile} />
       )}
     </div>
