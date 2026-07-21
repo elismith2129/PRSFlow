@@ -709,8 +709,9 @@ function CampaignsPanel({ leads, allTags, profile }: {
   const recipients = leads.filter(l => {
     if (l.email_opt_out) return false
     if (!l.email) return false
-    if (l.status === 'dead') return false
     if (segStatuses.length > 0 && !segStatuses.includes(l.status)) return false
+    // exclude dead/DNB unless explicitly selected
+    if (segStatuses.length === 0 && l.status === 'dead') return false
     if (segBilling && l.billing !== segBilling) return false
     if (segTags.length > 0 && !segTags.every(t => (l.tags || []).includes(t))) return false
     return true
@@ -770,6 +771,7 @@ function CampaignsPanel({ leads, allTags, profile }: {
     { value: 'cold', label: 'Cold' },
     { value: 'uncontacted', label: 'Uncontacted' },
     { value: 'booked', label: 'Booked' },
+    { value: 'dead', label: 'DNB' },
   ]
 
   const sectionLabel: React.CSSProperties = { fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 8, display: 'block' }
