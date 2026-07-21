@@ -23,7 +23,7 @@
 ### Architecture
 - **~~No RLS until Chunk 9~~ — SUPERSEDED July 2, 2026: RLS is now enforced on every table.** Kept for history. The app is no longer open — all access is keyed on `user_profiles.role` via `auth.uid()` (see the "Security hardening" subsection). The original office-vs-runner intent shipped as the staff+/mgr+/tech/runner tiers.
 - **Frequent commits + branch-per-sub-chunk.** Each sub-chunk gets its own branch (e.g., `chunk-4-5`), commits happen after every meaningful piece of work, merge to main only when sub-chunk is confirmed working.
-- **Email sending is deferred to Chunk 5.** Any "send email" button in the meantime uses `mailto:` to open the user's default mail client. No SendGrid/Resend integration yet.
+- **~~Email sending is deferred to Chunk 5~~ — SUPERSEDED July 20, 2026.** A first-party **email campaigns** feature shipped in CRM (`CAMPAIGNS` tab, Eli-only). Sends via Resend (`https://api.resend.com/emails`) from `studio@paramountrecording.com`. The `RESEND_API_KEY` env var must be set; the `/api/send-campaign` route returns a `503` until it is. Domain verification DNS records have been submitted to the DNS manager for `paramountrecording.com`; once propagated, Resend will verify the domain and the key can be generated and added to Vercel. `mailto:` links remain on individual contact action buttons (Call/Text/Email in lead and client detail).
 - **No automated testing infrastructure for the foreseeable future.** No Playwright, Jest, Vitest, or any test framework. Manual browser testing only. If Claude suggests writing tests or adding a testing dependency, redirect back to manual verification.
 - **~~Public registration uses an anon INSERT policy on `client-ids`~~ — SUPERSEDED July 2, 2026.** Registration now runs entirely through the service-role route `/api/register` (token validate/consume, client insert/update, ID upload). The former anon storage policies were dropped when the buckets went private. (Still 25MB / jpeg/png/heic/webp/pdf, still token-gated.)
 - **Public routes use Next.js route groups to isolate from internal pages.** `app/(main)/` contains nav-bearing pages; `/register`, `/inquiry`, and the `(auth)` pages live outside it. **As of July 2, 2026 the real data boundary is RLS** — route groups + the client `AuthGuard` are now UX/organization only, no longer the sole protection.
@@ -1947,3 +1947,73 @@ Fixed silently-dropped translucent backgrounds/borders in `app/(main)/crm/page.t
 ### July 20, 2026 — CRM Analytics date-range filter now functional (branch `crm-analytics-date-filter`)
 
 The AnalyticsView date-range `<select>` in `app/(main)/crm/page.tsx` was previously dead (a single hardcoded "All Time" option wired to nothing); every metric and chart was computed off the full unfiltered `leads` prop. Made it real: added a top-level `AnalyticsRangePreset` type + `getAnalyticsRange()` resolver (vanilla JS `Date`, no date-fns) + `ANALYTICS_RANGE_LABELS` map. AnalyticsView now holds `rangePreset`/`customStart`/`customEnd` in-memory state, derives `leadsInRange` by filtering on `lead.created_at`, and drives all three stat tiles + all six charts off it. Quick presets: All Time / This / Last Month / This / Last Quarter (calendar quarters) / This / Last Year, plus a Custom Range that reveals two `<input type="date">` fields (end-of-day inclusive). Stat sub-labels and chart subtitles reflect the active range. No sessionStorage persistence (intentionally scoped small).
+
+### July 20, 2026 — CRM COD polish: artist name, reg panel fixes, contact button neutrals (commits `b4ea627`, `0bd7781`, `4f3b8b2`)
+
+Small batch of CRM lead-detail and new-lead-modal polish before the larger tags work:
+
+- **COD artist name field** (`b4ea627`): Added a dedicated "Artist Name" input in the COD new lead form (between First/Last and Email/Phone), and surfaced the stored `lead.artist_name` in the lead detail view (display-only, just below the hero name). The `artist_name` column already existed on `leads`; only the UI wiring was missing. Clients converted from a COD lead now carry the artist name through.
+- **Stage name → Artist Name label** (`0bd7781`): Relabeled the COD artist name field from "Stage Name" to "Artist Name" for clarity/consistency.
+- **Reg panel fixes** (`b4ea627`): The "Send Reg" button now only shows the "Reg Sent" confirmation state after an actual copy or email action (not on first render). Reg link copy and email buttons close the reg panel automatically after the action (auto-close). The reg link itself is displayed as a teal hyperlink (`color: var(--accent)`) rather than plain text.
+- **Contact method buttons neutral** (`4f3b8b2`): Removed status-derived colors from the Call/Text/Email action buttons in the lead detail. Active state is now a neutral dark pill (same outlined-dark pattern as other action buttons) — the hot/warm/cold status no longer bleeds into the contact strip.
+
+### July 20, 2026 — Tags on leads and clients; artist name sync (branch `crm-tags`, commits `f5886d1`, `e2169d4`, `cbab044`)
+
+A tagging system for both leads and clients — flexible labels for A&R roles, genres, deal types, or anything else:
+
+**Schema (migration `supabase/migrations/20260720130000_tags.sql` — run manually):**
+```sql
+alter table public.leads add column if not exists tags text[] not null default '{}';
+alter table public.clients add column if not exists tags text[] not null default '{}';
+```
+
+**`lib/tags.ts`** — new file defining `STARTER_TAGS` (the shared quick-chip list used across all tag UIs):
+```
+'Label A&R', 'Artist Manager', 'Producer', 'Engineer',
+'VO', 'Leasing', 'Location Scout / Filming', 'Content Creator',
+'Brand Partnership', 'Event / Listening'
+```
+
+**Tag UI — lead detail (`app/(main)/crm/page.tsx`):** Collapsible TAGS section below the activity log. Shows applied tag chips (each with a `×` remove button) + a row of STARTER_TAGS quick-chips that haven't been applied yet. A small text input below lets the user type and press Enter to add a custom tag. Each add/remove calls `supabase.from('leads').update({ tags: [...] })` immediately.
+
+**Tag UI — new lead modal (`app/(main)/crm/page.tsx`):** Tags section added below Notes in both the COD and Label new-lead forms. Starter chips + custom input. Tags are included in the `handleSave` payload on submit.
+
+**Tag UI — client profile (`components/clients/ClientProfile.tsx`):** Same starter chips + custom input + applied chips UI, added before the profile footer. Reads/writes `client.tags`. Resets when the active client changes.
+
+**Tag sync on lead → client conversion:** When a lead is converted to a client via the Confirm Client Account flow, the lead's `tags` array is included in the client insert so tags carry forward from the pipeline record.
+
+**`lib/supabase.ts`:** `tags: string[]` added to both the `Lead` and `Client` interfaces.
+
+### July 20, 2026 — Email campaigns: suppression flags, campaign history table, CAMPAIGNS tab (branch `email-campaigns`, commits `a4e2070`, `1f97023`, `25e19c1`)
+
+A first-party email marketing feature built directly into CRM — compose, segment, and send campaigns to leads and clients.
+
+**Schema (migration `supabase/migrations/20260720140000_email_campaigns.sql` — run manually by Eli in Supabase SQL editor):**
+- `leads.email_opt_out boolean NOT NULL DEFAULT false` — suppression flag
+- `clients.email_opt_out boolean NOT NULL DEFAULT false` — suppression flag
+- `email_campaigns` table: `id uuid PK`, `subject text`, `body text`, `segment_tags text[]`, `segment_statuses text[]`, `segment_billing text | null`, `recipient_count int`, `sent_by text`, `sent_at timestamptz`, `results jsonb` (array of `{email, name, status, error?}` per recipient)
+- RLS on `email_campaigns`: owner-only `SELECT` and `INSERT` (keyed on `user_profiles.role = 'owner'` via `auth.uid()`). No realtime subscription (history view, not a live surface).
+
+**`lib/supabase.ts`:** Added `email_opt_out: boolean` to `Lead` and `Client` interfaces; new `CampaignResult` and `EmailCampaign` interfaces.
+
+**CAMPAIGNS tab (`app/(main)/crm/page.tsx`):** A third tab next to LEADS and CLIENTS, gated to owner users with Eli's email addresses only (`profile?.role === 'owner' && (profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com')`). The dual-email gate is intentional — Eli logs in via PIN which is attached to `eli@paramountrecording.com`, not his Gmail address.
+
+**`CampaignsPanel` component (inline in `crm/page.tsx`):** Three sections:
+1. **Segment picker** — status multi-select (uncontacted/hot/warm/cold/DNB), billing (All/COD/Billing), and tag filter (any-of-selected-tags matching)
+2. **Recipient preview** — live count + expandable list of matched leads/clients; excludes anyone with `email_opt_out=true` or a missing email; `dead` is excluded when no statuses are selected, included when explicitly selected
+3. **Compose** — Subject line + body textarea with a `[First Name]` personalization note; Send button POSTs to `/api/send-campaign`; campaign history collapsible section below (loads from `email_campaigns`, most-recent first)
+
+Status picker includes `{ value: 'dead', label: 'DNB' }` — see fix commit `25e19c1`.
+
+**`/api/send-campaign` route (`app/api/send-campaign/route.ts`):**
+- Returns `503` if `RESEND_API_KEY` is not set (the integration is pending Resend domain verification)
+- Sends emails one at a time via Resend's REST API (`https://api.resend.com/emails`) with `[First Name]` substitution per recipient
+- FROM address: `Paramount Recording Studios <studio@paramountrecording.com>`
+- Logs the campaign to `email_campaigns` via the service-role Supabase client after all sends
+- Returns `{ sent, failed, results }`
+
+**Fix `1f97023`:** Campaigns tab was initially gated to `profile?.email === 'srv2129@gmail.com'` only. Eli logs in via PIN (attached to `eli@paramountrecording.com`), so the tab was invisible. Fixed to check both emails.
+
+**Fix `25e19c1`:** `dead` status was absent from the STATUS_OPTIONS picker AND always filtered out of recipients. Fixed: added `{ value: 'dead', label: 'DNB' }` to STATUS_OPTIONS; changed recipient filtering so `dead` is only excluded when no statuses are selected (i.e., it only appears if explicitly chosen).
+
+**Resend setup status (as of July 20, 2026):** Domain `paramountrecording.com` has been added in the Resend dashboard. DNS records (DKIM TXT, MX `feedback-smtp.us-east-1.amazonses.com`, SPF TXT `v=spf1 include:amazonses.com ~all`, DMARC TXT `v=DMARC1; p=none;`) need to be added by the DNS manager. Until propagation completes and Resend shows "Verified", the `/api/send-campaign` route returns a 503. Add `RESEND_API_KEY` to Vercel environment variables once verified.
