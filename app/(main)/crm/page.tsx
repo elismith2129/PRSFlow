@@ -2902,6 +2902,10 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   </div>
                 )}
               </div>
+              <div>
+                <label style={labelS}>Artist Name</label>
+                <input value={form.artist_name} onChange={e => set('artist_name', e.target.value)} placeholder="Stage name / artist name" style={inputStyle} />
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div><label style={labelS}>Email</label><input value={form.email} onChange={e => set('email', e.target.value)} type="email" style={inputStyle} /></div>
                 <div><label style={labelS}>Phone</label><PhoneInput value={form.phone} onChange={v => set('phone', v)} variant="bordered" /></div>
