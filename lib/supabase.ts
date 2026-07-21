@@ -47,6 +47,7 @@ export interface Lead {
   engineer_needed: boolean | null
   created_by: string | null
   tags: string[]
+  email_opt_out: boolean
   created_at: string
   updated_at: string | null
 }
@@ -76,6 +77,7 @@ export interface Client {
   notes: string | null
   artist_name?: string | null
   tags: string[]
+  email_opt_out: boolean
   srs_client: boolean
   created_at: string
   updated_at: string | null
@@ -364,4 +366,24 @@ export interface FlagComment {
   photo_url: string | null
   created_by_name: string | null
   created_at: string
+}
+
+export interface CampaignResult {
+  email: string
+  name: string
+  status: 'sent' | 'failed' | 'skipped'
+  error?: string
+}
+
+export interface EmailCampaign {
+  id: string
+  subject: string
+  body: string
+  segment_tags: string[]
+  segment_statuses: string[]
+  segment_billing: string | null
+  recipient_count: number
+  sent_by: string
+  sent_at: string
+  results: CampaignResult[]
 }
