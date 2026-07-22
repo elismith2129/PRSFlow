@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
+import { seedStudioTimeRows, dateRange, toStudioLetter } from '@/lib/seedStudioTimeRows'
 
 // Equipment items seeded onto every work order (one condition row per item per date).
 // Mirrors EQUIPMENT_ITEMS in WorkOrderPopup.tsx and EQUIPMENT in the runner WO page.
@@ -19,54 +20,8 @@ export function bookingShouldHaveWorkOrder(booking: Pick<Booking, 'status'>): bo
   return !NON_SESSION_STATUSES.includes(booking.status)
 }
 
-// ─── Local helpers (canonical copies; mirror WorkOrderPopup.tsx) ───────────────
-
-function timeToMins(t: string | null | undefined): number {
-  if (!t) return 0
-  const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i)
-  if (!m) return 0
-  let h = parseInt(m[1])
-  const min = parseInt(m[2])
-  const ap = m[3]?.toUpperCase()
-  if (ap === 'PM' && h !== 12) h += 12
-  if (ap === 'AM' && h === 12) h = 0
-  return h * 60 + min
-}
-
-function calcHours(from: string, to: string): number | null {
-  if (!from || !to) return null
-  const f = timeToMins(from)
-  const t = timeToMins(to)
-  let diff = t - f
-  if (diff <= 0) diff += 24 * 60  // overnight session or same time → wrap to next day
-  if (diff >= 24 * 60) return null  // exact 24h means same start/end time, skip
-  return parseFloat((diff / 60).toFixed(2))
-}
-
-function calcCharge(hours: number | null, rate: string): number | null {
-  if (!hours || !rate) return null
-  const r = parseFloat(rate.replace(/[^0-9.]/g, ''))
-  if (isNaN(r) || r === 0) return null
-  return parseFloat((hours * r).toFixed(2))
-}
-
-function dateRange(start: string, end: string): string[] {
-  const dates: string[] = []
-  const s = new Date(start + 'T12:00:00')
-  const e = new Date((end || start) + 'T12:00:00')
-  const d = new Date(s)
-  while (d <= e) {
-    dates.push(d.toISOString().slice(0, 10))
-    d.setDate(d.getDate() + 1)
-  }
-  return dates
-}
-
-// "Studio A" → "A", "Studio X" → "X", "North" → "North"
-function toStudioLetter(s: string): string {
-  const m = s.match(/Studio\s+([A-Z])/i)
-  return m ? m[1].toUpperCase() : s.trim()
-}
+// Row-generation + date/studio helpers live in lib/seedStudioTimeRows.ts
+// (shared with the WO "Seed" panel) and are imported above.
 
 /**
  * Canonical, single-source work-order creator. Called once at booking-save time.
@@ -142,49 +97,23 @@ export async function createWorkOrderForBooking(booking: Booking): Promise<{ wor
   const dates = dateRange(booking.start_date, booking.end_date)
   const isDay = booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily)
 
-  // Seed studio_time_rows — one per session date, with correct day-rate vs hourly columns.
-  const stPayloads = dates.map((d, i) => {
-    if (isDay) {
-      const dayRateNum = parseFloat((booking.rate_daily ?? '').replace(/[^0-9.]/g, ''))
-      return {
-        work_order_id: workOrderId,
-        studio: studioLetter || booking.studio || '',
-        date: d,
-        session_info: '',
-        from_time: booking.from_time ?? '',
-        to_time: booking.to_time ?? '',
-        total_hours: null,
-        rate: booking.rate_daily ?? '',
-        rate_daily: booking.rate_daily ?? '',
-        row_rate_type: 'day',
-        charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
-        day_count: 1,
-        ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
-        sort_order: i,
-      }
-    }
-    const hrs = calcHours(booking.from_time ?? '', booking.to_time ?? '')
-    return {
-      work_order_id: workOrderId,
+  // Seed studio_time_rows — one per session date, with correct day-rate vs hourly
+  // columns. Uses the shared generator (skipExisting:false — the WO was just
+  // created, so no rows can exist yet, saving a pre-check round-trip).
+  await seedStudioTimeRows(
+    {
+      workOrderId,
       studio: studioLetter || booking.studio || '',
-      date: d,
-      session_info: '',
-      from_time: booking.from_time ?? '',
-      to_time: booking.to_time ?? '',
-      total_hours: hrs,
+      dates,
+      fromTime: booking.from_time ?? '',
+      toTime: booking.to_time ?? '',
+      rateType: isDay ? 'day' : 'hour',
       rate: booking.rate ?? '',
-      row_rate_type: 'hour',
-      charge: calcCharge(hrs, booking.rate ?? ''),
-      ot_rate: parseFloat((booking.rate ?? '').replace(/[^0-9.]/g, '')) || null,
-      sort_order: i,
-    }
-  })
-  if (stPayloads.length > 0) {
-    const { error: stError } = await supabase.from('studio_time_rows').insert(stPayloads)
-    if (stError) {
-      throw new Error(['studio_time_rows seed failed', stError.message, stError.details].filter(Boolean).join(' — '))
-    }
-  }
+      rateDaily: booking.rate_daily ?? '',
+      sortOrderStart: 0,
+    },
+    { skipExisting: false },
+  )
 
   // Seed equipment_condition_rows — one per equipment item per session date.
   const eqPayloads = dates.flatMap(d =>
