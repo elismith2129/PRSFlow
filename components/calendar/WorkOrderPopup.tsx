@@ -18,6 +18,12 @@ const SESSION_STATUSES: [string, string][] = [
   ['confirmed', 'Confirmed'], ['tentative', 'Tentative'], ['cancelled', 'Cancelled'],
   ['tour', 'Tour'], ['tech', 'Tech'], ['open_hours', 'Open Hours'],
 ]
+// Mirror the booking-form status colors (STATUS_TOP_COLORS). Active pill fills
+// with its status color; inactive stays neutral.
+const SESSION_STATUS_COLORS: Record<string, string> = {
+  confirmed: 'var(--booked)', tentative: 'var(--warm)', cancelled: 'var(--hot)',
+  tour: '#a855f7', tech: 'var(--cold)', open_hours: '#e2e8f0',
+}
 const SESSION_TYPES: [string, string][] = [
   ['recording', 'Recording'], ['filming', 'Filming'], ['event_playback', 'Event / Playback'],
 ]
@@ -1577,7 +1583,7 @@ export function WorkOrderPopup({
               <span style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--text2)' }}>Recording Studios (323) 465-4000</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--text2)' }}>Invoice #</span>
-                <input value={wo.invoice_number} onChange={e => { setDirtyFields(prev => new Set(prev).add('invoice_number')); setWo(w => w ? { ...w, invoice_number: e.target.value } : w) }} style={{ ...inp, width: 90, fontFamily: 'DM Mono', borderBottom: '1px solid rgba(255,255,255,0.2)' }} />
+                <span style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#f0f0f0', minWidth: 60 }}>{wo.invoice_number || '—'}</span>
               </div>
             </div>
           </div>
@@ -1586,29 +1592,30 @@ export function WorkOrderPopup({
               No per-day schedule here (studios / dates / times / rates / engineers
               live ONLY in the Studio Time table — see docs/WO-SPEC.md §3). Hidden on
               mobile; the read-only SESSION INFO card above replaces it there. */}
-          <div style={isMobile ? { display: 'none' } : { display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={isMobile ? { display: 'none' } : { display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-            {/* Status bar */}
+            {/* Status bar — colored per booking-form status */}
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {SESSION_STATUSES.map(([val, lbl]) => {
                 const on = wo.session_status === val
+                const c = SESSION_STATUS_COLORS[val] ?? 'var(--accent)'
                 return (
                   <button key={val} type="button" disabled={readOnly}
                     onClick={() => { setDirtyFields(prev => new Set(prev).add('session_status')); setWo(w => w ? { ...w, session_status: val } : w) }}
-                    style={{ padding: '7px 16px', borderRadius: 20, fontSize: 11, fontFamily: 'Inter', fontWeight: 700, cursor: readOnly ? 'default' : 'pointer', border: `1px solid ${on ? 'var(--accent)' : 'var(--border)'}`, background: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--bg)' : 'var(--text2)' }}>
+                    style={{ padding: '7px 18px', borderRadius: 20, fontSize: 11, fontFamily: 'Inter', fontWeight: 700, cursor: readOnly ? 'default' : 'pointer', border: `1px solid ${on ? c : 'var(--border)'}`, background: on ? c : 'transparent', color: on ? (val === 'open_hours' ? '#0d0f14' : '#0d0f14') : 'var(--text2)', transition: 'all 0.15s' }}>
                     {lbl}
                   </button>
                 )
               })}
             </div>
 
-            {/* Two columns: left = session type + billing, right = client panel */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
+            {/* Two columns: left = session-level card, right = client panel */}
+            <div style={{ display: 'grid', gridTemplateColumns: '0.85fr 1fr', gap: 20, alignItems: 'start' }}>
 
-              {/* Left — session type + billing */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Left — session type + billing, in a defined panel */}
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 16, display: 'flex', flexDirection: 'column', gap: 18 }}>
                 <div>
-                  <div style={{ ...metaLabel, marginBottom: 6 }}>Session Type</div>
+                  <div style={{ ...metaLabel, marginBottom: 8 }}>Session Type</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {SESSION_TYPES.map(([val, lbl]) => {
                       const on = wo.session_type === val
@@ -1622,17 +1629,21 @@ export function WorkOrderPopup({
                     })}
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
-                  <div style={metaLabel}>PO #</div>
-                  <input value={wo.po_number} onChange={e => { setDirtyFields(prev => new Set(prev).add('po_number')); setWo(w => w ? { ...w, po_number: e.target.value } : w) }} style={inp} />
+                <div>
+                  <div style={{ ...metaLabel, marginBottom: 6 }}>Invoice #</div>
+                  <input value={wo.invoice_number} onChange={e => { setDirtyFields(prev => new Set(prev).add('invoice_number')); setWo(w => w ? { ...w, invoice_number: e.target.value } : w) }} placeholder="—" style={{ ...inp, fontFamily: 'DM Mono' }} />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
-                  <div style={metaLabel}>Food Budget</div>
+                <div>
+                  <div style={{ ...metaLabel, marginBottom: 6 }}>PO #</div>
+                  <input value={wo.po_number} onChange={e => { setDirtyFields(prev => new Set(prev).add('po_number')); setWo(w => w ? { ...w, po_number: e.target.value } : w) }} placeholder="—" style={inp} />
+                </div>
+                <div>
+                  <div style={{ ...metaLabel, marginBottom: 6 }}>Food Budget</div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button type="button" onClick={() => { setDirtyFields(prev => new Set(prev).add('food_budget')); setWo(w => w ? { ...w, food_budget: !w.food_budget } : w) }} style={{ padding: '2px 10px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', border: `1px solid ${wo.food_budget ? 'var(--accent)' : 'rgba(255,255,255,0.12)'}`, background: wo.food_budget ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: wo.food_budget ? 'var(--accent)' : 'var(--text2)' }}>
+                    <button type="button" onClick={() => { setDirtyFields(prev => new Set(prev).add('food_budget')); setWo(w => w ? { ...w, food_budget: !w.food_budget } : w) }} style={{ padding: '4px 14px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', border: `1px solid ${wo.food_budget ? 'var(--accent)' : 'rgba(255,255,255,0.12)'}`, background: wo.food_budget ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: wo.food_budget ? 'var(--accent)' : 'var(--text2)' }}>
                       {wo.food_budget ? 'Yes' : 'No'}
                     </button>
-                    {wo.food_budget && <input value={wo.food_amount} onChange={e => { setDirtyFields(prev => new Set(prev).add('food_amount')); setWo(w => w ? { ...w, food_amount: e.target.value } : w) }} placeholder="$0.00" style={{ ...inp, width: 70 }} />}
+                    {wo.food_budget && <input value={wo.food_amount} onChange={e => { setDirtyFields(prev => new Set(prev).add('food_amount')); setWo(w => w ? { ...w, food_amount: e.target.value } : w) }} placeholder="$0.00" style={{ ...inp, width: 90 }} />}
                   </div>
                 </div>
               </div>
