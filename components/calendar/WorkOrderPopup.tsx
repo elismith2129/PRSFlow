@@ -9,6 +9,18 @@ import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { SignedImage } from '@/components/shared/SignedImage'
+import { ClientPanel, type ClientPanelValue } from '@/components/shared/ClientPanel'
+import { seedStudioTimeRows, toStudioLetter as toStudioLetterSeed } from '@/lib/seedStudioTimeRows'
+
+// Session status bar (calendar status) + session type — session-level, shown in
+// the WO top. Order/labels mirror the old booking form.
+const SESSION_STATUSES: [string, string][] = [
+  ['confirmed', 'Confirmed'], ['tentative', 'Tentative'], ['cancelled', 'Cancelled'],
+  ['tour', 'Tour'], ['tech', 'Tech'], ['open_hours', 'Open Hours'],
+]
+const SESSION_TYPES: [string, string][] = [
+  ['recording', 'Recording'], ['filming', 'Filming'], ['event_playback', 'Event / Playback'],
+]
 
 // Studio accent colors — mirror the Runner Hub WO header (STUDIO_META) so the
 // mobile WO popup matches it. Keyed by venue name (booking.location).
@@ -23,6 +35,7 @@ const STUDIO_COLORS: Record<string, string> = {
 
 type WO = {
   id: string
+  wo_number: string
   invoice_number: string
   session_date: string
   studios: string[]
@@ -42,6 +55,17 @@ type WO = {
   phone: string
   email: string
   status: string
+  // Session-level fields now owned by the WO (see migration
+  // 20260721130000_work_orders_session_fields). session_status is the calendar
+  // status bar (Confirmed/Tentative/…); status above is the WO lifecycle
+  // (open/completed).
+  session_status: string
+  session_type: string
+  client_id: string | null
+  is_srs: boolean
+  cod_method: string
+  anr_contact_id: string | null
+  anr_admin_contact_id: string | null
   session_notes: string
   print_name: string
   signature_data: string
@@ -103,7 +127,6 @@ type PayRow = {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STUDIO_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'X']
 const EQUIPMENT_ITEMS = ['Speakers', 'Microphone', 'Console']
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -179,6 +202,7 @@ function toStudioLetter(s: string): string {
 function normalizeWO(d: any): WO {
   return {
     id: d.id,
+    wo_number: d.wo_number ?? '',
     invoice_number: d.invoice_number ?? '',
     session_date: d.session_date ?? '',
     studios: d.studios ?? [],
@@ -198,6 +222,13 @@ function normalizeWO(d: any): WO {
     phone: d.phone ?? '',
     email: d.email ?? '',
     status: d.status ?? 'open',
+    session_status: d.session_status ?? '',
+    session_type: d.session_type ?? '',
+    client_id: d.client_id ?? null,
+    is_srs: d.is_srs ?? false,
+    cod_method: d.cod_method ?? '',
+    anr_contact_id: d.anr_contact_id ?? null,
+    anr_admin_contact_id: d.anr_admin_contact_id ?? null,
     session_notes: d.session_notes ?? '',
     print_name: d.print_name ?? '',
     signature_data: d.signature_data ?? '',
@@ -318,6 +349,13 @@ export function WorkOrderPopup({
   const [saving, setSaving] = useState(false)
   const [completing, setCompleting] = useState(false)
   const [showEngRows, setShowEngRows] = useState(false)
+  // Seed panel (bulk row generation — see docs/WO-SPEC.md §6)
+  const [seedOpen, setSeedOpen] = useState(false)
+  const [seedBusy, setSeedBusy] = useState(false)
+  const [seed, setSeed] = useState({
+    studio: '', start: '', end: '', from: '', to: '',
+    rateType: 'day' as 'day' | 'hour', rate: '', engRate: '',
+  })
   const [confirmDeleteRowId, setConfirmDeleteRowId] = useState<string | null>(null)
   const [confirmClearEngId, setConfirmClearEngId] = useState<string | null>(null)
   const [pendingLockedEdits, setPendingLockedEdits] = useState<Record<string, StRow>>({})
@@ -369,6 +407,14 @@ export function WorkOrderPopup({
       invoice_number: lv(liveForm.invoice_num,     base.invoice_number),
       session_date:   lv(liveForm.start_date,      base.session_date),
       studios: base.studios.length > 0 ? base.studios : studioLetter ? [studioLetter] : [],
+      // Session-level fields: prefer the WO's own value, else fall back to the booking.
+      session_status: base.session_status || (booking as any).status || 'tentative',
+      session_type:   base.session_type   || (booking as any).session_type || 'recording',
+      client_id:      base.client_id      ?? (booking as any).client_id ?? null,
+      is_srs:         base.is_srs || !!(booking as any).is_srs,
+      cod_method:     base.cod_method     || (booking as any).cod_method || '',
+      anr_contact_id: base.anr_contact_id ?? ((booking as any).anr_contact_id ?? null),
+      anr_admin_contact_id: base.anr_admin_contact_id ?? ((booking as any).anr_admin_contact_id ?? null),
     }
   }
 
@@ -1101,6 +1147,14 @@ export function WorkOrderPopup({
       print_name: wo.print_name || null,
       signature_data: wo.signature_data || null,
       needs_attention_notes: wo.needs_attention_notes || null,
+      // Session-level fields now owned by the WO
+      session_status: wo.session_status || null,
+      session_type: wo.session_type || null,
+      client_id: wo.client_id,
+      is_srs: wo.is_srs,
+      cod_method: wo.cod_method || null,
+      anr_contact_id: wo.anr_contact_id,
+      anr_admin_contact_id: wo.anr_admin_contact_id,
       updated_at: new Date().toISOString(),
     }).eq('id', id)
 
@@ -1108,6 +1162,9 @@ export function WorkOrderPopup({
       from_time: stRows[0]?.from_time || null,
       to_time: stRows[0]?.to_time || null,
       client_name: wo.client || null,
+      artist: wo.artist || null,
+      label: wo.label || null,
+      client_id: wo.client_id,
       engineer_name: wo.engineer || null,
       assistant_name: wo.second_engineer || null,
       producer: wo.producer || null,
@@ -1117,6 +1174,12 @@ export function WorkOrderPopup({
       invoice_num: wo.invoice_number || null,
       ordered_by: wo.ordered_by || null,
       payment_type: wo.payment_status === 'Billing' ? 'billing' : 'COD',
+      cod_method: wo.cod_method || null,
+      is_srs: wo.is_srs,
+      status: wo.session_status || undefined,
+      session_type: wo.session_type || undefined,
+      anr_contact_id: wo.anr_contact_id,
+      anr_admin_contact_id: wo.anr_admin_contact_id,
     }).eq('id', booking.id)
 
     // Save studio time rows — insert new rows, update existing
@@ -1275,6 +1338,78 @@ export function WorkOrderPopup({
     letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text2)',
   }
 
+  // ── Client panel wiring ─────────────────────────────────────────────────────
+  // Map the WO's client fields onto the shared ClientPanel value, and route the
+  // panel's patches back into WO state (marking each as a manual/dirty edit so
+  // the liveForm sync won't clobber it).
+  const clientValue: ClientPanelValue = {
+    payment_type: wo?.payment_status === 'Billing' ? 'billing' : 'COD',
+    cod_method: wo?.cod_method ?? '',
+    client_name: wo?.client ?? '',
+    artist: wo?.artist ?? '',
+    label: wo?.label ?? '',
+    ordered_by: wo?.ordered_by ?? '',
+    phone: wo?.phone ?? '',
+    email: wo?.email ?? '',
+    client_db_id: wo?.client_id ?? null,
+    is_srs: wo?.is_srs ?? false,
+    anr_contact_id: wo?.anr_contact_id ?? null,
+    anr_admin_contact_id: wo?.anr_admin_contact_id ?? null,
+  }
+
+  // ClientPanelValue key → WO key (for dirty tracking + state writes)
+  const CLIENT_KEY_MAP: Record<keyof ClientPanelValue, keyof WO> = {
+    payment_type: 'payment_status', cod_method: 'cod_method', client_name: 'client',
+    artist: 'artist', label: 'label', ordered_by: 'ordered_by', phone: 'phone',
+    email: 'email', client_db_id: 'client_id', is_srs: 'is_srs',
+    anr_contact_id: 'anr_contact_id', anr_admin_contact_id: 'anr_admin_contact_id',
+  }
+
+  function handleClientChange(patch: Partial<ClientPanelValue>) {
+    setWo(w => {
+      if (!w) return w
+      const next: WO = { ...w }
+      for (const [k, v] of Object.entries(patch) as [keyof ClientPanelValue, any][]) {
+        if (k === 'payment_type') next.payment_status = v === 'billing' ? 'Billing' : 'COD'
+        else (next as any)[CLIENT_KEY_MAP[k]] = v
+      }
+      return next
+    })
+    setDirtyFields(prev => {
+      const n = new Set(prev)
+      for (const k of Object.keys(patch) as (keyof ClientPanelValue)[]) n.add(CLIENT_KEY_MAP[k] as string)
+      return n
+    })
+  }
+
+  // ── Seed panel: bulk-append studio_time_rows for a date range ────────────────
+  async function handleSeed() {
+    if (!woIdRef.current || !seed.start) return
+    setSeedBusy(true)
+    try {
+      const dates = dateRange(seed.start, seed.end || seed.start)
+      await seedStudioTimeRows({
+        workOrderId: woIdRef.current,
+        studio: seed.studio ? toStudioLetterSeed(seed.studio) : '',
+        dates,
+        fromTime: seed.from,
+        toTime: seed.to,
+        rateType: seed.rateType,
+        rate: seed.rateType === 'hour' ? seed.rate : '',
+        rateDaily: seed.rateType === 'day' ? seed.rate : '',
+        engRate: seed.engRate || undefined,
+      })
+      const { data: reloaded } = await supabase.from('studio_time_rows')
+        .select('*').eq('work_order_id', woIdRef.current).order('date')
+      setStRows((reloaded ?? []).map(normalizeStRow))
+      originalStRowsRef.current = (reloaded ?? []).map(normalizeStRow)
+      setSeed(s => ({ ...s, start: '', end: '' }))
+      setSeedOpen(false)
+    } finally {
+      setSeedBusy(false)
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (loading) return (
@@ -1339,7 +1474,7 @@ export function WorkOrderPopup({
             <button onClick={() => handleCancel()} disabled={saving} aria-label="Close" style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: saving ? 'default' : 'pointer', fontSize: 18, padding: '0 4px', flexShrink: 0 }}>←</button>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne, sans-serif' }}>
-                Work Order{wo.invoice_number ? ` — #${wo.invoice_number}` : ''}
+                Work Order{wo.wo_number ? ` · ${wo.wo_number}` : ''}
               </div>
               <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {(booking.client_name || wo.client || '—')} · {(booking.start_date || wo.session_date || '')}
@@ -1350,7 +1485,7 @@ export function WorkOrderPopup({
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'sticky', top: 0, background: 'var(--surface2)', zIndex: 10, borderRadius: '10px 10px 0 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: '#f0f0f0' }}>
-                Work Order{wo.invoice_number ? ` — #${wo.invoice_number}` : ''}
+                Work Order{wo.wo_number ? ` · ${wo.wo_number}` : ''}
               </span>
               <StatusBadge status={wo.status} />
             </div>
@@ -1447,94 +1582,124 @@ export function WorkOrderPopup({
             </div>
           </div>
 
-          {/* META — two columns of booking-form fields. Hidden on mobile (lives in
-              DOM so desktop + save logic are untouched); the read-only SESSION INFO
-              card above replaces it on mobile. */}
-          <div style={isMobile
-            ? { display: 'none' }
-            : { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
+          {/* SESSION-LEVEL TOP — status bar + session type + billing + client panel.
+              No per-day schedule here (studios / dates / times / rates / engineers
+              live ONLY in the Studio Time table — see docs/WO-SPEC.md §3). Hidden on
+              mobile; the read-only SESSION INFO card above replaces it there. */}
+          <div style={isMobile ? { display: 'none' } : { display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-            {/* Left column */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-              {([
-                ['Session Date', 'session_date'],
-                ['Engineer', 'engineer'],
-                ['Assistant', 'second_engineer'],
-                ['Producer', 'producer'],
-              ] as [string, keyof WO][]).map(([label, key]) => (
-                <div key={key} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
-                  <div style={metaLabel}>{label}</div>
-                  <input value={String(wo[key] ?? '')} onChange={e => { setDirtyFields(prev => new Set(prev).add(key as string)); setWo(w => w ? { ...w, [key]: e.target.value } : w) }} style={inp} />
-                </div>
-              ))}
-              {/* Location — read-only, shown above studios */}
-              {booking.location && (
-                <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
-                  <div style={metaLabel}>Location</div>
-                  <div style={{ fontFamily: 'Inter', fontSize: 11, color: '#f0f0f0', padding: '2px 4px' }}>{booking.location}</div>
-                </div>
-              )}
-              {/* Studios multi-select */}
-              <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
-                <div style={metaLabel}>Studios</div>
-                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                  {STUDIO_LETTERS.map(s => {
-                    const on = wo.studios.includes(s)
-                    return (
-                      <button key={s} type="button" onClick={() => setWo(w => {
-                        if (!w) return w
-                        return { ...w, studios: on ? w.studios.filter(x => x !== s) : [...w.studios, s] }
-                      })} style={{ width: 26, height: 24, borderRadius: 4, border: `1px solid ${on ? 'var(--accent)' : 'rgba(255,255,255,0.12)'}`, background: on ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: on ? 'var(--accent)' : 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>
-                        {s}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-              {/* Payment status */}
-              <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
-                <div style={metaLabel}>Payment</div>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  {['COD', 'Billing'].map(p => (
-                    <label key={p} style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
-                      <input type="radio" checked={wo.payment_status === p} onChange={() => { setDirtyFields(prev => new Set(prev).add('payment_status')); setWo(w => w ? { ...w, payment_status: p } : w) }} style={{ accentColor: 'var(--accent)', cursor: 'pointer' }} />
-                      <span style={{ fontFamily: 'Inter', fontSize: 11, color: wo.payment_status === p ? '#f0f0f0' : 'var(--text2)' }}>{p}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              {/* Food budget */}
-              <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
-                <div style={metaLabel}>Food Budget</div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button type="button" onClick={() => { setDirtyFields(prev => new Set(prev).add('food_budget')); setWo(w => w ? { ...w, food_budget: !w.food_budget } : w) }} style={{ padding: '2px 10px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', border: `1px solid ${wo.food_budget ? 'var(--accent)' : 'rgba(255,255,255,0.12)'}`, background: wo.food_budget ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: wo.food_budget ? 'var(--accent)' : 'var(--text2)' }}>
-                    {wo.food_budget ? 'Yes' : 'No'}
+            {/* Status bar */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {SESSION_STATUSES.map(([val, lbl]) => {
+                const on = wo.session_status === val
+                return (
+                  <button key={val} type="button" disabled={readOnly}
+                    onClick={() => { setDirtyFields(prev => new Set(prev).add('session_status')); setWo(w => w ? { ...w, session_status: val } : w) }}
+                    style={{ padding: '7px 16px', borderRadius: 20, fontSize: 11, fontFamily: 'Inter', fontWeight: 700, cursor: readOnly ? 'default' : 'pointer', border: `1px solid ${on ? 'var(--accent)' : 'var(--border)'}`, background: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--bg)' : 'var(--text2)' }}>
+                    {lbl}
                   </button>
-                  {wo.food_budget && <input value={wo.food_amount} onChange={e => { setDirtyFields(prev => new Set(prev).add('food_amount')); setWo(w => w ? { ...w, food_amount: e.target.value } : w) }} placeholder="$0.00" style={{ ...inp, width: 70 }} />}
-                </div>
-              </div>
+                )
+              })}
             </div>
 
-            {/* Right column */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-              {([
-                ['Client', 'client'],
-                ['Artist', 'artist'],
-                ['Label', 'label'],
-                ['Ordered By', 'ordered_by'],
-                ['PO #', 'po_number'],
-                ['Phone', 'phone'],
-                ['Email', 'email'],
-              ] as [string, keyof WO][]).map(([label, key]) => (
-                <div key={key} style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 8, alignItems: 'center' }}>
-                  <div style={metaLabel}>{label}</div>
-                  <input value={String(wo[key] ?? '')} onChange={e => { setDirtyFields(prev => new Set(prev).add(key as string)); setWo(w => w ? { ...w, [key]: e.target.value } : w) }} style={inp} />
+            {/* Two columns: left = session type + billing, right = client panel */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
+
+              {/* Left — session type + billing */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <div style={{ ...metaLabel, marginBottom: 6 }}>Session Type</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {SESSION_TYPES.map(([val, lbl]) => {
+                      const on = wo.session_type === val
+                      return (
+                        <button key={val} type="button" disabled={readOnly}
+                          onClick={() => { setDirtyFields(prev => new Set(prev).add('session_type')); setWo(w => w ? { ...w, session_type: val } : w) }}
+                          style={{ padding: '6px 14px', borderRadius: 6, fontSize: 11, fontFamily: 'Inter', fontWeight: 600, cursor: readOnly ? 'default' : 'pointer', border: `1px solid ${on ? 'var(--accent)' : 'var(--border)'}`, background: on ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: on ? 'var(--accent)' : 'var(--text2)' }}>
+                          {lbl}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
-              ))}
+                <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
+                  <div style={metaLabel}>PO #</div>
+                  <input value={wo.po_number} onChange={e => { setDirtyFields(prev => new Set(prev).add('po_number')); setWo(w => w ? { ...w, po_number: e.target.value } : w) }} style={inp} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center' }}>
+                  <div style={metaLabel}>Food Budget</div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button type="button" onClick={() => { setDirtyFields(prev => new Set(prev).add('food_budget')); setWo(w => w ? { ...w, food_budget: !w.food_budget } : w) }} style={{ padding: '2px 10px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', border: `1px solid ${wo.food_budget ? 'var(--accent)' : 'rgba(255,255,255,0.12)'}`, background: wo.food_budget ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: wo.food_budget ? 'var(--accent)' : 'var(--text2)' }}>
+                      {wo.food_budget ? 'Yes' : 'No'}
+                    </button>
+                    {wo.food_budget && <input value={wo.food_amount} onChange={e => { setDirtyFields(prev => new Set(prev).add('food_amount')); setWo(w => w ? { ...w, food_amount: e.target.value } : w) }} placeholder="$0.00" style={{ ...inp, width: 70 }} />}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right — client panel */}
+              <ClientPanel value={clientValue} onChange={handleClientChange} readOnly={readOnly} />
             </div>
           </div>
 
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }} />
+
+          {/* SEED — bulk-append studio-time rows for a date range (WO-SPEC §6) */}
+          {!readOnly && (
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+              <button type="button" onClick={() => setSeedOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--surface2)', border: 'none', cursor: 'pointer', color: 'var(--text2)' }}>
+                <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>+ Seed — add multiple days</span>
+                <span style={{ fontSize: 10 }}>{seedOpen ? '▲' : '▼'}</span>
+              </button>
+              {seedOpen && (
+                <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--border)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={metaLabel}>Studio</span>
+                      <input value={seed.studio} onChange={e => setSeed(s => ({ ...s, studio: e.target.value }))} placeholder="X" style={inp} />
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={metaLabel}>Start date</span>
+                      <input type="date" value={seed.start} onChange={e => setSeed(s => ({ ...s, start: e.target.value }))} style={inp} />
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={metaLabel}>End date</span>
+                      <input type="date" value={seed.end} onChange={e => setSeed(s => ({ ...s, end: e.target.value }))} style={inp} />
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={metaLabel}>From</span>
+                      <TimeInput value={seed.from} onChange={v => setSeed(s => ({ ...s, from: v }))} style={inp} />
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={metaLabel}>To</span>
+                      <TimeInput value={seed.to} onChange={v => setSeed(s => ({ ...s, to: v }))} style={inp} />
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={metaLabel}>Rate</span>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+                          {(['day', 'hour'] as const).map(rt => (
+                            <button key={rt} type="button" onClick={() => setSeed(s => ({ ...s, rateType: rt }))} style={{ padding: '2px 8px', fontSize: 10, fontFamily: 'Inter', fontWeight: 700, border: 'none', cursor: 'pointer', background: seed.rateType === rt ? 'var(--accent)' : 'transparent', color: seed.rateType === rt ? 'var(--bg)' : 'var(--text2)' }}>{rt === 'day' ? 'Day' : 'Hr'}</button>
+                          ))}
+                        </div>
+                        <input value={seed.rate} onChange={e => setSeed(s => ({ ...s, rate: e.target.value }))} placeholder="$" style={{ ...inp, width: 64 }} />
+                      </div>
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={metaLabel}>Eng rate</span>
+                      <input value={seed.engRate} onChange={e => setSeed(s => ({ ...s, engRate: e.target.value }))} placeholder="$" style={inp} />
+                    </label>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>Appends one row per day; dates already in the table are skipped.</span>
+                    <button type="button" disabled={seedBusy || !seed.start} onClick={handleSeed} style={{ padding: '7px 16px', borderRadius: 6, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, border: 'none', cursor: seedBusy || !seed.start ? 'default' : 'pointer', background: seed.start ? 'var(--accent)' : 'rgba(255,255,255,0.08)', color: seed.start ? 'var(--bg)' : 'var(--text3)' }}>
+                      {seedBusy ? 'Adding…' : 'Add rows'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* STUDIO TIME TABLE — unified per-row Day/Hr toggle */}
           <div style={isMobile ? mCard : undefined}>
