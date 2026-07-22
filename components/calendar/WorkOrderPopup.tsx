@@ -73,6 +73,7 @@ type WO = {
   anr_contact_id: string | null
   anr_admin_contact_id: string | null
   session_notes: string
+  booking_notes: string
   print_name: string
   signature_data: string
   needs_attention_notes: string
@@ -236,6 +237,7 @@ function normalizeWO(d: any): WO {
     anr_contact_id: d.anr_contact_id ?? null,
     anr_admin_contact_id: d.anr_admin_contact_id ?? null,
     session_notes: d.session_notes ?? '',
+    booking_notes: d.booking_notes ?? '',
     print_name: d.print_name ?? '',
     signature_data: d.signature_data ?? '',
     needs_attention_notes: d.needs_attention_notes ?? '',
@@ -1150,6 +1152,7 @@ export function WorkOrderPopup({
       phone: wo.phone || null,
       email: wo.email || null,
       session_notes: wo.session_notes || null,
+      booking_notes: wo.booking_notes || null,
       print_name: wo.print_name || null,
       signature_data: wo.signature_data || null,
       needs_attention_notes: wo.needs_attention_notes || null,
@@ -1610,7 +1613,7 @@ export function WorkOrderPopup({
             </div>
 
             {/* Two columns: left = session-level card, right = client panel */}
-            <div style={{ display: 'grid', gridTemplateColumns: '0.85fr 1fr', gap: 20, alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '0.85fr 1fr', gap: 20, alignItems: 'stretch' }}>
 
               {/* Left — session type + billing, in a defined panel */}
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 16, display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -1645,6 +1648,21 @@ export function WorkOrderPopup({
                     </button>
                     {wo.food_budget && <input value={wo.food_amount} onChange={e => { setDirtyFields(prev => new Set(prev).add('food_amount')); setWo(w => w ? { ...w, food_amount: e.target.value } : w) }} placeholder="$0.00" style={{ ...inp, width: 90 }} />}
                   </div>
+                </div>
+
+                {/* Booking notes — internal/ops notes about the booking; never printed */}
+                <div data-no-print="" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                  <div style={{ ...metaLabel, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Booking Notes
+                    <span style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--warm)', border: '1px solid var(--warm)', borderRadius: 3, padding: '1px 5px', textTransform: 'uppercase' }}>Internal only</span>
+                  </div>
+                  <textarea
+                    value={wo.booking_notes}
+                    disabled={readOnly}
+                    onChange={e => { setDirtyFields(prev => new Set(prev).add('booking_notes')); setWo(w => w ? { ...w, booking_notes: e.target.value } : w) }}
+                    placeholder="Ops notes about the booking — arrival, payment, past experience… never on the invoice."
+                    style={{ ...inp, minHeight: 120, flex: 1, resize: 'vertical', fontFamily: 'Inter', lineHeight: 1.5, padding: '8px 10px' }}
+                  />
                 </div>
               </div>
 
