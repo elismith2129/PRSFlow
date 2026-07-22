@@ -11,6 +11,22 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { SignedImage } from '@/components/shared/SignedImage'
 import { ClientPanel, type ClientPanelValue } from '@/components/shared/ClientPanel'
 import { seedStudioTimeRows, toStudioLetter as toStudioLetterSeed } from '@/lib/seedStudioTimeRows'
+import { STUDIO_LOCATIONS } from '@/lib/studios'
+
+// Convert a studio_time_rows studio value (bare letter 'X', or 'North'/'South')
+// into the full room label the calendar filters on ('Studio X', 'North'), within
+// a given venue. Falls back to the raw value if no match. (The table stores bare
+// letters; the calendar grid matches full room labels — see docs/WO-SPEC.md §4.)
+function roomLabelForVenue(venue: string, rawStudio: string): string {
+  const raw = (rawStudio ?? '').trim()
+  if (!raw) return raw
+  const loc = STUDIO_LOCATIONS.find(l => l.name === venue)
+  if (!loc) return raw
+  if (loc.rooms.includes(raw)) return raw
+  const full = `Studio ${raw}`
+  if (loc.rooms.includes(full)) return full
+  return raw
+}
 
 // Session status bar (calendar status) + session type — session-level, shown in
 // the WO top. Order/labels mirror the old booking form.
@@ -1237,26 +1253,33 @@ export function WorkOrderPopup({
         : supabase.from('payment_rows').insert(payload)
     }))
 
-    // ── Additive: sync date range + studio back to bookings for calendar ──
+    // ── Projection (Step 5a): sync schedule + studio + WO link to the booking
+    //    card, so the calendar reflects the WO. Studio is converted from the
+    //    table's bare letter to the calendar's full room label. This covers the
+    //    common single-room case; multi-room secondary cards come in Step 5b. ──
     if (booking.id) {
       try {
-        const datedRows = stRows.filter(r => r.date)
+        const datedRows = stRows.filter(r => r.date && r.studio)
         if (datedRows.length > 0) {
           const sorted = [...datedRows].sort((a, b) => a.date.localeCompare(b.date))
           const earliest = sorted[0]
           const latest = sorted[sorted.length - 1]
+          const venue = booking.location || ''
+          const room = roomLabelForVenue(venue, earliest.studio)
           await supabase.from('bookings').update({
             start_date: earliest.date,
             end_date: latest.date,
             from_time: earliest.from_time || null,
             to_time: earliest.to_time || null,
-            // Do NOT sync studio: studio_time_rows store the bare letter ('A')
-            // while the calendar filters on the full label ('Studio A'), and the
-            // booking form already owns the authoritative studio value.
+            studio: room || undefined,
+            work_order_id: id,
           }).eq('id', booking.id)
+        } else {
+          // No dated rows yet — still link the card to its WO.
+          await supabase.from('bookings').update({ work_order_id: id }).eq('id', booking.id)
         }
       } catch (err) {
-        console.error('WO→booking calendar sync failed:', err)
+        console.error('WO→booking projection failed:', err)
       }
     }
 

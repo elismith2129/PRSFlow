@@ -90,10 +90,14 @@ export async function createWorkOrderForBooking(booking: Booking): Promise<{ wor
     if (!existing?.id) {
       throw new Error('work_orders create returned no row and none exists for booking ' + booking.id)
     }
+    // Link the booking card to its WO (new relationship direction).
+    await supabase.from('bookings').update({ work_order_id: existing.id }).eq('id', booking.id)
     return { workOrderId: existing.id }
   }
 
   const workOrderId = created.id
+  // Link the booking card to its WO (new relationship direction).
+  await supabase.from('bookings').update({ work_order_id: workOrderId }).eq('id', booking.id)
   const dates = dateRange(booking.start_date, booking.end_date)
   const isDay = booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily)
 
