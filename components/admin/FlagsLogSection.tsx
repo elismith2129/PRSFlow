@@ -5,6 +5,7 @@ import type { Flag, FlagComment } from '@/lib/supabase'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { SignedImage } from '@/components/shared/SignedImage'
+import { fmtTimestamp } from '@/lib/format'
 
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   facility_general: { label: 'Facility / General', color: 'var(--text3)', bg: 'var(--surface2)' },
@@ -12,14 +13,8 @@ const CATEGORY_CONFIG: Record<string, { label: string; color: string; bg: string
   client_billing:   { label: 'Client / Billing',   color: '#60A5FA',       bg: 'rgba(96,165,250,0.12)' },
 }
 
-function fmtTime(iso: string) {
-  const d = new Date(iso)
-  return (
-    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
-    ' · ' +
-    d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-  )
-}
+// Canonical formatter (lib/format). Local alias keeps existing call sites.
+const fmtTime = fmtTimestamp
 
 async function uploadPhoto(file: File): Promise<string | null> {
   const path = `dashboard-tasks/${Date.now()}-${file.name.replace(/\s+/g, '_')}`

@@ -130,7 +130,7 @@ export async function createWorkOrderForBooking(booking: Booking): Promise<{ wor
 
   // Seed equipment_condition_rows — one per equipment item per session date.
   const eqPayloads = dates.flatMap(d =>
-    EQUIPMENT_ITEMS.map(eq => ({ work_order_id: workOrderId, equipment: eq, date: d, condition: null }))
+    EQUIPMENT_ITEMS.map(eq => ({ work_order_id: workOrderId, equipment: eq, date: d, condition: null as string | null }))
   )
   if (eqPayloads.length > 0) {
     const { error: eqError } = await supabase.from('equipment_condition_rows').insert(eqPayloads)

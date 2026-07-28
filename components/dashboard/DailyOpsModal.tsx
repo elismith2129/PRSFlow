@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabase'
 import { getChecklistSections } from '@/lib/checklist-items'
 import { SignedImage } from '@/components/shared/SignedImage'
+import { fmtClock } from '@/lib/format'
 
 // ─── Appendix B: Stock list defaults ─────────────────────────────────────────
 
@@ -69,9 +70,8 @@ type Props = {
 function fmtShortDate(d: string) {
   return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 }
-function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-}
+// Canonical formatter (lib/format). Local alias keeps existing call sites.
+const fmtTime = fmtClock
 
 function SectionHead({ label }: { label: string }) {
   return (
@@ -360,7 +360,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
   function renderStock() {
     const items = stockItems.length > 0
       ? stockItems
-      : STOCK_DEFAULT.map(item => ({ item, qty: null, notes: '', low: false }))
+      : STOCK_DEFAULT.map(item => ({ item, qty: null as number | null, notes: '', low: false }))
     const lowCount = items.filter((i: any) => i.low).length
 
     return (

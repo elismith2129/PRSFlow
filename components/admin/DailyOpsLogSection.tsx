@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
+import { fmtClock } from '@/lib/format'
 
 const STUDIO_META: Record<string, { label: string; abbr: string }> = {
   paramount: { label: 'Paramount', abbr: 'PRS' },
@@ -32,10 +33,8 @@ function fmtDate(date: string): string {
   })
 }
 
-function fmtTime(iso: string | null): string {
-  if (!iso) return ''
-  return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-}
+// Canonical formatter (lib/format). Local alias keeps existing call sites.
+const fmtTime = fmtClock
 
 function StatusDot({ status }: { status: 'all' | 'partial' | 'none' }) {
   const color = status === 'all' ? 'var(--booked)' : status === 'partial' ? 'var(--warm)' : 'var(--cold)'

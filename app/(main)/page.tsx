@@ -12,6 +12,7 @@ import { ASSIGN_OPTIONS, resolveAssignTo, nameForId, visibleTabsForRole, idsForT
 import { PRSFloIcon } from '@/components/PRSFloIcon'
 import { useWebInquiries } from '@/components/notifications/WebInquiryProvider'
 import { SignedImage } from '@/components/shared/SignedImage'
+import { fmtTimestamp } from '@/lib/format'
 
 // Needs Action predicates — mirror the CRM (app/(main)/crm/page.tsx) bucket logic
 // so the dashboard surfaces the same leads as the CRM Needs Action tab.
@@ -81,14 +82,8 @@ function fmtSessionTime(t: string): string {
   return `${h}${min !== '00' ? ':' + min : ''}${suf}`
 }
 
-function fmtTime(iso: string) {
-  const d = new Date(iso)
-  return (
-    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
-    ' · ' +
-    d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-  )
-}
+// Canonical formatter (lib/format). Local alias keeps existing call sites.
+const fmtTime = fmtTimestamp
 
 export default function DashboardPage() {
   const [leads, setLeads] = useState<Lead[]>([])

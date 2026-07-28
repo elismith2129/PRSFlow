@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import TimeInput from '@/components/shared/TimeInput'
 import { SignedImage } from '@/components/shared/SignedImage'
+import { calcHours } from '@/lib/time'
+import { formatCurrency, stripCurrency } from '@/lib/format'
 
 const STUDIO_META: Record<string, { label: string; abbr: string }> = {
   paramount: { label: 'Paramount', abbr: 'PRS' },
@@ -14,37 +16,9 @@ const STUDIO_META: Record<string, { label: string; abbr: string }> = {
 
 const EQUIPMENT = ['Speakers', 'Microphone', 'Console']
 
-function formatCurrency(val: string): string {
-  const num = parseFloat(String(val).replace(/[$,]/g, ''))
-  if (isNaN(num)) return ''
-  return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function stripCurrency(val: string): number | null {
-  const n = parseFloat(String(val).replace(/[$,]/g, ''))
-  return isNaN(n) ? null : n
-}
-
-function timeToMins(t: string): number {
-  if (!t) return NaN
-  const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i)
-  if (!m) return NaN
-  let h = parseInt(m[1], 10)
-  const min = parseInt(m[2], 10)
-  const ap = (m[3] ?? '').toUpperCase()
-  if (ap === 'PM' && h !== 12) h += 12
-  if (ap === 'AM' && h === 12) h = 0
-  return h * 60 + min
-}
-function calcHours(from: string, to: string): number | null {
-  if (!from || !to) return null
-  const f = timeToMins(from)
-  const t = timeToMins(to)
-  if (isNaN(f) || isNaN(t)) return null
-  let diff = t - f
-  if (diff < 0) diff += 24 * 60
-  return diff > 0 ? parseFloat((diff / 60).toFixed(2)) : null
-}
+// Canonical time math + currency formatters now live in lib/time.ts /
+// lib/format.ts (Phase 1 audit fix). calcCharge keeps this page's
+// (from, to, rate) signature as a thin wrapper over the canonical helpers.
 function calcCharge(fromTime: string, toTime: string, rate: string): number | null {
   const h = calcHours(fromTime, toTime)
   if (h == null) return null

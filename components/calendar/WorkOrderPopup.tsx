@@ -10,7 +10,9 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { SignedImage } from '@/components/shared/SignedImage'
 import { ClientPanel, type ClientPanelValue } from '@/components/shared/ClientPanel'
-import { seedStudioTimeRows, toStudioLetter as toStudioLetterSeed } from '@/lib/seedStudioTimeRows'
+import { seedStudioTimeRows } from '@/lib/seedStudioTimeRows'
+import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter } from '@/lib/time'
+import { formatCurrency, stripCurrency } from '@/lib/format'
 import { STUDIO_LOCATIONS } from '@/lib/studios'
 
 // Convert a studio_time_rows studio value (bare letter 'X', or 'North'/'South')
@@ -26,14 +28,6 @@ function roomLabelForVenue(venue: string, rawStudio: string): string {
   const full = `Studio ${raw}`
   if (loc.rooms.includes(full)) return full
   return raw
-}
-
-// True when ISO date `b` is exactly the day after ISO date `a`.
-function isNextDay(a: string, b: string): boolean {
-  if (!a || !b) return false
-  const da = new Date(a + 'T12:00:00')
-  const db = new Date(b + 'T12:00:00')
-  return Math.round((db.getTime() - da.getTime()) / 86400000) === 1
 }
 
 // Session status bar (calendar status) + session type — session-level, shown in
@@ -162,72 +156,14 @@ const EQUIPMENT_ITEMS = ['Speakers', 'Microphone', 'Console']
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function formatCurrency(val: string): string {
-  const num = parseFloat(String(val).replace(/[$,]/g, ''))
-  if (isNaN(num)) return ''
-  return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function stripCurrency(val: string): number | null {
-  const n = parseFloat(String(val).replace(/[$,]/g, ''))
-  return isNaN(n) ? null : n
-}
-
 function getLocalToday(): string {
   const now = new Date()
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
   return now.toISOString().slice(0, 10)
 }
 
-function timeToMins(t: string | null | undefined): number {
-  if (!t) return 0
-  const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i)
-  if (!m) return 0
-  let h = parseInt(m[1])
-  const min = parseInt(m[2])
-  const ap = m[3]?.toUpperCase()
-  if (ap === 'PM' && h !== 12) h += 12
-  if (ap === 'AM' && h === 12) h = 0
-  return h * 60 + min
-}
-
-function calcHours(from: string, to: string): number | null {
-  if (!from || !to) return null
-  const f = timeToMins(from)
-  const t = timeToMins(to)
-  let diff = t - f
-  if (diff <= 0) diff += 24 * 60  // overnight session or same time → wrap to next day
-  if (diff >= 24 * 60) return null  // exact 24h means same start/end time, skip
-  return parseFloat((diff / 60).toFixed(2))
-}
-
-function calcCharge(hours: number | null, rate: string): number | null {
-  if (!hours || !rate) return null
-  const r = parseFloat(rate.replace(/[^0-9.]/g, ''))
-  if (isNaN(r) || r === 0) return null
-  return parseFloat((hours * r).toFixed(2))
-}
-
-function dateRange(start: string, end: string): string[] {
-  const dates: string[] = []
-  const s = new Date(start + 'T12:00:00')
-  const e = new Date(end + 'T12:00:00')
-  const d = new Date(s)
-  while (d <= e) {
-    dates.push(d.toISOString().slice(0, 10))
-    d.setDate(d.getDate() + 1)
-  }
-  return dates
-}
-
 function fmtDate(d: string) {
   return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-// "Studio A" → "A", "Studio X" → "X", "North" → "North"
-function toStudioLetter(s: string): string {
-  const m = s.match(/Studio\s+([A-Z])/i)
-  return m ? m[1].toUpperCase() : s.trim()
 }
 
 function normalizeWO(d: any): WO {
@@ -713,7 +649,7 @@ export function WorkOrderPopup({
               studio: studioLetter || booking.studio || '',
               date: d, session_info: '',
               from_time: booking.from_time ?? '', to_time: booking.to_time ?? '',
-              total_hours: null,
+              total_hours: null as number | null,
               rate: booking.rate_daily ?? '',
               rate_daily: booking.rate_daily ?? '',
               row_rate_type: 'day',
@@ -749,7 +685,7 @@ export function WorkOrderPopup({
               studio: studioLetter || booking.studio || '',
               date: d, session_info: '',
               from_time: booking.from_time ?? '', to_time: booking.to_time ?? '',
-              total_hours: null,
+              total_hours: null as number | null,
               rate: booking.rate_daily ?? '',
               rate_daily: booking.rate_daily ?? '',
               row_rate_type: 'day',
@@ -1555,7 +1491,7 @@ export function WorkOrderPopup({
       const dates = dateRange(seed.start, seed.end || seed.start)
       await seedStudioTimeRows({
         workOrderId: woIdRef.current,
-        studio: seed.studio ? toStudioLetterSeed(seed.studio) : '',
+        studio: seed.studio ? toStudioLetter(seed.studio) : '',
         dates,
         fromTime: seed.from,
         toTime: seed.to,

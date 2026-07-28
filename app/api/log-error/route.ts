@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     const { allowed } = await checkRateLimit(supa, 'log-error', clientIp(req), 30, 60_000)
     if (!allowed) return new NextResponse(null, { status: 204 })
 
-    const body = await req.json().catch(() => null)
+    const body = await req.json().catch((): null => null)
     if (!body || typeof body.message !== 'string') return new NextResponse(null, { status: 204 })
 
     await supa.from('app_errors').insert({

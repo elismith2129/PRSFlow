@@ -6,7 +6,7 @@
 import { useEffect } from 'react'
 import { logAppError } from '@/lib/errlog'
 
-export default function ErrorReporter() {
+export default function ErrorReporter(): null {
   useEffect(() => {
     const onError = (e: ErrorEvent) => {
       logAppError(e.error ?? e.message, { source: 'window.onerror' })

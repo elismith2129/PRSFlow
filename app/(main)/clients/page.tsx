@@ -22,7 +22,7 @@ interface PendingReg {
   terms_accepted: boolean | null
 }
 
-export default function ClientsPage() {
+export default function ClientsPage(): null {
   const router = useRouter()
   useEffect(() => { router.replace('/crm') }, [router])
   return null

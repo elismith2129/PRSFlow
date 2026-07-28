@@ -7,6 +7,7 @@ import { STUDIO_LOCATIONS, parseLocation } from '@/lib/studios'
 import { BookingForm, type FormData, bookingToForm, emptyForm } from '@/components/calendar/BookingForm'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 import { createWorkOrderForBooking, bookingShouldHaveWorkOrder } from '@/lib/createWorkOrder'
+import { dateRange } from '@/lib/time'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
 // ─── LOCATIONS ───────────────────────────────────────────────────────────────
@@ -123,17 +124,12 @@ function rangeLabel(start: Date, totalDays: number): string {
   return `${a} – ${b}, ${y}`
 }
 
-function dateRange(start: string, end: string): string[] {
-  const dates: string[] = []
-  const s = new Date(start + 'T12:00:00')
-  const e = new Date(end + 'T12:00:00')
-  const d = new Date(s)
-  while (d <= e) { dates.push(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 1) }
-  return dates
-}
+// dateRange now comes from lib/time (canonical). ─────────────────────────────
 
 // ─── LANE ASSIGNMENT ─────────────────────────────────────────────────────────
 
+// Deliberately LOCAL, not lib/time's timeToMins: this is a sort key for lane
+// assignment, where unparseable times must yield 0 (stable sort), not NaN.
 function timeToMins(t: string | null | undefined): number {
   if (!t) return 0
   const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i)
@@ -1201,7 +1197,7 @@ function CalendarPageInner() {
       notes: data.notes || null,
       is_srs: data.is_srs,
       // TODO: calculate srs_fee_amount from studio_time table once WO digitization is complete
-      srs_fee_amount: data.is_srs ? null : null,
+      srs_fee_amount: null as number | null,
       anr_contact_id: data.anr_contact_id || null,
       anr_admin_contact_id: data.anr_admin_contact_id || null,
     }
@@ -1306,7 +1302,7 @@ function CalendarPageInner() {
                 studio,
                 date: d, session_info: '',
                 from_time: payload.from_time ?? '', to_time: payload.to_time ?? '',
-                total_hours: null,
+                total_hours: null as number | null,
                 rate: payload.rate_daily ?? '',
                 rate_daily: payload.rate_daily ?? '',
                 row_rate_type: 'day',

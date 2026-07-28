@@ -1,7 +1,7 @@
 'use client'
 import { useEffect } from 'react'
 
-export default function PrintTrigger() {
+export default function PrintTrigger(): null {
   useEffect(() => {
     // Small delay so images can load before the print dialog opens
     const t = setTimeout(() => window.print(), 800)
