@@ -13,6 +13,7 @@ import { ClientPanel, type ClientPanelValue } from '@/components/shared/ClientPa
 import { seedStudioTimeRows } from '@/lib/seedStudioTimeRows'
 import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter } from '@/lib/time'
 import { formatCurrency, stripCurrency } from '@/lib/format'
+import { dbResult } from '@/lib/db'
 import { STUDIO_LOCATIONS } from '@/lib/studios'
 
 // Convert a studio_time_rows studio value (bare letter 'X', or 'North'/'South')
@@ -1214,7 +1215,7 @@ export function WorkOrderPopup({
         updated_at: new Date().toISOString(),
       }).eq('id', woIdRef.current)
     }
-    await supabase.from('bookings').update({
+    const { error: blockErr } = await supabase.from('bookings').update({
       status: wo.session_status,
       client_name: wo.client || null,
       from_time: wo.from_time || null,
@@ -1223,6 +1224,7 @@ export function WorkOrderPopup({
       end_date: blockEnd || blockStart || booking.end_date,
     }).eq('id', primaryBookingIdRef.current)
     setSaving(false)
+    if (!dbResult('Saving block', blockErr)) return
     onSaved?.()
     onClose()
   }
@@ -1236,7 +1238,7 @@ export function WorkOrderPopup({
     setSaving(true)
     const id = woIdRef.current
 
-    await supabase.from('work_orders').update({
+    const { error: woSaveErr } = await supabase.from('work_orders').update({
       invoice_number: wo.invoice_number || null,
       session_date: wo.session_date || null,
       studios: wo.studios,
@@ -1270,8 +1272,9 @@ export function WorkOrderPopup({
       anr_admin_contact_id: wo.anr_admin_contact_id,
       updated_at: new Date().toISOString(),
     }).eq('id', id)
+    if (!dbResult('Saving work order', woSaveErr)) { setSaving(false); return }
 
-    await supabase.from('bookings').update({
+    const { error: bkSyncErr } = await supabase.from('bookings').update({
       from_time: stRows[0]?.from_time || null,
       to_time: stRows[0]?.to_time || null,
       client_name: wo.client || null,
@@ -1296,6 +1299,7 @@ export function WorkOrderPopup({
       anr_contact_id: wo.anr_contact_id,
       anr_admin_contact_id: wo.anr_admin_contact_id,
     }).eq('id', primaryBookingIdRef.current)
+    dbResult('Syncing booking card', bkSyncErr)
 
     // Save studio time rows — insert new rows, update existing
     const originalStIds = new Set(originalStRowsRef.current.map(r => r.id))
@@ -1323,7 +1327,10 @@ export function WorkOrderPopup({
       return originalStIds.has(r.id)
         ? supabase.from('studio_time_rows').update(payload).eq('id', r.id)
         : supabase.from('studio_time_rows').insert({ ...payload, id: r.id, work_order_id: id })
-    }))
+    })).then(results => {
+      const failed = results.filter(r => r?.error)
+      if (failed.length > 0) dbResult(`Saving ${failed.length} studio-time row(s)`, failed[0].error)
+    })
 
     // Upsert rental rows that have content
     const rentToSave = rentRows.filter(r => r.item || r.charge)
@@ -1332,7 +1339,10 @@ export function WorkOrderPopup({
       return rentIdsInDb.current.has(r.id)
         ? supabase.from('rental_rows').update(payload).eq('id', r.id)
         : supabase.from('rental_rows').insert(payload)
-    }))
+    })).then(results => {
+      const failed = results.filter(r => r?.error)
+      if (failed.length > 0) dbResult(`Saving ${failed.length} rental row(s)`, failed[0].error)
+    })
 
     // Upsert payment rows that have content
     const payToSave = payRows.filter(p => p.payment_type || p.amount)
@@ -1341,7 +1351,10 @@ export function WorkOrderPopup({
       return payIdsInDb.current.has(p.id)
         ? supabase.from('payment_rows').update(payload).eq('id', p.id)
         : supabase.from('payment_rows').insert(payload)
-    }))
+    })).then(results => {
+      const failed = results.filter(r => r?.error)
+      if (failed.length > 0) dbResult(`Saving ${failed.length} payment row(s)`, failed[0].error)
+    })
 
     // ── Projection (Step 5b): one WO → one booking card per room-run ──
     if (booking.id) {
