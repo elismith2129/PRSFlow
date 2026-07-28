@@ -6,11 +6,16 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 // SERVER-ONLY service-role client — bypasses RLS, must never reach the browser.
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false, autoRefreshToken: false } }
-)
+// Lazily created so a missing key returns a clear error instead of crashing the
+// module at import time (the old `!` assertion made local dev fail opaquely when
+// .env.local lacked SUPABASE_SERVICE_ROLE_KEY).
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) return null
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
+}
+const supabaseAdmin = getSupabaseAdmin()
 
 const MAX_FAILS = 5          // failed attempts before lockout
 const LOCKOUT_MS = 30_000    // 30-second lockout (mirrors the UI)
@@ -23,6 +28,13 @@ function clientIp(req: NextRequest): string {
 }
 
 export async function POST(req: NextRequest) {
+  if (!supabaseAdmin) {
+    // Local dev without the service-role key: explain instead of crashing.
+    return NextResponse.json(
+      { error: 'server_config', message: 'SUPABASE_SERVICE_ROLE_KEY is not set — add it to .env.local (see .env.local.example).' },
+      { status: 503 },
+    )
+  }
   let body: { pin?: unknown }
   try {
     body = await req.json()

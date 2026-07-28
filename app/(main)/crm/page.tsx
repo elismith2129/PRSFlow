@@ -17,6 +17,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useWebInquiries } from '@/components/notifications/WebInquiryProvider'
+import { dbResult } from '@/lib/db'
 
 const STATUS_COLORS: Record<string, string> = {
   hot: 'var(--hot)', warm: 'var(--warm)', cold: 'var(--cold)',
@@ -442,8 +443,10 @@ export default function CRMPage() {
       updateData.keep_hot_until = khu.toISOString()
     }
     const activityNote = notes.trim() ? `${initials} - ${method} - ${notes.trim()}` : `${initials} - ${method}`
-    await supabase.from('leads').update(updateData).eq('id', id)
-    await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: activityNote })
+    const { error: e1 } = await supabase.from('leads').update(updateData).eq('id', id)
+    if (!dbResult('Logging contact', e1)) return
+    const { error: e2 } = await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: activityNote })
+    dbResult('Saving activity note', e2)
     await load()
   }
 
@@ -455,19 +458,24 @@ export default function CRMPage() {
     const now = new Date().toISOString()
     const keepHotUntil = new Date(); keepHotUntil.setDate(keepHotUntil.getDate() + days)
     const activityNote = notes.trim() ? `${initials} - ${label} - ${notes.trim()}` : `${initials} - ${label}`
-    await supabase.from('leads').update({ last_contact: now, keep_hot_until: keepHotUntil.toISOString() }).eq('id', id)
-    await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: activityNote })
+    const { error: e1 } = await supabase.from('leads').update({ last_contact: now, keep_hot_until: keepHotUntil.toISOString() }).eq('id', id)
+    if (!dbResult(label, e1)) return
+    const { error: e2 } = await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: activityNote })
+    dbResult('Saving activity note', e2)
     await load()
   }
 
   async function markDead(id: number, initials: string) {
-    await supabase.from('leads').update({ status: 'dead' }).eq('id', id)
-    await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: `${initials} - Marked DNB` })
+    const { error: e1 } = await supabase.from('leads').update({ status: 'dead' }).eq('id', id)
+    if (!dbResult('Marking DNB', e1)) return
+    const { error: e2 } = await supabase.from('lead_activity').insert({ lead_id: id, type: 'touch', note: `${initials} - Marked DNB` })
+    dbResult('Saving activity note', e2)
     await load()
   }
 
   async function markDidNotAnswer(id: number, initials: string) {
-    await supabase.from('leads').update({ needs_contact: false }).eq('id', id)
+    const { error } = await supabase.from('leads').update({ needs_contact: false }).eq('id', id)
+    if (!dbResult('Updating lead', error)) return
     await load()
   }
 
@@ -481,7 +489,8 @@ export default function CRMPage() {
       const khu = new Date(); khu.setDate(khu.getDate() + 3)
       insertData.keep_hot_until = khu.toISOString()
     }
-    const { data: rows } = await supabase.from('leads').insert(insertData).select('id').single()
+    const { data: rows, error } = await supabase.from('leads').insert(insertData).select('id').single()
+    if (!dbResult('Creating lead', error)) return null
     await load()
     return (rows as { id: number } | null)?.id ?? null
   }
@@ -489,7 +498,8 @@ export default function CRMPage() {
   const selected = leads.find(l => l.id === selectedId) || null
 
   async function updateStatus(id: number, status: string) {
-    await supabase.from('leads').update({ status }).eq('id', id)
+    const { error } = await supabase.from('leads').update({ status }).eq('id', id)
+    if (!dbResult('Updating status', error)) return
     setLeads(prev => prev.map(l => l.id === id ? { ...l, status: status as LeadStatus } : l))
   }
 
@@ -1728,7 +1738,8 @@ const parsedLoc0 = parseLocation(lead.location || '')
 
   async function save(key: string, val: any) {
     if (val === (lead as any)[key]) return
-    await supabase.from('leads').update({ [key]: val }).eq('id', lead.id)
+    const { error } = await supabase.from('leads').update({ [key]: val }).eq('id', lead.id)
+    if (!dbResult('Saving lead', error)) return
     onUpdate(key, val)
     setSavedField(key)
     setTimeout(() => setSavedField(null), 600)
@@ -1739,14 +1750,16 @@ const parsedLoc0 = parseLocation(lead.location || '')
     if (!trimmed || localTags.includes(trimmed)) return
     const newTags = [...localTags, trimmed]
     setLocalTags(newTags)
-    await supabase.from('leads').update({ tags: newTags }).eq('id', lead.id)
+    const { error } = await supabase.from('leads').update({ tags: newTags }).eq('id', lead.id)
+    if (!dbResult('Saving tag', error)) { setLocalTags(localTags); return }
     onUpdate('tags', newTags)
   }
 
   async function removeTag(tag: string) {
     const newTags = localTags.filter(t => t !== tag)
     setLocalTags(newTags)
-    await supabase.from('leads').update({ tags: newTags }).eq('id', lead.id)
+    const { error } = await supabase.from('leads').update({ tags: newTags }).eq('id', lead.id)
+    if (!dbResult('Removing tag', error)) { setLocalTags(localTags); return }
     onUpdate('tags', newTags)
   }
 
@@ -1762,7 +1775,8 @@ const parsedLoc0 = parseLocation(lead.location || '')
     } else {
       updates.keep_hot_until = null
     }
-    await supabase.from('leads').update(updates).eq('id', lead.id)
+    const { error } = await supabase.from('leads').update(updates).eq('id', lead.id)
+    if (!dbResult('Updating status', error)) return
     onUpdate('status', newStatus)
     onUpdate('keep_hot_until', updates.keep_hot_until ?? null)
     setSavedField('status')

@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import '@/styles/globals.css'
+import ErrorReporter from '@/components/ErrorReporter'
+import Toaster from '@/components/ui/Toaster'
 
 export const metadata: Metadata = {
   title: 'PRSFlo',
@@ -37,7 +39,9 @@ export default function RootLayout({
             __html: `try{var t=localStorage.getItem('prsflo-theme');if(t!=='dark'){document.documentElement.setAttribute('data-theme','light')}}catch(e){}`,
           }}
         />
+        <ErrorReporter />
         {children}
+        <Toaster />
       </body>
     </html>
   )
