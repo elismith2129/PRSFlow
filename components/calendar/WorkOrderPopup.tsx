@@ -107,6 +107,7 @@ type StRow = {
   id: string
   studio: string
   location: string
+  eng_name: string
   date: string
   session_info: string
   from_time: string
@@ -251,7 +252,7 @@ function normalizeStRow(d: any): StRow {
     engCharge = !isNaN(erNum) && erNum > 0 ? parseFloat((engHours * erNum).toFixed(2)) : null
   }
   return {
-    id: d.id, studio: d.studio ?? '', location: d.location ?? '', date: d.date ?? '', session_info: d.session_info ?? '',
+    id: d.id, studio: d.studio ?? '', location: d.location ?? '', eng_name: d.eng_name ?? '', date: d.date ?? '', session_info: d.session_info ?? '',
     from_time: d.from_time ?? '', to_time: d.to_time ?? '',
     total_hours: totalHours,
     rate, rate_daily: rateDailyRaw, row_rate_type: rowRateType,
@@ -328,6 +329,9 @@ export function WorkOrderPopup({
   // Seed panel (bulk row generation — see docs/WO-SPEC.md §6)
   const [seedOpen, setSeedOpen] = useState(false)
   const [seedBusy, setSeedBusy] = useState(false)
+  // Engineers roster for per-row engineer datalist (reference data; fetched once
+  // per modal open — modal lifetime is minutes, realtime not needed here).
+  const [engRoster, setEngRoster] = useState<string[]>([])
   const [seed, setSeed] = useState({
     studio: '', start: '', end: '', from: '', to: '',
     rateType: 'day' as 'day' | 'hour', rate: '',
@@ -402,6 +406,11 @@ export function WorkOrderPopup({
       anr_admin_contact_id: base.anr_admin_contact_id ?? ((booking as any).anr_admin_contact_id ?? null),
     }
   }
+
+  useEffect(() => {
+    supabase.from('engineers').select('first_name,last_name').eq('active', true).order('first_name')
+      .then(({ data }) => setEngRoster((data ?? []).map((e: any) => `${e.first_name || ''} ${e.last_name || ''}`.trim()).filter(Boolean)))
+  }, [])
 
   useEffect(() => { initWO() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -995,6 +1004,7 @@ export function WorkOrderPopup({
       id: crypto.randomUUID(),
       studio: last?.studio || '',
       location: last?.location || '',
+      eng_name: last?.eng_name || '',
       date: '',
       session_info: '',
       from_time: fromTime,
@@ -1029,6 +1039,7 @@ export function WorkOrderPopup({
       id: crypto.randomUUID(),
       studio: '',
       location: '',
+      eng_name: '',
       date: '',
       session_info: '',
       from_time: '',
@@ -1313,7 +1324,7 @@ export function WorkOrderPopup({
     const originalStIds = new Set(originalStRowsRef.current.map(r => r.id))
     await Promise.all(stRows.map(r => {
       const payload = {
-        studio: r.studio, location: r.location || null, date: r.date, session_info: r.session_info,
+        studio: r.studio, location: r.location || null, eng_name: r.eng_name || null, date: r.date, session_info: r.session_info,
         from_time: r.from_time, to_time: r.to_time,
         total_hours: r.total_hours, rate: r.rate, rate_daily: r.rate_daily || null,
         row_rate_type: r.row_rate_type,
@@ -1929,6 +1940,9 @@ export function WorkOrderPopup({
           {/* STUDIO TIME TABLE — unified per-row Day/Hr toggle */}
           <div style={isMobile ? mCard : undefined}>
             <SectionHeader title="Studio Time" />
+            <datalist id="wo-eng-roster">
+              {engRoster.map(n => <option key={n} value={n} />)}
+            </datalist>
             <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
               {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock | Del */}
               <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: 'var(--surface2)', borderBottom: '1px solid rgba(255,255,255,0.07)', minWidth: isMobile ? 880 : undefined }}>
@@ -2134,7 +2148,15 @@ export function WorkOrderPopup({
                                 />
                               )}
                             </div>
-                            <div style={{ ...cellS, color: 'var(--text2)', fontSize: 10 }}>{engName}</div>
+                            <div style={{ ...cellS, padding: '2px 3px' }}>
+                              <input
+                                list="wo-eng-roster"
+                                value={r.eng_name || ''}
+                                onChange={e => updateStRow(r.id, { eng_name: e.target.value })}
+                                placeholder={engName || 'Engineer…'}
+                                style={{ ...inp, fontSize: 10, color: 'var(--accent)' }}
+                              />
+                            </div>
                             <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} style={inp} /></div>
                             <div style={cellS}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} style={inp} /></div>
                             <div style={{ ...cellS, color: 'var(--text2)', fontSize: 10 }}>{engHrs != null ? `${engHrs}h` : '—'}</div>
