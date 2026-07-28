@@ -378,7 +378,8 @@ export function WorkOrderPopup({
   const [seedBusy, setSeedBusy] = useState(false)
   const [seed, setSeed] = useState({
     studio: '', start: '', end: '', from: '', to: '',
-    rateType: 'day' as 'day' | 'hour', rate: '', engRate: '',
+    rateType: 'day' as 'day' | 'hour', rate: '',
+    engOn: false, engName: '', engRate: '',
   })
   const [confirmDeleteRowId, setConfirmDeleteRowId] = useState<string | null>(null)
   const [confirmClearEngId, setConfirmClearEngId] = useState<string | null>(null)
@@ -1429,8 +1430,14 @@ export function WorkOrderPopup({
         rateType: seed.rateType,
         rate: seed.rateType === 'hour' ? seed.rate : '',
         rateDaily: seed.rateType === 'day' ? seed.rate : '',
-        engRate: seed.engRate || undefined,
+        engRate: seed.engOn && seed.engRate ? seed.engRate : undefined,
       })
+      // If an engineer was named in the seed, set it on the WO (the engineer name
+      // is WO-level; the per-row eng rate is seeded above).
+      if (seed.engOn && seed.engName.trim()) {
+        setDirtyFields(prev => new Set(prev).add('engineer'))
+        setWo(w => w ? { ...w, engineer: seed.engName.trim() } : w)
+      }
       const { data: reloaded } = await supabase.from('studio_time_rows')
         .select('*').eq('work_order_id', woIdRef.current).order('date')
       setStRows((reloaded ?? []).map(normalizeStRow))
@@ -1657,11 +1664,11 @@ export function WorkOrderPopup({
                 </div>
                 <div>
                   <div style={{ ...metaLabel, marginBottom: 6 }}>Invoice #</div>
-                  <input value={wo.invoice_number} onChange={e => { setDirtyFields(prev => new Set(prev).add('invoice_number')); setWo(w => w ? { ...w, invoice_number: e.target.value } : w) }} placeholder="—" style={{ ...inp, fontFamily: 'DM Mono' }} />
+                  <input value={wo.invoice_number} onChange={e => { setDirtyFields(prev => new Set(prev).add('invoice_number')); setWo(w => w ? { ...w, invoice_number: e.target.value } : w) }} style={{ ...inp, fontFamily: 'DM Mono' }} />
                 </div>
                 <div>
                   <div style={{ ...metaLabel, marginBottom: 6 }}>PO #</div>
-                  <input value={wo.po_number} onChange={e => { setDirtyFields(prev => new Set(prev).add('po_number')); setWo(w => w ? { ...w, po_number: e.target.value } : w) }} placeholder="—" style={inp} />
+                  <input value={wo.po_number} onChange={e => { setDirtyFields(prev => new Set(prev).add('po_number')); setWo(w => w ? { ...w, po_number: e.target.value } : w) }} style={inp} />
                 </div>
                 <div>
                   <div style={{ ...metaLabel, marginBottom: 6 }}>Food Budget</div>
@@ -1669,7 +1676,7 @@ export function WorkOrderPopup({
                     <button type="button" onClick={() => { setDirtyFields(prev => new Set(prev).add('food_budget')); setWo(w => w ? { ...w, food_budget: !w.food_budget } : w) }} style={{ padding: '4px 14px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', border: `1px solid ${wo.food_budget ? 'var(--accent)' : 'rgba(255,255,255,0.12)'}`, background: wo.food_budget ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: wo.food_budget ? 'var(--accent)' : 'var(--text2)' }}>
                       {wo.food_budget ? 'Yes' : 'No'}
                     </button>
-                    {wo.food_budget && <input value={wo.food_amount} onChange={e => { setDirtyFields(prev => new Set(prev).add('food_amount')); setWo(w => w ? { ...w, food_amount: e.target.value } : w) }} placeholder="$0.00" style={{ ...inp, width: 90 }} />}
+                    {wo.food_budget && <input value={wo.food_amount} onChange={e => { setDirtyFields(prev => new Set(prev).add('food_amount')); setWo(w => w ? { ...w, food_amount: e.target.value } : w) }} style={{ ...inp, width: 90 }} />}
                   </div>
                 </div>
 
@@ -1705,43 +1712,64 @@ export function WorkOrderPopup({
               </button>
               {seedOpen && (
                 <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--border)' }}>
+                  {/* Note: plain <div> wrappers, NOT <label> — a <label> forwards
+                      clicks to its first control, which broke the Day/Hr toggle. */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>Studio</span>
-                      <input value={seed.studio} onChange={e => setSeed(s => ({ ...s, studio: e.target.value }))} placeholder="X" style={inp} />
-                    </label>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <input value={seed.studio} onChange={e => setSeed(s => ({ ...s, studio: e.target.value }))} style={inp} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>Start date</span>
                       <input type="date" value={seed.start} onChange={e => setSeed(s => ({ ...s, start: e.target.value }))} style={inp} />
-                    </label>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>End date</span>
                       <input type="date" value={seed.end} onChange={e => setSeed(s => ({ ...s, end: e.target.value }))} style={inp} />
-                    </label>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>From</span>
                       <TimeInput value={seed.from} onChange={v => setSeed(s => ({ ...s, from: v }))} style={inp} />
-                    </label>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>To</span>
                       <TimeInput value={seed.to} onChange={v => setSeed(s => ({ ...s, to: v }))} style={inp} />
-                    </label>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>Rate</span>
                       <div style={{ display: 'flex', gap: 4 }}>
                         <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                           {(['day', 'hour'] as const).map(rt => (
-                            <button key={rt} type="button" onClick={() => setSeed(s => ({ ...s, rateType: rt }))} style={{ padding: '2px 8px', fontSize: 10, fontFamily: 'Inter', fontWeight: 700, border: 'none', cursor: 'pointer', background: seed.rateType === rt ? 'var(--accent)' : 'transparent', color: seed.rateType === rt ? 'var(--bg)' : 'var(--text2)' }}>{rt === 'day' ? 'Day' : 'Hr'}</button>
+                            <button key={rt} type="button" onClick={() => setSeed(s => ({ ...s, rateType: rt }))} style={{ padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', fontWeight: 700, border: 'none', cursor: 'pointer', background: seed.rateType === rt ? 'var(--accent)' : 'transparent', color: seed.rateType === rt ? 'var(--bg)' : 'var(--text2)' }}>{rt === 'day' ? 'Day' : 'Hr'}</button>
                           ))}
                         </div>
-                        <input value={seed.rate} onChange={e => setSeed(s => ({ ...s, rate: e.target.value }))} placeholder="$" style={{ ...inp, width: 64 }} />
+                        <input value={seed.rate} onChange={e => setSeed(s => ({ ...s, rate: e.target.value }))} style={{ ...inp, width: 64 }} />
                       </div>
-                    </label>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <span style={metaLabel}>Eng rate</span>
-                      <input value={seed.engRate} onChange={e => setSeed(s => ({ ...s, engRate: e.target.value }))} placeholder="$" style={inp} />
-                    </label>
+                    </div>
                   </div>
+
+                  {/* Engineer — off by default; toggle on to add a name + rate */}
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={metaLabel}>Engineer</span>
+                      <button type="button" onClick={() => setSeed(s => ({ ...s, engOn: !s.engOn }))} style={{ padding: '4px 14px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', border: `1px solid ${seed.engOn ? 'var(--accent)' : 'var(--border)'}`, background: seed.engOn ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: seed.engOn ? 'var(--accent)' : 'var(--text2)' }}>
+                        {seed.engOn ? 'Yes' : 'No'}
+                      </button>
+                    </div>
+                    {seed.engOn && (
+                      <>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 140 }}>
+                          <span style={metaLabel}>Engineer name</span>
+                          <input value={seed.engName} onChange={e => setSeed(s => ({ ...s, engName: e.target.value }))} style={inp} />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, width: 90 }}>
+                          <span style={metaLabel}>Eng rate</span>
+                          <input value={seed.engRate} onChange={e => setSeed(s => ({ ...s, engRate: e.target.value }))} style={inp} />
+                        </div>
+                      </>
+                    )}
+                  </div>
+
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>Appends one row per day; dates already in the table are skipped.</span>
                     <button type="button" disabled={seedBusy || !seed.start} onClick={handleSeed} style={{ padding: '7px 16px', borderRadius: 6, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, border: 'none', cursor: seedBusy || !seed.start ? 'default' : 'pointer', background: seed.start ? 'var(--accent)' : 'rgba(255,255,255,0.08)', color: seed.start ? 'var(--bg)' : 'var(--text3)' }}>
@@ -1886,19 +1914,24 @@ export function WorkOrderPopup({
                             }}
                           >{r.admin_locked ? '🔒' : '✓'}</button>
                         </div>
-                        {/* Delete row */}
-                        <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto' }}>
-                          {!readOnly && (confirmDeleteRowId === r.id ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                              <span style={{ fontSize: 7, color: 'var(--warm)', fontFamily: 'Inter', whiteSpace: 'nowrap' }}>Del?</span>
-                              <div style={{ display: 'flex', gap: 3 }}>
-                                <button type="button" onClick={() => deleteStRow(r.id)} style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--warm)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 700 }}>Y</button>
-                                <button type="button" onClick={() => setConfirmDeleteRowId(null)} style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>N</button>
-                              </div>
-                            </div>
-                          ) : (
-                            <button type="button" onClick={() => setConfirmDeleteRowId(r.id)} style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
-                          ))}
+                        {/* Delete row — confirm pops open to the LEFT of the ×, next
+                            to the cursor (the × is at the far-right edge). */}
+                        <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto', position: 'relative' }}>
+                          {!readOnly && (
+                            <>
+                              <button type="button" onClick={() => setConfirmDeleteRowId(confirmDeleteRowId === r.id ? null : r.id)} style={{ fontSize: 13, fontFamily: 'Inter', color: confirmDeleteRowId === r.id ? 'var(--hot)' : 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
+                              {confirmDeleteRowId === r.id && (
+                                <>
+                                  <div onClick={() => setConfirmDeleteRowId(null)} style={{ position: 'fixed', inset: 0, zIndex: 190 }} />
+                                  <div style={{ position: 'absolute', right: '130%', top: '50%', transform: 'translateY(-50%)', zIndex: 191, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface2)', border: '1px solid var(--hot)', borderRadius: 6, padding: '5px 9px', whiteSpace: 'nowrap', boxShadow: '0 6px 20px rgba(0,0,0,0.45)' }}>
+                                    <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>Delete row?</span>
+                                    <button type="button" onClick={() => deleteStRow(r.id)} style={{ fontSize: 10, fontFamily: 'Inter', fontWeight: 700, color: 'var(--bg)', background: 'var(--hot)', border: 'none', borderRadius: 4, cursor: 'pointer', padding: '3px 10px' }}>Delete</button>
+                                    <button type="button" onClick={() => setConfirmDeleteRowId(null)} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', background: 'rgba(255,255,255,0.07)', border: 'none', borderRadius: 4, cursor: 'pointer', padding: '3px 10px' }}>Cancel</button>
+                                  </div>
+                                </>
+                              )}
+                            </>
+                          )}
                         </div>
                       </div>}
                       {!isEngOnly && pendingLockedEdits[r.id] && (
