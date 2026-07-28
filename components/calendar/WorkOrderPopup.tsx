@@ -31,6 +31,10 @@ function roomLabelForVenue(venue: string, rawStudio: string): string {
   return raw
 }
 
+const STUDIO_SHORT: Record<string, string> = {
+  Paramount: 'PRS', Ameraycan: 'ARS', Encore: 'ERS', Track: 'TRK',
+}
+
 // Session status bar (calendar status) + session type — session-level, shown in
 // the WO top. Order/labels mirror the old booking form.
 const SESSION_STATUSES: [string, string][] = [
@@ -102,6 +106,7 @@ type WO = {
 type StRow = {
   id: string
   studio: string
+  location: string
   date: string
   session_info: string
   from_time: string
@@ -246,7 +251,7 @@ function normalizeStRow(d: any): StRow {
     engCharge = !isNaN(erNum) && erNum > 0 ? parseFloat((engHours * erNum).toFixed(2)) : null
   }
   return {
-    id: d.id, studio: d.studio ?? '', date: d.date ?? '', session_info: d.session_info ?? '',
+    id: d.id, studio: d.studio ?? '', location: d.location ?? '', date: d.date ?? '', session_info: d.session_info ?? '',
     from_time: d.from_time ?? '', to_time: d.to_time ?? '',
     total_hours: totalHours,
     rate, rate_daily: rateDailyRaw, row_rate_type: rowRateType,
@@ -989,6 +994,7 @@ export function WorkOrderPopup({
     const newRow: StRow = {
       id: crypto.randomUUID(),
       studio: last?.studio || '',
+      location: last?.location || '',
       date: '',
       session_info: '',
       from_time: fromTime,
@@ -1022,6 +1028,7 @@ export function WorkOrderPopup({
     const newRow: StRow = {
       id: crypto.randomUUID(),
       studio: '',
+      location: '',
       date: '',
       session_info: '',
       from_time: '',
@@ -1111,14 +1118,15 @@ export function WorkOrderPopup({
     }
 
     // Build segments (new segment on room change OR non-consecutive date).
-    type Seg = { studio: string; start: string; end: string; from: string; to: string }
+    type Seg = { studio: string; location: string; start: string; end: string; from: string; to: string }
     const segs: Seg[] = []
     for (const r of dated) {
       const last = segs[segs.length - 1]
-      if (last && last.studio === r.studio && isNextDay(last.end, r.date)) {
+      const rLoc = r.location || venue
+      if (last && last.studio === r.studio && last.location === rLoc && isNextDay(last.end, r.date)) {
         last.end = r.date
       } else {
-        segs.push({ studio: r.studio, start: r.date, end: r.date, from: r.from_time, to: r.to_time })
+        segs.push({ studio: r.studio, location: rLoc, start: r.date, end: r.date, from: r.from_time, to: r.to_time })
       }
     }
 
@@ -1148,8 +1156,8 @@ export function WorkOrderPopup({
       wo_number: wo.wo_number || null,
     }
     const scheduleFor = (seg: Seg) => ({
-      location: venue || undefined,
-      studio: roomLabelForVenue(venue, seg.studio),
+      location: seg.location || venue || undefined,
+      studio: roomLabelForVenue(seg.location || venue, seg.studio),
       start_date: seg.start,
       end_date: seg.end,
       from_time: seg.from || null,
@@ -1165,7 +1173,7 @@ export function WorkOrderPopup({
     const kept = new Set<string>()
     for (let i = 1; i < segs.length; i++) {
       const seg = segs[i]
-      const room = roomLabelForVenue(venue, seg.studio)
+      const room = roomLabelForVenue(seg.location || venue, seg.studio)
       const match = (existing ?? []).find(b => b.studio === room && b.start_date === seg.start && !kept.has(b.id))
       const payload = { ...sessionFields, ...scheduleFor(seg), engineer_status: 'not_needed', assistant_status: 'not_needed' }
       if (match) {
@@ -1305,7 +1313,7 @@ export function WorkOrderPopup({
     const originalStIds = new Set(originalStRowsRef.current.map(r => r.id))
     await Promise.all(stRows.map(r => {
       const payload = {
-        studio: r.studio, date: r.date, session_info: r.session_info,
+        studio: r.studio, location: r.location || null, date: r.date, session_info: r.session_info,
         from_time: r.from_time, to_time: r.to_time,
         total_hours: r.total_hours, rate: r.rate, rate_daily: r.rate_daily || null,
         row_rate_type: r.row_rate_type,
@@ -1948,7 +1956,24 @@ export function WorkOrderPopup({
                     <div key={r.id}>
                       {!isEngOnly && <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: r.admin_locked ? 'rgba(20,184,166,0.04)' : undefined }}>
                         {/* Studio */}
-                        <div style={cellS}><input value={r.studio} onChange={e => updateStRow(r.id, { studio: e.target.value })} style={inp} placeholder="—" /></div>
+                        <div style={cellS}>
+                          <select
+                            value={`${r.location || booking.location || ''}|${toStudioLetter(r.studio)}`}
+                            onChange={e => {
+                              const [loc, room] = e.target.value.split('|')
+                              updateStRow(r.id, { location: loc === (booking.location || '') ? '' : loc, studio: room })
+                            }}
+                            style={{ ...inp, padding: '2px 2px', fontSize: 10 }}
+                          >
+                            {!STUDIO_LOCATIONS.some(l => l.name === (r.location || booking.location)) && (
+                              <option value={`${r.location || booking.location || ''}|${toStudioLetter(r.studio)}`}>{toStudioLetter(r.studio) || '—'}</option>
+                            )}
+                            {STUDIO_LOCATIONS.map(l => l.rooms.map(room => {
+                              const letter = toStudioLetter(room)
+                              return <option key={`${l.name}|${letter}`} value={`${l.name}|${letter}`}>{STUDIO_SHORT[l.name] ?? l.name} {letter}</option>
+                            }))}
+                          </select>
+                        </div>
                         {/* Date — transparent overlay opens native picker, auto-sorts on pick */}
                         <div key={r.id + '-date'} style={{ ...cellS, color: 'var(--text2)', fontSize: 10, position: 'relative', cursor: 'pointer' }}>
                           <span style={{ pointerEvents: 'none' }}>{shortDate(r.date)}</span>
