@@ -1145,10 +1145,11 @@ function CalendarPageInner() {
     await load()
   }
 
-  // WO-bearing sessions (Recording/Filming/Event) open the Work Order directly.
-  // Non-WO blocks (Tech/Tour/Open Hours/cancelled) still use the lightweight form.
+  // Sessions AND blocks that already have a work order open the WO directly (the
+  // WO renders a simplified block view for Tour/Tech/Open-Hours). Only a legacy
+  // non-WO block (no work_order_id) falls back to the lightweight form.
   function openEdit(b: Booking) {
-    if (bookingShouldHaveWorkOrder(b)) { setWoBooking(b); return }
+    if (bookingShouldHaveWorkOrder(b) || b.work_order_id) { setWoBooking(b); return }
     openEditForm(b)
   }
 

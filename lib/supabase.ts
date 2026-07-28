@@ -194,6 +194,7 @@ export interface Booking {
   srs_fee_amount: number | null
   anr_contact_id: string | null
   anr_admin_contact_id: string | null
+  work_order_id: string | null
   created_at: string
   updated_at: string | null
 }

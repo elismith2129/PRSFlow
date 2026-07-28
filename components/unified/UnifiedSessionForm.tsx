@@ -49,6 +49,7 @@ function fmt(d: Date): string {
 function synthBooking(f: FormData): Booking {
   return {
     id: '',
+    work_order_id: null,
     status: f.status as Booking['status'],
     session_type: f.session_type as Booking['session_type'],
     payment_type: f.payment_type,

@@ -28,6 +28,14 @@ function roomLabelForVenue(venue: string, rawStudio: string): string {
   return raw
 }
 
+// True when ISO date `b` is exactly the day after ISO date `a`.
+function isNextDay(a: string, b: string): boolean {
+  if (!a || !b) return false
+  const da = new Date(a + 'T12:00:00')
+  const db = new Date(b + 'T12:00:00')
+  return Math.round((db.getTime() - da.getTime()) / 86400000) === 1
+}
+
 // Session status bar (calendar status) + session type — session-level, shown in
 // the WO top. Order/labels mirror the old booking form.
 const SESSION_STATUSES: [string, string][] = [
@@ -385,6 +393,9 @@ export function WorkOrderPopup({
   })
   const [confirmDeleteRowId, setConfirmDeleteRowId] = useState<string | null>(null)
   const [confirmDeleteSession, setConfirmDeleteSession] = useState(false)
+  // Non-session block (Tour/Tech/Open Hours) simple date fields
+  const [blockStart, setBlockStart] = useState(booking.start_date || '')
+  const [blockEnd, setBlockEnd] = useState(booking.end_date || booking.start_date || '')
   const [confirmClearEngId, setConfirmClearEngId] = useState<string | null>(null)
   const [pendingLockedEdits, setPendingLockedEdits] = useState<Record<string, StRow>>({})
   const [dirtyFields, setDirtyFields] = useState<Set<string>>(new Set())
@@ -392,6 +403,10 @@ export function WorkOrderPopup({
   const [openNoteKey, setOpenNoteKey] = useState<string | null>(null)
   const [noteUploading, setNoteUploading] = useState(false)
   const woIdRef = useRef<string | null>(null)
+  // The WO's canonical primary booking (work_orders.booking_id). The card that
+  // opened the WO may be a secondary room-card; the projection must always write
+  // the primary here, not whichever card was clicked.
+  const primaryBookingIdRef = useRef<string>(booking.id)
   const [resolvedWoId, setResolvedWoId] = useState<string | null>(null)
   const [woMissing, setWoMissing] = useState<string | null>(null)
   const [siPopoverRowId, setSiPopoverRowId] = useState<string | null>(null)
@@ -573,12 +588,14 @@ export function WorkOrderPopup({
   }, [resolvedWoId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function initWO() {
-    const { data: rows } = await supabase
-      .from('work_orders')
-      .select('*')
-      .eq('booking_id', booking.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
+    // Resolve the WO. Prefer the card's work_order_id link (a secondary room-card
+    // has no work_orders row of its own, only the shared WO), else fall back to
+    // the booking_id lookup for the primary/legacy path.
+    const woLink = (booking as any).work_order_id as string | null | undefined
+    const { data: rows } = woLink
+      ? await supabase.from('work_orders').select('*').eq('id', woLink).limit(1)
+      : await supabase.from('work_orders').select('*').eq('booking_id', booking.id)
+          .order('created_at', { ascending: false }).limit(1)
     let existing = rows?.[0] ?? null
 
     // Adopt-first; if no WO exists yet, fall back to the single canonical creator
@@ -619,6 +636,7 @@ export function WorkOrderPopup({
 
     if (existing) {
       woIdRef.current = existing.id
+      primaryBookingIdRef.current = existing.booking_id ?? booking.id
       setResolvedWoId(existing.id)
       onStatusChange?.(existing.status ?? 'open')
       // Fix studios: if DB has empty array but booking has a studio, backfill from booking
@@ -1141,6 +1159,91 @@ export function WorkOrderPopup({
     }
   }
 
+  // ── Projection (Step 5b): one WO → one booking card per room-run ────────────
+  // Splits the WO's dated studio rows into segments of consecutive same-room days.
+  // Segment 0 updates the primary booking; extra segments become secondary cards
+  // (same work_order_id) so a session that moves rooms shows a card in each room.
+  async function projectBookingCards(woId: string) {
+    const primaryId = primaryBookingIdRef.current
+    const venue = booking.location || ''
+    const dated = stRows.filter(r => r.date && r.studio).sort((a, b) => a.date.localeCompare(b.date))
+
+    if (dated.length === 0) {
+      await supabase.from('bookings').update({ work_order_id: woId }).eq('id', primaryId)
+      return
+    }
+
+    // Build segments (new segment on room change OR non-consecutive date).
+    type Seg = { studio: string; start: string; end: string; from: string; to: string }
+    const segs: Seg[] = []
+    for (const r of dated) {
+      const last = segs[segs.length - 1]
+      if (last && last.studio === r.studio && isNextDay(last.end, r.date)) {
+        last.end = r.date
+      } else {
+        segs.push({ studio: r.studio, start: r.date, end: r.date, from: r.from_time, to: r.to_time })
+      }
+    }
+
+    // Session/client fields mirrored onto every card (schedule fields added per segment).
+    const sessionFields: Record<string, any> = {
+      status: wo.session_status || 'tentative',
+      session_type: wo.session_type || 'recording',
+      payment_type: wo.payment_status === 'Billing' ? 'billing' : 'COD',
+      cod_method: wo.cod_method || null,
+      client_id: wo.client_id,
+      client_name: wo.client || null,
+      artist: wo.artist || null,
+      label: wo.label || null,
+      ordered_by: wo.ordered_by || null,
+      phone: wo.phone || null,
+      email: wo.email || null,
+      producer: wo.producer || null,
+      engineer_name: wo.engineer || null,
+      assistant_name: wo.second_engineer || null,
+      is_srs: wo.is_srs,
+      invoice_num: wo.invoice_number || null,
+      po: wo.po_number || null,
+      notes: wo.session_notes || null,
+      anr_contact_id: wo.anr_contact_id,
+      anr_admin_contact_id: wo.anr_admin_contact_id,
+      work_order_id: woId,
+    }
+    const scheduleFor = (seg: Seg) => ({
+      location: venue || undefined,
+      studio: roomLabelForVenue(venue, seg.studio),
+      start_date: seg.start,
+      end_date: seg.end,
+      from_time: seg.from || null,
+      to_time: seg.to || null,
+    })
+
+    // Segment 0 → the primary booking card.
+    await supabase.from('bookings').update({ ...sessionFields, ...scheduleFor(segs[0]) }).eq('id', primaryId)
+
+    // Extra segments → secondary cards (match existing by room+start, else insert).
+    const { data: existing } = await supabase.from('bookings')
+      .select('id, studio, start_date').eq('work_order_id', woId).neq('id', primaryId)
+    const kept = new Set<string>()
+    for (let i = 1; i < segs.length; i++) {
+      const seg = segs[i]
+      const room = roomLabelForVenue(venue, seg.studio)
+      const match = (existing ?? []).find(b => b.studio === room && b.start_date === seg.start && !kept.has(b.id))
+      const payload = { ...sessionFields, ...scheduleFor(seg), engineer_status: 'not_needed', assistant_status: 'not_needed' }
+      if (match) {
+        await supabase.from('bookings').update(payload).eq('id', match.id)
+        kept.add(match.id)
+      } else {
+        const { data: ins } = await supabase.from('bookings').insert(payload).select('id').single()
+        if (ins) kept.add(ins.id)
+      }
+    }
+
+    // Delete secondary cards that no longer correspond to a segment.
+    const stale = (existing ?? []).filter(b => !kept.has(b.id))
+    if (stale.length > 0) await supabase.from('bookings').delete().in('id', stale.map(b => b.id))
+  }
+
   // ── Complete WO ───────────────────────────────────────────────────────────
 
   async function handleComplete() {
@@ -1157,10 +1260,42 @@ export function WorkOrderPopup({
     setCompleting(false)
   }
 
+  // ── Non-session block save (Tour / Tech / Open Hours) ──────────────────────
+  // A block is a simple calendar event with a title + times, no work-order body.
+  // We persist those fields onto the booking card and leave the (dormant) WO row.
+  const BLOCK_STATUSES = ['tour', 'tech', 'open_hours']
+  async function handleBlockSave() {
+    if (!wo) { onClose(); return }
+    setSaving(true)
+    // Keep the WO's own header fields roughly in sync (harmless if dormant).
+    if (woIdRef.current) {
+      await supabase.from('work_orders').update({
+        session_status: wo.session_status || null,
+        client: wo.client || null,
+        from_time: wo.from_time || null,
+        to_time: wo.to_time || null,
+        updated_at: new Date().toISOString(),
+      }).eq('id', woIdRef.current)
+    }
+    await supabase.from('bookings').update({
+      status: wo.session_status,
+      client_name: wo.client || null,
+      from_time: wo.from_time || null,
+      to_time: wo.to_time || null,
+      start_date: blockStart || booking.start_date,
+      end_date: blockEnd || blockStart || booking.end_date,
+    }).eq('id', primaryBookingIdRef.current)
+    setSaving(false)
+    onSaved?.()
+    onClose()
+  }
+
   // ── Save + close ──────────────────────────────────────────────────────────
 
   async function handleClose() {
     if (!wo || !woIdRef.current) { onClose(); return }
+    // Tour/Tech/Open-Hours → save as a simple block, skip the WO body + projection.
+    if (BLOCK_STATUSES.includes(wo.session_status)) { await handleBlockSave(); return }
     setSaving(true)
     const id = woIdRef.current
 
@@ -1223,7 +1358,7 @@ export function WorkOrderPopup({
       ...(wo.session_type ? { session_type: wo.session_type } : {}),
       anr_contact_id: wo.anr_contact_id,
       anr_admin_contact_id: wo.anr_admin_contact_id,
-    }).eq('id', booking.id)
+    }).eq('id', primaryBookingIdRef.current)
 
     // Save studio time rows — insert new rows, update existing
     const originalStIds = new Set(originalStRowsRef.current.map(r => r.id))
@@ -1271,31 +1406,10 @@ export function WorkOrderPopup({
         : supabase.from('payment_rows').insert(payload)
     }))
 
-    // ── Projection (Step 5a): sync schedule + studio + WO link to the booking
-    //    card, so the calendar reflects the WO. Studio is converted from the
-    //    table's bare letter to the calendar's full room label. This covers the
-    //    common single-room case; multi-room secondary cards come in Step 5b. ──
+    // ── Projection (Step 5b): one WO → one booking card per room-run ──
     if (booking.id) {
       try {
-        const datedRows = stRows.filter(r => r.date && r.studio)
-        if (datedRows.length > 0) {
-          const sorted = [...datedRows].sort((a, b) => a.date.localeCompare(b.date))
-          const earliest = sorted[0]
-          const latest = sorted[sorted.length - 1]
-          const venue = booking.location || ''
-          const room = roomLabelForVenue(venue, earliest.studio)
-          await supabase.from('bookings').update({
-            start_date: earliest.date,
-            end_date: latest.date,
-            from_time: earliest.from_time || null,
-            to_time: earliest.to_time || null,
-            studio: room || undefined,
-            work_order_id: id,
-          }).eq('id', booking.id)
-        } else {
-          // No dated rows yet — still link the card to its WO.
-          await supabase.from('bookings').update({ work_order_id: id }).eq('id', booking.id)
-        }
+        await projectBookingCards(id)
       } catch (err) {
         console.error('WO→booking projection failed:', err)
       }
@@ -1491,6 +1605,8 @@ export function WorkOrderPopup({
 
   const woId = woIdRef.current
   const isCompleted = wo.status === 'completed'
+  // Tour/Tech/Open-Hours → render the simplified "block" view (title + times only).
+  const isBlock = BLOCK_STATUSES.includes(wo.session_status)
   const accent = STUDIO_COLORS[(booking.location || '').toLowerCase()] || 'var(--accent)'
   // Runner-style section card (mobile only) — var(--surface) surface, var(--border) border,
   // radius 12, matching app/runner/[studio]/wo/[id]/page.tsx section cards.
@@ -1642,8 +1758,8 @@ export function WorkOrderPopup({
             )
           })()}
 
-          {/* BRANDING — hidden on mobile (letterhead; not part of the runner layout) */}
-          <div style={{ textAlign: 'center', paddingBottom: 20, borderBottom: '1px solid rgba(255,255,255,0.07)', display: isMobile ? 'none' : 'block' }}>
+          {/* BRANDING — hidden on mobile + for block events (letterhead) */}
+          <div style={{ textAlign: 'center', paddingBottom: 20, borderBottom: '1px solid rgba(255,255,255,0.07)', display: (isMobile || isBlock) ? 'none' : 'block' }}>
             <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15, color: '#f0f0f0', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Paramount Recording Group</div>
             <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--text2)', marginTop: 3 }}>Paramount · Encore · Ameraycan · Wilder · Track · Enterprise</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
@@ -1676,7 +1792,41 @@ export function WorkOrderPopup({
               })}
             </div>
 
+            {/* BLOCK view — Tour/Tech/Open-Hours: just a title + dates + times */}
+            {isBlock && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 560 }}>
+                <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>
+                  {SESSION_STATUSES.find(([v]) => v === wo.session_status)?.[1]} block — no work order or billing, just a calendar event.
+                </div>
+                <div>
+                  <div style={{ ...metaLabel, marginBottom: 6 }}>Title</div>
+                  <input value={wo.client} onChange={e => { setDirtyFields(prev => new Set(prev).add('client')); setWo(w => w ? { ...w, client: e.target.value } : w) }} placeholder="Name this block" style={inp} />
+                </div>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ ...metaLabel, marginBottom: 6 }}>Start date</div>
+                    <input type="date" value={blockStart} onChange={e => setBlockStart(e.target.value)} style={inp} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ ...metaLabel, marginBottom: 6 }}>End date</div>
+                    <input type="date" value={blockEnd} onChange={e => setBlockEnd(e.target.value)} style={inp} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ ...metaLabel, marginBottom: 6 }}>From</div>
+                    <TimeInput value={wo.from_time} onChange={v => { setDirtyFields(prev => new Set(prev).add('from_time')); setWo(w => w ? { ...w, from_time: v } : w) }} style={inp} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ ...metaLabel, marginBottom: 6 }}>To</div>
+                    <TimeInput value={wo.to_time} onChange={v => { setDirtyFields(prev => new Set(prev).add('to_time')); setWo(w => w ? { ...w, to_time: v } : w) }} style={inp} />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Two columns: left = session-level card, right = client panel */}
+            {!isBlock && (
             <div style={{ display: 'grid', gridTemplateColumns: '0.85fr 1fr', gap: 20, alignItems: 'stretch' }}>
 
               {/* Left — session type + billing, in a defined panel */}
@@ -1733,8 +1883,11 @@ export function WorkOrderPopup({
               {/* Right — client panel */}
               <ClientPanel value={clientValue} onChange={handleClientChange} readOnly={readOnly} />
             </div>
+            )}
           </div>
 
+          {/* Everything below the top is session-only — hidden for block events. */}
+          {!isBlock && (<>
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }} />
 
           {/* SEED — bulk-append studio-time rows for a date range (WO-SPEC §6) */}
@@ -2305,6 +2458,7 @@ export function WorkOrderPopup({
               {completing ? (isCompleted ? 'Re-opening…' : 'Completing…') : isCompleted ? 'Re-open WO' : 'Complete WO'}
             </button>
           )}
+          </>)}
 
         </div>{/* end body */}
 
