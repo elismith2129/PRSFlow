@@ -11,6 +11,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Standing Architecture Rules
 
+### The Work Order IS the booking (July 2026 rebuild — read docs/WO-SPEC.md first)
+The two-form model is gone. The calendar opens the **Work Order directly** for all sessions; a lead converts straight into a WO; the Studio Time table is the ONLY home for per-day schedule data (studios/dates/times/rates/engineers — never re-add them to the WO top). `bookings` rows are **projection cards** written by the WO on save (`projectBookingCards` — one card per consecutive-same-room run, all sharing `work_order_id`); never treat a booking row as user-editable source of truth. Tour/Tech/Open-Hours are simple "block" events inside the WO (title + times, no WO body). `BookingForm.tsx` only backs legacy non-WO blocks and is slated for deletion; do not build on it. `work_orders.booking_id` is still load-bearing (create idempotency + runner hub) — do not drop it without the planned migration.
+
+### Error handling + shared helpers (July 2026 audit — hard rules)
+- **Every important Supabase write must check its error via `dbResult(label, error)` from `lib/db.ts`** (red "NOT saved" toast + app_errors report). Silent `await supabase...` writes are the #1 audited defect class.
+- **Never define time/date/currency math locally.** Import `timeToMins`/`calcHours`/`calcCharge`/`dateRange`/`isNextDay`/`toStudioLetter` from `lib/time.ts` and formatters from `lib/format.ts`. (The old per-file copies drifted and produced phantom billable hours.)
+- Errors surface in **Admin → Errors** (app_errors table); `lib/errlog.ts` `logAppError()` for manual reporting.
+- **`noImplicitAny` is ON** — keep it passing; full `strict` is the staged goal.
+
 ### Real-time data (hard requirement)
 Every page and component that fetches from Supabase MUST use a realtime subscription to keep data live. One-time on-mount fetches with no corresponding supabase.channel() subscription are not acceptable — the app is used as a PWA where the user cannot refresh.
 
@@ -43,7 +52,7 @@ To (re)create the database, run `schema.sql` in the Supabase SQL editor, then th
 
 ## Architecture
 
-PRSFlo is a single-tenant studio operations app for Paramount Recording Studios. It is a Next.js 14 App Router project with **client-rendered pages that talk directly to Supabase from the browser** using the anon key — **but as of July 2, 2026 access is enforced by RLS** (keyed on `user_profiles.role` via `auth.uid()`), so the anon key no longer has open table access. A small set of **service-role API routes** handle privileged/public-write server work: `/api/register`, `/api/inquiry`, `/api/auth/pin`, `/api/ocr-receipt`, and the cron endpoints. Most pages remain `'use client'` and query `supabase` directly (now within their RLS grants).
+PRSFlo is a single-tenant studio operations app for Paramount Recording Studios. It is a Next.js 16 App Router project with **client-rendered pages that talk directly to Supabase from the browser** using the anon key — **but as of July 2, 2026 access is enforced by RLS** (keyed on `user_profiles.role` via `auth.uid()`), so the anon key no longer has open table access. A small set of **service-role API routes** handle privileged/public-write server work: `/api/register`, `/api/inquiry`, `/api/auth/pin`, `/api/ocr-receipt`, and the cron endpoints. Most pages remain `'use client'` and query `supabase` directly (now within their RLS grants).
 
 ### Auth (June 25, 2026)
 

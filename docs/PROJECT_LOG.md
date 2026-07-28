@@ -2062,3 +2062,34 @@ Kicked off the big **Booking = WO** rebuild — collapsing the two-form (Booking
 - **Step 10** — verify every projection consumer (calendar, runner hub, LocationStrip, daily ops, dashboard grid) with one-WO-many-cards.
 
 All Steps 1–5a are on `main` and pushed (HEAD `c540614`). `tsc --noEmit` clean.
+
+---
+
+### July 28, 2026 — WO rebuild 5b/6/7 + blocks, architecture audit, Phase 0 safety net, Phase 1 data integrity, Admin Errors tab
+
+Massive session. The WO rebuild became feature-complete, then a full architecture audit was run and its two top phases shipped the same day.
+
+**WO rebuild (continuing docs/WO-SPEC.md):**
+- **Step 6 — calendar opens the WO directly.** Clicking any WO-bearing session, double-clicking an empty day (creates session+WO), and the lead Start Booking flow all land in the Work Order — no BookingForm intermediary. Non-WO legacy blocks fall back to the form. WO gained a header **Delete session** button (confirm → removes WO + line items + card(s)). `openNew` → `createBookingAndOpenWO()`; `buildBookingPayload()` extracted from `handleSave`.
+- **Step 5b — multi-room card splitting.** `projectBookingCards()` in WorkOrderPopup: dated studio rows → segments (new segment on room change or date gap) → one `bookings` card per segment (primary updated in place; secondaries upserted/deleted, all sharing `work_order_id`). WO resolution now prefers the card's `work_order_id` link (secondary cards have no `booking_id` row of their own); `primaryBookingIdRef` keeps the projection writing the canonical primary regardless of which card opened the WO.
+- **Non-session blocks (Tour/Tech/Open Hours).** Picking one of those statuses in the WO collapses it to a simple event editor — Title + start/end dates + from/to times — hiding all WO machinery (`isBlock`, `handleBlockSave`). Blocks with a `work_order_id` reopen into the same simple view. Fixes shipped en route: session status/type fall back to the booking on open (older WOs opened blank and **saving a blank status whitened the card / appeared not to save**); status writes now guarded (never write empty). Seed panel fixes: Day/Hr toggle (label-wrapper click bug), engineer Yes/No toggle + name + rate, delete-row confirm popover opens beside the ×, placeholder shadow-text removed.
+- **Step 7 — WO number on cards.** `bookings.wo_number` denormalized (migration `20260728120000_bookings_wo_number.sql`, backfilled); written by the projection + `createWorkOrderForBooking`; rendered bottom-left on calendar chips.
+- **Steps 8/9 deliberately deferred:** BookingForm still backs legacy blocks; `work_orders.booking_id` is load-bearing (WO create idempotency, runner hub resolution) — retiring it is its own migration project.
+
+**Architecture audit — `docs/AUDIT-2026-07.md`.** Verdict: no rewrite; sound foundation (security, realtime discipline 24/24, lean deps, docs) with risk concentrated in (1) missing safety net, (2) monolith files + duplicated billing math. Hard numbers in the doc. Note: app is on **Next 16.2.6** (docs said 14).
+
+**Phase 0 — safety net (all shipped):**
+- **Local dev fixed.** Root cause: `/api/auth/pin` requires `SUPABASE_SERVICE_ROLE_KEY`, absent from `.env.local` — server booted, login always failed. Documented in `.env.local.example`; route now returns a clear 503 `server_config` instead of crashing.
+- **Error boundaries:** `app/error.tsx` + `app/global-error.tsx` (styled recovery screens, auto-report).
+- **First-party error monitoring:** `app_errors` table (migration `20260728130000_app_errors.sql`; RLS: service-role insert, owner/manager select) ← `/api/log-error` (rate-limited 30/min/IP) ← `lib/errlog.ts` (`logAppError`, sendBeacon, de-duped) ← `components/ErrorReporter.tsx` (window error + unhandledrejection listeners, mounted in root layout).
+- **Visible save failures:** `components/ui/Toaster.tsx` (global toast via CustomEvent, mounted in root layout) + `lib/db.ts` `dbResult(label, error)` — checks a write's error, shows a red "NOT saved" toast, logs to app_errors. Adopted across the live CRM's critical writes (log contact, keep hot/warm, DNB, create lead, status changes, inline saves, tags).
+
+**Phase 1 — data integrity (shipped):**
+- **`lib/time.ts` + `lib/format.ts`** — canonical home for timeToMins/calcHours/calcCharge/dateRange/isNextDay/toStudioLetter and formatCurrency/stripCurrency/fmtTimestamp/fmtClock. All duplicate definitions deleted (WorkOrderPopup, runner WO, seedStudioTimeRows, calendar, dashboard, FlagsLog, DailyOpsLog, DailyOpsModal — the last four via alias `const fmtTime = fmtTimestamp/fmtClock`). **Behavioral fix:** canonical `calcHours` adopted the runner's NaN guard — the admin copies could produce phantom billable hours from unparseable time strings. Calendar keeps a deliberate local `timeToMins` (sort key needs 0, not NaN).
+- **tsconfig:** `target` es5→es2020; **`noImplicitAny: true`** permanently (10 violations fixed). Full `strict` remains staged.
+- **`.maybeSingle()` audit:** remaining uses are safe post-UNIQUE constraints; unguarded ones only in dead/dying files.
+- **Deferred:** atomic Postgres RPCs for WO create/save — next-session work, needs real testing.
+
+**Admin Errors tab + dead code:** `components/admin/ErrorsSection.tsx` wired as Admin sidebar "Errors" (owner/manager only, realtime via `20260728140000_app_errors_realtime.sql`, expandable stacks, load-more). **`components/unified/UnifiedSessionForm.tsx` deleted** (1,066 dead lines).
+
+**Migrations this session (all run by Eli):** `20260728120000_bookings_wo_number.sql`, `20260728130000_app_errors.sql`, `20260728140000_app_errors_realtime.sql`. Env: Eli added `SUPABASE_SERVICE_ROLE_KEY` to `.env.local`.
