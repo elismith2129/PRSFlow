@@ -625,7 +625,19 @@ export function WorkOrderPopup({
       if (rawStudios.length === 0 && studios.length > 0) {
         await supabase.from('work_orders').update({ studios }).eq('id', existing.id)
       }
-      const seededExisting = applyLiveForm({ ...normalizeWO(existing), studios })
+      // Fall back the session-level fields to the booking when the WO's own are
+      // empty (older WOs created before these columns existed). This runs even
+      // when there's no liveForm (calendar-opened), so the status bar / session
+      // type / client always reflect the real session instead of opening blank.
+      const base: WO = { ...normalizeWO(existing), studios }
+      base.session_status = base.session_status || (booking as any).status || 'tentative'
+      base.session_type = base.session_type || (booking as any).session_type || 'recording'
+      base.client_id = base.client_id ?? ((booking as any).client_id ?? null)
+      base.is_srs = base.is_srs || !!(booking as any).is_srs
+      base.cod_method = base.cod_method || (booking as any).cod_method || ''
+      base.anr_contact_id = base.anr_contact_id ?? ((booking as any).anr_contact_id || null)
+      base.anr_admin_contact_id = base.anr_admin_contact_id ?? ((booking as any).anr_admin_contact_id || null)
+      const seededExisting = applyLiveForm(base)
       adminInitialSigRef.current = seededExisting.signature_data ?? ''
       setWo(seededExisting)
       const [{ data: st }, { data: eq }, { data: rent }, { data: pay }, { data: eqNotes }] = await Promise.all([
@@ -1202,8 +1214,10 @@ export function WorkOrderPopup({
       payment_type: wo.payment_status === 'Billing' ? 'billing' : 'COD',
       cod_method: wo.cod_method || null,
       is_srs: wo.is_srs,
-      status: wo.session_status || undefined,
-      session_type: wo.session_type || undefined,
+      // Only write status/session_type when they hold a real value — never blank
+      // the calendar card (an empty status renders as no color / "open hours").
+      ...(wo.session_status ? { status: wo.session_status } : {}),
+      ...(wo.session_type ? { session_type: wo.session_type } : {}),
       anr_contact_id: wo.anr_contact_id,
       anr_admin_contact_id: wo.anr_admin_contact_id,
     }).eq('id', booking.id)
@@ -1752,17 +1766,17 @@ export function WorkOrderPopup({
                   <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>Engineer</span>
-                      <button type="button" onClick={() => setSeed(s => ({ ...s, engOn: !s.engOn }))} style={{ padding: '4px 14px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', border: `1px solid ${seed.engOn ? 'var(--accent)' : 'var(--border)'}`, background: seed.engOn ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: seed.engOn ? 'var(--accent)' : 'var(--text2)' }}>
+                      <button type="button" onClick={() => setSeed(s => ({ ...s, engOn: !s.engOn }))} style={{ padding: '4px 18px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', border: `1px solid ${seed.engOn ? 'var(--accent)' : 'var(--border)'}`, background: seed.engOn ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: seed.engOn ? 'var(--accent)' : 'var(--text2)' }}>
                         {seed.engOn ? 'Yes' : 'No'}
                       </button>
                     </div>
                     {seed.engOn && (
                       <>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 140 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: '0 1 220px' }}>
                           <span style={metaLabel}>Engineer name</span>
                           <input value={seed.engName} onChange={e => setSeed(s => ({ ...s, engName: e.target.value }))} style={inp} />
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, width: 90 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, width: 80 }}>
                           <span style={metaLabel}>Eng rate</span>
                           <input value={seed.engRate} onChange={e => setSeed(s => ({ ...s, engRate: e.target.value }))} style={inp} />
                         </div>
