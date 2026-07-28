@@ -195,6 +195,7 @@ export interface Booking {
   anr_contact_id: string | null
   anr_admin_contact_id: string | null
   work_order_id: string | null
+  wo_number: string | null
   created_at: string
   updated_at: string | null
 }

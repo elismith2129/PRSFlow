@@ -78,7 +78,7 @@ export async function createWorkOrderForBooking(booking: Booking): Promise<{ wor
   const { data: created, error: woError } = await supabase
     .from('work_orders')
     .upsert(woPayload, { onConflict: 'booking_id', ignoreDuplicates: true })
-    .select('id')
+    .select('id, wo_number')
     .maybeSingle()
   if (woError) {
     throw new Error(['work_orders create failed', woError.message, woError.details].filter(Boolean).join(' — '))
@@ -88,7 +88,7 @@ export async function createWorkOrderForBooking(booking: Booking): Promise<{ wor
   if (!created?.id) {
     const { data: existing, error: lookupError } = await supabase
       .from('work_orders')
-      .select('id')
+      .select('id, wo_number')
       .eq('booking_id', booking.id)
       .order('created_at', { ascending: true })
       .limit(1)
@@ -99,14 +99,14 @@ export async function createWorkOrderForBooking(booking: Booking): Promise<{ wor
     if (!existing?.id) {
       throw new Error('work_orders create returned no row and none exists for booking ' + booking.id)
     }
-    // Link the booking card to its WO (new relationship direction).
-    await supabase.from('bookings').update({ work_order_id: existing.id }).eq('id', booking.id)
+    // Link the booking card to its WO (new relationship direction) + WO number.
+    await supabase.from('bookings').update({ work_order_id: existing.id, wo_number: existing.wo_number ?? null }).eq('id', booking.id)
     return { workOrderId: existing.id }
   }
 
   const workOrderId = created.id
-  // Link the booking card to its WO (new relationship direction).
-  await supabase.from('bookings').update({ work_order_id: workOrderId }).eq('id', booking.id)
+  // Link the booking card to its WO (new relationship direction) + WO number.
+  await supabase.from('bookings').update({ work_order_id: workOrderId, wo_number: created.wo_number ?? null }).eq('id', booking.id)
   const dates = dateRange(booking.start_date, booking.end_date)
   const isDay = booking.rate_type === 'day' || (!booking.rate && !!booking.rate_daily)
 

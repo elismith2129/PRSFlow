@@ -1208,6 +1208,7 @@ export function WorkOrderPopup({
       anr_contact_id: wo.anr_contact_id,
       anr_admin_contact_id: wo.anr_admin_contact_id,
       work_order_id: woId,
+      wo_number: wo.wo_number || null,
     }
     const scheduleFor = (seg: Seg) => ({
       location: venue || undefined,
