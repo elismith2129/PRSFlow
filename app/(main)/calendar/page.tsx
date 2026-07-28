@@ -1121,12 +1121,28 @@ function CalendarPageInner() {
     openNew(location, studio, date)
   }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Empty-day / dashboard "new booking": create the session + WO and open the WO
+  // directly (Step 6). No BookingForm intermediary.
   function openNew(location?: string, studio?: string, date?: string) {
-    const initial = emptyForm({ location, studio, start_date: date, end_date: date })
-    setEditBooking(null)
-    setFormInitial(initial)
-    setFormOpen(true)
-    try { sessionStorage.setItem('cal_form_draft', JSON.stringify({ editBooking: null, formData: initial })) } catch {}
+    createBookingAndOpenWO({ location, studio, start_date: date, end_date: date })
+  }
+
+  // Delete a session opened as a WO — removes the WO + its line items, then the
+  // booking card(s). Used from the WO's Delete button (e.g. a mistaken empty-day).
+  async function deleteSessionFromWO(b: Booking) {
+    const { data: wos } = await supabase.from('work_orders').select('id').eq('booking_id', b.id)
+    for (const w of (wos ?? [])) {
+      await supabase.from('studio_time_rows').delete().eq('work_order_id', w.id)
+      await supabase.from('equipment_condition_rows').delete().eq('work_order_id', w.id)
+      await supabase.from('equipment_condition_notes').delete().eq('work_order_id', w.id)
+      await supabase.from('rental_rows').delete().eq('work_order_id', w.id)
+      await supabase.from('payment_rows').delete().eq('work_order_id', w.id)
+      await supabase.from('work_orders').delete().eq('id', w.id)
+    }
+    await supabase.from('srs_log').delete().eq('booking_id', b.id)
+    await supabase.from('bookings').delete().eq('id', b.id)
+    setWoBooking(null)
+    await load()
   }
 
   // WO-bearing sessions (Recording/Filming/Event) open the Work Order directly.
@@ -1791,6 +1807,7 @@ function CalendarPageInner() {
           booking={woBooking}
           onClose={() => { setWoBooking(null); loadRef.current(); setReloadKey(k => k + 1) }}
           onSaved={() => { loadRef.current(); setReloadKey(k => k + 1) }}
+          onDelete={() => deleteSessionFromWO(woBooking)}
         />
       )}
     </div>

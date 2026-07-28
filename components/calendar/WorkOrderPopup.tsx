@@ -342,6 +342,7 @@ export function WorkOrderPopup({
   onStatusChange,
   onFormSync,
   onSaved,
+  onDelete,
   inline,
 }: {
   booking: Booking
@@ -350,6 +351,7 @@ export function WorkOrderPopup({
   onStatusChange?: (status: string) => void
   onFormSync?: (updates: Partial<WOFormSync>) => void
   onSaved?: () => void
+  onDelete?: () => void
   inline?: boolean
 }) {
   // Mobile gets a full-screen sheet; never applies when rendered inline (USF embed).
@@ -382,6 +384,7 @@ export function WorkOrderPopup({
     engOn: false, engName: '', engRate: '',
   })
   const [confirmDeleteRowId, setConfirmDeleteRowId] = useState<string | null>(null)
+  const [confirmDeleteSession, setConfirmDeleteSession] = useState(false)
   const [confirmClearEngId, setConfirmClearEngId] = useState<string | null>(null)
   const [pendingLockedEdits, setPendingLockedEdits] = useState<Record<string, StRow>>({})
   const [dirtyFields, setDirtyFields] = useState<Set<string>>(new Set())
@@ -1558,6 +1561,23 @@ export function WorkOrderPopup({
                     Print
                   </button>
                 </>
+              )}
+              {!readOnly && onDelete && (
+                confirmDeleteSession ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 4 }}>
+                    <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)' }}>Delete session?</span>
+                    <button onClick={() => { setConfirmDeleteSession(false); onDelete() }} style={{ padding: '5px 12px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'var(--hot)', border: 'none', color: 'var(--bg)' }}>Delete</button>
+                    <button onClick={() => setConfirmDeleteSession(false)} style={{ padding: '5px 12px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text2)' }}>Keep</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDeleteSession(true)}
+                    disabled={saving}
+                    style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(240,78,122,0.35)', color: 'var(--hot)' }}
+                  >
+                    Delete
+                  </button>
+                )
               )}
               {!readOnly && (
               <>
