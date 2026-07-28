@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
 import { STUDIO_LOCATIONS, parseLocation } from '@/lib/studios'
 import { BookingForm, type FormData, bookingToForm, emptyForm } from '@/components/calendar/BookingForm'
+import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 import { createWorkOrderForBooking, bookingShouldHaveWorkOrder } from '@/lib/createWorkOrder'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
@@ -814,6 +815,8 @@ function CalendarPageInner() {
   const [formOpen, setFormOpen] = useState(false)
   const [editBooking, setEditBooking] = useState<Booking | null>(null)
   const [formInitial, setFormInitial] = useState<FormData>(() => emptyForm())
+  // Step 6: the calendar opens the Work Order directly for WO-bearing sessions.
+  const [woBooking, setWoBooking] = useState<Booking | null>(null)
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
   const [collapsedRooms, setCollapsedRooms] = useState<Set<string>>(() => new Set())
   const [locFilter, setLocFilter] = useState('All')
@@ -1100,9 +1103,8 @@ function CalendarPageInner() {
         if (l.artist_name) initial.artist = l.artist_name
         if (l.notes) initial.notes = l.notes
       }
-      setEditBooking(null)
-      setFormInitial(initial)
-      setFormOpen(true)
+      // Create the session + WO from the lead prefill, then open the WO directly.
+      createBookingAndOpenWO(initial)
     })
   }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1127,7 +1129,14 @@ function CalendarPageInner() {
     try { sessionStorage.setItem('cal_form_draft', JSON.stringify({ editBooking: null, formData: initial })) } catch {}
   }
 
+  // WO-bearing sessions (Recording/Filming/Event) open the Work Order directly.
+  // Non-WO blocks (Tech/Tour/Open Hours/cancelled) still use the lightweight form.
   function openEdit(b: Booking) {
+    if (bookingShouldHaveWorkOrder(b)) { setWoBooking(b); return }
+    openEditForm(b)
+  }
+
+  function openEditForm(b: Booking) {
     const initial = bookingToForm(b)
     setEditBooking(b)
     setFormInitial(initial)
@@ -1135,8 +1144,8 @@ function CalendarPageInner() {
     try { sessionStorage.setItem('cal_form_draft', JSON.stringify({ editBooking: b, formData: initial })) } catch {}
   }
 
-  async function handleSave(data: FormData) {
-    const payload = {
+  function buildBookingPayload(data: FormData) {
+    return {
       status: data.status,
       session_type: data.session_type,
       payment_type: data.payment_type,
@@ -1174,6 +1183,33 @@ function CalendarPageInner() {
       anr_contact_id: data.anr_contact_id || null,
       anr_admin_contact_id: data.anr_admin_contact_id || null,
     }
+  }
+
+  // Step 6: create a booking from prefilled form data (lead Start Booking, etc.),
+  // create its WO, then open the WO directly — no BookingForm in the middle.
+  async function createBookingAndOpenWO(seed: Partial<FormData>) {
+    const data = emptyForm(seed)
+    const payload = buildBookingPayload(data)
+    const { data: inserted, error } = await supabase.from('bookings').insert(payload).select('*').single()
+    if (error || !inserted) {
+      console.error('[CalendarPage] createBookingAndOpenWO insert error:', error)
+      setWoWarning(`Could not create the session${error?.message ? ': ' + error.message : ''}.`)
+      return
+    }
+    if (data.is_srs) await supabase.from('srs_log').insert({ booking_id: inserted.id, paid: false })
+    const newBooking = { ...payload, id: inserted.id } as Booking
+    if (bookingShouldHaveWorkOrder(newBooking)) {
+      try { await createWorkOrderForBooking(newBooking) } catch (woErr: any) {
+        console.error('[CalendarPage] WO creation failed for booking', inserted.id, woErr)
+        setWoWarning(`Session saved, but its work order could not be created${woErr?.message ? ': ' + woErr.message : ''}.`)
+      }
+    }
+    await load()
+    setWoBooking(inserted as Booking)
+  }
+
+  async function handleSave(data: FormData) {
+    const payload = buildBookingPayload(data)
     const throwIfError = (error: any) => {
       if (!error) return
       console.error('[CalendarPage] booking save error:', error)
@@ -1745,6 +1781,15 @@ function CalendarPageInner() {
           onDraftChange={(data) => {
             try { sessionStorage.setItem('cal_form_draft', JSON.stringify({ editBooking, formData: data })) } catch {}
           }}
+          onSaved={() => { loadRef.current(); setReloadKey(k => k + 1) }}
+        />
+      )}
+
+      {/* Work Order — opened directly from the calendar (Step 6) */}
+      {woBooking && (
+        <WorkOrderPopup
+          booking={woBooking}
+          onClose={() => { setWoBooking(null); loadRef.current(); setReloadKey(k => k + 1) }}
           onSaved={() => { loadRef.current(); setReloadKey(k => k + 1) }}
         />
       )}

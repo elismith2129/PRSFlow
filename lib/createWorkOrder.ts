@@ -62,6 +62,15 @@ export async function createWorkOrderForBooking(booking: Booking): Promise<{ wor
     email: booking.email ?? '',
     session_notes: booking.notes ?? '',
     status: 'open',
+    // Session-level fields (added July 21, 2026) so a freshly-created WO opens
+    // populated — status bar, session type, client link, SRS, COD, A&R.
+    session_status: booking.status ?? 'tentative',
+    session_type: booking.session_type ?? 'recording',
+    client_id: booking.client_id || null,
+    is_srs: booking.is_srs ?? false,
+    cod_method: booking.cod_method || null,
+    anr_contact_id: booking.anr_contact_id || null,
+    anr_admin_contact_id: booking.anr_admin_contact_id || null,
   }
 
   // Idempotent create: ON CONFLICT (booking_id) DO NOTHING. A fresh insert returns
