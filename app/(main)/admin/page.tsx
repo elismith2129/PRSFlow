@@ -5,6 +5,7 @@ import type { Engineer, EngineerRole, Booking } from '@/lib/supabase'
 import { DailyOpsLogSection } from '@/components/admin/DailyOpsLogSection'
 import { FlagsLogSection } from '@/components/admin/FlagsLogSection'
 import { MicInventorySection } from '@/components/admin/MicInventorySection'
+import { ErrorsSection } from '@/components/admin/ErrorsSection'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
@@ -162,7 +163,7 @@ function EngModal({
   )
 }
 
-type AdminSection = 'engineers' | 'srs_log' | 'daily_ops_log' | 'flags_log' | 'mic_inventory'
+type AdminSection = 'engineers' | 'srs_log' | 'daily_ops_log' | 'flags_log' | 'mic_inventory' | 'errors'
 
 const ADMIN_NAV: { key: AdminSection; label: string }[] = [
   { key: 'engineers', label: 'Engineers' },
@@ -170,6 +171,7 @@ const ADMIN_NAV: { key: AdminSection; label: string }[] = [
   { key: 'daily_ops_log', label: 'Ops Log' },
   { key: 'flags_log', label: 'Flags' },
   { key: 'mic_inventory', label: 'Mic Inventory' },
+  { key: 'errors', label: 'Errors' },
 ]
 
 type SrsEntry = {
@@ -191,10 +193,13 @@ export default function AdminPage() {
   const [section, setSection] = useState<AdminSection>('engineers')
   const { profile } = useUserProfile()
   const isTech = profile?.role === 'tech'
+  // Errors tab: owner/manager only (matches app_errors RLS).
+  const canSeeErrors = profile?.role === 'owner' || profile?.role === 'manager'
   // Tech sees only Ops Log / Flags / Mic Inventory (no Engineers / SRS Log).
-  const visibleNav = isTech
+  const visibleNav = (isTech
     ? ADMIN_NAV.filter(n => n.key === 'daily_ops_log' || n.key === 'flags_log' || n.key === 'mic_inventory')
     : ADMIN_NAV
+  ).filter(n => n.key !== 'errors' || canSeeErrors)
   // Open a specific sidebar tab when deep-linked via ?section= (e.g. the dashboard
   // Flags panel's "View all flags →" → ?section=flags_log).
   useEffect(() => {
@@ -739,6 +744,7 @@ export default function AdminPage() {
       {section === 'daily_ops_log' && <DailyOpsLogSection />}
       {section === 'flags_log' && <FlagsLogSection />}
       {section === 'mic_inventory' && <MicInventorySection />}
+      {section === 'errors' && canSeeErrors && <ErrorsSection />}
 
       {/* Modal */}
       {modalOpen && (
