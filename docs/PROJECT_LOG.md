@@ -2236,3 +2236,9 @@ Two related changes, shipped together because the second superseded part of the 
 - **Bug found while wiring this up:** `buildRowPayload` only wrote `eng_role` inside its `if (rate or name)` block, so Part A's role choice was **silently dropped whenever nobody was named** — exactly the "engineer, TBD" case. The role is now written whenever one was asked for, independent of name/rate.
 - The old `[data-eng-needed]` light-mode rule became `[data-staff-mode-on]`; "No Staff" stays neutral when active (it's the absence of a choice).
 
+**SOP → Version History tab (same session).** `public/sop.html` gained a fifth sidebar section: the staff-facing release log. Driven by a `VERSIONS` array (newest first) rendered by `buildVersions()` into the existing step accordion — version number in the step-num slot, date as the tag, plain-English change list, and a "What this means for you" box per release. Seeded with v1.0.0 → v1.2.0. A why-grid up top explains the numbering (middle = new things, last = fixes, first = rare and big).
+
+**Versioning scheme (Eli's call — deliberately NOT tied to the phase plan):** middle number = visible new features; last number = fixes only; first number reserved for a change big enough that staff must relearn something. What was live before this session is v1.0.0.
+
+**Process note for future sessions: add a `VERSIONS` entry at the top of that array on every release, written for staff, not developers.** Recorded in CLAUDE.md → What's Built → SOP tab.
+

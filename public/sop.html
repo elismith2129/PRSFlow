@@ -50,6 +50,9 @@ body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text1);min
 .step.open .step-chevron{transform:rotate(180deg);}
 .step-body{max-height:0;overflow:hidden;transition:max-height .3s ease;}
 .step.open .step-body{max-height:600px;}
+/* Release notes run longer than a training step — a big update can list eight
+   or more changes, and 600px silently clipped the tail off. */
+#version-list .step.open .step-body{max-height:1600px;}
 .step-inner{padding:0 15px 15px 49px;}
 .step-desc{font-size:11px;color:var(--text2);line-height:1.8;margin-bottom:10px;}
 .tip-box{background:var(--surface2);border-left:2px solid var(--accent);padding:9px 12px;margin-bottom:10px;border-radius:0 4px 4px 0;}
@@ -120,6 +123,7 @@ body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text1);min
   <button class="side-btn" onclick="switchTab('clients',this)"><span class="side-ico">👤</span>Clients</button>
   <button class="side-btn" onclick="switchTab('tasks',this)"><span class="side-ico">📋</span>Tasks</button>
   <button class="side-btn" onclick="switchTab('flags',this)"><span class="side-ico">🚩</span>Flags</button>
+  <button class="side-btn" onclick="switchTab('versions',this)"><span class="side-ico">🧾</span>Version History</button>
 </div>
 <div class="content">
 <div class="wrap">
@@ -575,6 +579,24 @@ body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text1);min
   </div>
 </div>
 
+<div class="page" id="page-versions">
+  <div class="hero">
+    <div class="hero-label">Training Guide · Version History</div>
+    <div class="hero-title">What changed, and<br><em>what it means for you.</em></div>
+    <div class="hero-body">Every update to PRSFlo is listed here, newest first. Open one to see what changed and how it affects your day. If something looks different from how you were trained, check here first — it probably moved on purpose.</div>
+  </div>
+
+  <div class="why-grid">
+    <div class="why-card"><div class="why-icon">🔢</div><div class="why-title">Middle number</div><div class="why-body">New things you can see and use. v1.1 → v1.2 means something was added — worth reading.</div></div>
+    <div class="why-card"><div class="why-icon">🔧</div><div class="why-title">Last number</div><div class="why-body">A fix. v1.2.0 → v1.2.1 means something that was broken now works. Nothing new to learn.</div></div>
+    <div class="why-card"><div class="why-icon">🚀</div><div class="why-title">First number</div><div class="why-body">Rare. A big enough change that parts of the app work differently and you'll be walked through it.</div></div>
+    <div class="why-card"><div class="why-icon">❓</div><div class="why-title">Something off?</div><div class="why-body">If the app doesn't match what's written here, say so on the Feedback tab. Don't work around it quietly.</div></div>
+  </div>
+
+  <div class="section-label">Releases — tap to expand</div>
+  <div class="steps" id="version-list"></div>
+</div>
+
 </div>
 </div>
 </div>
@@ -599,7 +621,62 @@ const CLIENT_STEPS=[
   {title:'Keeping Profiles Updated',tag:'Old info causes real problems',desc:'Phone numbers and emails change. Every time a client gives updated info, change it in their profile before the conversation ends.',tip:'Any time a client gives you new contact info — open their profile and update it on the spot.',dos:['Update contact info the moment it changes','Note preferences and special requirements'],donts:['Leave outdated numbers on file','Use personal texts as the main client record']},
   {title:'Writing Good Notes',tag:'Turns one-time clients into regulars',desc:'Notes capture the relationship. What do they care about? Usual setup? Who they work with? This is what makes any team member able to make a client feel like a VIP.',tip:'"Prefers Studio A, works with Marcus, R&B, usually needs parking for 3 cars" — that\'s what matters.',dos:['Add notes after every session or significant interaction','Note preferences, quirks, recurring needs, who referred them'],donts:['Leave notes empty on active clients','Only write notes when something goes wrong']}
 ];
-let openStatus=null,openCrm=null,openClient=null;
+// ── Version history ──────────────────────────────────────────────────────────
+// Newest FIRST. Written for staff, not developers: what changed, and what it
+// means for their day. Keep entries plain-English — if a line only makes sense
+// to whoever built it, it doesn't belong here.
+const VERSIONS=[
+  {
+    ver:'v1.2.0', date:'Jul 28, 2026',
+    headline:'Set the engineer or assistant on the lead',
+    desc:'Staffing is now chosen on the lead itself, and it fills in the Work Order for you. Before this, you picked staff nowhere and then typed the same name onto every single line of the Work Order by hand.',
+    changes:[
+      'The old "Engineer Needed" button on a lead is now three buttons — <b>Eng</b>, <b>Asst</b>, and <b>No Staff</b>.',
+      'Next to it, a name box that lists your actual staff. Engineers show for Eng, assistants for Asst, and anyone marked "Both" shows for either.',
+      'Whatever you pick fills in <b>every line</b> of the Work Order when the session is booked.',
+      'You can type a name that isn\'t on the list — a new hire or a freelancer — without adding them in Admin first.'
+    ],
+    affects:'Picking a name is optional. If you know a session needs an engineer but not who yet, choose Eng and leave the name blank — the Work Order still reads 1ST so the rates are right, and you fill the name in later. New sessions default to <b>Asst</b>, since that\'s the normal case. Switching between Eng and Asst clears the name on purpose, because that person was in the other pool.'
+  },
+  {
+    ver:'v1.1.1', date:'Jul 28, 2026',
+    headline:'Start Booking is back on the lead',
+    desc:'The Start Booking button has returned to the lead detail, next to the registration button. It takes you straight into the Work Order with the lead\'s details already filled in.',
+    changes:[
+      'Start Booking opens the Work Order with the dates, times, rate, studio and client already populated from the lead.',
+      'If the lead has no client profile yet, you\'ll confirm the client first, then land in the Work Order.',
+      'The lead flips to <b>Booked</b> when you <b>save the session</b> — not when you press the button.'
+    ],
+    affects:'You can open a Work Order to check a rate or availability and back out without closing the lead. It stays in your pipeline where it belongs. Marking a lead Booked from the temperature pill is still a separate action — use it when a deal is closed but the dates aren\'t settled yet.'
+  },
+  {
+    ver:'v1.1.0', date:'Jul 28, 2026',
+    headline:'Registrations database, shared tasks, and lead date ranges',
+    desc:'A batch of CRM improvements — the biggest being that completed registrations are now permanently searchable instead of disappearing after review.',
+    changes:[
+      '<b>New Registrations tab</b> in the CRM. Every client who has ever completed a registration, searchable by name, email or phone, filterable by date, 25 to a page.',
+      '<b>Copy Address button</b> on a registration record. One click copies the full billing address, ready to paste — no more copying it a cell at a time.',
+      '<b>Assistant manager tasks are shared.</b> Quinn and Isaac now both see anything assigned to Asst Mgr. Same for Sierra and Tom on Tech.',
+      '<b>Leads can hold a date range.</b> If a client asks for a week, record the whole week — the Work Order opens on the full range instead of a single day.',
+      '<b>New web inquiries flash in the CRM lead list</b>, not just on the dashboard.',
+      '<b>The Incomplete tab is gone</b> from Needs Action. Those leads were already showing under Uncontacted, Hot or Warm, so the count was double-counting them.',
+      '<b>Fixing a client\'s name updates it everywhere</b> — every booking on the calendar and every lead attached to them.',
+      '<b>Labels can be created with just a company name</b> — no A&R contact required.'
+    ],
+    affects:'The registration review banner now sits at the top of the CRM on every tab, so you\'ll see returned registrations while you\'re working leads instead of only on the Clients tab. Your Needs Action count will look lower than before — that\'s the double-counting being removed, not leads going missing.'
+  },
+  {
+    ver:'v1.0.0', date:'Jul 2026',
+    headline:'CRM live to the team',
+    desc:'The starting point — the CRM in daily use: leads, statuses and timers, the Needs Action view, client profiles, registrations, tasks and flags.',
+    changes:[
+      'Everything covered by the CRM, Clients, Tasks and Flags guides in this handbook.'
+    ],
+    affects:'If you\'re new, start with the CRM tab on the left and work through it. Everything after this point is listed above as a change to it.'
+  }
+];
+
+let openStatus=null,openCrm=null,openClient=null,openVer=null;
 function switchTab(tab,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.side-btn').forEach(b=>b.classList.remove('active'));document.getElementById('page-'+tab).classList.add('active');el.classList.add('active');window.scrollTo(0,0);}
 function showStatus(key,el){if(openStatus===key){document.getElementById('status-detail-box').innerHTML='';document.querySelectorAll('.status-pill').forEach(p=>p.classList.remove('active-pill'));openStatus=null;return;}openStatus=key;document.querySelectorAll('.status-pill').forEach(p=>p.classList.remove('active-pill'));el.classList.add('active-pill');const d=STATUS_DATA[key];document.getElementById('status-detail-box').innerHTML=`<div class="status-detail show" style="border-color:${d.color}44;background:${d.bg}"><div class="status-detail-title" style="color:${d.color}">${d.label} — ${d.title}</div><div class="status-detail-body">${d.body}</div><div class="status-rule" style="background:${d.color}15;color:${d.color};border-left:2px solid ${d.color}"><b>The Rule:</b> ${d.rule}</div></div>`;}
 function buildSteps(data,id,fn){document.getElementById(id).innerHTML=data.map((s,i)=>`<div class="step" onclick="${fn}(${i})"><div class="step-header"><div class="step-num">${String(i+1).padStart(2,'0')}</div><div class="step-title">${s.title}</div><div class="step-tag">${s.tag}</div><div class="step-chevron">▼</div></div><div class="step-body"><div class="step-inner"><div class="step-desc">${s.desc}</div><div class="tip-box"><div class="tip-label">💡 Pro tip</div><div class="tip-text">${s.tip}</div></div><div class="do-list" style="margin-bottom:6px">${(s.dos||[]).map(d=>`<div class="do-item"><span style="color:var(--accent);flex-shrink:0">✓</span>${d}</div>`).join('')}</div><div class="do-list">${(s.donts||[]).map(d=>`<div class="do-item"><span style="color:var(--hot);flex-shrink:0">✗</span>${d}</div>`).join('')}</div></div></div></div>`).join('');}
@@ -607,6 +684,12 @@ buildSteps(CRM_STEPS,'crm-steps','toggleCrm');
 buildSteps(CLIENT_STEPS,'client-steps','toggleClient');
 function toggleCrm(i){const s=document.querySelectorAll('#crm-steps .step');if(openCrm===i){s[i].classList.remove('open');openCrm=null;return;}if(openCrm!==null)s[openCrm].classList.remove('open');s[i].classList.add('open');openCrm=i;}
 function toggleClient(i){const s=document.querySelectorAll('#client-steps .step');if(openClient===i){s[i].classList.remove('open');openClient=null;return;}if(openClient!==null)s[openClient].classList.remove('open');s[i].classList.add('open');openClient=i;}
+
+// Version list — same accordion as the step guides, but the version number sits
+// where the step number goes and the date is the tag.
+function buildVersions(){document.getElementById('version-list').innerHTML=VERSIONS.map((v,i)=>`<div class="step" onclick="toggleVer(${i})"><div class="step-header"><div class="step-num" style="width:auto;padding:0 7px;font-size:9px">${v.ver}</div><div class="step-title">${v.headline}</div><div class="step-tag">${v.date}</div><div class="step-chevron">▼</div></div><div class="step-body"><div class="step-inner"><div class="step-desc">${v.desc}</div><div class="do-list" style="margin-bottom:6px">${v.changes.map(c=>`<div class="do-item"><span style="color:var(--accent);flex-shrink:0">✓</span><span>${c}</span></div>`).join('')}</div><div class="tip-box"><div class="tip-label">👉 What this means for you</div><div class="tip-text">${v.affects}</div></div></div></div></div>`).join('');}
+buildVersions();
+function toggleVer(i){const s=document.querySelectorAll('#version-list .step');if(openVer===i){s[i].classList.remove('open');openVer=null;return;}if(openVer!==null)s[openVer].classList.remove('open');s[i].classList.add('open');openVer=i;}
 </script>
 </body>
 </html>
