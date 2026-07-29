@@ -981,7 +981,11 @@ export function WorkOrderPopup({
 
   function addStRow() {
     const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
-    const last = [...stRows].reverse().find(r => !!(r.studio || r.date)) ?? stRows[stRows.length - 1]
+    // Inherit from the last STUDIO row specifically — a standalone staff row has
+    // studio '' (the eng-row encoding), and inheriting that would turn this
+    // "studio time" row into an engineer row.
+    const lastStudioRow = [...stRows].reverse().find(r => !!r.studio)
+    const last = lastStudioRow ?? ([...stRows].reverse().find(r => !!(r.studio || r.date)) ?? stRows[stRows.length - 1])
     const rowRateType = last?.row_rate_type || 'hour'
     const fromTime = last?.from_time || ''
     const toTime = last?.to_time || ''
@@ -1002,8 +1006,10 @@ export function WorkOrderPopup({
 
     const newRow: StRow = {
       id: crypto.randomUUID(),
-      studio: last?.studio || '',
-      location: last?.location || '',
+      // A studio-time row must never start with studio '' (that's an eng row):
+      // last studio row → booking's room → 'A'.
+      studio: lastStudioRow?.studio || (booking.studio ? toStudioLetter(booking.studio) : 'A'),
+      location: lastStudioRow?.location || booking.location || '',
       eng_name: last?.eng_name || '',
       date: '',
       session_info: '',
@@ -1979,8 +1985,14 @@ export function WorkOrderPopup({
                             }))}
                           </select>
                         </div>
-                        {/* Date — transparent overlay opens native picker, auto-sorts on pick */}
-                        <div key={r.id + '-date'} style={{ ...cellS, color: 'var(--text2)', fontSize: 10, position: 'relative', cursor: 'pointer' }}>
+                        {/* Date — transparent overlay opens native picker, auto-sorts on pick.
+                            showPicker() so ANY click in the cell opens it (the invisible
+                            input alone only reacts on the browser's calendar-icon zone). */}
+                        <div
+                          key={r.id + '-date'}
+                          style={{ ...cellS, color: 'var(--text2)', fontSize: 10, position: 'relative', cursor: 'pointer' }}
+                          onClick={e => { try { ((e.currentTarget as HTMLElement).querySelector('input[type="date"]') as any)?.showPicker?.() } catch {} }}
+                        >
                           <span style={{ pointerEvents: 'none' }}>{shortDate(r.date)}</span>
                           <input
                             type="date"
@@ -2132,7 +2144,11 @@ export function WorkOrderPopup({
                               </button>
                             </div>
                             {/* Date picker — uses r.date for eng-only rows; shared with main row for studio rows */}
-                            <div key={r.id + '-eng-date'} style={{ ...cellS, color: 'var(--text2)', fontSize: 10, position: 'relative', cursor: isEngOnly ? 'pointer' : 'default' }}>
+                            <div
+                              key={r.id + '-eng-date'}
+                              style={{ ...cellS, color: 'var(--text2)', fontSize: 10, position: 'relative', cursor: isEngOnly ? 'pointer' : 'default' }}
+                              onClick={e => { try { ((e.currentTarget as HTMLElement).querySelector('input[type="date"]') as any)?.showPicker?.() } catch {} }}
+                            >
                               <span style={{ pointerEvents: 'none' }}>{shortDate(r.date)}</span>
                               {isEngOnly && (
                                 <input
