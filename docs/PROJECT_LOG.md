@@ -2183,6 +2183,12 @@ New `lib/propagateClientRename.ts`. `bookings` and `leads` denormalize client-fa
 
 **Verification:** `npx tsc --noEmit` clean. `next build` can't run in the Cowork sandbox (Linux ARM SWC binary absent, no registry access) — not a code issue; live-URL testing as usual. New light-mode rule added for `[data-panel="crm-registrations"]` to match the existing CRM panel gradients.
 
+**v1.1.1 — Start Booking restored to the lead detail (same day, after v1.1.0 was pushed).** The button was swapped out on July 8 for the temporary Confirm-Client flow (`7332eb8`) because there was no booking form to send anyone to; the WO is that destination now, so this is the documented revert. It sits back in the lead hero row next to the reg button and calls `startBooking()`: a lead **with** a `client_id` goes straight to `/calendar?newBooking=1&clientId=…&leadId=…` (which opens a WO seeded from the lead — dates, times, rate, studio, client); a lead **without** one gets the confirm-client step first, then the same redirect, so a session is never created without a real client link (that link is what makes rename propagation work).
+
+Key subtlety: `ConfirmClientModal` is shared by Start Booking AND the status pill's Booked option, so a new **`confirmIntent: 'book' | 'status'`** state records why it opened. `'book'` redirects into the WO; `'status'` keeps the existing success modal and stays put. Without it, flipping a lead to Booked would have flung the user to the calendar.
+
+**Marking a lead Booked is deliberately NOT the same act as booking a session** — a deal often closes before dates are settled. The status-pill flow (both confirm modals) is therefore **kept**, and its three `// TEMPORARY: remove when booking form is live` comments were rewritten to say so, since they now describe permanent behaviour and a future session would otherwise delete them. The dead `showBookingToast` ("Navigate to Calendar to book this client") — declared and rendered but never set true — was removed.
+
 **Not done / follow-ups:**
 - Task detail still labels a shared task "Assigned to: Quinn" even though Isaac sees and owns it equally — accurate to the row, potentially confusing. Could render the role name for paired assignees.
 - `LeadDetail`'s missing-fields warning is now the only surface for incomplete leads (that was already true; the removed tab was duplicative).

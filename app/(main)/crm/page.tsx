@@ -1655,11 +1655,14 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
-  // TEMPORARY: remove when booking form is live
+  // Why the confirm-client modal was opened. 'book' = the user pressed Start
+  // Booking and expects to land in the Work Order; 'status' = they just flipped
+  // the lead to Booked on the temperature pill and should stay put. Both paths
+  // share the modal, so without this the pill would fling you to the calendar.
+  const [confirmIntent, setConfirmIntent] = useState<'book' | 'status'>('status')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [showBookedModal, setShowBookedModal] = useState(false)
   const [markingBooked, setMarkingBooked] = useState(false)
-  const [showBookingToast, setShowBookingToast] = useState(false)
   const leadRouter = useRouter()
   const [regLinkUrl, setRegLinkUrl] = useState<string | null>(null)
   const [regLinkCopied, setRegLinkCopied] = useState(false)
@@ -1830,6 +1833,20 @@ const parsedLoc0 = parseLocation(lead.location || '')
     onUpdate('tags', newTags)
   }
 
+  // Start Booking — hand the lead off to the calendar, which opens a real Work
+  // Order seeded from it (dates, times, rate, studio, client). A lead with no
+  // client profile gets the confirm-client step first, so a session is always
+  // attached to a real client record — that link is what keeps the lead, the
+  // booking and later renames in sync.
+  function startBooking() {
+    if (lead.client_id) {
+      leadRouter.push(`/calendar?newBooking=1&clientId=${lead.client_id}&leadId=${lead.id}`)
+      return
+    }
+    setConfirmIntent('book')
+    setShowConfirmModal(true)
+  }
+
   async function saveStatus(newStatus: string) {
     if (newStatus === lead.status) return
     const updates: Partial<Lead> = { status: newStatus as LeadStatus }
@@ -1991,13 +2008,20 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     type="button"
                     onClick={() => {
                       setStatusDDOpen(false)
-                      // TEMPORARY: remove when booking form is live — selecting Booked triggers the
-                      // client-confirmation flow (QC modal for a new client, "Mark as Booked" for a
-                      // returning client) instead of writing status directly; those modals set
-                      // status:'booked' on confirm. All other statuses update directly.
+                      // Selecting Booked triggers the client-confirmation flow (QC
+                      // modal for a new client, "Mark as Booked" for a returning
+                      // one) instead of writing status directly; those modals set
+                      // status:'booked' on confirm. All other statuses update
+                      // directly.
+                      //
+                      // This is KEPT deliberately (it was marked temporary while
+                      // there was no booking form). Marking a lead booked is not
+                      // the same act as booking a session — the deal can be closed
+                      // before the dates are settled. Booking a session is the
+                      // Start Booking button, which lands in the Work Order.
                       if (s === 'booked') {
                         if (lead.client_id) setShowBookedModal(true)
-                        else setShowConfirmModal(true)
+                        else { setConfirmIntent('status'); setShowConfirmModal(true) }
                         return
                       }
                       update('status', s); saveStatus(s)
@@ -2112,6 +2136,16 @@ const parsedLoc0 = parseLocation(lead.location || '')
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginTop: 4 }}>
+            {/* Start Booking — restored July 28, 2026. It was swapped out for the
+                temporary Confirm-Client flow back when there was no booking form
+                to send anyone to; the Work Order is that destination now. */}
+            <button
+              onClick={startBooking}
+              title={lead.client_id ? 'Open a Work Order for this lead' : 'Confirm the client profile, then open a Work Order'}
+              style={{ padding: '5px 12px', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer', whiteSpace: 'nowrap' as const }}
+            >
+              Start Booking
+            </button>
             {lead.billing !== 'Billing' && (regTokenDates?.used_at ? (
               <button onClick={() => setRegViewOpen(true)} style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.12)', color: 'var(--booked)', border: '1px solid rgba(20,184,166,0.35)', borderRadius: 4, fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
                 ✓ Registered
@@ -2498,27 +2532,28 @@ const parsedLoc0 = parseLocation(lead.location || '')
         </div>
       )}
 
-      {showBookingToast && (
-        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 3000, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 4px 24px rgba(0,0,0,0.5)', maxWidth: 320, fontFamily: 'Inter', fontSize: 11 }}>
-          <span style={{ color: 'var(--accent)', fontSize: 14 }}>🗓</span>
-          <span style={{ color: 'var(--text)', flex: 1 }}>Navigate to Calendar to book this client.</span>
-          <button onClick={() => setShowBookingToast(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
-        </div>
-      )}
       {showConfirmModal && (
         <ConfirmClientModal
           lead={lead}
           onClose={() => setShowConfirmModal(false)}
           onCreated={(clientId) => {
-            // TEMPORARY: remove when booking form is live — was a redirect to /calendar
             setShowConfirmModal(false)
             onUpdate('client_id', clientId)
             onUpdate('status', 'booked')
+            if (confirmIntent === 'book') {
+              // Came from Start Booking — carry straight on into the Work Order
+              // rather than dead-ending on a "now go to the calendar" message.
+              leadRouter.push(`/calendar?newBooking=1&clientId=${clientId}&leadId=${lead.id}`)
+              return
+            }
+            // Came from the status pill — the user only meant to mark it booked.
             setShowSuccessModal(true)
           }}
         />
       )}
-      {/* TEMPORARY: remove when booking form is live — FLOW 1 (new client): success modal replaces the booking-form redirect */}
+      {/* FLOW 1 (new client, marked Booked from the status pill): confirmation that
+          the client account was created. Only reached when confirmIntent==='status' —
+          the Start Booking path redirects into the Work Order instead. */}
       {showSuccessModal && (
         <div
           style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
@@ -2538,7 +2573,8 @@ const parsedLoc0 = parseLocation(lead.location || '')
           </div>
         </div>
       )}
-      {/* TEMPORARY: remove when booking form is live — FLOW 2 (returning client): mark-as-booked modal replaces the booking-form redirect */}
+      {/* FLOW 2 (returning client, marked Booked from the status pill): confirm the
+          status change. Booking an actual session is the Start Booking button. */}
       {showBookedModal && (
         <div
           style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
