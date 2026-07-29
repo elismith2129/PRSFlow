@@ -1033,7 +1033,9 @@ export function WorkOrderPopup({
     if (last?.eng_rate || (last?.eng_hours ?? 0) > 0) setShowEngRows(true)
   }
 
-  function addEngRow() {
+  // Standalone staff row — engineer (1ST) or assistant (2ND). Any number of
+  // these can be added per day, fully custom, independent of studio rows.
+  function addEngRow(role: 'engineer' | 'assistant' = 'engineer') {
     const engMaxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
     const lastEng = [...stRows].reverse().find(r => r.eng_rate || (r.eng_hours ?? 0) > 0 || r.eng_from_time) || stRows[stRows.length - 1]
     const newRow: StRow = {
@@ -1063,7 +1065,7 @@ export function WorkOrderPopup({
       admin_checked: false,
       admin_locked: false,
       eng_visible: true,
-      eng_role: lastEng?.eng_role || 'engineer',
+      eng_role: role,
     }
     setStRows(prev => [...prev, newRow])
   }
@@ -1128,17 +1130,32 @@ export function WorkOrderPopup({
     const dated = stRows.filter(r => r.date && r.studio).sort((a, b) => a.date.localeCompare(b.date))
 
     // Build segments (new segment on room change OR non-consecutive date).
-    type Seg = { studio: string; location: string; start: string; end: string; from: string; to: string; engName: string; role: 'engineer' | 'assistant' }
+    // Each segment carries BOTH an engineer (1ST) and an assistant (2ND) —
+    // first named staffer per role wins.
+    type Seg = { studio: string; location: string; start: string; end: string; from: string; to: string; eng: string; asst: string }
+    const applyStaff = (seg: Seg, name: string, role: string) => {
+      if (!name) return
+      if (role === 'assistant') { if (!seg.asst) seg.asst = name }
+      else { if (!seg.eng) seg.eng = name }
+    }
     const segs: Seg[] = []
     for (const r of dated) {
       const last = segs[segs.length - 1]
       const rLoc = r.location || venue
       if (last && last.studio === r.studio && last.location === rLoc && isNextDay(last.end, r.date)) {
         last.end = r.date
-        // First named staffer in the segment wins (a later day may carry the name).
-        if (!last.engName && r.eng_name) { last.engName = r.eng_name; last.role = r.eng_role || 'engineer' }
+        applyStaff(last, r.eng_name, r.eng_role || 'engineer')
       } else {
-        segs.push({ studio: r.studio, location: rLoc, start: r.date, end: r.date, from: r.from_time, to: r.to_time, engName: r.eng_name || '', role: r.eng_role || 'engineer' })
+        const seg: Seg = { studio: r.studio, location: rLoc, start: r.date, end: r.date, from: r.from_time, to: r.to_time, eng: '', asst: '' }
+        applyStaff(seg, r.eng_name, r.eng_role || 'engineer')
+        segs.push(seg)
+      }
+    }
+    // Standalone staff rows (+ Add Engineer / + Add Assistant — no studio) fold
+    // into every segment covering their date, so a day can carry both roles.
+    for (const sr of stRows.filter(r => r.date && !r.studio && r.eng_name)) {
+      for (const seg of segs) {
+        if (sr.date >= seg.start && sr.date <= seg.end) applyStaff(seg, sr.eng_name, sr.eng_role || 'engineer')
       }
     }
 
@@ -1165,17 +1182,16 @@ export function WorkOrderPopup({
       work_order_id: woId,
       wo_number: wo.wo_number || null,
     }
-    // Staff initials for the card: the segment's named staffer (else the legacy
-    // WO-level engineer), written to engineer_name (1ST) or assistant_name (2ND)
-    // by the row's eng_role. When a name is present the opposite column is
-    // cleared (a role switch must move the initials, not duplicate them); when
-    // no name exists both are omitted so a save never wipes card initials.
+    // Staff initials for the card: segment staff (1ST + 2ND can coexist), with
+    // the legacy WO-level fields as fallback. When neither role has a name we
+    // omit both keys so a save never wipes existing card initials; when at
+    // least one is known we write both explicitly (name or null) so removals
+    // and role flips propagate to the card.
     const staffFor = (seg: Seg): Record<string, any> => {
-      const name = seg.engName || wo.engineer
-      if (!name) return wo.second_engineer ? { assistant_name: wo.second_engineer } : {}
-      return seg.role === 'assistant'
-        ? { assistant_name: name, engineer_name: null }
-        : { engineer_name: name, assistant_name: wo.second_engineer || null }
+      const eng = seg.eng || wo.engineer || ''
+      const asst = seg.asst || wo.second_engineer || ''
+      if (!eng && !asst) return {}
+      return { engineer_name: eng || null, assistant_name: asst || null }
     }
     const scheduleFor = (seg: Seg) => ({
       ...staffFor(seg),
@@ -2182,7 +2198,8 @@ export function WorkOrderPopup({
                 {!readOnly ? (
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
                   <button type="button" onClick={addStRow} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add Studio Time</button>
-                  <button type="button" onClick={addEngRow} style={{ fontSize: 10, fontFamily: 'Inter', color: '#c8f04e88', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add Eng</button>
+                  <button type="button" onClick={() => addEngRow('engineer')} style={{ fontSize: 10, fontFamily: 'Inter', color: 'rgba(var(--accent-rgb),0.55)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add Engineer</button>
+                  <button type="button" onClick={() => addEngRow('assistant')} style={{ fontSize: 10, fontFamily: 'Inter', color: 'rgba(249,115,22,0.65)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add Assistant</button>
                 </div>
                 ) : <div />}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
