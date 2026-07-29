@@ -254,7 +254,9 @@ begin
         where work_order_id = p_wo_id
           and id <> p_primary_booking_id
           and studio = v_card ->> 'studio'
-          and start_date = v_card ->> 'start_date'
+          -- ::text so this works whether start_date is a date or text column
+          -- (a date column renders as ISO 'YYYY-MM-DD', matching the payload)
+          and start_date::text = v_card ->> 'start_date'
           and not (id = any (v_kept))
         limit 1;
       if v_match is not null then
