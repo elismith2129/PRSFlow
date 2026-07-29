@@ -296,6 +296,7 @@ export function WorkOrderPopup({
   onFormSync,
   onSaved,
   onDelete,
+  leadId,
   inline,
 }: {
   booking: Booking
@@ -305,6 +306,10 @@ export function WorkOrderPopup({
   onFormSync?: (updates: Partial<WOFormSync>) => void
   onSaved?: () => void
   onDelete?: () => void
+  // Set only when this WO was opened from a CRM lead's "Start Booking". The lead
+  // is marked booked once the session is actually SAVED — not when the WO opens —
+  // so backing out of a Work Order leaves the lead in the pipeline.
+  leadId?: number | null
   inline?: boolean
 }) {
   // Mobile gets a full-screen sheet; never applies when rendered inline (USF embed).
@@ -1396,6 +1401,22 @@ export function WorkOrderPopup({
     // All-or-nothing: on failure NOTHING was written — keep the popup open so
     // the user's edits aren't lost, and let them retry.
     if (!dbResult('Saving work order', saveErr)) { setSaving(false); return }
+
+    // The lead that produced this session is marked booked HERE — on a successful
+    // save — rather than when Start Booking was pressed. Opening a WO to check a
+    // rate and backing out must not close the lead out of the pipeline.
+    //
+    // Deliberately a separate write, not part of save_work_order_atomic: the RPC
+    // is the all-or-nothing unit for the WO + its line items + the booking cards,
+    // and a CRM status change is not part of that unit. A failure here must not
+    // roll back a saved session — it just reports and leaves the lead as-is.
+    if (leadId && wo.session_status !== 'cancelled') {
+      const { error: leadErr } = await supabase
+        .from('leads')
+        .update({ status: 'booked', keep_hot_until: null })
+        .eq('id', leadId)
+      dbResult('Marking lead booked', leadErr)
+    }
 
     originalStRowsRef.current = stRows
     deletedRowsRef.current = []

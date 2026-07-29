@@ -2535,18 +2535,20 @@ const parsedLoc0 = parseLocation(lead.location || '')
       {showConfirmModal && (
         <ConfirmClientModal
           lead={lead}
+          markBooked={confirmIntent === 'status'}
           onClose={() => setShowConfirmModal(false)}
           onCreated={(clientId) => {
             setShowConfirmModal(false)
             onUpdate('client_id', clientId)
-            onUpdate('status', 'booked')
             if (confirmIntent === 'book') {
-              // Came from Start Booking — carry straight on into the Work Order
-              // rather than dead-ending on a "now go to the calendar" message.
+              // Came from Start Booking — carry straight on into the Work Order.
+              // The lead stays as it is; the WO marks it booked when the session
+              // is saved, so an abandoned booking doesn't close the lead out.
               leadRouter.push(`/calendar?newBooking=1&clientId=${clientId}&leadId=${lead.id}`)
               return
             }
-            // Came from the status pill — the user only meant to mark it booked.
+            // Came from the status pill — the user explicitly chose Booked.
+            onUpdate('status', 'booked')
             setShowSuccessModal(true)
           }}
         />
@@ -2611,10 +2613,15 @@ const parsedLoc0 = parseLocation(lead.location || '')
 
 // ─── CONFIRM CLIENT MODAL ─────────────────────────────────────────────────────
 
-function ConfirmClientModal({ lead, onClose, onCreated }: {
+function ConfirmClientModal({ lead, onClose, onCreated, markBooked = true }: {
   lead: Lead
   onClose: () => void
   onCreated: (clientId: string) => void
+  // Whether creating the client should also close the lead out as booked.
+  // TRUE from the status pill (the user explicitly chose Booked). FALSE from
+  // Start Booking, where the lead is only booked once the session is actually
+  // saved in the Work Order — so backing out of the WO leaves it in the pipeline.
+  markBooked?: boolean
 }) {
   const isBillingLead = lead.billing === 'Billing'
   const [type, setType] = useState<'individual' | 'label'>(isBillingLead ? 'label' : 'individual')
@@ -2655,7 +2662,10 @@ function ConfirmClientModal({ lead, onClose, onCreated }: {
       created_at: new Date().toISOString(),
     })
     if (err) { setError(err.message); setSaving(false); return }
-    await supabase.from('leads').update({ client_id: clientId, status: 'booked' }).eq('id', lead.id)
+    const leadPatch: Partial<Lead> = { client_id: clientId }
+    if (markBooked) { leadPatch.status = 'booked'; leadPatch.keep_hot_until = null }
+    const { error: leadErr } = await supabase.from('leads').update(leadPatch).eq('id', lead.id)
+    if (!dbResult('Linking client to lead', leadErr)) { setSaving(false); return }
     onCreated(clientId)
   }
 

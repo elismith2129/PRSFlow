@@ -812,6 +812,10 @@ function CalendarPageInner() {
   // Step 6/8: the calendar opens the Work Order directly for ALL sessions and
   // blocks (BookingForm deleted — legacy WO-less blocks use the WO's block view).
   const [woBooking, setWoBooking] = useState<Booking | null>(null)
+  // The CRM lead this WO came from, when opened via "Start Booking". Handed to
+  // the WO so it can mark the lead booked once the session is actually saved.
+  // Cleared whenever a WO is opened by any other route.
+  const [woLeadId, setWoLeadId] = useState<number | null>(null)
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
   const [collapsedRooms, setCollapsedRooms] = useState<Set<string>>(() => new Set())
   const [locFilter, setLocFilter] = useState('All')
@@ -1097,6 +1101,8 @@ function CalendarPageInner() {
         if (l.notes) initial.notes = l.notes
       }
       // Create the session + WO from the lead prefill, then open the WO directly.
+      // Remember the lead so the WO can mark it booked on save.
+      setWoLeadId(leadId ? parseInt(leadId, 10) : null)
       createBookingAndOpenWO(initial)
     })
   }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -1117,6 +1123,7 @@ function CalendarPageInner() {
   // Empty-day / dashboard "new booking": create the session + WO and open the WO
   // directly (Step 6). No BookingForm intermediary.
   function openNew(location?: string, studio?: string, date?: string) {
+    setWoLeadId(null)
     createBookingAndOpenWO({ location, studio, start_date: date, end_date: date })
   }
 
@@ -1133,6 +1140,9 @@ function CalendarPageInner() {
   // and legacy WO-less blocks (WorkOrderPopup renders its simple block editor
   // for those without creating a WO). BookingForm is gone.
   function openEdit(b: Booking) {
+    // Opening an existing session — no lead hand-off, and clear any stale one so
+    // a previously-opened lead can't be marked booked by an unrelated save.
+    setWoLeadId(null)
     setWoBooking(b)
   }
 
@@ -1642,7 +1652,8 @@ function CalendarPageInner() {
       {woBooking && (
         <WorkOrderPopup
           booking={woBooking}
-          onClose={() => { setWoBooking(null); loadRef.current(); setReloadKey(k => k + 1) }}
+          leadId={woLeadId}
+          onClose={() => { setWoBooking(null); setWoLeadId(null); loadRef.current(); setReloadKey(k => k + 1) }}
           onSaved={() => { loadRef.current(); setReloadKey(k => k + 1) }}
           onDelete={() => deleteSessionFromWO(woBooking)}
         />
