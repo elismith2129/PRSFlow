@@ -20,7 +20,9 @@ import { calcHours, calcCharge, dateRange, toStudioLetter } from '@/lib/time'
 export { dateRange, toStudioLetter }
 
 export type SeedRowParams = {
-  workOrderId: string
+  // Omit when the payloads are handed to create_work_order_atomic — the RPC
+  // injects work_order_id after the WO insert (the id doesn't exist yet).
+  workOrderId?: string
   studio: string // bare letter/name; already normalized by the caller or passed raw
   dates: string[] // explicit ISO dates to add
   fromTime?: string
@@ -29,17 +31,18 @@ export type SeedRowParams = {
   rate?: string // hourly rate string (used when rateType === 'hour')
   rateDaily?: string // daily rate string (used when rateType === 'day')
   sortOrderStart?: number // sort_order for the first new row (default 0)
-  // Optional engineer seed (Seed panel may pre-fill an engineer sub-row rate).
+  // Optional staff seed (Seed panel may pre-fill the staff sub-row).
   engRate?: string
   engFromTime?: string
   engToTime?: string
+  engName?: string
+  engRole?: 'engineer' | 'assistant' // 1ST vs 2ND; default 'engineer'
 }
 
 // Build one studio_time_rows payload for a single date. Mirrors the exact column
 // logic that createWorkOrderForBooking used inline, so seeding is byte-identical.
 function buildRowPayload(p: SeedRowParams, date: string, sortOrder: number): Record<string, any> {
   const base: Record<string, any> = {
-    work_order_id: p.workOrderId,
     studio: p.studio,
     date,
     session_info: '',
@@ -47,10 +50,14 @@ function buildRowPayload(p: SeedRowParams, date: string, sortOrder: number): Rec
     to_time: p.toTime ?? '',
     sort_order: sortOrder,
   }
+  if (p.workOrderId) base.work_order_id = p.workOrderId
 
-  // Optional engineer sub-row seed (only when a rate is supplied).
-  if (p.engRate != null && p.engRate !== '') {
-    base.eng_rate = p.engRate
+  // Optional staff sub-row seed (when a rate and/or a name is supplied).
+  const seedName = (p.engName ?? '').trim()
+  if ((p.engRate != null && p.engRate !== '') || seedName !== '') {
+    if (p.engRate != null && p.engRate !== '') base.eng_rate = p.engRate
+    if (seedName !== '') base.eng_name = seedName
+    base.eng_role = p.engRole === 'assistant' ? 'assistant' : 'engineer'
     base.eng_from_time = p.engFromTime ?? p.fromTime ?? ''
     base.eng_to_time = p.engToTime ?? p.toTime ?? ''
     base.eng_visible = true
@@ -82,6 +89,17 @@ function buildRowPayload(p: SeedRowParams, date: string, sortOrder: number): Rec
 }
 
 /**
+ * Build the studio_time_rows payloads for a set of dates WITHOUT inserting.
+ * Single source for the row shape — used by createWorkOrderForBooking to hand
+ * prebuilt rows to the atomic create RPC. All payloads in one call share the
+ * same key set (a requirement of the RPC's bulk appliers).
+ */
+export function buildSeedRowPayloads(params: SeedRowParams): Record<string, any>[] {
+  const sortBase = params.sortOrderStart ?? 0
+  return params.dates.map((d, i) => buildRowPayload(params, d, sortBase + i))
+}
+
+/**
  * Append studio_time_rows for the given dates. Dates that already have a row on
  * this WO are skipped (append-only). Returns the number of rows inserted.
  *
@@ -92,6 +110,9 @@ export async function seedStudioTimeRows(
   params: SeedRowParams,
   opts: { skipExisting?: boolean } = {},
 ): Promise<{ inserted: number }> {
+  if (!params.workOrderId) {
+    throw new Error('seedStudioTimeRows requires workOrderId (use buildSeedRowPayloads for RPC payloads)')
+  }
   const skipExisting = opts.skipExisting !== false
 
   let datesToAdd = params.dates

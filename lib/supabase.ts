@@ -254,6 +254,8 @@ export interface StudioTimeRow {
   admin_checked: boolean | null
   admin_locked: boolean | null
   eng_visible: boolean | null
+  eng_name: string | null
+  eng_role: 'engineer' | 'assistant' | null // 1ST vs 2ND on the staff sub-row
 }
 
 export interface EquipmentConditionRow {

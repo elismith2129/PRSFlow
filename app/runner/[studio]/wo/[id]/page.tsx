@@ -565,7 +565,7 @@ export default function RunnerWOPage() {
           update.ot_hours = otHrsNum || null
           update.ot_charge = otHrsNum > 0 && otRateNum > 0 ? parseFloat((otHrsNum * otRateNum).toFixed(2)) : null
         }
-        if (hasEngineer) {
+        if (hasEngineer || r.eng_name) {
           const engRaw = r.eng_rate || booking?.engineer_rate || ''
           const er = parseFloat(String(engRaw).replace(/[^0-9.]/g, '')) || 0
           const ef = engFromTimeMap[r.id] ?? r.eng_from_time ?? from
@@ -705,7 +705,18 @@ export default function RunnerWOPage() {
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 98 }} onClick={() => { setExpandedEngRow(null); setEngPopoverPos(null) }} />
           <div style={{ position: 'fixed', top: engPopoverPos.top - 8, left: engPopoverPos.left, transform: 'translateY(-100%)', zIndex: 99, background: 'var(--surface2)', border: '1px solid var(--accent)', borderRadius: 6, padding: '6px 10px', whiteSpace: 'nowrap' }}>
-            <span style={{ fontFamily: 'Inter', fontSize: 12, color: 'var(--accent)' }}>{wo?.engineer || booking?.engineer_name || ''}</span>
+            {(() => {
+              // Per-day staff name: the expanded row's eng_name, falling back to
+              // the WO/booking engineer (or booking assistant for 2ND rows).
+              const row: any = stRows.find((x: any) => x.id === expandedEngRow)
+              const isAsst = row?.eng_role === 'assistant'
+              const name = row?.eng_name || (isAsst ? (booking?.assistant_name || '') : (wo?.engineer || booking?.engineer_name || ''))
+              return (
+                <span style={{ fontFamily: 'Inter', fontSize: 12, color: isAsst ? 'var(--warm)' : 'var(--accent)' }}>
+                  {isAsst ? '2ND · ' : '1ST · '}{name}
+                </span>
+              )
+            })()}
           </div>
         </>
       )}
@@ -749,6 +760,7 @@ export default function RunnerWOPage() {
                : (booking?.client_name || wo?.client || wo?.client_name)],
             ['Artist',   booking?.artist   || wo?.artist],
             ['Engineer', booking?.engineer_name || wo?.engineer],
+            ['Assistant', booking?.assistant_name],
             ['Date',     booking?.start_date   || wo?.session_date],
             ['Time',     [booking?.from_time || wo?.from_time, booking?.to_time || wo?.to_time].filter(Boolean).join(' – ')],
             ['Studio',   booking?.studio || (wo?.studios ?? []).join(', ')],
@@ -819,12 +831,16 @@ export default function RunnerWOPage() {
                         }
 
                         const tSel = { background: 'transparent', color: 'var(--text)', border: 'none', fontSize: 10, fontFamily: 'Inter', width: '100%' }
-                        const initials = engName ? getInitials(engName) : ''
+                        // Per-day staff: row eng_name first, else the WO/booking-level
+                        // engineer (or booking assistant for 2ND rows).
+                        const isAsstRow = r.eng_role === 'assistant'
+                        const rowStaffName = r.eng_name || (isAsstRow ? (booking?.assistant_name || '') : engName)
+                        const initials = rowStaffName ? getInitials(rowStaffName) : ''
                         const engExpanded = expandedEngRow === r.id
                         const hasNotes = !!(r.session_info || '').trim()
                         return (
                           <div key={r.id} style={{ background: r.admin_locked ? 'rgba(20,184,166,0.06)' : undefined }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '50px 55px 85px 85px 42px 35px 65px 45px 55px 50px 60px', borderBottom: engName ? 'none' : '1px solid var(--border)' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '50px 55px 85px 85px 42px 35px 65px 45px 55px 50px 60px', borderBottom: rowStaffName ? 'none' : '1px solid var(--border)' }}>
                               {/* Date */}
                               <div style={{ ...tdStyle, color: 'var(--text2)', fontSize: 9, position: 'relative', cursor: 'pointer' }}>
                                 <span style={{ pointerEvents: 'none' }}>{shortDate(r.date || '')}</span>
@@ -888,7 +904,7 @@ export default function RunnerWOPage() {
                                 {rowTotal != null ? `$${rowTotal.toFixed(2)}` : '—'}
                               </div>
                             </div>
-                            {engName && (
+                            {rowStaffName && (
                               <div style={{ display: 'grid', gridTemplateColumns: '50px 55px 85px 85px 42px 35px 65px 45px 55px 50px 60px', borderBottom: '1px solid var(--border)', background: 'rgba(var(--accent-rgb),0.03)' }}>
                                 <div style={{ ...tdStyle, padding: '4px 3px' }}>
                                   <button
@@ -900,7 +916,7 @@ export default function RunnerWOPage() {
                                         setEngPopoverPos({ top: rect.top, left: rect.left })
                                       }
                                     }}
-                                    style={{ padding: '2px 5px', border: '1px solid var(--accent)', borderRadius: 4, background: 'rgba(var(--accent-rgb),0.08)', color: 'var(--accent)', fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}
+                                    style={{ padding: '2px 5px', border: `1px solid ${isAsstRow ? 'var(--warm)' : 'var(--accent)'}`, borderRadius: 4, background: isAsstRow ? 'rgba(249,115,22,0.08)' : 'rgba(var(--accent-rgb),0.08)', color: isAsstRow ? 'var(--warm)' : 'var(--accent)', fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}
                                   >{initials}</button>
                                 </div>
                                 <div style={{ ...tdStyle }} />

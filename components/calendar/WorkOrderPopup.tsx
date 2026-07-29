@@ -130,6 +130,7 @@ type StRow = {
   admin_checked: boolean
   admin_locked: boolean
   eng_visible: boolean
+  eng_role: 'engineer' | 'assistant' // 1ST vs 2ND — every session has one or the other
 }
 
 type EquipRow = {
@@ -268,6 +269,7 @@ function normalizeStRow(d: any): StRow {
     admin_checked: d.admin_checked ?? false,
     admin_locked: d.admin_locked ?? false,
     eng_visible: d.eng_visible ?? true,
+    eng_role: d.eng_role === 'assistant' ? 'assistant' : 'engineer',
   }
 }
 
@@ -335,7 +337,7 @@ export function WorkOrderPopup({
   const [seed, setSeed] = useState({
     studio: '', start: '', end: '', from: '', to: '',
     rateType: 'day' as 'day' | 'hour', rate: '',
-    engOn: false, engName: '', engRate: '',
+    engOn: false, engName: '', engRate: '', engRole: 'engineer' as 'engineer' | 'assistant',
   })
   const [confirmDeleteRowId, setConfirmDeleteRowId] = useState<string | null>(null)
   const [confirmDeleteSession, setConfirmDeleteSession] = useState(false)
@@ -359,8 +361,8 @@ export function WorkOrderPopup({
   const [siPopoverText, setSiPopoverText] = useState('')
   const [siPopoverPos, setSiPopoverPos] = useState<{ top: number; left: number } | null>(null)
   // Track which rows exist in DB (vs. local-only new rows)
-  const rentIdsInDb = useRef<Set<string>>(new Set())
-  const payIdsInDb = useRef<Set<string>>(new Set())
+  // (rentIdsInDb / payIdsInDb removed — save_work_order_atomic upserts on id,
+  // so the insert-vs-update split is no longer tracked client-side.)
   const equipNoteFileRef = useRef<HTMLInputElement>(null)
   const pendingNoteKey = useRef<{ key: string; equipment: string; date: string } | null>(null)
   const adminCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -741,11 +743,9 @@ export function WorkOrderPopup({
       }
       if (rent?.length) {
         setRentRows(rent.map(r => ({ id: r.id, qty: String(r.qty ?? ''), item: r.item ?? '', supplier: r.supplier ?? '', dates_used: r.dates_used ?? '', rate: r.rate ?? '', charge: String(r.charge ?? '') })))
-        rent.forEach(r => rentIdsInDb.current.add(r.id))
       }
       if (pay?.length) {
         setPayRows(pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: p.amount != null ? formatCurrency(String(p.amount)) : '', memo: p.memo ?? '', last_four: p.last_four ?? '' })))
-        pay.forEach(p => payIdsInDb.current.add(p.id))
       }
     }
     setLoading(false)
@@ -1027,6 +1027,7 @@ export function WorkOrderPopup({
       admin_checked: false,
       admin_locked: false,
       eng_visible: true,
+      eng_role: last?.eng_role || 'engineer',
     }
     setStRows(prev => [...prev, newRow])
     if (last?.eng_rate || (last?.eng_hours ?? 0) > 0) setShowEngRows(true)
@@ -1062,6 +1063,7 @@ export function WorkOrderPopup({
       admin_checked: false,
       admin_locked: false,
       eng_visible: true,
+      eng_role: lastEng?.eng_role || 'engineer',
     }
     setStRows(prev => [...prev, newRow])
   }
@@ -1077,9 +1079,9 @@ export function WorkOrderPopup({
 
   async function clearEngRow(id: string) {
     await supabase.from('studio_time_rows').update({
-      eng_from_time: null, eng_to_time: null, eng_rate: null, eng_hours: null, eng_charge: null, eng_visible: false,
+      eng_name: null, eng_role: 'engineer', eng_from_time: null, eng_to_time: null, eng_rate: null, eng_hours: null, eng_charge: null, eng_visible: false,
     }).eq('id', id)
-    setStRows(prev => prev.map(r => r.id === id ? { ...r, eng_from_time: '', eng_to_time: '', eng_rate: '', eng_hours: null, eng_charge: null, eng_visible: false } : r))
+    setStRows(prev => prev.map(r => r.id === id ? { ...r, eng_name: '', eng_role: 'engineer', eng_from_time: '', eng_to_time: '', eng_rate: '', eng_hours: null, eng_charge: null, eng_visible: false } : r))
     setConfirmClearEngId(null)
   }
 
@@ -1118,26 +1120,25 @@ export function WorkOrderPopup({
   // Splits the WO's dated studio rows into segments of consecutive same-room days.
   // Segment 0 updates the primary booking; extra segments become secondary cards
   // (same work_order_id) so a session that moves rooms shows a card in each room.
-  async function projectBookingCards(woId: string) {
-    const primaryId = primaryBookingIdRef.current
+  // Pure builder: computes the primary-card update + secondary-card payloads for
+  // the per-room-segment projection. All WRITES happen atomically inside the
+  // save_work_order_atomic RPC (matching by (studio, start_date), stale delete).
+  function buildBookingProjection(woId: string): { primaryCard: Record<string, any>; secondaryCards: Record<string, any>[] } {
     const venue = booking.location || ''
     const dated = stRows.filter(r => r.date && r.studio).sort((a, b) => a.date.localeCompare(b.date))
 
-    if (dated.length === 0) {
-      await supabase.from('bookings').update({ work_order_id: woId }).eq('id', primaryId)
-      return
-    }
-
     // Build segments (new segment on room change OR non-consecutive date).
-    type Seg = { studio: string; location: string; start: string; end: string; from: string; to: string; engName: string }
+    type Seg = { studio: string; location: string; start: string; end: string; from: string; to: string; engName: string; role: 'engineer' | 'assistant' }
     const segs: Seg[] = []
     for (const r of dated) {
       const last = segs[segs.length - 1]
       const rLoc = r.location || venue
       if (last && last.studio === r.studio && last.location === rLoc && isNextDay(last.end, r.date)) {
         last.end = r.date
+        // First named staffer in the segment wins (a later day may carry the name).
+        if (!last.engName && r.eng_name) { last.engName = r.eng_name; last.role = r.eng_role || 'engineer' }
       } else {
-        segs.push({ studio: r.studio, location: rLoc, start: r.date, end: r.date, from: r.from_time, to: r.to_time, engName: r.eng_name || '' })
+        segs.push({ studio: r.studio, location: rLoc, start: r.date, end: r.date, from: r.from_time, to: r.to_time, engName: r.eng_name || '', role: r.eng_role || 'engineer' })
       }
     }
 
@@ -1155,7 +1156,6 @@ export function WorkOrderPopup({
       phone: wo.phone || null,
       email: wo.email || null,
       producer: wo.producer || null,
-      assistant_name: wo.second_engineer || null,
       is_srs: wo.is_srs,
       invoice_num: wo.invoice_number || null,
       po: wo.po_number || null,
@@ -1165,10 +1165,20 @@ export function WorkOrderPopup({
       work_order_id: woId,
       wo_number: wo.wo_number || null,
     }
+    // Staff initials for the card: the segment's named staffer (else the legacy
+    // WO-level engineer), written to engineer_name (1ST) or assistant_name (2ND)
+    // by the row's eng_role. When a name is present the opposite column is
+    // cleared (a role switch must move the initials, not duplicate them); when
+    // no name exists both are omitted so a save never wipes card initials.
+    const staffFor = (seg: Seg): Record<string, any> => {
+      const name = seg.engName || wo.engineer
+      if (!name) return wo.second_engineer ? { assistant_name: wo.second_engineer } : {}
+      return seg.role === 'assistant'
+        ? { assistant_name: name, engineer_name: null }
+        : { engineer_name: name, assistant_name: wo.second_engineer || null }
+    }
     const scheduleFor = (seg: Seg) => ({
-      // Engineer from the segment's rows, else the WO engineer; omit when both
-      // empty so a save never wipes the card's engineer initials.
-      ...((seg.engName || wo.engineer) ? { engineer_name: seg.engName || wo.engineer } : {}),
+      ...staffFor(seg),
       location: seg.location || venue || undefined,
       studio: roomLabelForVenue(seg.location || venue, seg.studio),
       start_date: seg.start,
@@ -1177,30 +1187,22 @@ export function WorkOrderPopup({
       to_time: seg.to || null,
     })
 
-    // Segment 0 → the primary booking card.
-    await supabase.from('bookings').update({ ...sessionFields, ...scheduleFor(segs[0]) }).eq('id', primaryId)
-
-    // Extra segments → secondary cards (match existing by room+start, else insert).
-    const { data: existing } = await supabase.from('bookings')
-      .select('id, studio, start_date').eq('work_order_id', woId).neq('id', primaryId)
-    const kept = new Set<string>()
-    for (let i = 1; i < segs.length; i++) {
-      const seg = segs[i]
-      const room = roomLabelForVenue(seg.location || venue, seg.studio)
-      const match = (existing ?? []).find(b => b.studio === room && b.start_date === seg.start && !kept.has(b.id))
-      const payload = { ...sessionFields, ...scheduleFor(seg), engineer_status: 'not_needed', assistant_status: 'not_needed' }
-      if (match) {
-        await supabase.from('bookings').update(payload).eq('id', match.id)
-        kept.add(match.id)
-      } else {
-        const { data: ins } = await supabase.from('bookings').insert(payload).select('id').single()
-        if (ins) kept.add(ins.id)
-      }
+    // No dated rows yet: just make sure the primary card carries the session
+    // fields + WO link (no schedule overwrite, no secondary cards).
+    if (segs.length === 0) {
+      return { primaryCard: sessionFields, secondaryCards: [] }
     }
 
-    // Delete secondary cards that no longer correspond to a segment.
-    const stale = (existing ?? []).filter(b => !kept.has(b.id))
-    if (stale.length > 0) await supabase.from('bookings').delete().in('id', stale.map(b => b.id))
+    // Segment 0 → the primary booking card; segments 1..n → secondary cards.
+    return {
+      primaryCard: { ...sessionFields, ...scheduleFor(segs[0]) },
+      secondaryCards: segs.slice(1).map(seg => ({
+        ...sessionFields,
+        ...scheduleFor(seg),
+        engineer_status: 'not_needed',
+        assistant_status: 'not_needed',
+      })),
+    }
   }
 
   // ── Complete WO ───────────────────────────────────────────────────────────
@@ -1259,7 +1261,9 @@ export function WorkOrderPopup({
     setSaving(true)
     const id = woIdRef.current
 
-    const { error: woSaveErr } = await supabase.from('work_orders').update({
+    // ── Build every payload client-side (values computed here, single source),
+    // then apply them in ONE all-or-nothing call to save_work_order_atomic.
+    const woUpdate = {
       invoice_number: wo.invoice_number || null,
       session_date: wo.session_date || null,
       studios: wo.studios,
@@ -1292,99 +1296,56 @@ export function WorkOrderPopup({
       anr_contact_id: wo.anr_contact_id,
       anr_admin_contact_id: wo.anr_admin_contact_id,
       updated_at: new Date().toISOString(),
-    }).eq('id', id)
-    if (!dbResult('Saving work order', woSaveErr)) { setSaving(false); return }
-
-    const { error: bkSyncErr } = await supabase.from('bookings').update({
-      from_time: stRows[0]?.from_time || null,
-      to_time: stRows[0]?.to_time || null,
-      client_name: wo.client || null,
-      artist: wo.artist || null,
-      label: wo.label || null,
-      client_id: wo.client_id,
-      ...(wo.engineer ? { engineer_name: wo.engineer } : {}),
-      assistant_name: wo.second_engineer || null,
-      producer: wo.producer || null,
-      phone: wo.phone || null,
-      email: wo.email || null,
-      notes: wo.session_notes || null,
-      invoice_num: wo.invoice_number || null,
-      ordered_by: wo.ordered_by || null,
-      payment_type: wo.payment_status === 'Billing' ? 'billing' : 'COD',
-      cod_method: wo.cod_method || null,
-      is_srs: wo.is_srs,
-      // Only write status/session_type when they hold a real value — never blank
-      // the calendar card (an empty status renders as no color / "open hours").
-      ...(wo.session_status ? { status: wo.session_status } : {}),
-      ...(wo.session_type ? { session_type: wo.session_type } : {}),
-      anr_contact_id: wo.anr_contact_id,
-      anr_admin_contact_id: wo.anr_admin_contact_id,
-    }).eq('id', primaryBookingIdRef.current)
-    dbResult('Syncing booking card', bkSyncErr)
-
-    // Save studio time rows — insert new rows, update existing
-    const originalStIds = new Set(originalStRowsRef.current.map(r => r.id))
-    await Promise.all(stRows.map(r => {
-      const payload = {
-        studio: r.studio, location: r.location || null, eng_name: r.eng_name || null, date: r.date, session_info: r.session_info,
-        from_time: r.from_time, to_time: r.to_time,
-        total_hours: r.total_hours, rate: r.rate, rate_daily: r.rate_daily || null,
-        row_rate_type: r.row_rate_type,
-        charge: r.charge,
-        sort_order: r.sort_order,
-        day_count: r.day_count ?? null,
-        ot_rate: r.ot_rate ? parseFloat(r.ot_rate.replace(/[^0-9.]/g, '')) || null : null,
-        ot_hours: r.ot_hours ? parseFloat(r.ot_hours) || null : null,
-        ot_charge: r.ot_charge ?? null,
-        eng_hours: r.eng_hours ?? null,
-        eng_rate: r.eng_rate || null,
-        eng_charge: r.eng_charge ?? null,
-        eng_from_time: r.eng_from_time || null,
-        eng_to_time: r.eng_to_time || null,
-        admin_checked: r.admin_checked,
-        admin_locked: r.admin_locked,
-        eng_visible: r.eng_visible,
-      }
-      return originalStIds.has(r.id)
-        ? supabase.from('studio_time_rows').update(payload).eq('id', r.id)
-        : supabase.from('studio_time_rows').insert({ ...payload, id: r.id, work_order_id: id })
-    })).then(results => {
-      const failed = results.filter(r => r?.error)
-      if (failed.length > 0) dbResult(`Saving ${failed.length} studio-time row(s)`, failed[0].error)
-    })
-
-    // Upsert rental rows that have content
-    const rentToSave = rentRows.filter(r => r.item || r.charge)
-    await Promise.all(rentToSave.map(r => {
-      const payload = { id: r.id, work_order_id: id, qty: parseInt(r.qty) || null, item: r.item || null, supplier: r.supplier || null, dates_used: r.dates_used || null, rate: r.rate || null, charge: parseFloat(r.charge) || null }
-      return rentIdsInDb.current.has(r.id)
-        ? supabase.from('rental_rows').update(payload).eq('id', r.id)
-        : supabase.from('rental_rows').insert(payload)
-    })).then(results => {
-      const failed = results.filter(r => r?.error)
-      if (failed.length > 0) dbResult(`Saving ${failed.length} rental row(s)`, failed[0].error)
-    })
-
-    // Upsert payment rows that have content
-    const payToSave = payRows.filter(p => p.payment_type || p.amount)
-    await Promise.all(payToSave.map(p => {
-      const payload = { id: p.id, work_order_id: id, payment_type: p.payment_type || null, amount: stripCurrency(p.amount), memo: p.memo || null, last_four: p.last_four || null }
-      return payIdsInDb.current.has(p.id)
-        ? supabase.from('payment_rows').update(payload).eq('id', p.id)
-        : supabase.from('payment_rows').insert(payload)
-    })).then(results => {
-      const failed = results.filter(r => r?.error)
-      if (failed.length > 0) dbResult(`Saving ${failed.length} payment row(s)`, failed[0].error)
-    })
-
-    // ── Projection (Step 5b): one WO → one booking card per room-run ──
-    if (booking.id) {
-      try {
-        await projectBookingCards(id)
-      } catch (err) {
-        console.error('WO→booking projection failed:', err)
-      }
     }
+
+    // Studio time rows — upserts (RPC conflicts on id; uniform key set required).
+    const stPayloads = stRows.map(r => ({
+      id: r.id,
+      studio: r.studio, location: r.location || null, eng_name: r.eng_name || null, eng_role: r.eng_role, date: r.date, session_info: r.session_info,
+      from_time: r.from_time, to_time: r.to_time,
+      total_hours: r.total_hours, rate: r.rate, rate_daily: r.rate_daily || null,
+      row_rate_type: r.row_rate_type,
+      charge: r.charge,
+      sort_order: r.sort_order,
+      day_count: r.day_count ?? null,
+      ot_rate: r.ot_rate ? parseFloat(r.ot_rate.replace(/[^0-9.]/g, '')) || null : null,
+      ot_hours: r.ot_hours ? parseFloat(r.ot_hours) || null : null,
+      ot_charge: r.ot_charge ?? null,
+      eng_hours: r.eng_hours ?? null,
+      eng_rate: r.eng_rate || null,
+      eng_charge: r.eng_charge ?? null,
+      eng_from_time: r.eng_from_time || null,
+      eng_to_time: r.eng_to_time || null,
+      admin_checked: r.admin_checked,
+      admin_locked: r.admin_locked,
+      eng_visible: r.eng_visible,
+    }))
+
+    // Rental + payment rows that have content — upserts.
+    const rentPayloads = rentRows.filter(r => r.item || r.charge).map(r => ({
+      id: r.id, qty: parseInt(r.qty) || null, item: r.item || null, supplier: r.supplier || null, dates_used: r.dates_used || null, rate: r.rate || null, charge: parseFloat(r.charge) || null,
+    }))
+    const payPayloads = payRows.filter(p => p.payment_type || p.amount).map(p => ({
+      id: p.id, payment_type: p.payment_type || null, amount: stripCurrency(p.amount), memo: p.memo || null, last_four: p.last_four || null,
+    }))
+
+    // Projection (Step 5b): one WO → one booking card per room-run. Only when a
+    // booking is resolvable — without it the RPC skips all card writes.
+    const projection = booking.id ? buildBookingProjection(id) : null
+
+    const { error: saveErr } = await supabase.rpc('save_work_order_atomic', {
+      p_wo_id: id,
+      p_wo: woUpdate,
+      p_primary_booking_id: primaryBookingIdRef.current,
+      p_primary_card: projection?.primaryCard ?? null,
+      p_st_rows: stPayloads,
+      p_rentals: rentPayloads,
+      p_payments: payPayloads,
+      p_secondary_cards: projection?.secondaryCards ?? [],
+    })
+    // All-or-nothing: on failure NOTHING was written — keep the popup open so
+    // the user's edits aren't lost, and let them retry.
+    if (!dbResult('Saving work order', saveErr)) { setSaving(false); return }
 
     originalStRowsRef.current = stRows
     deletedRowsRef.current = []
@@ -1404,7 +1365,7 @@ export function WorkOrderPopup({
         supabase.from('studio_time_rows').insert({
           id: r.id,
           work_order_id: woIdRef.current!,
-          studio: r.studio, date: r.date, session_info: r.session_info,
+          studio: r.studio, location: r.location || null, eng_name: r.eng_name || null, eng_role: r.eng_role, date: r.date, session_info: r.session_info,
           from_time: r.from_time, to_time: r.to_time,
           total_hours: r.total_hours, rate: r.rate,
           rate_daily: r.rate_daily || null,
@@ -1533,10 +1494,12 @@ export function WorkOrderPopup({
         rate: seed.rateType === 'hour' ? seed.rate : '',
         rateDaily: seed.rateType === 'day' ? seed.rate : '',
         engRate: seed.engOn && seed.engRate ? seed.engRate : undefined,
+        engName: seed.engOn && seed.engName.trim() ? seed.engName.trim() : undefined,
+        engRole: seed.engOn ? seed.engRole : undefined,
       })
-      // If an engineer was named in the seed, set it on the WO (the engineer name
-      // is WO-level; the per-row eng rate is seeded above).
-      if (seed.engOn && seed.engName.trim()) {
+      // A named 1ST engineer also becomes the WO-level fallback (legacy field,
+      // used as the placeholder + card fallback). Assistants stay row-only.
+      if (seed.engOn && seed.engName.trim() && seed.engRole === 'engineer') {
         setDirtyFields(prev => new Set(prev).add('engineer'))
         setWo(w => w ? { ...w, engineer: seed.engName.trim() } : w)
       }
@@ -1906,22 +1869,32 @@ export function WorkOrderPopup({
                     </div>
                   </div>
 
-                  {/* Engineer — off by default; toggle on to add a name + rate */}
+                  {/* Staff — off by default; toggle on to add an engineer (1ST) or assistant (2ND) + rate */}
                   <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <span style={metaLabel}>Engineer</span>
+                      <span style={metaLabel}>Eng / Asst</span>
                       <button type="button" onClick={() => setSeed(s => ({ ...s, engOn: !s.engOn }))} style={{ padding: '4px 18px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', border: `1px solid ${seed.engOn ? 'var(--accent)' : 'var(--border)'}`, background: seed.engOn ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: seed.engOn ? 'var(--accent)' : 'var(--text2)' }}>
                         {seed.engOn ? 'Yes' : 'No'}
                       </button>
                     </div>
                     {seed.engOn && (
                       <>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <span style={metaLabel}>Role</span>
+                          <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+                            {(['engineer', 'assistant'] as const).map(role => (
+                              <button key={role} type="button" onClick={() => setSeed(s => ({ ...s, engRole: role }))} style={{ padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', fontWeight: 700, border: 'none', cursor: 'pointer', background: seed.engRole === role ? 'var(--accent)' : 'transparent', color: seed.engRole === role ? 'var(--bg)' : 'var(--text2)' }}>
+                                {role === 'engineer' ? '1ST' : '2ND'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: '0 1 220px' }}>
-                          <span style={metaLabel}>Engineer name</span>
-                          <input value={seed.engName} onChange={e => setSeed(s => ({ ...s, engName: e.target.value }))} style={inp} />
+                          <span style={metaLabel}>{seed.engRole === 'assistant' ? 'Assistant name' : 'Engineer name'}</span>
+                          <input list="wo-eng-roster" value={seed.engName} onChange={e => setSeed(s => ({ ...s, engName: e.target.value }))} style={inp} />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, width: 80 }}>
-                          <span style={metaLabel}>Eng rate</span>
+                          <span style={metaLabel}>Rate</span>
                           <input value={seed.engRate} onChange={e => setSeed(s => ({ ...s, engRate: e.target.value }))} style={inp} />
                         </div>
                       </>
@@ -2127,10 +2100,21 @@ export function WorkOrderPopup({
                           >Revert</button>
                         </div>
                       )}
-                      {(r.studio === '' || !!wo?.engineer || !!r.eng_rate) && r.eng_visible !== false && (
+                      {r.eng_visible !== false && (
                         <>
                           <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(var(--accent-rgb),0.03)' }}>
-                            <div style={{ ...cellS, color: 'var(--text2)', fontSize: 9, fontStyle: 'italic' }}>Eng</div>
+                            {/* 1ST/2ND role toggle — engineer vs assistant (every session has one OR the other) */}
+                            <div style={{ ...cellS, padding: '2px 4px' }}>
+                              <button
+                                type="button"
+                                disabled={readOnly}
+                                onClick={() => updateStRow(r.id, { eng_role: r.eng_role === 'assistant' ? 'engineer' : 'assistant' })}
+                                title={r.eng_role === 'assistant' ? 'Assistant (2nd) — click to switch to Engineer' : 'Engineer (1st) — click to switch to Assistant'}
+                                style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, letterSpacing: '0.04em', padding: '2px 6px', borderRadius: 3, cursor: readOnly ? 'default' : 'pointer', background: 'transparent', border: `1px solid ${r.eng_role === 'assistant' ? 'rgba(249,115,22,0.45)' : 'rgba(var(--accent-rgb),0.45)'}`, color: r.eng_role === 'assistant' ? 'var(--warm)' : 'var(--accent)' }}
+                              >
+                                {r.eng_role === 'assistant' ? '2ND' : '1ST'}
+                              </button>
+                            </div>
                             {/* Date picker — uses r.date for eng-only rows; shared with main row for studio rows */}
                             <div key={r.id + '-eng-date'} style={{ ...cellS, color: 'var(--text2)', fontSize: 10, position: 'relative', cursor: isEngOnly ? 'pointer' : 'default' }}>
                               <span style={{ pointerEvents: 'none' }}>{shortDate(r.date)}</span>
@@ -2155,7 +2139,7 @@ export function WorkOrderPopup({
                                 list="wo-eng-roster"
                                 value={r.eng_name || ''}
                                 onChange={e => updateStRow(r.id, { eng_name: e.target.value })}
-                                placeholder={engName || 'Engineer…'}
+                                placeholder={engName || (r.eng_role === 'assistant' ? 'Assistant…' : 'Engineer…')}
                                 style={{ ...inp, fontSize: 10, color: 'var(--accent)' }}
                               />
                             </div>
