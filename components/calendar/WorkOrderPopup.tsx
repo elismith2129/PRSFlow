@@ -1129,7 +1129,7 @@ export function WorkOrderPopup({
     }
 
     // Build segments (new segment on room change OR non-consecutive date).
-    type Seg = { studio: string; location: string; start: string; end: string; from: string; to: string }
+    type Seg = { studio: string; location: string; start: string; end: string; from: string; to: string; engName: string }
     const segs: Seg[] = []
     for (const r of dated) {
       const last = segs[segs.length - 1]
@@ -1137,7 +1137,7 @@ export function WorkOrderPopup({
       if (last && last.studio === r.studio && last.location === rLoc && isNextDay(last.end, r.date)) {
         last.end = r.date
       } else {
-        segs.push({ studio: r.studio, location: rLoc, start: r.date, end: r.date, from: r.from_time, to: r.to_time })
+        segs.push({ studio: r.studio, location: rLoc, start: r.date, end: r.date, from: r.from_time, to: r.to_time, engName: r.eng_name || '' })
       }
     }
 
@@ -1155,7 +1155,6 @@ export function WorkOrderPopup({
       phone: wo.phone || null,
       email: wo.email || null,
       producer: wo.producer || null,
-      engineer_name: wo.engineer || null,
       assistant_name: wo.second_engineer || null,
       is_srs: wo.is_srs,
       invoice_num: wo.invoice_number || null,
@@ -1167,6 +1166,9 @@ export function WorkOrderPopup({
       wo_number: wo.wo_number || null,
     }
     const scheduleFor = (seg: Seg) => ({
+      // Engineer from the segment's rows, else the WO engineer; omit when both
+      // empty so a save never wipes the card's engineer initials.
+      ...((seg.engName || wo.engineer) ? { engineer_name: seg.engName || wo.engineer } : {}),
       location: seg.location || venue || undefined,
       studio: roomLabelForVenue(seg.location || venue, seg.studio),
       start_date: seg.start,
@@ -1300,7 +1302,7 @@ export function WorkOrderPopup({
       artist: wo.artist || null,
       label: wo.label || null,
       client_id: wo.client_id,
-      engineer_name: wo.engineer || null,
+      ...(wo.engineer ? { engineer_name: wo.engineer } : {}),
       assistant_name: wo.second_engineer || null,
       producer: wo.producer || null,
       phone: wo.phone || null,

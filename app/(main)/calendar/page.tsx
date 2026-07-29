@@ -323,11 +323,6 @@ function BookingBlock({
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto' }}>
             <div>
-              {booking.wo_number && (
-                <div style={{ fontSize: 8, fontFamily: 'DM Mono', lineHeight: 1.3, color: 'var(--text3)' }}>
-                  {booking.wo_number}
-                </div>
-              )}
               {!isBilling && booking.cod_method && (
                 <div style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, lineHeight: 1.3, color: '#f87171' }}>
                   {booking.cod_method.toUpperCase()}
