@@ -63,8 +63,18 @@ export async function propagateClientRename(after: Client, changed: Partial<Clie
     const person = after.name || fullName(after.fname, after.lname)
     if (person) bookingPatch.client_name = person
     if ('fname' in changed || 'lname' in changed) {
+      // Normal path — the profile edits First and Last directly and saves them
+      // alongside the combined `name`, so the lead gets both halves verbatim.
       leadPatch.fname = (after.fname || '').trim()
       leadPatch.lname = (after.lname || '').trim()
+    } else if ('name' in changed && person) {
+      // Fallback for any caller that still writes a combined name only (legacy
+      // rows, imports, registration-created clients). Leads keep first and last
+      // in separate columns, so split on the first space — the same convention
+      // the new-lead form uses when it parses a typed A&R name.
+      const parts = person.trim().split(/\s+/).filter(Boolean)
+      leadPatch.fname = parts[0] || ''
+      leadPatch.lname = parts.slice(1).join(' ')
     }
   }
 

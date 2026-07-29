@@ -446,7 +446,14 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   const [regLinkGenerating, setRegLinkGenerating] = useState(false)
   const [regViewOpen, setRegViewOpen] = useState(false)
   const [nameVal, setNameVal] = useState(client?.name || '')
+  // Individual clients edit a real First + Last pair (labels keep one company
+  // name field). Storing the two halves separately is what lets a rename flow
+  // out to leads, which have their own first/last columns — see
+  // lib/propagateClientRename.ts.
+  const [fnameVal, setFnameVal] = useState('')
+  const [lnameVal, setLnameVal] = useState('')
   const [editingName, setEditingName] = useState(false)
+  const isLabelClient = client?.type === 'label'
   const [clientTags, setClientTags] = useState<string[]>(client?.tags || [])
   const [clientTagInput, setClientTagInput] = useState('')
   const [clientTagDDOpen, setClientTagDDOpen] = useState(false)
@@ -476,6 +483,16 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
     setRegLinkCopied(false)
     setRegLinkGenerating(false)
     setNameVal(client?.name || '')
+    // Pre-fill first/last from the stored columns. Older individual clients (and
+    // any created by the public registration form) have `name` filled in but
+    // first/last empty — fall back to splitting the display name so the fields
+    // aren't blank on a client who obviously has a name.
+    {
+      const parts = (client?.name || '').trim().split(/\s+/).filter(Boolean)
+      const hasSplit = !!(client?.fname || client?.lname)
+      setFnameVal(hasSplit ? (client?.fname || '') : (parts[0] || ''))
+      setLnameVal(hasSplit ? (client?.lname || '') : (parts.slice(1).join(' ') || ''))
+    }
     setEditingName(false)
     setClientTags(client?.tags || [])
     setClientTagInput('')
@@ -492,6 +509,20 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
     await propagateClientRename({ ...client, ...fields } as Client, fields)
     onRefresh()
   }, [client, onRefresh])
+
+  // Commit an individual's name as three fields at once: the two halves that
+  // leads need, plus the combined display name that the client list, search and
+  // bookings all read. One write, so they can never drift apart.
+  const saveIndividualName = useCallback(() => {
+    if (!client) return
+    const f = fnameVal.trim()
+    const l = lnameVal.trim()
+    const full = [f, l].filter(Boolean).join(' ')
+    setEditingName(false)
+    if (!full) { setFnameVal(client.fname || ''); setLnameVal(client.lname || ''); return }
+    if (f === (client.fname || '') && l === (client.lname || '') && full === client.name) return
+    saveClient({ fname: f || null, lname: l || null, name: full })
+  }, [client, fnameVal, lnameVal, saveClient])
 
   const addClientTag = useCallback(async (tag: string) => {
     if (!client) return
@@ -653,7 +684,35 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
           </button>
         )}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 7 }}>
-          {editingName ? (
+          {editingName && !isLabelClient ? (
+            // Individual — two fields. Tab moves between them; Enter or clicking
+            // away commits both at once.
+            <div style={{ display: 'flex', gap: 8, width: '100%' }} onBlur={e => {
+              // Only commit when focus leaves the pair entirely, not when it
+              // moves from First to Last.
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) saveIndividualName()
+            }}>
+              {([['first', fnameVal, setFnameVal], ['last', lnameVal, setLnameVal]] as const).map(([key, val, setVal]) => (
+                <input
+                  key={key}
+                  autoFocus={key === 'first'}
+                  value={val}
+                  placeholder={key === 'first' ? 'First' : 'Last'}
+                  onChange={e => setVal(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') saveIndividualName()
+                    if (e.key === 'Escape') {
+                      setFnameVal(client.fname || '')
+                      setLnameVal(client.lname || '')
+                      setEditingName(false)
+                    }
+                  }}
+                  style={{ fontFamily: 'DM Serif Display', fontSize: 20, lineHeight: 1.2, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', padding: '0 2px', width: '100%', minWidth: 0 }}
+                />
+              ))}
+            </div>
+          ) : editingName ? (
+            // Label — one company-name field.
             <input
               autoFocus
               value={nameVal}
