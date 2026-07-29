@@ -92,8 +92,20 @@ export async function createWorkOrderForBooking(booking: Booking): Promise<{ wor
     sortOrderStart: 0,
     // Per-row staff seed: engineer (1ST) if the booking names one, else the
     // assistant (2ND) — so cards project initials from day one.
-    engName: booking.engineer_name || booking.assistant_name || undefined,
-    engRole: booking.engineer_name ? 'engineer' : (booking.assistant_name ? 'assistant' : undefined),
+    // `staff_mode` is the single, explicit signal — set from the lead's staffing
+    // picker, defaulting to 'assistant' for a booking made straight off the
+    // calendar. A name is optional ("engineer, TBD"), and 'none' seeds the rows
+    // with no staff sub-row at all.
+    engRole: booking.staff_mode === 'engineer'
+      ? 'engineer'
+      : booking.staff_mode === 'none'
+        ? 'none'
+        : 'assistant',
+    engName: booking.staff_mode === 'none'
+      ? undefined
+      : (booking.staff_mode === 'engineer'
+          ? booking.engineer_name || undefined
+          : booking.assistant_name || undefined),
   })
 
   // Equipment condition rows — one per equipment item per session date.

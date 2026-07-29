@@ -2147,6 +2147,37 @@ Eli's test results from the earlier session: **blocks (Tour/Tech/Open Hours) pas
 
 **Step 9 — scoped, NOT started (next session's project).** Full inventory of `work_orders.booking_id` readers that must invert to `bookings.work_order_id` first: runner hub `/runner/[studio]` (woMap), runner WO page (`?booking_id=` adopt path + realtime handler), `/wo-hub` (list join), `DailyOpsLogSection` (`.in('booking_id', …)`), `LocationStrip` (3 query sites: submitted badge + today/yesterday WO maps), `WorkOrderPopup.initWO` legacy fallback + `primaryBookingIdRef`, `lib/deleteSession.ts`, `createWorkOrderForBooking` payload. The create RPC must re-key idempotency from `on conflict (booking_id)` to a `select … from bookings where id = p_booking_id for update` row-lock + adopt-existing-link check, and stop inserting the column. Only after all of that is deployed + verified does the drop migration run (re-run the `work_order_id` backfill first, then drop the UNIQUE + column). Seven nightly-used surfaces — deliberately not stacked onto this session.
 
+### July 28, 2026 (session 3, cont.) — v1.2.0: staffing chosen at the lead, seeded into the WO
+
+Two related changes, shipped together because the second superseded part of the first before it was ever run.
+
+**Part B — staffing is picked on the LEAD and auto-populates the Work Order.** `leads.engineer_needed` was a bare boolean that **nothing outside the CRM ever read** — the calendar's lead→session conversion never selected it. Staff were typing an engineer or assistant onto every studio-time row by hand.
+- **Migration `20260728220000_lead_and_booking_staffing.sql`**: `leads.staff_role` + `leads.staff_name`; `bookings.staff_mode` (NOT NULL, default `'assistant'`, CHECK'd). Backfills `staff_role` from `engineer_needed`, and infers `staff_mode` for existing bookings that already name an engineer. **`engineer_needed` is now VESTIGIAL** — backfilled, unread, drop in a later cleanup.
+- **Three states, because sessions have three:** `engineer` (1ST) · `assistant` (2ND, the default) · `none` (unstaffed — seeds the rows with the staff sub-row *hidden*, not blank).
+- **The name is OPTIONAL.** "Engineer, TBD" is a normal state — sessions get booked before staffing settles. The role still seeds so the row reads 1ST and the rate lines are right.
+- **New `components/shared/StaffPicker.tsx`** — Eng / Asst / No Staff + an optional person, used by BOTH the lead detail and the new-lead modal (one component so they can't drift). The list is the `engineers` roster filtered to the relevant pool (`role` is `Engineer | Assistant | Both`, so **Both appears in either**), but **free text is allowed** — a new hire or one-off freelancer shouldn't force an Admin detour mid-call. Roster is cached at module level (small, unchanging reference data, two mount points). Switching role **clears the name deliberately**: the previous person came from the other pool.
+- **`bookings.staff_mode` is an explicit column, not more overloading.** Part A originally read the lead's flag through `engineer_status <> 'not_needed'`; that can't express "no staff", because `engineer_status` already defaults to `'not_needed'` and a calendar-made booking would be indistinguishable from a deliberately unstaffed one. `createWorkOrderForBooking` now reads `staff_mode` directly.
+- **Bug found while wiring this up:** `buildRowPayload` only wrote `eng_role` inside its `if (rate or name)` block, so Part A's role choice was **silently dropped whenever nobody was named** — exactly the "engineer, TBD" case. The role is now written whenever one was asked for, independent of name/rate.
+- The old `[data-eng-needed]` light-mode rule became `[data-staff-mode-on]`; "No Staff" stays neutral when active (it's the absence of a choice).
+
+---
+
+### July 28, 2026 (session 3, cont.) — v1.2.0 Part A: staff rows default to ASSISTANT
+
+Eli's rule: most sessions run with an assistant. An engineer is the exception, asked for up front. Staff were having to downgrade 1ST → 2ND on the majority of sessions.
+
+**Migration `20260728210000_studio_time_rows_eng_role_default_assistant.sql`** — flips the `eng_role` column DEFAULT to `'assistant'`. **DEFAULT only: no existing row is rewritten**, and every app insert sets the role explicitly, so this is purely the belt-and-braces case.
+
+**The lead's Engineer Needed flag now actually does something.** `leads.engineer_needed` was editable in the CRM and then read by *nothing* — the calendar's lead→session conversion never selected it. It now maps to `bookings.engineer_status = 'hold'`, which is the single signal `createWorkOrderForBooking` reads when deciding the seeded role. (Reusing the existing semantic column, not a new one — new bookings already default it to `'not_needed'`, so the calendar's own "new booking" path lands on assistant with no extra work.)
+
+**Role precedence in `createWorkOrderForBooking`:** a named engineer → 1ST; a named assistant → 2ND; nobody named but `engineer_status <> 'not_needed'` → 1ST; otherwise → **2ND**.
+
+**Defaults flipped to assistant across every path** so the WO can't disagree with itself: `seedStudioTimeRows.buildRowPayload`, `normalizeStRow`'s fallback, `addStRow` (still inherits from the row above first — a session staffed with engineers keeps adding engineers), `addEngRow`'s default parameter, the Seed panel's role toggle, and `clearEngRow` (which previously reset a cleared row back to *engineer*, silently promoting it). The four `eng_role || 'engineer'` fallbacks in `buildBookingProjection` were flipped too — unreachable in practice, but a null role would otherwise have written the name into the 1ST card column.
+
+**Unchanged:** the 1ST/2ND toggle still switches any row by hand, and existing WOs keep the roles they were saved with.
+
+---
+
 **Carried into Step 9 (added July 28, session 3 — do NOT lose these):**
 1. **`bookings.lead_id`** — a durable link from a session back to the CRM lead that produced it. Today that link lives only in `calendar/page.tsx` component state (`woLeadId`) for the lifetime of one WO session, so abandoning a WO and reopening it later loses it and that save won't mark the lead booked. Step 9 is already reshaping the booking↔WO columns, so add it there rather than bolting on a second ad-hoc column. Once it exists, `WorkOrderPopup` should read the lead from the booking instead of taking a `leadId` prop.
 2. **Typed A&R / Admin names must become real contacts.** In `ClientPanel`, the A&R and Admin fields are search boxes over `client_contacts`; picking a match links a real record by id, but typing a name that matches nothing saves the raw string to `bookings.ordered_by` and it never becomes a contact — no first/last, no record, unreachable from the client profile. Fix: typing a new name offers to create a `client_contacts` row (first + last, on the linked client) and links it. **Standing convention (Eli, July 28): a person's name is ALWAYS two separate fields anywhere it's edited** — see CLAUDE.md → Data model → `clients`. The CRM is fully compliant as of v1.1.0; the WO is the remaining gap. Note the Artist field (a stage name) and the signature "Print Name" lines (legal, full name by convention) are deliberately single fields and are NOT part of this.

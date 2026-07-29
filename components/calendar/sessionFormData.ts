@@ -21,6 +21,8 @@ export type FormData = {
   phone: string; email: string; po: string; producer: string
   food_budget: boolean; food_amount: string
   engineer_name: string; engineer_rate: string; engineer_status: string
+  // Which role staffs the session — seeded from the lead's staffing picker.
+  staff_mode: 'engineer' | 'assistant' | 'none'
   assistant_name: string; assistant_status: string
   notes: string
   client_db_id: string | null
@@ -40,6 +42,7 @@ export function emptyForm(overrides: Partial<FormData> = {}): FormData {
     phone: '', email: '', po: '', producer: '',
     food_budget: false, food_amount: '',
     engineer_name: '', engineer_rate: '', engineer_status: 'not_needed',
+    staff_mode: 'assistant',
     assistant_name: '', assistant_status: 'not_needed',
     notes: '',
     client_db_id: null,
@@ -65,6 +68,7 @@ export function bookingToForm(b: Booking): FormData {
     po: b.po ?? '', producer: b.producer ?? '',
     food_budget: b.food_budget ?? false, food_amount: b.food_amount ?? '',
     engineer_name: b.engineer_name ?? '', engineer_rate: b.engineer_rate ?? '', engineer_status: b.engineer_status ?? 'not_needed',
+    staff_mode: b.staff_mode ?? 'assistant',
     assistant_name: b.assistant_name ?? '', assistant_status: b.assistant_status ?? 'not_needed',
     notes: b.notes ?? '',
     client_db_id: b.client_id ?? null,

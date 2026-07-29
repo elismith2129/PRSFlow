@@ -49,7 +49,13 @@ export interface Lead {
   contacted_at: string | null
   session_start: string | null
   session_end: string | null
+  // VESTIGIAL — superseded by staff_role (migration 20260728220000, which
+  // backfilled it). Nothing reads it; drop the column in a later cleanup.
   engineer_needed: boolean | null
+  // Staffing decided at the lead stage and carried through to the booking.
+  // staff_name is optional: "engineer, TBD" is a normal state.
+  staff_role: StaffMode | null
+  staff_name: string | null
   created_by: string | null
   tags: string[]
   email_opt_out: boolean
@@ -162,6 +168,10 @@ export type BookingStatus = 'confirmed' | 'tentative' | 'cancelled' | 'tour' | '
 export type SessionType = 'recording' | 'filming' | 'event_playback'
 export type EngineerStatus = 'hold' | 'confirmed' | 'not_needed'
 
+// Who staffs a session: 1ST, 2ND, or nobody. Assistant is the normal case and
+// the default; an engineer is the exception, asked for up front.
+export type StaffMode = 'engineer' | 'assistant' | 'none'
+
 export interface Booking {
   id: string
   status: BookingStatus
@@ -194,6 +204,10 @@ export interface Booking {
   engineer_status: EngineerStatus
   assistant_name: string | null
   assistant_status: EngineerStatus
+  // Which role staffs this session (migration 20260728220000). Seeded from the
+  // lead's staffing picker; the single signal createWorkOrderForBooking reads
+  // when it seeds the WO's studio-time staff sub-rows. Defaults to 'assistant'.
+  staff_mode: StaffMode
   notes: string | null
   is_srs: boolean
   srs_fee_amount: number | null

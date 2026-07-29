@@ -36,7 +36,9 @@ export type SeedRowParams = {
   engFromTime?: string
   engToTime?: string
   engName?: string
-  engRole?: 'engineer' | 'assistant' // 1ST vs 2ND; default 'engineer'
+  // 1ST vs 2ND, or 'none' to seed the row with NO staff sub-row at all.
+  // Defaults to 'assistant' — an engineer is the exception.
+  engRole?: 'engineer' | 'assistant' | 'none'
 }
 
 // Build one studio_time_rows payload for a single date. Mirrors the exact column
@@ -52,15 +54,26 @@ function buildRowPayload(p: SeedRowParams, date: string, sortOrder: number): Rec
   }
   if (p.workOrderId) base.work_order_id = p.workOrderId
 
-  // Optional staff sub-row seed (when a rate and/or a name is supplied).
+  // ── Staff sub-row seed ──
+  // 'none' means the session runs unstaffed: hide the sub-row outright rather
+  // than leaving an empty one for someone to wonder about.
   const seedName = (p.engName ?? '').trim()
-  if ((p.engRate != null && p.engRate !== '') || seedName !== '') {
-    if (p.engRate != null && p.engRate !== '') base.eng_rate = p.engRate
-    if (seedName !== '') base.eng_name = seedName
-    base.eng_role = p.engRole === 'assistant' ? 'assistant' : 'engineer'
-    base.eng_from_time = p.engFromTime ?? p.fromTime ?? ''
-    base.eng_to_time = p.engToTime ?? p.toTime ?? ''
-    base.eng_visible = true
+  const hasRate = p.engRate != null && p.engRate !== ''
+  if (p.engRole === 'none') {
+    base.eng_visible = false
+  } else {
+    // The ROLE is written whenever one was asked for, even with nobody named and
+    // no rate yet — "engineer, TBD" is a normal state, and the row still has to
+    // read 1ST. (This block used to run only when a name or rate existed, which
+    // silently dropped the role on exactly that case.)
+    if (p.engRole) base.eng_role = p.engRole
+    if (hasRate || seedName !== '') {
+      if (hasRate) base.eng_rate = p.engRate
+      if (seedName !== '') base.eng_name = seedName
+      base.eng_from_time = p.engFromTime ?? p.fromTime ?? ''
+      base.eng_to_time = p.engToTime ?? p.toTime ?? ''
+      base.eng_visible = true
+    }
   }
 
   if (p.rateType === 'day') {

@@ -1053,7 +1053,7 @@ function CalendarPageInner() {
     router.replace('/calendar')
     const clientQ = supabase.from('clients').select('id,type,name,fname,lname,email,phone,artists').eq('id', clientId).single()
     const leadQ = leadId
-      ? supabase.from('leads').select('quote,rate_daily,location,session_date,session_end_date,session_start,session_end,fname,lname,artist_name,email,phone,notes').eq('id', parseInt(leadId, 10)).single()
+      ? supabase.from('leads').select('quote,rate_daily,location,session_date,session_end_date,session_start,session_end,fname,lname,artist_name,email,phone,notes,staff_role,staff_name').eq('id', parseInt(leadId, 10)).single()
       : Promise.resolve({ data: null as any, error: null })
     Promise.all([clientQ, leadQ]).then(([{ data: c }, { data: l }]) => {
       const initial = emptyForm()
@@ -1099,6 +1099,19 @@ function CalendarPageInner() {
         // Use the specific artist from the lead rather than the roster's first entry
         if (l.artist_name) initial.artist = l.artist_name
         if (l.notes) initial.notes = l.notes
+        // Carry the lead's staffing decision onto the booking — the signal the WO
+        // reads when it seeds every studio-time row's staff sub-row, so nobody
+        // has to type an engineer or assistant onto each line by hand.
+        // A name is optional; "engineer, TBD" seeds the role with a blank name.
+        const mode = (l.staff_role as 'engineer' | 'assistant' | 'none' | null) || 'assistant'
+        initial.staff_mode = mode
+        if (mode === 'engineer') {
+          initial.engineer_name = l.staff_name || ''
+          initial.engineer_status = 'hold'
+        } else if (mode === 'assistant') {
+          initial.assistant_name = l.staff_name || ''
+          initial.assistant_status = 'hold'
+        }
       }
       // Create the session + WO from the lead prefill, then open the WO directly.
       // Remember the lead so the WO can mark it booked on save.
@@ -1173,6 +1186,7 @@ function CalendarPageInner() {
       producer: data.producer || null,
       food_budget: data.food_budget,
       food_amount: data.food_amount || null,
+      staff_mode: data.staff_mode || 'assistant',
       engineer_name: data.engineer_name || null,
       engineer_rate: data.engineer_rate || null,
       engineer_status: data.engineer_status,

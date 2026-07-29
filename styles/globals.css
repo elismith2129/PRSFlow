@@ -193,8 +193,10 @@ html[data-theme="light"] {
   color: #ffffff !important;
 }
 
-/* (FIX 2) The active ENGINEER NEEDED badge is solid blue with white text in light. */
-[data-theme="light"] [data-eng-needed] {
+/* The active staffing mode (Eng / Asst) reads as solid blue with white text in
+   light mode — the accent tint alone is too faint against the glass panels.
+   (Was [data-eng-needed], the old Engineer Needed boolean button.) */
+[data-theme="light"] [data-staff-mode-on] {
   background: #3b82f6 !important;
   color: #ffffff !important;
   border-color: #3b82f6 !important;

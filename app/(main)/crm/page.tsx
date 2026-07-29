@@ -1,7 +1,8 @@
 'use client'
 import React, { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase, Lead, LeadStatus, Client, ClientContact, BillingType } from '@/lib/supabase'
+import { supabase, Lead, LeadStatus, Client, ClientContact, BillingType, StaffMode } from '@/lib/supabase'
+import { StaffPicker } from '@/components/shared/StaffPicker'
 import { TOUCH_INTERVAL_DAYS } from '@/lib/settings'
 import { ContactPicker } from '@/components/shared/ContactPicker'
 import { ArtistPicker } from '@/components/shared/ArtistPicker'
@@ -523,6 +524,10 @@ export default function CRMPage() {
     // range check (session_end_date > session_date) sees an absent value instead
     // of an empty string that sorts before every real date.
     if (!insertData.session_end_date) insertData.session_end_date = null
+    // "Role chosen, person TBD" is normal — store NULL rather than an empty
+    // string so the WO seed sees an absent name instead of a blank one.
+    if (!insertData.staff_name) insertData.staff_name = null
+    if (!insertData.staff_role) insertData.staff_role = 'assistant'
     if (!insertData.status) insertData.status = 'uncontacted'
     if (insertData.status === 'hot') {
       const khu = new Date(); khu.setDate(khu.getDate() + 5)
@@ -2384,14 +2389,25 @@ const parsedLoc0 = parseLocation(lead.location || '')
           </div>
         </div>
       </div>
+      {/* Staffing — Eng / Asst / No Staff plus an optional person. Whatever is
+          chosen here seeds every studio-time row in the Work Order, so staff
+          don't have to be typed onto each line by hand. Replaced the old
+          "Engineer Needed" boolean, which nothing outside the CRM ever read. */}
       <div style={{ marginTop: 8 }}>
-        <button
-          onClick={() => { const v = !local.engineer_needed; update('engineer_needed', v); save('engineer_needed', v) }}
-          data-eng-needed={local.engineer_needed ? '' : undefined}
-          style={{ padding: '5px 14px', background: local.engineer_needed ? 'rgba(var(--accent-rgb),0.12)' : 'var(--surface2)', color: local.engineer_needed ? 'var(--accent)' : 'var(--text3)', border: `1px solid ${local.engineer_needed ? 'rgba(var(--accent-rgb),0.35)' : 'var(--border)'}`, borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer' }}
-        >
-          {local.engineer_needed ? '● Engineer Needed' : '○ Engineer Needed'}
-        </button>
+        <div style={fieldLabelStyle}>Staffing</div>
+        <StaffPicker
+          listId={`lead-staff-${lead.id}`}
+          role={(local.staff_role as StaffMode | null) ?? null}
+          name={local.staff_name ?? null}
+          onChange={({ role, name }) => {
+            // Role and name are one decision — persist together so a stale name
+            // from the other pool can never survive a role switch.
+            update('staff_role', role)
+            update('staff_name', name)
+            save('staff_role', role)
+            save('staff_name', name || null)
+          }}
+        />
       </div>
       </div>
 
@@ -2792,7 +2808,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
   onSave: (data: Partial<Lead>) => Promise<number | null>
 }) {
   const router = useRouter()
-  const emptyForm = { fname: '', lname: '', email: '', phone: '', company: '', label: '', source: '', booking: '', notes: '', billing: 'COD' as BillingType, quote: '', rate_daily: '', location: '', session_date: '', session_end_date: '', session_start: '', session_end: '', engineer_needed: false, artist_name: '' }
+  const emptyForm = { fname: '', lname: '', email: '', phone: '', company: '', label: '', source: '', booking: '', notes: '', billing: 'COD' as BillingType, quote: '', rate_daily: '', location: '', session_date: '', session_end_date: '', session_start: '', session_end: '', staff_role: 'assistant' as StaffMode, staff_name: '', artist_name: '' }
   const [mode, setMode] = useState<'cod' | 'label'>('cod')
   const [form, setForm] = useState(emptyForm)
   const [temperature, setTemperature] = useState<'hot' | 'warm' | 'booking'>('hot')
@@ -3262,9 +3278,16 @@ function NewLeadModal({ leads, onClose, onSave }: {
         <div><label style={labelS}>Start Time</label><TimeInput value={form.session_start} onChange={v => set('session_start', v)} style={inputStyle} /></div>
         <div><label style={labelS}>End Time</label><TimeInput value={form.session_end} onChange={v => set('session_end', v)} style={inputStyle} /></div>
       </div>
-      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <input type="checkbox" id="new_engineer_needed" checked={form.engineer_needed as boolean} onChange={e => setForm(prev => ({ ...prev, engineer_needed: e.target.checked }))} style={{ cursor: 'pointer', accentColor: 'var(--accent)', width: 13, height: 13 }} />
-        <label htmlFor="new_engineer_needed" style={{ ...labelS, marginBottom: 0, cursor: 'pointer' }}>Engineer Needed</label>
+      {/* Staffing — same control as the lead detail (shared component so the two
+          can't drift). Defaults to Assistant; seeds the Work Order on booking. */}
+      <div style={{ marginTop: 10 }}>
+        <label style={labelS}>Staffing</label>
+        <StaffPicker
+          listId="new-lead-staff"
+          role={form.staff_role as StaffMode}
+          name={form.staff_name}
+          onChange={({ role, name }) => setForm(prev => ({ ...prev, staff_role: role, staff_name: name }))}
+        />
       </div>
     </div>
   )

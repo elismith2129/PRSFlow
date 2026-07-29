@@ -269,7 +269,10 @@ function normalizeStRow(d: any): StRow {
     admin_checked: d.admin_checked ?? false,
     admin_locked: d.admin_locked ?? false,
     eng_visible: d.eng_visible ?? true,
-    eng_role: d.eng_role === 'assistant' ? 'assistant' : 'engineer',
+    // Assistant is the default role everywhere — an engineer is the exception.
+    // Stored rows keep whatever they were saved with; this only decides the
+    // fallback for a row with no role recorded.
+    eng_role: d.eng_role === 'engineer' ? 'engineer' : 'assistant',
   }
 }
 
@@ -342,7 +345,7 @@ export function WorkOrderPopup({
   const [seed, setSeed] = useState({
     studio: '', start: '', end: '', from: '', to: '',
     rateType: 'day' as 'day' | 'hour', rate: '',
-    engOn: false, engName: '', engRate: '', engRole: 'engineer' as 'engineer' | 'assistant',
+    engOn: false, engName: '', engRate: '', engRole: 'assistant' as 'engineer' | 'assistant',
   })
   const [confirmDeleteRowId, setConfirmDeleteRowId] = useState<string | null>(null)
   const [confirmDeleteSession, setConfirmDeleteSession] = useState(false)
@@ -1050,7 +1053,9 @@ export function WorkOrderPopup({
       admin_checked: false,
       admin_locked: false,
       eng_visible: true,
-      eng_role: last?.eng_role || 'engineer',
+      // Follow the row above (so a session staffed with an engineer keeps adding
+      // engineers), otherwise fall back to assistant.
+      eng_role: last?.eng_role || 'assistant',
     }
     setStRows(prev => [...prev, newRow])
     if (last?.eng_rate || (last?.eng_hours ?? 0) > 0) setShowEngRows(true)
@@ -1058,7 +1063,7 @@ export function WorkOrderPopup({
 
   // Standalone staff row — engineer (1ST) or assistant (2ND). Any number of
   // these can be added per day, fully custom, independent of studio rows.
-  function addEngRow(role: 'engineer' | 'assistant' = 'engineer') {
+  function addEngRow(role: 'engineer' | 'assistant' = 'assistant') {
     const engMaxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
     const lastEng = [...stRows].reverse().find(r => r.eng_rate || (r.eng_hours ?? 0) > 0 || r.eng_from_time) || stRows[stRows.length - 1]
     const newRow: StRow = {
@@ -1104,9 +1109,11 @@ export function WorkOrderPopup({
 
   async function clearEngRow(id: string) {
     await supabase.from('studio_time_rows').update({
-      eng_name: null, eng_role: 'engineer', eng_from_time: null, eng_to_time: null, eng_rate: null, eng_hours: null, eng_charge: null, eng_visible: false,
+      // Clearing resets the role to the default (assistant), not to engineer —
+      // otherwise clearing a row silently promoted it back to 1ST.
+      eng_name: null, eng_role: 'assistant', eng_from_time: null, eng_to_time: null, eng_rate: null, eng_hours: null, eng_charge: null, eng_visible: false,
     }).eq('id', id)
-    setStRows(prev => prev.map(r => r.id === id ? { ...r, eng_name: '', eng_role: 'engineer', eng_from_time: '', eng_to_time: '', eng_rate: '', eng_hours: null, eng_charge: null, eng_visible: false } : r))
+    setStRows(prev => prev.map(r => r.id === id ? { ...r, eng_name: '', eng_role: 'assistant', eng_from_time: '', eng_to_time: '', eng_rate: '', eng_hours: null, eng_charge: null, eng_visible: false } : r))
     setConfirmClearEngId(null)
   }
 
@@ -1167,10 +1174,10 @@ export function WorkOrderPopup({
       const rLoc = r.location || venue
       if (last && last.studio === r.studio && last.location === rLoc && isNextDay(last.end, r.date)) {
         last.end = r.date
-        applyStaff(last, r.eng_name, r.eng_role || 'engineer')
+        applyStaff(last, r.eng_name, r.eng_role || 'assistant')
       } else {
         const seg: Seg = { studio: r.studio, location: rLoc, start: r.date, end: r.date, from: r.from_time, to: r.to_time, eng: '', asst: '' }
-        applyStaff(seg, r.eng_name, r.eng_role || 'engineer')
+        applyStaff(seg, r.eng_name, r.eng_role || 'assistant')
         segs.push(seg)
       }
     }
@@ -1178,7 +1185,7 @@ export function WorkOrderPopup({
     // into every segment covering their date, so a day can carry both roles.
     for (const sr of stRows.filter(r => r.date && !r.studio && r.eng_name)) {
       for (const seg of segs) {
-        if (sr.date >= seg.start && sr.date <= seg.end) applyStaff(seg, sr.eng_name, sr.eng_role || 'engineer')
+        if (sr.date >= seg.start && sr.date <= seg.end) applyStaff(seg, sr.eng_name, sr.eng_role || 'assistant')
       }
     }
 
