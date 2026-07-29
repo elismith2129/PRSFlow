@@ -30,6 +30,8 @@ memory/
 
 # Claude Code agent worktrees (scratch, not project code)
 .claude/worktrees/
+# Claude Code per-machine settings — local to whoever is working, not project code
+.claude/settings.local.json
 
 # Service account keys — never commit credentials
 Google Service Account Key/

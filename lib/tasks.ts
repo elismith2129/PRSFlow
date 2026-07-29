@@ -15,10 +15,17 @@ export const TAB_DEFS: TabDef[] = [
 
 // Flat "Assign to" dropdown options, in exact display order. Individual people
 // (Adam-Mike / Eli / Fernando / Aaron) map to their own profile; the Asst Mgr and
-// Tech options represent a pair and assign to the primary member's id (Quinn /
+// Tech options represent a PAIR and assign to the primary member's id (Quinn /
 // Sierra), which lands the task in the corresponding member-based tab. The option
 // keys intentionally match the TAB_DEFS keys so the dropdown can default to the
 // active tab. `primaryName` is resolved to an id at save time via resolveAssignTo.
+//
+// The pair genuinely SHARES the task: as of migration 20260728200000 the
+// dashboard_tasks RLS policy grants each member of a paired role read + update on
+// any non-private task assigned to a peer holding the same role. So assigning to
+// "Asst Mgr" reaches Quinn AND Isaac even though the row stores Quinn's id.
+// (Storing one id keeps assigned_to a plain FK — don't "fix" this by fanning the
+// task out into duplicate rows per member.)
 export const ASSIGN_OPTIONS: { key: string; label: string; primaryName: string }[] = [
   { key: 'adam_mike', label: 'Adam-Mike', primaryName: 'Adam-Mike' },
   { key: 'eli',       label: 'Eli',       primaryName: 'Eli' },
@@ -90,18 +97,30 @@ export async function fetchCompletedTasks(ids: string[]): Promise<DashboardTask[
 }
 
 // ── "My Tasks" fetchers (own-only tiers: asst_manager / tech / runner) ──
-// These return every task the given user CREATED (assigned_by) OR was ASSIGNED
-// (assigned_to), matching the RLS visibility rule for own-only roles. RLS is the
-// hard boundary; these queries just align the UI so users see tasks they created
-// (which the assigned_to-only tab query misses).
+//
+// These deliberately apply NO assigned_to/assigned_by filter — RLS
+// (`dashboard_tasks_sel`) already scopes the result to exactly what this user may
+// see, and it is the only correct authority on that. As of migration
+// 20260728200000 that means: tasks they created, tasks assigned to them, AND —
+// for the PAIRED roles (asst_manager, tech) — any non-private task assigned to
+// someone holding the same role. That peer rule is why the old
+// `.or(assigned_to.eq.X, assigned_by.eq.X)` filter had to go: it re-implemented
+// a narrower version of the policy client-side and silently hid a teammate's
+// shared task (Isaac could not see a task assigned to Quinn, and vice versa).
+//
+// Duplicating policy logic here is what caused that bug, so don't reintroduce a
+// filter — a paired role also cannot resolve its peers' ids client-side anyway
+// (tech/runner can only read their own user_profiles row).
+//
+// profileId is kept purely as a readiness guard so we don't fire the query
+// before the session's profile has resolved.
 
-// Active (incomplete) tasks the given user created or was assigned.
+// Active (incomplete) tasks visible to this user (own + created + role peers).
 export async function fetchMyTasks(profileId: string): Promise<DashboardTask[]> {
   if (!profileId) return []
   const { data } = await supabase
     .from('dashboard_tasks')
     .select('*')
-    .or(`assigned_to.eq.${profileId},assigned_by.eq.${profileId}`)
     .eq('completed', false)
     .is('deleted_at', null)
     .order('sort_order', { ascending: true })
@@ -109,13 +128,12 @@ export async function fetchMyTasks(profileId: string): Promise<DashboardTask[]> 
   return data || []
 }
 
-// Completed tasks the given user created or was assigned, most-recent first.
+// Completed tasks visible to this user, most-recent first.
 export async function fetchMyCompletedTasks(profileId: string): Promise<DashboardTask[]> {
   if (!profileId) return []
   const { data } = await supabase
     .from('dashboard_tasks')
     .select('*')
-    .or(`assigned_to.eq.${profileId},assigned_by.eq.${profileId}`)
     .eq('completed', true)
     .is('deleted_at', null)
     .order('completed_at', { ascending: false })

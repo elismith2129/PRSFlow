@@ -13,6 +13,8 @@ import { combineLocation, parseLocation } from '@/lib/studios'
 import { STARTER_TAGS } from '@/lib/tags'
 import { addArtistToLabel } from '@/lib/roster'
 import { ClientsPageInner } from '@/app/(main)/clients/page'
+import { RegistrationBanner } from '@/components/clients/RegistrationBanner'
+import { RegistrationsView } from '@/components/crm/RegistrationsView'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useUserProfile } from '@/hooks/useUserProfile'
@@ -55,6 +57,36 @@ function LeadAvatar({ lead }: { lead: Lead }) {
       {leadInitials(lead) || '—'}
     </div>
   )
+}
+
+// Shared row style for BOTH lead lists (Needs Action + All Leads) — they had
+// byte-identical inline style objects, so a change to one silently diverged from
+// the other. One definition now.
+//
+// newInquiry drives the same pulse the dashboard Needs Action card uses: a lead
+// that arrived through the public /inquiry form and hasn't been acted on yet
+// glows until its status moves off 'uncontacted' (WebInquiryProvider owns that
+// unacked set — this is purely presentational).
+function leadRowStyle(opts: { selected: boolean; prompting: boolean; newInquiry: boolean }): React.CSSProperties {
+  return {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '11px 16px',
+    cursor: 'pointer',
+    borderBottom: '1px solid var(--border)',
+    marginBottom: opts.prompting ? 0 : 4,
+    background: opts.selected
+      ? 'rgba(255,255,255,0.04)'
+      : opts.newInquiry
+        ? 'rgba(var(--accent-rgb), 0.05)'
+        : 'transparent',
+    transition: 'background 0.15s',
+    // zIndex lifts the pulsing row above its neighbours' borders so the ring
+    // isn't clipped by the next row.
+    ...(opts.newInquiry ? { animation: 'webInquiryPulse 2s ease-in-out infinite', zIndex: 1 } : {}),
+  }
 }
 
 // First letter of display_name's first word + first letter of its last word,
@@ -248,8 +280,13 @@ function fmtSessionLine(l: Lead): string | null {
   else if (l.quote) parts.push(fmtMoney(l.quote))
   if (l.location) parts.push(l.location)
   if (l.session_date) {
-    const d = new Date(l.session_date + 'T12:00:00')
-    const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    const short = (iso: string) =>
+      new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    // Multi-day leads read as a range ("Aug 4–Aug 9"). An end date equal to or
+    // earlier than the start is treated as single-day rather than printing a
+    // backwards range.
+    const endDate = l.session_end_date && l.session_end_date > l.session_date ? l.session_end_date : ''
+    const dateStr = endDate ? `${short(l.session_date)}–${short(endDate)}` : short(l.session_date)
     const start = fmtTime12(l.session_start)
     const end = fmtTime12(l.session_end)
     const timeStr = start && end ? `${start}–${end}` : start || end
@@ -326,7 +363,7 @@ export default function CRMPage() {
   // Real-time: leadsVersion bumps on any realtime leads INSERT/UPDATE (from the
   // shared WebInquiryProvider channel), so the leads list re-fetches live.
   const { leadsVersion } = useWebInquiries()
-  const [tab, setTab] = useState<'leads' | 'clients' | 'campaigns'>('leads')
+  const [tab, setTab] = useState<'leads' | 'clients' | 'registrations' | 'campaigns'>('leads')
   const [initialClientId, setInitialClientId] = useState<string | null>(null)
 
   // Switch to clients tab if ?clientId= or ?id= is present on load;
@@ -419,8 +456,9 @@ export default function CRMPage() {
     const uncontacted = leads.filter(l => l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead'].includes(l.status)))
     const hotDue = leads.filter(l => l.status === 'hot' && isKhuDue(l) && !isParked(l))
     const warmDue = leads.filter(l => l.status === 'warm' && isKhuDue(l) && !isParked(l))
-    const incompleteLeads = leads.filter(l => ['hot', 'warm', 'uncontacted'].includes(l.status) && getMissing(l).length > 0)
-    const first = uncontacted[0] || hotDue[0] || warmDue[0] || incompleteLeads[0]
+    // Matches the Needs Action buckets exactly. The old "incomplete" fallback was
+    // dropped with that tab — it only ever re-listed hot/warm/uncontacted leads.
+    const first = uncontacted[0] || hotDue[0] || warmDue[0]
     if (first) { setSelectedId(first.id); hasAutoSelected.current = true }
   }, [loading, leads, isMobile])
 
@@ -481,6 +519,10 @@ export default function CRMPage() {
 
   async function createLead(data: Partial<Lead>) {
     const insertData: Partial<Lead> = { ...data, created_by: profile?.id ?? null }
+    // A blank end date means "single day" — persist NULL rather than '', so every
+    // range check (session_end_date > session_date) sees an absent value instead
+    // of an empty string that sorts before every real date.
+    if (!insertData.session_end_date) insertData.session_end_date = null
     if (!insertData.status) insertData.status = 'uncontacted'
     if (insertData.status === 'hot') {
       const khu = new Date(); khu.setDate(khu.getDate() + 5)
@@ -512,12 +554,14 @@ export default function CRMPage() {
   const distinctCompanies = Array.from(new Set(leads.map(l => l.company).filter((v): v is string => !!v))).sort()
   const allTags = Array.from(new Set([...STARTER_TAGS, ...leads.flatMap(l => l.tags || [])])).sort((a, b) => a.localeCompare(b))
 
-  // Badge count for Needs Action tab
+  // Badge count for the Needs Action tab — must mirror NeedsActionSection's
+  // buckets exactly. The old "incomplete" term was dropped along with that tab:
+  // its leads were already counted in the three below, so the badge overstated
+  // the real queue.
   const naUncontacted = leads.filter(l => (l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead'].includes(l.status))) && l.needs_contact !== false)
   const naHot = leads.filter(l => l.status === 'hot' && isKhuDue(l) && !isParked(l) && l.needs_contact !== false)
   const naWarm = leads.filter(l => l.status === 'warm' && isKhuDue(l) && !isParked(l) && l.needs_contact !== false)
-  const naIncomplete = leads.filter(l => ['hot', 'warm', 'uncontacted'].includes(l.status) && getMissing(l).length > 0 && l.needs_contact !== false)
-  const needsActionCount = naUncontacted.length + naHot.length + naWarm.length + naIncomplete.length
+  const needsActionCount = naUncontacted.length + naHot.length + naWarm.length
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 52px - 24px)' }}>
@@ -530,9 +574,16 @@ export default function CRMPage() {
         />
       )}
 
-      {/* LEADS / CLIENTS / CAMPAIGNS toggle */}
+      {/* Pending registrations — page level, above the tabs, so a returned
+          registration is visible while working leads. (It used to live inside
+          ClientsPageInner and only appeared on the CLIENTS tab.) */}
+      <RegistrationBanner
+        onNavigate={(clientId) => { setTab('clients'); setInitialClientId(clientId) }}
+      />
+
+      {/* LEADS / CLIENTS / REGISTRATIONS / CAMPAIGNS toggle */}
       <div style={{ display: 'flex', gap: 20, marginBottom: 10, flexShrink: 0 }}>
-        {(['leads', 'clients', ...(profile?.role === 'owner' && (profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com') ? ['campaigns'] : [])] as const).map((t: 'leads' | 'clients' | 'campaigns') => (
+        {(['leads', 'clients', 'registrations', ...(profile?.role === 'owner' && (profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com') ? ['campaigns'] : [])] as const).map((t: 'leads' | 'clients' | 'registrations' | 'campaigns') => (
           <button key={t} onClick={() => setTab(t)} style={{
             background: 'none', border: 'none',
             borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
@@ -541,7 +592,7 @@ export default function CRMPage() {
             textTransform: 'uppercase', color: tab === t ? 'var(--accent)' : 'var(--text3)',
             transition: 'color 0.15s',
           }}>
-            {t === 'leads' ? 'Leads' : t === 'clients' ? 'Clients' : 'Campaigns'}
+            {t === 'leads' ? 'Leads' : t === 'clients' ? 'Clients' : t === 'registrations' ? 'Registrations' : 'Campaigns'}
           </button>
         ))}
       </div>
@@ -681,6 +732,12 @@ export default function CRMPage() {
           <Suspense>
             <ClientsPageInner initialClientId={initialClientId} embedded />
           </Suspense>
+        </div>
+      )}
+
+      {tab === 'registrations' && (
+        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+          <RegistrationsView />
         </div>
       )}
 
@@ -1123,7 +1180,13 @@ function DeadLeadPrompt({ leadId, onSubmit, onCancel }: {
 
 // ─── Needs Action section ─────────────────────────────────────────────────────
 
-type NeedsActionTab = 'uncontacted' | 'hot' | 'warm' | 'incomplete'
+// Needs Action buckets. There was a fourth "Incomplete" tab; it was removed as
+// redundant — every lead it listed was already sitting in Uncontacted, Hot or
+// Warm (its filter was literally those three statuses plus a missing-field
+// check), so it double-counted the queue and inflated the header total. Missing
+// fields still surface on the lead itself via getMissing().
+type NeedsActionTab = 'uncontacted' | 'hot' | 'warm'
+const NEEDS_ACTION_TABS: NeedsActionTab[] = ['uncontacted', 'hot', 'warm']
 
 function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMarkTouched, onKeepHot, onUpdateStatus, loading, isMobile }: {
   leads: Lead[]
@@ -1136,11 +1199,18 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
   loading: boolean
   isMobile?: boolean
 }) {
+  // Same unacked set the dashboard pulses on — a web inquiry should be just as
+  // obvious in the CRM list as it is on the dashboard, since the CRM is where
+  // it actually gets worked.
+  const { isUnacked } = useWebInquiries()
   const [activeTab, setActiveTab] = useState<NeedsActionTab>('uncontacted')
   useEffect(() => {
     try {
+      // Guard the restore: a session saved before the Incomplete tab was removed
+      // still holds 'incomplete', which would select a bucket that no longer
+      // exists and crash on activeBucket.
       const stored = sessionStorage.getItem('crm_na_tab') as NeedsActionTab
-      if (stored) setActiveTab(stored)
+      if (stored && NEEDS_ACTION_TABS.includes(stored)) setActiveTab(stored)
     } catch {}
   }, [])
   useEffect(() => {
@@ -1152,14 +1222,12 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
   const uncontacted = leads.filter(l => (l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead'].includes(l.status))) && l.needs_contact !== false)
   const hotDue = leads.filter(l => l.status === 'hot' && isKhuDue(l) && !isParked(l) && l.needs_contact !== false)
   const warmDue = leads.filter(l => l.status === 'warm' && isKhuDue(l) && !isParked(l) && l.needs_contact !== false)
-  const incompleteLeads = leads.filter(l => ['hot', 'warm', 'uncontacted'].includes(l.status) && getMissing(l).length > 0 && l.needs_contact !== false)
-  const totalCount = uncontacted.length + hotDue.length + warmDue.length + incompleteLeads.length
+  const totalCount = uncontacted.length + hotDue.length + warmDue.length
 
-  const tabs: { key: NeedsActionTab; label: string; color: string; items: Lead[]; type: 'touch' | 'incomplete'; emptyMsg: string }[] = [
-    { key: 'uncontacted', label: 'Uncontacted', color: 'var(--uncontacted)', items: uncontacted, type: 'touch', emptyMsg: 'No fresh uncontacted leads.' },
-    { key: 'hot', label: 'Hot', color: 'var(--hot)', items: hotDue, type: 'touch', emptyMsg: 'All hot leads are up to date.' },
-    { key: 'warm', label: 'Warm', color: 'var(--warm)', items: warmDue, type: 'touch', emptyMsg: 'All warm leads are up to date.' },
-    { key: 'incomplete', label: 'Incomplete', color: 'var(--text2)', items: incompleteLeads, type: 'incomplete', emptyMsg: 'All leads have complete info.' },
+  const tabs: { key: NeedsActionTab; label: string; color: string; items: Lead[]; emptyMsg: string }[] = [
+    { key: 'uncontacted', label: 'Uncontacted', color: 'var(--uncontacted)', items: uncontacted, emptyMsg: 'No fresh uncontacted leads.' },
+    { key: 'hot', label: 'Hot', color: 'var(--hot)', items: hotDue, emptyMsg: 'All hot leads are up to date.' },
+    { key: 'warm', label: 'Warm', color: 'var(--warm)', items: warmDue, emptyMsg: 'All warm leads are up to date.' },
   ]
   const activeBucket = tabs.find(t => t.key === activeTab)!
 
@@ -1211,7 +1279,6 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
         ) : activeBucket.items.length === 0 ? (
           <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11 }}>{activeBucket.emptyMsg}</div>
         ) : activeBucket.items.map(l => {
-          const missing = getMissing(l)
           const touch = latestTouches[l.id]
           const isTouchPrompting = touchPromptId === l.id
           const isKeepHotPrompting = keepHotPromptId === l.id
@@ -1219,7 +1286,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
           const keepColor = l.status === 'warm' ? 'var(--warm)' : 'var(--hot)'
           return (
             <React.Fragment key={l.id}>
-              <div onClick={() => onSelect(l.id)} data-selected={selectedId === l.id ? '' : undefined} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(255,255,255,0.04)' : 'transparent', transition: 'background 0.15s' }}>
+              <div onClick={() => onSelect(l.id)} data-selected={selectedId === l.id ? '' : undefined} style={leadRowStyle({ selected: selectedId === l.id, prompting: isPrompting, newInquiry: isUnacked(l.id) })}>
                 <LeadAvatar lead={l} />
                 <div data-lead-content style={{ flex: 1, minWidth: 0 }}>
                   <div data-lead-name style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
@@ -1236,11 +1303,9 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                   )}
                   <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {l.booking && <span>{BOOKING_ICONS[l.booking] || ''} {l.booking} · </span>}
-                    {activeBucket.type === 'incomplete'
-                      ? <span style={{ color: 'var(--accent2)' }}>missing: {missing.join(', ')}</span>
-                      : activeBucket.key === 'uncontacted'
-                        ? <span style={{ color: 'var(--text3)' }}>never contacted · added {fmtDate(l.created_at)}</span>
-                        : <>{daysSince(l.last_contact || l.created_at)}d ago{touch?.initials && <span style={{ color: 'var(--text2)' }}> · {touch.initials}{touch.method ? ` via ${touch.method}` : ''}</span>}</>}
+                    {activeBucket.key === 'uncontacted'
+                      ? <span style={{ color: 'var(--text3)' }}>never contacted · added {fmtDate(l.created_at)}</span>
+                      : <>{daysSince(l.last_contact || l.created_at)}d ago{touch?.initials && <span style={{ color: 'var(--text2)' }}> · {touch.initials}{touch.method ? ` via ${touch.method}` : ''}</span>}</>}
                   </div>
                 </div>
                 {(l.status === 'hot' || l.status === 'warm') && daysUntilKhu(l) !== null && (daysUntilKhu(l) as number) <= 1 && (
@@ -1317,6 +1382,8 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   loading: boolean
 }) {
   const isMobile = useIsMobile()
+  // See NeedsActionSection — new web inquiries pulse in this list too.
+  const { isUnacked } = useWebInquiries()
   const [active, setActive] = useState<Set<StatusFilter>>(() => new Set(DEFAULT_STATUS_FILTERS))
   const [search, setSearch] = useState('')
   const skipFilterReset = useRef(false)
@@ -1468,7 +1535,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                   <span style={{ flex: 1, borderBottom: '1px solid var(--border)' }} />
                 </div>
               )}
-              <div onClick={() => onSelect(l.id)} data-selected={selectedId === l.id ? '' : undefined} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', marginBottom: isPrompting ? 0 : 4, background: selectedId === l.id ? 'rgba(255,255,255,0.04)' : 'transparent', transition: 'background 0.15s' }}>
+              <div onClick={() => onSelect(l.id)} data-selected={selectedId === l.id ? '' : undefined} style={leadRowStyle({ selected: selectedId === l.id, prompting: isPrompting, newInquiry: isUnacked(l.id) })}>
                 <LeadAvatar lead={l} />
                 <div data-lead-content style={{ flex: 1, minWidth: 0 }}>
                   <div data-lead-name style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
@@ -2212,13 +2279,29 @@ const parsedLoc0 = parseLocation(lead.location || '')
             </div>
           </div>
           <div>
-            <div style={fieldLabelStyle}>Session Date</div>
-            <input
-              type="date"
-              value={local.session_date || ''}
-              onChange={e => { update('session_date', e.target.value); save('session_date', e.target.value) }}
-              style={{ ...iStyle('session_date'), cursor: 'pointer', paddingLeft: 0 }}
-            />
+            {/* Start date + OPTIONAL end date. Clients regularly ask to hold a
+                block ("a week in August"); that range used to collapse to a
+                single day because the lead had nowhere to put it. Leave the end
+                blank for an ordinary one-day lead — the calendar seeds a
+                booking's end_date from it when present. */}
+            <div style={fieldLabelStyle}>Session Date{local.session_end_date ? 's' : ''}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input
+                type="date"
+                value={local.session_date || ''}
+                onChange={e => { update('session_date', e.target.value); save('session_date', e.target.value) }}
+                style={{ ...iStyle('session_date'), cursor: 'pointer', paddingLeft: 0 }}
+              />
+              <span style={{ color: 'var(--text3)', fontSize: 11, flexShrink: 0 }}>–</span>
+              <input
+                type="date"
+                value={local.session_end_date || ''}
+                min={local.session_date || undefined}
+                title="Optional — set only when the client wants more than one day"
+                onChange={e => { update('session_end_date', e.target.value); save('session_end_date', e.target.value || null) }}
+                style={{ ...iStyle('session_end_date'), cursor: 'pointer', paddingLeft: 0, opacity: local.session_end_date ? 1 : 0.6 }}
+              />
+            </div>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -2663,7 +2746,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
   onSave: (data: Partial<Lead>) => Promise<number | null>
 }) {
   const router = useRouter()
-  const emptyForm = { fname: '', lname: '', email: '', phone: '', company: '', label: '', source: '', booking: '', notes: '', billing: 'COD' as BillingType, quote: '', rate_daily: '', location: '', session_date: '', session_start: '', session_end: '', engineer_needed: false, artist_name: '' }
+  const emptyForm = { fname: '', lname: '', email: '', phone: '', company: '', label: '', source: '', booking: '', notes: '', billing: 'COD' as BillingType, quote: '', rate_daily: '', location: '', session_date: '', session_end_date: '', session_start: '', session_end: '', engineer_needed: false, artist_name: '' }
   const [mode, setMode] = useState<'cod' | 'label'>('cod')
   const [form, setForm] = useState(emptyForm)
   const [temperature, setTemperature] = useState<'hot' | 'warm' | 'booking'>('hot')
@@ -3112,8 +3195,24 @@ function NewLeadModal({ leads, onClose, onSave }: {
           </div>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 10 }}>
+      {/* Dates first, then times. End Date is optional and exists so a client
+          asking to hold a block ("we want a week") can be captured as a range
+          instead of a single day — it seeds the booking's end_date on convert. */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
         <div><label style={labelS}>Session Date</label><input type="date" value={form.session_date} onChange={e => set('session_date', e.target.value)} style={inputStyle} /></div>
+        <div>
+          <label style={labelS}>End Date <span style={{ color: 'var(--text3)', fontWeight: 400 }}>(optional)</span></label>
+          <input
+            type="date"
+            value={form.session_end_date}
+            min={form.session_date || undefined}
+            title="Only for a multi-day hold — leave blank for a single day"
+            onChange={e => set('session_end_date', e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
         <div><label style={labelS}>Start Time</label><TimeInput value={form.session_start} onChange={v => set('session_start', v)} style={inputStyle} /></div>
         <div><label style={labelS}>End Time</label><TimeInput value={form.session_end} onChange={v => set('session_end', v)} style={inputStyle} /></div>
       </div>

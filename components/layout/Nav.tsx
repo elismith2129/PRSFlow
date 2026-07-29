@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { useClientsVersion } from '@/hooks/useClientsVersion'
 import { Sun, Moon } from 'lucide-react'
 
 const navItems = [
@@ -28,6 +29,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
   const [menuOpen, setMenuOpen] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const { profile } = useUserProfile()
+  const clientsVersion = useClientsVersion()
   // Tech gets the full nav minus CRM; every other role sees all items.
   const visibleNavItems = profile?.role === 'tech'
     ? navItems.filter(item => item.href !== '/crm')
@@ -44,14 +46,12 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
         .gt('registered_at', thirtyDaysAgo)
       setUnreviewedRegs(count ?? 0)
     }
+    // Real-time (replaces the old 60s poll): refresh the reg badge on any clients
+    // change. Driven by the shared `clients` channel (hooks/useClientsVersion)
+    // rather than a Nav-local subscription — the Nav is mounted on every page
+    // alongside the CRM's registration surfaces, and one channel serves them all.
     fetchCount()
-    // Real-time (replaces the old 60s poll): refresh the reg badge on any clients change.
-    const channel = supabase
-      .channel('nav-reg-count')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => { fetchCount() })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [])
+  }, [clientsVersion])
 
   // Apply the saved theme on mount (default light). data-theme lives on <html>.
   useEffect(() => {

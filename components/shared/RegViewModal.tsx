@@ -1,10 +1,35 @@
 'use client'
 import React, { useEffect, useState } from 'react'
 import { supabase, Client } from '@/lib/supabase'
+import { toast } from '@/components/ui/Toaster'
 
 function isImagePath(path: string | null | undefined): boolean {
   if (!path) return false
   return /\.(jpg|jpeg|png|heic|webp)$/i.test(path)
+}
+
+// Fields a mailing block needs — a subset of Client so any row selecting these
+// columns (the registrations list, the review modal) can reuse this.
+export type MailingAddressSource = Pick<
+  Client,
+  'name' | 'fname' | 'lname' | 'address_street' | 'address_street2' | 'address_city' | 'address_state' | 'address_zip'
+>
+
+// Build a paste-ready mailing block from a registration:
+//   Name
+//   Street
+//   Street line 2          (line omitted entirely when blank)
+//   City, ST ZIP
+// Every piece is trimmed and blanks are dropped, so a partial address never
+// pastes as a stray comma or an empty line.
+export function buildMailingBlock(c: MailingAddressSource): string {
+  const name = (c.name || [c.fname, c.lname].filter(Boolean).join(' ') || '').trim()
+  const cityState = [c.address_city, c.address_state].map(s => (s || '').trim()).filter(Boolean).join(', ')
+  const cityLine = [cityState, (c.address_zip || '').trim()].filter(Boolean).join(' ')
+  return [name, c.address_street, c.address_street2, cityLine]
+    .map(s => (s || '').trim())
+    .filter(Boolean)
+    .join('\n')
 }
 
 export function RegField({ label, value }: { label: string; value: string | null | undefined }) {
@@ -22,6 +47,7 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
   const [loading, setLoading] = useState(true)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [imgFailed, setImgFailed] = useState(false)
+  const [copied, setCopied] = useState(false)
   // Treat as a document (embed via iframe) when the path isn't a known image
   // extension OR an <img> render failed — this shows PDFs inline and rescues
   // extensionless image uploads instead of falling to an "opens in new tab" link.
@@ -46,6 +72,22 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
 
   const fmtSubmitted = (d: string) =>
     new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+
+  const mailingBlock = client ? buildMailingBlock(client) : ''
+
+  // Copy the whole billing address in one action instead of picking out cells.
+  // navigator.clipboard needs a secure context; on failure say so rather than
+  // flashing "Copied" over an empty clipboard.
+  async function copyBillingAddress() {
+    if (!mailingBlock) return
+    try {
+      await navigator.clipboard.writeText(mailingBlock)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    } catch {
+      toast('Could not copy — the browser blocked clipboard access.', 'error')
+    }
+  }
 
   return (
     <>
@@ -92,12 +134,39 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
                 <RegField label="Email" value={client.email} />
                 <RegField label="Phone" value={client.phone} />
               </div>
-              <RegField label="Street Address" value={client.address_street} />
-              {client.address_street2 && <RegField label="Address Line 2" value={client.address_street2} />}
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
-                <RegField label="City" value={client.address_city} />
-                <RegField label="State" value={client.address_state} />
-                <RegField label="ZIP" value={client.address_zip} />
+              {/* Billing address — grouped into one bordered block so the whole
+                  thing can be copied in a single action. Staff previously had to
+                  select and copy each cell separately to fill an invoice. */}
+              <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--text3)' }}>
+                    Billing Address
+                  </div>
+                  <button
+                    onClick={copyBillingAddress}
+                    disabled={!mailingBlock}
+                    title={mailingBlock ? 'Copy name, street and city/state/ZIP as a mailing block' : 'No address on file'}
+                    style={{
+                      padding: '4px 10px', borderRadius: 4,
+                      cursor: mailingBlock ? 'pointer' : 'not-allowed',
+                      fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const,
+                      background: copied ? 'rgba(var(--accent-rgb), 0.14)' : 'transparent',
+                      color: copied ? 'var(--accent)' : mailingBlock ? 'var(--text)' : 'var(--text3)',
+                      border: `1px solid ${copied ? 'rgba(var(--accent-rgb), 0.45)' : 'var(--border)'}`,
+                      opacity: mailingBlock ? 1 : 0.55,
+                      transition: 'background 0.15s, color 0.15s, border-color 0.15s',
+                    }}
+                  >
+                    {copied ? '✓ Copied' : 'Copy Address'}
+                  </button>
+                </div>
+                <RegField label="Street Address" value={client.address_street} />
+                {client.address_street2 && <RegField label="Address Line 2" value={client.address_street2} />}
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
+                  <RegField label="City" value={client.address_city} />
+                  <RegField label="State" value={client.address_state} />
+                  <RegField label="ZIP" value={client.address_zip} />
+                </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <RegField label="Instagram" value={client.instagram ? `@${client.instagram.replace(/^@/, '')}` : null} />

@@ -1049,7 +1049,7 @@ function CalendarPageInner() {
     router.replace('/calendar')
     const clientQ = supabase.from('clients').select('id,type,name,fname,lname,email,phone,artists').eq('id', clientId).single()
     const leadQ = leadId
-      ? supabase.from('leads').select('quote,rate_daily,location,session_date,session_start,session_end,fname,lname,artist_name,email,phone,notes').eq('id', parseInt(leadId, 10)).single()
+      ? supabase.from('leads').select('quote,rate_daily,location,session_date,session_end_date,session_start,session_end,fname,lname,artist_name,email,phone,notes').eq('id', parseInt(leadId, 10)).single()
       : Promise.resolve({ data: null as any, error: null })
     Promise.all([clientQ, leadQ]).then(([{ data: c }, { data: l }]) => {
       const initial = emptyForm()
@@ -1066,7 +1066,15 @@ function CalendarPageInner() {
         if (!isBilling) initial.artist = (c.artists && c.artists.length > 0) ? c.artists[0] : ''
       }
       if (l) {
-        if (l.session_date) { initial.start_date = l.session_date; initial.end_date = l.session_date }
+        if (l.session_date) {
+          initial.start_date = l.session_date
+          // A lead may carry a multi-day hold (client asked for a week). Seed the
+          // session's end_date from it so the WO opens on the full range instead
+          // of one day; guard against an end that isn't after the start.
+          initial.end_date = l.session_end_date && l.session_end_date > l.session_date
+            ? l.session_end_date
+            : l.session_date
+        }
         if (l.session_start) initial.from_time = l.session_start
         if (l.session_end) initial.to_time = l.session_end
         if (l.rate_daily) { initial.rate_daily = l.rate_daily; initial.rate_type = 'daily' }

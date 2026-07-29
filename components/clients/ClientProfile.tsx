@@ -6,6 +6,8 @@ import PhoneInput from '@/components/shared/PhoneInput'
 import { addArtistToLabel } from '@/lib/roster'
 import { RegViewModal } from '@/components/shared/RegViewModal'
 import { STARTER_TAGS } from '@/lib/tags'
+import { dbResult } from '@/lib/db'
+import { propagateClientRename, propagateContactRename } from '@/lib/propagateClientRename'
 
 interface BookingLead {
   id: number
@@ -482,7 +484,12 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
 
   const saveClient = useCallback(async (fields: Partial<Client>) => {
     if (!client) return
-    await supabase.from('clients').update(fields).eq('id', client.id)
+    const { error } = await supabase.from('clients').update(fields).eq('id', client.id)
+    if (!dbResult('Saving client', error)) return
+    // A rename here is the authoritative spelling — push it onto every booking
+    // and lead that stored a copy, so a fix doesn't have to be repeated by hand
+    // across the calendar and the CRM. No-ops unless a name field changed.
+    await propagateClientRename({ ...client, ...fields } as Client, fields)
     onRefresh()
   }, [client, onRefresh])
 
@@ -506,7 +513,14 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
     try {
       const { id: _id, client_id: _cid, ...updateData } = data
       const { error } = await supabase.from('client_contacts').update(updateData).eq('id', contactId)
-      if (error) console.error('[ClientProfile] saveContact failed:', error)
+      if (!dbResult('Saving contact', error)) return
+      // Same reconciliation as saveClient: an A&R rename rewrites the copies on
+      // every booking/lead that points at this contact. No-ops unless a name
+      // field changed.
+      const existing = contacts.find(c => c.id === contactId)
+      if (existing) {
+        await propagateContactRename({ ...existing, ...updateData, id: contactId } as ClientContact, updateData)
+      }
     } catch (e) { console.error('[ClientProfile] saveContact exception:', e) }
     // Sync any new artists to clients.artists[] (the label-level roster)
     if (client && data.artists && data.artists.length > 0) {
@@ -515,7 +529,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
       for (const name of toAdd) await addArtistToLabel(client.id, name, current)
     }
     onRefresh()
-  }, [client, onRefresh])
+  }, [client, contacts, onRefresh])
 
   const deleteContact = useCallback(async (contactId: string) => {
     await supabase.from('client_contacts').delete().eq('id', contactId)

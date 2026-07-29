@@ -32,6 +32,11 @@ export interface Lead {
   rate_daily: string | null
   location: string
   session_date: string
+  // Optional LAST day of a multi-day potential session (migration
+  // 20260728190000). NULL/'' = single-day lead, in which case session_date is the
+  // whole story. Set when a client asks to hold a block ("a week in August") so
+  // the range survives into the booking instead of collapsing to one day.
+  session_end_date: string | null
   duration: string
   first_time: boolean
   last_contact: string
