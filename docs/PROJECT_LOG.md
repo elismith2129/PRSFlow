@@ -2093,3 +2093,9 @@ Massive session. The WO rebuild became feature-complete, then a full architectur
 **Admin Errors tab + dead code:** `components/admin/ErrorsSection.tsx` wired as Admin sidebar "Errors" (owner/manager only, realtime via `20260728140000_app_errors_realtime.sql`, expandable stacks, load-more). **`components/unified/UnifiedSessionForm.tsx` deleted** (1,066 dead lines).
 
 **Migrations this session (all run by Eli):** `20260728120000_bookings_wo_number.sql`, `20260728130000_app_errors.sql`, `20260728140000_app_errors_realtime.sql`. Env: Eli added `SUPABASE_SERVICE_ROLE_KEY` to `.env.local`.
+
+**Post-test fixes (same day, from Eli's live test pass):**
+- **Studio Time studio cell → venue+room dropdown** ("PRS A" / "ERS B" / "TRK North", any location). Kills a destructive bug: empty studio string is the eng-row encoding, so clearing the old free-text cell morphed a studio row into an engineer row irreversibly. New `studio_time_rows.location` column (`20260728150000`; NULL = booking's venue); projection segments on room OR venue change → true cross-venue cards.
+- **Per-row engineer names** — `studio_time_rows.eng_name` (`20260728160000`), editable in the eng sub-row with an engineers-roster `<datalist>` (free text allowed), falls back to the WO-level engineer. Follow-up: runner WO page should display it.
+- **Cards: WO number removed** (Eli preference; stays in the WO header). **Engineer initials restored** — the projection had been wiping `engineer_name` (the WO top no longer has an engineer field); cards now derive engineer per segment from row `eng_name` → WO engineer, and the write is omitted when empty so initials can never be blanked. Multi-room cards can show different initials per room-run.
+- **Multi-room card projection confirmed working in production** (Eli's test).
