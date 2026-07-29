@@ -562,7 +562,19 @@ export function WorkOrderPopup({
         return
       }
       if (!bookingShouldHaveWorkOrder(booking)) {
-        setWoMissing('This booking type does not use a work order.')
+        // Legacy block (Tour/Tech/Open-Hours/cancelled made before the WO
+        // rebuild) — no WO row exists and none should be created. Open the
+        // simple block editor against the booking alone: handleBlockSave
+        // already guards its work_orders write on woIdRef, so saving a
+        // WO-less block works. (Step 8 — this replaced the BookingForm
+        // fallback when BookingForm was deleted.)
+        primaryBookingIdRef.current = booking.id
+        const base = normalizeWO({})
+        base.session_status = (booking as any).status || 'tour'
+        base.client = booking.client_name ?? ''
+        base.from_time = booking.from_time ?? ''
+        base.to_time = booking.to_time ?? ''
+        setWo(base)
         setLoading(false)
         return
       }
@@ -1277,9 +1289,25 @@ export function WorkOrderPopup({
   // ── Save + close ──────────────────────────────────────────────────────────
 
   async function handleClose() {
-    if (!wo || !woIdRef.current) { onClose(); return }
+    if (!wo) { onClose(); return }
     // Tour/Tech/Open-Hours → save as a simple block, skip the WO body + projection.
     if (BLOCK_STATUSES.includes(wo.session_status)) { await handleBlockSave(); return }
+    if (!woIdRef.current) {
+      // A legacy WO-less block whose status was flipped to a real session:
+      // create its WO now (atomic RPC), then fall through to the normal save.
+      if (!booking.id) { onClose(); return }
+      setSaving(true)
+      try {
+        const { workOrderId } = await createWorkOrderForBooking({ ...(booking as any), status: wo.session_status } as Booking)
+        woIdRef.current = workOrderId
+        primaryBookingIdRef.current = booking.id
+      } catch (e: any) {
+        setSaving(false)
+        dbResult('Creating work order', { message: e?.message ?? String(e) })
+        return
+      }
+      setSaving(false)
+    }
     setSaving(true)
     const id = woIdRef.current
 

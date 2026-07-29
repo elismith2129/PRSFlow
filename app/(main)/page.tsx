@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase, Lead, Booking, DashboardTask, DashboardTaskComment, Flag, FlagComment, UserProfile } from '@/lib/supabase'
 import { LocationStrip } from '@/components/dashboard/LocationStrip'
 import { useRouter } from 'next/navigation'
-import { BookingForm, type FormData, bookingToForm, emptyForm } from '@/components/calendar/BookingForm'
+import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
+import { deleteSessionAndWO } from '@/lib/deleteSession'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useUserProfile } from '@/hooks/useUserProfile'
@@ -153,9 +154,8 @@ export default function DashboardPage() {
   const router = useRouter()
   const [calDate, setCalDate] = useState(new Date())
   const [hoverRoom, setHoverRoom] = useState<string | null>(null)
-  const [dashBkFormOpen, setDashBkFormOpen] = useState(false)
+  // Step 8: booked room-grid cards open the Work Order directly (BookingForm deleted).
   const [dashEditBooking, setDashEditBooking] = useState<Booking | null>(null)
-  const [dashFormInitial, setDashFormInitial] = useState<FormData>(() => emptyForm())
   // One-time post-login welcome splash (set by the login page in sessionStorage).
   // Initialize from the flag synchronously so the splash is in the dashboard's
   // FIRST paint — covering the nav bar before it can flash. The welcome effect
@@ -342,8 +342,6 @@ export default function DashboardPage() {
 
   function openBookingEdit(bk: Booking) {
     setDashEditBooking(bk)
-    setDashFormInitial(bookingToForm(bk))
-    setDashBkFormOpen(true)
   }
 
   // Empty room card → open the calendar's new-booking form pre-filled with this
@@ -357,25 +355,8 @@ export default function DashboardPage() {
     router.push(`/calendar?${params.toString()}`)
   }
 
-  async function handleDashSave(data: FormData) {
-    if (!dashEditBooking) return
-    await supabase.from('bookings').update({
-      status: data.status, session_type: data.session_type,
-      payment_type: data.payment_type, cod_method: data.cod_method,
-      location: data.location, studio: data.studio,
-      start_date: data.start_date, end_date: data.end_date,
-      from_time: data.from_time, to_time: data.to_time,
-      rate: data.rate, rate_daily: data.rate_daily,
-      invoice_num: data.invoice_num,
-      client_name: data.client_name, artist: data.artist, label: data.label,
-      ordered_by: data.ordered_by, phone: data.phone, email: data.email,
-      po: data.po, producer: data.producer,
-      food_budget: data.food_budget, food_amount: data.food_amount,
-      engineer_name: data.engineer_name, engineer_rate: data.engineer_rate, engineer_status: data.engineer_status,
-      assistant_name: data.assistant_name, assistant_status: data.assistant_status,
-      notes: data.notes, client_id: data.client_db_id, is_srs: data.is_srs,
-      anr_contact_id: data.anr_contact_id, anr_admin_contact_id: data.anr_admin_contact_id,
-    }).eq('id', dashEditBooking.id)
+  // Refetch the viewed day's bookings (WO saves/deletes happen inside the popup).
+  async function refreshDayBookings() {
     const d = new Date(calDate)
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
     const today = d.toISOString().slice(0, 10)
@@ -385,12 +366,9 @@ export default function DashboardPage() {
 
   async function handleDashDelete() {
     if (!dashEditBooking) return
-    await supabase.from('bookings').delete().eq('id', dashEditBooking.id)
-    const d = new Date(calDate)
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
-    const today = d.toISOString().slice(0, 10)
-    const { data: refreshed } = await supabase.from('bookings').select('*').lte('start_date', today).gte('end_date', today).order('from_time', { ascending: true })
-    setBookings(refreshed || [])
+    await deleteSessionAndWO(dashEditBooking)
+    setDashEditBooking(null)
+    await refreshDayBookings()
   }
 
   async function fetchCompletedTasks() {
@@ -2172,16 +2150,13 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* BOOKING FORM MODAL */}
-      {dashBkFormOpen && dashEditBooking && (
-        <BookingForm
-          bookingId={dashEditBooking.id}
+      {/* WORK ORDER — booked room-grid cards open the WO directly (Step 8) */}
+      {dashEditBooking && (
+        <WorkOrderPopup
           booking={dashEditBooking}
-          initial={dashFormInitial}
-          onSave={handleDashSave}
+          onClose={() => { setDashEditBooking(null); refreshDayBookings() }}
+          onSaved={refreshDayBookings}
           onDelete={handleDashDelete}
-          onClose={() => { setDashBkFormOpen(false); setDashEditBooking(null) }}
-          onSaved={undefined}
         />
       )}
 

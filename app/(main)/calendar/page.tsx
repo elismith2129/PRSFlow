@@ -4,9 +4,10 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
 import { STUDIO_LOCATIONS, parseLocation } from '@/lib/studios'
-import { BookingForm, type FormData, bookingToForm, emptyForm } from '@/components/calendar/BookingForm'
+import { type FormData, emptyForm } from '@/components/calendar/sessionFormData'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 import { createWorkOrderForBooking, bookingShouldHaveWorkOrder } from '@/lib/createWorkOrder'
+import { deleteSessionAndWO } from '@/lib/deleteSession'
 import { dateRange } from '@/lib/time'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
@@ -808,10 +809,8 @@ function CalendarPageInner() {
   })
   const [startDate, setStartDate] = useState(() => getSunday(new Date()))
   const [bookings, setBookings] = useState<Booking[]>([])
-  const [formOpen, setFormOpen] = useState(false)
-  const [editBooking, setEditBooking] = useState<Booking | null>(null)
-  const [formInitial, setFormInitial] = useState<FormData>(() => emptyForm())
-  // Step 6: the calendar opens the Work Order directly for WO-bearing sessions.
+  // Step 6/8: the calendar opens the Work Order directly for ALL sessions and
+  // blocks (BookingForm deleted — legacy WO-less blocks use the WO's block view).
   const [woBooking, setWoBooking] = useState<Booking | null>(null)
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
   const [collapsedRooms, setCollapsedRooms] = useState<Set<string>>(() => new Set())
@@ -1040,17 +1039,7 @@ function CalendarPageInner() {
   // booking chips clear the 44px tap target; the grid scrolls vertically instead.
   const rowH = isMobile ? 56 : (zoomLevel === 0 ? fitRowH : ZOOM_FIXED[zoomLevel - 1])
 
-  // Restore booking form draft on mount (e.g. user navigated away mid-create)
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem('cal_form_draft')
-      if (!raw) return
-      const d = JSON.parse(raw) as { editBooking: Booking | null; formData: FormData }
-      setEditBooking(d.editBooking)
-      setFormInitial(d.formData)
-      setFormOpen(true)
-    } catch {}
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // (Step 8: the old cal_form_draft restore died with BookingForm.)
 
   // Auto-open booking form when navigated from Start Booking
   useEffect(() => {
@@ -1123,38 +1112,20 @@ function CalendarPageInner() {
     createBookingAndOpenWO({ location, studio, start_date: date, end_date: date })
   }
 
-  // Delete a session opened as a WO — removes the WO + its line items, then the
-  // booking card(s). Used from the WO's Delete button (e.g. a mistaken empty-day).
+  // Delete a session opened as a WO — removes the WO + its line items, then ALL
+  // of its booking cards. Shared helper (lib/deleteSession.ts) — the dashboard's
+  // WO popup uses the same one.
   async function deleteSessionFromWO(b: Booking) {
-    const { data: wos } = await supabase.from('work_orders').select('id').eq('booking_id', b.id)
-    for (const w of (wos ?? [])) {
-      await supabase.from('studio_time_rows').delete().eq('work_order_id', w.id)
-      await supabase.from('equipment_condition_rows').delete().eq('work_order_id', w.id)
-      await supabase.from('equipment_condition_notes').delete().eq('work_order_id', w.id)
-      await supabase.from('rental_rows').delete().eq('work_order_id', w.id)
-      await supabase.from('payment_rows').delete().eq('work_order_id', w.id)
-      await supabase.from('work_orders').delete().eq('id', w.id)
-    }
-    await supabase.from('srs_log').delete().eq('booking_id', b.id)
-    await supabase.from('bookings').delete().eq('id', b.id)
+    await deleteSessionAndWO(b)
     setWoBooking(null)
     await load()
   }
 
-  // Sessions AND blocks that already have a work order open the WO directly (the
-  // WO renders a simplified block view for Tour/Tech/Open-Hours). Only a legacy
-  // non-WO block (no work_order_id) falls back to the lightweight form.
+  // Step 8: EVERYTHING opens the Work Order view — sessions, blocks with WOs,
+  // and legacy WO-less blocks (WorkOrderPopup renders its simple block editor
+  // for those without creating a WO). BookingForm is gone.
   function openEdit(b: Booking) {
-    if (bookingShouldHaveWorkOrder(b) || b.work_order_id) { setWoBooking(b); return }
-    openEditForm(b)
-  }
-
-  function openEditForm(b: Booking) {
-    const initial = bookingToForm(b)
-    setEditBooking(b)
-    setFormInitial(initial)
-    setFormOpen(true)
-    try { sessionStorage.setItem('cal_form_draft', JSON.stringify({ editBooking: b, formData: initial })) } catch {}
+    setWoBooking(b)
   }
 
   function buildBookingPayload(data: FormData) {
@@ -1221,130 +1192,6 @@ function CalendarPageInner() {
     setWoBooking(inserted as Booking)
   }
 
-  async function handleSave(data: FormData) {
-    const payload = buildBookingPayload(data)
-    const throwIfError = (error: any) => {
-      if (!error) return
-      console.error('[CalendarPage] booking save error:', error)
-      throw new Error([error.message, error.details].filter(Boolean).join(' — '))
-    }
-    if (editBooking) {
-      // A WO "owns" the booking's schedule (dates/times) once it has at least one
-      // dated studio_time_row. While it does, the booking form must not overwrite
-      // start_date/end_date/from_time/to_time, nor reshape the WO's rows from the
-      // form's date range — the WO Close & Save is then the authoritative writer.
-      const { data: woRows } = await supabase.from('work_orders').select('id')
-        .eq('booking_id', editBooking.id).order('created_at', { ascending: false }).limit(1)
-      const woId = woRows?.[0]?.id
-      let woOwnsSchedule = false
-      if (woId) {
-        const { data: datedRows } = await supabase.from('studio_time_rows')
-          .select('id').eq('work_order_id', woId)
-          .not('date', 'is', null).neq('date', '').limit(1)
-        woOwnsSchedule = (datedRows?.length ?? 0) > 0
-      }
-
-      const updatePayload: any = { ...payload, updated_at: new Date().toISOString() }
-      if (woOwnsSchedule) {
-        delete updatePayload.start_date
-        delete updatePayload.end_date
-        delete updatePayload.from_time
-        delete updatePayload.to_time
-      }
-      const { error } = await supabase.from('bookings').update(updatePayload).eq('id', editBooking.id)
-      throwIfError(error)
-      // Create srs_log entry if this booking is newly flagged as SRS (wasn't before)
-      if (data.is_srs && !editBooking.is_srs) {
-        await supabase.from('srs_log').insert({ booking_id: editBooking.id, paid: false })
-      }
-      // Remove srs_log entry if SRS was toggled off
-      if (!data.is_srs && editBooking.is_srs) {
-        await supabase.from('srs_log').delete().eq('booking_id', editBooking.id)
-      }
-      // Sync studio_time_rows date range when booking is saved — only while no WO
-      // yet owns the schedule (otherwise the WO is authoritative over its own rows).
-      {
-        if (woId && !woOwnsSchedule) {
-          // Day-rate only: sync date range (add/remove rows)
-          if (payload.rate_type === 'day') {
-            const newDates = dateRange(data.start_date, data.end_date)
-            const { data: existingStRows } = await supabase.from('studio_time_rows')
-              .select('id, date, created_at').eq('work_order_id', woId).order('created_at', { ascending: true })
-
-            // Dedup: keep earliest row per date
-            const keepByDate: Record<string, string> = {}
-            const dupeIds: string[] = []
-            for (const r of existingStRows ?? []) {
-              if (keepByDate[r.date]) dupeIds.push(r.id)
-              else keepByDate[r.date] = r.id
-            }
-            if (dupeIds.length > 0) await supabase.from('studio_time_rows').delete().in('id', dupeIds)
-
-            const newDateSet = new Set(newDates)
-            const coveredDates = new Set(Object.keys(keepByDate))
-
-            // Delete rows for dates no longer in the booking range
-            const toRemove = Array.from(coveredDates).filter(d => !newDateSet.has(d)).map(d => keepByDate[d]).filter(Boolean)
-            if (toRemove.length > 0) await supabase.from('studio_time_rows').delete().in('id', toRemove)
-
-            // Insert rows for new dates
-            const missingDates = newDates.filter(d => !coveredDates.has(d))
-            if (missingDates.length > 0) {
-              const dayRateNum = parseFloat((payload.rate_daily ?? '').replace(/[^0-9.]/g, ''))
-              const studio = payload.studio?.match(/Studio\s+([A-Z])/i)?.[1]?.toUpperCase() ?? payload.studio ?? ''
-              await supabase.from('studio_time_rows').insert(missingDates.map((d, i) => ({
-                work_order_id: woId,
-                studio,
-                date: d, session_info: '',
-                from_time: payload.from_time ?? '', to_time: payload.to_time ?? '',
-                total_hours: null as number | null,
-                rate: payload.rate_daily ?? '',
-                rate_daily: payload.rate_daily ?? '',
-                row_rate_type: 'day',
-                charge: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum : null,
-                day_count: 1,
-                ot_rate: !isNaN(dayRateNum) && dayRateNum > 0 ? dayRateNum / 10 : null,
-                sort_order: coveredDates.size + i,
-              })))
-            }
-          }
-
-        }
-      }
-    } else {
-      const { data: inserted, error } = await supabase.from('bookings').insert(payload).select('id').single()
-      throwIfError(error)
-      if (data.is_srs && inserted) {
-        await supabase.from('srs_log').insert({ booking_id: inserted.id, paid: false })
-      }
-      // Create the work order + seed studio_time_rows / equipment rows at save time —
-      // the single canonical creation path. Gated: Tech / Tour / Open Hours / cancelled get no WO.
-      // The booking is already saved and takes priority: a WO failure must NOT roll back or
-      // block the booking. Surface the WO error via a page banner instead of throwing.
-      if (inserted) {
-        const newBooking = { ...payload, id: inserted.id } as Booking
-        if (bookingShouldHaveWorkOrder(newBooking)) {
-          try {
-            await createWorkOrderForBooking(newBooking)
-          } catch (woErr: any) {
-            const msg = [woErr?.message, woErr?.details].filter(Boolean).join(' — ')
-            console.error('[CalendarPage] work order creation failed for booking', inserted.id, woErr)
-            setWoWarning(`Booking saved, but its work order could not be created${msg ? ': ' + msg : ''}. Reopen the booking to create it manually.`)
-          }
-        }
-      }
-    }
-    try { sessionStorage.removeItem('cal_form_draft') } catch {}
-    await load()
-  }
-
-  async function handleDelete() {
-    if (editBooking) {
-      await supabase.from('bookings').delete().eq('id', editBooking.id)
-      try { sessionStorage.removeItem('cal_form_draft') } catch {}
-      await load()
-    }
-  }
 
   function toggleCollapse(loc: string) {
     setCollapsed(prev => {
@@ -1782,23 +1629,8 @@ function CalendarPageInner() {
         />
       )}
 
-      {/* Booking form modal */}
-      {formOpen && (
-        <BookingForm
-          bookingId={editBooking?.id}
-          booking={editBooking ?? undefined}
-          initial={formInitial}
-          onSave={handleSave}
-          onDelete={editBooking ? handleDelete : undefined}
-          onClose={() => { try { sessionStorage.removeItem('cal_form_draft') } catch {} setFormOpen(false); setEditBooking(null) }}
-          onDraftChange={(data) => {
-            try { sessionStorage.setItem('cal_form_draft', JSON.stringify({ editBooking, formData: data })) } catch {}
-          }}
-          onSaved={() => { loadRef.current(); setReloadKey(k => k + 1) }}
-        />
-      )}
-
-      {/* Work Order — opened directly from the calendar (Step 6) */}
+      {/* Work Order — opened directly from the calendar (Step 6; Step 8 made it
+          the ONLY session/block editor — BookingForm deleted) */}
       {woBooking && (
         <WorkOrderPopup
           booking={woBooking}
