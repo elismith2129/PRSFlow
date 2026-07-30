@@ -788,14 +788,20 @@ export default function RunnerWOPage() {
 
         {/* Studio Time */}
         {(() => {
+          // Centred columns: this is a short-value numeric table, so left-aligned
+          // cells left ragged gaps against their headers. 9px → 11px on the header
+          // and 11px → 12px in the body; the old sizes were below comfortable
+          // reading on a phone, which was the actual complaint.
           const thStyle: React.CSSProperties = {
-            padding: '5px 6px', fontSize: 8, fontFamily: 'Syne, sans-serif', fontWeight: 700,
-            letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--text2)',
+            padding: '6px 6px', fontSize: 9, fontFamily: 'Syne, sans-serif', fontWeight: 700,
+            letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--text2)',
             borderRight: '1px solid var(--border)', whiteSpace: 'nowrap', overflow: 'hidden',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' as const,
           }
           const tdStyle: React.CSSProperties = {
-            padding: '8px 6px', fontSize: 11, fontFamily: 'Inter', color: 'var(--text)',
-            borderRight: '1px solid var(--border)', display: 'flex', alignItems: 'center', overflow: 'hidden',
+            padding: '8px 6px', fontSize: 12, fontFamily: 'Inter', color: 'var(--text)',
+            borderRight: '1px solid var(--border)', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', textAlign: 'center' as const, overflow: 'hidden',
           }
 
           const engName = wo?.engineer || booking?.engineer_name || ''
@@ -823,8 +829,16 @@ export default function RunnerWOPage() {
           const ST_MIN_WIDTH = 706
           // Frozen identity columns: scrolling right used to lose which day (and
           // which room) a line belonged to — a real part of why this read badly.
-          const stickyCell = (left: number, bg: string): React.CSSProperties => ({
-            position: 'sticky', left, zIndex: 2, background: bg,
+          //
+          // The background MUST be opaque or the scrolling columns show through the
+          // frozen ones. Row tints are translucent rgba by design (they layer over
+          // the card), so compose them: paint the tint as a gradient layer on top of
+          // an opaque --surface base. Passing the raw rgba here is the bug that made
+          // the staff row's times bleed under the date column.
+          const opaqueBg = (tint?: string) =>
+            tint ? `linear-gradient(${tint}, ${tint}), var(--surface)` : 'var(--surface)'
+          const stickyCell = (left: number, tint?: string): React.CSSProperties => ({
+            position: 'sticky', left, zIndex: 2, background: opaqueBg(tint),
           })
 
           return (
@@ -895,7 +909,7 @@ export default function RunnerWOPage() {
 
                         // 12px, not 10 — the old size was below comfortable reading
                         // on a phone, which is most of why this table felt bad.
-                        const tSel = { background: 'transparent', color: 'var(--text)', border: 'none', fontSize: 12, fontFamily: 'Inter', width: '100%' }
+                        const tSel = { background: 'transparent', color: 'var(--text)', border: 'none', fontSize: 12, fontFamily: 'Inter', width: '100%', textAlign: 'center' as const }
                         // Per-day staff: row eng_name first, else the WO/booking-level
                         // engineer (or booking assistant for 2ND rows).
                         const isAsstRow = r.eng_role === 'assistant'
@@ -922,17 +936,19 @@ export default function RunnerWOPage() {
                         // Zebra by day so each day's 2–3 lines read as one block.
                         // Locked rows keep their teal tint (it means something).
                         const dayIdx = dayIndexFor(r.date)
-                        const rowBg = r.admin_locked
+                        // A TINT (or none) — sticky cells composite it over an
+                        // opaque base; the row itself layers it over the card.
+                        const rowTint = r.admin_locked
                           ? 'rgba(20,184,166,0.06)'
-                          : dayIdx >= 0 && dayIdx % 2 === 1 ? 'rgba(255,255,255,0.022)' : 'var(--surface)'
+                          : dayIdx >= 0 && dayIdx % 2 === 1 ? 'rgba(255,255,255,0.022)' : undefined
                         return (
-                          <div key={r.id} style={{ background: rowBg }}>
+                          <div key={r.id} style={{ background: rowTint ?? 'transparent' }}>
                             {!isStaffOnlyRow && (
                             <div style={{ display: 'grid', gridTemplateColumns: ST_GRID, borderBottom: showStaffRow ? 'none' : '1px solid var(--border)' }}>
                               {/* Date — frozen left. `position: sticky` is itself a
                                   positioned ancestor, so the absolute date-picker
                                   overlay below still anchors to this cell. */}
-                              <div style={{ ...tdStyle, ...stickyCell(0, rowBg), color: 'var(--text)', cursor: 'pointer' }}>
+                              <div style={{ ...tdStyle, ...stickyCell(0, rowTint), color: 'var(--text)', cursor: 'pointer' }}>
                                 <span style={{ pointerEvents: 'none' }}>{shortDate(r.date || '')}</span>
                                 <input
                                   type="date"
@@ -956,7 +972,7 @@ export default function RunnerWOPage() {
                                   did not exist on the runner view at all, which is
                                   what made two legitimate rooms on one date look
                                   like a duplicated row. */}
-                              <div style={{ ...tdStyle, ...stickyCell(52, rowBg), color: 'var(--text)', fontWeight: 700 }}>
+                              <div style={{ ...tdStyle, ...stickyCell(52, rowTint), color: 'var(--text)', fontWeight: 700 }}>
                                 {r.studio || '—'}
                               </div>
                               {/* Notes — opens the full-screen sheet */}
@@ -964,18 +980,18 @@ export default function RunnerWOPage() {
                                 <button
                                   onClick={() => { if (r.admin_locked) return; notesScrollRef.current = window.scrollY; document.body.style.top = `-${window.scrollY}px`; document.body.style.position = 'fixed'; document.body.style.width = '100%'; setNotesModalRowId(r.id); setNotesModalText(r.session_info || '') }}
                                   disabled={!!r.admin_locked}
-                                  style={{ width: '100%', padding: '3px 4px', border: `1px solid ${hasNotes ? 'var(--accent)' : '#3a3f52'}`, borderRadius: 4, background: hasNotes ? 'rgba(var(--accent-rgb),0.08)' : 'transparent', color: hasNotes ? 'var(--accent)' : 'var(--text3)', fontSize: 9, fontFamily: 'Syne', cursor: r.admin_locked ? 'default' : 'pointer', opacity: r.admin_locked ? 0.4 : 1 }}
+                                  style={{ width: '100%', padding: '3px 4px', border: `1px solid ${hasNotes ? 'var(--accent)' : '#3a3f52'}`, borderRadius: 4, background: hasNotes ? 'rgba(var(--accent-rgb),0.08)' : 'transparent', color: hasNotes ? 'var(--accent)' : 'var(--text2)', fontSize: 11, fontFamily: 'Syne', cursor: r.admin_locked ? 'default' : 'pointer', opacity: r.admin_locked ? 0.4 : 1 }}
                                 >Notes</button>
                               </div>
                               {/* From / To */}
                               <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={liveFrom} onChange={v => setFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={tSel} disabled={!!r.admin_locked} /></div>
                               <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={liveTo} onChange={v => setToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={tSel} disabled={!!r.admin_locked} /></div>
                               {/* Hrs */}
-                              <div style={{ ...tdStyle, color: 'var(--text2)', fontSize: 9 }}>{rowHrs != null ? `${rowHrs}h` : '—'}</div>
+                              <div style={{ ...tdStyle, color: 'var(--text)' }}>{rowHrs != null ? `${rowHrs}h` : '—'}</div>
                               {/* Type */}
-                              <div style={{ ...tdStyle, fontSize: 8, color: isDayRow ? 'var(--accent)' : 'var(--text2)' }}>{isDayRow ? 'Day' : 'Hr'}</div>
+                              <div style={{ ...tdStyle, fontSize: 11, color: isDayRow ? 'var(--accent)' : 'var(--text2)' }}>{isDayRow ? 'Day' : 'Hr'}</div>
                               {/* Rate */}
-                              <div style={{ ...tdStyle, color: 'var(--text2)', fontSize: 9 }}>
+                              <div style={{ ...tdStyle, color: 'var(--text)' }}>
                                 {isDayRow
                                   ? (parseFloat(String(r.rate_daily ?? r.rate ?? '').replace(/[^0-9.]/g, '')) > 0 ? `$${parseFloat(String(r.rate_daily ?? r.rate ?? '').replace(/[^0-9.]/g, '')).toLocaleString()}/d` : '—')
                                   : (parseFloat(String(r.rate ?? '').replace(/[^0-9.]/g, '')) > 0 ? `$${parseFloat(String(r.rate ?? '').replace(/[^0-9.]/g, ''))}/hr` : '—')
@@ -985,11 +1001,11 @@ export default function RunnerWOPage() {
                               <div style={{ ...tdStyle, padding: '2px 3px' }}>
                                 {isDayRow
                                   ? <span style={{ fontSize: 9, color: 'var(--text2)' }}>{autoOtHrs > 0 ? `${autoOtHrs}h` : '—'}</span>
-                                  : <input value={otHours[r.id] ?? ''} onChange={e => setOtHours(prev => ({ ...prev, [r.id]: e.target.value }))} disabled={!!r.admin_locked} style={{ ...tSel, fontSize: 9 }} placeholder="0" />
+                                  : <input value={otHours[r.id] ?? ''} onChange={e => setOtHours(prev => ({ ...prev, [r.id]: e.target.value }))} disabled={!!r.admin_locked} style={{ ...tSel }} placeholder="0" />
                                 }
                               </div>
                               {/* OT Rate */}
-                              <div style={{ ...tdStyle, color: 'var(--text2)', fontSize: 9 }}>
+                              <div style={{ ...tdStyle, color: 'var(--text)' }}>
                                 {otRateNum > 0 ? `$${otRateNum}` : '—'}
                               </div>
                               {/* OT Charge */}
@@ -1006,16 +1022,16 @@ export default function RunnerWOPage() {
                               // Staff rows carry their own tint on top of the day's
                               // zebra, so sticky cells need the COMBINED colour or the
                               // frozen columns would look like a different row.
-                              const staffBg = r.admin_locked ? 'rgba(20,184,166,0.06)' : 'rgba(var(--accent-rgb),0.045)'
+                              const staffTint = r.admin_locked ? 'rgba(20,184,166,0.06)' : 'rgba(var(--accent-rgb),0.045)'
                               return (
-                              <div style={{ display: 'grid', gridTemplateColumns: ST_GRID, borderBottom: '1px solid var(--border)', background: staffBg }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: ST_GRID, borderBottom: '1px solid var(--border)', background: staffTint }}>
                                 {/* Column 1 repeats the DATE, so the staff row still
                                     says which day it belongs to once the table is
                                     scrolled sideways and its parent row is off screen.
                                     The staff pill moved to column 3 — the Notes column —
                                     so everything identifying a line sits together. */}
-                                <div style={{ ...tdStyle, ...stickyCell(0, staffBg), color: 'var(--text3)' }}>{shortDate(r.date || '')}</div>
-                                <div style={{ ...tdStyle, ...stickyCell(52, staffBg), color: 'var(--text3)' }}>{isStaffOnlyRow ? '' : (r.studio || '')}</div>
+                                <div style={{ ...tdStyle, ...stickyCell(0, staffTint), color: 'var(--text3)' }}>{shortDate(r.date || '')}</div>
+                                <div style={{ ...tdStyle, ...stickyCell(52, staffTint), color: 'var(--text)', fontWeight: 700 }}>{r.studio || ''}</div>
                                 <div style={{ ...tdStyle, padding: '4px 3px' }}>
                                   <button
                                     onClick={e => {
@@ -1026,7 +1042,7 @@ export default function RunnerWOPage() {
                                         setEngPopoverPos({ top: rect.top, left: rect.left })
                                       }
                                     }}
-                                    style={{ width: '100%', padding: '3px 4px', border: `1px solid ${isAsstRow ? 'var(--warm)' : 'var(--accent)'}`, borderRadius: 4, background: isAsstRow ? 'rgba(249,115,22,0.08)' : 'rgba(var(--accent-rgb),0.08)', color: isAsstRow ? 'var(--warm)' : 'var(--accent)', fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}
+                                    style={{ width: '100%', padding: '3px 4px', border: `1px solid ${isAsstRow ? 'var(--warm)' : 'var(--accent)'}`, borderRadius: 4, background: isAsstRow ? 'rgba(249,115,22,0.08)' : 'rgba(var(--accent-rgb),0.08)', color: isAsstRow ? 'var(--warm)' : 'var(--accent)', fontSize: 11, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}
                                   >{initials}</button>
                                 </div>
                                 <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={engLiveFrom} onChange={v => setEngFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSel, color: 'var(--accent)' }} disabled={!!r.admin_locked} /></div>
