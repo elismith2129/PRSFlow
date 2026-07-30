@@ -680,18 +680,29 @@ export default function RunnerWOPage() {
 
   return (
     <div style={{ minHeight: '100dvh', maxWidth: '100vw', overflowX: 'hidden', background: 'var(--bg)', fontFamily: 'Syne, sans-serif', paddingBottom: 100 }}>
-      {/* Session Notes Bottom Sheet */}
+      {/*
+        Session Notes — FULL-SCREEN on purpose. This was a 38vh card pinned to
+        bottom:16, which put it exactly where the iOS keyboard appears: autoFocus
+        opened the keyboard, the keyboard overlaid the sheet, and the runner saw
+        nothing. Filling the screen from the top keeps the title, the Save button
+        and the first lines of text above the keyboard. Save is duplicated in the
+        header for the same reason — the footer buttons sit behind the keyboard
+        while typing.
+      */}
       {notesModalRowId && (
-        <div style={{ position: 'fixed', bottom: 16, left: 12, right: 12, maxHeight: '38vh', zIndex: 10002, display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxSizing: 'border-box', boxShadow: '0 -4px 24px rgba(0,0,0,0.4)' }}>
-          <div style={{ width: '100%', boxSizing: 'border-box', paddingTop: 14, paddingBottom: 10, paddingLeft: 16, paddingRight: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10002, display: 'flex', flexDirection: 'column', background: 'var(--surface)', boxSizing: 'border-box' }}>
+          <div style={{ width: '100%', boxSizing: 'border-box', paddingTop: 'calc(14px + env(safe-area-inset-top))', paddingBottom: 10, paddingLeft: 16, paddingRight: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
             <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 16, color: '#f0f0f0' }}>Session Notes</span>
-            <button onClick={() => { const scrollY = notesScrollRef.current; document.body.style.position = ''; document.body.style.top = ''; document.body.style.width = ''; setNotesModalRowId(null); window.scrollTo({ top: scrollY, behavior: 'instant' }) }} style={{ background: 'none', border: 'none', color: 'var(--text2)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button onClick={saveNotesModal} style={{ background: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: 6, padding: '7px 16px', fontFamily: 'Syne', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Save</button>
+              <button onClick={() => { const scrollY = notesScrollRef.current; document.body.style.position = ''; document.body.style.top = ''; document.body.style.width = ''; setNotesModalRowId(null); window.scrollTo({ top: scrollY, behavior: 'instant' }) }} style={{ background: 'none', border: 'none', color: 'var(--text2)', fontSize: 26, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
+            </div>
           </div>
           <textarea
             value={notesModalText}
             onChange={e => setNotesModalText(e.target.value)}
             placeholder="Song names, notes, instructions…"
-            style={{ flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 13, paddingTop: 0, paddingBottom: 0, paddingLeft: 16, paddingRight: 16, resize: 'none', lineHeight: 1.6, overflowY: 'auto' }}
+            style={{ flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 16, paddingTop: 14, paddingBottom: 0, paddingLeft: 16, paddingRight: 16, resize: 'none', lineHeight: 1.6, overflowY: 'auto' }}
             autoFocus
           />
           <div style={{ width: '100%', boxSizing: 'border-box', display: 'flex', gap: 10, paddingTop: 10, paddingLeft: 16, paddingRight: 16, paddingBottom: 'calc(16px + env(safe-area-inset-bottom))', flexShrink: 0 }}>
@@ -906,6 +917,13 @@ export default function RunnerWOPage() {
                             </div>
                             {rowStaffName && (
                               <div style={{ display: 'grid', gridTemplateColumns: '50px 55px 85px 85px 42px 35px 65px 45px 55px 50px 60px', borderBottom: '1px solid var(--border)', background: 'rgba(var(--accent-rgb),0.03)' }}>
+                                {/* Column 1 repeats the DATE, so the staff row still
+                                    says which day it belongs to once the table is
+                                    scrolled sideways and its parent row is off screen.
+                                    The staff pill moved to column 2 — the same column
+                                    as the row's Notes button — so everything that
+                                    identifies a line lives under one heading. */}
+                                <div style={{ ...tdStyle, color: 'var(--text3)', fontSize: 9 }}>{shortDate(r.date || '')}</div>
                                 <div style={{ ...tdStyle, padding: '4px 3px' }}>
                                   <button
                                     onClick={e => {
@@ -916,10 +934,9 @@ export default function RunnerWOPage() {
                                         setEngPopoverPos({ top: rect.top, left: rect.left })
                                       }
                                     }}
-                                    style={{ padding: '2px 5px', border: `1px solid ${isAsstRow ? 'var(--warm)' : 'var(--accent)'}`, borderRadius: 4, background: isAsstRow ? 'rgba(249,115,22,0.08)' : 'rgba(var(--accent-rgb),0.08)', color: isAsstRow ? 'var(--warm)' : 'var(--accent)', fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}
+                                    style={{ width: '100%', padding: '3px 4px', border: `1px solid ${isAsstRow ? 'var(--warm)' : 'var(--accent)'}`, borderRadius: 4, background: isAsstRow ? 'rgba(249,115,22,0.08)' : 'rgba(var(--accent-rgb),0.08)', color: isAsstRow ? 'var(--warm)' : 'var(--accent)', fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}
                                   >{initials}</button>
                                 </div>
-                                <div style={{ ...tdStyle }} />
                                 <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={engLiveFrom} onChange={v => setEngFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSel, color: 'var(--accent)' }} disabled={!!r.admin_locked} /></div>
                                 <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={engLiveTo} onChange={v => setEngToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSel, color: 'var(--accent)' }} disabled={!!r.admin_locked} /></div>
                                 <div style={{ ...tdStyle, color: 'var(--text2)', fontSize: 9 }}>{engLiveHours != null ? `${engLiveHours}h` : '—'}</div>

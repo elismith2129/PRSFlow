@@ -282,8 +282,15 @@ export function LocationStrip() {
         }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{b.artist || b.client_name || '—'}</div>
-            {b.artist && b.client_name && <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1 }}>{b.client_name}</div>}
+            {/* Studio is the hero — matches the runner hub cards. "Which room"
+                is the first thing anyone reads off a daily-ops card. */}
+            {(b as any).studio && (
+              <div style={{ fontFamily: 'DM Serif Display', fontSize: 19, lineHeight: 1.1, color: 'var(--text)', marginBottom: 2 }}>
+                Studio {(b as any).studio}
+              </div>
+            )}
+            <div style={{ fontSize: 12, fontWeight: 700, color: (b as any).studio ? 'var(--text2)' : 'var(--text)' }}>{b.artist || b.client_name || '—'}</div>
+            {b.artist && b.client_name && <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 1 }}>{b.client_name}</div>}
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {needsAttention && (
@@ -296,7 +303,7 @@ export function LocationStrip() {
         </div>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 10 }}>
           {b.from_time && <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>{b.from_time}–{b.to_time ?? '?'}</span>}
-          {(b as any).studio && <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>Studio {(b as any).studio}</span>}
+          {/* Studio moved to the hero above — not repeated here. */}
           {(b as any).engineer_name && <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>Eng: {(b as any).engineer_name}</span>}
           {(b as any).payment_type && <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px' }}>{(b as any).payment_type}</span>}
         </div>

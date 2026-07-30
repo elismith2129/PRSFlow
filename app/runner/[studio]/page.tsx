@@ -253,11 +253,20 @@ export default function StudioDailyOpsPage() {
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                       <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>
+                        {/* Studio is the hero: a runner's first question on any card
+                            is "which room", and it was buried in the small meta
+                            row below with the times. Artist/client drop to the
+                            sub-line. */}
+                        {b.studio && (
+                          <div style={{ fontFamily: 'DM Serif Display', fontSize: 22, lineHeight: 1.1, color: 'var(--text)', marginBottom: 3 }}>
+                            Studio {b.studio}
+                          </div>
+                        )}
+                        <div style={{ fontSize: 13, fontWeight: 700, color: b.studio ? 'var(--text2)' : 'var(--text)', marginBottom: 2 }}>
                           {b.artist || b.client_name || '—'}
                         </div>
                         {b.artist && b.client_name && (
-                          <div style={{ fontSize: 11, color: 'var(--text2)' }}>{b.client_name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text3)' }}>{b.client_name}</div>
                         )}
                       </div>
                       {completed && (
@@ -269,11 +278,7 @@ export default function StudioDailyOpsPage() {
                       <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
                         {b.from_time ?? '?'} – {b.to_time ?? '?'}
                       </span>
-                      {b.studio && (
-                        <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
-                          Studio {b.studio}
-                        </span>
-                      )}
+                      {/* Studio moved to the hero above — not repeated here. */}
                       {b.engineer_name && (
                         <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
                           Eng: {b.engineer_name}
