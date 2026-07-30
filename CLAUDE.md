@@ -34,6 +34,24 @@ Rules:
 - **`clients` has a SHARED channel — `hooks/useClientsVersion.ts`. Never open another one.** One module-level `clients-shared` channel exposes a version counter; consumers do `useEffect(() => { load() }, [load, clientsVersion])`. Consumers: `RegistrationBanner`, `RegistrationsView`, `ClientsPageInner`, Nav reg badge. This is the generalized form of the `leadsVersion` pattern — reach for it any time a third surface needs the same table.
 - Tables must be in the supabase_realtime publication with REPLICA IDENTITY FULL before subscriptions will fire — see supabase/realtime-publication.sql for the pattern
 
+## End-of-session wrap-up (do all four)
+
+When Eli says to update logs / wrap up / push everything, ALL of these happen together — they're one ritual, not four optional chores:
+
+1. **`docs/PROJECT_LOG.md`** — dated session entry. Record *why*, not just what; note decisions rejected and the reason (that's what stops a future session re-litigating them). Correct any earlier entry this session proved wrong.
+2. **`docs/PRSFlow-Tech-Stack.md`** — a row in the Done table + any new Key files entry.
+3. **`public/sop.html` → `VERSIONS`** — a staff-facing release note at the TOP of the array, plain English, per **release**.
+4. **`lib/testBatches.ts`** — ONE new test batch per **working session**, at the top of `TEST_BATCHES`.
+
+**Why a batch is per-session and not per-release:** work shipped mid-session can be superseded before the day ends. On July 29 the runner's "apply to all days" shipped in v1.3.0 and was deliberately removed in v1.3.2 a couple of hours later — a batch written at v1.3.0 would have had the tester checking a feature that no longer existed, and reporting a correct behaviour as a bug. Batches are written once the work has settled.
+
+Batch rules:
+- A batch covers THAT SESSION's work. It is not a growing regression list.
+- A failed item doesn't need a new batch — the tester re-tests the same item and the verdict upserts.
+- Item `id`s are half the results key: **never rename an id after testing has started** or its verdict is orphaned.
+- Write `what` as the outcome and `how` as exact steps, for someone who has never seen the feature and is reading on a phone. One check per item.
+- Old batches stay for history. Once there are several, add an active/done flag so finished ones collapse out of the dropdown.
+
 ## Commands
 
 - `npm run dev` — start the Next.js dev server at http://localhost:3000

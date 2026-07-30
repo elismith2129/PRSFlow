@@ -1,0 +1,278 @@
+'use client'
+// Floating tester panel — the checklist that follows you around the app.
+//
+// Why this exists: for the desktop parts of a batch the tester is navigating the
+// office app while reading step 12, and a checklist on its own page means tabbing
+// back and forth for every item — which is how items get skipped or mis-marked.
+// Mounted in the (main) layout so it survives navigation across the internal app.
+//
+// Deliberately NOT on /runner: runner testing is done on a PHONE with this
+// checklist open on a computer, so a panel there would only cover the phone-first
+// UI being tested. Being in (main) also keeps it off /login, /register and
+// /inquiry. Items carry a Phone/Desktop badge so the tester knows which screen
+// each step belongs to.
+//
+// It shows ONE item at a time on purpose: a scrolling list inside a small draggable
+// window is worse than useless. What to test, how to test it, two verdict buttons,
+// a note, and next.
+//
+// Draggable because it will inevitably sit on top of the button being tested —
+// anticipated rather than discovered.
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { TEST_BATCHES, deviceFor } from '@/lib/testBatches'
+import { useUserProfile } from '@/hooks/useUserProfile'
+import {
+  useTestingSession, useTestResults, setActiveBatch, lockTesting, batchProgress,
+} from '@/hooks/useTestResults'
+
+const POS_KEY = 'dev_testing_floater_pos'
+const MIN_KEY = 'dev_testing_floater_min'
+
+export default function TestingFloater() {
+  const { unlocked, activeBatchId } = useTestingSession()
+  const { profile } = useUserProfile()
+  const testerName = profile?.display_name || 'Staff'
+
+  const batch = TEST_BATCHES.find(b => b.id === activeBatchId) || null
+  const { results, save } = useTestResults(batch?.id ?? null)
+
+  const [idx, setIdx] = useState(0)
+  const [minimised, setMinimised] = useState(false)
+  const [noteOpen, setNoteOpen] = useState(false)
+  const [noteDraft, setNoteDraft] = useState('')
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
+  const dragRef = useRef<{ dx: number; dy: number } | null>(null)
+
+  // Restore position + minimised state so it stays where the tester parked it.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(POS_KEY)
+      if (raw) setPos(JSON.parse(raw))
+      setMinimised(sessionStorage.getItem(MIN_KEY) === '1')
+    } catch { /* ignore */ }
+  }, [])
+
+  // Open on the first item without a verdict — resuming where they left off
+  // rather than at the top every time the panel remounts.
+  useEffect(() => {
+    if (!batch) return
+    const firstUntested = batch.items.findIndex(i => !results[i.id])
+    setIdx(firstUntested === -1 ? 0 : firstUntested)
+    // Only on batch change; not on every verdict, or it would jump mid-tap.
+  }, [batch?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    const el = (e.currentTarget as HTMLElement).closest('[data-floater]') as HTMLElement | null
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    dragRef.current = { dx: e.clientX - r.left, dy: e.clientY - r.top }
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  }, [])
+
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current) return
+    // Clamped so it can never be dragged off-screen and become unreachable.
+    const w = 340, h = 120
+    const x = Math.min(Math.max(0, e.clientX - dragRef.current.dx), Math.max(0, window.innerWidth - w))
+    const y = Math.min(Math.max(0, e.clientY - dragRef.current.dy), Math.max(0, window.innerHeight - h))
+    setPos({ x, y })
+  }, [])
+
+  const onPointerUp = useCallback(() => {
+    dragRef.current = null
+    setPos(p => {
+      if (p) { try { sessionStorage.setItem(POS_KEY, JSON.stringify(p)) } catch { /* ignore */ } }
+      return p
+    })
+  }, [])
+
+  if (!unlocked || !batch) return null
+
+  const item = batch.items[idx]
+  const v = item ? results[item.id] : undefined
+  const prog = batchProgress(batch.items.map(i => i.id), results)
+
+  const style: React.CSSProperties = {
+    position: 'fixed',
+    left: pos ? pos.x : undefined,
+    top: pos ? pos.y : undefined,
+    right: pos ? undefined : 12,
+    bottom: pos ? undefined : 12,
+    width: 340,
+    maxWidth: 'calc(100vw - 24px)',
+    // Above the nav (99999) so it's never trapped behind it, below the welcome
+    // splash. It's a dev tool; being on top is the point.
+    zIndex: 100003,
+    background: 'var(--surface)',
+    border: '1px solid rgba(var(--accent-rgb),0.45)',
+    borderRadius: 12,
+    boxShadow: '0 10px 40px rgba(0,0,0,0.55)',
+    overflow: 'hidden',
+  }
+
+  const setVerdict = (status: 'pass' | 'fail') => {
+    if (!item) return
+    save(item.id, status, (v?.note ?? null), testerName)
+    // Advance automatically — the tester's hands are on the app, not the panel.
+    if (idx < batch.items.length - 1) setTimeout(() => setIdx(i => Math.min(i + 1, batch.items.length - 1)), 220)
+  }
+
+  const toggleMin = () => {
+    setMinimised(m => {
+      const next = !m
+      try { sessionStorage.setItem(MIN_KEY, next ? '1' : '0') } catch { /* ignore */ }
+      return next
+    })
+  }
+
+  const grip = (
+    <div
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      style={{ flex: 1, cursor: 'grab', touchAction: 'none', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}
+    >
+      <span style={{ fontSize: 12, color: 'var(--text3)', flexShrink: 0 }}>⠿</span>
+      <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--accent)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        Testing · {prog.tested}/{prog.total}
+      </span>
+    </div>
+  )
+
+  if (minimised) {
+    return (
+      <div data-floater style={{ ...style, width: 200 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 10px' }}>
+          {grip}
+          <button onClick={toggleMin} title="Expand" style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 14, padding: '0 2px' }}>▴</button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div data-floater style={style}>
+      {/* Drag bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 10px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
+        {grip}
+        <button onClick={toggleMin} title="Minimise" style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 14, padding: '0 2px' }}>▾</button>
+        <button
+          onClick={() => { setActiveBatch(null) }}
+          title="Close (stays unlocked)"
+          style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 16, padding: '0 2px', lineHeight: 1 }}
+        >×</button>
+      </div>
+
+      {/* Progress */}
+      <div style={{ display: 'flex', height: 4, background: 'var(--surface2)' }}>
+        <div style={{ width: `${(prog.passed / prog.total) * 100}%`, background: 'var(--booked)' }} />
+        <div style={{ width: `${(prog.failed / prog.total) * 100}%`, background: 'var(--hot)' }} />
+      </div>
+
+      {prog.complete && (
+        <div style={{ padding: '8px 12px', background: 'rgba(20,184,166,0.10)', borderBottom: '1px solid var(--border)', fontSize: 11, fontFamily: 'Inter', color: 'var(--booked)' }}>
+          Batch complete — {prog.passed} working{prog.failed > 0 ? `, ${prog.failed} broken` : ''}.
+        </div>
+      )}
+
+      {item && (
+        <div style={{ padding: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 5 }}>
+            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: 'var(--text3)' }}>
+              {String(idx + 1).padStart(2, '0')}/{batch.items.length}
+            </span>
+            <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text3)' }}>{item.area}</span>
+            {/* Which screen to do this on. The tester is holding a phone AND looking
+                at a computer, so leaving them to infer it invites mis-testing. */}
+            {(() => {
+              const d = deviceFor(item)
+              const isPhone = d === 'phone'
+              return (
+                <span style={{ marginLeft: 'auto', flexShrink: 0, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: isPhone ? 'var(--warm)' : 'var(--text2)', border: `1px solid ${isPhone ? 'rgba(249,115,22,0.45)' : 'var(--border)'}`, background: isPhone ? 'rgba(249,115,22,0.10)' : 'transparent', borderRadius: 999, padding: '2px 7px' }}>
+                  {isPhone ? '📱 Phone' : 'Desktop'}
+                </span>
+              )
+            })()}
+          </div>
+          <div style={{ fontSize: 13, fontFamily: 'Inter', fontWeight: 600, color: 'var(--text)', lineHeight: 1.4, marginBottom: 5 }}>
+            {item.what}
+          </div>
+          <div style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.6, marginBottom: 10, maxHeight: 150, overflowY: 'auto' }}>
+            {item.how}
+          </div>
+
+          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+            <button
+              onClick={() => setVerdict('pass')}
+              style={{ flex: 1, padding: '9px 0', borderRadius: 7, cursor: 'pointer', border: `1px solid ${v?.status === 'pass' ? 'var(--booked)' : 'var(--border)'}`, background: v?.status === 'pass' ? 'rgba(20,184,166,0.16)' : 'transparent', color: v?.status === 'pass' ? 'var(--booked)' : 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11 }}
+            >
+              {v?.status === 'pass' ? '✓ Works' : 'Works'}
+            </button>
+            <button
+              onClick={() => setVerdict('fail')}
+              style={{ flex: 1, padding: '9px 0', borderRadius: 7, cursor: 'pointer', border: `1px solid ${v?.status === 'fail' ? 'var(--hot)' : 'var(--border)'}`, background: v?.status === 'fail' ? 'rgba(239,68,68,0.16)' : 'transparent', color: v?.status === 'fail' ? 'var(--hot)' : 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11 }}
+            >
+              {v?.status === 'fail' ? '✕ Broken' : 'Broken'}
+            </button>
+          </div>
+
+          {noteOpen ? (
+            <div>
+              <textarea
+                value={noteDraft}
+                onChange={e => setNoteDraft(e.target.value)}
+                rows={3}
+                autoFocus
+                placeholder="What did you see?"
+                style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'Inter', fontSize: 13, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.5 }}
+              />
+              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                <button
+                  onClick={() => {
+                    // A note with no verdict yet defaults to Broken — notes are
+                    // almost always written when something is wrong.
+                    save(item.id, v?.status ?? 'fail', noteDraft.trim() || null, testerName)
+                    setNoteOpen(false)
+                  }}
+                  style={{ flex: 1, padding: '7px 0', borderRadius: 6, border: 'none', background: 'var(--accent)', color: 'var(--bg)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}
+                >Save note</button>
+                <button onClick={() => setNoteOpen(false)} style={{ flex: 1, padding: '7px 0', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button
+                onClick={() => { setNoteDraft(v?.note ?? ''); setNoteOpen(true) }}
+                style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: v?.note ? 'var(--accent)' : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, cursor: 'pointer' }}
+              >
+                {v?.note ? 'Note ✓' : 'Note'}
+              </button>
+              <div style={{ flex: 1 }} />
+              <button
+                onClick={() => setIdx(i => Math.max(0, i - 1))}
+                disabled={idx === 0}
+                style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: idx === 0 ? 'var(--text3)' : 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.5 : 1 }}
+              >Prev</button>
+              <button
+                onClick={() => setIdx(i => Math.min(batch.items.length - 1, i + 1))}
+                disabled={idx >= batch.items.length - 1}
+                style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: idx >= batch.items.length - 1 ? 'var(--text3)' : 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, cursor: idx >= batch.items.length - 1 ? 'default' : 'pointer', opacity: idx >= batch.items.length - 1 ? 0.5 : 1 }}
+              >Next</button>
+            </div>
+          )}
+
+          {v?.note && !noteOpen && (
+            <div style={{ marginTop: 8, padding: '6px 8px', background: 'var(--surface2)', borderLeft: '2px solid var(--accent)', fontSize: 11, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+              {v.note}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ padding: '7px 12px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{batch.title}</span>
+        <button onClick={lockTesting} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontFamily: 'Inter', fontSize: 9, cursor: 'pointer', textDecoration: 'underline', flexShrink: 0 }}>Lock</button>
+      </div>
+    </div>
+  )
+}

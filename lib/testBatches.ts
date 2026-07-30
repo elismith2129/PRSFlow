@@ -21,6 +21,16 @@ export type TestItem = {
   area: string
   what: string
   how: string
+  // Which screen the tester performs this on. Runner work happens on a PHONE while
+  // the checklist stays open on a computer, so an item needs to say which device it
+  // belongs to or the tester is guessing. Optional: falls back to the area name,
+  // which covers every current item without 40 duplicate declarations.
+  device?: 'phone' | 'desktop'
+}
+
+// Runner areas are phone work; everything else is done at the computer.
+export function deviceFor(item: TestItem): 'phone' | 'desktop' {
+  return item.device ?? (item.area.startsWith('Runner') ? 'phone' : 'desktop')
 }
 
 export type TestBatch = {
@@ -39,7 +49,7 @@ export const TEST_BATCHES: TestBatch[] = [
     version: 'v1.1.0 – v1.3.2',
     date: 'Jul 29, 2026',
     intro:
-      'Everything shipped across the CRM, the Work Order and the Runner app over the last two days. Work top to bottom — the sections build on each other, so an earlier failure can explain a later one. If something fails, say what you saw in the note, not just that it broke.',
+      'Everything shipped across the CRM, the Work Order and the Runner app over the last two days. Keep this checklist open on a computer. Items marked PHONE are done on your phone — do the step there, then mark it here. Items marked DESKTOP are done on the computer, in this browser. Work top to bottom: the sections build on each other, so an early failure can explain a later one. If something fails, write what you actually saw in the note, not just that it broke.',
     items: [
       // ── Runner access ──
       {
