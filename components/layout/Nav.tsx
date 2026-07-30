@@ -30,10 +30,14 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const { profile } = useUserProfile()
   const clientsVersion = useClientsVersion()
-  // Tech gets the full nav minus CRM; every other role sees all items.
-  const visibleNavItems = profile?.role === 'tech'
-    ? navItems.filter(item => item.href !== '/crm')
-    : navItems
+  // Tech gets the full nav minus CRM; a runner gets no internal nav at all
+  // (AuthGuard bounces them to /runner, so this is belt-and-braces for the
+  // moment before that redirect lands); every other role sees all items.
+  const visibleNavItems = profile?.role === 'runner'
+    ? []
+    : profile?.role === 'tech'
+      ? navItems.filter(item => item.href !== '/crm')
+      : navItems
 
   useEffect(() => {
     async function fetchCount() {
