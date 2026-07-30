@@ -11,6 +11,20 @@ type PinMsg = { text: string; color: string } | null
 
 const LOCKOUT_KEY = 'pin_lockout'
 const MAX_FAILS = 5
+// ─── PIN login kill switch ───────────────────────────────────────────────────
+// FALSE while every staff PIN is revoked, following the distributed brute-force
+// attempt on 29 July 2026 (see docs/PROJECT_LOG.md). With zero rows in
+// staff_pins the numpad cannot succeed for anyone, so showing it would only
+// hand staff a screen that silently fails and looks like a broken app.
+//
+// This hides the pad and defaults the screen to email + password. It does NOT
+// disable /api/auth/pin — the server still enforces its own lockout, which is
+// what actually matters if someone hits the endpoint directly.
+//
+// FLIP BACK TO TRUE when 6-digit PINs are re-issued. Nothing else needs
+// changing; the PIN code paths are untouched.
+const PIN_LOGIN_ENABLED = false
+
 const LOCKOUT_MS = 30_000
 
 const COLOR_ERROR = 'var(--hot)'
@@ -44,7 +58,7 @@ export default function LoginPage() {
   const router = useRouter()
 
   // ── Mode: PIN numpad is the primary view; email is the fallback. ──
-  const [mode, setMode] = useState<Mode>('pin')
+  const [mode, setMode] = useState<Mode>(PIN_LOGIN_ENABLED ? 'pin' : 'email')
 
   // ── PIN state ──
   const [pin, setPin] = useState('')
@@ -563,19 +577,21 @@ export default function LoginPage() {
               </div>
             )}
 
-            <div
-              onClick={() => { setMode('pin'); setError(''); setSuccess('') }}
-              style={{
-                fontFamily: 'Inter',
-                fontSize: 11,
-                color: 'var(--cold)',
-                cursor: 'pointer',
-                textAlign: 'center',
-                marginTop: 6,
-              }}
-            >
-              use PIN instead
-            </div>
+            {PIN_LOGIN_ENABLED && (
+              <div
+                onClick={() => { setMode('pin'); setError(''); setSuccess('') }}
+                style={{
+                  fontFamily: 'Inter',
+                  fontSize: 11,
+                  color: 'var(--cold)',
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  marginTop: 6,
+                }}
+              >
+                use PIN instead
+              </div>
+            )}
           </form>
         )}
       </div>
