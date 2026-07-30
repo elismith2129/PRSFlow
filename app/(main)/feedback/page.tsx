@@ -292,7 +292,8 @@ export default function DevPage() {
         {/* Reading-width and centred, which is how the feedback board looked before
             it became a tab. Errors is a dense table and takes the full width. */}
         {section === 'feedback' && <div style={{ maxWidth: 720, margin: '0 auto' }}><FeedbackBoard /></div>}
-        {section === 'testing' && <div style={{ maxWidth: 760, margin: '0 auto' }}><TestingSection /></div>}
+        {/* Wider than the feedback board: Testing is two columns, not reading-width prose. */}
+        {section === 'testing' && <div style={{ maxWidth: 1100, margin: '0 auto' }}><TestingSection /></div>}
         {section === 'errors' && isEli && <ErrorsSection />}
       </div>
     </div>

@@ -64,11 +64,16 @@ export function TestingSection() {
   const anyPhone = TEST_BATCHES.some(batchNeedsPhone)
 
   return (
-    <div>
-      {/* Instructions. Deliberately always visible rather than a collapsed panel:
-          a tester opening this for the first time shouldn't have to find them, and
-          the phone setup in particular has to be read BEFORE starting a batch. */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 18, marginBottom: 14 }}>
+    // Two columns: instructions stacked on the left, batches on the right. The
+    // tester reads down the left once, then works from the right. Collapses to a
+    // single column on narrow screens (auto-fit via minmax on the grid).
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: 16, alignItems: 'start' }}>
+      {/* ── LEFT: instructions ─────────────────────────────────────────────
+          Deliberately always visible rather than a collapsed panel: a tester
+          opening this for the first time shouldn't have to find them, and the
+          phone setup has to be read BEFORE starting a batch. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
         <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 16, color: 'var(--text)', marginBottom: 10 }}>
           How testing works
         </div>
@@ -95,20 +100,24 @@ export function TestingSection() {
       {/* Phone setup — shown whenever any batch has phone checks, because finding
           out halfway through that you need the app installed wastes the session. */}
       {anyPhone && <PhoneSetupCallout />}
-
-      <div style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--text3)', lineHeight: 1.7, marginBottom: 12 }}>
-        Batches:
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {TEST_BATCHES.map(b => (
-          <BatchCard
-            key={b.id}
-            batchId={b.id}
-            isActive={activeBatchId === b.id}
-            onStart={() => setActiveBatch(b.id)}
-            onReview={() => setReviewId(b.id)}
-          />
-        ))}
+
+      {/* ── RIGHT: the batches themselves ──────────────────────────────── */}
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 10, paddingBottom: 7, borderBottom: '1px solid var(--border)' }}>
+          Batches
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {TEST_BATCHES.map(b => (
+            <BatchCard
+              key={b.id}
+              batchId={b.id}
+              isActive={activeBatchId === b.id}
+              onStart={() => setActiveBatch(b.id)}
+              onReview={() => setReviewId(b.id)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -124,7 +133,7 @@ function PhoneSetupCallout() {
   const url = typeof window !== 'undefined' ? window.location.origin : 'https://prsflow.paramountrecording.com'
 
   return (
-    <div style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.4)', borderRadius: 12, padding: 18, marginBottom: 18 }}>
+    <div style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.4)', borderRadius: 12, padding: 18 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <span style={{ fontSize: 16 }}>📱</span>
         <span style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15, color: 'var(--warm)' }}>
