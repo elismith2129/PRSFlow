@@ -342,6 +342,8 @@ export function WorkOrderPopup({
     rateType: 'day' as 'day' | 'hour', rate: '',
     engOn: false, engName: '', engRate: '', engRole: 'assistant' as 'engineer' | 'assistant',
   })
+  // The row whose fill-down controls are currently offered (set by updateStRow).
+  const [lastEditedRowId, setLastEditedRowId] = useState<string | null>(null)
   const [confirmDeleteRowId, setConfirmDeleteRowId] = useState<string | null>(null)
   const [confirmDeleteSession, setConfirmDeleteSession] = useState(false)
   // Non-session block (Tour/Tech/Open Hours) simple date fields
@@ -838,6 +840,11 @@ export function WorkOrderPopup({
   // ── Studio time row updates ─────────────────────────────────────────────────
 
   function updateStRow(id: string, updates: Partial<StRow>) {
+    // Remember which row was last touched so the fill-down controls can appear on
+    // just that row. Showing them in every cell of every row would put ~120 tiny
+    // buttons in a 30-day table; showing them where you're already working is
+    // both discoverable and quiet.
+    setLastEditedRowId(id)
     const row = stRows.find(r => r.id === id)
     if (row?.admin_locked && !pendingLockedEdits[id]) {
       setPendingLockedEdits(p => ({ ...p, [id]: { ...row } }))
@@ -897,6 +904,37 @@ export function WorkOrderPopup({
   }
 
   // Toggle a row between 'hour' and 'day' rate type, auto-deriving the companion rate
+  // Copy one field from one row down onto every other DAY on this work order.
+  // Studio, times and rates change for a whole run far more often than for a
+  // single day, and a 30-day booking otherwise meant editing the same value
+  // thirty times.
+  //
+  // Routed through updateStRow rather than writing rows directly, so every
+  // derived value (charge, OT hours, OT rate, OT charge, engineer charge)
+  // recalculates through the SAME code path as a manual edit. Duplicating that
+  // maths is how billing numbers drift.
+  //
+  // Skips: the source row, undated rows, standalone staff rows (blank studio —
+  // they have no times/rate of their own), and admin-locked rows (approved work
+  // must not be silently rewritten). Local-first like every other edit here, so
+  // Cancel still reverts a mis-click.
+  function applyFieldToAllDays(sourceId: string, keys: (keyof StRow)[]) {
+    const src = stRows.find(r => r.id === sourceId)
+    if (!src) return
+    const patch: Partial<StRow> = {}
+    for (const k of keys) (patch as any)[k] = (src as any)[k]
+    for (const r of stRows) {
+      if (r.id === sourceId || !r.date || !(r.studio || '').trim() || r.admin_locked) continue
+      updateStRow(r.id, patch)
+    }
+  }
+
+  // How many rows a fill-down would actually touch — drives whether the control
+  // is worth showing and what its tooltip promises.
+  function fillDownTargetCount(sourceId: string): number {
+    return stRows.filter(r => r.id !== sourceId && r.date && (r.studio || '').trim() && !r.admin_locked).length
+  }
+
   function toggleRowRateType(id: string) {
     setStRows(prev => prev.map(r => {
       if (r.id !== id) return r
@@ -2014,6 +2052,24 @@ export function WorkOrderPopup({
                   })
                   const rowHrs = r.total_hours ?? calcHours(r.from_time, r.to_time)
                   const otHrsNum = parseFloat(r.ot_hours ?? '0') || 0
+
+                  // "Apply to every other day" — appears only on the row you just
+                  // edited, and only when there is another day to apply it to.
+                  const fillTargets = fillDownTargetCount(r.id)
+                  const showFill = !readOnly && lastEditedRowId === r.id && fillTargets > 0 && !!r.date && !isEngOnly
+                  const fillDown = (keys: (keyof StRow)[], label: string) => showFill ? (
+                    <button
+                      type="button"
+                      onClick={e => { e.stopPropagation(); applyFieldToAllDays(r.id, keys) }}
+                      title={`Apply this ${label} to the other ${fillTargets} day${fillTargets === 1 ? '' : 's'}`}
+                      style={{
+                        flexShrink: 0, marginLeft: 2, padding: '0 3px', height: 15, lineHeight: '13px',
+                        borderRadius: 3, border: '1px solid rgba(var(--accent-rgb),0.35)',
+                        background: 'rgba(var(--accent-rgb),0.10)', color: 'var(--accent)',
+                        fontSize: 9, cursor: 'pointer',
+                      }}
+                    >⇊</button>
+                  ) : null
                   return (
                     <div key={r.id}>
                       {!isEngOnly && <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: r.admin_locked ? 'rgba(20,184,166,0.04)' : undefined }}>
@@ -2035,6 +2091,10 @@ export function WorkOrderPopup({
                               return <option key={`${l.name}|${letter}`} value={`${l.name}|${letter}`}>{STUDIO_SHORT[l.name] ?? l.name} {letter}</option>
                             }))}
                           </select>
+                          {/* Room changes usually apply to the whole run — a booking
+                              gets moved rooms far more often than one day of it does.
+                              location travels with studio or the two would disagree. */}
+                          {fillDown(['studio', 'location'], 'room')}
                         </div>
                         {/* Date — transparent overlay opens native picker, auto-sorts on pick.
                             showPicker() so ANY click in the cell opens it (the invisible
@@ -2096,8 +2156,8 @@ export function WorkOrderPopup({
                           </>
                         )}
                         {/* From / To */}
-                        <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} /></div>
-                        <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} /></div>
+                        <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} />{fillDown(['from_time'], 'start time')}</div>
+                        <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} />{fillDown(['to_time'], 'end time')}</div>
                         {/* Total Hrs — always auto-calc */}
                         <div style={{ ...cellS, color: 'var(--text2)', fontSize: 10 }}>{rowHrs != null ? `${rowHrs}h` : '—'}</div>
                         {/* Rate Type toggle */}
@@ -2108,8 +2168,8 @@ export function WorkOrderPopup({
                         {/* Rate */}
                         <div style={cellS}>
                           {isDayRow
-                            ? <input value={r.rate_daily} onChange={e => updateStRow(r.id, { rate_daily: e.target.value })} style={inp} placeholder="$0/day" />
-                            : <input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} style={inp} placeholder="$0/hr" />
+                            ? <><input value={r.rate_daily} onChange={e => updateStRow(r.id, { rate_daily: e.target.value })} style={inp} placeholder="$0/day" />{fillDown(['rate_daily', 'row_rate_type'], 'day rate')}</>
+                            : <><input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} style={inp} placeholder="$0/hr" />{fillDown(['rate', 'row_rate_type'], 'hourly rate')}</>
                           }
                         </div>
                         {/* OT Hrs — day: auto display; hourly: editable */}

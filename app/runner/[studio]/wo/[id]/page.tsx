@@ -5,6 +5,8 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import TimeInput from '@/components/shared/TimeInput'
 import { SignedImage } from '@/components/shared/SignedImage'
 import { calcHours, getLocalToday } from '@/lib/time'
+import { dbResult } from '@/lib/db'
+import { useStaffPools } from '@/components/shared/StaffPicker'
 import { formatCurrency, stripCurrency } from '@/lib/format'
 
 const STUDIO_META: Record<string, { label: string; abbr: string }> = {
@@ -69,6 +71,13 @@ export default function RunnerWOPage() {
   // Day scope for the Studio Time table. Defaults to today; a 30-day work order
   // is unusable as one flat list on a phone.
   const [showAllDays, setShowAllDays] = useState(false)
+  // Staff reassignment. The row being edited + the draft name; the roster comes
+  // from the shared pool hook so the runner and the CRM lead picker can't offer
+  // different lists.
+  const [staffEditRowId, setStaffEditRowId] = useState<string | null>(null)
+  const [staffDraft, setStaffDraft] = useState('')
+  const [staffSaving, setStaffSaving] = useState(false)
+  const staffPools = useStaffPools()
   const [fromTimeMap, setFromTimeMap] = useState<Record<string, string>>({})
   const [toTimeMap, setToTimeMap] = useState<Record<string, string>>({})
   const [engFromTimeMap, setEngFromTimeMap] = useState<Record<string, string>>({})
@@ -603,6 +612,40 @@ export default function RunnerWOPage() {
     router.push(`/runner/${studio}`)
   }
 
+  // Reassign the staff member on a studio-time row.
+  //
+  // Written straight to the database rather than queued for Save, because
+  // eng_name is NOT part of handleSaveChanges (that only persists the engineer's
+  // times/hours/charge) — a queued edit would be silently dropped. Matches how
+  // the date cell on this table already writes immediately.
+  //
+  // scope 'all' targets every row sharing the edited row's ROLE, so changing the
+  // engineer across a 30-day booking can't wipe out the assistants. A 30-day run
+  // otherwise meant setting the same name thirty times.
+  async function saveStaffName(scope: 'day' | 'all') {
+    const row: any = stRows.find((x: any) => x.id === staffEditRowId)
+    if (!row) return
+    const name = staffDraft.trim()
+    const targets = scope === 'all'
+      ? stRows.filter((x: any) => (x.eng_role || 'assistant') === (row.eng_role || 'assistant'))
+      : [row]
+    const ids = targets.map((x: any) => x.id)
+    setStaffSaving(true)
+    // eng_visible so a name typed onto a previously-cleared row actually shows.
+    const { error } = await supabase
+      .from('studio_time_rows')
+      .update({ eng_name: name || null, eng_visible: true })
+      .in('id', ids)
+    setStaffSaving(false)
+    if (!dbResult('Updating staff', error)) return
+    setStRows((prev: any[]) => prev.map((x: any) =>
+      ids.includes(x.id) ? { ...x, eng_name: name || null, eng_visible: true } : x
+    ))
+    setStaffEditRowId(null)
+    setExpandedEngRow(null)
+    setEngPopoverPos(null)
+  }
+
   async function saveNotesModal() {
     if (!notesModalRowId) return
     await supabase.from('studio_time_rows').update({ session_info: notesModalText }).eq('id', notesModalRowId)
@@ -726,14 +769,93 @@ export default function RunnerWOPage() {
               const isAsst = row?.eng_role === 'assistant'
               const name = row?.eng_name || (isAsst ? (booking?.assistant_name || '') : (wo?.engineer || booking?.engineer_name || ''))
               return (
-                <span style={{ fontFamily: 'Inter', fontSize: 12, color: isAsst ? 'var(--warm)' : 'var(--accent)' }}>
-                  {isAsst ? '2ND · ' : '1ST · '}{name}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontFamily: 'Inter', fontSize: 12, color: isAsst ? 'var(--warm)' : 'var(--accent)' }}>
+                    {isAsst ? '2ND · ' : '1ST · '}{name || 'Unassigned'}
+                  </span>
+                  {!row?.admin_locked && (
+                    <button
+                      onClick={() => {
+                        // Seed the draft with the row's OWN name only. Deliberately
+                        // not the WO-level fallback — that would silently pin an
+                        // inherited name onto the row on save.
+                        setStaffDraft(row?.eng_name || '')
+                        setStaffEditRowId(row.id)
+                        setExpandedEngRow(null)
+                        setEngPopoverPos(null)
+                      }}
+                      style={{ padding: '3px 9px', borderRadius: 4, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', cursor: 'pointer' }}
+                    >
+                      Change
+                    </button>
+                  )}
                 </span>
               )
             })()}
           </div>
         </>
       )}
+      {/* Staff reassignment sheet. Centred rather than anchored to the pill: the
+          pill sits mid-table on a narrow screen and an anchored dropdown had
+          nowhere to open. Top-anchored so the keyboard can't cover it. */}
+      {staffEditRowId && (() => {
+        const row: any = stRows.find((x: any) => x.id === staffEditRowId)
+        if (!row) return null
+        const isAsst = (row.eng_role || 'assistant') === 'assistant'
+        const pool = isAsst ? staffPools.assistant : staffPools.engineer
+        const sameRoleCount = stRows.filter((x: any) => (x.eng_role || 'assistant') === (row.eng_role || 'assistant')).length
+        return (
+          <>
+            <div style={{ position: 'fixed', inset: 0, zIndex: 10003, background: 'rgba(0,0,0,0.6)' }} onClick={() => setStaffEditRowId(null)} />
+            <div style={{ position: 'fixed', top: 'calc(24px + env(safe-area-inset-top))', left: 12, right: 12, zIndex: 10004, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
+                  {isAsst ? 'Assistant (2ND)' : 'Engineer (1ST)'}
+                </span>
+                <button onClick={() => setStaffEditRowId(null)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 24, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
+              </div>
+              <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)', marginBottom: 12 }}>
+                {shortDate(row.date || '')}{row.studio ? ` · ${row.studio}` : ''}
+              </div>
+              <input
+                list="runner-staff-roster"
+                value={staffDraft}
+                onChange={e => setStaffDraft(e.target.value)}
+                placeholder={isAsst ? 'Assistant name' : 'Engineer name'}
+                autoFocus
+                style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontFamily: 'Inter', fontSize: 16, padding: '11px 12px', outline: 'none', marginBottom: 6 }}
+              />
+              {/* Roster for this role only — 'Both' staff appear in either pool.
+                  Free text is allowed for a new hire or a one-off freelancer. */}
+              <datalist id="runner-staff-roster">
+                {pool.map(n => <option key={n} value={n} />)}
+              </datalist>
+              <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)', marginBottom: 14 }}>
+                Pick from the list or type a name that isn’t on it. Leave blank to unassign.
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <button
+                  onClick={() => saveStaffName('day')}
+                  disabled={staffSaving}
+                  style={{ width: '100%', background: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: 8, padding: '12px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 14, cursor: staffSaving ? 'default' : 'pointer', opacity: staffSaving ? 0.6 : 1 }}
+                >
+                  {staffSaving ? 'Saving…' : 'Save this day'}
+                </button>
+                {sameRoleCount > 1 && (
+                  <button
+                    onClick={() => saveStaffName('all')}
+                    disabled={staffSaving}
+                    style={{ width: '100%', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 13, cursor: staffSaving ? 'default' : 'pointer', opacity: staffSaving ? 0.6 : 1 }}
+                  >
+                    Save all {sameRoleCount} {isAsst ? 'assistant' : 'engineer'} days
+                  </button>
+                )}
+              </div>
+            </div>
+          </>
+        )
+      })()}
+
       {/* Header */}
       <div style={{
         background: 'var(--surface)', borderBottom: '1px solid var(--border)',
