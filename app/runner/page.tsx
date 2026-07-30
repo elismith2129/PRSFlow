@@ -3,12 +3,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
+import { getLocalToday } from '@/lib/time'
 
-function getLocalToday(): string {
-  const now = new Date()
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
-  return now.toISOString().slice(0, 10)
-}
 
 const STUDIOS = [
   { key: 'paramount', label: 'Paramount', abbr: 'PRS' },

@@ -2,12 +2,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
+import { getLocalToday } from '@/lib/time'
 
-function getLocalToday(): string {
-  const now = new Date()
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
-  return now.toISOString().slice(0, 10)
-}
 
 const STUDIO_META: Record<string, { label: string }> = {
   paramount: { label: 'Paramount' },

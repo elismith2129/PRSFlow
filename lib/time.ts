@@ -71,3 +71,16 @@ export function toStudioLetter(s: string): string {
   const m = s.match(/Studio\s+([A-Z])/i)
   return m ? m[1].toUpperCase() : s.trim()
 }
+
+// Today as a LOCAL calendar date (YYYY-MM-DD), matching how dates are stored.
+// Deliberately not `new Date().toISOString().slice(0,10)` — that's UTC, which
+// rolls over mid-evening in Los Angeles and silently shows tomorrow's sessions.
+//
+// Was copy-pasted byte-for-byte into five files (both runner hubs, the runner
+// mics page, WorkOrderPopup, MicInventorySection). Consolidated here per the
+// July audit rule: never define date math locally.
+export function getLocalToday(): string {
+  const now = new Date()
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
+  return now.toISOString().slice(0, 10)
+}

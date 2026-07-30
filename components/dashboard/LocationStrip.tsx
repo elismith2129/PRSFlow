@@ -284,9 +284,11 @@ export function LocationStrip() {
           <div>
             {/* Studio is the hero — matches the runner hub cards. "Which room"
                 is the first thing anyone reads off a daily-ops card. */}
+            {/* No "Studio " prefix — bookings.studio is already the full room
+                label ("Studio X", "North"). See the runner hub card. */}
             {(b as any).studio && (
               <div style={{ fontFamily: 'DM Serif Display', fontSize: 19, lineHeight: 1.1, color: 'var(--text)', marginBottom: 2 }}>
-                Studio {(b as any).studio}
+                {(b as any).studio}
               </div>
             )}
             <div style={{ fontSize: 12, fontWeight: 700, color: (b as any).studio ? 'var(--text2)' : 'var(--text)' }}>{b.artist || b.client_name || '—'}</div>

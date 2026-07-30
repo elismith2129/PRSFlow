@@ -3,12 +3,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import type { Booking } from '@/lib/supabase'
+import { getLocalToday } from '@/lib/time'
 
-function getLocalToday(): string {
-  const now = new Date()
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
-  return now.toISOString().slice(0, 10)
-}
 
 
 const STUDIO_META: Record<string, { label: string; abbr: string }> = {
@@ -257,9 +253,13 @@ export default function StudioDailyOpsPage() {
                             is "which room", and it was buried in the small meta
                             row below with the times. Artist/client drop to the
                             sub-line. */}
+                        {/* No "Studio " prefix — bookings.studio already holds the
+                            full room label from STUDIO_LOCATIONS ("Studio X",
+                            "North"). Prefixing gave "Studio Studio X", and would
+                            have mislabelled Track's rooms as "Studio North". */}
                         {b.studio && (
                           <div style={{ fontFamily: 'DM Serif Display', fontSize: 22, lineHeight: 1.1, color: 'var(--text)', marginBottom: 3 }}>
-                            Studio {b.studio}
+                            {b.studio}
                           </div>
                         )}
                         <div style={{ fontSize: 13, fontWeight: 700, color: b.studio ? 'var(--text2)' : 'var(--text)', marginBottom: 2 }}>

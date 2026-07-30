@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import TimeInput from '@/components/shared/TimeInput'
 import { SignedImage } from '@/components/shared/SignedImage'
-import { calcHours } from '@/lib/time'
+import { calcHours, getLocalToday } from '@/lib/time'
 import { formatCurrency, stripCurrency } from '@/lib/format'
 
 const STUDIO_META: Record<string, { label: string; abbr: string }> = {
@@ -66,6 +66,9 @@ export default function RunnerWOPage() {
   const [loading, setLoading] = useState(true)
   const [otHours, setOtHours] = useState<Record<string, string>>({})
   const [engHoursMap, setEngHoursMap] = useState<Record<string, string>>({})
+  // Day scope for the Studio Time table. Defaults to today; a 30-day work order
+  // is unusable as one flat list on a phone.
+  const [showAllDays, setShowAllDays] = useState(false)
   const [fromTimeMap, setFromTimeMap] = useState<Record<string, string>>({})
   const [toTimeMap, setToTimeMap] = useState<Record<string, string>>({})
   const [engFromTimeMap, setEngFromTimeMap] = useState<Record<string, string>>({})
@@ -797,22 +800,71 @@ export default function RunnerWOPage() {
 
           const engName = wo?.engineer || booking?.engineer_name || ''
 
+          // Distinct dated days on this WO — drives the scope toggle's label and
+          // whether it's worth showing at all.
+          const stDates = Array.from(new Set(stRows.map((r: any) => r.date).filter(Boolean))) as string[]
+          const stDayCount = stDates.length
+          // Today's rows, plus any undated row (manually added, not yet dated) so
+          // it can never become invisible and unreachable.
+          const today = getLocalToday()
+          const todayRows = stRows.filter((r: any) => !r.date || r.date === today)
+          // If today has nothing, show everything rather than an empty table —
+          // a WO opened a day early would otherwise look broken.
+          const visibleStRows = showAllDays || todayRows.length === 0 ? stRows : todayRows
+          // Zebra by DAY, not by row: each day is 2–3 lines once staff sub-rows
+          // are in, so per-row striping made the grouping harder to see, not easier.
+          const dayIndexFor = (d: string | null) => (d ? stDates.indexOf(d) : -1)
+
+          // ONE grid definition for the header, the studio rows and the staff
+          // sub-rows — it used to be the same literal repeated three times, so
+          // header and body could drift apart. Date + Studio lead so they can be
+          // frozen while the numeric columns scroll.
+          const ST_GRID = '52px 58px 56px 84px 84px 44px 38px 68px 48px 58px 54px 64px'
+          const ST_MIN_WIDTH = 706
+          // Frozen identity columns: scrolling right used to lose which day (and
+          // which room) a line belonged to — a real part of why this read badly.
+          const stickyCell = (left: number, bg: string): React.CSSProperties => ({
+            position: 'sticky', left, zIndex: 2, background: bg,
+          })
+
           return (
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)', padding: '12px 14px 8px' }}>Studio Time</div>
+              {/* Header: title + day scope. A 30-day work order is unreadable as
+                  one list, and a runner on shift wants tonight — so this defaults
+                  to today and keeps everything one tap away for when a client asks
+                  about the whole run. Filtering only affects what's RENDERED;
+                  handleSaveChanges iterates all of stRows, so edits to hidden days
+                  still save. */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 14px 8px' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)' }}>Studio Time</span>
+                {stDayCount > 1 && (
+                  <button
+                    onClick={() => setShowAllDays(v => !v)}
+                    style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${showAllDays ? 'var(--accent)' : 'var(--border)'}`, background: showAllDays ? 'rgba(var(--accent-rgb),0.10)' : 'transparent', color: showAllDays ? 'var(--accent)' : 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    {showAllDays ? `All ${stDayCount} days` : 'Today only'}
+                  </button>
+                )}
+              </div>
               {stRows.length === 0 ? (
                 <div style={{ padding: '14px', color: 'var(--text2)', fontSize: 12, fontFamily: 'Inter', textAlign: 'center' }}>
                   Session times will appear here
                 </div>
+              ) : visibleStRows.length === 0 ? (
+                <div style={{ padding: '14px', color: 'var(--text2)', fontSize: 12, fontFamily: 'Inter', textAlign: 'center' }}>
+                  Nothing scheduled today — tap “All {stDayCount} days”.
+                </div>
               ) : (
-                /* Date | Notes | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total */
+                /* Date | Studio | Notes | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total */
                 <div style={{ overflowX: 'auto', width: '100%' }}>
-                  <div style={{ minWidth: 627 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '50px 55px 85px 85px 42px 35px 65px 45px 55px 50px 60px', background: 'var(--bg)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
-                      {['Date', 'Notes', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total'].map(h => <div key={h} style={thStyle}>{h}</div>)}
+                  <div style={{ minWidth: ST_MIN_WIDTH }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: ST_GRID, background: 'var(--bg)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+                      {['Date', 'Studio', 'Notes', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total'].map((h, hi) => (
+                        <div key={h} style={{ ...thStyle, ...(hi < 2 ? stickyCell(hi === 0 ? 0 : 52, 'var(--bg)') : {}), zIndex: hi < 2 ? 3 : undefined }}>{h}</div>
+                      ))}
                     </div>
                     <div>
-                      {stRows.map((r: any) => {
+                      {visibleStRows.map((r: any) => {
                         const isDayRow = r.row_rate_type === 'day'
                         const liveFrom = fromTimeMap[r.id] ?? r.from_time ?? ''
                         const liveTo = toTimeMap[r.id] ?? r.to_time ?? ''
@@ -841,7 +893,9 @@ export default function RunnerWOPage() {
                           rowTotal = base != null ? parseFloat((base + otCharge).toFixed(2)) : null
                         }
 
-                        const tSel = { background: 'transparent', color: 'var(--text)', border: 'none', fontSize: 10, fontFamily: 'Inter', width: '100%' }
+                        // 12px, not 10 — the old size was below comfortable reading
+                        // on a phone, which is most of why this table felt bad.
+                        const tSel = { background: 'transparent', color: 'var(--text)', border: 'none', fontSize: 12, fontFamily: 'Inter', width: '100%' }
                         // Per-day staff: row eng_name first, else the WO/booking-level
                         // engineer (or booking assistant for 2ND rows).
                         const isAsstRow = r.eng_role === 'assistant'
@@ -864,12 +918,21 @@ export default function RunnerWOPage() {
                         // one, because rowStaffName falls back to the WO-level
                         // engineer — the second half of the apparent duplication.
                         const showStaffRow = !!rowStaffName && (isStaffOnlyRow || r.eng_visible !== false)
+
+                        // Zebra by day so each day's 2–3 lines read as one block.
+                        // Locked rows keep their teal tint (it means something).
+                        const dayIdx = dayIndexFor(r.date)
+                        const rowBg = r.admin_locked
+                          ? 'rgba(20,184,166,0.06)'
+                          : dayIdx >= 0 && dayIdx % 2 === 1 ? 'rgba(255,255,255,0.022)' : 'var(--surface)'
                         return (
-                          <div key={r.id} style={{ background: r.admin_locked ? 'rgba(20,184,166,0.06)' : undefined }}>
+                          <div key={r.id} style={{ background: rowBg }}>
                             {!isStaffOnlyRow && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '50px 55px 85px 85px 42px 35px 65px 45px 55px 50px 60px', borderBottom: showStaffRow ? 'none' : '1px solid var(--border)' }}>
-                              {/* Date */}
-                              <div style={{ ...tdStyle, color: 'var(--text2)', fontSize: 9, position: 'relative', cursor: 'pointer' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: ST_GRID, borderBottom: showStaffRow ? 'none' : '1px solid var(--border)' }}>
+                              {/* Date — frozen left. `position: sticky` is itself a
+                                  positioned ancestor, so the absolute date-picker
+                                  overlay below still anchors to this cell. */}
+                              <div style={{ ...tdStyle, ...stickyCell(0, rowBg), color: 'var(--text)', cursor: 'pointer' }}>
                                 <span style={{ pointerEvents: 'none' }}>{shortDate(r.date || '')}</span>
                                 <input
                                   type="date"
@@ -889,7 +952,14 @@ export default function RunnerWOPage() {
                                   style={{ position: 'absolute', inset: 0, opacity: 0, cursor: r.admin_locked ? 'default' : 'pointer', width: '100%', height: '100%' }}
                                 />
                               </div>
-                              {/* Notes — opens bottom sheet */}
+                              {/* Studio — frozen left, beside the date. This column
+                                  did not exist on the runner view at all, which is
+                                  what made two legitimate rooms on one date look
+                                  like a duplicated row. */}
+                              <div style={{ ...tdStyle, ...stickyCell(52, rowBg), color: 'var(--text)', fontWeight: 700 }}>
+                                {r.studio || '—'}
+                              </div>
+                              {/* Notes — opens the full-screen sheet */}
                               <div style={{ ...tdStyle, padding: '4px 3px' }}>
                                 <button
                                   onClick={() => { if (r.admin_locked) return; notesScrollRef.current = window.scrollY; document.body.style.top = `-${window.scrollY}px`; document.body.style.position = 'fixed'; document.body.style.width = '100%'; setNotesModalRowId(r.id); setNotesModalText(r.session_info || '') }}
@@ -932,15 +1002,20 @@ export default function RunnerWOPage() {
                               </div>
                             </div>
                             )}
-                            {showStaffRow && (
-                              <div style={{ display: 'grid', gridTemplateColumns: '50px 55px 85px 85px 42px 35px 65px 45px 55px 50px 60px', borderBottom: '1px solid var(--border)', background: 'rgba(var(--accent-rgb),0.03)' }}>
+                            {showStaffRow && (() => {
+                              // Staff rows carry their own tint on top of the day's
+                              // zebra, so sticky cells need the COMBINED colour or the
+                              // frozen columns would look like a different row.
+                              const staffBg = r.admin_locked ? 'rgba(20,184,166,0.06)' : 'rgba(var(--accent-rgb),0.045)'
+                              return (
+                              <div style={{ display: 'grid', gridTemplateColumns: ST_GRID, borderBottom: '1px solid var(--border)', background: staffBg }}>
                                 {/* Column 1 repeats the DATE, so the staff row still
                                     says which day it belongs to once the table is
                                     scrolled sideways and its parent row is off screen.
-                                    The staff pill moved to column 2 — the same column
-                                    as the row's Notes button — so everything that
-                                    identifies a line lives under one heading. */}
-                                <div style={{ ...tdStyle, color: 'var(--text3)', fontSize: 9 }}>{shortDate(r.date || '')}</div>
+                                    The staff pill moved to column 3 — the Notes column —
+                                    so everything identifying a line sits together. */}
+                                <div style={{ ...tdStyle, ...stickyCell(0, staffBg), color: 'var(--text3)' }}>{shortDate(r.date || '')}</div>
+                                <div style={{ ...tdStyle, ...stickyCell(52, staffBg), color: 'var(--text3)' }}>{isStaffOnlyRow ? '' : (r.studio || '')}</div>
                                 <div style={{ ...tdStyle, padding: '4px 3px' }}>
                                   <button
                                     onClick={e => {
@@ -956,17 +1031,20 @@ export default function RunnerWOPage() {
                                 </div>
                                 <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={engLiveFrom} onChange={v => setEngFromTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSel, color: 'var(--accent)' }} disabled={!!r.admin_locked} /></div>
                                 <div style={{ ...tdStyle, padding: '2px 3px' }}><TimeInput value={engLiveTo} onChange={v => setEngToTimeMap(prev => ({ ...prev, [r.id]: v }))} style={{ ...tSel, color: 'var(--accent)' }} disabled={!!r.admin_locked} /></div>
-                                <div style={{ ...tdStyle, color: 'var(--text2)', fontSize: 9 }}>{engLiveHours != null ? `${engLiveHours}h` : '—'}</div>
+                                <div style={{ ...tdStyle, color: 'var(--text)' }}>{engLiveHours != null ? `${engLiveHours}h` : '—'}</div>
                                 <div style={{ ...tdStyle }} />
-                                <div style={{ ...tdStyle, color: 'var(--text2)', fontSize: 9 }}>{engRateForRow > 0 ? `$${engRateForRow}/hr` : '—'}</div>
+                                {/* Assistants are never rated or charged on the WO —
+                                    show nothing rather than an empty money cell. */}
+                                <div style={{ ...tdStyle, color: 'var(--text)' }}>{!isAsstRow && engRateForRow > 0 ? `$${engRateForRow}/hr` : ''}</div>
                                 <div style={{ ...tdStyle }} />
                                 <div style={{ ...tdStyle }} />
                                 <div style={{ ...tdStyle }} />
-                                <div style={{ ...tdStyle, color: liveEngCharge != null ? 'var(--accent)' : 'var(--text3)', fontWeight: liveEngCharge != null ? 700 : 400, borderRight: 'none', fontSize: 10 }}>
-                                  {liveEngCharge != null ? `$${liveEngCharge.toFixed(2)}` : '—'}
+                                <div style={{ ...tdStyle, color: !isAsstRow && liveEngCharge != null ? 'var(--accent)' : 'var(--text3)', fontWeight: !isAsstRow && liveEngCharge != null ? 700 : 400, borderRight: 'none' }}>
+                                  {isAsstRow ? '' : liveEngCharge != null ? `$${liveEngCharge.toFixed(2)}` : '—'}
                                 </div>
                               </div>
-                            )}
+                              )
+                            })()}
                           </div>
                         )
                       })}

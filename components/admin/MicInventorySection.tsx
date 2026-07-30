@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { getLocalToday } from '@/lib/time'
 
 // First letter of display_name's first word + first letter of its last word,
 // uppercased. Used to auto-populate admin initials from the logged-in profile.
@@ -53,11 +54,6 @@ function statusRank(status: string | undefined): number {
   return 3
 }
 
-function getLocalToday(): string {
-  const now = new Date()
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
-  return now.toISOString().slice(0, 10)
-}
 
 function studioLabel(key: string): string {
   return STUDIO_META[key]?.label ?? (key === FLOATING_KEY ? 'Floating' : key)

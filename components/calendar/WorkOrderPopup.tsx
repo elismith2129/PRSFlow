@@ -11,7 +11,7 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { SignedImage } from '@/components/shared/SignedImage'
 import { ClientPanel, type ClientPanelValue } from '@/components/shared/ClientPanel'
 import { seedStudioTimeRows } from '@/lib/seedStudioTimeRows'
-import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter } from '@/lib/time'
+import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter, getLocalToday } from '@/lib/time'
 import { formatCurrency, stripCurrency } from '@/lib/format'
 import { dbResult } from '@/lib/db'
 import { STUDIO_LOCATIONS } from '@/lib/studios'
@@ -164,11 +164,6 @@ const EQUIPMENT_ITEMS = ['Speakers', 'Microphone', 'Console']
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function getLocalToday(): string {
-  const now = new Date()
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
-  return now.toISOString().slice(0, 10)
-}
 
 function fmtDate(d: string) {
   return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
