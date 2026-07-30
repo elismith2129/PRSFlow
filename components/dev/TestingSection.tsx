@@ -90,9 +90,12 @@ function BatchCard({ batchId, isActive, onStart, onReview }: {
   onStart: () => void
   onReview: () => void
 }) {
-  const batch = TEST_BATCHES.find(b => b.id === batchId)!
+  const batch = TEST_BATCHES.find(b => b.id === batchId)
   const { results, loading } = useTestResults(batchId)
-  const prog = batchProgress(batch.items.map(i => i.id), results)
+  // Defensive: a stale batch id (old sessionStorage, or a batch removed in a
+  // later deploy) must not take the whole page down with it.
+  const prog = batchProgress(batch ? batch.items.map(i => i.id) : [], results)
+  if (!batch) return null
 
   const state = loading ? 'loading'
     : prog.tested === 0 ? 'new'
@@ -154,11 +157,13 @@ function BatchCard({ batchId, isActive, onStart, onReview }: {
 // This is Eli's read-out, not the tester's workspace — failures first, since
 // that's what he's looking for.
 function BatchReview({ batchId, onBack }: { batchId: string; onBack: () => void }) {
-  const batch = TEST_BATCHES.find(b => b.id === batchId)!
+  const batch = TEST_BATCHES.find(b => b.id === batchId)
   const { results } = useTestResults(batchId)
   const { profile } = useUserProfile()
+  const [copied, setCopied] = useState(false)
   const canReset = profile?.role === 'owner' || profile?.role === 'manager'
-  const prog = batchProgress(batch.items.map(i => i.id), results)
+  const prog = batchProgress(batch ? batch.items.map(i => i.id) : [], results)
+  if (!batch) return null
 
   const failedItems = batch.items.filter(i => results[i.id]?.status === 'fail')
   const passedItems = batch.items.filter(i => results[i.id]?.status === 'pass')
@@ -195,14 +200,47 @@ function BatchReview({ batchId, onBack }: { batchId: string; onBack: () => void 
     </div>
   )
 
+  // Copy the failures as plain text, ready to paste to Claude. Closes the loop:
+  // tester records what broke → Eli pastes this → fixes come back. Without it he'd
+  // be retyping notes by hand, which is exactly where detail gets lost.
+  function copyFailures() {
+    if (!batch) return
+    const lines = [
+      `${batch.title} — ${batch.version}`,
+      `${prog.passed} working · ${prog.failed} broken · ${prog.untested} not tested`,
+      '',
+      ...(failedItems.length === 0 ? ['No failures.'] : failedItems.flatMap(i => {
+        const v = results[i.id]
+        return [
+          `BROKEN — [${i.id}] ${i.area}: ${i.what}`,
+          `  how: ${i.how}`,
+          `  note: ${v?.note || '(none given)'}`,
+          '',
+        ]
+      })),
+      ...(untestedItems.length > 0 ? [`Not tested: ${untestedItems.map(i => i.id).join(', ')}`] : []),
+    ]
+    navigator.clipboard.writeText(lines.join('\n')).then(
+      () => setCopied(true),
+      () => setCopied(false),
+    )
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   return (
     <div>
       <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontFamily: 'Inter', fontSize: 11, cursor: 'pointer', padding: 0, marginBottom: 12 }}>← Batches</button>
       <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 18, color: 'var(--text)' }}>{batch.title}</div>
-      <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)', marginBottom: 16 }}>
+      <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)', marginBottom: 12 }}>
         {prog.passed} working · {prog.failed} broken · {prog.untested} not tested
         {canReset && ' · results are kept until reset in Supabase'}
       </div>
+      <button
+        onClick={copyFailures}
+        style={{ marginBottom: 18, padding: '8px 14px', borderRadius: 7, border: `1px solid ${copied ? 'rgba(var(--accent-rgb),0.5)' : 'var(--border)'}`, background: copied ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: copied ? 'var(--accent)' : 'var(--text)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}
+      >
+        {copied ? '✓ Copied' : 'Copy failures + notes'}
+      </button>
       {group('Broken', failedItems, 'var(--hot)')}
       {group('Not tested', untestedItems, 'var(--text3)')}
       {group('Working', passedItems, 'var(--booked)')}

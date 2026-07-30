@@ -11,7 +11,7 @@
 // floating panel — mounted app-wide, including on runner routes — has to know
 // about it from a different part of the tree. sessionStorage + a window event is
 // enough; it's a soft gate, not security.
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { dbResult } from '@/lib/db'
 
@@ -79,9 +79,17 @@ export function useTestingSession(): { unlocked: boolean; activeBatchId: string 
 }
 
 // ── Verdicts ────────────────────────────────────────────────────────────────
+// Every mount needs its OWN channel name. This hook runs in three places at once
+// (a card per batch, the review view, and the floating panel), and naming the
+// channel after the batch alone produced duplicate channels on one table — against
+// the standing rule, and the likely cause of the error screen Eli hit.
+let channelSeq = 0
+
 export function useTestResults(batchId: string | null) {
   const [results, setResults] = useState<ResultMap>({})
   const [loading, setLoading] = useState(true)
+  const channelIdRef = useRef<number | null>(null)
+  if (channelIdRef.current === null) channelIdRef.current = ++channelSeq
 
   const load = useCallback(async () => {
     if (!batchId) { setResults({}); setLoading(false); return }
@@ -110,7 +118,7 @@ export function useTestResults(batchId: string | null) {
   useEffect(() => {
     if (!batchId) return
     const channel = supabase
-      .channel(`test-results-${batchId}`)
+      .channel(`test-results-${batchId}-${channelIdRef.current}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'test_results' }, () => { load() })
       .subscribe()
     return () => { supabase.removeChannel(channel) }

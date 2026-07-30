@@ -38,8 +38,9 @@ export default function TestingFloater() {
 
   const [idx, setIdx] = useState(0)
   const [minimised, setMinimised] = useState(false)
-  const [noteOpen, setNoteOpen] = useState(false)
-  const [noteDraft, setNoteDraft] = useState('')
+  // Draft notes per item, so moving between items (or typing before deciding)
+  // never loses what was written.
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({})
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
   const dragRef = useRef<{ dx: number; dy: number } | null>(null)
 
@@ -110,11 +111,16 @@ export default function TestingFloater() {
     overflow: 'hidden',
   }
 
+  // The verdict is the ONLY thing that writes, and it carries whatever note has
+  // been typed. Saving a note on its own used to default the status to 'fail',
+  // which put a verdict on the record that nobody chose.
+  //
+  // No auto-advance: navigation is explicit (Prev/Next) so the tester can go back
+  // and change an answer.
   const setVerdict = (status: 'pass' | 'fail') => {
     if (!item) return
-    save(item.id, status, (v?.note ?? null), testerName)
-    // Advance automatically — the tester's hands are on the app, not the panel.
-    if (idx < batch.items.length - 1) setTimeout(() => setIdx(i => Math.min(i + 1, batch.items.length - 1)), 220)
+    const note = (noteDrafts[item.id] ?? v?.note ?? '').trim() || null
+    save(item.id, status, note, testerName)
   }
 
   const toggleMin = () => {
@@ -201,71 +207,54 @@ export default function TestingFloater() {
             {item.how}
           </div>
 
-          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+          {/* Notes come BEFORE the verdict: a tester writes what they saw, then
+              decides. The note is saved WITH the verdict, so nothing ever carries a
+              status nobody picked. */}
+          <textarea
+            value={noteDrafts[item.id] ?? v?.note ?? ''}
+            onChange={e => setNoteDrafts(p => ({ ...p, [item.id]: e.target.value }))}
+            rows={2}
+            placeholder="Notes (optional) — what did you see?"
+            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'Inter', fontSize: 13, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.5, marginBottom: 8 }}
+          />
+
+          <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
             <button
               onClick={() => setVerdict('pass')}
-              style={{ flex: 1, padding: '9px 0', borderRadius: 7, cursor: 'pointer', border: `1px solid ${v?.status === 'pass' ? 'var(--booked)' : 'var(--border)'}`, background: v?.status === 'pass' ? 'rgba(20,184,166,0.16)' : 'transparent', color: v?.status === 'pass' ? 'var(--booked)' : 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11 }}
+              style={{ flex: 1, padding: '10px 0', borderRadius: 7, cursor: 'pointer', border: `1px solid ${v?.status === 'pass' ? 'var(--booked)' : 'var(--border)'}`, background: v?.status === 'pass' ? 'rgba(20,184,166,0.16)' : 'transparent', color: v?.status === 'pass' ? 'var(--booked)' : 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 12 }}
             >
               {v?.status === 'pass' ? '✓ Works' : 'Works'}
             </button>
             <button
               onClick={() => setVerdict('fail')}
-              style={{ flex: 1, padding: '9px 0', borderRadius: 7, cursor: 'pointer', border: `1px solid ${v?.status === 'fail' ? 'var(--hot)' : 'var(--border)'}`, background: v?.status === 'fail' ? 'rgba(239,68,68,0.16)' : 'transparent', color: v?.status === 'fail' ? 'var(--hot)' : 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11 }}
+              style={{ flex: 1, padding: '10px 0', borderRadius: 7, cursor: 'pointer', border: `1px solid ${v?.status === 'fail' ? 'var(--hot)' : 'var(--border)'}`, background: v?.status === 'fail' ? 'rgba(239,68,68,0.16)' : 'transparent', color: v?.status === 'fail' ? 'var(--hot)' : 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 12 }}
             >
               {v?.status === 'fail' ? '✕ Broken' : 'Broken'}
             </button>
           </div>
 
-          {noteOpen ? (
-            <div>
-              <textarea
-                value={noteDraft}
-                onChange={e => setNoteDraft(e.target.value)}
-                rows={3}
-                autoFocus
-                placeholder="What did you see?"
-                style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'Inter', fontSize: 13, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.5 }}
-              />
-              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                <button
-                  onClick={() => {
-                    // A note with no verdict yet defaults to Broken — notes are
-                    // almost always written when something is wrong.
-                    save(item.id, v?.status ?? 'fail', noteDraft.trim() || null, testerName)
-                    setNoteOpen(false)
-                  }}
-                  style={{ flex: 1, padding: '7px 0', borderRadius: 6, border: 'none', background: 'var(--accent)', color: 'var(--bg)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}
-                >Save note</button>
-                <button onClick={() => setNoteOpen(false)} style={{ flex: 1, padding: '7px 0', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Cancel</button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <button
-                onClick={() => { setNoteDraft(v?.note ?? ''); setNoteOpen(true) }}
-                style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: v?.note ? 'var(--accent)' : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, cursor: 'pointer' }}
-              >
-                {v?.note ? 'Note ✓' : 'Note'}
-              </button>
-              <div style={{ flex: 1 }} />
-              <button
-                onClick={() => setIdx(i => Math.max(0, i - 1))}
-                disabled={idx === 0}
-                style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: idx === 0 ? 'var(--text3)' : 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.5 : 1 }}
-              >Prev</button>
-              <button
-                onClick={() => setIdx(i => Math.min(batch.items.length - 1, i + 1))}
-                disabled={idx >= batch.items.length - 1}
-                style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: idx >= batch.items.length - 1 ? 'var(--text3)' : 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, cursor: idx >= batch.items.length - 1 ? 'default' : 'pointer', opacity: idx >= batch.items.length - 1 ? 0.5 : 1 }}
-              >Next</button>
+          {/* Prev/Next at the bottom. Next is BLOCKED until a verdict exists, so
+              nothing gets skipped — but Prev is always open so they can go back and
+              change an answer. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button
+              onClick={() => setIdx(i => Math.max(0, i - 1))}
+              disabled={idx === 0}
+              style={{ flex: 1, padding: '9px 0', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: idx === 0 ? 'var(--text3)' : 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.45 : 1 }}
+            >← Prev</button>
+            <button
+              onClick={() => setIdx(i => Math.min(batch.items.length - 1, i + 1))}
+              disabled={!v || idx >= batch.items.length - 1}
+              title={!v ? 'Pick Works or Broken first' : undefined}
+              style={{ flex: 1, padding: '9px 0', borderRadius: 7, border: 'none', background: (!v || idx >= batch.items.length - 1) ? 'var(--surface2)' : 'var(--accent)', color: (!v || idx >= batch.items.length - 1) ? 'var(--text3)' : 'var(--bg)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: (!v || idx >= batch.items.length - 1) ? 'default' : 'pointer' }}
+            >Next →</button>
+          </div>
+          {!v && (
+            <div style={{ marginTop: 6, fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)', textAlign: 'center' }}>
+              Pick Works or Broken to continue
             </div>
           )}
 
-          {v?.note && !noteOpen && (
-            <div style={{ marginTop: 8, padding: '6px 8px', background: 'var(--surface2)', borderLeft: '2px solid var(--accent)', fontSize: 11, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
-              {v.note}
-            </div>
-          )}
         </div>
       )}
 
