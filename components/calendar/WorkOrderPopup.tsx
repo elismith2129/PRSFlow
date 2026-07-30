@@ -891,12 +891,31 @@ export function WorkOrderPopup({
         u.ot_charge = h > 0 && rn > 0 ? parseFloat((h * rn).toFixed(2)) : null
       }
 
+      // Staff times FOLLOW the session times unless they were set independently.
+      //
+      // A staff line under a studio row is that session's engineer/assistant — the
+      // two are the same record and belong together. But engineers genuinely do
+      // come in before or leave after the session, so an explicitly different time
+      // must survive. The test is whether the staff time still MATCHES the time the
+      // session had before this edit: if it does, it was just following along and
+      // should keep following. If it doesn't, someone set it deliberately — leave it.
+      if ('from_time' in updates && r.from_time !== updates.from_time) {
+        if (!u.eng_from_time || u.eng_from_time === r.from_time) u.eng_from_time = u.from_time
+      }
+      if ('to_time' in updates && r.to_time !== updates.to_time) {
+        if (!u.eng_to_time || u.eng_to_time === r.to_time) u.eng_to_time = u.to_time
+      }
+
       // Eng charge
       if ('eng_hours' in updates || 'eng_rate' in updates || 'from_time' in updates || 'to_time' in updates || 'eng_from_time' in updates || 'eng_to_time' in updates) {
         const ef = u.eng_from_time || u.from_time
         const et = u.eng_to_time   || u.to_time
         const eh = calcHours(ef, et) ?? (u.eng_hours != null ? Number(u.eng_hours) : null)
         const er = parseFloat((u.eng_rate ?? '').replace(/[^0-9.]/g, ''))
+        // Write the hours back too. This block recomputed the CHARGE from the times
+        // but left eng_hours stale, so a saved row could carry hours that didn't
+        // match its own charge until the next reload re-derived them.
+        u.eng_hours = eh
         u.eng_charge = eh != null && eh > 0 && !isNaN(er) && er > 0 ? parseFloat((eh * er).toFixed(2)) : null
       }
       return u

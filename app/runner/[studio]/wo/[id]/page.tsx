@@ -626,21 +626,26 @@ export default function RunnerWOPage() {
     const row: any = stRows.find((x: any) => x.id === staffEditRowId)
     if (!row) return
     const name = staffDraft.trim()
+
+    // 'all' targets every row that ALREADY SHOWS a staff line of this role —
+    // "what you can see is what changes". It deliberately does NOT set
+    // eng_visible: an earlier version did, which un-hid staff lines on rows whose
+    // eng_visible was false *because a standalone staff row already covered that
+    // day*. The result was two identical staff lines per date — the "duplicate
+    // rows" Eli hit. Only an explicit single-row assignment may reveal a line.
+    const sameRole = (x: any) => (x.eng_role || 'assistant') === (row.eng_role || 'assistant')
     const targets = scope === 'all'
-      ? stRows.filter((x: any) => (x.eng_role || 'assistant') === (row.eng_role || 'assistant'))
+      ? stRows.filter((x: any) => sameRole(x) && x.eng_visible !== false)
       : [row]
     const ids = targets.map((x: any) => x.id)
+    const patch: Record<string, any> = { eng_name: name || null }
+    if (scope === 'day') patch.eng_visible = true
+
     setStaffSaving(true)
-    // eng_visible so a name typed onto a previously-cleared row actually shows.
-    const { error } = await supabase
-      .from('studio_time_rows')
-      .update({ eng_name: name || null, eng_visible: true })
-      .in('id', ids)
+    const { error } = await supabase.from('studio_time_rows').update(patch).in('id', ids)
     setStaffSaving(false)
     if (!dbResult('Updating staff', error)) return
-    setStRows((prev: any[]) => prev.map((x: any) =>
-      ids.includes(x.id) ? { ...x, eng_name: name || null, eng_visible: true } : x
-    ))
+    setStRows((prev: any[]) => prev.map((x: any) => ids.includes(x.id) ? { ...x, ...patch } : x))
     setStaffEditRowId(null)
     setExpandedEngRow(null)
     setEngPopoverPos(null)
@@ -803,7 +808,11 @@ export default function RunnerWOPage() {
         if (!row) return null
         const isAsst = (row.eng_role || 'assistant') === 'assistant'
         const pool = isAsst ? staffPools.assistant : staffPools.engineer
-        const sameRoleCount = stRows.filter((x: any) => (x.eng_role || 'assistant') === (row.eng_role || 'assistant')).length
+        // Count DISTINCT DATES that would change, not rows — a date can carry both
+        // a studio-row staff line and a standalone one, so a row count read as a
+        // confusing "4 engineer days" on a 3-day booking.
+        const allTargets = stRows.filter((x: any) => (x.eng_role || 'assistant') === (row.eng_role || 'assistant') && x.eng_visible !== false)
+        const affectedDays = new Set(allTargets.map((x: any) => x.date).filter(Boolean)).size
         return (
           <>
             <div style={{ position: 'fixed', inset: 0, zIndex: 10003, background: 'rgba(0,0,0,0.6)' }} onClick={() => setStaffEditRowId(null)} />
@@ -817,21 +826,39 @@ export default function RunnerWOPage() {
               <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)', marginBottom: 12 }}>
                 {shortDate(row.date || '')}{row.studio ? ` · ${row.studio}` : ''}
               </div>
+              {/* A real tappable list, NOT <datalist>. iOS Safari renders datalist
+                  as a floating autofill-style bubble mid-screen with no visible
+                  dropdown — you had to know to type. autoComplete/autoCorrect off
+                  also stops iOS offering "AutoFill Contact" over a name field. */}
               <input
-                list="runner-staff-roster"
                 value={staffDraft}
                 onChange={e => setStaffDraft(e.target.value)}
                 placeholder={isAsst ? 'Assistant name' : 'Engineer name'}
-                autoFocus
-                style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontFamily: 'Inter', fontSize: 16, padding: '11px 12px', outline: 'none', marginBottom: 6 }}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="words"
+                spellCheck={false}
+                style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontFamily: 'Inter', fontSize: 16, padding: '11px 12px', outline: 'none', marginBottom: 10 }}
               />
-              {/* Roster for this role only — 'Both' staff appear in either pool.
-                  Free text is allowed for a new hire or a one-off freelancer. */}
-              <datalist id="runner-staff-roster">
-                {pool.map(n => <option key={n} value={n} />)}
-              </datalist>
+              {pool.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10, maxHeight: 168, overflowY: 'auto' }}>
+                  {pool.map(n => {
+                    const on = staffDraft.trim().toLowerCase() === n.toLowerCase()
+                    return (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setStaffDraft(n)}
+                        style={{ padding: '9px 12px', borderRadius: 999, border: `1px solid ${on ? (isAsst ? 'var(--warm)' : 'var(--accent)') : 'var(--border)'}`, background: on ? (isAsst ? 'rgba(249,115,22,0.12)' : 'rgba(var(--accent-rgb),0.12)') : 'var(--surface2)', color: on ? (isAsst ? 'var(--warm)' : 'var(--accent)') : 'var(--text)', fontFamily: 'Inter', fontSize: 13, cursor: 'pointer' }}
+                      >
+                        {n}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
               <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)', marginBottom: 14 }}>
-                Pick from the list or type a name that isn’t on it. Leave blank to unassign.
+                Tap a name, or type one that isn’t listed. Clear the field to unassign.
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <button
@@ -841,13 +868,13 @@ export default function RunnerWOPage() {
                 >
                   {staffSaving ? 'Saving…' : 'Save this day'}
                 </button>
-                {sameRoleCount > 1 && (
+                {affectedDays > 1 && (
                   <button
                     onClick={() => saveStaffName('all')}
                     disabled={staffSaving}
                     style={{ width: '100%', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 13, cursor: staffSaving ? 'default' : 'pointer', opacity: staffSaving ? 0.6 : 1 }}
                   >
-                    Save all {sameRoleCount} {isAsst ? 'assistant' : 'engineer'} days
+                    Save all {affectedDays} days
                   </button>
                 )}
               </div>
