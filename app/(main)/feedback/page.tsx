@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { TestingSection } from '@/components/dev/TestingSection'
+import { ErrorsSection } from '@/components/admin/ErrorsSection'
 
 // TEMPORARY: remove when rollout period ends
 type FeedbackType = 'bug' | 'suggestion' | 'question'
@@ -229,34 +230,67 @@ function FeedbackBoard() {
 }
 
 // ─── DEV page shell ──────────────────────────────────────────────────────────
-// Two sections behind one nav item: the rollout feedback board (unchanged) and
-// PIN-gated test checklists. The PIN guards Testing ONLY — feedback stays one tap
-// away for any signed-in staff member, which is how it has always worked.
-type DevTab = 'feedback' | 'testing'
+// Left sidebar matching the Admin page, so the two internal tool pages navigate
+// the same way. Sections:
+//   Feedback — the rollout board, open to any signed-in staff member
+//   Testing  — PIN-gated (4321) test batches
+//   Errors   — the app_errors sink, moved here from Admin. ELI ONLY: staff seeing
+//              raw stack traces invites alarm about things that are already handled,
+//              and it's a developer tool, not an operations one.
+type DevSection = 'feedback' | 'testing' | 'errors'
+
+const DEV_NAV: { key: DevSection; label: string }[] = [
+  { key: 'feedback', label: 'Feedback' },
+  { key: 'testing', label: 'Testing' },
+  { key: 'errors', label: 'Errors' },
+]
 
 export default function DevPage() {
-  const [tab, setTab] = useState<DevTab>('feedback')
+  const [section, setSection] = useState<DevSection>('feedback')
+  const { profile } = useUserProfile()
+  // Eli only — matched on his accounts, the same gate the CRM Campaigns tab uses.
+  // Deliberately narrower than the app_errors RLS policy (which allows
+  // owner/manager); RLS stays as-is, this just hides the surface.
+  const isEli = profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com'
+  const visibleNav = DEV_NAV.filter(n => n.key !== 'errors' || isEli)
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto' }}>
-      <div style={{ display: 'flex', gap: 20, marginBottom: 18 }}>
-        {(['feedback', 'testing'] as DevTab[]).map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            style={{
-              background: 'none', border: 'none', padding: '0 0 5px', cursor: 'pointer',
-              borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
-              fontFamily: 'Syne', fontWeight: 700, fontSize: 13, letterSpacing: '0.08em',
-              textTransform: 'uppercase', color: tab === t ? 'var(--accent)' : 'var(--text3)',
-              transition: 'color 0.15s',
-            }}
-          >
-            {t === 'feedback' ? 'Feedback' : 'Testing'}
-          </button>
-        ))}
+    <div style={{ display: 'flex', margin: '-24px -32px', minHeight: 'calc(100vh - 52px)' }}>
+      {/* Sidebar — mirrors components/../admin/page.tsx */}
+      <div data-panel="admin-sidebar" style={{
+        width: 200, flexShrink: 0, borderRight: '1px solid var(--border)',
+        padding: '28px 0', display: 'flex', flexDirection: 'column', gap: 2,
+      }}>
+        <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', padding: '0 20px 12px' }}>
+          Dev
+        </div>
+        {visibleNav.map(({ key, label }) => {
+          const active = section === key
+          return (
+            <button
+              key={key}
+              onClick={() => setSection(key)}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left',
+                padding: '8px 20px', border: 'none', cursor: 'pointer',
+                fontFamily: 'Inter', fontSize: 12,
+                background: active ? 'var(--surface2)' : 'transparent',
+                color: active ? 'var(--text)' : 'var(--text2)',
+                borderLeft: active ? '2px solid var(--accent)' : '2px solid transparent',
+              }}
+            >
+              {label}
+            </button>
+          )
+        })}
       </div>
-      {tab === 'feedback' ? <FeedbackBoard /> : <TestingSection />}
+
+      {/* Content */}
+      <div style={{ flex: 1, padding: '28px 32px', minWidth: 0 }}>
+        {section === 'feedback' && <div style={{ maxWidth: 720 }}><FeedbackBoard /></div>}
+        {section === 'testing' && <div style={{ maxWidth: 720 }}><TestingSection /></div>}
+        {section === 'errors' && isEli && <ErrorsSection />}
+      </div>
     </div>
   )
 }

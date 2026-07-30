@@ -34,7 +34,7 @@ export default function TestingFloater() {
   const testerName = profile?.display_name || 'Staff'
 
   const batch = TEST_BATCHES.find(b => b.id === activeBatchId) || null
-  const { results, save } = useTestResults(batch?.id ?? null)
+  const { results, loading, save } = useTestResults(batch?.id ?? null)
 
   const [idx, setIdx] = useState(0)
   const [minimised, setMinimised] = useState(false)
@@ -53,14 +53,21 @@ export default function TestingFloater() {
     } catch { /* ignore */ }
   }, [])
 
-  // Open on the first item without a verdict — resuming where they left off
-  // rather than at the top every time the panel remounts.
+  // Open on the first item without a verdict — resuming where they left off.
+  //
+  // Must wait for `loading` to finish: this used to run on batch-id change alone,
+  // when `results` was still empty because the fetch hadn't resolved, so it always
+  // computed "first untested = item 1". That's why "Continue" opened at the top.
+  // positionedRef makes it fire once per batch and never again, so it can't jump
+  // the tester mid-tap when a verdict lands.
+  const positionedRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!batch) return
+    if (!batch || loading) return
+    if (positionedRef.current === batch.id) return
+    positionedRef.current = batch.id
     const firstUntested = batch.items.findIndex(i => !results[i.id])
     setIdx(firstUntested === -1 ? 0 : firstUntested)
-    // Only on batch change; not on every verdict, or it would jump mid-tap.
-  }, [batch?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [batch?.id, loading, batch, results])
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     const el = (e.currentTarget as HTMLElement).closest('[data-floater]') as HTMLElement | null
@@ -139,8 +146,14 @@ export default function TestingFloater() {
       style={{ flex: 1, cursor: 'grab', touchAction: 'none', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}
     >
       <span style={{ fontSize: 12, color: 'var(--text3)', flexShrink: 0 }}>⠿</span>
+      {/* Two different numbers, and conflating them was confusing: the position in
+          the list (moves with Prev/Next) and how many have a verdict (only moves
+          when one is recorded). Both are labelled now. */}
       <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--accent)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-        Testing · {prog.tested}/{prog.total}
+        Item {idx + 1} of {prog.total}
+      </span>
+      <span style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--text3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+        {prog.tested} done
       </span>
     </div>
   )

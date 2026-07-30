@@ -44,6 +44,8 @@ When Eli says to update logs / wrap up / push everything, ALL of these happen to
 4. **`public/sop.html` → `VERSIONS`** — a **staff-facing** release note at the TOP of the array, plain English, per **release**. Never technical; it is not a substitute for the changelog.
 5. **`lib/testBatches.ts`** — ONE new test batch per **working session**, at the top of `TEST_BATCHES`.
 
+`docs/ONBOARDING.md` is the entry point for anyone new (including a cold Claude session) — what the app is, how to run it, the four decisions that will confuse you, the landmines, and the operational access map. Update it when a landmine is discovered or an operational fact changes; it does NOT need a per-session entry.
+
 **Five docs, five audiences — don't merge them.** CLAUDE.md = rules. CHANGELOG = what changed per version + watch-outs. PROJECT_LOG = why, and what we rejected. Tech-Stack = where things live. SOP VERSIONS = what it means for staff. A document that tries to answer all five answers none of them well.
 
 **Why a batch is per-session and not per-release:** work shipped mid-session can be superseded before the day ends. On July 29 the runner's "apply to all days" shipped in v1.3.0 and was deliberately removed in v1.3.2 a couple of hours later — a batch written at v1.3.0 would have had the tester checking a feature that no longer existed, and reporting a correct behaviour as a bug. Batches are written once the work has settled.

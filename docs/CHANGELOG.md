@@ -8,6 +8,7 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 | Doc | Answers | Organised by |
 |---|---|---|
+| `docs/ONBOARDING.md` | "I'm new — what is this, how do I run it, what will bite me?" | Read once, front to back |
 | `CLAUDE.md` | "What are the rules I must not break?" | Topic (locked conventions, architecture rules) |
 | `docs/CHANGELOG.md` (this file) | "What changed in version X, and what should I watch out for?" | **Version** |
 | `docs/PROJECT_LOG.md` | "Why is it like this? What did we try and reject?" | **Session**, chronological |
@@ -15,6 +16,21 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 | `public/sop.html` → `VERSIONS` | "What changed for me, the person using it?" | Version, plain English |
 
 **Convention:** newest first. Every entry records **migrations** (because those are run by hand and are the most common source of a broken deploy), **watch-outs** (the thing that will bite the next person), and **files touched** where it aids navigation. Detail lives here; narrative and rejected alternatives live in PROJECT_LOG.
+
+---
+
+## v1.4.3 — Jul 29, 2026
+
+**DEV page restructure + floating-panel fixes.**
+
+- **Errors moved from Admin → DEV**, and gated to **Eli's accounts only** (`srv2129@gmail.com` / `eli@paramountrecording.com`), matching the CRM Campaigns gate. Deliberately narrower than the `app_errors` RLS policy, which still allows owner/manager — this only hides the surface. Raw stack traces in front of staff invite alarm about failures that are already handled, and it's a developer tool, not an operations one.
+- DEV page rebuilt with a **left sidebar mirroring the Admin page**, so the two internal tool pages navigate identically. Sections: Feedback (any staff) · Testing (PIN) · Errors (Eli).
+- **Floating tester: "Continue" always opened at item 1.** The positioning effect ran on batch-id change alone, at which point `results` was still empty because the fetch hadn't resolved — so "first untested" always computed as item 1. It now waits for `loading` to finish and fires once per batch via a ref, so it can't jump the tester mid-tap when a verdict lands.
+- **The header counter looked stuck.** It showed `tested/total` (verdicts recorded), which reads as a position indicator that doesn't move with Prev/Next. Now shows both, labelled: `Item N of 38` and `N done`.
+
+**Migrations:** none.
+**Watch-outs:** conflating "where am I in the list" with "how many are done" is the kind of thing that reads as a bug even when the number is correct. Label counters.
+**Files:** `app/(main)/feedback/page.tsx`, `app/(main)/admin/page.tsx`, `components/dev/TestingFloater.tsx`.
 
 ---
 
