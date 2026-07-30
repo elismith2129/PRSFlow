@@ -48,10 +48,18 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [imgFailed, setImgFailed] = useState(false)
   const [copied, setCopied] = useState(false)
-  // Treat as a document (embed via iframe) when the path isn't a known image
-  // extension OR an <img> render failed — this shows PDFs inline and rescues
-  // extensionless image uploads instead of falling to an "opens in new tab" link.
-  const isDoc = !isImagePath(client?.id_file_url) || imgFailed
+  // Only a PDF gets an <iframe>. NEVER iframe anything else.
+  //
+  // This used to be `!isImagePath(...) || imgFailed`, so a failed <img> flipped the
+  // component into document mode and rendered an iframe at the file — and an iframe
+  // pointing at a format the browser can't display inline makes the browser DOWNLOAD
+  // it. That's the "white box that auto-downloads the file" bug: iPhone IDs are
+  // often HEIC, Chrome and Firefox can't render HEIC, the <img> failed, and the
+  // fallback turned into a download.
+  const isPdf = /\.pdf$/i.test(client?.id_file_url ?? '')
+  // Something we can plausibly show in an <img>: a known image extension, or an
+  // unknown/extensionless path (worth attempting — many uploads have no extension).
+  const canTryImage = !isPdf && !imgFailed
 
   useEffect(() => {
     supabase.from('clients').select('*').eq('id', clientId).single().then(({ data }) => {
@@ -185,7 +193,7 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
                   <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)' }}>No ID on file</div>
                 ) : !idUrl ? (
                   <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)' }}>Loading ID…</div>
-                ) : isDoc ? (
+                ) : isPdf ? (
                   <div>
                     <iframe
                       src={idUrl}
@@ -197,7 +205,7 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
                       <a href={idUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text3)', fontFamily: 'Inter', fontSize: 10, textDecoration: 'none' }}>Open in new tab ↗</a>
                     </div>
                   </div>
-                ) : (
+                ) : canTryImage ? (
                   <div>
                     <img
                       src={idUrl}
@@ -208,6 +216,26 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
                       style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 6, border: '1px solid var(--border)', objectFit: 'contain', display: 'block', cursor: 'zoom-in' }}
                     />
                     <div style={{ marginTop: 4, fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)' }}>Click to enlarge</div>
+                  </div>
+                ) : (
+                  /* The image wouldn't render. Say so plainly and give an explicit
+                     link — do NOT fall back to an iframe, which silently downloads.
+                     The usual cause is HEIC (iPhone default): Safari shows it,
+                     Chrome and Firefox don't. */
+                  <div style={{ border: '1px solid rgba(249,115,22,0.4)', background: 'rgba(249,115,22,0.06)', borderRadius: 6, padding: 12 }}>
+                    <div style={{ fontSize: 11.5, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.65 }}>
+                      This ID can’t be previewed in this browser — it’s most likely an
+                      iPhone <b>HEIC</b> photo, which Chrome and Firefox can’t display.
+                      <b> Open this page in Safari</b> to view it inline.
+                    </div>
+                    <a
+                      href={idUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ display: 'inline-block', marginTop: 9, padding: '6px 12px', borderRadius: 5, border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, textDecoration: 'none' }}
+                    >
+                      Open the file ↗
+                    </a>
                   </div>
                 )}
               </div>
@@ -220,8 +248,8 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
     {/* Lightbox — enlarges the ID (image or embedded doc) in-app, above the modal at z 10004 */}
     {lightboxOpen && idUrl && (
       <div onClick={() => setLightboxOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 10004, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '92vw', maxHeight: '90vh', width: isDoc ? '90vw' : undefined, height: isDoc ? '90vh' : undefined }}>
-          {isDoc ? (
+        <div onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '92vw', maxHeight: '90vh', width: isPdf ? '90vw' : undefined, height: isPdf ? '90vh' : undefined }}>
+          {isPdf ? (
             <iframe src={idUrl} title="Client ID document" style={{ width: '100%', height: '100%', border: 'none', borderRadius: 8, background: '#fff', display: 'block' }} />
           ) : (
             <img src={idUrl} alt="Client ID" style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: 8, display: 'block' }} />
