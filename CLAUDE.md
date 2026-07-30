@@ -39,9 +39,12 @@ Rules:
 When Eli says to update logs / wrap up / push everything, ALL of these happen together — they're one ritual, not four optional chores:
 
 1. **`docs/PROJECT_LOG.md`** — dated session entry. Record *why*, not just what; note decisions rejected and the reason (that's what stops a future session re-litigating them). Correct any earlier entry this session proved wrong.
-2. **`docs/PRSFlow-Tech-Stack.md`** — a row in the Done table + any new Key files entry.
-3. **`public/sop.html` → `VERSIONS`** — a staff-facing release note at the TOP of the array, plain English, per **release**.
-4. **`lib/testBatches.ts`** — ONE new test batch per **working session**, at the top of `TEST_BATCHES`.
+2. **`docs/CHANGELOG.md`** — a **developer-facing** entry per **version**, newest first. Must state **migrations**, **watch-outs** (the thing that will bite the next person) and files touched. This is the handoff document: it answers "what changed in vX and what do I need to know", which PROJECT_LOG can't because it's organised by session.
+3. **`docs/PRSFlow-Tech-Stack.md`** — a row in the Done table + any new Key files entry.
+4. **`public/sop.html` → `VERSIONS`** — a **staff-facing** release note at the TOP of the array, plain English, per **release**. Never technical; it is not a substitute for the changelog.
+5. **`lib/testBatches.ts`** — ONE new test batch per **working session**, at the top of `TEST_BATCHES`.
+
+**Five docs, five audiences — don't merge them.** CLAUDE.md = rules. CHANGELOG = what changed per version + watch-outs. PROJECT_LOG = why, and what we rejected. Tech-Stack = where things live. SOP VERSIONS = what it means for staff. A document that tries to answer all five answers none of them well.
 
 **Why a batch is per-session and not per-release:** work shipped mid-session can be superseded before the day ends. On July 29 the runner's "apply to all days" shipped in v1.3.0 and was deliberately removed in v1.3.2 a couple of hours later — a batch written at v1.3.0 would have had the tester checking a feature that no longer existed, and reporting a correct behaviour as a bug. Batches are written once the work has settled.
 

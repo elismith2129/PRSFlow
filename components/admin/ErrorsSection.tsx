@@ -25,6 +25,7 @@ export function ErrorsSection() {
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [limit, setLimit] = useState(PAGE_SIZE)
+  const [copied, setCopied] = useState(false)
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -49,9 +50,38 @@ export function ErrorsSection() {
 
   const sourceOf = (e: AppError) => String(e.meta?.source ?? '—')
 
+  // Copy the loaded errors as plain text, ready to paste to Claude.
+  //
+  // Without this the loop is broken: errors are captured here but Claude has no
+  // database access, so diagnosing meant Eli retyping or screenshotting a stack
+  // trace — which is exactly where the useful detail (the URL, the meta.source,
+  // the actual message) gets dropped. Same idea as "Copy failures" on the test
+  // batches: make the report portable.
+  function copyErrors() {
+    const lines = rows.flatMap(e => [
+      `[${fmtTimestamp(e.created_at)}] ${e.message}`,
+      `  source: ${sourceOf(e)}`,
+      `  url: ${e.url ?? '—'}`,
+      e.stack ? `  stack: ${e.stack.split('\n').slice(0, 6).join('\n         ')}` : '  stack: —',
+      '',
+    ])
+    const text = rows.length === 0
+      ? 'No errors logged.'
+      : [`${rows.length} error${rows.length === 1 ? '' : 's'} (newest first)`, '', ...lines].join('\n')
+    navigator.clipboard.writeText(text).then(() => setCopied(true), () => setCopied(false))
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   return (
     <div>
-      <SectionHeader title="App Errors" count={rows.length > 0 ? rows.length : undefined} countColor="orange" />
+      <SectionHeader
+        title="App Errors"
+        count={rows.length > 0 ? rows.length : undefined}
+        countColor="orange"
+        action={rows.length > 0
+          ? { label: copied ? '✓ Copied' : 'Copy for Claude', onClick: copyErrors }
+          : undefined}
+      />
       <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter', marginBottom: 12 }}>
         Crashes, unhandled rejections, and failed saves reported from the app. Newest first.
       </div>
