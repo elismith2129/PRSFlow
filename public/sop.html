@@ -627,6 +627,17 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.2.1', date:'Jul 29, 2026',
+    headline:'Runner login works — one PIN pad for everyone',
+    desc:'The runner hub is reachable again. There is one login screen for the whole team: type your PIN and the app takes you where you belong.',
+    changes:[
+      'Runners share a single PIN. Typing it goes <b>straight to the runner hub</b> — no dashboard, no extra taps.',
+      'Everyone else lands on the dashboard exactly as before.',
+      'Reopening the app when you\'re already signed in takes you to the right place too, not always the dashboard.'
+    ],
+    affects:'Runners: use the shared PIN on the studio device and you\'ll go straight to studio select. If you\'re asked for a PIN and it\'s rejected, tell a manager — don\'t keep retrying, the pad locks for 30 seconds after five wrong attempts.'
+  },
+  {
     ver:'v1.2.0', date:'Jul 28, 2026',
     headline:'Set the engineer or assistant on the lead',
     desc:'Staffing is now chosen on the lead itself, and it fills in the Work Order for you. Before this, you picked staff nowhere and then typed the same name onto every single line of the Work Order by hand.',

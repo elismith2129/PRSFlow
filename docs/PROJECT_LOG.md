@@ -2242,3 +2242,20 @@ Two related changes, shipped together because the second superseded part of the 
 
 **Process note for future sessions: add a `VERSIONS` entry at the top of that array on every release, written for staff, not developers.** Recorded in CLAUDE.md → What's Built → SOP tab.
 
+---
+
+### July 29, 2026 — v1.2.1: runner PIN login provisioned + role-aware landing
+
+**Diagnosis (from a read-only query Eli ran).** The `Studio Runner` profile existed (`role='runner'`, `runner@paramountrecording.com`) and its `staff_pins` row existed, but `auth_user_id` was **NULL** and `supabase_password` was **NULL**. One missing link, two symptoms: `/api/auth/pin` returns `no_account` (403) when either is absent, and **`scripts/set-staff-passwords.mjs` explicitly SKIPPED rows with no `auth_user_id`** — with a comment naming the shared runner as that case. So re-running the script could never fix it. The runner hub has been unreachable since PIN login shipped (July 2) for this reason.
+
+**Fix 1 — the script now provisions, not just rotates.** `set-staff-passwords.mjs` gained a step 1: when a PIN row's profile has no `auth_user_id`, it **adopts an existing auth user with that email** (via a paged `admin.listUsers` scan — supabase-js v2 has no `getUserByEmail`; case-insensitive, since Auth lowercases emails) or **creates one** (`email_confirm: true` — a shared account has no inbox to verify), then writes `auth_user_id` back onto `user_profiles`. Only a profile with no email is now genuinely skippable. Idempotent; still the way to rotate passwords.
+
+**Fix 2 — one PIN pad, role-aware destination** (Eli's spec: one app, one PIN screen, runners share a PIN and land on the runner page).
+- `/api/auth/pin` now returns `role` alongside the tokens, read server-side with the service-role client so the browser needs no extra round trip.
+- Login redirects to `/runner` for `role==='runner'`, `/` for everyone else, and **skips arming the welcome splash for runners** (the splash lives on the dashboard).
+- New `landingForSession()` helper resolves the destination from `user_profiles` and is used by **all three** paths, not just the PIN one: the already-authenticated redirect (**the runner's normal daily path — reopening the installed PWA with a live session**, which would otherwise dump them on the dashboard) and the email/password fallback. Runners can read their own profile row under RLS, which is all it needs.
+
+**Note for testing:** the runner routes have **no AuthGuard and no role gate** — access is decided purely by RLS. So an owner/manager can reach `/runner/[studio]` directly while logged in normally; the PIN is only needed for runners on the shared device. This unblocked WO testing independently of the PIN fix.
+
+**Follow-up (not done):** a `runner`-role user can still navigate to internal pages like `/` or `/crm` and will see the full nav. RLS starves the queries so there's no data leak, but the pages render empty and confusing. Worth a role-based redirect in `AuthGuard` plus nav filtering for `runner` (the `tech` role already has nav filtering) — deliberately not stacked onto this fix.
+

@@ -115,8 +115,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'server_error' }, { status: 500 })
   }
 
+  // Return the role so the login screen knows where to send them. One PIN pad
+  // serves everyone: staff land on the dashboard, a runner lands on the runner
+  // hub. Read server-side with the service-role client so the browser doesn't
+  // need a second round trip before it can redirect.
+  const { data: profile } = await supabaseAdmin
+    .from('user_profiles')
+    .select('role')
+    .eq('auth_user_id', match.auth_user_id)
+    .maybeSingle()
+
   return NextResponse.json({
     access_token: signInData.session.access_token,
     refresh_token: signInData.session.refresh_token,
+    role: profile?.role ?? null,
   })
 }

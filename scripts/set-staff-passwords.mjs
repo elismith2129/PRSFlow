@@ -1,8 +1,21 @@
-// Run once (and re-run any time to rotate). Sets a fresh random Supabase Auth
-// password on every staff member that has a PIN + an auth account, and stores
-// that same password on staff_pins.supabase_password so the PIN login route
-// can sign in with it via signInWithPassword(). The password is 24 random bytes
-// as base64url (32 chars) — NOT derived from the PIN.
+// Provisions PIN login for staff. Safe to re-run any time (also the way to
+// rotate passwords).
+//
+// For every staff_pins row it will:
+//   1. CREATE the Supabase Auth account if the linked profile has none, and
+//      write auth_user_id back onto user_profiles. An orphan auth user with the
+//      same email (created by hand, never linked) is adopted rather than
+//      duplicated — creating a second one would fail on the unique email anyway.
+//   2. Set a fresh random password on that auth account.
+//   3. Store the same password on staff_pins.supabase_password, which is what
+//      /api/auth/pin signs in with via signInWithPassword().
+//
+// The password is 24 random bytes as base64url (32 chars) — NOT derived from the
+// PIN, and never shown to the user. The PIN is the only thing staff type.
+//
+// Step 1 used to be missing: the script SKIPPED any profile without an
+// auth_user_id, which is precisely the state the shared runner account was left
+// in — so the runner PIN could never work, and re-running this never fixed it.
 //
 // Run AFTER applying 20260708120000_staff_pins_supabase_password.sql.
 //
@@ -31,6 +44,26 @@ function generatePassword() {
   return randomBytes(24).toString('base64url');
 }
 
+// Find an auth user by email. supabase-js v2's admin API has no getUserByEmail,
+// so page through listUsers — the staff list is tiny, and this only runs when a
+// profile is unlinked. Matching is case-insensitive because Auth lowercases
+// emails on create and a profile row may not have.
+async function findAuthUserByEmail(email) {
+  const target = email.trim().toLowerCase();
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) {
+      console.error(`Failed to list auth users: ${error.message}`);
+      process.exit(1);
+    }
+    const users = data?.users ?? [];
+    const hit = users.find(u => (u.email ?? '').trim().toLowerCase() === target);
+    if (hit) return hit;
+    if (users.length < 200) return null; // last page
+  }
+  return null;
+}
+
 async function main() {
   // Every PIN row with its linked profile (id + email + auth account).
   const { data: rows, error } = await supabase
@@ -47,13 +80,43 @@ async function main() {
   for (const row of rows) {
     const profile = Array.isArray(row.user_profiles) ? row.user_profiles[0] : row.user_profiles;
     const email = profile?.email;
-    const authUserId = profile?.auth_user_id;
+    let authUserId = profile?.auth_user_id;
 
-    // No auth account yet (e.g. the shared runner) — nothing to sign in as.
-    if (!authUserId) {
-      console.log(`SKIP  ${email ?? row.user_profile_id} — no auth_user_id`);
+    // A profile with no email can't have an auth account — genuinely skippable.
+    if (!email) {
+      console.log(`SKIP  ${row.user_profile_id} — profile has no email`);
       skipped++;
       continue;
+    }
+
+    // ── 1) Ensure an auth account exists and is linked. ──
+    if (!authUserId) {
+      const existing = await findAuthUserByEmail(email);
+      if (existing) {
+        authUserId = existing.id;
+        console.log(`LINK  ${email} — adopted existing auth user`);
+      } else {
+        const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+          email,
+          password: generatePassword(),
+          email_confirm: true, // no inbox for a shared account; skip verification
+        });
+        if (createErr || !created?.user) {
+          console.error(`FAIL  ${email} — createUser: ${createErr?.message ?? 'no user returned'}`);
+          process.exit(1);
+        }
+        authUserId = created.user.id;
+        console.log(`NEW   ${email} — auth user created`);
+      }
+
+      const { error: linkErr } = await supabase
+        .from('user_profiles')
+        .update({ auth_user_id: authUserId })
+        .eq('id', profile.id);
+      if (linkErr) {
+        console.error(`FAIL  ${email} — link auth_user_id: ${linkErr.message}`);
+        process.exit(1);
+      }
     }
 
     const password = generatePassword();

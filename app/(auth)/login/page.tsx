@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
@@ -63,12 +63,31 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [fadingOut, setFadingOut] = useState(false)
 
-  // Already-authenticated users hitting /login get redirected to /
+  // Where a signed-in user belongs: runners on the runner hub, everyone else on
+  // the dashboard. Resolved from user_profiles rather than the PIN response so
+  // the already-authenticated path below can use it too. Runners can read their
+  // own profile row under RLS, which is all this needs.
+  const landingForSession = useCallback(async (): Promise<string> => {
+    const { data: auth } = await supabase.auth.getUser()
+    const uid = auth?.user?.id
+    if (!uid) return '/'
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('auth_user_id', uid)
+      .maybeSingle()
+    return profile?.role === 'runner' ? '/runner' : '/'
+  }, [])
+
+  // Already-authenticated users hitting /login get sent to their landing page.
+  // This is the runner's normal daily path — reopening the installed app with a
+  // live session — so it must not dump them on the dashboard.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) router.replace('/')
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) return
+      router.replace(await landingForSession())
     })
-  }, [router])
+  }, [router, landingForSession])
 
   // Hydrate any existing lockout from a previous session.
   useEffect(() => {
@@ -150,10 +169,15 @@ export default function LoginPage() {
           return
         }
         try { localStorage.removeItem(LOCKOUT_KEY) } catch { /* ignore */ }
-        setPinMsg({ text: '✓ welcome', color: COLOR_SUCCESS })
-        sessionStorage.setItem('showWelcome', 'true')
+        // One PIN pad for the whole team — the role decides the destination.
+        // Runners share a single PIN and go straight to the runner hub; the
+        // dashboard would be an empty, confusing landing for them.
+        const isRunner = data.role === 'runner'
+        setPinMsg({ text: isRunner ? '✓ runner' : '✓ welcome', color: COLOR_SUCCESS })
+        // The welcome splash lives on the dashboard, so only arm it for staff.
+        if (!isRunner) sessionStorage.setItem('showWelcome', 'true')
         setFadingOut(true)
-        setTimeout(() => router.replace('/'), 600)
+        setTimeout(() => router.replace(isRunner ? '/runner' : '/'), 600)
         return
       }
 
@@ -236,13 +260,17 @@ export default function LoginPage() {
       setError('Invalid email or password')
       return
     }
+    // Same role-aware landing as the PIN path (email/password is the fallback
+    // login, but it shouldn't behave differently).
+    const dest = await landingForSession()
     // Flag a fresh login so the dashboard shows the one-time welcome splash.
-    // Cleared by the dashboard on mount, so refresh/navigation never re-triggers it.
-    sessionStorage.setItem('showWelcome', 'true')
+    // Cleared by the dashboard on mount, so refresh/navigation never re-triggers
+    // it. The splash lives on the dashboard, so skip it for runners.
+    if (dest === '/') sessionStorage.setItem('showWelcome', 'true')
     // Fade the login page out (400ms), then navigate — the dashboard splash fades
     // in on mount, producing a smooth crossfade instead of an abrupt route swap.
     setFadingOut(true)
-    setTimeout(() => router.replace('/'), 400)
+    setTimeout(() => router.replace(dest), 400)
   }
 
   async function handleForgotPassword() {
