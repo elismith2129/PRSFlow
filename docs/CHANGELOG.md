@@ -28,9 +28,14 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 - **Floating tester: "Continue" always opened at item 1.** The positioning effect ran on batch-id change alone, at which point `results` was still empty because the fetch hadn't resolved — so "first untested" always computed as item 1. It now waits for `loading` to finish and fires once per batch via a ref, so it can't jump the tester mid-tap when a verdict lands.
 - **The header counter looked stuck.** It showed `tested/total` (verdicts recorded), which reads as a position indicator that doesn't move with Prev/Next. Now shows both, labelled: `Item N of 38` and `N done`.
 
+- **Third-party error noise filtered.** `window.onerror` catches everything on the page, including browser extensions and iOS webviews probing for native bridges (`window.webkit.messageHandlers`). Those aren't our bugs and can't be acted on, and an error log nobody trusts is one nobody reads. `ErrorReporter` now drops a small allowlist of provably-external patterns: the webkit bridge probe, opaque cross-origin `Script error.`, and the benign `ResizeObserver loop` warning.
+
 **Migrations:** none.
-**Watch-outs:** conflating "where am I in the list" with "how many are done" is the kind of thing that reads as a bug even when the number is correct. Label counters.
-**Files:** `app/(main)/feedback/page.tsx`, `app/(main)/admin/page.tsx`, `components/dev/TestingFloater.tsx`.
+**Watch-outs:** conflating "where am I in the list" with "how many are done" is the kind of thing that reads as a bug even when the number is correct. Label counters. Only add to `IGNORED_ERROR_PATTERNS` for errors provably not ours — the filter is there to protect signal, not to hide failures.
+
+**Confirmed from the live error log (Jul 29):** the error-boundary entry read `cannot add 'postgres_changes' callbacks for realtime:test-results-wo-runner-2026-07 after 'subscribe()'` — note the channel name with **no instance suffix**. This is the exact mechanism behind the duplicate-channel bug: supabase-js hands back the *same already-subscribed channel object* for a duplicate name, and calling `.on()` on it after `subscribe()` throws. The unique-name-per-mount fix in v1.4.2 addresses it directly.
+
+**Files:** `app/(main)/feedback/page.tsx`, `app/(main)/admin/page.tsx`, `components/dev/TestingFloater.tsx`, `components/ErrorReporter.tsx`.
 
 ---
 
