@@ -52,7 +52,21 @@ body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text1);min
 .step.open .step-body{max-height:600px;}
 /* Release notes run longer than a training step — a big update can list eight
    or more changes, and 600px silently clipped the tail off. */
-#version-list .step.open .step-body{max-height:1600px;}
+#version-list .step.open .step-body{max-height:4000px;}
+/* Dev notes: collapsed by default. Staff never need to open it; it's here so
+   whoever maintains the app can check what changed under the hood without
+   leaving the app. Canonical detail lives in docs/CHANGELOG.md. */
+.dev-notes{margin-top:10px;border:1px solid var(--border);border-radius:6px;background:rgba(0,0,0,.18);}
+.dev-notes summary{cursor:pointer;padding:8px 11px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);list-style:none;}
+.dev-notes summary::-webkit-details-marker{display:none;}
+.dev-notes summary:before{content:'▸ ';}
+.dev-notes[open] summary:before{content:'▾ ';}
+.dev-notes[open] summary{color:var(--accent);border-bottom:1px solid var(--border);}
+.dev-body{padding:10px 12px;display:flex;flex-direction:column;gap:7px;}
+.dev-item{font-size:11px;line-height:1.65;color:var(--text2);font-family:'Inter',sans-serif;}
+.dev-item code{font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);}
+.dev-foot{margin-top:4px;padding-top:7px;border-top:1px solid var(--border);font-size:10px;color:var(--text3);line-height:1.6;}
+.dev-foot code{font-family:'DM Mono',monospace;color:var(--text2);}
 .step-inner{padding:0 15px 15px 49px;}
 .step-desc{font-size:11px;color:var(--text2);line-height:1.8;margin-bottom:10px;}
 .tip-box{background:var(--surface2);border-left:2px solid var(--accent);padding:9px 12px;margin-bottom:10px;border-radius:0 4px 4px 0;}
@@ -627,6 +641,26 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.4.3', date:'Jul 29, 2026',
+    headline:'DEV tab — feedback plus test checklists',
+    desc:'The Feedback tab is now called DEV and has sections down the left. Feedback works exactly as before. There is also a Testing section, used when we need someone to check new work.',
+    changes:[
+      'Feedback is unchanged — same form, same board, just one click deeper.',
+      '<b>Testing</b> holds checklists for new work. It asks for a PIN; a manager will give it to you if you are testing.',
+      'A checklist opens as a small window you can drag anywhere, so it stays with you while you move around the app.'
+    ],
+    affects:'Nothing changes for day-to-day work. If you are asked to test something, go to DEV → Testing, pick the batch, and work down the list marking each item Works or Broken. Write what you actually saw in the note — that is the part that gets things fixed.',
+    dev:[
+      '<b>Errors moved from Admin → DEV</b>, and gated to <b>Eli\'s accounts only</b> (<code>srv2129@gmail.com</code> / <code>eli@paramountrecording.com</code>), matching the CRM Campaigns gate. Deliberately narrower than the <code>app_errors</code> RLS policy, which still allows owner/manager — this only hides the surface.',
+      'DEV page rebuilt with a <b>left sidebar mirroring the Admin page</b>, so the two internal tool pages navigate identically. Sections: Feedback (any staff) · Testing (PIN) · Errors (Eli).',
+      '<b>Floating tester: "Continue" always opened at item 1.</b> The positioning effect ran on batch-id change alone, at which point <code>results</code> was still empty because the fetch hadn\'t resolved — so "first untested" always computed as item 1. It now waits for <code>loading</code> to finish and fires once per batch via a ref.',
+      '<b>The header counter looked stuck.</b> It showed <code>tested/total</code> (verdicts recorded), which reads as a position indicator that doesn\'t move with Prev/Next. Now shows both, labelled: <code>Item N of 38</code> and <code>N done</code>.',
+      '<b>Third-party error noise filtered.</b> <code>window.onerror</code> catches everything on the page, including extensions and iOS webviews probing for native bridges (<code>window.webkit.messageHandlers</code>). <code>ErrorReporter</code> now drops a small allowlist of provably-external patterns.',
+      '<b>Watch-outs:</b> conflating "where am I in the list" with "how many are done" reads as a bug even when the number is correct — label counters. Only add to <code>IGNORED_ERROR_PATTERNS</code> for errors provably not ours; the filter protects signal, it does not hide failures.',
+      '<b>Earlier in v1.4.x:</b> batch definitions live in code (<code>lib/testBatches.ts</code>), only verdicts in the database (<code>test_results</code>) — item ids are half the results key, so never rename one after testing starts. <code>useTestResults</code> named its channel after the batch id but mounts in three places; duplicate names made supabase-js return the same already-subscribed channel and <code>.on()</code> after <code>subscribe()</code> threw. Runner <code>handleSaveChanges</code> used to navigate back to the hub unconditionally with no writes checked.'
+    ]
+  },
+  {
     ver:'v1.3.0', date:'Jul 29, 2026',
     headline:'Runner work order is easier to read, and staff are easier to change',
     desc:'The Studio Time table on the runner work order got a clean-up, and you can now swap the engineer or assistant on a session without leaving the page.',
@@ -640,7 +674,15 @@ const VERSIONS=[
       'Session notes now open <b>full screen</b>. They used to open behind the keyboard where you couldn\'t see them.',
       'The <b>studio name is now the big heading</b> on session cards, on the runner hub and on the dashboard.'
     ],
-    affects:'Changing an engineer or assistant on the runner applies to <b>that day only</b> — you\'re recording your own shift, so you can\'t accidentally change days you\'re not working. Changing a whole run is done in the office with <b>Batch Edit</b>. If a session runs in two different rooms on one day, you\'ll now see both rooms clearly — that\'s not a duplicate.'
+    affects:'Changing an engineer or assistant on the runner applies to <b>that day only</b> — you\'re recording your own shift, so you can\'t accidentally change days you\'re not working. Changing a whole run is done in the office with <b>Batch Edit</b>. If a session runs in two different rooms on one day, you\'ll now see both rooms clearly — that\'s not a duplicate.',
+    dev:[
+      'Runner Studio Time table: type 9–10px → 11–12px, numbers off <code>--text2</code>, cells centred, <b>Date + Studio frozen</b> via <code>position: sticky</code>, <b>Studio column added</b> (it never existed — the cause of a false "duplicate rows" report), zebra <b>by day</b> not by row, today-only default with an All-N-days toggle. Filtering is render-only; the save loop iterates all rows so hidden-day edits still save.',
+      '<b>Watch-out:</b> sticky cell backgrounds MUST be opaque. Passing the row\'s translucent tint let the scrolling columns bleed through the frozen ones; they now composite the tint over <code>var(--surface)</code>.',
+      'Admin <b>Batch Edit</b> replaced per-cell fill-down arrows: scope all-days or date-range, per-field checkboxes, unticked fields never written. Skips standalone staff rows and <code>admin_locked</code> rows. Routes through <code>updateStRow</code> so all derived billing recalculates through one path. Local-first — Cancel reverts the whole batch.',
+      'Staff times follow session times <b>unless independently set</b> — the test is whether the staff time still equals the session\'s previous time.',
+      '<b>Consolidations:</b> <code>getLocalToday</code> → <code>lib/time.ts</code> (was byte-identical in five files; timezone-sensitive maths duplicated six ways). Runner table\'s <code>ST_GRID</code> column template defined once (was three copies, so header and body could drift out of alignment).',
+      '<b>Card layout considered and dropped:</b> a WO can run 30 days, and runners need every column because they read it to clients. Type size and colour were the real problem.'
+    ]
   },
   {
     ver:'v1.2.1', date:'Jul 29, 2026',
@@ -663,7 +705,14 @@ const VERSIONS=[
       'Whatever you pick fills in <b>every line</b> of the Work Order when the session is booked.',
       'You can type a name that isn\'t on the list — a new hire or a freelancer — without adding them in Admin first.'
     ],
-    affects:'Picking a name is optional. If you know a session needs an engineer but not who yet, choose Eng and leave the name blank — the Work Order still reads 1ST so the rates are right, and you fill the name in later. New sessions default to <b>Asst</b>, since that\'s the normal case. Switching between Eng and Asst clears the name on purpose, because that person was in the other pool.'
+    affects:'Picking a name is optional. If you know a session needs an engineer but not who yet, choose Eng and leave the name blank — the Work Order still reads 1ST so the rates are right, and you fill the name in later. New sessions default to <b>Asst</b>, since that\'s the normal case. Switching between Eng and Asst clears the name on purpose, because that person was in the other pool.',
+    dev:[
+      'Migrations <code>20260728210000</code> (<code>studio_time_rows.eng_role</code> DEFAULT → <code>assistant</code>) and <code>20260728220000</code> (<code>leads.staff_role</code>/<code>staff_name</code>, <code>bookings.staff_mode</code>). <code>leads.engineer_needed</code> is now <b>vestigial</b> — backfilled, unread, drop later.',
+      '<code>bookings.staff_mode</code> is an <b>explicit column, not overloading <code>engineer_status</code></b> — that already defaults to <code>not_needed</code>, so a calendar-made booking and a deliberately unstaffed one would be indistinguishable.',
+      '<b>Bug fixed:</b> <code>buildRowPayload</code> wrote <code>eng_role</code> only inside its <code>if (rate or name)</code> branch, silently dropping the role on the "engineer, TBD" case.',
+      '<b>Bug fixed:</b> <code>clearEngRow</code> reset a cleared row back to <i>engineer</i>, silently promoting 2ND → 1ST.',
+      'Every default flipped in step across seven places (<code>seedStudioTimeRows</code>, <code>normalizeStRow</code>, <code>addStRow</code>, <code>addEngRow</code>, <code>clearEngRow</code>, the Seed panel, <code>buildBookingProjection</code>).'
+    ]
   },
   {
     ver:'v1.1.1', date:'Jul 28, 2026',
@@ -714,7 +763,7 @@ function toggleClient(i){const s=document.querySelectorAll('#client-steps .step'
 
 // Version list — same accordion as the step guides, but the version number sits
 // where the step number goes and the date is the tag.
-function buildVersions(){document.getElementById('version-list').innerHTML=VERSIONS.map((v,i)=>`<div class="step" onclick="toggleVer(${i})"><div class="step-header"><div class="step-num" style="width:auto;padding:0 7px;font-size:9px">${v.ver}</div><div class="step-title">${v.headline}</div><div class="step-tag">${v.date}</div><div class="step-chevron">▼</div></div><div class="step-body"><div class="step-inner"><div class="step-desc">${v.desc}</div><div class="do-list" style="margin-bottom:6px">${v.changes.map(c=>`<div class="do-item"><span style="color:var(--accent);flex-shrink:0">✓</span><span>${c}</span></div>`).join('')}</div><div class="tip-box"><div class="tip-label">👉 What this means for you</div><div class="tip-text">${v.affects}</div></div></div></div></div>`).join('');}
+function buildVersions(){document.getElementById('version-list').innerHTML=VERSIONS.map((v,i)=>`<div class="step" onclick="toggleVer(${i})"><div class="step-header"><div class="step-num" style="width:auto;padding:0 7px;font-size:9px">${v.ver}</div><div class="step-title">${v.headline}</div><div class="step-tag">${v.date}</div><div class="step-chevron">▼</div></div><div class="step-body"><div class="step-inner"><div class="step-desc">${v.desc}</div><div class="do-list" style="margin-bottom:6px">${v.changes.map(c=>`<div class="do-item"><span style="color:var(--accent);flex-shrink:0">✓</span><span>${c}</span></div>`).join('')}</div><div class="tip-box"><div class="tip-label">👉 What this means for you</div><div class="tip-text">${v.affects}</div></div>${(v.dev&&v.dev.length)?`<details class="dev-notes" onclick="event.stopPropagation()"><summary>Dev notes — under the hood</summary><div class="dev-body">${v.dev.map(d=>`<div class="dev-item">${d}</div>`).join('')}<div class="dev-foot">Mirrors <code>docs/CHANGELOG.md</code> in the repo, which is the canonical copy and also lists migrations and files touched.</div></div></details>`:''}</div></div></div>`).join('');}
 buildVersions();
 function toggleVer(i){const s=document.querySelectorAll('#version-list .step');if(openVer===i){s[i].classList.remove('open');openVer=null;return;}if(openVer!==null)s[openVer].classList.remove('open');s[i].classList.add('open');openVer=i;}
 </script>
