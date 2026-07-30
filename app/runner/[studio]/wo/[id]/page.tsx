@@ -849,9 +849,25 @@ export default function RunnerWOPage() {
                         const initials = rowStaffName ? getInitials(rowStaffName) : ''
                         const engExpanded = expandedEngRow === r.id
                         const hasNotes = !!(r.session_info || '').trim()
+
+                        // A blank studio IS the encoding for a standalone staff row
+                        // (the WO's "+ Add Engineer" / "+ Add Assistant" buttons).
+                        // Those have no room, times or rate, so rendering them as a
+                        // full studio-time line produced a row of dashes that looked
+                        // like a duplicate of the day above it — the runner view was
+                        // written before standalone staff rows existed. Render the
+                        // staff line only.
+                        const isStaffOnlyRow = !(r.studio || '').trim()
+
+                        // Respect eng_visible, as the admin table does. Without this
+                        // a row whose staff line was explicitly cleared still showed
+                        // one, because rowStaffName falls back to the WO-level
+                        // engineer — the second half of the apparent duplication.
+                        const showStaffRow = !!rowStaffName && (isStaffOnlyRow || r.eng_visible !== false)
                         return (
                           <div key={r.id} style={{ background: r.admin_locked ? 'rgba(20,184,166,0.06)' : undefined }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '50px 55px 85px 85px 42px 35px 65px 45px 55px 50px 60px', borderBottom: rowStaffName ? 'none' : '1px solid var(--border)' }}>
+                            {!isStaffOnlyRow && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '50px 55px 85px 85px 42px 35px 65px 45px 55px 50px 60px', borderBottom: showStaffRow ? 'none' : '1px solid var(--border)' }}>
                               {/* Date */}
                               <div style={{ ...tdStyle, color: 'var(--text2)', fontSize: 9, position: 'relative', cursor: 'pointer' }}>
                                 <span style={{ pointerEvents: 'none' }}>{shortDate(r.date || '')}</span>
@@ -915,7 +931,8 @@ export default function RunnerWOPage() {
                                 {rowTotal != null ? `$${rowTotal.toFixed(2)}` : '—'}
                               </div>
                             </div>
-                            {rowStaffName && (
+                            )}
+                            {showStaffRow && (
                               <div style={{ display: 'grid', gridTemplateColumns: '50px 55px 85px 85px 42px 35px 65px 45px 55px 50px 60px', borderBottom: '1px solid var(--border)', background: 'rgba(var(--accent-rgb),0.03)' }}>
                                 {/* Column 1 repeats the DATE, so the staff row still
                                     says which day it belongs to once the table is
