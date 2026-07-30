@@ -17,14 +17,58 @@ function getSupabaseAdmin() {
 }
 const supabaseAdmin = getSupabaseAdmin()
 
-const MAX_FAILS = 5          // failed attempts before lockout
-const LOCKOUT_MS = 30_000    // 30-second lockout (mirrors the UI)
+const MAX_FAILS = 5          // consecutive fails before the FIRST lockout
+
+// ─── Escalating lockout ──────────────────────────────────────────────────────
+// Each successive failure past MAX_FAILS locks the IP for longer. The previous
+// version locked for a flat 30s AND reset fail_count to 0 on lockout, which
+// meant an attacker got 5 fresh attempts every 30 seconds forever — ~600/hour,
+// with no escalation. Against a 4-digit PIN shared across ~10 staff accounts
+// (a ~1-in-1,000 hit rate per guess) that is a couple of hours' work. On
+// 29 July 2026 someone was doing exactly that from ~50 IPs at once.
+//
+// CAPPED AT 60 MINUTES, DELIBERATELY. An unbounded or 24-hour lock would be
+// worse than the attack it prevents: staff at one studio all share that
+// location's public IP, so one runner fat-fingering their PIN during a session
+// would take the whole room offline for the night with no way back in.
+const LOCKOUT_TIERS_MS = [30_000, 2 * 60_000, 10 * 60_000, 60 * 60_000]
+
+// A quiet period this long clears the counter. This replaces the old
+// reset-on-lockout — the distinction is the whole fix. Time since the LAST
+// failure is what forgives; surviving a lockout is not.
+//
+// Six hours is a judgement call between two real costs: too short and an
+// attacker just paces themselves to farm free attempts; too long and a staff
+// member who mistyped this morning is still escalated tonight. Six hours means
+// a mistake during the day is forgotten by the evening session, while an
+// attacker gets ~4 attempts per IP per 6 hours instead of 600 per hour.
+const DECAY_MS = 6 * 60 * 60_000
 
 // Best-effort client IP. On Vercel, x-forwarded-for's first entry is the client.
 function clientIp(req: NextRequest): string {
   const xff = req.headers.get('x-forwarded-for')
   if (xff) return xff.split(',')[0].trim()
   return req.headers.get('x-real-ip')?.trim() || 'unknown'
+}
+
+// Append-only record of every rejected attempt — see the migration for why the
+// attempted PIN is deliberately NOT stored.
+//
+// AWAITED, not fire-and-forget: this runs on serverless, where the function can
+// be frozen the moment the response is returned. An un-awaited insert would be
+// silently dropped under exactly the load we most want recorded. It costs a few
+// milliseconds, and only on a failed login.
+async function logFailure(
+  ip: string,
+  userAgent: string | null,
+  outcome: 'incorrect' | 'locked',
+) {
+  if (!supabaseAdmin) return
+  const { error } = await supabaseAdmin
+    .from('pin_login_failures')
+    .insert({ ip, user_agent: userAgent, outcome })
+  // Never let telemetry break authentication — log it and carry on.
+  if (error) console.error('[pin] could not record failed attempt:', error.message)
 }
 
 export async function POST(req: NextRequest) {
@@ -49,19 +93,30 @@ export async function POST(req: NextRequest) {
   }
 
   const ip = clientIp(req)
+  const userAgent = req.headers.get('user-agent')
   const now = Date.now()
 
   // ── Server-side lockout check (DB-backed). ──
   const { data: attempt } = await supabaseAdmin
     .from('pin_login_attempts')
-    .select('fail_count, locked_until')
+    .select('fail_count, locked_until, updated_at')
     .eq('ip', ip)
     .maybeSingle()
 
   if (attempt?.locked_until && new Date(attempt.locked_until).getTime() > now) {
     const retryAfter = Math.ceil((new Date(attempt.locked_until).getTime() - now) / 1000)
-    return NextResponse.json({ error: 'locked', retry_after: retryAfter }, { status: 429 })
+    // Recorded separately from 'incorrect' so the log shows whether the lockout
+    // is absorbing attempts or the attacker has learned to pace under it.
+    await logFailure(ip, userAgent, 'locked')
+    return NextResponse.json(
+      { error: 'locked', retry_after: retryAfter },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+    )
   }
+
+  // Time since the last failure forgives the counter — NOT surviving a lockout.
+  const lastFailAt = attempt?.updated_at ? new Date(attempt.updated_at).getTime() : 0
+  const priorFails = now - lastFailAt > DECAY_MS ? 0 : (attempt?.fail_count ?? 0)
 
   // ── Verify the PIN (bcrypt compare in Postgres via the service-role RPC). ──
   const { data: matches, error: rpcError } = await supabaseAdmin.rpc('verify_staff_pin', { p_pin: pin })
@@ -70,19 +125,33 @@ export async function POST(req: NextRequest) {
   }
   const match = Array.isArray(matches) ? matches[0] : matches
 
-  // ── Wrong PIN — increment counter; lock after MAX_FAILS consecutive fails. ──
+  // ── Wrong PIN — the counter only ever goes up (see DECAY_MS). ──
   if (!match) {
-    const nextCount = (attempt?.fail_count ?? 0) + 1
+    const nextCount = priorFails + 1
     const willLock = nextCount >= MAX_FAILS
+
+    // Which lockout this is for the IP: 0 on the first, then 1, 2, 3… Clamped
+    // to the last tier so it plateaus at an hour rather than growing forever.
+    const tier = Math.min(nextCount - MAX_FAILS, LOCKOUT_TIERS_MS.length - 1)
+    const lockoutMs = willLock ? LOCKOUT_TIERS_MS[Math.max(tier, 0)] : 0
+
     await supabaseAdmin.from('pin_login_attempts').upsert({
       ip,
-      fail_count: willLock ? 0 : nextCount,
-      locked_until: willLock ? new Date(now + LOCKOUT_MS).toISOString() : null,
+      // NEVER reset on lockout. That reset was the bug: it handed an attacker a
+      // fresh allowance every 30 seconds and made the escalation unreachable.
+      fail_count: nextCount,
+      locked_until: willLock ? new Date(now + lockoutMs).toISOString() : null,
       updated_at: new Date(now).toISOString(),
     }, { onConflict: 'ip' })
 
+    await logFailure(ip, userAgent, 'incorrect')
+
     if (willLock) {
-      return NextResponse.json({ error: 'locked', retry_after: Math.ceil(LOCKOUT_MS / 1000) }, { status: 429 })
+      const retryAfter = Math.ceil(lockoutMs / 1000)
+      return NextResponse.json(
+        { error: 'locked', retry_after: retryAfter },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+      )
     }
     return NextResponse.json({ error: 'incorrect' }, { status: 401 })
   }

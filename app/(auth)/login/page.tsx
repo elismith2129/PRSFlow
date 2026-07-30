@@ -291,8 +291,17 @@ export default function LoginPage() {
   }
 
   // Lockout message overrides the transient pinMsg while a lockout is active.
+  //
+  // Server lockouts now escalate (30s → 2m → 10m → 60m), so this can no longer
+  // assume seconds — "try again in 3600s" is not something a runner standing in
+  // a live session should have to convert in their head.
+  const lockLabel =
+    lockRemaining >= 60
+      ? `${Math.ceil(lockRemaining / 60)}m`
+      : `${lockRemaining}s`
+
   const displayMsg: PinMsg = isLocked
-    ? { text: `too many attempts — try again in ${lockRemaining}s`, color: COLOR_LOCK }
+    ? { text: `too many attempts — try again in ${lockLabel}`, color: COLOR_LOCK }
     : pinMsg
 
   const numpadKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫']
