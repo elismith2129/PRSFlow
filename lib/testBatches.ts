@@ -44,6 +44,111 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'dev-tooling-2026-07',
+    title: 'DEV tab + Testing tools',
+    version: 'v1.4.0 – v1.4.3',
+    date: 'Jul 29, 2026',
+    intro:
+      'The testing tools themselves, plus the DEV tab. Slightly odd to test the checklist with the checklist — that is fine, and if the tool is broken you will find out immediately. All desktop. If the floating panel misbehaves badly, mark the item Broken from the Testing page instead of the panel.',
+    items: [
+      {
+        id: 'dev-nav', area: 'DEV tab', device: 'desktop',
+        what: 'The nav item says DEV and opens with a sidebar',
+        how: 'Look at the top menu — the old "Feedback" item should read DEV. Open it. There should be a list down the left: Feedback, Testing, and (on Eli\'s account only) Errors.',
+      },
+      {
+        id: 'dev-feedback-unchanged', area: 'DEV tab', device: 'desktop',
+        what: 'The feedback board still works exactly as before',
+        how: 'DEV → Feedback. Submit a test entry of each type (bug, suggestion, question). It should appear in the list below immediately.',
+      },
+      {
+        id: 'dev-errors-eli-only', area: 'DEV tab', device: 'desktop',
+        what: 'Errors is visible only on Eli\'s account',
+        how: 'On Eli\'s account, DEV should show an Errors section. Sign in as any other staff member — Errors should not be in the sidebar at all. Also check Admin no longer has an Errors tab.',
+      },
+      {
+        id: 'dev-errors-copy', area: 'DEV tab', device: 'desktop',
+        what: 'Errors can be copied out as text',
+        how: 'DEV → Errors → click "Copy for Claude" in the header, then paste into any text box. You should get timestamps, messages, page URLs and stack traces as plain text.',
+      },
+      {
+        id: 'test-pin', area: 'Testing', device: 'desktop',
+        what: 'The Testing section is PIN-gated',
+        how: 'DEV → Testing. It should ask for a PIN. Type a wrong one — it should clear and say incorrect. Type 4321 — it should open.',
+      },
+      {
+        id: 'test-batch-cards', area: 'Testing', device: 'desktop',
+        what: 'Batches show as cards with progress',
+        how: 'You should see a card per batch, each with a title, a check count, and a status such as "Not started" or "12/38 tested". Not one long list of items.',
+      },
+      {
+        id: 'test-panel-opens', area: 'Testing', device: 'desktop',
+        what: 'Starting a batch opens the floating panel',
+        how: 'Click "Start testing" on a batch. A small window should appear in the bottom-right showing one item at a time.',
+      },
+      {
+        id: 'test-panel-drag', area: 'Testing', device: 'desktop',
+        what: 'The panel can be dragged and stays where you put it',
+        how: 'Drag the panel by the ⠿ handle at its top to a different corner. Navigate to CRM. It should still be there, in the position you left it. Try dragging it off the edge of the screen — it should stop at the edge, not disappear.',
+      },
+      {
+        id: 'test-panel-minimise', area: 'Testing', device: 'desktop',
+        what: 'The panel minimises out of the way',
+        how: 'Click the ▾ on the panel. It should shrink to a small bar. Click ▴ to bring it back.',
+      },
+      {
+        id: 'test-panel-follows', area: 'Testing', device: 'desktop',
+        what: 'The panel follows you around the office app',
+        how: 'With the panel open, visit Dashboard, CRM, Calendar and Admin. It should stay visible on all of them. It should NOT appear on the runner pages, and not on the login screen if you sign out.',
+      },
+      {
+        id: 'test-next-blocked', area: 'Testing', device: 'desktop',
+        what: 'Next is blocked until you pick Works or Broken',
+        how: 'On a fresh item, try clicking "Next →" without picking anything. It should be greyed out and do nothing, with a line telling you to pick one. Pick Works — Next should light up.',
+      },
+      {
+        id: 'test-prev-works', area: 'Testing', device: 'desktop',
+        what: 'You can go back and change an answer',
+        how: 'Click "← Prev" to return to an item you already answered. Change it from Works to Broken. Go forward and back again — the change should have stuck.',
+      },
+      {
+        id: 'test-note-no-default', area: 'Testing', device: 'desktop',
+        what: 'Typing a note does not secretly mark the item',
+        how: 'On an unanswered item, type something in the notes box but do NOT click Works or Broken. Click Prev then Next to come back. The item should still be unanswered — not marked Broken.',
+      },
+      {
+        id: 'test-counters', area: 'Testing', device: 'desktop',
+        what: 'The two counters mean what they say',
+        how: 'Look at the panel header: "Item N of 38" should change every time you press Prev/Next. "N done" should only change when you record a verdict.',
+      },
+      {
+        id: 'test-resume', area: 'Testing', device: 'desktop',
+        what: 'Reopening a part-finished batch resumes where you left off',
+        how: 'Answer the first few items, close the panel with ×, then click "Continue" on that batch card. It should open on the first UNANSWERED item — not back at item 1.',
+      },
+      {
+        id: 'test-review-copy', area: 'Testing', device: 'desktop',
+        what: 'Failures can be copied out for a fix',
+        how: 'Mark something Broken with a note. Go to the batch card → "Review results". Failures should be listed first, with your note. Click "Copy failures + notes" and paste it somewhere to check it came through.',
+      },
+      {
+        id: 'test-live-update', area: 'Testing', device: 'desktop',
+        what: 'Results appear live on another screen',
+        how: 'If two people can look at once: have one record a verdict in the panel while the other watches the batch card on another computer. The progress should move without a refresh.',
+      },
+      {
+        id: 'runner-save-offline', area: 'Runner safety', device: 'phone',
+        what: 'A failed save on the runner tells you instead of pretending',
+        how: 'On the phone, open a runner work order. Turn on Airplane Mode. Change a time and tap Save. You should get a red message saying NOT saved, and you should STAY on the work order — not be returned to the studio screen. Turn Airplane Mode off and save again.',
+      },
+      {
+        id: 'sop-version-history', area: 'SOP', device: 'desktop',
+        what: 'Version history shows dev notes on a click',
+        how: 'Open the SOP tab → Version History. Open the newest version. At the bottom there should be a small "Dev notes — under the hood" line. Click it — it should expand without the card cutting the text off at the bottom.',
+      },
+    ],
+  },
+  {
     id: 'wo-runner-2026-07',
     title: 'Work Order + Runner App',
     version: 'v1.1.0 – v1.3.2',
