@@ -342,8 +342,26 @@ export function WorkOrderPopup({
     rateType: 'day' as 'day' | 'hour', rate: '',
     engOn: false, engName: '', engRate: '', engRole: 'assistant' as 'engineer' | 'assistant',
   })
-  // The row whose fill-down controls are currently offered (set by updateStRow).
-  const [lastEditedRowId, setLastEditedRowId] = useState<string | null>(null)
+  // ── Batch edit (admin only) ──────────────────────────────────────────────
+  // Replaced per-cell fill-down arrows. Bulk changes are a deliberate act on a
+  // deliberate surface: pick a scope, tick the fields you mean, apply once.
+  // The runner has no equivalent — a runner records their own shift.
+  type BatchField = 'room' | 'from' | 'to' | 'rate' | 'ot_hours' | 'ot_rate' | 'staff' | 'notes'
+  const [batchOpen, setBatchOpen] = useState(false)
+  const [batchScope, setBatchScope] = useState<'all' | 'range'>('all')
+  const [batchFrom, setBatchFrom] = useState('')
+  const [batchTo, setBatchTo] = useState('')
+  const [batchOn, setBatchOn] = useState<Record<BatchField, boolean>>({
+    room: false, from: false, to: false, rate: false, ot_hours: false, ot_rate: false, staff: false, notes: false,
+  })
+  const [batchVals, setBatchVals] = useState({
+    location: '', studio: '',
+    from_time: '', to_time: '',
+    rateType: 'hour' as 'hour' | 'day', rate: '',
+    ot_hours: '', ot_rate: '',
+    staffRole: 'engineer' as 'engineer' | 'assistant', staffName: '',
+    session_info: '',
+  })
   const [confirmDeleteRowId, setConfirmDeleteRowId] = useState<string | null>(null)
   const [confirmDeleteSession, setConfirmDeleteSession] = useState(false)
   // Non-session block (Tour/Tech/Open Hours) simple date fields
@@ -840,11 +858,6 @@ export function WorkOrderPopup({
   // ── Studio time row updates ─────────────────────────────────────────────────
 
   function updateStRow(id: string, updates: Partial<StRow>) {
-    // Remember which row was last touched so the fill-down controls can appear on
-    // just that row. Showing them in every cell of every row would put ~120 tiny
-    // buttons in a 30-day table; showing them where you're already working is
-    // both discoverable and quiet.
-    setLastEditedRowId(id)
     const row = stRows.find(r => r.id === id)
     if (row?.admin_locked && !pendingLockedEdits[id]) {
       setPendingLockedEdits(p => ({ ...p, [id]: { ...row } }))
@@ -923,35 +936,70 @@ export function WorkOrderPopup({
   }
 
   // Toggle a row between 'hour' and 'day' rate type, auto-deriving the companion rate
-  // Copy one field from one row down onto every other DAY on this work order.
-  // Studio, times and rates change for a whole run far more often than for a
-  // single day, and a 30-day booking otherwise meant editing the same value
-  // thirty times.
+  // Rows a batch edit would touch: dated STUDIO rows only, never approved ones.
   //
-  // Routed through updateStRow rather than writing rows directly, so every
-  // derived value (charge, OT hours, OT rate, OT charge, engineer charge)
-  // recalculates through the SAME code path as a manual edit. Duplicating that
-  // maths is how billing numbers drift.
-  //
-  // Skips: the source row, undated rows, standalone staff rows (blank studio —
-  // they have no times/rate of their own), and admin-locked rows (approved work
-  // must not be silently rewritten). Local-first like every other edit here, so
-  // Cancel still reverts a mis-click.
-  function applyFieldToAllDays(sourceId: string, keys: (keyof StRow)[]) {
-    const src = stRows.find(r => r.id === sourceId)
-    if (!src) return
-    const patch: Partial<StRow> = {}
-    for (const k of keys) (patch as any)[k] = (src as any)[k]
-    for (const r of stRows) {
-      if (r.id === sourceId || !r.date || !(r.studio || '').trim() || r.admin_locked) continue
-      updateStRow(r.id, patch)
-    }
+  // Standalone staff rows (blank studio) are excluded — they're ad-hoc additions
+  // with no room, times or rate of their own, and sweeping them up in a bulk
+  // change is how you silently rewrite someone's extra assistant.
+  // admin_locked rows are excluded because approved work must not move under
+  // anyone; the panel reports how many it skipped rather than staying silent.
+  function batchTargets(): StRow[] {
+    return stRows.filter(r => {
+      if (!r.date || !(r.studio || '').trim() || r.admin_locked) return false
+      if (batchScope === 'range') {
+        if (batchFrom && r.date < batchFrom) return false
+        if (batchTo && r.date > batchTo) return false
+      }
+      return true
+    })
   }
 
-  // How many rows a fill-down would actually touch — drives whether the control
-  // is worth showing and what its tooltip promises.
-  function fillDownTargetCount(sourceId: string): number {
-    return stRows.filter(r => r.id !== sourceId && r.date && (r.studio || '').trim() && !r.admin_locked).length
+  function batchLockedSkipped(): number {
+    return stRows.filter(r => {
+      if (!r.date || !(r.studio || '').trim() || !r.admin_locked) return false
+      if (batchScope === 'range') {
+        if (batchFrom && r.date < batchFrom) return false
+        if (batchTo && r.date > batchTo) return false
+      }
+      return true
+    }).length
+  }
+
+  // Apply only the ticked fields. Everything routes through updateStRow so charge,
+  // OT and engineer totals recalculate through the SAME path as a manual edit —
+  // no second copy of the billing maths. Local-first, so Cancel still reverts.
+  function applyBatch() {
+    const targets = batchTargets()
+    if (targets.length === 0) { setBatchOpen(false); return }
+    const patch: Partial<StRow> = {}
+    if (batchOn.room && batchVals.studio) {
+      patch.studio = batchVals.studio
+      // location travels with studio or the two disagree; '' means "booking's venue".
+      patch.location = batchVals.location === (booking.location || '') ? '' : batchVals.location
+    }
+    if (batchOn.from) patch.from_time = batchVals.from_time
+    if (batchOn.to) patch.to_time = batchVals.to_time
+    if (batchOn.rate) {
+      patch.row_rate_type = batchVals.rateType
+      if (batchVals.rateType === 'day') patch.rate_daily = batchVals.rate
+      else patch.rate = batchVals.rate
+    }
+    if (batchOn.ot_hours) patch.ot_hours = batchVals.ot_hours
+    if (batchOn.ot_rate) patch.ot_rate = batchVals.ot_rate
+    if (batchOn.notes) patch.session_info = batchVals.session_info
+    if (batchOn.staff) {
+      // One row carries ONE staffer + role, so this SETS that line (overwriting
+      // whatever role/person it held) rather than adding a second person. Both an
+      // engineer and an assistant on the same day needs a standalone staff row —
+      // that's an add, not an edit, so it stays out of batch.
+      patch.eng_name = batchVals.staffName.trim() || null
+      patch.eng_role = batchVals.staffRole
+      patch.eng_visible = !!batchVals.staffName.trim()
+    }
+    if (Object.keys(patch).length === 0) { setBatchOpen(false); return }
+    for (const r of targets) updateStRow(r.id, patch)
+    setBatchOpen(false)
+    setBatchOn({ room: false, from: false, to: false, rate: false, ot_hours: false, ot_rate: false, staff: false, notes: false })
   }
 
   function toggleRowRateType(id: string) {
@@ -2044,10 +2092,157 @@ export function WorkOrderPopup({
 
           {/* STUDIO TIME TABLE — unified per-row Day/Hr toggle */}
           <div style={isMobile ? mCard : undefined}>
-            <SectionHeader title="Studio Time" />
+            <SectionHeader
+              title="Studio Time"
+              action={!readOnly && stRows.some(r => r.date && (r.studio || '').trim())
+                ? { label: batchOpen ? 'Close batch edit' : 'Batch edit', onClick: () => setBatchOpen(v => !v) }
+                : undefined}
+            />
             <datalist id="wo-eng-roster">
               {engRoster.map(n => <option key={n} value={n} />)}
             </datalist>
+
+            {/* ── BATCH EDIT ──────────────────────────────────────────────────
+                Change many days at once: choose the scope, tick only the fields
+                you mean, apply once. Nothing is written until the WO is saved, so
+                Cancel reverts the whole thing.
+                Replaced per-cell fill-down arrows — bulk editing reads better as a
+                deliberate mode than as 120 tiny buttons scattered through a table. */}
+            {batchOpen && !readOnly && (() => {
+              const targets = batchTargets()
+              const skipped = batchLockedSkipped()
+              const nDays = new Set(targets.map(r => r.date)).size
+              const anyField = Object.values(batchOn).some(Boolean)
+              const lbl: React.CSSProperties = { fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text3)' }
+              const bInp: React.CSSProperties = { background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '5px 8px', outline: 'none', width: '100%', boxSizing: 'border-box' }
+              const rowS: React.CSSProperties = { display: 'grid', gridTemplateColumns: '128px 1fr', gap: 10, alignItems: 'center' }
+              const scopeBtn = (on: boolean): React.CSSProperties => ({
+                padding: '4px 10px', borderRadius: 5, cursor: 'pointer',
+                border: `1px solid ${on ? 'rgba(var(--accent-rgb),0.45)' : 'var(--border)'}`,
+                background: on ? 'rgba(var(--accent-rgb),0.12)' : 'transparent',
+                color: on ? 'var(--accent)' : 'var(--text2)',
+                fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.06em',
+              })
+              // One checkbox + label per field; unticked fields are never written,
+              // so a blank input can't wipe a column by accident.
+              const check = (k: BatchField, text: string) => (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', ...lbl, color: batchOn[k] ? 'var(--accent)' : 'var(--text3)' }}>
+                  <input type="checkbox" checked={batchOn[k]} onChange={e => setBatchOn(p => ({ ...p, [k]: e.target.checked }))} style={{ cursor: 'pointer', accentColor: 'var(--accent)', width: 13, height: 13 }} />
+                  {text}
+                </label>
+              )
+              return (
+                <div style={{ border: '1px solid rgba(var(--accent-rgb),0.3)', background: 'rgba(var(--accent-rgb),0.04)', borderRadius: 6, padding: 12, marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {/* Scope */}
+                  <div style={rowS}>
+                    <span style={lbl}>Apply to</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <button type="button" onClick={() => setBatchScope('all')} style={scopeBtn(batchScope === 'all')}>All days</button>
+                      <button type="button" onClick={() => setBatchScope('range')} style={scopeBtn(batchScope === 'range')}>Date range</button>
+                      {batchScope === 'range' && (
+                        <>
+                          <input type="date" value={batchFrom} onChange={e => setBatchFrom(e.target.value)} style={{ ...bInp, width: 140 }} />
+                          <span style={{ color: 'var(--text3)', fontSize: 11 }}>–</span>
+                          <input type="date" value={batchTo} onChange={e => setBatchTo(e.target.value)} style={{ ...bInp, width: 140 }} />
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ height: 1, background: 'var(--border)' }} />
+
+                  {/* Room */}
+                  <div style={rowS}>
+                    {check('room', 'Room')}
+                    <select
+                      value={`${batchVals.location || booking.location || ''}|${batchVals.studio}`}
+                      disabled={!batchOn.room}
+                      onChange={e => { const [loc, room] = e.target.value.split('|'); setBatchVals(v => ({ ...v, location: loc, studio: room })) }}
+                      style={{ ...bInp, opacity: batchOn.room ? 1 : 0.45 }}
+                    >
+                      <option value={`${booking.location || ''}|`}>— select room —</option>
+                      {STUDIO_LOCATIONS.map(l => l.rooms.map(room => {
+                        const letter = toStudioLetter(room)
+                        return <option key={`${l.name}|${letter}`} value={`${l.name}|${letter}`}>{STUDIO_SHORT[l.name] ?? l.name} {letter}</option>
+                      }))}
+                    </select>
+                  </div>
+
+                  {/* Times */}
+                  <div style={rowS}>
+                    {check('from', 'Start time')}
+                    <div style={{ maxWidth: 160, opacity: batchOn.from ? 1 : 0.45 }}>
+                      <TimeInput value={batchVals.from_time} onChange={v => setBatchVals(s2 => ({ ...s2, from_time: v }))} style={bInp} disabled={!batchOn.from} />
+                    </div>
+                  </div>
+                  <div style={rowS}>
+                    {check('to', 'End time')}
+                    <div style={{ maxWidth: 160, opacity: batchOn.to ? 1 : 0.45 }}>
+                      <TimeInput value={batchVals.to_time} onChange={v => setBatchVals(s2 => ({ ...s2, to_time: v }))} style={bInp} disabled={!batchOn.to} />
+                    </div>
+                  </div>
+
+                  {/* Rate + type */}
+                  <div style={rowS}>
+                    {check('rate', 'Rate')}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: batchOn.rate ? 1 : 0.45 }}>
+                      <button type="button" disabled={!batchOn.rate} onClick={() => setBatchVals(v => ({ ...v, rateType: 'hour' }))} style={scopeBtn(batchVals.rateType === 'hour')}>/ hr</button>
+                      <button type="button" disabled={!batchOn.rate} onClick={() => setBatchVals(v => ({ ...v, rateType: 'day' }))} style={scopeBtn(batchVals.rateType === 'day')}>/ day</button>
+                      <input value={batchVals.rate} disabled={!batchOn.rate} onChange={e => setBatchVals(v => ({ ...v, rate: e.target.value }))} placeholder={batchVals.rateType === 'day' ? '$0/day' : '$0/hr'} style={{ ...bInp, maxWidth: 130 }} />
+                    </div>
+                  </div>
+
+                  {/* OT */}
+                  <div style={rowS}>
+                    {check('ot_hours', 'OT hours')}
+                    <input value={batchVals.ot_hours} disabled={!batchOn.ot_hours} onChange={e => setBatchVals(v => ({ ...v, ot_hours: e.target.value }))} placeholder="0" style={{ ...bInp, maxWidth: 130, opacity: batchOn.ot_hours ? 1 : 0.45 }} />
+                  </div>
+                  <div style={rowS}>
+                    {check('ot_rate', 'OT rate')}
+                    <input value={batchVals.ot_rate} disabled={!batchOn.ot_rate} onChange={e => setBatchVals(v => ({ ...v, ot_rate: e.target.value }))} placeholder="$0" style={{ ...bInp, maxWidth: 130, opacity: batchOn.ot_rate ? 1 : 0.45 }} />
+                  </div>
+
+                  {/* Staff */}
+                  <div style={rowS}>
+                    {check('staff', 'Staff')}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: batchOn.staff ? 1 : 0.45 }}>
+                      <button type="button" disabled={!batchOn.staff} onClick={() => setBatchVals(v => ({ ...v, staffRole: 'engineer' }))} style={scopeBtn(batchVals.staffRole === 'engineer')}>1ST</button>
+                      <button type="button" disabled={!batchOn.staff} onClick={() => setBatchVals(v => ({ ...v, staffRole: 'assistant' }))} style={scopeBtn(batchVals.staffRole === 'assistant')}>2ND</button>
+                      <input list="wo-eng-roster" value={batchVals.staffName} disabled={!batchOn.staff} onChange={e => setBatchVals(v => ({ ...v, staffName: e.target.value }))} placeholder="Name (blank = unassign)" style={{ ...bInp, maxWidth: 220 }} />
+                    </div>
+                  </div>
+
+                  {/* Session notes */}
+                  <div style={rowS}>
+                    {check('notes', 'Session info')}
+                    <textarea value={batchVals.session_info} disabled={!batchOn.notes} onChange={e => setBatchVals(v => ({ ...v, session_info: e.target.value }))} rows={2} placeholder="Applies the same note to every day in scope" style={{ ...bInp, resize: 'vertical', lineHeight: 1.5, opacity: batchOn.notes ? 1 : 0.45 }} />
+                  </div>
+
+                  <div style={{ height: 1, background: 'var(--border)' }} />
+
+                  {/* Footer: what will happen, stated plainly before you commit. */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text2)' }}>
+                      {nDays === 0
+                        ? 'No days in range.'
+                        : `Will change ${nDays} day${nDays === 1 ? '' : 's'}${skipped > 0 ? ` · skipping ${skipped} approved` : ''}.`}
+                      {!anyField && nDays > 0 && <span style={{ color: 'var(--text3)' }}> Tick a field to enable.</span>}
+                    </span>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button type="button" onClick={() => setBatchOpen(false)} style={{ padding: '6px 14px', borderRadius: 5, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Cancel</button>
+                      <button
+                        type="button"
+                        onClick={applyBatch}
+                        disabled={!anyField || nDays === 0}
+                        style={{ padding: '6px 16px', borderRadius: 5, border: 'none', background: 'var(--accent)', color: 'var(--bg)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: (!anyField || nDays === 0) ? 'default' : 'pointer', opacity: (!anyField || nDays === 0) ? 0.45 : 1 }}
+                      >
+                        Apply to {nDays} day{nDays === 1 ? '' : 's'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
             <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
               {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock | Del */}
               <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: 'var(--surface2)', borderBottom: '1px solid rgba(255,255,255,0.07)', minWidth: isMobile ? 880 : undefined }}>
@@ -2072,23 +2267,6 @@ export function WorkOrderPopup({
                   const rowHrs = r.total_hours ?? calcHours(r.from_time, r.to_time)
                   const otHrsNum = parseFloat(r.ot_hours ?? '0') || 0
 
-                  // "Apply to every other day" — appears only on the row you just
-                  // edited, and only when there is another day to apply it to.
-                  const fillTargets = fillDownTargetCount(r.id)
-                  const showFill = !readOnly && lastEditedRowId === r.id && fillTargets > 0 && !!r.date && !isEngOnly
-                  const fillDown = (keys: (keyof StRow)[], label: string) => showFill ? (
-                    <button
-                      type="button"
-                      onClick={e => { e.stopPropagation(); applyFieldToAllDays(r.id, keys) }}
-                      title={`Apply this ${label} to the other ${fillTargets} day${fillTargets === 1 ? '' : 's'}`}
-                      style={{
-                        flexShrink: 0, marginLeft: 2, padding: '0 3px', height: 15, lineHeight: '13px',
-                        borderRadius: 3, border: '1px solid rgba(var(--accent-rgb),0.35)',
-                        background: 'rgba(var(--accent-rgb),0.10)', color: 'var(--accent)',
-                        fontSize: 9, cursor: 'pointer',
-                      }}
-                    >⇊</button>
-                  ) : null
                   return (
                     <div key={r.id}>
                       {!isEngOnly && <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: r.admin_locked ? 'rgba(20,184,166,0.04)' : undefined }}>
@@ -2110,10 +2288,6 @@ export function WorkOrderPopup({
                               return <option key={`${l.name}|${letter}`} value={`${l.name}|${letter}`}>{STUDIO_SHORT[l.name] ?? l.name} {letter}</option>
                             }))}
                           </select>
-                          {/* Room changes usually apply to the whole run — a booking
-                              gets moved rooms far more often than one day of it does.
-                              location travels with studio or the two would disagree. */}
-                          {fillDown(['studio', 'location'], 'room')}
                         </div>
                         {/* Date — transparent overlay opens native picker, auto-sorts on pick.
                             showPicker() so ANY click in the cell opens it (the invisible
@@ -2175,8 +2349,8 @@ export function WorkOrderPopup({
                           </>
                         )}
                         {/* From / To */}
-                        <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} />{fillDown(['from_time'], 'start time')}</div>
-                        <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} />{fillDown(['to_time'], 'end time')}</div>
+                        <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} /></div>
+                        <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} /></div>
                         {/* Total Hrs — always auto-calc */}
                         <div style={{ ...cellS, color: 'var(--text2)', fontSize: 10 }}>{rowHrs != null ? `${rowHrs}h` : '—'}</div>
                         {/* Rate Type toggle */}
@@ -2187,8 +2361,8 @@ export function WorkOrderPopup({
                         {/* Rate */}
                         <div style={cellS}>
                           {isDayRow
-                            ? <><input value={r.rate_daily} onChange={e => updateStRow(r.id, { rate_daily: e.target.value })} style={inp} placeholder="$0/day" />{fillDown(['rate_daily', 'row_rate_type'], 'day rate')}</>
-                            : <><input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} style={inp} placeholder="$0/hr" />{fillDown(['rate', 'row_rate_type'], 'hourly rate')}</>
+                            ? <input value={r.rate_daily} onChange={e => updateStRow(r.id, { rate_daily: e.target.value })} style={inp} placeholder="$0/day" />
+                            : <input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} style={inp} placeholder="$0/hr" />
                           }
                         </div>
                         {/* OT Hrs — day: auto display; hourly: editable */}

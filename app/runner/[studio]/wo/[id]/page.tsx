@@ -622,30 +622,23 @@ export default function RunnerWOPage() {
   // scope 'all' targets every row sharing the edited row's ROLE, so changing the
   // engineer across a 30-day booking can't wipe out the assistants. A 30-day run
   // otherwise meant setting the same name thirty times.
-  async function saveStaffName(scope: 'day' | 'all') {
+  // Reassign the staff member on ONE row.
+  //
+  // Deliberately single-day only. Bulk changes across a run belong to Admin's
+  // batch edit — a runner is recording what actually happened on their shift, and
+  // an accidental "all days" from a phone would silently rewrite staffing on days
+  // they have no visibility into.
+  async function saveStaffName() {
     const row: any = stRows.find((x: any) => x.id === staffEditRowId)
     if (!row) return
     const name = staffDraft.trim()
-
-    // 'all' targets every row that ALREADY SHOWS a staff line of this role —
-    // "what you can see is what changes". It deliberately does NOT set
-    // eng_visible: an earlier version did, which un-hid staff lines on rows whose
-    // eng_visible was false *because a standalone staff row already covered that
-    // day*. The result was two identical staff lines per date — the "duplicate
-    // rows" Eli hit. Only an explicit single-row assignment may reveal a line.
-    const sameRole = (x: any) => (x.eng_role || 'assistant') === (row.eng_role || 'assistant')
-    const targets = scope === 'all'
-      ? stRows.filter((x: any) => sameRole(x) && x.eng_visible !== false)
-      : [row]
-    const ids = targets.map((x: any) => x.id)
-    const patch: Record<string, any> = { eng_name: name || null }
-    if (scope === 'day') patch.eng_visible = true
-
     setStaffSaving(true)
-    const { error } = await supabase.from('studio_time_rows').update(patch).in('id', ids)
+    // eng_visible so a name typed onto a previously-cleared row actually shows.
+    const patch = { eng_name: name || null, eng_visible: true }
+    const { error } = await supabase.from('studio_time_rows').update(patch).eq('id', row.id)
     setStaffSaving(false)
     if (!dbResult('Updating staff', error)) return
-    setStRows((prev: any[]) => prev.map((x: any) => ids.includes(x.id) ? { ...x, ...patch } : x))
+    setStRows((prev: any[]) => prev.map((x: any) => x.id === row.id ? { ...x, ...patch } : x))
     setStaffEditRowId(null)
     setExpandedEngRow(null)
     setEngPopoverPos(null)
@@ -808,11 +801,6 @@ export default function RunnerWOPage() {
         if (!row) return null
         const isAsst = (row.eng_role || 'assistant') === 'assistant'
         const pool = isAsst ? staffPools.assistant : staffPools.engineer
-        // Count DISTINCT DATES that would change, not rows — a date can carry both
-        // a studio-row staff line and a standalone one, so a row count read as a
-        // confusing "4 engineer days" on a 3-day booking.
-        const allTargets = stRows.filter((x: any) => (x.eng_role || 'assistant') === (row.eng_role || 'assistant') && x.eng_visible !== false)
-        const affectedDays = new Set(allTargets.map((x: any) => x.date).filter(Boolean)).size
         return (
           <>
             <div style={{ position: 'fixed', inset: 0, zIndex: 10003, background: 'rgba(0,0,0,0.6)' }} onClick={() => setStaffEditRowId(null)} />
@@ -862,21 +850,12 @@ export default function RunnerWOPage() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <button
-                  onClick={() => saveStaffName('day')}
+                  onClick={() => saveStaffName()}
                   disabled={staffSaving}
                   style={{ width: '100%', background: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: 8, padding: '12px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 14, cursor: staffSaving ? 'default' : 'pointer', opacity: staffSaving ? 0.6 : 1 }}
                 >
-                  {staffSaving ? 'Saving…' : 'Save this day'}
+                  {staffSaving ? 'Saving…' : 'Save'}
                 </button>
-                {affectedDays > 1 && (
-                  <button
-                    onClick={() => saveStaffName('all')}
-                    disabled={staffSaving}
-                    style={{ width: '100%', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 13, cursor: staffSaving ? 'default' : 'pointer', opacity: staffSaving ? 0.6 : 1 }}
-                  >
-                    Save all {affectedDays} days
-                  </button>
-                )}
               </div>
             </div>
           </>
