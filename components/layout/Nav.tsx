@@ -15,6 +15,7 @@ const navItems = [
   { href: '/calendar', label: 'Calendar' },
   { href: '/admin', label: 'Admin' },
   { href: '/wo-hub', label: 'WO Hub' },
+  { href: '/nadines', label: "Nadine's" },
   { href: '/sop', label: 'SOP' },
   // TEMPORARY: remove when rollout period ends
   { href: '/feedback', label: 'DEV' },

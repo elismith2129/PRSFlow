@@ -33,6 +33,17 @@ export function deviceFor(item: TestItem): 'phone' | 'desktop' {
   return item.device ?? (item.area.startsWith('Runner') ? 'phone' : 'desktop')
 }
 
+// Does this batch need a phone? Drives the prominent setup callout — a tester who
+// gets halfway down a batch before discovering they need the app on their phone
+// has already wasted the trip.
+export function batchNeedsPhone(batch: TestBatch): boolean {
+  return batch.items.some(i => deviceFor(i) === 'phone')
+}
+
+export function phoneItemCount(batch: TestBatch): number {
+  return batch.items.filter(i => deviceFor(i) === 'phone').length
+}
+
 export type TestBatch = {
   id: string
   title: string

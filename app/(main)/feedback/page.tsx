@@ -254,8 +254,10 @@ export default function DevPage() {
   const isEli = profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com'
   const visibleNav = DEV_NAV.filter(n => n.key !== 'errors' || isEli)
 
+  // Layout matches app/(main)/admin/page.tsx exactly — no negative margins, so the
+  // sidebar sits inside the layout's padding rather than pinned to the window edge.
   return (
-    <div style={{ display: 'flex', margin: '-24px -32px', minHeight: 'calc(100vh - 52px)' }}>
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
       {/* Sidebar — mirrors components/../admin/page.tsx */}
       <div data-panel="admin-sidebar" style={{
         width: 200, flexShrink: 0, borderRight: '1px solid var(--border)',
@@ -287,8 +289,10 @@ export default function DevPage() {
 
       {/* Content */}
       <div style={{ flex: 1, padding: '28px 32px', minWidth: 0 }}>
-        {section === 'feedback' && <div style={{ maxWidth: 720 }}><FeedbackBoard /></div>}
-        {section === 'testing' && <div style={{ maxWidth: 720 }}><TestingSection /></div>}
+        {/* Reading-width and centred, which is how the feedback board looked before
+            it became a tab. Errors is a dense table and takes the full width. */}
+        {section === 'feedback' && <div style={{ maxWidth: 720, margin: '0 auto' }}><FeedbackBoard /></div>}
+        {section === 'testing' && <div style={{ maxWidth: 760, margin: '0 auto' }}><TestingSection /></div>}
         {section === 'errors' && isEli && <ErrorsSection />}
       </div>
     </div>

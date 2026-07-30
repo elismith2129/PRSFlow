@@ -137,7 +137,7 @@ What exists instead:
 
 | System | Where / who |
 |---|---|
-| **Credentials** | A locked note in Eli's **Mac Notes** app. This is the single point of failure for everything below — if you're planning for Eli's absence, getting a second copy of that note into a shared password manager is the highest-value thing on this page. |
+| **Credentials** | 🔴 **A single locked note in Eli's Mac Notes app — one copy.** This is the single point of failure for everything below. See the OPEN ITEM in §9. |
 | Supabase | Project `spdiovhicftbzsopynfo`. Pro plan with PITR (point-in-time recovery). |
 | Vercel | Deploys from `main`; env vars set per-environment (Production / Preview / Development are separate). |
 | GitHub | `elismith2129/PRSFlow`. Actions secrets are separate from Vercel's env vars — the daily backup uses them. |
@@ -151,6 +151,16 @@ What exists instead:
 ---
 
 ## 9. Known unfinished work
+
+### 🔴 OPEN — credential single point of failure (not code, highest value)
+
+Every login for this system lives in **one locked note on one laptop**. If that machine or Eli is unavailable, the app keeps running — Vercel and Supabase don't need anyone — but **nobody can deploy, fix a bug, restore a backup, or renew the domain.** This document tells a successor exactly what to do; it cannot give them access.
+
+**Fix:** a password manager with an emergency-contact / delayed-access feature (1Password, Bitwarden — a nominated person gains access only after an unanswered request window, so nothing changes day to day), or at minimum a shared vault with a second owner. A printed sealed copy in the studio safe is a worthwhile second channel because it survives things software doesn't. **Do not** solve it by emailing it to yourself or dropping it unencrypted in Drive.
+
+**Related check:** if Supabase and Vercel are owned by a personal email rather than an organisation, account recovery depends on that email too — another link in the same chain. Moving to org ownership with two admins is a bigger job but removes it.
+
+### Other open work
 
 Live at the time of writing — check `docs/CHANGELOG.md` and the "What's Next" section of the Tech-Stack doc for the current state.
 

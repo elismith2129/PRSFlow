@@ -11,7 +11,7 @@
 // any signed-in staff member under RLS. Don't let this pattern spread to anything
 // that matters.
 import React, { useState } from 'react'
-import { TEST_BATCHES } from '@/lib/testBatches'
+import { TEST_BATCHES, batchNeedsPhone, phoneItemCount } from '@/lib/testBatches'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import {
   TESTING_PIN, unlockTesting, setActiveBatch, useTestingSession,
@@ -61,12 +61,43 @@ export function TestingSection() {
     return <BatchReview batchId={reviewId} onBack={() => setReviewId(null)} />
   }
 
+  const anyPhone = TEST_BATCHES.some(batchNeedsPhone)
+
   return (
     <div>
-      <div style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.7, marginBottom: 16 }}>
-        Pick a batch to start testing. The checklist opens as a small window you can
-        drag anywhere — it stays with you as you move around the app, so you never
-        have to come back here to tick something off.
+      {/* Instructions. Deliberately always visible rather than a collapsed panel:
+          a tester opening this for the first time shouldn't have to find them, and
+          the phone setup in particular has to be read BEFORE starting a batch. */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 18, marginBottom: 14 }}>
+        <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 16, color: 'var(--text)', marginBottom: 10 }}>
+          How testing works
+        </div>
+        <ol style={{ margin: 0, paddingLeft: 20, fontSize: 12.5, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.8 }}>
+          <li><b>Pick a batch below</b> and press <b>Start testing</b>. A batch is one list of checks for recent work.</li>
+          <li>A <b>small window appears in the corner</b> showing <b>one check at a time</b>: what to look at, and exactly what to do.</li>
+          <li>Do the thing it describes, then press <b>Works</b> or <b>Broken</b>. You can’t move on until you pick one.</li>
+          <li>If something’s wrong, <b>type what you saw in the notes box first</b>, then press Broken. The note is the part that gets it fixed — “didn’t work” on its own tells us nothing.</li>
+          <li>Press <b>Next</b>. Use <b>Prev</b> any time to go back and change an answer.</li>
+        </ol>
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.75 }}>
+          <b style={{ color: 'var(--text)' }}>About that little window:</b> drag it by the <span style={{ fontFamily: 'DM Mono, monospace' }}>⠿</span> handle at the top —
+          it <b>will</b> end up covering something you need to click, so just move it. Press <b>▾</b> to shrink it
+          to a bar, <b>▴</b> to open it back up. It follows you around the app, so you never come back to this page
+          to tick something off. Closing it with <b>×</b> doesn’t lose anything — press Continue on the batch to pick
+          up where you stopped.
+        </div>
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, fontFamily: 'Inter', color: 'var(--text3)', lineHeight: 1.7 }}>
+          Nothing you do here can break anything. Wrong answers are fine — you can change them.
+          If you get stuck on a check, mark it Broken, say why in the note, and move on.
+        </div>
+      </div>
+
+      {/* Phone setup — shown whenever any batch has phone checks, because finding
+          out halfway through that you need the app installed wastes the session. */}
+      {anyPhone && <PhoneSetupCallout />}
+
+      <div style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--text3)', lineHeight: 1.7, marginBottom: 12 }}>
+        Batches:
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {TEST_BATCHES.map(b => (
@@ -78,6 +109,58 @@ export function TestingSection() {
             onReview={() => setReviewId(b.id)}
           />
         ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Phone setup ───────────────────────────────────────────────────────────────
+// Runner checks are done ON A PHONE with this checklist open on a computer. The
+// runner hub installs as its own home-screen app (separate PWA manifest, start_url
+// /runner), which is how staff actually use it — so testing it from a desktop
+// browser wouldn't be testing the real thing.
+function PhoneSetupCallout() {
+  const [copied, setCopied] = useState(false)
+  const url = typeof window !== 'undefined' ? window.location.origin : 'https://prsflow.paramountrecording.com'
+
+  return (
+    <div style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.4)', borderRadius: 12, padding: 18, marginBottom: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span style={{ fontSize: 16 }}>📱</span>
+        <span style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15, color: 'var(--warm)' }}>
+          Some checks need a phone — set this up first
+        </span>
+      </div>
+      <div style={{ fontSize: 12.5, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.8, marginBottom: 12 }}>
+        Checks tagged <b style={{ color: 'var(--warm)' }}>📱 PHONE</b> are done on your phone, in the Runner app.
+        Keep this checklist open on the computer and mark them here after you’ve done them on the phone.
+      </div>
+      <ol style={{ margin: 0, paddingLeft: 20, fontSize: 12.5, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.9 }}>
+        <li>On your phone, open <b>Safari</b> (iPhone) or <b>Chrome</b> (Android) and go to the address below.</li>
+        <li>Sign in with the <b>shared runner PIN</b> — ask Eli or a manager for it. You’ll land on the studio list.</li>
+        <li>Tap the <b>Share</b> button, then <b>Add to Home Screen</b>. It installs as <b>“Runner”</b> with its own icon.</li>
+        <li>Open it from your home screen from then on. That’s the version the runners actually use, so it’s the one to test.</li>
+      </ol>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+        <code style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: 'var(--text)', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '7px 10px' }}>
+          {url}/runner
+        </code>
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(`${url}/runner`).then(() => setCopied(true), () => setCopied(false))
+            setTimeout(() => setCopied(false), 2000)
+          }}
+          style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: copied ? 'var(--accent)' : 'var(--text)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}
+        >
+          {copied ? '✓ Copied' : 'Copy link'}
+        </button>
+        <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)' }}>
+          — text it to yourself, or type it in
+        </span>
+      </div>
+      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(249,115,22,0.25)', fontSize: 11.5, fontFamily: 'Inter', color: 'var(--text3)', lineHeight: 1.7 }}>
+        <b style={{ color: 'var(--text2)' }}>Note:</b> signing in as the runner on your phone signs you out of your own
+        account <i>on that phone only</i>. Your computer is unaffected. Use a private/incognito tab if you’d rather keep both.
       </div>
     </div>
   )
@@ -122,6 +205,11 @@ function BatchCard({ batchId, isActive, onStart, onReview }: {
         <div style={{ minWidth: 0 }}>
           <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 16, color: 'var(--text)' }}>{batch.title}</div>
           <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)' }}>{batch.version} · {batch.date} · {batch.items.length} checks</div>
+          {batchNeedsPhone(batch) && (
+            <div style={{ marginTop: 5, display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.45)', background: 'rgba(249,115,22,0.10)', borderRadius: 999, padding: '3px 9px' }}>
+              📱 {phoneItemCount(batch)} need a phone
+            </div>
+          )}
         </div>
         <span style={{ flexShrink: 0, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: m.color, border: `1px solid ${m.color}`, borderRadius: 999, padding: '3px 9px' }}>
           {m.label}
