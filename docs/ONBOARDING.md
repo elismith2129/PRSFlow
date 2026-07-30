@@ -84,6 +84,17 @@ Privileged/public-write work goes through **service-role API routes**: `/api/reg
 ### Every fetch pairs with a realtime subscription
 The app is used as an installed PWA where staff can't easily refresh. A one-time on-mount fetch with no `supabase.channel()` subscription is not acceptable. Channel names must be **globally unique** — duplicating one has already caused a crash. Where several surfaces need the same table, use a shared version-counter hook (`hooks/useClientsVersion.ts`, or `WebInquiryProvider`'s `leadsVersion`) rather than opening another channel.
 
+### `/nadines` is a venue build-out tracker, not a studio feature
+If you found a page about a Hollywood event venue inside a recording-studio app and assumed it was dead code or a mistake: it isn't. **Nadine's** is a multi-use performance and event venue at 6249 W Santa Monica Blvd that Paramount is building out (LADBS permit `26016-10000-03929`, A-2 assembly, 230 occupant load). It is a **separate property from the four studios** — it is *not* in `STUDIO_LOCATIONS`, has no rooms in the calendar, and generates no bookings or work orders. Nothing on it touches the CRM, calendar, WO or runner code paths.
+
+It exists in PRSFlo because the build-out needs the thing PRSFlo already provides: staff logins, roles, realtime and RLS. Phase 1 (this) is the permit spec, the room's configurations, the tracked open items and the render plates. Phases 2+ are build-out checklists, cost/materials line items and a contractor directory — the tabs on the page are the seam they hang off.
+
+Two things to know before editing it:
+- **The spec numbers live in code, not the database** (`lib/nadines.ts`). They're a transcription of a stamped drawing, so a revision is a commit, not a form submission — the same reasoning that keeps test batches in `lib/testBatches.ts`. Only the *status* of the open items is data (`venue_open_items`, keyed by `item_key`). Never rename an `item_key` after a status has been recorded against it, or the history is orphaned.
+- **Three open items must not be quoted externally until they close** — rigging capacity (1947 bowstring trusses, no point-load determination yet), courtyard capacity (the 230 load is interior only; the courtyard is a separate entitlement question) and alcohol (not entitled, active 500-ft school zone). The page flags these; the flags are there so the figures don't get lifted onto a rate sheet or sponsor deck by someone who never read the venue brief.
+
+The page and its nav item are currently gated to **Eli's accounts only** (`srv2129@gmail.com` / `eli@paramountrecording.com`), the same gate CRM Campaigns and DEV → Errors use. That hides the surface; it is not a data boundary — `venue_open_items` RLS still allows any authenticated read.
+
 ### Money and dates are stored as text
 `rate`, `food_amount`, `engineer_rate` and most dates are `text` columns. It works day to day and becomes a tax the moment you want reporting or a QuickBooks integration. Migrate when that gets close, not before. Time and currency maths must come from `lib/time.ts` and `lib/format.ts` — **never define it locally**. Duplicated copies of `calcHours` once drifted and produced phantom billable hours.
 

@@ -34,11 +34,21 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
   // Tech gets the full nav minus CRM; a runner gets no internal nav at all
   // (AuthGuard bounces them to /runner, so this is belt-and-braces for the
   // moment before that redirect lands); every other role sees all items.
-  const visibleNavItems = profile?.role === 'runner'
+  const roleNavItems = profile?.role === 'runner'
     ? []
     : profile?.role === 'tech'
       ? navItems.filter(item => item.href !== '/crm')
       : navItems
+  // Nadine's is Eli-only for now — matched on his accounts, the same gate the CRM
+  // Campaigns tab and DEV → Errors use. (Two addresses because his PIN login is
+  // attached to eli@paramountrecording.com, not the Gmail address.)
+  // This hides the NAV ITEM only; app/(main)/nadines/page.tsx guards the body so
+  // typing the URL directly does nothing. Neither is a data boundary — the
+  // `venue_open_items` RLS policy still allows any authenticated read and
+  // owner/manager/billing/asst_manager write. Lock the table down separately if
+  // that matters.
+  const isEli = profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com'
+  const visibleNavItems = roleNavItems.filter(item => item.href !== '/nadines' || isEli)
 
   useEffect(() => {
     async function fetchCount() {
