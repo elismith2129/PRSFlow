@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { TestingSection } from '@/components/dev/TestingSection'
 
 // TEMPORARY: remove when rollout period ends
 type FeedbackType = 'bug' | 'suggestion' | 'question'
@@ -34,8 +35,9 @@ function fmtWhen(iso: string): string {
   })
 }
 
-// TEMPORARY: remove when rollout period ends — entire page/route
-export default function FeedbackPage() {
+// The rollout feedback board. Body untouched — it works and Eli asked that it not
+// be changed; it simply became a tab rather than the whole page.
+function FeedbackBoard() {
   const { profile } = useUserProfile()
   const authorName = profile?.display_name || 'Staff'
   const canModerate = profile?.role === 'owner' || profile?.role === 'manager'
@@ -222,6 +224,39 @@ export default function FeedbackPage() {
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── DEV page shell ──────────────────────────────────────────────────────────
+// Two sections behind one nav item: the rollout feedback board (unchanged) and
+// PIN-gated test checklists. The PIN guards Testing ONLY — feedback stays one tap
+// away for any signed-in staff member, which is how it has always worked.
+type DevTab = 'feedback' | 'testing'
+
+export default function DevPage() {
+  const [tab, setTab] = useState<DevTab>('feedback')
+
+  return (
+    <div style={{ maxWidth: 720, margin: '0 auto' }}>
+      <div style={{ display: 'flex', gap: 20, marginBottom: 18 }}>
+        {(['feedback', 'testing'] as DevTab[]).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            style={{
+              background: 'none', border: 'none', padding: '0 0 5px', cursor: 'pointer',
+              borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
+              fontFamily: 'Syne', fontWeight: 700, fontSize: 13, letterSpacing: '0.08em',
+              textTransform: 'uppercase', color: tab === t ? 'var(--accent)' : 'var(--text3)',
+              transition: 'color 0.15s',
+            }}
+          >
+            {t === 'feedback' ? 'Feedback' : 'Testing'}
+          </button>
+        ))}
+      </div>
+      {tab === 'feedback' ? <FeedbackBoard /> : <TestingSection />}
     </div>
   )
 }

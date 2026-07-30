@@ -17,7 +17,7 @@ const navItems = [
   { href: '/wo-hub', label: 'WO Hub' },
   { href: '/sop', label: 'SOP' },
   // TEMPORARY: remove when rollout period ends
-  { href: '/feedback', label: 'Feedback' },
+  { href: '/feedback', label: 'DEV' },
 ]
 
 export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean } = {}) {

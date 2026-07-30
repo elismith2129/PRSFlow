@@ -427,7 +427,8 @@ export default function RunnerWOPage() {
     setEquipConds(prev => ({ ...prev, [key]: newVal }))
     const row = equipRows.find((r: any) => r.equipment === eq && r.date === date)
     if (row) {
-      await supabase.from('equipment_condition_rows').update({ condition: newVal }).eq('id', row.id)
+      const { error: eqErr } = await supabase.from('equipment_condition_rows').update({ condition: newVal }).eq('id', row.id)
+      if (!dbResult('Saving equipment condition', eqErr)) return
     }
     if (newVal === 'not_ok') setOpenNoteKey(key)
     else setOpenNoteKey(prev => prev === key ? null : prev)
@@ -438,7 +439,8 @@ export default function RunnerWOPage() {
     const current = equipNotes[key]
     const merged = { note: current?.note ?? '', photo_urls: current?.photo_urls ?? [], ...updates }
     if (current?.id) {
-      await supabase.from('equipment_condition_notes').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', current.id)
+      const { error: eqNoteErr } = await supabase.from('equipment_condition_notes').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', current.id)
+      if (!dbResult('Saving equipment note', eqNoteErr)) return
       setEquipNotes(prev => ({ ...prev, [key]: { ...prev[key], ...updates } }))
     } else {
       const { data } = await supabase.from('equipment_condition_notes').insert({
@@ -480,9 +482,10 @@ export default function RunnerWOPage() {
       const { error: dbError } = await supabase.from('work_orders')
         .update({ needs_attention_photos: newPhotos })
         .eq('id', woRef.current)
-      if (dbError) console.error('[NA photo] work_orders update failed:', dbError)
+      // A console.error is invisible to a runner on a phone — surface it.
+      if (!dbResult('Saving attention photo', dbError)) setNeedsAttentionPhotos(needsAttentionPhotos)
     } else {
-      console.error('[NA photo] upload failed:', uploadError)
+      dbResult('Uploading attention photo', uploadError)
     }
 
     setNaUploading(false)
@@ -493,22 +496,40 @@ export default function RunnerWOPage() {
     const updated = needsAttentionPhotos.filter(u => u !== url)
     setNeedsAttentionPhotos(updated)
     if (woRef.current) {
-      await supabase.from('work_orders')
+      const { error: rmErr } = await supabase.from('work_orders')
         .update({ needs_attention_photos: updated.length > 0 ? updated : null })
         .eq('id', woRef.current)
+      // Put the photo back on screen if the removal didn't land.
+      if (!dbResult('Removing attention photo', rmErr)) setNeedsAttentionPhotos(needsAttentionPhotos)
     }
   }
 
   async function handleSaveChanges() {
     if (!woRef.current) return
     setSaving(true)
-    await supabase.from('work_orders').update({
+    // Every write's error is collected and reported ONCE at the end.
+    //
+    // This function used to `router.push` back to the studio hub unconditionally,
+    // with none of its writes checked — so a save that failed on flaky studio wifi
+    // bounced the runner to the hub believing their shift was recorded, and nothing
+    // surfaced anywhere. On failure we now report and STAY on the page so the work
+    // is still on screen to retry.
+    const failed: string[] = []
+    let firstError: { message?: string; details?: string; code?: string } | null = null
+    const note = (label: string, error: any) => {
+      if (!error) return
+      failed.push(label)
+      if (!firstError) firstError = error
+    }
+
+    const { error: woErr } = await supabase.from('work_orders').update({
       session_notes: sessionNotes,
       needs_attention_notes: needsAttentionNotes || null,
       needs_attention_photos: needsAttentionPhotos.length > 0 ? needsAttentionPhotos : null,
       print_name: printName || null,
       signature_data: signatureData || null,
     }).eq('id', woRef.current)
+    note('work order', woErr)
 
     const woId = woRef.current
     if (needsAttentionNotes.trim()) {
@@ -555,7 +576,7 @@ export default function RunnerWOPage() {
     // Save time/hours/charge for all rows (per-row row_rate_type)
     const hasEngineer = !!(wo?.engineer || booking?.engineer_name)
     if (stRows.length > 0) {
-      await Promise.all(stRows.map((r: any) => {
+      const stResults = await Promise.all(stRows.map((r: any) => {
         const update: Record<string, any> = {}
         const from = fromTimeMap[r.id] ?? r.from_time ?? ''
         const to = toTimeMap[r.id] ?? r.to_time ?? ''
@@ -590,11 +611,12 @@ export default function RunnerWOPage() {
         }
         return supabase.from('studio_time_rows').update(update).eq('id', r.id)
       }))
+      for (const res of stResults) note('studio time', (res as any)?.error)
     }
 
     // Save payment rows
     const payToSave = payRows.filter(p => p.payment_type || p.amount)
-    await Promise.all(payToSave.map(p => {
+    const payResults = await Promise.all(payToSave.map(p => {
       const payload = {
         id: p.id,
         work_order_id: woRef.current!,
@@ -607,8 +629,14 @@ export default function RunnerWOPage() {
         ? supabase.from('payment_rows').update(payload).eq('id', p.id)
         : supabase.from('payment_rows').insert(payload)
     }))
+    for (const res of payResults) note('payments', (res as any)?.error)
 
     setSaving(false)
+    if (failed.length > 0) {
+      // Stay put — the runner's unsaved work is still on screen to retry.
+      dbResult(`Saving ${Array.from(new Set(failed)).join(', ')}`, firstError)
+      return
+    }
     router.push(`/runner/${studio}`)
   }
 
@@ -646,7 +674,8 @@ export default function RunnerWOPage() {
 
   async function saveNotesModal() {
     if (!notesModalRowId) return
-    await supabase.from('studio_time_rows').update({ session_info: notesModalText }).eq('id', notesModalRowId)
+    const { error: noteErr } = await supabase.from('studio_time_rows').update({ session_info: notesModalText }).eq('id', notesModalRowId)
+    if (!dbResult('Saving session notes', noteErr)) return
     setStRows(prev => prev.map((r: any) => r.id === notesModalRowId ? { ...r, session_info: notesModalText } : r))
     const scrollY = notesScrollRef.current
     document.body.style.position = ''
@@ -1088,7 +1117,10 @@ export default function RunnerWOPage() {
                                         .map((row: any) => row.id === r.id ? { ...row, date: newDate } : row)
                                         .sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''))
                                         .map((row: any, i: number) => ({ ...row, sort_order: i }))
-                                      sorted.forEach((row: any) => { supabase.from('studio_time_rows').update({ date: row.date, sort_order: row.sort_order }).eq('id', row.id) })
+                                      sorted.forEach(async (row: any) => {
+                                        const { error: dErr } = await supabase.from('studio_time_rows').update({ date: row.date, sort_order: row.sort_order }).eq('id', row.id)
+                                        dbResult('Saving date', dErr)
+                                      })
                                       return sorted
                                     })
                                   }}
