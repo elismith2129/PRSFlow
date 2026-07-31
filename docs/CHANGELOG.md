@@ -19,6 +19,45 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.5.1 — Jul 30, 2026
+
+**Runner couldn't open work orders on multi-day sessions. Mobile WO sheet layout.**
+
+- **The runner hit "Work order not yet created — contact office." on a WO that plainly existed.** The hub resolved a booking's WO by asking *which work order has `booking_id` = this booking*. Since the July 2026 rebuild that question has the wrong shape: a WO save writes **several booking projection cards** (one per consecutive same-room run) and they all carry `work_order_id`, but `work_orders.booking_id` names only **one** of them — the original. So the original card opened fine and every other card dead-ended. Any multi-day or multi-room session was affected. Both the hub's `woMap` and the WO page's resolver now read the card's own forward link (`bookings.work_order_id`) first, falling back to the old reverse lookup for pre-rebuild rows.
+- **The nav painted through the middle of the mobile WO sheet.** Nav is `z-index: 99999` and deliberately above all modals, so a sheet starting at `top: 0` doesn't cover it — it gets covered. The desktop branch has always used `top: 52` for exactly this reason; the mobile branch never carried it over. Mobile now offsets 52 as well (the Nav is 52px tall on mobile too — the 44px is the hamburger button *inside* the bar), and the inner containers switched `100dvh` → `100%` so they don't overflow by the nav's height and push the footer buttons off-screen.
+- **Removed a leftover per-studio accent** on the mobile WO header. It tinted the header's bottom border by venue, and mapped `ameraycan` → `var(--hot)` — the **lead-temperature red** used everywhere else for danger, errors and cancelled sessions. Every Ameraycan work order opened with a 3px red bar and read as broken. Per-studio colour coding had already been removed across the runner, admin, LocationStrip and dashboard; this survived because its comment claimed to mirror the Runner Hub header, which had itself moved to a neutral 1px border in that same pass. The comment was stale, not the design.
+
+**Migrations:** none.
+**Watch-outs:** `work_orders.booking_id` is now a **fallback**, not the primary link — it is still load-bearing for create-idempotency and must not be dropped outside the planned Step 9. When adding any new booking → WO lookup, read `bookings.work_order_id`. And don't reintroduce venue colours without reintroducing them everywhere; if you do, don't borrow a token that already carries meaning.
+**Files:** `app/runner/[studio]/page.tsx`, `app/runner/[studio]/wo/[id]/page.tsx`, `components/calendar/WorkOrderPopup.tsx`.
+
+---
+
+## v1.5.0 — Jul 29, 2026
+
+**Security: PIN login taken down after a distributed brute-force attempt.**
+
+- **The incident.** `POST /api/auth/pin` took sustained guessing from **~50 distinct IPs** at roughly one attempt per second — spread deliberately so no single IP carried enough load to trip the per-IP lockout. Found by chance in the Vercel request log; nothing in the app reported it.
+- **Why it was worth attacking.** `verify_staff_pin(p_pin)` takes **only the PIN** — no username, no email — and matches it against every staff row at once. With 4 digits (10,000 combinations) and ~10 provisioned accounts, **any random guess had roughly a 1-in-1,000 chance of hitting a real account.**
+- **The bug that made it cheap.** The lockout wrote `fail_count: willLock ? 0 : nextCount` — **resetting the counter on lockout**. Five fails → 30s lock → counter back to zero, forever. ~600 attempts/hour/IP, and the escalation the code appeared to have was unreachable.
+- **Fixed:** counter only ever climbs; lockout escalates `30s → 2m → 10m → 60m`; forgiveness is a **6-hour quiet period since the last failure** (`DECAY_MS`), not surviving a lockout. New append-only `pin_login_failures` (ip, user_agent, outcome) — `pin_login_attempts` holds one row per IP and is deleted on success, so it can never answer "what happened last night". Login countdown humanised (`3600s` → `60m`).
+- **Then taken down entirely.** The app is not live yet (a handful of real users), which reverses the cost/benefit: all `staff_pins` rows deleted, all sessions revoked, everyone moved to email + password. `PIN_LOGIN_ENABLED = false` in `app/(auth)/login/page.tsx` hides the numpad and defaults the screen to email — with zero PIN rows the pad could only fail silently and look like a broken app.
+- **`scripts/set-one-password.mjs`** — sets a known password on one account via the admin API, no email. Written because Supabase's built-in sender caps at ~2 messages/hour and that cap was reached with a manager locked out mid-shift. Refuses macOS **curly quotes**, which bash passes through as literal characters — the first real run set a password *including* the quote marks and login failed while `auth.users` looked perfectly healthy.
+- **Also shipped:** the registration ID viewer no longer auto-downloads files (`isDoc = !isImagePath(...) || imgFailed` conflated "is a PDF" with "the image failed to load", so a failed `<img>` rendered an `<iframe>` at a format the browser can't display inline — which makes it download). Now `isPdf` gates the iframe, with an honest HEIC fallback panel. Client-facing forms (`/register/:token`, `/inquiry`) forced dark; `/register/view/:clientId` excluded as it's a white print sheet.
+
+**Migrations:** `20260729140000_pin_login_failures.sql` — **run**. No insert policy by design: the route writes with the service-role key (which bypasses RLS), so nothing holding a browser token can flood or forge the log. SELECT is owner/manager only.
+
+**Watch-outs:**
+- **Staff Supabase passwords are random 32-char strings from `set-staff-passwords.mjs` that nobody knows.** Any design that throttles or disables PIN login *globally* therefore locks out the entire team with no recovery path. A global rate limit was proposed and withdrawn for exactly this reason.
+- **Supabase silently falls back to the project Site URL** when a `redirectTo` isn't on the Redirect URLs allowlist. Reset emails were going to `http://localhost:3000` even though the code correctly hardcodes production. Fixed in the dashboard; would have hit every staff member.
+- **Vercel Bot Protection is set to Challenge.** It challenges non-browser traffic — which the two Vercel Crons also are. Confirm `auto-demote` (09:00) and `reset-needs-action` (15:00) still run.
+- The lockout cap is **60 minutes on purpose**. Staff at one studio share a public IP; an unbounded lock would let one runner's mistype take a room offline mid-session. Don't "harden" it without solving the shared-IP problem first.
+- `PIN_LOGIN_ENABLED` is the single flip to bring PINs back. Nothing else needs changing — the PIN code paths are untouched.
+
+**Files:** `app/api/auth/pin/route.ts`, `app/(auth)/login/page.tsx`, `scripts/set-one-password.mjs`, `components/shared/RegViewModal.tsx`, `app/layout.tsx`, `supabase/migrations/20260729140000_pin_login_failures.sql`.
+
+---
+
 ## v1.4.3 — Jul 29, 2026
 
 **DEV page restructure + floating-panel fixes.**

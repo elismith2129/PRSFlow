@@ -55,6 +55,76 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'auth-runner-wo-2026-07-30',
+    title: 'Email login + runner work order fixes',
+    version: 'v1.5.0 – v1.5.1',
+    date: 'Jul 30, 2026',
+    intro:
+      'Two things: PIN login is gone and everyone signs in with email and password now, and the runner could not open work orders on sessions that ran more than one day. The runner items need a PHONE. Before you start, ask for a multi-day session (or one that uses two rooms in a day) to test against — a normal one-day session always worked and will not prove anything.',
+    items: [
+      {
+        id: 'auth-no-pin-pad', area: 'Login', device: 'desktop',
+        what: 'The login screen opens on email and password, with no number pad',
+        how: 'Sign out. The login screen should show email and password boxes straight away. There should be no number pad and no "use PIN instead" link anywhere on it.',
+      },
+      {
+        id: 'auth-email-login', area: 'Login', device: 'desktop',
+        what: 'You can sign in with your own email and password',
+        how: 'Enter your email address and your password, and sign in. You should land on the dashboard.',
+      },
+      {
+        id: 'auth-wrong-password', area: 'Login', device: 'desktop',
+        what: 'A wrong password is refused clearly',
+        how: 'Sign out, then deliberately type the wrong password. It should say "Invalid email or password" and stay on the login screen. Then sign back in properly.',
+      },
+      {
+        id: 'auth-change-password', area: 'Login', device: 'desktop',
+        what: 'You can change your own password while signed in',
+        how: 'While signed in, type prsflow.paramountrecording.com/reset-password into the address bar. Enter a new password twice and submit. You should land on the dashboard. Sign out and back in with the NEW password to confirm it took.',
+      },
+      {
+        id: 'auth-runner-lands-right', area: 'Login', device: 'phone',
+        what: 'A runner account lands on the runner hub, not the dashboard',
+        how: 'On a phone, sign in with the runner account. It should go straight to the runner studio-select screen, not the office dashboard.',
+      },
+      {
+        id: 'runner-wo-multiday-opens', area: 'Runner WO', device: 'phone',
+        what: 'A multi-day session opens its work order from any day',
+        how: 'On the phone, open the runner hub for the studio holding a multi-day session. Tap the session. The work order should open. THIS IS THE MAIN ONE — if it says "Work order not yet created — contact office", mark it Broken and write down the studio and date.',
+      },
+      {
+        id: 'runner-wo-two-rooms', area: 'Runner WO', device: 'phone',
+        what: 'A session using two rooms in one day opens from either room',
+        how: 'Find a day where one booking uses two different rooms. Tap the card for each room in turn. Both should open a work order. If only one works, note which room failed.',
+      },
+      {
+        id: 'runner-wo-right-order', area: 'Runner WO', device: 'phone',
+        what: 'The work order that opens is the correct one',
+        how: 'After it opens, check the client name, artist and date at the top match the session you tapped. Opening the wrong work order would be worse than opening none.',
+      },
+      {
+        id: 'wo-mobile-nav-clear', area: 'WO on phone', device: 'phone',
+        what: 'The top menu no longer covers the work order',
+        how: 'On a phone, open a session from the calendar so the work order fills the screen. The PRSFlo menu bar should sit ABOVE it, not across the middle of it. Scroll down — the menu should never overlap the content.',
+      },
+      {
+        id: 'wo-mobile-buttons-reachable', area: 'WO on phone', device: 'phone',
+        what: 'Cancel and Close & Save are both fully visible at the bottom',
+        how: 'Same screen. Look at the very bottom — both buttons should be completely on-screen and tappable, not cut off by the edge of the phone.',
+      },
+      {
+        id: 'wo-mobile-no-red-line', area: 'WO on phone', device: 'phone',
+        what: 'There is no red line under the work order heading',
+        how: 'Open a work order for an AMERAYCAN session on a phone. Under the "Work Order · WO-xxxx" heading there should be a thin grey line, not a red one. Check a Paramount session too — both should look the same.',
+      },
+      {
+        id: 'wo-desktop-unchanged', area: 'WO on desktop', device: 'desktop',
+        what: 'The work order on a computer looks and behaves exactly as before',
+        how: 'Open any work order on the computer. It should be unchanged — same size, same position, same header. This is a check that the phone fixes did not leak onto desktop.',
+      },
+    ],
+  },
+  {
     id: 'dev-tooling-2026-07',
     title: 'DEV tab + Testing tools',
     version: 'v1.4.0 – v1.4.3',

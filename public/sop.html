@@ -641,6 +641,47 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.5.1', date:'Jul 30, 2026',
+    headline:'Runner work orders open properly on multi-day sessions',
+    desc:'If a session ran over more than one day, or moved between rooms, tapping it on the runner sometimes said "Work order not yet created — contact office" even though the work order existed. That is fixed.',
+    changes:[
+      'Every day of a multi-day session now opens the right work order.',
+      'Sessions that use two rooms in one day open correctly from either room.',
+      'On a phone, the top menu no longer sits on top of the work order — you can see the whole thing.',
+      'The red line under the work order heading is gone. It only ever appeared on Ameraycan sessions and it did not mean anything was wrong.'
+    ],
+    affects:'If you were told "contact office" on a session you knew was booked, that was this. Try it again — it should open. If it still does not, that one is worth reporting.',
+    dev:[
+      '<b>The runner hit "Work order not yet created" on a WO that plainly existed.</b> The hub resolved a booking\'s WO by asking <i>which work order has <code>booking_id</code> = this booking</i>. Since the July 2026 rebuild that question has the wrong shape: a WO save writes <b>several booking projection cards</b> (one per consecutive same-room run) and they all carry <code>work_order_id</code>, but <code>work_orders.booking_id</code> names only <b>one</b> of them. The original card opened fine; every other card dead-ended. Both the hub\'s <code>woMap</code> and the WO page\'s resolver now read <code>bookings.work_order_id</code> first, falling back to the reverse lookup for pre-rebuild rows.',
+      '<b>The nav painted through the middle of the mobile WO sheet.</b> Nav is <code>z-index: 99999</code> and deliberately above all modals, so a sheet at <code>top: 0</code> does not cover it — it gets covered. Desktop has always used <code>top: 52</code>; the mobile branch never carried it over. Inner containers switched <code>100dvh</code> → <code>100%</code> so they do not overflow by the nav height and push the footer off-screen.',
+      '<b>Removed a leftover per-studio accent</b> on the mobile WO header, which mapped <code>ameraycan</code> → <code>var(--hot)</code> — the lead-temperature red used everywhere else for danger and cancelled sessions. Per-studio colour was already removed elsewhere; this survived behind a stale comment claiming it mirrored the Runner Hub header, which had itself moved to a neutral border in that same pass.',
+      '<b>Watch-out:</b> <code>work_orders.booking_id</code> is now a <b>fallback</b>, not the primary link — still load-bearing for create-idempotency, do not drop it outside Step 9. Any new booking → WO lookup should read <code>bookings.work_order_id</code>.'
+    ]
+  },
+  {
+    ver:'v1.5.0', date:'Jul 29, 2026',
+    headline:'PIN login is switched off — everyone uses email and password',
+    desc:'Someone on the internet was repeatedly guessing PINs at our login screen. Nobody got in, and no client information was touched. We have turned PIN login off completely while we rebuild it properly.',
+    changes:[
+      'There is <b>no number pad</b> on the login screen any more. This is deliberate — the app is not broken.',
+      'Sign in with <b>your email address and your password</b>.',
+      'Everyone was signed out, and everyone has been given a new password.',
+      'PINs will come back later, longer and tied to your own phone. We will tell you when.'
+    ],
+    affects:'If you open the app and the number pad is missing, that is expected — use your email and password instead. If you cannot get in, text Eli rather than trying repeatedly. Do not share your password with anyone, including other staff; you each have your own now.',
+    dev:[
+      '<b>The incident.</b> <code>POST /api/auth/pin</code> took sustained guessing from <b>~50 distinct IPs</b> at roughly one attempt per second — spread deliberately so no single IP tripped the per-IP lockout. Found by chance in the Vercel request log; nothing in the app reported it.',
+      '<b>Why it was worth attacking.</b> <code>verify_staff_pin(p_pin)</code> takes <b>only the PIN</b> — no username — and matches against every staff row at once. 4 digits (10,000 combinations) against ~10 accounts is roughly a <b>1-in-1,000 hit rate per guess</b>.',
+      '<b>The bug that made it cheap.</b> The lockout wrote <code>fail_count: willLock ? 0 : nextCount</code> — <b>resetting the counter on lockout</b>. Five fails → 30s → counter back to zero, forever. ~600 attempts/hour/IP, and the apparent escalation was unreachable.',
+      '<b>Fixed:</b> counter only climbs; lockout escalates <code>30s → 2m → 10m → 60m</code>; forgiveness is a <b>6-hour quiet period since the last failure</b>, not surviving a lockout. New append-only <code>pin_login_failures</code> table — <code>pin_login_attempts</code> holds one row per IP and is deleted on success, so it can never answer "what happened last night".',
+      '<b>Then taken down entirely</b> — the app is not live yet, which reverses the cost/benefit. All <code>staff_pins</code> deleted, sessions revoked, <code>PIN_LOGIN_ENABLED = false</code> hides the pad. That flag is the single flip to bring PINs back.',
+      '<b>Watch-out:</b> staff Supabase passwords are random 32-char strings nobody knows, so anything that throttles PIN login <i>globally</i> locks out the whole team with no recovery path. A global rate limit was proposed and withdrawn for that reason.',
+      '<b>Watch-out:</b> Supabase silently falls back to the project Site URL when a <code>redirectTo</code> is not on the Redirect URLs allowlist — reset emails were going to <code>localhost:3000</code> despite the code hardcoding production.',
+      '<b>Watch-out:</b> Vercel Bot Protection is set to Challenge, which challenges non-browser traffic — including the two Vercel Crons. Confirm they still run.',
+      '<b>Also shipped:</b> the registration ID viewer no longer auto-downloads files — <code>isDoc</code> conflated "is a PDF" with "the image failed to load", so a failed <code>&lt;img&gt;</code> rendered an <code>&lt;iframe&gt;</code> at a format the browser cannot display inline, which triggers a download. Client-facing forms forced dark; the white print sheet excluded.'
+    ]
+  },
+  {
     ver:'v1.4.3', date:'Jul 29, 2026',
     headline:'DEV tab — feedback plus test checklists',
     desc:'The Feedback tab is now called DEV and has sections down the left. Feedback works exactly as before. There is also a Testing section, used when we need someone to check new work.',
