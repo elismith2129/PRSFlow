@@ -1535,7 +1535,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                     {l.last_contact ? `${daysSince(l.last_contact)}d ago` : `added ${fmtDate(l.created_at)}`}
                     {touch?.initials && <span style={{ color: 'var(--c-fg-3)' }}> · {touch.initials}{touch.method ? ` via ${touch.method}` : ''}</span>}
                     {missing.length > 0 && (
-                      <span className="c-pill c-fill-warm" style={{ marginLeft: 6, fontSize: 8.5, padding: '3px 8px' }}>
+                      <span className="c-pill c-fill-hot" style={{ marginLeft: 6, fontSize: 8.5, padding: '3px 8px' }}>
                         missing: {missing.join(', ')}
                       </span>
                     )}
@@ -1967,14 +1967,18 @@ const parsedLoc0 = parseLocation(lead.location || '')
   return (
     <div>
       {/* ═══ Zone 1 (transparent — lets the panel gradient show through) — identity + contact ═══════════ */}
-      <div style={{ background: 'transparent', margin: '0 -16px', padding: isMobile ? '12px 16px 6px' : '12px 16px' }}>
+      <div style={{ background: 'transparent', padding: isMobile ? '2px 0 4px' : '2px 0 6px' }}>
       {/* ─── Status strip ─────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 26, marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+        {missing.length > 0 && (
+          <span className="c-pill c-fill-hot" style={{ order: 2 }}>⚠ Missing: {missing.join(', ')}</span>
+        )}
         <div ref={statusPillRef} style={{ position: 'relative', flexShrink: 0 }}>
           <button
             type="button"
             onClick={() => setStatusDDOpen(o => !o)}
-            style={{ ...pillBase, gap: 5, background: `color-mix(in srgb, ${LEAD_AVATAR_COLORS[local.status || lead.status] || LEAD_AVATAR_COLORS.uncontacted} 13%, transparent)`, color: LEAD_AVATAR_COLORS[local.status || lead.status] || LEAD_AVATAR_COLORS.uncontacted }}
+            className={`c-pill c-control c-raised-chip ${statusFillClass(local.status || lead.status)}`}
+            style={{ gap: 5 }}
           >
             <span>{statusLabel(local.status || lead.status)}</span>
             <span style={{ fontSize: 8, lineHeight: 1, transform: statusDDOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
@@ -2034,11 +2038,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
       {savedField && <span className="c-label" style={{ display: 'block', marginBottom: 4 }}>saved</span>}
 
       {/* ─── Missing warning ─────────────────────────────── */}
-      {missing.length > 0 && (
-        <div style={{ marginBottom: 8 }}>
-          <span className="c-pill c-fill-warm">⚠ Missing: {missing.join(', ')}</span>
-        </div>
-      )}
+      
 
       {/* ─── Identity + Contact ─────────────────────────────── */}
       <div>
@@ -2047,7 +2047,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, minWidth: 0, flex: 1, flexWrap: 'wrap' }}>
             {lead.billing !== 'COD' ? (
               <>
-                <div style={{ display: 'inline-grid', minWidth: '3ch', position: 'relative' }}>
+                <div className="c-well" style={{ display: 'inline-grid', minWidth: '3ch', position: 'relative' }}>
                   <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
                     {local.label || 'Label'}
                   </span>
@@ -2069,7 +2069,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                   )}
                 </div>
                 <span style={{ color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, flexShrink: 0 }}> — </span>
-                <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
+                <div className="c-well" style={{ display: 'inline-grid', minWidth: '3ch' }}>
                   <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
                     {local.artist_name || 'Artist'}
                   </span>
@@ -2086,7 +2086,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
               </>
             ) : (
               <>
-                <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
+                <div className="c-well" style={{ display: 'inline-grid', minWidth: '3ch' }}>
                   <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
                     {fnameVal || 'First'}
                   </span>
@@ -2100,7 +2100,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: leadNameColor(lead), fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
                   />
                 </div>
-                <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
+                <div className="c-well" style={{ display: 'inline-grid', minWidth: '3ch' }}>
                   <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
                     {lnameVal || 'Last'}
                   </span>
@@ -2172,7 +2172,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
         {/* Stage name (COD only) */}
         {lead.billing === 'COD' && (
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 6, minWidth: 0 }}>
-            <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
+            <div className="c-well" style={{ display: 'inline-grid', minWidth: '3ch' }}>
               <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
                 {local.artist_name || 'Artist name'}
               </span>
@@ -2192,7 +2192,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
         {/* Row 2 (Label/Billing only): A&R name line */}
         {lead.billing !== 'COD' && (
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 6, minWidth: 0, flexWrap: 'wrap' }}>
-            <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
+            <div className="c-well" style={{ display: 'inline-grid', minWidth: '3ch' }}>
               <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
                 {fnameVal || 'First'}
               </span>
@@ -2206,7 +2206,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg-2)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
               />
             </div>
-            <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
+            <div className="c-well" style={{ display: 'inline-grid', minWidth: '3ch' }}>
               <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
                 {lnameVal || 'Last'}
               </span>
@@ -3185,7 +3185,8 @@ function NewLeadModal({ leads, onClose, onSave }: {
           { key: 'warm', label: 'Warm', color: 'var(--c-st-warm)' },
           { key: 'booking', label: 'Move to Booking', color: 'var(--c-st-booked)' },
         ] as const).map(opt => (
-          <button key={opt.key} type="button" onClick={() => setTemperature(opt.key)} style={{ flex: opt.key === 'booking' ? 2 : 1, padding: '7px 0', borderRadius: 6, background: temperature === opt.key ? `color-mix(in srgb, ${opt.color} 13%, transparent)` : 'transparent', color: temperature === opt.key ? opt.color : 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.15s' }}>
+          <button key={opt.key} type="button" onClick={() => setTemperature(opt.key)} className={`c-pill c-control ${statusFillClass(opt.key === 'booking' ? 'booked' : opt.key)} ${temperature === opt.key ? 'c-pressed' : 'c-raised-chip'}`}
+            style={{ flex: opt.key === 'booking' ? 2 : 1, justifyContent: 'center', padding: '8px 0', opacity: temperature === opt.key ? 1 : 0.55 }}>
             {opt.label}
           </button>
         ))}
@@ -3639,7 +3640,7 @@ function ChartCard({ title, subtitle, segments }: {
   return (
     <div style={{ background: 'var(--c-bg)', borderRadius: 10, padding: 20 }}>
       <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 13, marginBottom: 2 }}>{title}</div>
-      <div style={{ fontSize: 10, color: 'var(--c-fg-3)', marginBottom: 16, fontFamily: 'Inter' }}>{subtitle}</div>
+      <div style={{ fontSize: 10, color: 'var(--c-fg-3)', marginBottom: 12, fontFamily: 'Inter' }}>{subtitle}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <DonutChart segments={segments} size={90} />
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -3694,7 +3695,7 @@ function AnalyticsView({ leads }: { leads: Lead[] }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 10, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 10, flexWrap: 'wrap' }}>
         <h1 style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 32, letterSpacing: -1 }}>
           Analytics <em style={{ fontStyle: 'italic', color: 'var(--c-fg)' }}>&amp; Insights</em>
         </h1>

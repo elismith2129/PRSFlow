@@ -69,14 +69,11 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
           {filterDefs.map(f => {
             const active = typeFilter === f.key
             return (
-              <button key={f.key} onClick={() => setTypeFilter(f.key)} style={{
-                padding: '4px 10px', cursor: 'pointer', borderRadius: 20,
-                fontFamily: "'Archivo Black', sans-serif", fontWeight: active ? 700 : 600, fontSize: 9,
-                letterSpacing: '0.08em', textTransform: 'uppercase',
-                background: active ? 'color-mix(in srgb, var(--c-fg) 15%, transparent)' : 'transparent',
-                color: active ? 'var(--c-fg)' : 'color-mix(in srgb, var(--c-fg) 60%, transparent)',
-                transition: 'all 0.15s',
-              }}>
+              <button
+                key={f.key}
+                onClick={() => setTypeFilter(f.key)}
+                className={`c-soft c-soft-sm c-control ${active ? 'c-on c-pressed' : 'c-raised'}`}
+              >
                 {f.label} ({f.count})
               </button>
             )
