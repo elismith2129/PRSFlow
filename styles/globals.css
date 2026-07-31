@@ -693,7 +693,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* ── Input ──────────────────────────────────────────────────────────────── */
 .c-input {
   display: block; width: 100%;
-  border-radius: 99px; padding: 11px 18px;
+  border-radius: 14px; padding: 0 14px; height: 40px;
   background: var(--c-bg); color: var(--c-fg);
   font-family: inherit; font-size: 13.5px;
 }
@@ -887,25 +887,28 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-navmenu-item.c-on { opacity: 1; font-weight: 700; }
 
 
-/* ── Form wells ─────────────────────────────────────────────────────────── */
+/* ── Inline auto-size field ─────────────────────────────────────────────── */
+/* NOTE: renamed from .c-well on 2026-07-31 — `.c-well` now means the standard
+   field recipe from lead-profile-final.html. This one is the narrow variant used
+   by fields that size themselves from a hidden mirror span (the lead name, label,
+   artist). */
 /* Affordance law applied to forms: a fillable field is a RECESS whether or not
    it holds a value. Before this, empty inline fields rendered as bare grey
    placeholder text floating on the panel — nothing signalled they were editable.
    The carve goes on the auto-size WRAPPER, not the <input>: these fields size
    themselves from a hidden mirror span, so changing the input's own padding
    would desynchronise the measured width. */
-.c-well {
-  border-radius: 99px;
+.c-field-inline {
+  border-radius: 12px;
   padding: 3px 12px;
   background: var(--c-bg);
   box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .34), inset -3px -3px 9px rgba(255, 255, 255, .03);
 }
-[data-theme="light"] .c-well {
+[data-theme="light"] .c-field-inline {
   box-shadow: inset 3px 3px 8px rgba(42, 39, 34, .07), inset -3px -3px 8px rgba(255, 255, 255, .65);
 }
-.c-well:focus-within { background: var(--c-wash2); }
-/* Compact well for short values (times, dates) sitting in a dense row. */
-.c-well-sm { padding: 2px 10px; }
+.c-field-inline:focus-within { background: var(--c-wash2); }
+
 
 /* ── Wordmark ───────────────────────────────────────────────────────────── */
 /* Rendered ONLY by components/layout/Wordmark.tsx. Monochrome in both themes —
@@ -1067,7 +1070,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-panel input:not([type="file"]):not(.c-input),
 .c-panel select,
 .c-panel textarea:not(.c-textarea) {
-  border-radius: 18px; padding: 11px 16px; width: 100%;
+  border-radius: 14px; padding: 10px 14px; width: 100%;
   background: var(--c-bg); color: var(--c-fg);
   font-family: inherit; font-size: 13px; box-sizing: border-box;
   box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .34), inset -3px -3px 9px rgba(255, 255, 255, .03);
@@ -1089,13 +1092,113 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    rather than a capsule. Pair with .c-inset2, exactly like .c-input. */
 .c-textarea {
   display: block; width: 100%;
-  border-radius: 18px; padding: 12px 16px;
+  border-radius: 14px; padding: 11px 14px; min-height: 56px;
   background: var(--c-bg); color: var(--c-fg);
   font-family: inherit; font-size: 13px;
   resize: none; box-sizing: border-box;
 }
 .c-textarea::placeholder { color: var(--c-fg); opacity: 0.35; }
 .c-textarea:focus { outline: none; background: var(--c-wash2); }
+
+
+/* ═══ LEAD-PROFILE V3 RECIPES ═══════════════════════════════════════════════
+   Source of truth: lead-profile-final.html (approved 2026-07-31). Translated to
+   --c- tokens and this app's polarity (dark on :root, light as the override). */
+
+/* WELL — the standard field. ONE recipe: empty and filled look identical, so an
+   empty field still reads as somewhere you can type. Holds content, so it carves
+   IN. Radius 14 / height 40 supersedes spec §7's "inputs 99px" (mock wins). */
+.c-well {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--c-bg); border-radius: 14px; height: 40px; padding: 0 14px;
+  font-size: 13.5px;
+  box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .34), inset -3px -3px 9px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-well {
+  box-shadow: inset 3px 3px 8px rgba(42, 39, 34, .07), inset -3px -3px 8px rgba(255, 255, 255, .65);
+}
+.c-well input, .c-well textarea {
+  width: 100%; height: 100%; font-size: 13.5px;
+  background: none; color: var(--c-fg); font-family: inherit; box-shadow: none;
+}
+.c-well input::placeholder, .c-well textarea::placeholder { color: var(--c-fg); opacity: .35; }
+.c-well input:focus, .c-well textarea:focus { outline: none; background: none; }
+.c-well-area { height: auto; min-height: 56px; padding: 11px 14px; align-items: flex-start; font-size: 13px; }
+.c-well .c-ico { opacity: .4; font-size: 13px; flex-shrink: 0; }
+
+/* BAND — grouping ground. One tone step, NO border and NO depth. This is the
+   third grouping level: carved container > band > nothing. Bands must NOT carve,
+   or nested groups turn into a hall of dents. */
+.c-band { background: var(--c-wash); border-radius: 20px; padding: 14px 15px; margin-top: 14px; }
+.c-band-head {
+  font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+  opacity: .5; margin-bottom: 11px;
+}
+
+/* SEGMENTED CONTROL — raised housing, selected segment pressed IN and filled.
+   Supersedes the loose individual pills used before. */
+.c-seg {
+  display: inline-flex; background: var(--c-bg); border-radius: 99px; padding: 4px; gap: 2px;
+  box-shadow: 3px 3px 9px rgba(0, 0, 0, .5), -3px -3px 9px rgba(255, 255, 255, .04);
+}
+[data-theme="light"] .c-seg { box-shadow: 3px 3px 8px rgba(42, 39, 34, .14), -3px -3px 8px rgba(255, 255, 255, .7); }
+.c-seg button {
+  border-radius: 99px; padding: 6px 14px; font-size: 10px; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase; cursor: pointer; opacity: .5;
+  background: none; color: var(--c-fg); font-family: inherit; box-shadow: none;
+}
+.c-seg button.c-on {
+  opacity: 1; background: var(--c-ivory); color: #1b1a17;
+  box-shadow: inset 2px 2px 5px rgba(0, 0, 0, .35);
+}
+[data-theme="light"] .c-seg button.c-on { background: var(--c-fg); color: var(--c-bg); }
+.c-seg-tiny { padding: 3px; box-shadow: none; background: var(--c-wash); }
+[data-theme="light"] .c-seg-tiny { box-shadow: none; }
+.c-seg-tiny button { padding: 4px 10px; font-size: 9px; }
+
+/* MINI — small raised control for in-well adornments (Call / Text / ✉). */
+.c-mini {
+  background: var(--c-bg); border-radius: 99px; padding: 6px 12px;
+  font-size: 9.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  cursor: pointer; flex-shrink: 0; color: var(--c-fg); font-family: inherit;
+  box-shadow: 2px 2px 7px rgba(0, 0, 0, .45), -2px -2px 7px rgba(255, 255, 255, .035);
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+[data-theme="light"] .c-mini { box-shadow: 2px 2px 6px rgba(42, 39, 34, .14), -2px -2px 6px rgba(255, 255, 255, .7); }
+.c-mini:active { transform: translateY(1px); box-shadow: inset 2px 2px 5px rgba(0, 0, 0, .25); }
+
+/* FOLD — <details> disclosure for secondary content (activity, tags). */
+.c-fold { margin-top: 10px; }
+.c-fold summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+  font-size: 9.5px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase;
+  opacity: .45; padding: 7px 0;
+}
+.c-fold summary::-webkit-details-marker { display: none; }
+.c-fold summary::before { content: "\203A"; font-size: 14px; transition: transform .15s; display: inline-block; }
+.c-fold[open] summary::before { transform: rotate(90deg); }
+.c-fold .c-fold-body { padding: 6px 0 2px; }
+
+/* IDENTITY META LINE — payment type (clickable) · source · last-touch age. */
+.c-metaline {
+  display: flex; gap: 8px; align-items: baseline; margin-top: 7px; flex-wrap: wrap;
+  font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+}
+.c-metaline .c-pay { cursor: pointer; }
+.c-metaline .c-sep { opacity: .35; font-weight: 600; }
+.c-metaline .c-src { opacity: .45; font-weight: 700; }
+.c-metaline .c-age {
+  font-family: 'DM Mono', ui-monospace, monospace; font-size: 10.5px; opacity: .5;
+  text-transform: none; letter-spacing: 0; font-weight: 400;
+}
+
+/* DESTRUCTIVE — sanctioned by the §5 ruling that --c-st-hot is dual-purpose
+   (hot lead temperature AND critical/destructive). */
+.c-danger {
+  color: var(--c-st-hot); font-size: 10px; font-weight: 800; letter-spacing: .06em;
+  text-transform: uppercase; cursor: pointer; opacity: .8; background: none; box-shadow: none;
+}
+.c-danger:hover { opacity: 1; }
 
 /* ── New-lead pulse (§9) — the ONLY animated element in the system ──────── */
 .c-newpulse {

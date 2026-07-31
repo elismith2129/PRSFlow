@@ -2039,7 +2039,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, minWidth: 0, flex: 1, flexWrap: 'wrap' }}>
             {lead.billing !== 'COD' ? (
               <>
-                <div className="c-well" style={{ display: 'inline-grid', minWidth: '3ch', position: 'relative' }}>
+                <div className="c-field-inline" style={{ display: 'inline-grid', minWidth: '3ch', position: 'relative' }}>
                   <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
                     {local.label || 'Label'}
                   </span>
@@ -2061,7 +2061,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                   )}
                 </div>
                 <span style={{ color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, flexShrink: 0 }}> — </span>
-                <div className="c-well" style={{ display: 'inline-grid', minWidth: '3ch' }}>
+                <div className="c-field-inline" style={{ display: 'inline-grid', minWidth: '3ch' }}>
                   <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
                     {local.artist_name || 'Artist'}
                   </span>
@@ -2078,7 +2078,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
               </>
             ) : (
               <>
-                <div className="c-well" style={{ display: 'inline-grid', minWidth: '3ch' }}>
+                <div className="c-field-inline" style={{ display: 'inline-grid', minWidth: '3ch' }}>
                   <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
                     {fnameVal || 'First'}
                   </span>
@@ -2092,7 +2092,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: leadNameColor(lead), fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
                   />
                 </div>
-                <div className="c-well" style={{ display: 'inline-grid', minWidth: '3ch' }}>
+                <div className="c-field-inline" style={{ display: 'inline-grid', minWidth: '3ch' }}>
                   <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
                     {lnameVal || 'Last'}
                   </span>
@@ -2164,7 +2164,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
         {/* Stage name (COD only) */}
         {lead.billing === 'COD' && (
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 6, minWidth: 0 }}>
-            <div className="c-well" style={{ display: 'inline-grid', minWidth: '3ch' }}>
+            <div className="c-field-inline" style={{ display: 'inline-grid', minWidth: '3ch' }}>
               <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
                 {local.artist_name || 'Artist name'}
               </span>
@@ -2184,7 +2184,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
         {/* Row 2 (Label/Billing only): A&R name line */}
         {lead.billing !== 'COD' && (
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 6, minWidth: 0, flexWrap: 'wrap' }}>
-            <div className="c-well" style={{ display: 'inline-grid', minWidth: '3ch' }}>
+            <div className="c-field-inline" style={{ display: 'inline-grid', minWidth: '3ch' }}>
               <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
                 {fnameVal || 'First'}
               </span>
@@ -2198,7 +2198,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg-2)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
               />
             </div>
-            <div className="c-well" style={{ display: 'inline-grid', minWidth: '3ch' }}>
+            <div className="c-field-inline" style={{ display: 'inline-grid', minWidth: '3ch' }}>
               <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
                 {lnameVal || 'Last'}
               </span>
