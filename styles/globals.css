@@ -161,10 +161,10 @@ html[data-theme="light"] {
 
 /* (PART 3) Unique per-panel gradients in light mode. Declared after the glass-card
    rule so they win at equal specificity; the frosted border/shadow still apply. */
-[data-theme="light"] [data-panel="needs-action"]   { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="today-sessions"] { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="tasks"]          { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="flags"]          { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
+/* The four dashboard panels (needs-action / today-sessions / tasks / flags) were
+   removed here on 2026-07-30: the dashboard migrated to the carved system, which
+   carries its own surface treatment, and those data-panel hooks no longer exist
+   in the markup. This is the override layer shrinking as intended (spec §1 step 5). */
 [data-theme="light"] [data-panel="crm-leads"]      { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
 [data-theme="light"] [data-panel="crm-detail"]     { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
 [data-theme="light"] [data-panel="crm-registrations"] { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
@@ -172,21 +172,11 @@ html[data-theme="light"] {
 [data-theme="light"] [data-panel="clients-detail"] { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
 [data-theme="light"] [data-panel="admin-sidebar"]  { background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important; }
 
-/* (FIX 2) Dashboard session room cells: clean white slots with visible borders in
-   light mode. Empty cells get a faint grey; occupied cells win via the
-   [data-session-active] rule below (light blue). */
-[data-theme="light"] [data-room-cell] {
-  background: #f8fafc !important;
-  border-color: #e2e8f0 !important;
-}
-
-/* (PART 2.6) Active/occupied session cards read light-blue in light mode instead of
-   the dark-teal accent used in dark mode (dashboard room cards + calendar chips). */
-[data-theme="light"] [data-session-active] {
-  background: #eff6ff !important;
-  border-color: #3b82f6 !important;
-  box-shadow: inset 0 0 18px rgba(59, 130, 246, 0.10) !important;
-}
+/* [data-room-cell] and [data-session-active] rules were removed on 2026-07-30 with
+   the dashboard's carved migration. Room cards are now carved pools (.c-pool +
+   status fill) and empty rooms are second-level cuts (.c-inset2), both of which
+   handle their own light/dark registers — so these light-only patches are dead.
+   Both attributes were dashboard-only; nothing else referenced them. */
 
 /* (FIX 4) Daily-ops modal + drawer cards are solid white in light mode (their inline
    background is var(--bg) = transparent, which was showing the dark overlay). */
@@ -286,14 +276,8 @@ html[data-theme="light"] {
   border-radius: 6px;
 }
 
-/* (FIX 4) Distinct glass treatment for the dashboard studio cards in light mode. */
-[data-theme="light"] [data-studio-card] {
-  background: rgba(255, 255, 255, 0.7) !important;
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.9) !important;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06) !important;
-}
+/* [data-studio-card] removed 2026-07-30 — the LocationStrip cards are carved
+   raised controls now and carry their own light/dark treatment. */
 
 /* (FIX 5) Selected lead row: subtle blue tint + a blue left bar (inset shadow, so no
    layout shift) in light mode. */
@@ -302,13 +286,9 @@ html[data-theme="light"] {
   box-shadow: inset 3px 0 0 #3b82f6 !important;
 }
 
-/* (FIX 1) Unique alternating gradients per studio card in light mode. Declared after
-   [data-studio-card] so the gradient replaces the bg while the glass backdrop-filter /
-   border / shadow remain. */
-[data-theme="light"] [data-studio-index="0"] { background: linear-gradient(135deg, #dbeafe 0%, rgba(255,255,255,0.7) 100%) !important; }
-[data-theme="light"] [data-studio-index="1"] { background: linear-gradient(135deg, #ffe4e6 0%, rgba(255,255,255,0.7) 100%) !important; }
-[data-theme="light"] [data-studio-index="2"] { background: linear-gradient(135deg, #dbeafe 0%, rgba(255,255,255,0.7) 100%) !important; }
-[data-theme="light"] [data-studio-index="3"] { background: linear-gradient(135deg, #ffe4e6 0%, rgba(255,255,255,0.7) 100%) !important; }
+/* The four per-studio alternating gradients ([data-studio-index]) were removed
+   2026-07-30 with the LocationStrip migration. Per-studio colour coding was
+   already retired once before; the carved system has no place for it (Law 3). */
 
 /* (FIX 2) Daily Ops session cards — Yesterday blue / Today rose. Fixed-overlay
    context so they outrank the modal-opaque rule (equal specificity, later → wins). */
@@ -860,6 +840,33 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
               inset 5px 5px 14px rgba(42, 39, 34, .08),
               inset -5px -5px 14px rgba(255, 255, 255, .7);
 }
+
+/* ── Display anchors + small utilities ──────────────────────────────────── */
+/* Date chip: an object resting on the surface, not a hole and not pressable. */
+.c-datechip {
+  border-radius: 99px; padding: 12px 20px; text-align: center;
+  font-size: 17px; line-height: 1.15;
+  background: var(--c-wash2); color: var(--c-fg);
+}
+[data-theme="light"] .c-datechip { background: var(--c-fg); color: var(--c-bg); }
+.c-datechip small {
+  display: block; font-size: 11px; opacity: 0.6;
+  font-family: 'Inter', sans-serif; font-weight: 800; letter-spacing: 0.1em;
+}
+
+/* Full-width control (panel footers: + new lead / + add task / + add flag). */
+.c-block { display: flex; width: 100%; }
+/* Compact pill for dense tab rows. */
+.c-soft-sm { padding: 4px 11px; font-size: 8.5px; }
+/* Bare dismiss affordance — not a raised control, so it gets no shadow. */
+.c-x {
+  background: none; cursor: pointer; flex-shrink: 0;
+  color: var(--c-fg); opacity: 0.4; font-size: 15px; line-height: 1; padding: 0 2px;
+}
+.c-x:hover { opacity: 0.8; }
+/* Empty room cards hint they're clickable without lifting — containers don't lift. */
+.c-room-empty { transition: opacity .16s ease; }
+.c-room-empty:hover { opacity: 0.85; }
 
 /* ── Status fills (§5) — the only colour in the system ──────────────────── */
 /* Solid fills at full brightness. Light mode uses them as-is; dark dims by rule

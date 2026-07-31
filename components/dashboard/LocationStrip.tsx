@@ -6,6 +6,7 @@ import { DailyOpsModal, type DailyOpsSubmission } from '@/components/dashboard/D
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 import { CHECKLISTS, flattenSections } from '@/lib/checklist-items'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { StatusDot } from '@/components/carved'
 
 const LOCATIONS = [
   { label: 'Paramount', key: 'paramount', abbr: 'PRS' },
@@ -339,21 +340,21 @@ export function LocationStrip() {
           const pending  = s?.pendingCount ?? 0
           const active   = sessCount > 0
           return (
+            // Carved: these open the daily-ops drawer, so by Law 2 they are
+            // controls — raised, and they press in when held. The old bordered
+            // surface card and its hover borderColor swap are gone (Law 1).
             <div key={loc.key} onClick={() => openDrawer(loc)}
-              data-studio-card=""
-              data-studio-index={i}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--text3)')}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-              style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.15s' }}
+              className="c-control c-raised"
+              style={{ borderRadius: 26, padding: '13px 17px', cursor: 'pointer' }}
             >
-              <div style={{ padding: '10px 14px 12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>{loc.label}</div>
-
-                </div>
-                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: active ? 'var(--accent)' : 'var(--cold)', marginTop: 2 }}>
-                  {loadingSummary ? '…' : active ? `${sessCount} SESSION${sessCount !== 1 ? 'S' : ''}` : 'OPEN'}
-                </div>
+              <div className="c-arch" style={{ fontSize: 15, lineHeight: 1.2 }}>{loc.label}</div>
+              {/* A live session is session status, so it earns colour — but as a
+                  dot, not coloured text (§5: status is always a fill, never tinted
+                  type). This deviates from the mock, which tinted the count text
+                  in dark mode only. */}
+              <div className="c-label" style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, opacity: active ? 0.85 : 0.45 }}>
+                {active && !loadingSummary && <StatusDot status="booked" />}
+                {loadingSummary ? '…' : active ? `${sessCount} session${sessCount !== 1 ? 's' : ''}` : 'Open'}
               </div>
             </div>
           )

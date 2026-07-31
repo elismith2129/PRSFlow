@@ -7,6 +7,7 @@ import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 import { deleteSessionAndWO } from '@/lib/deleteSession'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
+import { Row, SoftButton, StatusDot, NewLeadPulse, statusFillClass } from '@/components/carved'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { ASSIGN_OPTIONS, resolveAssignTo, nameForId, visibleTabsForRole, idsForTab, fetchTasks, fetchMyTasks, fetchMyCompletedTasks, isOwnOnlyRole } from '@/lib/tasks'
@@ -787,23 +788,25 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div id="dashboard-content" style={{ opacity: contentReady && !showWelcome ? 1 : 0, transition: 'opacity 0.3s ease' }}>
-      {/* Header */}
+      <div id="dashboard-content" className="c-root" style={{ opacity: contentReady && !showWelcome ? 1 : 0, transition: 'opacity 0.3s ease' }}>
+      {/* Header — carved: tiny tracked-out label over a mixed-case Archivo display
+          line, with the clock as a display anchor resting on the surface. The
+          all-caps shout and the accent-coloured italic were retired by the
+          redesign (spec §4: mixed case, and there is no accent colour). */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'flex-end', marginBottom: 20 }}>
         <div>
-          <div style={{ fontFamily: 'Syne', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 4 }}>
+          <div className="c-label" style={{ marginBottom: 6 }}>
             {greeting}{greetingName} — here's your briefing
           </div>
-          <h1 style={{ fontFamily: 'DM Serif Display', fontSize: isMobile ? 26 : 32, letterSpacing: -1, lineHeight: 1.05, whiteSpace: isMobile ? 'nowrap' : undefined }}>
-            Paramount <em style={{ fontStyle: 'italic', color: 'var(--accent)' }}>Recording Studios</em>
+          <h1 className="c-arch" style={{ fontSize: isMobile ? 26 : 38, letterSpacing: '-0.03em', lineHeight: 1.04 }}>
+            Paramount{isMobile ? ' ' : <br />}Recording Studios
           </h1>
         </div>
-        {/* Desktop-only live clock — date + time on one line, bottom-aligned with
-            the heading, matching its Syne ExtraBold weight */}
+        {/* Desktop-only live clock */}
         {!isMobile && (
-          <div style={{ flexShrink: 0, paddingLeft: 24, textAlign: 'right', fontFamily: 'DM Serif Display', fontSize: 28, letterSpacing: '0.02em', lineHeight: 1.05, whiteSpace: 'nowrap' }}>
-            <span style={{ color: 'var(--accent)' }}>{clockDate.toUpperCase()}</span>
-            <span style={{ marginLeft: 12, color: 'var(--text)' }}>{clockTime}</span>
+          <div className="c-datechip c-anchor c-arch" style={{ flexShrink: 0, marginLeft: 24 }}>
+            {clockDate.toUpperCase()}
+            <small>{clockTime}</small>
           </div>
         )}
       </div>
@@ -816,121 +819,78 @@ export default function DashboardPage() {
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr 1fr', gap: 14, alignItems: 'start', marginTop: 14 }}>
 
         {/* COL 1 — NEEDS ACTION */}
-        <div data-panel="needs-action" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', order: isMobile ? 2 : 0 }}>
-          <div style={{ padding: '13px 16px 0', borderBottom: '1px solid var(--border)' }}>
-            <SectionHeader
-              title="NEEDS ACTION"
-              action={{ label: 'View all in CRM →', onClick: () => router.push('/crm') }}
-              actionColor="var(--cold)"
-            />
-          </div>
-          <div style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="c-panel" style={{ order: isMobile ? 2 : 0 }}>
+          <SectionHeader
+            carved
+            title="Needs action"
+            action={{ label: 'View all in CRM →', onClick: () => router.push('/crm') }}
+          />
+          <div>
             {loading ? (
-              <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
+              <div className="c-sub" style={{ padding: '12px 4px' }}>Loading…</div>
             ) : needsActionLeads.length === 0 ? (
-              <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 11 }}>✓ All clear</div>
+              <div className="c-sub" style={{ padding: '12px 4px' }}>✓ All clear</div>
             ) : (
-              needsActionLeads.map((l, i) => {
+              needsActionLeads.map(l => {
                 const reason =
                   l.status === 'hot' ? 'Follow up now' :
                   l.status === 'warm' ? 'Follow up due' :
                   l.status === 'uncontacted' ? 'Never contacted' :
                   'Needs attention'
-                // New unaddressed Web Inquiry → persistent lime pulse + NEW badge
-                // (clears when the lead's status changes away from 'uncontacted').
+                // New unaddressed Web Inquiry → the §9 pulse dot in the leading
+                // position (clears when the lead's status moves off 'uncontacted').
+                // Replaces the old box-shadow row pulse + corner NEW badge: §9 makes
+                // .c-newpulse the only animated element in the app, and the accent
+                // colour the badge used no longer exists.
                 const isNewInquiry = isUnacked(l.id)
                 return (
-                  <div
-                    key={l.id}
-                    onClick={() => router.push(`/crm?lead=${l.id}`)}
-                    style={{
-                      position: 'relative',
-                      padding: '9px 16px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      borderBottom: i < needsActionLeads.length - 1 ? '1px solid var(--border)' : 'none',
-                      cursor: 'pointer',
-                      ...(isNewInquiry ? {
-                        background: 'rgba(var(--accent-rgb), 0.05)',
-                        animation: 'webInquiryPulse 2s ease-in-out infinite',
-                        zIndex: 1,
-                      } : {}),
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{l.fname} {l.lname}</div>
-                      <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>{reason}</div>
+                  <Row key={l.id} onClick={() => router.push(`/crm?lead=${l.id}`)}>
+                    {isNewInquiry && <NewLeadPulse />}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700 }}>{l.fname} {l.lname}</div>
+                      <div className="c-sub" style={{ fontSize: 11.5 }}>{reason}</div>
                     </div>
-                    <StatusBadge status={l.status} />
-                    {isNewInquiry && (
-                      <span style={{
-                        position: 'absolute', top: 4, right: 4,
-                        background: 'var(--accent)', color: 'var(--bg)',
-                        fontSize: 8, fontFamily: 'Inter', fontWeight: 700,
-                        letterSpacing: '0.08em', padding: '1px 4px', borderRadius: 3, lineHeight: 1.4,
-                      }}>
-                        NEW
-                      </span>
-                    )}
-                  </div>
+                    <StatusBadge carved status={l.status} />
+                  </Row>
                 )
               })
             )}
           </div>
           {/* Footer: new lead — opens the CRM New Lead modal via ?newLead=1 */}
-          <div style={{ padding: '8px', borderTop: '1px solid var(--border)' }}>
-            <button
-              onClick={() => router.push('/crm?newLead=1')}
-              style={{
-                width: '100%', padding: isMobile ? '13px' : '8px', fontSize: 11, fontFamily: 'Inter',
-                color: 'var(--text3)', background: 'transparent', letterSpacing: '0.04em',
-                border: '1px dashed var(--border)', borderRadius: 8, cursor: 'pointer',
-                minHeight: isMobile ? 44 : undefined,
-                transition: 'all 0.15s',
-              }}
-            >
+          <div style={{ marginTop: 8 }}>
+            <SoftButton onClick={() => router.push('/crm?newLead=1')} className="c-block">
               + new lead
-            </button>
+            </SoftButton>
           </div>
         </div>
 
         {/* COL 2 — TODAY'S SESSIONS */}
-        <div data-panel="today-sessions" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', height: isMobile ? 'auto' : 556, order: isMobile ? 1 : 0 }}>
-          <div style={{ padding: isMobile ? '13px 16px' : '13px 16px 0', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: isMobile ? 'center' : 'flex-start', justifyContent: 'space-between' }}>
-            <SectionHeader title="TODAY'S SESSIONS" />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button
-                onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() - 1); return n })}
-                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text2)', cursor: 'pointer', padding: '2px 7px', fontSize: 13, lineHeight: 1, minWidth: isMobile ? 44 : undefined, minHeight: isMobile ? 44 : undefined, display: isMobile ? 'flex' : undefined, alignItems: isMobile ? 'center' : undefined, justifyContent: isMobile ? 'center' : undefined }}
-              >‹</button>
-              <div style={{ fontSize: isMobile ? 11 : 10, fontFamily: 'Inter', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
+        <div className="c-panel" style={{ height: isMobile ? 'auto' : 556, order: isMobile ? 1 : 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <SectionHeader carved title="Today's sessions" />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14, flexShrink: 0 }}>
+              <SoftButton onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() - 1); return n })}>‹</SoftButton>
+              <div className="c-mono" style={{ whiteSpace: 'nowrap', opacity: 0.6 }}>
                 {calDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
               </div>
-              <button
-                onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() + 1); return n })}
-                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text2)', cursor: 'pointer', padding: '2px 7px', fontSize: 13, lineHeight: 1, minWidth: isMobile ? 44 : undefined, minHeight: isMobile ? 44 : undefined, display: isMobile ? 'flex' : undefined, alignItems: isMobile ? 'center' : undefined, justifyContent: isMobile ? 'center' : undefined }}
-              >›</button>
+              <SoftButton onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() + 1); return n })}>›</SoftButton>
             </div>
           </div>
           {loading ? (
-            <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
+            <div className="c-sub" style={{ padding: '12px 4px' }}>Loading…</div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 4, padding: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 9 }}>
               {ROOMS.map(room => {
                 const booking = bookings.find(b =>
                   b.location === room.venue && b.studio === room.studio
                 )
                 const isBilling = booking?.payment_type === 'billing'
-                const topColor = booking?.status === 'confirmed' ? 'var(--booked)' : booking?.status === 'tentative' ? 'var(--warm)' : null
-                // Card state accent: orange (attention) takes priority over teal (occupied); null = empty
-                const cardAccent = topColor === 'var(--warm)' ? 'var(--warm)' : booking ? 'var(--booked)' : null
-                const cardBorder = cardAccent === 'var(--warm)' ? 'rgba(249, 115, 22, 0.35)'
-                  : cardAccent === 'var(--booked)' ? 'rgba(20, 184, 166, 0.35)'
-                  : 'rgba(255, 255, 255, 0.08)'
-                const cardGlow = cardAccent === 'var(--warm)' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
-                  : cardAccent === 'var(--booked)' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
-                  : 'none'
+                // Carved: the room card IS the session status — a colored pool cut
+                // into the surface. Tentative (warm) still takes priority over
+                // confirmed, exactly as the old accent logic did.
+                const poolStatus = booking?.status === 'tentative' ? 'tentative' : booking ? 'confirmed' : null
                 const primaryName = booking
                   ? (isBilling ? (booking.artist || booking.label || booking.client_name || '') : (booking.client_name || ''))
                   : ''
@@ -939,72 +899,41 @@ export default function DashboardPage() {
                   ? `${fmtSessionTime(booking.from_time)}–${fmtSessionTime(booking.to_time)}`
                   : booking?.from_time ? fmtSessionTime(booking.from_time) : ''
                 const eng = booking?.engineer_name ? engInitials(booking.engineer_name) : ''
-                const engColor = booking?.engineer_status === 'confirmed' ? '#4ef0a2'
-                  : booking?.engineer_status === 'hold' ? '#f0a24e'
-                  : 'rgba(255,255,255,0.4)'
                 const asst = booking?.assistant_name ? engInitials(booking.assistant_name) : ''
-                const asstColor = booking?.assistant_status === 'confirmed' ? '#4ef0a2'
-                  : booking?.assistant_status === 'hold' ? '#f0a24e'
-                  : 'rgba(255,255,255,0.4)'
                 const isEmpty = !booking
-                // Empty cards hint they're clickable by lightening slightly on hover.
-                const emptyHover = isEmpty && hoverRoom === room.label
                 return (
                   <div
                     key={room.label}
-                    data-session-active={cardAccent === 'var(--booked)' ? '' : undefined}
-                    data-room-cell=""
                     onClick={() => booking ? openBookingEdit(booking) : openNewRoomBooking(room)}
-                    onMouseEnter={isEmpty ? () => setHoverRoom(room.label) : undefined}
-                    onMouseLeave={isEmpty ? () => setHoverRoom(null) : undefined}
+                    className={`c-room ${poolStatus ? `c-pool ${statusFillClass(poolStatus)}` : 'c-inset2 c-room-empty'}`}
                     style={{
-                      position: 'relative',
                       height: isMobile ? undefined : 120,
                       minHeight: isMobile ? 72 : undefined,
-                      borderRadius: 6,
-                      border: `1px solid ${cardBorder}`,
-                      boxShadow: cardGlow,
-                      background: booking ? 'var(--bg)' : (emptyHover ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0,0,0,0.2)'),
-                      padding: isMobile ? '8px 10px' : '7px 9px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      overflow: 'hidden',
-                      boxSizing: 'border-box',
                       cursor: 'pointer',
-                      transition: 'background 0.15s',
+                      overflow: 'hidden',
                     }}
                   >
-                    {cardAccent && (
-                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: cardAccent }} />
-                    )}
-                    <div style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 600, color: 'var(--text2)', letterSpacing: '0.04em', opacity: booking ? 0.9 : 0.75, marginBottom: booking ? 4 : 0 }}>
-                      {room.label}
-                    </div>
+                    <span className="c-room-name">{room.label}</span>
                     {booking && (
                       <>
-                        <div style={{
-                          fontSize: isMobile ? 12 : 13, fontWeight: isMobile ? 600 : undefined, fontFamily: 'DM Serif Display', lineHeight: 1.2, color: 'var(--text)',
+                        <div className="c-room-artist c-arch" style={{
+                          fontSize: isMobile ? 13 : 15, lineHeight: 1.15,
                           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                         }}>
                           {primaryName}
                         </div>
                         {labelLine && (
-                          <div style={{
-                            fontSize: 9, fontFamily: 'Inter', color: 'rgba(255,255,255,0.45)', lineHeight: 1.2, marginTop: 2,
+                          <div className="c-room-meta" style={{
                             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                           }}>
                             {labelLine}
                           </div>
                         )}
-                        {timeStr && (
-                          <div style={{ fontSize: isMobile ? 10 : 9, fontFamily: 'Inter', color: 'rgba(255,255,255,0.75)', lineHeight: 1.2, marginTop: 2 }}>
-                            {timeStr}
-                          </div>
-                        )}
+                        {timeStr && <div className="c-room-meta">{timeStr}</div>}
                         {(eng || asst) && (
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginTop: 'auto' }}>
-                            {eng && <div style={{ fontSize: isMobile ? 10 : 8, fontFamily: 'Inter', color: engColor, whiteSpace: 'nowrap' }}>1ST-{eng}</div>}
-                            {asst && <div style={{ fontSize: isMobile ? 10 : 8, fontFamily: 'Inter', color: asstColor, whiteSpace: 'nowrap' }}>2ND-{asst}</div>}
+                          <div className="c-mono" style={{ marginTop: 'auto', textAlign: 'right', fontSize: 9.5, opacity: 0.55, lineHeight: 1.35 }}>
+                            {eng && <div style={{ whiteSpace: 'nowrap' }}>1ST-{eng}</div>}
+                            {asst && <div style={{ whiteSpace: 'nowrap' }}>2ND-{asst}</div>}
                           </div>
                         )}
                       </>
@@ -1017,99 +946,66 @@ export default function DashboardPage() {
         </div>
 
         {/* COL 3 — TASKS */}
-        <div data-panel="tasks" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', order: isMobile ? 3 : 0 }}>
-          {/* Header */}
-          <div style={{ padding: '13px 16px 0', borderBottom: '1px solid var(--border)' }}>
-            <SectionHeader
-              title="TASKS"
-              count={tasks.length > 0 ? tasks.length : undefined}
-              action={{ label: 'show all tasks →', onClick: () => router.push('/tasks') }}
-              actionColor="var(--cold)"
-            />
-          </div>
+        <div className="c-panel" style={{ order: isMobile ? 3 : 0 }}>
+          <SectionHeader
+            carved
+            title="Tasks"
+            count={tasks.length > 0 ? tasks.length : undefined}
+            action={{ label: 'Show all →', onClick: () => router.push('/tasks') }}
+          />
           {/* Tab row (owner/manager/billing) OR a single "My Tasks" label (own-only tiers) */}
           {ownOnly ? (
-            <div style={{ display: 'flex', alignItems: 'center', padding: isMobile ? '10px 8px' : '8px 6px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
-              <span style={{ fontSize: isMobile ? 11 : 9, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: isMobile ? '0.06em' : '0.03em' }}>
-                My Tasks
-              </span>
-            </div>
+            <div className="c-label" style={{ marginBottom: 13 }}>My Tasks</div>
           ) : (
-            <div className="hide-scrollbar" style={{ display: 'flex', gap: isMobile ? 3 : 2, justifyContent: 'space-between', padding: isMobile ? '6px 8px' : '6px 6px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', overflowX: isMobile ? 'hidden' : 'auto', whiteSpace: 'nowrap' }}>
-              {visibleTabs.map(tab => {
-                const isActive = activeTaskTab === tab.key
-                return (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveTaskTab(tab.key)}
-                    style={{
-                      flexShrink: isMobile ? 1 : 0, flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : undefined,
-                      padding: '0 4px', fontSize: isMobile ? 10 : 9, fontFamily: 'Syne',
-                      fontWeight: isActive ? 700 : 600,
-                      color: isActive ? 'var(--text)' : 'var(--text2)',
-                      background: isActive ? 'var(--surface2)' : 'transparent',
-                      border: 'none', cursor: 'pointer', borderRadius: 6, whiteSpace: 'nowrap',
-                      overflow: isMobile ? 'hidden' : undefined, textOverflow: isMobile ? 'ellipsis' : undefined,
-                      minHeight: isMobile ? 40 : undefined,
-                      textTransform: 'uppercase', letterSpacing: isMobile ? '0.02em' : '0.03em', transition: 'all 0.1s',
-                    }}
-                  >
-                    {tab.label}
-                  </button>
-                )
-              })}
+            <div className="hide-scrollbar" style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 13 }}>
+              {visibleTabs.map(tab => (
+                <SoftButton
+                  key={tab.key}
+                  on={activeTaskTab === tab.key}
+                  onClick={() => setActiveTaskTab(tab.key)}
+                  className="c-soft-sm"
+                >
+                  {tab.label}
+                </SoftButton>
+              ))}
             </div>
           )}
           {/* Task list */}
-          <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 60 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 9, minHeight: 60 }}>
             {tasksLoading ? (
-              <div style={{ padding: '8px', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
+              <div className="c-sub" style={{ padding: '4px' }}>Loading…</div>
             ) : tasks.length === 0 ? (
-              <div style={{ padding: '8px', color: 'var(--text3)', fontSize: 11 }}>No tasks</div>
+              <div className="c-sub" style={{ padding: '4px' }}>No tasks</div>
             ) : (
               tasks.slice(0, 9).map(task => (
                 <div
                   key={task.id}
                   onClick={() => handleOpenTask(task)}
+                  className="c-inset2"
                   style={{
-                    display: 'flex', alignItems: isMobile ? 'center' : 'flex-start', gap: 10,
-                    padding: isMobile ? '6px 10px' : '10px 12px',
-                    background: 'var(--surface2)',
-                    border: task.source !== 'manual' ? '0.5px solid var(--border)' : '0.5px solid var(--border)',
-                    borderLeft: task.source !== 'manual' ? '2px solid var(--warm)' : '0.5px solid var(--border)',
-                    borderRadius: task.source !== 'manual' ? '0 8px 8px 0' : 8,
-                    cursor: 'pointer',
-                    transition: 'border-color 0.15s',
+                    display: 'flex', alignItems: 'center', gap: 9,
+                    padding: '11px 14px', borderRadius: 14,
+                    fontSize: 13, cursor: 'pointer',
                   }}
                 >
-                  <div style={{
-                    width: 6, height: 6, borderRadius: '50%',
-                    background: 'var(--warm)',
-                    marginTop: isMobile ? 0 : 4, flexShrink: 0,
-                  }} />
+                  {/* Runner/WO-sourced tasks keep their warm status dot; the old
+                      2px warm left border is gone (Law 1: no borders). */}
+                  <StatusDot status={task.source !== 'manual' ? 'warm' : 'dead'} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: isMobile ? 11 : 12, color: 'var(--text)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {task.text}
                     </div>
                     {task.due_date && (
-                      <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 3, fontFamily: 'Inter' }}>
-                        Due {task.due_date}
-                      </div>
+                      <div className="c-sub" style={{ fontSize: 11 }}>Due {task.due_date}</div>
                     )}
                     {task.source !== 'manual' && task.source_label && (
-                      <div style={{ fontSize: 9, color: 'var(--warm)', marginTop: 3, fontFamily: 'Inter' }}>
-                        {task.source_label}
-                      </div>
+                      <div className="c-sub" style={{ fontSize: 11 }}>{task.source_label}</div>
                     )}
                   </div>
                   <button
                     onClick={e => { e.stopPropagation(); handleDeleteTask(task) }}
-                    style={{
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      color: 'var(--text3)', fontSize: isMobile ? 18 : 14, padding: '0 2px',
-                      lineHeight: 1, flexShrink: 0, opacity: 0.4,
-                      minWidth: isMobile ? 44 : undefined,
-                    }}
+                    className="c-x"
+                    style={{ minWidth: isMobile ? 44 : undefined }}
                   >
                     ×
                   </button>
@@ -1119,97 +1015,72 @@ export default function DashboardPage() {
             {!tasksLoading && tasks.length > 9 && (
               <div
                 onClick={() => router.push('/tasks')}
-                style={{ fontSize: 10, color: 'var(--cold)', fontFamily: 'Inter', padding: '2px 4px', cursor: 'pointer' }}
+                className="c-sub"
+                style={{ fontSize: 11, padding: '2px 4px', cursor: 'pointer' }}
               >
                 + {tasks.length - 9} more
               </div>
             )}
           </div>
           {/* Footer: add task — opens the full modal */}
-          <div style={{ padding: '8px', borderTop: '1px solid var(--border)' }}>
-            <button
-              onClick={openAddTask}
-              style={{
-                width: '100%', padding: isMobile ? '13px' : '8px', fontSize: 11, fontFamily: 'Inter',
-                color: 'var(--text3)', background: 'transparent', letterSpacing: '0.04em',
-                border: '1px dashed var(--border)', borderRadius: 8, cursor: 'pointer',
-                minHeight: isMobile ? 44 : undefined,
-                transition: 'all 0.15s',
-              }}
-            >
-              + add task
-            </button>
+          <div style={{ marginTop: 8 }}>
+            <SoftButton onClick={openAddTask} className="c-block">+ add task</SoftButton>
           </div>
         </div>
 
       </div>
 
       {/* FLAGS PANEL */}
-      <div data-panel="flags" style={{ marginTop: 14, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-        <div style={{ padding: '13px 16px 0', borderBottom: '1px solid var(--border)' }}>
-          <SectionHeader
-            title="FLAGS"
-            count={flags.filter(f => f.status === 'pending').length > 0 ? flags.filter(f => f.status === 'pending').length : undefined}
-            countColor="orange"
-            action={{ label: 'View all flags →', onClick: () => router.push('/admin?section=flags_log') }}
-            actionColor="var(--cold)"
-          />
-        </div>
+      <div className="c-panel" style={{ marginTop: 14 }}>
+        <SectionHeader
+          carved
+          title="Flags"
+          count={flags.filter(f => f.status === 'pending').length > 0 ? flags.filter(f => f.status === 'pending').length : undefined}
+          action={{ label: 'View all flags →', onClick: () => router.push('/admin?section=flags_log') }}
+        />
         {flagsLoading ? (
-          <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
+          <div className="c-sub" style={{ padding: '12px 4px' }}>Loading…</div>
         ) : flags.length === 0 ? (
-          <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 11 }}>No open flags</div>
+          <div className="c-sub" style={{ padding: '12px 4px' }}>No open flags</div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10, padding: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
             {flags.map(flag => {
-              const statusColor = flag.status === 'pending' ? 'var(--hot)' : flag.status === 'acknowledged' ? 'var(--warm)' : 'var(--booked)'
-              const borderColor = statusColor
-              const categoryConfig: Record<string, { label: string; color: string; bg: string }> = {
-                facility_general: { label: 'Facility / General', color: 'var(--text3)', bg: 'var(--surface2)' },
-                gear_equipment: { label: 'Gear / Equipment', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
-                client_billing: { label: 'Client / Billing', color: '#60A5FA', bg: 'rgba(96,165,250,0.12)' },
+              const CATEGORY_LABELS: Record<string, string> = {
+                facility_general: 'Facility / General',
+                gear_equipment: 'Gear / Equipment',
+                client_billing: 'Client / Billing',
               }
-              const catInfo = flag.category ? categoryConfig[flag.category] : null
+              const catLabel = flag.category ? CATEGORY_LABELS[flag.category] : null
               return (
                 <div
                   key={flag.id}
                   onClick={() => handleOpenFlag(flag)}
-                  style={{
-                    padding: '10px 12px',
-                    background: 'var(--surface2)',
-                    border: '0.5px solid var(--border)',
-                    borderLeft: `2px solid ${borderColor}`,
-                    borderRadius: '0 8px 8px 0',
-                    cursor: 'pointer',
-                  }}
+                  className="c-inset2"
+                  style={{ padding: '12px 14px', borderRadius: 18, cursor: 'pointer' }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(232,234,240,0.7)', textTransform: 'uppercase', background: 'var(--surface)', padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)' }}>
-                        {flag.studio}
-                      </span>
-                      {catInfo && (
-                        <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text3)', background: 'var(--surface2)', padding: '2px 6px', borderRadius: 4, textTransform: 'uppercase', border: '0.5px solid var(--border)' }}>
-                          {catInfo.label}
-                        </span>
-                      )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                      {/* Studio + category were bordered chips; carved uses plain
+                          tracked-out labels — colour belongs to status only. */}
+                      <span className="c-label" style={{ opacity: 0.7 }}>{flag.studio}</span>
+                      {catLabel && <span className="c-label" style={{ fontSize: 9 }}>{catLabel}</span>}
                     </div>
-                    <StatusBadge status={flag.status} />
+                    <StatusBadge carved status={flag.status} />
                   </div>
                   {flag.runner_note && (
-                    <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.4, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontSize: 12.5, lineHeight: 1.4, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
                       {flag.runner_note}
                     </div>
                   )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, gap: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, gap: 8 }}>
                     {flag.source_label ? (
-                      <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+                      <div className="c-sub" style={{ fontSize: 11, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
                         {flag.source_label}
                       </div>
                     ) : (
                       <div style={{ flex: 1 }} />
                     )}
-                    <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    <div className="c-mono" style={{ fontSize: 11, opacity: 0.5, whiteSpace: 'nowrap', flexShrink: 0 }}>
                       {new Date(flag.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </div>
                   </div>
@@ -1219,19 +1090,8 @@ export default function DashboardPage() {
           </div>
         )}
         {/* Footer: add flag — opens the full modal */}
-        <div style={{ padding: '8px', borderTop: '1px solid var(--border)' }}>
-          <button
-            onClick={() => setAddingFlag(true)}
-            style={{
-              width: '100%', padding: isMobile ? '13px' : '8px', fontSize: 11, fontFamily: 'Inter',
-              color: 'var(--text3)', background: 'transparent', letterSpacing: '0.04em',
-              border: '1px dashed var(--border)', borderRadius: 8, cursor: 'pointer',
-              minHeight: isMobile ? 44 : undefined,
-              transition: 'all 0.15s',
-            }}
-          >
-            + add flag
-          </button>
+        <div style={{ marginTop: 8 }}>
+          <SoftButton onClick={() => setAddingFlag(true)} className="c-block">+ add flag</SoftButton>
         </div>
       </div>
 
