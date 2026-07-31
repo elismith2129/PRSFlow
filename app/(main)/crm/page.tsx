@@ -12,6 +12,7 @@ import StudioSelect from '@/components/shared/StudioSelect'
 import { RegViewModal, RegField } from '@/components/shared/RegViewModal'
 import { combineLocation, parseLocation } from '@/lib/studios'
 import { STARTER_TAGS } from '@/lib/tags'
+import { StatusDot, NewLeadPulse, statusFillClass } from '@/components/carved'
 import { addArtistToLabel } from '@/lib/roster'
 import { ClientsPageInner } from '@/app/(main)/clients/page'
 import { RegistrationBanner } from '@/components/clients/RegistrationBanner'
@@ -23,18 +24,18 @@ import { useWebInquiries } from '@/components/notifications/WebInquiryProvider'
 import { dbResult } from '@/lib/db'
 
 const STATUS_COLORS: Record<string, string> = {
-  hot: 'var(--hot)', warm: 'var(--warm)', cold: 'var(--cold)',
-  uncontacted: 'var(--uncontacted)', booked: 'var(--booked)', dead: 'var(--text3)'
+  hot: 'var(--c-st-hot)', warm: 'var(--c-st-warm)', cold: 'var(--c-fg-3)',
+  uncontacted: 'var(--c-st-uncon)', booked: 'var(--c-st-booked)', dead: 'var(--c-fg-3)'
 }
 
 // Temperature color per status — used for both the avatar ring and its text.
 const LEAD_AVATAR_COLORS: Record<string, string> = {
-  hot: 'var(--hot)',
-  warm: 'var(--warm)',
-  uncontacted: 'var(--uncontacted)',
-  booked: 'var(--booked)',
-  cold: 'var(--cold-lead)',
-  dead: 'var(--text3)',
+  hot: 'var(--c-st-hot)',
+  warm: 'var(--c-st-warm)',
+  uncontacted: 'var(--c-st-uncon)',
+  booked: 'var(--c-st-booked)',
+  cold: 'var(--c-st-cold)',
+  dead: 'var(--c-fg-3)',
 }
 
 // Display label per status. DB value stays 'dead'; UI shows "DNB" (Did Not Book),
@@ -51,10 +52,21 @@ function leadInitials(l: { fname?: string | null; lname?: string | null }): stri
 
 // Circular initials avatar for lead-list cards: colored ring + matching text,
 // no fill. 36px circle, DM Mono per spec; ring/text keyed to lead temperature.
+// Lead temperature IS one of the three things allowed to carry colour (§5) — but
+// as a solid fill, never as a ring of coloured text. The 2px temperature ring is
+// gone (Law 1: no borders) and the avatar is now a filled status disc with chip
+// ink initials, which also makes the heat readable at a glance from further away.
 function LeadAvatar({ lead }: { lead: Lead }) {
-  const c = LEAD_AVATAR_COLORS[lead.status] || LEAD_AVATAR_COLORS.uncontacted
   return (
-    <div style={{ flexShrink: 0, width: 36, height: 36, borderRadius: '50%', background: 'transparent', border: `2px solid ${c}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Mono, monospace', fontSize: 12, fontWeight: 700, color: c, letterSpacing: '0.02em' }}>
+    <div
+      className={`c-dot ${statusFillClass(lead.status)}`}
+      style={{
+        width: 36, height: 36, flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: 'DM Mono, monospace', fontSize: 12, fontWeight: 700,
+        letterSpacing: '0.02em', color: 'var(--c-chip-ink)',
+      }}
+    >
       {leadInitials(lead) || '—'}
     </div>
   )
@@ -64,30 +76,19 @@ function LeadAvatar({ lead }: { lead: Lead }) {
 // byte-identical inline style objects, so a change to one silently diverged from
 // the other. One definition now.
 //
-// newInquiry drives the same pulse the dashboard Needs Action card uses: a lead
-// that arrived through the public /inquiry form and hasn't been acted on yet
-// glows until its status moves off 'uncontacted' (WebInquiryProvider owns that
-// unacked set — this is purely presentational).
-function leadRowStyle(opts: { selected: boolean; prompting: boolean; newInquiry: boolean }): React.CSSProperties {
-  return {
-    position: 'relative',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '11px 16px',
-    cursor: 'pointer',
-    borderBottom: '1px solid var(--border)',
-    marginBottom: opts.prompting ? 0 : 4,
-    background: opts.selected
-      ? 'rgba(255,255,255,0.04)'
-      : opts.newInquiry
-        ? 'rgba(var(--accent-rgb), 0.05)'
-        : 'transparent',
-    transition: 'background 0.15s',
-    // zIndex lifts the pulsing row above its neighbours' borders so the ring
-    // isn't clipped by the next row.
-    ...(opts.newInquiry ? { animation: 'webInquiryPulse 2s ease-in-out infinite', zIndex: 1 } : {}),
-  }
+// Carved: a capsule row. Selection is a CARVE, not a tint — the row presses into
+// the surface rather than lightening (Law 2: it holds content, so it goes in).
+//
+// The old `webInquiryPulse` box-shadow ring is gone. It pulsed in the retired
+// accent colour, and §9 makes `.c-newpulse` the single animated element in the
+// app: a new inquiry now shows the pulse DOT at the head of the row instead.
+// `isUnacked` still drives it — WebInquiryProvider owns that set; presentation only.
+function leadRowClass(opts: { selected: boolean }): string {
+  return `c-row${opts.selected ? ' c-selected' : ''}`
+}
+
+function leadRowStyle(opts: { prompting: boolean }): React.CSSProperties {
+  return { cursor: 'pointer', marginBottom: opts.prompting ? 0 : 4 }
 }
 
 // First letter of display_name's first word + first letter of its last word,
@@ -102,7 +103,7 @@ function profileInitials(displayName: string | null | undefined): string {
 }
 
 function leadNameColor(_l: { billing?: string | null }): string {
-  return 'var(--text)'
+  return 'var(--c-fg)'
 }
 
 const BOOKING_ICONS: Record<string, string> = {
@@ -113,18 +114,17 @@ const TOUCH_METHODS = ['Call', 'Text', 'Email'] as const
 type TouchMethod = typeof TOUCH_METHODS[number]
 
 const aBtnStyle = (color: string): React.CSSProperties => ({
-  padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)',
-  background: 'var(--surface)', color, fontFamily: 'Inter', fontSize: 9,
+  padding: '2px 7px', borderRadius: 3, background: 'var(--c-bg)', color, fontFamily: 'Inter', fontSize: 9,
   textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap' as const,
 })
 
 const CHART_COLORS = [
-  'var(--accent)', 'var(--accent2)', 'var(--hot)', 'var(--warm)',
-  'var(--booked)', 'var(--cold)', 'var(--uncontacted)', 'var(--text2)',
+  'var(--c-fg)', 'var(--c-st-cold)', 'var(--c-st-hot)', 'var(--c-st-warm)',
+  'var(--c-st-booked)', 'var(--c-fg-3)', 'var(--c-st-uncon)', 'var(--c-fg-2)',
 ]
 
 const fieldLabelStyle: React.CSSProperties = {
-  fontSize: 9, color: 'var(--text3)', letterSpacing: '0.08em',
+  fontSize: 9, color: 'var(--c-fg-3)', letterSpacing: '0.08em',
   textTransform: 'uppercase', marginBottom: 2,
 }
 
@@ -143,14 +143,14 @@ function fmtActivityTime(ts: string) {
 
 function activityColor(note: string): string {
   const n = (note || '').toLowerCase()
-  if (n.includes('call')) return 'var(--hot)'
-  if (n.includes('text')) return 'var(--warm)'
-  if (n.includes('email')) return 'var(--uncontacted)'
-  if (n.includes('kept hot') || n.includes('keep hot')) return 'var(--hot)'
-  if (n.includes('kept warm') || n.includes('keep warm')) return 'var(--warm)'
-  if (n.includes('registration returned') || n.includes('reg returned')) return 'var(--booked)'
-  if (n.includes('registration') || n.includes('reg link') || n.includes('reg sent')) return 'var(--accent)'
-  return 'var(--text2)'
+  if (n.includes('call')) return 'var(--c-st-hot)'
+  if (n.includes('text')) return 'var(--c-st-warm)'
+  if (n.includes('email')) return 'var(--c-st-uncon)'
+  if (n.includes('kept hot') || n.includes('keep hot')) return 'var(--c-st-hot)'
+  if (n.includes('kept warm') || n.includes('keep warm')) return 'var(--c-st-warm)'
+  if (n.includes('registration returned') || n.includes('reg returned')) return 'var(--c-st-booked)'
+  if (n.includes('registration') || n.includes('reg link') || n.includes('reg sent')) return 'var(--c-fg)'
+  return 'var(--c-fg-2)'
 }
 
 type AnalyticsRangePreset = 'all' | 'this_month' | 'last_month' | 'this_quarter' | 'last_quarter' | 'this_year' | 'last_year' | 'custom'
@@ -587,16 +587,9 @@ export default function CRMPage() {
       />
 
       {/* LEADS / CLIENTS / REGISTRATIONS / CAMPAIGNS toggle */}
-      <div style={{ display: 'flex', gap: 20, marginBottom: 10, flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexShrink: 0, flexWrap: 'wrap' }}>
         {(['leads', 'clients', 'registrations', ...(profile?.role === 'owner' && (profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com') ? ['campaigns'] : [])] as const).map((t: 'leads' | 'clients' | 'registrations' | 'campaigns') => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            background: 'none', border: 'none',
-            borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
-            padding: '0 0 4px', cursor: 'pointer',
-            fontFamily: 'Syne', fontWeight: 700, fontSize: 13, letterSpacing: '0.08em',
-            textTransform: 'uppercase', color: tab === t ? 'var(--accent)' : 'var(--text3)',
-            transition: 'color 0.15s',
-          }}>
+          <button key={t} onClick={() => setTab(t)} className={`c-soft c-control c-raised${tab === t ? ' c-on' : ''}`} style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em' }}>
             {t === 'leads' ? 'Leads' : t === 'clients' ? 'Clients' : t === 'registrations' ? 'Registrations' : 'Campaigns'}
           </button>
         ))}
@@ -606,28 +599,15 @@ export default function CRMPage() {
         <>
           {/* Sub-nav */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'nowrap', marginBottom: 14, flexShrink: 0 }}>
-            <div className={isMobile ? 'hide-scrollbar' : undefined} style={{ display: 'flex', gap: 2, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 3, maxWidth: '100%', flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : undefined, overflowX: isMobile ? 'auto' : undefined }}>
+            <div className={isMobile ? 'hide-scrollbar' : undefined} style={{ display: 'flex', gap: 6, maxWidth: '100%', flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : undefined, overflowX: isMobile ? 'auto' : undefined }}>
               {(['needs-action', 'all-leads', 'analytics'] as CrmView[]).map(v => {
                 const labels: Record<CrmView, string> = { 'needs-action': 'Needs Action', 'all-leads': 'All Leads', 'analytics': 'Analytics' }
                 const active = view === v
                 return (
-                  <button key={v} onClick={() => setView(v)} style={{
-                    position: 'relative', padding: '7px 18px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                    fontFamily: 'Inter', fontSize: 11, fontWeight: 500,
-                    background: active ? 'var(--surface2)' : 'transparent',
-                    color: active ? 'var(--accent)' : 'var(--text2)',
-                    transition: 'all 0.15s',
-                  }}>
+                  <button key={v} onClick={() => setView(v)} className={`c-soft c-control c-raised${active ? ' c-on' : ''}`} style={{ position: 'relative', flexShrink: 0 }}>
                     {labels[v]}
                     {v === 'needs-action' && needsActionCount > 0 && (
-                      <span style={{
-                        position: 'absolute', top: 2, right: 2,
-                        background: 'var(--hot)', color: '#fff',
-                        borderRadius: '50%', minWidth: 16, height: 16,
-                        fontSize: 9, fontFamily: 'Inter', fontWeight: 700,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        padding: '0 3px', lineHeight: 1,
-                      }}>
+                      <span className="c-count" style={{ marginLeft: 6 }}>
                         {needsActionCount > 99 ? '99+' : needsActionCount}
                       </span>
                     )}
@@ -636,13 +616,7 @@ export default function CRMPage() {
               })}
             </div>
             {view !== 'analytics' && (
-              <button onClick={() => setNewLeadOpen(true)} style={{
-                padding: '8px 20px', background: 'transparent', color: 'var(--text)',
-                border: '1px solid var(--border)', borderRadius: 6, fontFamily: 'Syne',
-                fontWeight: 700, fontSize: 11, cursor: 'pointer',
-                letterSpacing: '0.05em', textTransform: 'uppercase',
-                minHeight: isMobile ? 44 : undefined, flexShrink: 0,
-              }}>+ New Lead</button>
+              <button onClick={() => setNewLeadOpen(true)} className="c-btn c-control c-raised-primary" style={{ minHeight: isMobile ? 44 : undefined, flexShrink: 0 }}>+ New Lead</button>
             )}
           </div>
 
@@ -683,17 +657,17 @@ export default function CRMPage() {
 
               {/* Detail panel — full-screen on mobile, right column on desktop */}
               {(!isMobile || selected) && (
-                <div data-panel="crm-detail" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', minHeight: 0, flex: isMobile ? 1 : undefined }}>
+                <div className="c-panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, flex: isMobile ? 1 : undefined }}>
                   {isMobile && selected && (
                     <button
                       onClick={() => setSelectedId(null)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, minHeight: 44, padding: '0 14px', background: 'var(--surface2)', border: 'none', borderBottom: '1px solid var(--border)', color: 'var(--accent)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer' }}
+                      className="c-soft c-control c-raised" style={{ alignSelf: 'flex-start', margin: '0 0 10px', minHeight: 44, flexShrink: 0 }}
                     >
                       ← Leads
                     </button>
                   )}
                   {!selected ? (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--text3)', fontSize: 11 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--c-fg-3)', fontSize: 11 }}>
                       Select a lead to view details
                     </div>
                   ) : (
@@ -846,16 +820,16 @@ function CampaignsPanel({ leads, allTags, profile }: {
     { value: 'dead', label: 'DNB' },
   ]
 
-  const sectionLabel: React.CSSProperties = { fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 8, display: 'block' }
-  const chipBase: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', background: 'transparent', color: 'var(--text3)', transition: 'all 0.12s' }
-  const chipActive: React.CSSProperties = { ...chipBase, background: 'rgba(var(--accent-rgb), 0.12)', border: '1px solid var(--accent)', color: 'var(--accent)' }
+  const sectionLabel: React.CSSProperties = { fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 8, display: 'block' }
+  const chipBase: React.CSSProperties = { borderRadius: 20, padding: '3px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', background: 'transparent', color: 'var(--c-fg-3)', transition: 'all 0.12s' }
+  const chipActive: React.CSSProperties = { ...chipBase, background: 'rgba(var(--accent-rgb), 0.12)', color: 'var(--c-fg)' }
 
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20, paddingBottom: 40 }}>
 
       {/* ── Segment picker ── */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 20px' }}>
-        <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13, marginBottom: 16 }}>Segment</div>
+      <div style={{ background: 'var(--c-bg)', borderRadius: 10, padding: '16px 20px' }}>
+        <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 13, marginBottom: 16 }}>Segment</div>
 
         {/* Status */}
         <div style={{ marginBottom: 14 }}>
@@ -870,7 +844,7 @@ function CampaignsPanel({ leads, allTags, profile }: {
               )
             })}
           </div>
-          {segStatuses.length === 0 && <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 5 }}>All statuses (except Dead)</div>}
+          {segStatuses.length === 0 && <div style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 5 }}>All statuses (except Dead)</div>}
         </div>
 
         {/* Billing */}
@@ -901,19 +875,19 @@ function CampaignsPanel({ leads, allTags, profile }: {
               )
             })}
           </div>
-          {segTags.length === 0 && <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 5 }}>All tags</div>}
+          {segTags.length === 0 && <div style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 5 }}>All tags</div>}
         </div>
       </div>
 
       {/* ── Recipient preview ── */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 20px' }}>
+      <div style={{ background: 'var(--c-bg)', borderRadius: 10, padding: '14px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <span style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 22, color: uniqueRecipients.length === 0 ? 'var(--text3)' : 'var(--accent)' }}>{uniqueRecipients.length}</span>
-            <span style={{ fontFamily: 'Inter', fontSize: 11, color: 'var(--text3)', marginLeft: 8 }}>recipient{uniqueRecipients.length !== 1 ? 's' : ''} match this segment</span>
+            <span style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 22, color: uniqueRecipients.length === 0 ? 'var(--c-fg-3)' : 'var(--c-fg)' }}>{uniqueRecipients.length}</span>
+            <span style={{ fontFamily: 'Inter', fontSize: 11, color: 'var(--c-fg-3)', marginLeft: 8 }}>recipient{uniqueRecipients.length !== 1 ? 's' : ''} match this segment</span>
           </div>
           {uniqueRecipients.length > 0 && (
-            <button onClick={() => setPreviewOpen(o => !o)} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontFamily: 'Inter', fontSize: 10, cursor: 'pointer', padding: 0 }}>
+            <button onClick={() => setPreviewOpen(o => !o)} style={{ background: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 10, cursor: 'pointer', padding: 0 }}>
               {previewOpen ? 'Hide list ▲' : 'Preview list ▼'}
             </button>
           )}
@@ -921,12 +895,12 @@ function CampaignsPanel({ leads, allTags, profile }: {
         {previewOpen && (
           <div style={{ marginTop: 12, maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
             {uniqueRecipients.map(l => (
-              <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 11, fontFamily: 'Inter' }}>
-                <span style={{ color: 'var(--text)', minWidth: 140 }}>{l.fname} {l.lname}</span>
-                <span style={{ color: 'var(--text3)' }}>{l.email}</span>
+              <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0', fontSize: 11, fontFamily: 'Inter' }}>
+                <span style={{ color: 'var(--c-fg)', minWidth: 140 }}>{l.fname} {l.lname}</span>
+                <span style={{ color: 'var(--c-fg-3)' }}>{l.email}</span>
                 {(l.tags || []).length > 0 && (
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                    {(l.tags || []).map(t => <span key={t} style={{ fontSize: 9, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, padding: '1px 6px', color: 'var(--text3)' }}>{t}</span>)}
+                    {(l.tags || []).map(t => <span key={t} style={{ fontSize: 9, background: 'var(--c-wash)', borderRadius: 10, padding: '1px 6px', color: 'var(--c-fg-3)' }}>{t}</span>)}
                   </div>
                 )}
               </div>
@@ -936,15 +910,15 @@ function CampaignsPanel({ leads, allTags, profile }: {
       </div>
 
       {/* ── Compose ── */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 20px' }}>
-        <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 13, marginBottom: 16 }}>Compose</div>
+      <div style={{ background: 'var(--c-bg)', borderRadius: 10, padding: '16px 20px' }}>
+        <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 13, marginBottom: 16 }}>Compose</div>
         <div style={{ marginBottom: 10 }}>
           <span style={sectionLabel}>Subject</span>
           <input
             value={subject}
             onChange={e => setSubject(e.target.value)}
             placeholder="e.g. Studio availability this month at Paramount"
-            style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', fontFamily: 'Inter', fontSize: 12, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
+            style={{ width: '100%', background: 'var(--c-wash)', borderRadius: 6, padding: '8px 10px', fontFamily: 'Inter', fontSize: 12, color: 'var(--c-fg)', outline: 'none', boxSizing: 'border-box' }}
           />
         </div>
         <div>
@@ -954,23 +928,23 @@ function CampaignsPanel({ leads, allTags, profile }: {
             onChange={e => setBody(e.target.value)}
             placeholder={`Hi [First Name],\n\nJust wanted to reach out…`}
             rows={10}
-            style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', fontFamily: 'Inter', fontSize: 12, color: 'var(--text)', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }}
+            style={{ width: '100%', background: 'var(--c-wash)', borderRadius: 6, padding: '8px 10px', fontFamily: 'Inter', fontSize: 12, color: 'var(--c-fg)', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }}
           />
-          <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 4 }}>Use [First Name] to personalize — it will be replaced per recipient.</div>
+          <div style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 4 }}>Use [First Name] to personalize — it will be replaced per recipient.</div>
         </div>
       </div>
 
       {/* ── Send ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {sendResult && (
-          <div style={{ padding: '10px 14px', borderRadius: 6, background: sendResult.ok ? 'rgba(20,184,166,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${sendResult.ok ? 'rgba(20,184,166,0.3)' : 'rgba(239,68,68,0.3)'}`, fontSize: 11, fontFamily: 'Inter', color: sendResult.ok ? 'var(--booked)' : 'var(--hot)' }}>
+          <div style={{ padding: '10px 14px', borderRadius: 6, background: sendResult.ok ? 'rgba(20,184,166,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${sendResult.ok ? 'rgba(20,184,166,0.3)' : 'rgba(239,68,68,0.3)'}`, fontSize: 11, fontFamily: 'Inter', color: sendResult.ok ? 'var(--c-st-booked)' : 'var(--c-st-hot)' }}>
             {sendResult.message}
           </div>
         )}
         <button
           onClick={handleSend}
           disabled={sending || !subject.trim() || !body.trim() || uniqueRecipients.length === 0}
-          style={{ padding: '11px 0', background: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: 8, fontFamily: 'Syne', fontWeight: 700, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: (sending || !subject.trim() || !body.trim() || uniqueRecipients.length === 0) ? 'not-allowed' : 'pointer', opacity: (sending || !subject.trim() || !body.trim() || uniqueRecipients.length === 0) ? 0.5 : 1, transition: 'opacity 0.15s' }}
+          style={{ padding: '11px 0', background: 'var(--c-fg)', color: 'var(--c-bg)', borderRadius: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: (sending || !subject.trim() || !body.trim() || uniqueRecipients.length === 0) ? 'not-allowed' : 'pointer', opacity: (sending || !subject.trim() || !body.trim() || uniqueRecipients.length === 0) ? 0.5 : 1, transition: 'opacity 0.15s' }}
         >
           {sending ? 'Sending…' : `Send to ${uniqueRecipients.length} Recipient${uniqueRecipients.length !== 1 ? 's' : ''}`}
         </button>
@@ -980,7 +954,7 @@ function CampaignsPanel({ leads, allTags, profile }: {
       <div>
         <button
           onClick={() => { setHistoryOpen(o => !o); if (!historyOpen) loadHistory() }}
-          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}
+          style={{ background: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}
         >
           <span style={{ fontSize: 9, transform: historyOpen ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block', transition: 'transform 0.15s' }}>▶</span>
           Campaign History
@@ -988,18 +962,18 @@ function CampaignsPanel({ leads, allTags, profile }: {
         {historyOpen && (
           <div style={{ marginTop: 12 }}>
             {historyLoading ? (
-              <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>Loading…</div>
+              <div style={{ fontSize: 11, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>Loading…</div>
             ) : history.length === 0 ? (
-              <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>No campaigns sent yet.</div>
+              <div style={{ fontSize: 11, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>No campaigns sent yet.</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {history.map(c => (
-                  <div key={c.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px' }}>
+                  <div key={c.id} style={{ background: 'var(--c-bg)', borderRadius: 8, padding: '12px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
-                      <div style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 12, color: 'var(--text)' }}>{c.subject}</div>
-                      <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono', whiteSpace: 'nowrap' }}>{new Date(c.sent_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                      <div style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 12, color: 'var(--c-fg)' }}>{c.subject}</div>
+                      <div style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'DM Mono', whiteSpace: 'nowrap' }}>{new Date(c.sent_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                     </div>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
+                    <div style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>
                       {c.recipient_count} recipient{c.recipient_count !== 1 ? 's' : ''} · sent by {c.sent_by}
                       {c.segment_tags.length > 0 && <> · tags: {c.segment_tags.join(', ')}</>}
                       {c.segment_billing && <> · {c.segment_billing}</>}
@@ -1045,12 +1019,12 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel }: {
   ]
 
   return (
-    <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: 'var(--c-wash)', display: 'flex', flexDirection: 'column', gap: 8 }}>
       {/* Row 1: initials + method buttons */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <div
           title="Logged in as"
-          style={{ width: 70, background: 'var(--surface2)', border: '1px solid var(--border)', color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
+          style={{ width: 70, background: 'var(--c-wash)', color: myInitials ? 'var(--c-fg)' : 'var(--c-fg-3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
         >
           {myInitials || '—'}
         </div>
@@ -1059,11 +1033,11 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel }: {
             const active = method === m
             return (
               <React.Fragment key={m}>
-                <button onClick={() => setMethod(active ? null : m)} style={{ padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.05em', textTransform: 'uppercase', border: `1px solid ${active ? 'var(--text)' : 'var(--border)'}`, background: 'transparent', color: active ? 'var(--text)' : 'var(--text3)', transition: 'all 0.1s' }}>
+                <button onClick={() => setMethod(active ? null : m)} style={{ padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.05em', textTransform: 'uppercase', border: `1px solid ${active ? 'var(--c-fg)' : 'var(--c-wash2)'}`, background: 'transparent', color: active ? 'var(--c-fg)' : 'var(--c-fg-3)', transition: 'all 0.1s' }}>
                   {m}
                 </button>
                 {active && actionHref && (
-                  <a href={actionHref} style={{ padding: '3px 8px', borderRadius: 4, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  <a href={actionHref} style={{ padding: '3px 8px', borderRadius: 4, background: 'transparent', color: 'var(--c-fg-2)', fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                     {actionLabel}
                   </a>
                 )}
@@ -1077,13 +1051,13 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel }: {
         onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
         placeholder="Optional: add context about this touch"
         rows={2}
-        style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
+        style={{ width: '100%', background: 'var(--c-bg)', color: 'var(--c-fg)', padding: '5px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
       />
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? 'var(--accent)' : 'var(--surface)', color: canSubmit ? 'var(--bg)' : 'var(--text3)', border: `1px solid ${canSubmit ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
+        <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? 'var(--c-fg)' : 'var(--c-bg)', color: canSubmit ? 'var(--c-bg)' : 'var(--c-fg-3)', border: `1px solid ${canSubmit ? 'var(--c-fg)' : 'var(--c-wash2)'}`, borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
           {submitting ? '…' : 'Log Touch'}
         </button>
-        <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}>
+        <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--c-fg-3)', borderRadius: 4, fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}>
           Cancel
         </button>
       </div>
@@ -1105,7 +1079,7 @@ function KeepHotPrompt({ leadId, onSubmit, onCancel, label = 'Keep Hot', status 
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const canSubmit = myInitials.length > 0
-  const color = status === 'warm' ? 'var(--warm)' : 'var(--hot)'
+  const color = status === 'warm' ? 'var(--c-st-warm)' : 'var(--c-st-hot)'
   const bgTint = status === 'warm' ? 'rgba(249,115,22,0.07)' : 'rgba(239,68,68,0.07)'
 
   async function handleSubmit() {
@@ -1116,28 +1090,28 @@ function KeepHotPrompt({ leadId, onSubmit, onCancel, label = 'Keep Hot', status 
   }
 
   return (
-    <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: bgTint, borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: bgTint, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div
           title="Logged in as"
-          style={{ width: 70, background: 'var(--surface2)', border: `1px solid ${color}`, color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
+          style={{ width: 70, background: 'var(--c-wash)', border: `1px solid ${color}`, color: myInitials ? 'var(--c-fg)' : 'var(--c-fg-3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
         >
           {myInitials || '—'}
         </div>
-        <span style={{ fontSize: 10, color, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</span>
+        <span style={{ fontSize: 10, color, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</span>
       </div>
       <textarea
         value={notes} onChange={e => setNotes(e.target.value)}
         onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
         placeholder="Optional: add context (e.g. waiting on budget approval)"
         rows={2}
-        style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
+        style={{ width: '100%', background: 'var(--c-bg)', color: 'var(--c-fg)', padding: '5px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 11, outline: 'none', resize: 'none', lineHeight: 1.5 }}
       />
       <div style={{ display: 'flex', gap: 6 }}>
-        <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? color : 'var(--surface)', color: canSubmit ? '#fff' : 'var(--text3)', border: `1px solid ${canSubmit ? color : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
+        <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? color : 'var(--c-bg)', color: canSubmit ? '#fff' : 'var(--c-fg-3)', border: `1px solid ${canSubmit ? color : 'var(--c-wash2)'}`, borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
           {submitting ? '…' : label}
         </button>
-        <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}>
+        <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--c-fg-3)', borderRadius: 4, fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}>
           Cancel
         </button>
       </div>
@@ -1165,18 +1139,18 @@ function DeadLeadPrompt({ leadId, onSubmit, onCancel }: {
   }
 
   return (
-    <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: 'rgba(58,63,82,0.5)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginRight: 4 }}>Mark DNB?</span>
+    <div onClick={e => e.stopPropagation()} style={{ padding: '10px 16px 12px 38px', background: 'rgba(58,63,82,0.5)', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginRight: 4 }}>Mark DNB?</span>
       <div
         title="Logged in as"
-        style={{ width: 70, background: 'var(--surface2)', border: '1px solid var(--dead)', color: myInitials ? 'var(--text)' : 'var(--text3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
+        style={{ width: 70, background: 'var(--c-wash)', color: myInitials ? 'var(--c-fg)' : 'var(--c-fg-3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
       >
         {myInitials || '—'}
       </div>
-      <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? 'var(--dead)' : 'var(--surface)', color: canSubmit ? 'var(--text2)' : 'var(--text3)', border: `1px solid ${canSubmit ? 'var(--border)' : 'var(--border)'}`, borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
+      <button onClick={handleSubmit} disabled={!canSubmit || submitting} style={{ padding: '4px 14px', background: canSubmit ? 'var(--c-st-dead)' : 'var(--c-bg)', color: canSubmit ? 'var(--c-fg-2)' : 'var(--c-fg-3)', border: `1px solid ${canSubmit ? 'var(--c-wash2)' : 'var(--c-wash2)'}`, borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, cursor: canSubmit ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.15s' }}>
         {submitting ? '…' : 'Confirm'}
       </button>
-      <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}>
+      <button onClick={onCancel} style={{ padding: '4px 10px', background: 'transparent', color: 'var(--c-fg-3)', borderRadius: 4, fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}>
         Cancel
       </button>
     </div>
@@ -1230,9 +1204,9 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
   const totalCount = uncontacted.length + hotDue.length + warmDue.length
 
   const tabs: { key: NeedsActionTab; label: string; color: string; items: Lead[]; emptyMsg: string }[] = [
-    { key: 'uncontacted', label: 'Uncontacted', color: 'var(--uncontacted)', items: uncontacted, emptyMsg: 'No fresh uncontacted leads.' },
-    { key: 'hot', label: 'Hot', color: 'var(--hot)', items: hotDue, emptyMsg: 'All hot leads are up to date.' },
-    { key: 'warm', label: 'Warm', color: 'var(--warm)', items: warmDue, emptyMsg: 'All warm leads are up to date.' },
+    { key: 'uncontacted', label: 'Uncontacted', color: 'var(--c-st-uncon)', items: uncontacted, emptyMsg: 'No fresh uncontacted leads.' },
+    { key: 'hot', label: 'Hot', color: 'var(--c-st-hot)', items: hotDue, emptyMsg: 'All hot leads are up to date.' },
+    { key: 'warm', label: 'Warm', color: 'var(--c-st-warm)', items: warmDue, emptyMsg: 'All warm leads are up to date.' },
   ]
   const activeBucket = tabs.find(t => t.key === activeTab)!
 
@@ -1250,28 +1224,23 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
   }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div data-panel="crm-leads" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
+    <div className="c-panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, minHeight: 0 }}>
       {/* Header */}
-      <div style={{ padding: '12px 16px 0', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-        <SectionHeader title="Needs Action" count={totalCount > 0 ? totalCount : undefined} />
+      <div style={{ flexShrink: 0 }}>
+        <SectionHeader carved title="Needs Action" count={totalCount > 0 ? totalCount : undefined} />
         {/* Tab bar */}
-        <div className={isMobile ? 'hide-scrollbar' : undefined} style={{ display: 'flex', gap: 0, overflowX: isMobile ? 'auto' : undefined }}>
+        <div className={isMobile ? 'hide-scrollbar' : undefined} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', overflowX: isMobile ? 'auto' : undefined }}>
           {tabs.map(tab => {
             const active = activeTab === tab.key
             return (
-              <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
-                padding: isMobile ? '6px 8px' : '6px 12px', border: 'none', background: 'transparent', cursor: 'pointer',
-                fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase',
-                color: tab.color,
-                borderBottom: active ? `3px solid ${tab.color}` : '3px solid transparent',
-                marginBottom: -1, transition: 'border-color 0.15s', whiteSpace: 'nowrap',
-                flexShrink: isMobile ? 0 : undefined,
-                opacity: active ? 1 : 0.6,
-              }}>
-                {tab.label}
-                <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 500, color: tab.color }}>
-                  ({tab.items.length})
-                </span>
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`c-soft c-soft-sm c-control c-raised${active ? ' c-on' : ''}`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', flexShrink: 0 }}
+              >
+                <StatusDot status={tab.key} />
+                {tab.label} ({tab.items.length})
               </button>
             )
           })}
@@ -1280,37 +1249,38 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
       {/* Content */}
       <div style={{ overflowY: 'auto', flex: 1 }}>
         {loading ? (
-          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
+          <div className="c-sub" style={{ padding: 20, textAlign: 'center' }}>Loading…</div>
         ) : activeBucket.items.length === 0 ? (
-          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11 }}>{activeBucket.emptyMsg}</div>
+          <div className="c-sub" style={{ padding: 20, textAlign: 'center' }}>{activeBucket.emptyMsg}</div>
         ) : activeBucket.items.map(l => {
           const touch = latestTouches[l.id]
           const isTouchPrompting = touchPromptId === l.id
           const isKeepHotPrompting = keepHotPromptId === l.id
           const isPrompting = isTouchPrompting || isKeepHotPrompting
-          const keepColor = l.status === 'warm' ? 'var(--warm)' : 'var(--hot)'
+          const keepColor = l.status === 'warm' ? 'var(--c-st-warm)' : 'var(--c-st-hot)'
           return (
             <React.Fragment key={l.id}>
-              <div onClick={() => onSelect(l.id)} data-selected={selectedId === l.id ? '' : undefined} style={leadRowStyle({ selected: selectedId === l.id, prompting: isPrompting, newInquiry: isUnacked(l.id) })}>
+              <div onClick={() => onSelect(l.id)} className={leadRowClass({ selected: selectedId === l.id })} style={leadRowStyle({ prompting: isPrompting })}>
+                {isUnacked(l.id) && <NewLeadPulse />}
                 <LeadAvatar lead={l} />
                 <div data-lead-content style={{ flex: 1, minWidth: 0 }}>
                   <div data-lead-name style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
                     {l.label && l.artist_name
-                      ? <>{l.label} <span style={{ color: 'var(--text3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--text3)' }}>/</span> {l.artist_name}</>
+                      ? <>{l.label} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.artist_name}</>
                       : l.artist_name && !l.label
-                        ? <>{l.fname} {l.lname} <span style={{ color: 'var(--text3)' }}>·</span> {l.artist_name}</>
-                        : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--text3)', fontWeight: 400 }}> · {l.company}</span>}</>}
+                        ? <>{l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>·</span> {l.artist_name}</>
+                        : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--c-fg-3)', fontWeight: 400 }}> · {l.company}</span>}</>}
                   </div>
                   {fmtSessionLine(l) && (
-                    <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 10, color: 'var(--c-fg-2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {fmtSessionLine(l)}
                     </div>
                   )}
-                  <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 10, color: 'var(--c-fg-2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {l.booking && <span>{BOOKING_ICONS[l.booking] || ''} {l.booking} · </span>}
                     {activeBucket.key === 'uncontacted'
-                      ? <span style={{ color: 'var(--text3)' }}>never contacted · added {fmtDate(l.created_at)}</span>
-                      : <>{daysSince(l.last_contact || l.created_at)}d ago{touch?.initials && <span style={{ color: 'var(--text2)' }}> · {touch.initials}{touch.method ? ` via ${touch.method}` : ''}</span>}</>}
+                      ? <span style={{ color: 'var(--c-fg-3)' }}>never contacted · added {fmtDate(l.created_at)}</span>
+                      : <>{daysSince(l.last_contact || l.created_at)}d ago{touch?.initials && <span style={{ color: 'var(--c-fg-2)' }}> · {touch.initials}{touch.method ? ` via ${touch.method}` : ''}</span>}</>}
                   </div>
                 </div>
                 {(l.status === 'hot' || l.status === 'warm') && daysUntilKhu(l) !== null && (daysUntilKhu(l) as number) <= 1 && (
@@ -1320,7 +1290,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                       setTouchPromptId(null)
                       setKeepHotPromptId(isKeepHotPrompting ? null : l.id)
                     }}
-                    style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                    style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', color: 'var(--c-fg)', borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     {isKeepHotPrompting ? 'Cancel' : l.status === 'warm' ? 'Keep Warm?' : 'Keep Hot?'}
                   </button>
                 )}
@@ -1331,7 +1301,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                     setTouchPromptId(isTouchPrompting ? null : l.id)
                     if (!isTouchPrompting) onSelect(l.id)
                   }}
-                  style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: '1px solid var(--border)', color: isTouchPrompting ? 'var(--text3)' : 'var(--text)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', color: isTouchPrompting ? 'var(--c-fg-3)' : 'var(--c-fg)', borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                   {isTouchPrompting ? 'Cancel' : 'Contact'}
                 </button>
               </div>
@@ -1458,12 +1428,12 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   }
 
   const filterDefs: { key: StatusFilter; label: string; color: string }[] = [
-    { key: 'uncontacted', label: 'Uncontacted', color: 'var(--uncontacted)' },
-    { key: 'hot', label: 'Hot', color: 'var(--hot)' },
-    { key: 'warm', label: 'Warm', color: 'var(--warm)' },
-    { key: 'cold', label: 'Cold', color: 'var(--cold-lead)' },
-    { key: 'dnb', label: 'DNB', color: 'var(--text3)' },
-    { key: 'booked', label: 'Booked', color: 'var(--booked)' },
+    { key: 'uncontacted', label: 'Uncontacted', color: 'var(--c-st-uncon)' },
+    { key: 'hot', label: 'Hot', color: 'var(--c-st-hot)' },
+    { key: 'warm', label: 'Warm', color: 'var(--c-st-warm)' },
+    { key: 'cold', label: 'Cold', color: 'var(--c-st-cold)' },
+    { key: 'dnb', label: 'DNB', color: 'var(--c-fg-3)' },
+    { key: 'booked', label: 'Booked', color: 'var(--c-st-booked)' },
   ]
 
   // Show leads matching ANY active status. Empty set falls back to all statuses
@@ -1482,22 +1452,22 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   const paginated = filtered.slice(startIdx, startIdx + PAGE_SIZE)
 
   return (
-    <div data-panel="crm-leads" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
+    <div className="c-panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, minHeight: 0 }}>
       {/* Header: filter pills + search */}
-      <div style={{ padding: '10px 16px 0', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+      <div style={{ flexShrink: 0 }}>
         <div className={isMobile ? 'hide-scrollbar' : undefined} style={{ display: 'flex', gap: 5, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : undefined, marginBottom: 8 }}>
           {filterDefs.map(f => {
             const isActive = active.has(f.key)
             return (
-              <button key={f.key} onClick={() => toggleFilter(f.key)} style={{
-                padding: isMobile ? '4px 8px' : '4px 10px', cursor: 'pointer', borderRadius: 20,
-                fontFamily: 'Syne', fontWeight: isActive ? 700 : 600, fontSize: isMobile ? 10 : 9, letterSpacing: '0.08em', textTransform: 'uppercase',
-                background: isActive ? `color-mix(in srgb, ${f.color} 20%, transparent)` : 'transparent',
-                border: `1px solid ${isActive ? f.color : `color-mix(in srgb, ${f.color} 50%, transparent)`}`,
-                color: isActive ? f.color : `color-mix(in srgb, ${f.color} 70%, transparent)`,
-                flexShrink: isMobile ? 0 : undefined, whiteSpace: isMobile ? 'nowrap' : undefined,
-                transition: 'all 0.15s',
-              }}>
+              <button
+                key={f.key}
+                onClick={() => toggleFilter(f.key)}
+                className={isActive
+                  ? `c-pill c-control c-raised-chip ${statusFillClass(f.key)}`
+                  : 'c-soft c-soft-sm c-control c-raised'}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, whiteSpace: 'nowrap' }}
+              >
+                {!isActive && <StatusDot status={f.key} />}
                 {f.label} ({filterMap[f.key].length})
               </button>
             )
@@ -1507,7 +1477,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder={`Search ${activeLeads.length} leads…`}
-            style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '5px 10px', borderRadius: 5, fontFamily: 'Inter', fontSize: 11, outline: 'none' }}
+            className="c-input c-inset2" style={{ fontSize: 12 }}
           />
         </div>
       </div>
@@ -1515,9 +1485,9 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
       {/* Lead list */}
       <div style={{ overflowY: 'auto', flex: 1 }}>
         {loading ? (
-          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
+          <div className="c-sub" style={{ padding: 20, textAlign: 'center' }}>Loading…</div>
         ) : filtered.length === 0 ? (
-          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11 }}>
+          <div className="c-sub" style={{ padding: 20, textAlign: 'center' }}>
             {search ? 'No leads match.' : 'No leads.'}
           </div>
         ) : paginated.map((l, idx) => {
@@ -1528,48 +1498,47 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
           const isPrompting = isTouchPrompting || isKeepHotPrompting
           const showKeepHot = (l.status === 'hot' || l.status === 'warm') && daysUntilKhu(l) !== null && (daysUntilKhu(l) as number) <= 1
           const keepLabel = l.status === 'warm' ? 'Keep Warm?' : 'Keep Hot?'
-          const keepColor = l.status === 'warm' ? 'var(--warm)' : 'var(--hot)'
+          const keepColor = l.status === 'warm' ? 'var(--c-st-warm)' : 'var(--c-st-hot)'
           const prevLead = idx > 0 ? paginated[idx - 1] : null
           const showDateSep = !!l.created_at && (!prevLead || new Date(l.created_at).toDateString() !== new Date(prevLead.created_at).toDateString())
           return (
             <React.Fragment key={l.id}>
               {showDateSep && (
-                <div style={{ display: 'flex', alignItems: 'center', margin: '16px 16px 0', color: 'var(--text3)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  <span style={{ flex: 1, borderBottom: '1px solid var(--border)' }} />
-                  <span style={{ margin: '0 12px' }}>{dateSepLabel(l.created_at)}</span>
-                  <span style={{ flex: 1, borderBottom: '1px solid var(--border)' }} />
-                </div>
+                <div className="c-label" style={{ margin: '16px 4px 6px' }}>
+                  {dateSepLabel(l.created_at)}
+                  </div>
               )}
-              <div onClick={() => onSelect(l.id)} data-selected={selectedId === l.id ? '' : undefined} style={leadRowStyle({ selected: selectedId === l.id, prompting: isPrompting, newInquiry: isUnacked(l.id) })}>
+              <div onClick={() => onSelect(l.id)} className={leadRowClass({ selected: selectedId === l.id })} style={leadRowStyle({ prompting: isPrompting })}>
+                {isUnacked(l.id) && <NewLeadPulse />}
                 <LeadAvatar lead={l} />
                 <div data-lead-content style={{ flex: 1, minWidth: 0 }}>
                   <div data-lead-name style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
                     {l.label && l.artist_name
-                      ? <>{l.label} <span style={{ color: 'var(--text3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--text3)' }}>/</span> {l.artist_name}</>
+                      ? <>{l.label} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.artist_name}</>
                       : l.artist_name && !l.label
-                        ? <>{l.fname} {l.lname} <span style={{ color: 'var(--text3)' }}>·</span> {l.artist_name}</>
-                        : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--text3)', fontWeight: 400 }}> · {l.company}</span>}</>}
+                        ? <>{l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>·</span> {l.artist_name}</>
+                        : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--c-fg-3)', fontWeight: 400 }}> · {l.company}</span>}</>}
                   </div>
                   {fmtSessionLine(l) && (
-                    <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 10, color: 'var(--c-fg-2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {fmtSessionLine(l)}
                     </div>
                   )}
-                  <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 10, color: 'var(--c-fg-2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {l.booking && <span>{BOOKING_ICONS[l.booking] || ''} {l.booking} · </span>}
                     {l.last_contact ? `${daysSince(l.last_contact)}d ago` : `added ${fmtDate(l.created_at)}`}
-                    {touch?.initials && <span style={{ color: 'var(--text3)' }}> · {touch.initials}{touch.method ? ` via ${touch.method}` : ''}</span>}
-                    {missing.length > 0 && <span style={{ color: 'var(--accent2)' }}> · missing: {missing.join(', ')}</span>}
+                    {touch?.initials && <span style={{ color: 'var(--c-fg-3)' }}> · {touch.initials}{touch.method ? ` via ${touch.method}` : ''}</span>}
+                    {missing.length > 0 && <span style={{ color: 'var(--c-st-cold)' }}> · missing: {missing.join(', ')}</span>}
                   </div>
                 </div>
                 {showKeepHot && (
                   <button onClick={e => { e.stopPropagation(); setTouchPromptId(null); setKeepHotPromptId(isKeepHotPrompting ? null : l.id) }}
-                    style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                    style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', color: 'var(--c-fg)', borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     {isKeepHotPrompting ? 'Cancel' : keepLabel}
                   </button>
                 )}
                 <button onClick={e => { e.stopPropagation(); setKeepHotPromptId(null); setTouchPromptId(isTouchPrompting ? null : l.id); if (!isTouchPrompting) onSelect(l.id) }}
-                  style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', border: '1px solid var(--border)', color: isTouchPrompting ? 'var(--text3)' : 'var(--text)', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', color: isTouchPrompting ? 'var(--c-fg-3)' : 'var(--c-fg)', borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                   {isTouchPrompting ? 'Cancel' : 'Contact'}
                 </button>
               </div>
@@ -1594,16 +1563,16 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
 
       {/* Pagination */}
       {filtered.length > PAGE_SIZE && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', flexShrink: 0 }}>
           <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1}
-            style={{ background: 'none', border: 'none', cursor: safePage <= 1 ? 'default' : 'pointer', fontFamily: 'Inter', fontSize: 10, color: safePage <= 1 ? 'var(--text3)' : 'var(--text2)', padding: '2px 4px' }}>
+            style={{ background: 'none', cursor: safePage <= 1 ? 'default' : 'pointer', fontFamily: 'Inter', fontSize: 10, color: safePage <= 1 ? 'var(--c-fg-3)' : 'var(--c-fg-2)', padding: '2px 4px' }}>
             ← Prev
           </button>
-          <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
+          <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>
             {startIdx + 1}–{Math.min(startIdx + PAGE_SIZE, filtered.length)} of {filtered.length}
           </span>
           <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}
-            style={{ background: 'none', border: 'none', cursor: safePage >= totalPages ? 'default' : 'pointer', fontFamily: 'Inter', fontSize: 10, color: safePage >= totalPages ? 'var(--text3)' : 'var(--text2)', padding: '2px 4px' }}>
+            style={{ background: 'none', cursor: safePage >= totalPages ? 'default' : 'pointer', fontFamily: 'Inter', fontSize: 10, color: safePage >= totalPages ? 'var(--c-fg-3)' : 'var(--c-fg-2)', padding: '2px 4px' }}>
             Next →
           </button>
         </div>
