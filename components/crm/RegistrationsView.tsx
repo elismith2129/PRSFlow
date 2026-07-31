@@ -178,7 +178,7 @@ export function RegistrationsView() {
             <div style={cell}>{fmtSubmitted(r.registered_at)}</div>
             <div>
               {r.id_file_url ? (
-                <span style={{ fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.08em', color: 'var(--c-fg)', background: 'rgba(var(--accent-rgb),0.08)', padding: '2px 6px', borderRadius: 3, whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.08em', color: 'var(--c-fg)', background: 'var(--c-wash2)', padding: '2px 6px', borderRadius: 3, whiteSpace: 'nowrap' }}>
                   ON FILE
                 </span>
               ) : (

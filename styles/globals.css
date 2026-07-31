@@ -194,14 +194,9 @@ html[data-theme="light"] {
   color: #ffffff !important;
 }
 
-/* The active staffing mode (Eng / Asst) reads as solid blue with white text in
-   light mode — the accent tint alone is too faint against the glass panels.
-   (Was [data-eng-needed], the old Engineer Needed boolean button.) */
-[data-theme="light"] [data-staff-mode-on] {
-  background: #3b82f6 !important;
-  color: #ffffff !important;
-  border-color: #3b82f6 !important;
-}
+/* [data-staff-mode-on] removed 2026-07-30 with the CRM migration. It existed to
+   force the staffing toggle's accent tint to solid blue in light mode; the toggle
+   is now a carved pressed/filled control that reads the same in both registers. */
 
 /* (FIX 5) Inputs inside modals (fixed-overlay descendants) get a faint fill + a
    visible slate border so they stand out from the white modal card in light mode. */
@@ -595,16 +590,19 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   background: var(--c-bg);
   color: var(--c-fg);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14.5px;
   line-height: 1.6;
   min-height: 100%;
 }
+/* Carved sheets are portalled outside .c-root, so they need the scale too. */
+.c-sheet, .c-modal { font-size: 14.5px; line-height: 1.6; }
 .c-arch { font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 400; }
-.c-mono { font-family: 'DM Mono', ui-monospace, monospace; font-size: 12px; }
+.c-mono { font-family: 'DM Mono', ui-monospace, monospace; font-size: 12.5px; }
 .c-label {
-  font-size: 10px; font-weight: 800; letter-spacing: 0.1em;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.11em;
   text-transform: uppercase; opacity: 0.45;
 }
-.c-sub { font-size: 12.5px; opacity: 0.6; }
+.c-sub { font-size: 13px; opacity: 0.6; }
 
 /* ── Containers: carved IN ──────────────────────────────────────────────── */
 .c-panel {
@@ -677,7 +675,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   border-radius: 99px; padding: 9px 19px;
-  font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
   background: var(--c-ivory); color: #1b1a17;
 }
 [data-theme="light"] .c-btn { background: var(--c-fg); color: var(--c-bg); }
@@ -686,7 +684,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-soft {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   border-radius: 99px; padding: 8px 17px;
-  font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
   background: var(--c-bg); color: var(--c-fg);
 }
 .c-soft.c-on { background: var(--c-ivory); color: #1b1a17; }
@@ -724,7 +722,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-pill {
   display: inline-flex; align-items: center; flex-shrink: 0;
   border-radius: 99px; padding: 4px 11px;
-  font-size: 9px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
   color: var(--c-chip-ink);
   box-shadow: 1.5px 1.5px 4px rgba(0, 0, 0, .35);
 }
@@ -732,6 +730,8 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 [data-theme="dark"] .c-pill,
 :root:not([data-theme="light"]) .c-pill { filter: saturate(.82) brightness(.88); }
 .c-pill.c-pill-hot { color: var(--c-hot-text); }
+/* Any hot fill carries pale text — chip ink is unreadable on signal red. */
+.c-fill-hot { color: var(--c-hot-text); }
 
 .c-dot {
   width: 9px; height: 9px; border-radius: 50%;
@@ -789,8 +789,11 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* ── List row (capsule) ─────────────────────────────────────────────────── */
 .c-row {
   display: flex; align-items: center; gap: 13px;
-  padding: 12px 14px; border-radius: 99px; margin-bottom: 2px;
+  padding: 13px 16px; border-radius: 99px; margin-bottom: 2px;
+  font-size: 14.5px;
 }
+/* The primary identifier in a list row (lead name, client name). */
+.c-row-name { font-size: 15.5px; font-weight: 700; line-height: 1.35; }
 .c-row.c-selected {
   box-shadow: inset 3px 3px 8px rgba(0, 0, 0, .22);
   background: var(--c-wash2);

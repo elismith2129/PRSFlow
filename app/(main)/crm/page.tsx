@@ -831,7 +831,7 @@ function CampaignsPanel({ leads, allTags, profile }: {
 
   const sectionLabel: React.CSSProperties = { fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 8, display: 'block' }
   const chipBase: React.CSSProperties = { borderRadius: 20, padding: '3px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', background: 'transparent', color: 'var(--c-fg-3)', transition: 'all 0.12s' }
-  const chipActive: React.CSSProperties = { ...chipBase, background: 'rgba(var(--accent-rgb), 0.12)', color: 'var(--c-fg)' }
+  const chipActive: React.CSSProperties = { ...chipBase, background: 'var(--c-wash2)', color: 'var(--c-fg)' }
 
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20, paddingBottom: 40 }}>
@@ -892,7 +892,7 @@ function CampaignsPanel({ leads, allTags, profile }: {
       <div style={{ background: 'var(--c-bg)', borderRadius: 10, padding: '14px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <span style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 22, color: uniqueRecipients.length === 0 ? 'var(--c-fg-3)' : 'var(--c-fg)' }}>{uniqueRecipients.length}</span>
+            <span style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 30, letterSpacing: '-0.025em', color: uniqueRecipients.length === 0 ? 'var(--c-fg-3)' : 'var(--c-fg)' }}>{uniqueRecipients.length}</span>
             <span style={{ fontFamily: 'Inter', fontSize: 11, color: 'var(--c-fg-3)', marginLeft: 8 }}>recipient{uniqueRecipients.length !== 1 ? 's' : ''} match this segment</span>
           </div>
           {uniqueRecipients.length > 0 && (
@@ -927,7 +927,7 @@ function CampaignsPanel({ leads, allTags, profile }: {
             value={subject}
             onChange={e => setSubject(e.target.value)}
             placeholder="e.g. Studio availability this month at Paramount"
-            style={{ width: '100%', background: 'var(--c-wash)', borderRadius: 6, padding: '8px 10px', fontFamily: 'Inter', fontSize: 12, color: 'var(--c-fg)', outline: 'none', boxSizing: 'border-box' }}
+            className="c-input c-inset2" style={{ fontSize: 12 }}
           />
         </div>
         <div>
@@ -937,7 +937,7 @@ function CampaignsPanel({ leads, allTags, profile }: {
             onChange={e => setBody(e.target.value)}
             placeholder={`Hi [First Name],\n\nJust wanted to reach out…`}
             rows={10}
-            style={{ width: '100%', background: 'var(--c-wash)', borderRadius: 6, padding: '8px 10px', fontFamily: 'Inter', fontSize: 12, color: 'var(--c-fg)', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }}
+            className="c-textarea c-inset2" style={{ fontSize: 12, resize: 'vertical' }}
           />
           <div style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 4 }}>Use [First Name] to personalize — it will be replaced per recipient.</div>
         </div>
@@ -1033,7 +1033,7 @@ function TouchPrompt({ leadId, phone, email, onSubmit, onCancel }: {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <div
           title="Logged in as"
-          style={{ width: 70, background: 'var(--c-wash)', color: myInitials ? 'var(--c-fg)' : 'var(--c-fg-3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
+          className="c-input c-inset2" style={{ width: 70, padding: '6px 10px', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
         >
           {myInitials || '—'}
         </div>
@@ -1103,7 +1103,7 @@ function KeepHotPrompt({ leadId, onSubmit, onCancel, label = 'Keep Hot', status 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div
           title="Logged in as"
-          style={{ width: 70, background: 'var(--c-wash)', border: `1px solid ${color}`, color: myInitials ? 'var(--c-fg)' : 'var(--c-fg-3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
+          className="c-input c-inset2" style={{ width: 70, padding: '6px 10px', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
         >
           {myInitials || '—'}
         </div>
@@ -1152,7 +1152,7 @@ function DeadLeadPrompt({ leadId, onSubmit, onCancel }: {
       <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginRight: 4 }}>Mark DNB?</span>
       <div
         title="Logged in as"
-        style={{ width: 70, background: 'var(--c-wash)', color: myInitials ? 'var(--c-fg)' : 'var(--c-fg-3)', padding: '4px 8px', borderRadius: 4, fontFamily: 'Inter', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
+        className="c-input c-inset2" style={{ width: 70, padding: '6px 10px', fontSize: 12, textAlign: 'center', letterSpacing: '0.12em' }}
       >
         {myInitials || '—'}
       </div>
@@ -1471,12 +1471,9 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
               <button
                 key={f.key}
                 onClick={() => toggleFilter(f.key)}
-                className={isActive
-                  ? `c-pill c-control c-raised-chip ${statusFillClass(f.key)}`
-                  : 'c-soft c-soft-sm c-control c-raised'}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, whiteSpace: 'nowrap' }}
+                className={`c-pill c-control ${statusFillClass(f.key)} ${isActive ? 'c-pressed' : 'c-raised-chip'}`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, whiteSpace: 'nowrap', opacity: isActive ? 1 : 0.55 }}
               >
-                {!isActive && <StatusDot status={f.key} />}
                 {f.label} ({filterMap[f.key].length})
               </button>
             )
@@ -1537,7 +1534,11 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                     {l.booking && <span>{BOOKING_ICONS[l.booking] || ''} {l.booking} · </span>}
                     {l.last_contact ? `${daysSince(l.last_contact)}d ago` : `added ${fmtDate(l.created_at)}`}
                     {touch?.initials && <span style={{ color: 'var(--c-fg-3)' }}> · {touch.initials}{touch.method ? ` via ${touch.method}` : ''}</span>}
-                    {missing.length > 0 && <span style={{ color: 'var(--c-st-cold)' }}> · missing: {missing.join(', ')}</span>}
+                    {missing.length > 0 && (
+                      <span className="c-pill c-fill-warm" style={{ marginLeft: 6, fontSize: 8.5, padding: '3px 8px' }}>
+                        missing: {missing.join(', ')}
+                      </span>
+                    )}
                   </div>
                 </div>
                 {showKeepHot && (
@@ -2030,12 +2031,12 @@ const parsedLoc0 = parseLocation(lead.location || '')
         </>)}
       </div>
 
-      {savedField && <span style={{ fontSize: 9, color: 'var(--c-st-booked)', fontFamily: 'Inter', display: 'block', marginBottom: 4 }}>saved</span>}
+      {savedField && <span className="c-label" style={{ display: 'block', marginBottom: 4 }}>saved</span>}
 
       {/* ─── Missing warning ─────────────────────────────── */}
       {missing.length > 0 && (
-        <div style={{ fontSize: 10, color: 'var(--c-st-warm)', background: 'rgba(249,115,22,0.08)', padding: '6px 10px', borderRadius: 6, marginBottom: 6 }}>
-          ⚠ Missing: {missing.join(', ')}
+        <div style={{ marginBottom: 8 }}>
+          <span className="c-pill c-fill-warm">⚠ Missing: {missing.join(', ')}</span>
         </div>
       )}
 
@@ -2123,16 +2124,16 @@ const parsedLoc0 = parseLocation(lead.location || '')
             <button
               onClick={startBooking}
               title={lead.client_id ? 'Open a Work Order for this lead' : 'Confirm the client profile, then open a Work Order'}
-              style={{ padding: '5px 12px', background: 'transparent', color: 'var(--c-fg)', borderRadius: 4, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer', whiteSpace: 'nowrap' as const }}
+              className="c-btn c-control c-raised-primary" style={{ whiteSpace: 'nowrap' as const }}
             >
               Start Booking
             </button>
             {lead.billing !== 'Billing' && (regTokenDates?.used_at ? (
-              <button onClick={() => setRegViewOpen(true)} style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.12)', color: 'var(--c-st-booked)', borderRadius: 4, fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
+              <button onClick={() => setRegViewOpen(true)} className="c-pill c-fill-booked c-control c-raised-chip" style={{ cursor: 'pointer' }}>
                 ✓ Registered
               </button>
             ) : existingTokenStr && regActioned ? (
-              <button onClick={async () => { const done = await refreshRegStatus(); if (!done) setRegPanelOpen(v => !v) }} style={{ padding: '5px 12px', background: regPanelOpen ? 'rgba(249,115,22,0.18)' : 'rgba(249,115,22,0.08)', color: 'var(--c-st-warm)', borderRadius: 4, fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
+              <button onClick={async () => { const done = await refreshRegStatus(); if (!done) setRegPanelOpen(v => !v) }} className={`c-pill c-fill-warm c-control ${regPanelOpen ? 'c-pressed' : 'c-raised-chip'}`} style={{ cursor: 'pointer' }}>
                 Reg Sent
               </button>
             ) : (
@@ -2259,11 +2260,11 @@ const parsedLoc0 = parseLocation(lead.location || '')
             {local.billing || lead.billing || 'COD'}
           </button>
           {lead.booking && (<>
-            <span style={{ color: '#2d3140', fontSize: 9 }}>·</span>
+            <span style={{ color: 'var(--c-fg-3)', fontSize: 9 }}>·</span>
             <span style={{ color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{lead.booking}</span>
           </>)}
           {lead.source && (<>
-            <span style={{ color: '#2d3140', fontSize: 9 }}>·</span>
+            <span style={{ color: 'var(--c-fg-3)', fontSize: 9 }}>·</span>
             <span style={{ color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{lead.source}</span>
           </>)}
         </div>
@@ -2271,7 +2272,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
       </div>
 
       {/* ═══ Zone 2 (bg var(--c-wash)) — session info ═══════════════ */}
-      <div style={{ background: 'var(--c-wash)', margin: '0 -16px', padding: isMobile ? '6px 16px 12px' : '12px 16px' }}>
+      <div className="c-inset2" style={{ borderRadius: 26, padding: isMobile ? '12px 14px' : '16px 18px', marginTop: 10 }}>
       {/* ─── Session & Quote ─────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 48px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -2323,8 +2324,8 @@ const parsedLoc0 = parseLocation(lead.location || '')
           <div>
             <div style={fieldLabelStyle}>Quote / Rate</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-              <button type="button" onClick={() => setDetailRateType('hourly')} style={{ padding: '3px 7px', fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '4px 0 0 4px', background: detailRateType === 'hourly' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: detailRateType === 'hourly' ? 'var(--c-fg)' : 'var(--c-fg-3)' }}>/ hr</button>
-              <button type="button" onClick={() => setDetailRateType('daily')} style={{ padding: '3px 7px', fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '0 4px 4px 0', background: detailRateType === 'daily' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: detailRateType === 'daily' ? 'var(--c-fg)' : 'var(--c-fg-3)' }}>/ day</button>
+              <button type="button" onClick={() => setDetailRateType('hourly')} className={`c-soft c-soft-sm c-control ${detailRateType === 'hourly' ? 'c-on c-pressed' : 'c-raised'}`}>/ hr</button>
+              <button type="button" onClick={() => setDetailRateType('daily')} className={`c-soft c-soft-sm c-control ${detailRateType === 'daily' ? 'c-on c-pressed' : 'c-raised'}`}>/ day</button>
               <input
                 ref={quoteRef}
                 value={detailRateType === 'hourly' ? (local.quote || '') : (local.rate_daily || '')}
@@ -3222,8 +3223,8 @@ function NewLeadModal({ leads, onClose, onSave }: {
         <div>
           <label style={labelS}>Quote / Rate</label>
           <div style={{ display: 'flex', gap: 0 }}>
-            <button type="button" onClick={() => setRateType('hourly')} style={{ padding: '4px 8px', fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '4px 0 0 4px', background: rateType === 'hourly' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: rateType === 'hourly' ? 'var(--c-fg)' : 'var(--c-fg-3)' }}>/ hr</button>
-            <button type="button" onClick={() => setRateType('daily')} style={{ padding: '4px 8px', fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '0 4px 4px 0', background: rateType === 'daily' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: rateType === 'daily' ? 'var(--c-fg)' : 'var(--c-fg-3)' }}>/ day</button>
+            <button type="button" onClick={() => setRateType('hourly')} className={`c-soft c-soft-sm c-control ${rateType === 'hourly' ? 'c-on c-pressed' : 'c-raised'}`}>/ hr</button>
+            <button type="button" onClick={() => setRateType('daily')} className={`c-soft c-soft-sm c-control ${rateType === 'daily' ? 'c-on c-pressed' : 'c-raised'}`}>/ day</button>
             <input
               value={rateType === 'hourly' ? form.quote : form.rate_daily}
               onChange={e => set(rateType === 'hourly' ? 'quote' : 'rate_daily', e.target.value)}

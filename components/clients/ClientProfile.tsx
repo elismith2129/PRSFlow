@@ -31,9 +31,12 @@ interface Props {
 
 // ─── Shared button styles ─────────────────────────────────────────────────────
 
-const accentBtn: React.CSSProperties = {
-  background: 'transparent', color: 'var(--c-fg)', borderRadius: 4,
-  padding: '5px 12px', fontSize: 10, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400,
+// Primary-ish action inside a carved panel. Depth comes from the scoped
+// `.c-panel button` rule; this only carries type and spacing. Formerly
+// `primaryBtn` — there is no accent colour in this system (Law 3).
+const primaryBtn: React.CSSProperties = {
+  color: 'var(--c-fg)', borderRadius: 99,
+  padding: '7px 14px', fontSize: 10.5, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400,
   letterSpacing: '0.08em', cursor: 'pointer',
 }
 const ghostBtn: React.CSSProperties = {
@@ -224,7 +227,7 @@ function ContactRow({ contact, onSave, onDelete }: {
             ) : (
               <button onClick={() => setConfirmDelete(true)} style={{ ...ghostBtn, color: 'var(--c-st-hot)', fontSize: 10 }}>Remove</button>
             )}
-            <button onClick={() => { onSave(contact.id, { ...draft, artists: localArtists }); setExpanded(false) }} style={accentBtn}>Save</button>
+            <button onClick={() => { onSave(contact.id, { ...draft, artists: localArtists }); setExpanded(false) }} style={primaryBtn}>Save</button>
           </div>
         </div>
       )}
@@ -256,7 +259,7 @@ function AddContactForm({ onAdd, onCancel }: { onAdd: (data: Partial<ClientConta
       </div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button onClick={onCancel} style={ghostBtn}>Cancel</button>
-        <button onClick={() => { if (draft.fname || draft.lname || draft.email) onAdd(draft) }} style={accentBtn}>Add</button>
+        <button onClick={() => { if (draft.fname || draft.lname || draft.email) onAdd(draft) }} style={primaryBtn}>Add</button>
       </div>
     </div>
   )
@@ -336,7 +339,7 @@ function AdminRow({ contact, onSave, onDelete }: {
             ) : (
               <button onClick={() => setConfirmDelete(true)} style={{ ...ghostBtn, color: 'var(--c-st-hot)', fontSize: 10 }}>Remove</button>
             )}
-            <button onClick={() => { onSave(contact.id, draft); setExpanded(false) }} style={accentBtn}>Save</button>
+            <button onClick={() => { onSave(contact.id, draft); setExpanded(false) }} style={primaryBtn}>Save</button>
           </div>
         </div>
       )}
@@ -368,7 +371,7 @@ function AddAdminForm({ onAdd, onCancel }: { onAdd: (data: Partial<ClientContact
       </div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button onClick={onCancel} style={ghostBtn}>Cancel</button>
-        <button onClick={() => { if (draft.fname || draft.lname || draft.email) onAdd(draft) }} style={accentBtn}>Add</button>
+        <button onClick={() => { if (draft.fname || draft.lname || draft.email) onAdd(draft) }} style={primaryBtn}>Add</button>
       </div>
     </div>
   )
@@ -730,7 +733,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
           )}
           <button
             onClick={() => router.push(`/calendar?newBooking=1&clientId=${client.id}`)}
-            style={{ ...accentBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0, background: 'transparent', color: 'var(--c-fg)' }}
+            style={{ ...primaryBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0, background: 'transparent', color: 'var(--c-fg)' }}
           >
             Start Booking
           </button>
@@ -783,7 +786,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
               {anrContacts.length === 0 && !showAddContact && (
                 <div style={{ padding: '10px 12px', background: 'var(--c-wash)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                   <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>No A&Rs or reps on file yet.</span>
-                  <button onClick={() => setShowAddContact(true)} style={{ ...accentBtn, fontSize: 9, padding: '3px 10px' }}>Add Contact</button>
+                  <button onClick={() => setShowAddContact(true)} style={{ ...primaryBtn, fontSize: 9, padding: '3px 10px' }}>Add Contact</button>
                 </div>
               )}
               {showAddContact && <AddContactForm onAdd={addContact} onCancel={() => setShowAddContact(false)} />}
@@ -804,7 +807,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
               {adminContacts.length === 0 && !showAddAdmin && (
                 <div style={{ padding: '10px 12px', background: 'var(--c-wash)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                   <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>No admins on file yet.</span>
-                  <button onClick={() => setShowAddAdmin(true)} style={{ ...accentBtn, fontSize: 9, padding: '3px 10px' }}>Add Admin</button>
+                  <button onClick={() => setShowAddAdmin(true)} style={{ ...primaryBtn, fontSize: 9, padding: '3px 10px' }}>Add Admin</button>
                 </div>
               )}
               {showAddAdmin && <AddAdminForm onAdd={addAdmin} onCancel={() => setShowAddAdmin(false)} />}
@@ -894,7 +897,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                     <span style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                       {regLinkUrl}
                     </span>
-                    <button onClick={copyRegLink} style={{ ...accentBtn, fontSize: 8, padding: '2px 8px', flexShrink: 0 }}>
+                    <button onClick={copyRegLink} style={{ ...primaryBtn, fontSize: 8, padding: '2px 8px', flexShrink: 0 }}>
                       {regLinkCopied ? 'Copied!' : 'Copy'}
                     </button>
                     <button onClick={emailRegLink} style={{ ...ghostBtn, fontSize: 8, padding: '2px 8px', flexShrink: 0 }}>

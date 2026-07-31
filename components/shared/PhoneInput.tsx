@@ -73,21 +73,18 @@ export default function PhoneInput({
     variant === 'inline'
       ? {
           background: 'transparent',
-          border: 'none',
-          borderBottom: '1px solid var(--border)',
           outline: 'none',
-          color: 'var(--text)',
+          color: 'var(--c-fg)',
           fontFamily: 'Inter',
           fontSize: 13,
           padding: '2px 4px',
           width: '100%',
         }
       : {
-          background: 'var(--surface2)',
-          border: '1px solid var(--border)',
+          background: 'var(--c-wash)',
           borderRadius: 6,
           outline: 'none',
-          color: 'var(--text)',
+          color: 'var(--c-fg)',
           fontFamily: 'Inter',
           fontSize: 13,
           padding: '8px 10px',
@@ -112,9 +109,8 @@ export default function PhoneInput({
         title={intl ? 'Switch to US format' : 'Switch to international format'}
         style={{
           background: 'none',
-          border: 'none',
           cursor: 'pointer',
-          color: intl ? 'var(--accent)' : 'var(--text3)',
+          color: intl ? 'var(--c-fg)' : 'var(--c-fg-3)',
           fontFamily: 'Inter',
           fontSize: 10,
           padding: '2px 4px',

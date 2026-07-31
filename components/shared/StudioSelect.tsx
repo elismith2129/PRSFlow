@@ -21,9 +21,8 @@ const STUDIO_CODES: Record<string, string> = {
 
 export default function StudioSelect({ location, studio, onChange, selectStyle, shortCodes }: StudioSelectProps) {
   const base: React.CSSProperties = {
-    background: 'var(--surface2)',
-    border: '1px solid var(--border)',
-    color: 'var(--text)',
+    background: 'var(--c-wash)',
+    color: 'var(--c-fg)',
     padding: '4px 6px',
     fontFamily: 'Inter',
     fontSize: 12,

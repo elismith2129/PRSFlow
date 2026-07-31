@@ -35,8 +35,8 @@ export function buildMailingBlock(c: MailingAddressSource): string {
 export function RegField({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div>
-      <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 12, fontFamily: 'Inter', color: value ? 'var(--text)' : 'var(--text3)' }}>{value || '—'}</div>
+      <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 12, fontFamily: 'Inter', color: value ? 'var(--c-fg)' : 'var(--c-fg-3)' }}>{value || '—'}</div>
     </div>
   )
 }
@@ -100,17 +100,17 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
   return (
     <>
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 10003, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      className="c-modal-backdrop" style={{ zIndex: 10003 }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div data-modal-gradient style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: '100%', maxWidth: 540, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 48px rgba(0,0,0,0.6)', margin: '0 16px' }}>
+      <div data-modal-gradient style={{ background: 'var(--c-bg)', borderRadius: 12, width: '100%', maxWidth: 540, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 48px rgba(0,0,0,0.6)', margin: '0 16px' }}>
 
         {/* Header */}
-        <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
-            <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>Registration Record</div>
+            <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 13, color: 'var(--c-fg)' }}>Registration Record</div>
             {client?.registered_at && (
-              <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>
+              <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-3)', marginTop: 2 }}>
                 Submitted {fmtSubmitted(client.registered_at)}
               </div>
             )}
@@ -118,20 +118,20 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button
               onClick={() => window.open(`/register/view/${clientId}`, '_blank')}
-              style={{ padding: '5px 12px', background: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
+              style={{ padding: '5px 12px', background: 'var(--c-fg)', color: 'var(--c-bg)', borderRadius: 4, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
             >
               Export PDF
             </button>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 2px' }}>×</button>
+            <button onClick={onClose} style={{ background: 'none', color: 'var(--c-fg-3)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 2px' }}>×</button>
           </div>
         </div>
 
         {/* Body */}
         <div style={{ padding: '18px', overflowY: 'auto', flex: 1 }}>
           {loading ? (
-            <div style={{ color: 'var(--text3)', fontFamily: 'Inter', fontSize: 11, textAlign: 'center', padding: 40 }}>Loading…</div>
+            <div style={{ color: 'var(--c-fg-3)', fontFamily: 'Inter', fontSize: 11, textAlign: 'center', padding: 40 }}>Loading…</div>
           ) : !client ? (
-            <div style={{ color: 'var(--hot)', fontFamily: 'Inter', fontSize: 11 }}>Could not load registration data.</div>
+            <div style={{ color: 'var(--c-st-hot)', fontFamily: 'Inter', fontSize: 11 }}>Could not load registration data.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -145,9 +145,9 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
               {/* Billing address — grouped into one bordered block so the whole
                   thing can be copied in a single action. Staff previously had to
                   select and copy each cell separately to fill an invoice. */}
-              <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ borderRadius: 8, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--text3)' }}>
+                  <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--c-fg-3)' }}>
                     Billing Address
                   </div>
                   <button
@@ -157,10 +157,9 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
                     style={{
                       padding: '4px 10px', borderRadius: 4,
                       cursor: mailingBlock ? 'pointer' : 'not-allowed',
-                      fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const,
-                      background: copied ? 'rgba(var(--accent-rgb), 0.14)' : 'transparent',
-                      color: copied ? 'var(--accent)' : mailingBlock ? 'var(--text)' : 'var(--text3)',
-                      border: `1px solid ${copied ? 'rgba(var(--accent-rgb), 0.45)' : 'var(--border)'}`,
+                      fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const,
+                      background: copied ? 'var(--c-wash2)' : 'transparent',
+                      color: copied ? 'var(--c-fg)' : mailingBlock ? 'var(--c-fg)' : 'var(--c-fg-3)',
                       opacity: mailingBlock ? 1 : 0.55,
                       transition: 'background 0.15s, color 0.15s, border-color 0.15s',
                     }}
@@ -181,28 +180,28 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
                 <RegField label="How They Heard" value={client.how_heard} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 2 }}>
-                <span style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--text3)' }}>Terms & Conditions</span>
-                <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 9, fontFamily: 'Inter', background: client.terms_accepted ? 'rgba(78,240,162,0.12)' : 'rgba(240,78,122,0.12)', color: client.terms_accepted ? 'var(--booked)' : 'var(--hot)', border: `1px solid ${client.terms_accepted ? 'rgba(78,240,162,0.3)' : 'rgba(240,78,122,0.3)'}` }}>
+                <span style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--c-fg-3)' }}>Terms & Conditions</span>
+                <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 9, fontFamily: 'Inter', background: client.terms_accepted ? 'rgba(78,240,162,0.12)' : 'rgba(240,78,122,0.12)', color: client.terms_accepted ? 'var(--c-st-booked)' : 'var(--c-st-hot)', border: `1px solid ${client.terms_accepted ? 'rgba(78,240,162,0.3)' : 'rgba(240,78,122,0.3)'}` }}>
                   {client.terms_accepted ? '✓ Accepted' : 'Not accepted'}
                   {client.terms_accepted_at ? ` · ${new Date(client.terms_accepted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
                 </span>
               </div>
               <div>
-                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--text3)', marginBottom: 8 }}>Government-Issued ID</div>
+                <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--c-fg-3)', marginBottom: 8 }}>Government-Issued ID</div>
                 {!client.id_file_url ? (
-                  <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)' }}>No ID on file</div>
+                  <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>No ID on file</div>
                 ) : !idUrl ? (
-                  <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)' }}>Loading ID…</div>
+                  <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>Loading ID…</div>
                 ) : isPdf ? (
                   <div>
                     <iframe
                       src={idUrl}
                       title="Client ID document"
-                      style={{ width: '100%', height: 320, border: '1px solid var(--border)', borderRadius: 6, background: '#fff', display: 'block' }}
+                      style={{ width: '100%', height: 320, borderRadius: 6, background: '#fff', display: 'block' }}
                     />
                     <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <button onClick={() => setLightboxOpen(true)} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--accent)', fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>Expand</button>
-                      <a href={idUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text3)', fontFamily: 'Inter', fontSize: 10, textDecoration: 'none' }}>Open in new tab ↗</a>
+                      <button onClick={() => setLightboxOpen(true)} style={{ background: 'none', padding: 0, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>Expand</button>
+                      <a href={idUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--c-fg-3)', fontFamily: 'Inter', fontSize: 10, textDecoration: 'none' }}>Open in new tab ↗</a>
                     </div>
                   </div>
                 ) : canTryImage ? (
@@ -213,17 +212,17 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
                       onClick={() => setLightboxOpen(true)}
                       onError={() => setImgFailed(true)}
                       title="Click to enlarge"
-                      style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 6, border: '1px solid var(--border)', objectFit: 'contain', display: 'block', cursor: 'zoom-in' }}
+                      style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 6, objectFit: 'contain', display: 'block', cursor: 'zoom-in' }}
                     />
-                    <div style={{ marginTop: 4, fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)' }}>Click to enlarge</div>
+                    <div style={{ marginTop: 4, fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>Click to enlarge</div>
                   </div>
                 ) : (
                   /* The image wouldn't render. Say so plainly and give an explicit
                      link — do NOT fall back to an iframe, which silently downloads.
                      The usual cause is HEIC (iPhone default): Safari shows it,
                      Chrome and Firefox don't. */
-                  <div style={{ border: '1px solid rgba(249,115,22,0.4)', background: 'rgba(249,115,22,0.06)', borderRadius: 6, padding: 12 }}>
-                    <div style={{ fontSize: 11.5, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.65 }}>
+                  <div style={{ background: 'rgba(249,115,22,0.06)', borderRadius: 6, padding: 12 }}>
+                    <div style={{ fontSize: 11.5, fontFamily: 'Inter', color: 'var(--c-fg-2)', lineHeight: 1.65 }}>
                       This ID can’t be previewed in this browser — it’s most likely an
                       iPhone <b>HEIC</b> photo, which Chrome and Firefox can’t display.
                       <b> Open this page in Safari</b> to view it inline.
@@ -232,7 +231,7 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
                       href={idUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{ display: 'inline-block', marginTop: 9, padding: '6px 12px', borderRadius: 5, border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, textDecoration: 'none' }}
+                      style={{ display: 'inline-block', marginTop: 9, padding: '6px 12px', borderRadius: 5, color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 10, textDecoration: 'none' }}
                     >
                       Open the file ↗
                     </a>
@@ -247,14 +246,14 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
 
     {/* Lightbox — enlarges the ID (image or embedded doc) in-app, above the modal at z 10004 */}
     {lightboxOpen && idUrl && (
-      <div onClick={() => setLightboxOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 10004, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div onClick={() => setLightboxOpen(false)} className="c-modal-backdrop" style={{ zIndex: 10004 }}>
         <div onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '92vw', maxHeight: '90vh', width: isPdf ? '90vw' : undefined, height: isPdf ? '90vh' : undefined }}>
           {isPdf ? (
-            <iframe src={idUrl} title="Client ID document" style={{ width: '100%', height: '100%', border: 'none', borderRadius: 8, background: '#fff', display: 'block' }} />
+            <iframe src={idUrl} title="Client ID document" style={{ width: '100%', height: '100%', borderRadius: 8, background: '#fff', display: 'block' }} />
           ) : (
             <img src={idUrl} alt="Client ID" style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: 8, display: 'block' }} />
           )}
-          <button onClick={() => setLightboxOpen(false)} style={{ position: 'absolute', top: -16, right: -16, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, fontFamily: 'Inter', flexShrink: 0 }}>×</button>
+          <button onClick={() => setLightboxOpen(false)} style={{ position: 'absolute', top: -16, right: -16, background: 'var(--c-bg)', color: 'var(--c-fg)', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, fontFamily: 'Inter', flexShrink: 0 }}>×</button>
         </div>
       </div>
     )}

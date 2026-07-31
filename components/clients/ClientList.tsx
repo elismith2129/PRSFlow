@@ -135,7 +135,7 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
               style={{
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '11px 16px', cursor: 'pointer',
-                background: selectedId === c.id ? 'rgba(var(--accent-rgb),0.04)' : 'transparent',
+                background: selectedId === c.id ? 'var(--c-wash2)' : 'transparent',
                 transition: 'background 0.15s',
               }}
             >

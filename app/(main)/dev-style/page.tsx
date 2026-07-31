@@ -165,6 +165,83 @@ export default function DevStylePage() {
           </Rowify>
         </Block>
 
+        {/* TYPE SCALE ─────────────────────────────────────────────────────── */}
+        <Block
+          title="Type scale"
+          note="Added after the CRM review found the whole app reading a size down. These are the reference sizes — check a real surface against this block, not against memory."
+        >
+          <div style={{ display: 'grid', gap: 10, maxWidth: 640 }}>
+            <div><span className="c-arch" style={{ fontSize: 38, letterSpacing: '-0.03em' }}>Display 38</span> <span className="c-sub">page hero · Archivo 400</span></div>
+            <div><span className="c-arch" style={{ fontSize: 30, letterSpacing: '-0.025em' }}>Detail name 30</span> <span className="c-sub">record hero (lead / client)</span></div>
+            <div><span className="c-row-name">List row name 15.5 / 700</span> <span className="c-sub">primary identifier in a list</span></div>
+            <div>Body 14.5 / 1.6 — the default inside any carved surface.</div>
+            <div className="c-sub">Secondary 13 — .c-sub, muted metadata.</div>
+            <div className="c-label">Label 10.5 · 800 · tracked caps — .c-label</div>
+            <div className="c-mono">Mono 12.5 — times, invoice numbers, initials</div>
+          </div>
+        </Block>
+
+        {/* SEGMENTED TOGGLES ──────────────────────────────────────────────── */}
+        <Block
+          title="Segmented toggles"
+          note="Staffing (Eng/Asst/No Staff) and rate (/hr · /day). These were the two controls still rendering in the retired accent blue. Selection is an act of pressing, so the selected segment is PRESSED IN and filled — no colour needed, and it reads identically in both registers."
+        >
+          <Rowify>
+            {['Eng', 'Asst', 'No Staff'].map((l, i) => (
+              <button key={l} className={`c-soft c-soft-sm c-control ${i === 1 ? 'c-on c-pressed' : 'c-raised'}`}>{l}</button>
+            ))}
+            <span style={{ width: 24 }} />
+            {['/ hr', '/ day'].map((l, i) => (
+              <button key={l} className={`c-soft c-soft-sm c-control ${i === 0 ? 'c-on c-pressed' : 'c-raised'}`}>{l}</button>
+            ))}
+          </Rowify>
+        </Block>
+
+        {/* RECORD MARKERS ─────────────────────────────────────────────────── */}
+        <Block
+          title="Record markers"
+          note="Incompleteness and registration state are lead-record status, so they are solid fills with chip ink — never coloured links or tinted banners. This is where the CRM had drifted."
+        >
+          <Rowify>
+            <StatusPill status="warm" label="⚠ Missing: quote, phone" />
+            <StatusPill status="booked" label="✓ Registered" />
+            <StatusPill status="warm" label="Reg sent" />
+            <StatusPill status="hot" label="Incorrect PIN" />
+          </Rowify>
+          <p className="c-sub" style={{ marginTop: 12, maxWidth: 620 }}>
+            Note the hot pill takes pale text (<code>--c-hot-text</code>), not chip ink —
+            chip ink is unreadable on signal red. That applies to any hot fill,
+            including the lead avatar.
+          </p>
+        </Block>
+
+        {/* CARVED FIELD GROUP ─────────────────────────────────────────────── */}
+        <Block
+          title="Field group"
+          note="A group of inputs (the CRM booking-seed box) is a container: it HOLDS content, so it carves in. Inputs inside it are second-level recesses. No borders at any level."
+        >
+          <div className="c-inset2" style={{ borderRadius: 26, padding: 18, maxWidth: 460 }}>
+            <div style={{ display: 'grid', gap: 12 }}>
+              <div>
+                <div className="c-label" style={{ marginBottom: 5 }}>Location · Studio</div>
+                <Input placeholder="Paramount · Studio C" />
+              </div>
+              <div>
+                <div className="c-label" style={{ marginBottom: 5 }}>Quote</div>
+                <Input placeholder="$1,450" />
+              </div>
+              <div>
+                <div className="c-label" style={{ marginBottom: 5 }}>Staffing</div>
+                <Rowify gap={5}>
+                  {['Eng', 'Asst', 'No Staff'].map((l, i) => (
+                    <button key={l} className={`c-soft c-soft-sm c-control ${i === 1 ? 'c-on c-pressed' : 'c-raised'}`}>{l}</button>
+                  ))}
+                </Rowify>
+              </div>
+            </div>
+          </div>
+        </Block>
+
         {/* PANELS ─────────────────────────────────────────────────────────── */}
         <Block
           title="Panels — carved containers"

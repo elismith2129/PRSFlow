@@ -44,12 +44,11 @@ export function emptyClientValue(overrides: Partial<ClientPanelValue> = {}): Cli
 const COD_METHODS = ['Cash', 'Credit Card', 'Zelle', 'Check', 'Venmo']
 
 const fL: React.CSSProperties = {
-  fontSize: 9, color: 'var(--text3)', letterSpacing: '0.08em',
+  fontSize: 9, color: 'var(--c-fg-3)', letterSpacing: '0.08em',
   textTransform: 'uppercase', marginBottom: 3, display: 'block',
 }
 const inp: React.CSSProperties = {
-  background: 'var(--surface2)', border: '1px solid var(--border)',
-  color: 'var(--text)', fontFamily: 'Inter', fontSize: 11,
+  background: 'var(--c-wash)', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11,
   padding: '4px 8px', borderRadius: 4, width: '100%', outline: 'none',
 }
 
@@ -96,13 +95,13 @@ function ClientCardField({ label, value, fieldKey, onEdit }: {
   useEffect(() => { setLocal(value) }, [value])
   return (
     <div style={{ marginBottom: 8 }}>
-      <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>{label}</div>
       <input
         type="text" value={local}
         onChange={e => setLocal(e.target.value)}
-        onFocus={e => { e.currentTarget.style.borderBottomColor = 'var(--accent)' }}
-        onBlur={e => { e.currentTarget.style.borderBottomColor = 'var(--border)'; if (local !== value) onEdit(fieldKey, local) }}
-        style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5, transition: 'border-color 0.15s' }}
+        onFocus={e => { e.currentTarget.style.borderBottomColor = 'var(--c-fg)' }}
+        onBlur={e => { e.currentTarget.style.borderBottomColor = 'var(--c-wash2)'; if (local !== value) onEdit(fieldKey, local) }}
+        style={{ width: '100%', background: 'var(--c-bg)', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5, transition: 'border-color 0.15s' }}
       />
     </div>
   )
@@ -322,13 +321,13 @@ export function ClientPanel({
     else if (fieldKey === 'phone') set('phone', val)
   }
 
-  const nameColor = 'var(--text)'
+  const nameColor = 'var(--c-fg)'
   const badgeLabel = isBilling ? 'LABEL/BILLING' : 'COD'
   const displayName = isBilling ? (value.client_name || value.label) : value.client_name
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-      <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'Syne', fontWeight: 700 }}>Client</div>
+      <div style={{ fontSize: 9, color: 'var(--c-fg-3)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: "'Archivo Black', sans-serif", fontWeight: 700 }}>Client</div>
 
       {/* SRS + COD / Label-Billing toggle row */}
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
@@ -338,20 +337,19 @@ export function ClientPanel({
           onClick={() => { if (readOnly) return; if (!value.is_srs) setShowSrsModal(true); else set('is_srs', false) }}
           style={{
             padding: '7px 16px', borderRadius: 6,
-            border: value.is_srs ? '1px solid rgba(255,59,59,0.4)' : '1px solid rgba(255,255,255,0.12)',
             cursor: readOnly ? 'default' : 'pointer', fontFamily: 'Inter', fontSize: 11, fontWeight: 700,
             background: value.is_srs ? 'rgba(255,59,59,0.12)' : 'transparent',
-            color: value.is_srs ? '#ff3b3b' : 'var(--cold)', letterSpacing: '0.08em', transition: 'all 0.15s',
+            color: value.is_srs ? '#ff3b3b' : 'var(--c-fg-3)', letterSpacing: '0.08em', transition: 'all 0.15s',
           }}
         >SRS</button>
 
-        <div style={{ display: 'flex', gap: 2, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
+        <div style={{ display: 'flex', gap: 2, background: 'var(--c-bg)', borderRadius: 8, padding: 3 }}>
           {(['COD', 'billing'] as const).map(m => (
             <button key={m} type="button" disabled={readOnly} onClick={() => { if (readOnly) return; if (m !== value.payment_type) clearClient(); set('payment_type', m) }} style={{
-              padding: '7px 28px', borderRadius: 6, border: 'none', cursor: readOnly ? 'default' : 'pointer',
+              padding: '7px 28px', borderRadius: 6, cursor: readOnly ? 'default' : 'pointer',
               fontFamily: 'Inter', fontSize: 11, fontWeight: 500,
-              background: value.payment_type === m ? 'var(--surface2)' : 'transparent',
-              color: value.payment_type === m ? 'var(--text)' : 'var(--text2)', transition: 'all 0.15s', letterSpacing: '0.04em',
+              background: value.payment_type === m ? 'var(--c-wash)' : 'transparent',
+              color: value.payment_type === m ? 'var(--c-fg)' : 'var(--c-fg-2)', transition: 'all 0.15s', letterSpacing: '0.04em',
             }}>{m === 'COD' ? 'COD' : 'Label/Billing'}</button>
           ))}
         </div>
@@ -359,15 +357,15 @@ export function ClientPanel({
 
       {/* SRS referral modal */}
       {showSrsModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '28px 32px', width: 380, maxWidth: '90vw', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
-            <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: 'var(--text)', marginBottom: 10 }}>SRS Referral</div>
-            <div style={{ fontFamily: 'Inter', fontSize: 12, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 24 }}>
+        <div className="c-modal-backdrop" style={{ zIndex: 200 }}>
+          <div style={{ background: 'var(--c-wash)', borderRadius: 10, padding: '28px 32px', width: 380, maxWidth: '90vw', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
+            <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15, color: 'var(--c-fg)', marginBottom: 10 }}>SRS Referral</div>
+            <div style={{ fontFamily: 'Inter', fontSize: 12, color: 'var(--c-fg-2)', lineHeight: 1.6, marginBottom: 24 }}>
               Apply this to the client&apos;s profile so all future bookings are automatically flagged as SRS?
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => { set('is_srs', true); setShowSrsModal(false) }} style={{ padding: '8px 18px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, background: 'transparent', color: 'var(--text2)' }}>Just this session</button>
-              <button type="button" onClick={async () => { set('is_srs', true); if (value.client_db_id) await supabase.from('clients').update({ srs_client: true }).eq('id', value.client_db_id); setShowSrsModal(false) }} style={{ padding: '8px 18px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, background: 'var(--accent)', color: 'var(--bg)' }}>Apply to profile</button>
+              <button type="button" onClick={() => { set('is_srs', true); setShowSrsModal(false) }} style={{ padding: '8px 18px', borderRadius: 6, cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, background: 'transparent', color: 'var(--c-fg-2)' }}>Just this session</button>
+              <button type="button" onClick={async () => { set('is_srs', true); if (value.client_db_id) await supabase.from('clients').update({ srs_client: true }).eq('id', value.client_db_id); setShowSrsModal(false) }} style={{ padding: '8px 18px', borderRadius: 6, cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, background: 'var(--c-fg)', color: 'var(--c-bg)' }}>Apply to profile</button>
             </div>
           </div>
         </div>
@@ -393,11 +391,11 @@ export function ClientPanel({
             autoComplete="off"
           />
           {showClientDD && clientSuggestions.length > 0 && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--c-bg)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
               {clientSuggestions.map((s, i) => (
-                <div key={i} onMouseDown={() => applyClientAutofill(s)} style={{ padding: '8px 12px', cursor: 'pointer', background: i === clientHighlight ? 'var(--surface2)' : 'transparent', borderBottom: i < clientSuggestions.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                  <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text)' }}>{s.label}</div>
-                  {s.sub && <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)', marginTop: 1 }}>{s.sub}</div>}
+                <div key={i} onMouseDown={() => applyClientAutofill(s)} style={{ padding: '8px 12px', cursor: 'pointer', background: i === clientHighlight ? 'var(--c-wash)' : 'transparent' }}>
+                  <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)' }}>{s.label}</div>
+                  {s.sub && <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-3)', marginTop: 1 }}>{s.sub}</div>}
                 </div>
               ))}
             </div>
@@ -407,20 +405,20 @@ export function ClientPanel({
 
       {/* Client card — shown when a client is attached */}
       {hasClient && (
-        <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--c-wash)', borderRadius: 8, overflow: 'hidden' }}>
           {/* Card header */}
-          <div style={{ padding: '12px 14px 10px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ padding: '12px 14px 10px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: 'DM Serif Display', fontSize: 17, lineHeight: 1.2, color: nameColor, wordBreak: 'break-word' }}>{displayName}</div>
+                <div style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 17, lineHeight: 1.2, color: nameColor, wordBreak: 'break-word' }}>{displayName}</div>
                 {value.label && value.label !== displayName && (
                   <div style={{ fontSize: 12, fontFamily: 'Inter', color: nameColor, marginTop: 3, opacity: 0.75 }}>{value.label}</div>
                 )}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', padding: '3px 7px', borderRadius: 3, marginTop: 2, background: 'rgba(139,144,168,0.12)', color: 'var(--text2)', border: '1px solid var(--border)' }}>{badgeLabel}</span>
+                <span style={{ fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', padding: '3px 7px', borderRadius: 3, marginTop: 2, background: 'rgba(139,144,168,0.12)', color: 'var(--c-fg-2)' }}>{badgeLabel}</span>
                 {!readOnly && (
-                  <button type="button" onClick={clearClient} title="Change client" style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text3)', borderRadius: 3, cursor: 'pointer', fontSize: 11, lineHeight: 1, padding: '3px 6px', marginTop: 2 }}>✕</button>
+                  <button type="button" onClick={clearClient} title="Change client" style={{ background: 'transparent', color: 'var(--c-fg-3)', borderRadius: 3, cursor: 'pointer', fontSize: 11, lineHeight: 1, padding: '3px 6px', marginTop: 2 }}>✕</button>
                 )}
               </div>
             </div>
@@ -432,25 +430,25 @@ export function ClientPanel({
               <>
                 {/* Artist */}
                 <div style={{ marginBottom: 8, position: 'relative' }}>
-                  <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Artist</div>
+                  <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>Artist</div>
                   <input
                     value={value.artist} disabled={readOnly}
                     onChange={e => { set('artist', e.target.value); setShowArtistDD(true) }}
                     onFocus={() => setShowArtistDD(true)}
                     onBlur={() => setTimeout(() => setShowArtistDD(false), 150)}
                     placeholder="—"
-                    style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                    style={{ width: '100%', background: 'var(--c-bg)', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
                   />
                   {showArtistDD && !readOnly && (clientArtists.filter(a => !value.artist || a.toLowerCase().includes(value.artist.toLowerCase())).length > 0 || value.artist.trim().length >= 2) && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--c-bg)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
                       {clientArtists.filter(a => !value.artist || a.toLowerCase().includes(value.artist.toLowerCase())).map((a, i) => (
-                        <div key={i} onMouseDown={e => { e.preventDefault(); set('artist', a); setShowArtistDD(false) }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'Inter', color: 'var(--text)' }}
-                          onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{a}</div>
+                        <div key={i} onMouseDown={e => { e.preventDefault(); set('artist', a); setShowArtistDD(false) }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'var(--c-wash)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{a}</div>
                       ))}
                       {value.artist.trim().length >= 2 && !clientArtists.some(a => a.toLowerCase() === value.artist.trim().toLowerCase()) && value.client_db_id && (() => {
                         const clientId = value.client_db_id
                         return (
-                          <div onMouseDown={async e => { e.preventDefault(); const updated = await addArtistToLabel(clientId, value.artist.trim(), clientArtists); setClientArtists(updated); setShowArtistDD(false) }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: clientArtists.filter(a => !value.artist || a.toLowerCase().includes(value.artist.toLowerCase())).length > 0 ? '1px solid var(--border)' : undefined, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div onMouseDown={async e => { e.preventDefault(); const updated = await addArtistToLabel(clientId, value.artist.trim(), clientArtists); setClientArtists(updated); setShowArtistDD(false) }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--c-fg)', fontSize: 11, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this artist? Add &ldquo;{value.artist.trim()}&rdquo;
                           </div>
                         )
@@ -461,36 +459,36 @@ export function ClientPanel({
 
                 {/* A&R */}
                 {(() => {
-                  const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 10, padding: '1px 0' }
-                  const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)', background: 'transparent', color, fontFamily: 'Inter', fontSize: 9, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' })
+                  const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 10, padding: '1px 0' }
+                  const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, background: 'transparent', color, fontFamily: 'Inter', fontSize: 9, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' })
                   const anrPh = anrPhone.replace(/\D/g, '')
                   return (
                     <div style={{ marginBottom: 10 }}>
-                      <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>A&amp;R</div>
+                      <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>A&amp;R</div>
                       <div style={{ position: 'relative' }}>
                         <input value={anrQuery} disabled={readOnly}
                           onChange={e => { setAnrQuery(e.target.value); set('ordered_by', e.target.value); set('anr_contact_id', null); setAnrContact(null); setShowAnrDD(true) }}
                           onFocus={() => setShowAnrDD(true)}
                           onBlur={() => { setTimeout(() => setShowAnrDD(false), 150); set('ordered_by', anrQuery) }}
                           placeholder="—"
-                          style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                          style={{ width: '100%', background: 'var(--c-bg)', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
                         />
                         {showAnrDD && !readOnly && (labelContacts.filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase())).length > 0 || anrQuery.trim().length >= 2) && (
-                          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
+                          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--c-bg)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
                             {labelContacts.filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase())).map((c, i) => {
                               const name = `${c.fname || ''} ${c.lname || ''}`.trim()
                               return (
-                                <div key={c.id} onMouseDown={e => { e.preventDefault(); setAnrQuery(name); set('ordered_by', name); set('client_name', name); set('anr_contact_id', c.id); setAnrContact(c); setAnrEmail(c.email || ''); setAnrPhone(c.phone || ''); set('email', c.email || ''); set('phone', c.phone || ''); setShowAnrDD(false) }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'Inter', color: 'var(--text)', borderBottom: i < labelContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
-                                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                <div key={c.id} onMouseDown={e => { e.preventDefault(); setAnrQuery(name); set('ordered_by', name); set('client_name', name); set('anr_contact_id', c.id); setAnrContact(c); setAnrEmail(c.email || ''); setAnrPhone(c.phone || ''); set('email', c.email || ''); set('phone', c.phone || ''); setShowAnrDD(false) }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)' }}
+                                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--c-wash)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                                   <div>{name}</div>
-                                  {c.email && <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 1 }}>{c.email}</div>}
+                                  {c.email && <div style={{ fontSize: 9, color: 'var(--c-fg-3)', marginTop: 1 }}>{c.email}</div>}
                                 </div>
                               )
                             })}
                             {anrQuery.trim().length >= 2 && !labelContacts.some(c => `${c.fname || ''} ${c.lname || ''}`.trim().toLowerCase() === anrQuery.trim().toLowerCase()) && (() => {
                               const clientId = value.client_db_id
                               return (
-                                <div onMouseDown={async e => { e.preventDefault(); if (!clientId) return; const parts = anrQuery.trim().split(/\s+/); const fname = parts[0] || '', lname = parts.slice(1).join(' '); const { data } = await supabase.from('client_contacts').insert({ client_id: clientId, fname, lname: lname || null, contact_type: 'anr', artists: [] }).select().single(); if (data) { const contact = data as ClientContact; setLabelContacts(prev => [...prev, contact]); const nm = `${fname} ${lname}`.trim(); setAnrQuery(nm); set('ordered_by', nm); set('client_name', nm); set('anr_contact_id', contact.id); setAnrContact(contact); setAnrEmail(''); setAnrPhone('') } setShowAnrDD(false) }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <div onMouseDown={async e => { e.preventDefault(); if (!clientId) return; const parts = anrQuery.trim().split(/\s+/); const fname = parts[0] || '', lname = parts.slice(1).join(' '); const { data } = await supabase.from('client_contacts').insert({ client_id: clientId, fname, lname: lname || null, contact_type: 'anr', artists: [] }).select().single(); if (data) { const contact = data as ClientContact; setLabelContacts(prev => [...prev, contact]); const nm = `${fname} ${lname}`.trim(); setAnrQuery(nm); set('ordered_by', nm); set('client_name', nm); set('anr_contact_id', contact.id); setAnrContact(contact); setAnrEmail(''); setAnrPhone('') } setShowAnrDD(false) }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--c-fg)', fontSize: 11, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6 }}>
                                   <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this A&R? Add &ldquo;{anrQuery.trim()}&rdquo;
                                 </div>
                               )
@@ -500,12 +498,12 @@ export function ClientPanel({
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
                         <input value={anrEmail} disabled={readOnly} onChange={e => setAnrEmail(e.target.value)} onBlur={() => { set('email', anrEmail); if (anrContact?.id && anrEmail !== (anrContact.email || '')) { const cid = anrContact.id; setContactUpdatePrompt({ contactId: cid, column: 'email', value: anrEmail, onUpdate: () => { setAnrContact(p => p ? { ...p, email: anrEmail } : p); setLabelContacts(p => p.map(c => c.id === cid ? { ...c, email: anrEmail } : c)) } }) } }} placeholder="Email" style={cInpStyle} />
-                        <a href={anrEmail ? `mailto:${anrEmail}` : undefined} onClick={!anrEmail ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--booked)', !!anrEmail)}>Email</a>
+                        <a href={anrEmail ? `mailto:${anrEmail}` : undefined} onClick={!anrEmail ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-booked)', !!anrEmail)}>Email</a>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
                         <input value={anrPhone} disabled={readOnly} onChange={e => setAnrPhone(e.target.value)} onBlur={() => { set('phone', anrPhone); if (anrContact?.id && anrPhone !== (anrContact.phone || '')) { const cid = anrContact.id; setContactUpdatePrompt({ contactId: cid, column: 'phone', value: anrPhone, onUpdate: () => { setAnrContact(p => p ? { ...p, phone: anrPhone } : p); setLabelContacts(p => p.map(c => c.id === cid ? { ...c, phone: anrPhone } : c)) } }) } }} placeholder="Phone" style={cInpStyle} />
-                        <a href={anrPh ? `tel:${anrPh}` : undefined} onClick={!anrPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--booked)', !!anrPh)}>Call</a>
-                        <a href={anrPh ? `sms:${anrPh}` : undefined} onClick={!anrPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--warm)', !!anrPh)}>Text</a>
+                        <a href={anrPh ? `tel:${anrPh}` : undefined} onClick={!anrPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-booked)', !!anrPh)}>Call</a>
+                        <a href={anrPh ? `sms:${anrPh}` : undefined} onClick={!anrPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-warm)', !!anrPh)}>Text</a>
                       </div>
                     </div>
                   )
@@ -513,36 +511,36 @@ export function ClientPanel({
 
                 {/* Admin */}
                 {(() => {
-                  const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 10, padding: '1px 0' }
-                  const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)', background: 'transparent', color, fontFamily: 'Inter', fontSize: 9, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' })
+                  const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 10, padding: '1px 0' }
+                  const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, background: 'transparent', color, fontFamily: 'Inter', fontSize: 9, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' })
                   const adminPh = adminPhone.replace(/\D/g, '')
                   return (
                     <div style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Admin</div>
+                      <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>Admin</div>
                       <div style={{ position: 'relative' }}>
                         <input value={adminQuery} disabled={readOnly}
                           onChange={e => { setAdminQuery(e.target.value); set('anr_admin_contact_id', null); setAdminContact(null); setShowAdminDD(true) }}
                           onFocus={() => setShowAdminDD(true)}
                           onBlur={() => setTimeout(() => setShowAdminDD(false), 150)}
                           placeholder="—"
-                          style={{ width: '100%', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                          style={{ width: '100%', background: 'var(--c-bg)', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
                         />
                         {showAdminDD && !readOnly && (labelAdminContacts.filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase())).length > 0 || adminQuery.trim().length >= 2) && (
-                          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
+                          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--c-bg)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
                             {labelAdminContacts.filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase())).map((c, i) => {
                               const name = `${c.fname || ''} ${c.lname || ''}`.trim()
                               return (
-                                <div key={c.id} onMouseDown={e => { e.preventDefault(); setAdminQuery(name); set('anr_admin_contact_id', c.id); setAdminContact(c); setAdminEmail(c.email || ''); setAdminPhone(c.phone || ''); setShowAdminDD(false) }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'Inter', color: 'var(--text)', borderBottom: i < labelAdminContacts.length - 1 ? '1px solid var(--border)' : 'none' }}
-                                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                <div key={c.id} onMouseDown={e => { e.preventDefault(); setAdminQuery(name); set('anr_admin_contact_id', c.id); setAdminContact(c); setAdminEmail(c.email || ''); setAdminPhone(c.phone || ''); setShowAdminDD(false) }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)' }}
+                                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--c-wash)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                                   <div>{name}</div>
-                                  {c.role && <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 1 }}>{c.role}</div>}
+                                  {c.role && <div style={{ fontSize: 9, color: 'var(--c-fg-3)', marginTop: 1 }}>{c.role}</div>}
                                 </div>
                               )
                             })}
                             {adminQuery.trim().length >= 2 && !labelAdminContacts.some(c => `${c.fname || ''} ${c.lname || ''}`.trim().toLowerCase() === adminQuery.trim().toLowerCase()) && (() => {
                               const clientId = value.client_db_id
                               return (
-                                <div onMouseDown={async e => { e.preventDefault(); if (!clientId) return; const parts = adminQuery.trim().split(/\s+/); const fname = parts[0] || '', lname = parts.slice(1).join(' '); const { data } = await supabase.from('client_contacts').insert({ client_id: clientId, fname, lname: lname || null, contact_type: 'admin' }).select().single(); if (data) { const contact = data as ClientContact; setLabelAdminContacts(prev => [...prev, contact]); setAdminQuery(adminQuery.trim()); set('anr_admin_contact_id', contact.id); setAdminContact(contact); setAdminEmail(''); setAdminPhone('') } setShowAdminDD(false) }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <div onMouseDown={async e => { e.preventDefault(); if (!clientId) return; const parts = adminQuery.trim().split(/\s+/); const fname = parts[0] || '', lname = parts.slice(1).join(' '); const { data } = await supabase.from('client_contacts').insert({ client_id: clientId, fname, lname: lname || null, contact_type: 'admin' }).select().single(); if (data) { const contact = data as ClientContact; setLabelAdminContacts(prev => [...prev, contact]); setAdminQuery(adminQuery.trim()); set('anr_admin_contact_id', contact.id); setAdminContact(contact); setAdminEmail(''); setAdminPhone('') } setShowAdminDD(false) }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--c-fg)', fontSize: 11, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6 }}>
                                   <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this admin? Add &ldquo;{adminQuery.trim()}&rdquo;
                                 </div>
                               )
@@ -552,12 +550,12 @@ export function ClientPanel({
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
                         <input value={adminEmail} disabled={readOnly} onChange={e => setAdminEmail(e.target.value)} onBlur={() => { if (adminContact?.id && adminEmail !== (adminContact.email || '')) { const cid = adminContact.id; setContactUpdatePrompt({ contactId: cid, column: 'email', value: adminEmail, onUpdate: () => { setAdminContact(p => p ? { ...p, email: adminEmail } : p); setLabelAdminContacts(p => p.map(c => c.id === cid ? { ...c, email: adminEmail } : c)) } }) } }} placeholder="Email" style={cInpStyle} />
-                        <a href={adminEmail ? `mailto:${adminEmail}` : undefined} onClick={!adminEmail ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--booked)', !!adminEmail)}>Email</a>
+                        <a href={adminEmail ? `mailto:${adminEmail}` : undefined} onClick={!adminEmail ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-booked)', !!adminEmail)}>Email</a>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
                         <input value={adminPhone} disabled={readOnly} onChange={e => setAdminPhone(e.target.value)} onBlur={() => { if (adminContact?.id && adminPhone !== (adminContact.phone || '')) { const cid = adminContact.id; setContactUpdatePrompt({ contactId: cid, column: 'phone', value: adminPhone, onUpdate: () => { setAdminContact(p => p ? { ...p, phone: adminPhone } : p); setLabelAdminContacts(p => p.map(c => c.id === cid ? { ...c, phone: adminPhone } : c)) } }) } }} placeholder="Phone" style={cInpStyle} />
-                        <a href={adminPh ? `tel:${adminPh}` : undefined} onClick={!adminPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--booked)', !!adminPh)}>Call</a>
-                        <a href={adminPh ? `sms:${adminPh}` : undefined} onClick={!adminPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--warm)', !!adminPh)}>Text</a>
+                        <a href={adminPh ? `tel:${adminPh}` : undefined} onClick={!adminPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-booked)', !!adminPh)}>Call</a>
+                        <a href={adminPh ? `sms:${adminPh}` : undefined} onClick={!adminPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-warm)', !!adminPh)}>Text</a>
                       </div>
                     </div>
                   )
@@ -565,15 +563,15 @@ export function ClientPanel({
 
                 {/* Contact update prompt */}
                 {contactUpdatePrompt && (
-                  <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '24px 28px', width: 340, maxWidth: '90vw', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
-                      <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: 'var(--text)', marginBottom: 8 }}>Update client profile or just this session?</div>
-                      <div style={{ fontFamily: 'Inter', fontSize: 11, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 20 }}>
+                  <div className="c-modal-backdrop" style={{ zIndex: 400 }}>
+                    <div style={{ background: 'var(--c-wash)', borderRadius: 10, padding: '24px 28px', width: 340, maxWidth: '90vw', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
+                      <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 13, color: 'var(--c-fg)', marginBottom: 8 }}>Update client profile or just this session?</div>
+                      <div style={{ fontFamily: 'Inter', fontSize: 11, color: 'var(--c-fg-2)', lineHeight: 1.6, marginBottom: 20 }}>
                         Save the new {contactUpdatePrompt.column} back to the contact record, or keep it for this booking only.
                       </div>
                       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                        <button type="button" onClick={() => setContactUpdatePrompt(null)} style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, background: 'transparent', color: 'var(--text2)' }}>Just this session</button>
-                        <button type="button" onClick={async () => { await supabase.from('client_contacts').update({ [contactUpdatePrompt.column]: contactUpdatePrompt.value }).eq('id', contactUpdatePrompt.contactId); contactUpdatePrompt.onUpdate(); setContactUpdatePrompt(null) }} style={{ padding: '7px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, background: 'var(--accent)', color: 'var(--bg)' }}>Update profile</button>
+                        <button type="button" onClick={() => setContactUpdatePrompt(null)} style={{ padding: '7px 16px', borderRadius: 6, cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, background: 'transparent', color: 'var(--c-fg-2)' }}>Just this session</button>
+                        <button type="button" onClick={async () => { await supabase.from('client_contacts').update({ [contactUpdatePrompt.column]: contactUpdatePrompt.value }).eq('id', contactUpdatePrompt.contactId); contactUpdatePrompt.onUpdate(); setContactUpdatePrompt(null) }} style={{ padding: '7px 16px', borderRadius: 6, cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, background: 'var(--c-fg)', color: 'var(--c-bg)' }}>Update profile</button>
                       </div>
                     </div>
                   </div>
@@ -586,7 +584,7 @@ export function ClientPanel({
               </>
             )}
 
-            <button onClick={() => value.client_db_id && setShowProfile(true)} style={{ marginTop: 10, width: '100%', padding: '6px 10px', borderRadius: 4, background: 'transparent', border: '1px solid var(--border)', color: value.client_db_id ? 'var(--text2)' : 'var(--text3)', fontFamily: 'Inter', fontSize: 10, cursor: value.client_db_id ? 'pointer' : 'default', textAlign: 'center' }}>
+            <button onClick={() => value.client_db_id && setShowProfile(true)} style={{ marginTop: 10, width: '100%', padding: '6px 10px', borderRadius: 4, background: 'transparent', color: value.client_db_id ? 'var(--c-fg-2)' : 'var(--c-fg-3)', fontFamily: 'Inter', fontSize: 10, cursor: value.client_db_id ? 'pointer' : 'default', textAlign: 'center' }}>
               {value.client_db_id ? 'View full profile →' : 'No profile linked'}
             </button>
           </div>
