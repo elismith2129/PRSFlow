@@ -104,6 +104,22 @@ export default function RunnerWOPage() {
       if (!resolvedId && bookingId) {
         // Adopt-only: the runner never creates a work order. WO creation happens at
         // booking-save (admin). If none exists yet, fall through to the error state below.
+        //
+        // Resolve via the booking card's OWN work_order_id first. Post-rebuild a
+        // WO writes several projection cards that all carry work_order_id, while
+        // work_orders.booking_id names only the original — so the reverse lookup
+        // below fails for every card except that one. See the matching comment in
+        // app/runner/[studio]/page.tsx.
+        const { data: bk } = await supabase
+          .from('bookings')
+          .select('work_order_id')
+          .eq('id', bookingId)
+          .maybeSingle()
+        if (bk?.work_order_id) resolvedId = bk.work_order_id
+      }
+
+      if (!resolvedId && bookingId) {
+        // Fallback for pre-rebuild bookings whose work_order_id was never set.
         const { data: existingRows } = await supabase
           .from('work_orders')
           .select('id')

@@ -51,14 +51,22 @@ const SESSION_TYPES: [string, string][] = [
   ['recording', 'Recording'], ['filming', 'Filming'], ['event_playback', 'Event / Playback'],
 ]
 
-// Studio accent colors — mirror the Runner Hub WO header (STUDIO_META) so the
-// mobile WO popup matches it. Keyed by venue name (booking.location).
-const STUDIO_COLORS: Record<string, string> = {
-  paramount: 'var(--accent)',
-  ameraycan: 'var(--hot)',
-  encore: 'var(--accent2)',
-  track: 'var(--warm)',
-}
+// ─── REMOVED: per-studio accent colours on the mobile WO header ──────────────
+// This map used to tint the mobile header's bottom border by venue:
+//   paramount → --accent, ameraycan → --hot, encore → --accent2, track → --warm
+//
+// Two problems. `--hot` is the LEAD TEMPERATURE colour (#EF4444) and is used
+// everywhere else for danger, errors and cancelled sessions — so every
+// Ameraycan work order opened with a 3px red bar under its header and read as
+// though something had gone wrong. And per-studio colour coding was already
+// deliberately removed across the runner pages, admin sections, LocationStrip
+// and dashboard; this survived only because its comment claimed to mirror the
+// Runner Hub header, which had itself moved to a neutral 1px border in that
+// same pass. The comment was stale, not the design.
+//
+// The header now uses var(--border), matching the runner. Don't reintroduce
+// venue colours here without reintroducing them everywhere — and if you do,
+// don't borrow a colour that already carries meaning.
 
 // ─── Local types (editable UI state, strings for all inputs) ─────────────────
 
@@ -1719,7 +1727,6 @@ export function WorkOrderPopup({
   const isCompleted = wo.status === 'completed'
   // Tour/Tech/Open-Hours → render the simplified "block" view (title + times only).
   const isBlock = BLOCK_STATUSES.includes(wo.session_status)
-  const accent = STUDIO_COLORS[(booking.location || '').toLowerCase()] || 'var(--accent)'
   // Runner-style section card (mobile only) — var(--surface) surface, var(--border) border,
   // radius 12, matching app/runner/[studio]/wo/[id]/page.tsx section cards.
   const mCard: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 14, boxSizing: 'border-box' }
@@ -1731,7 +1738,14 @@ export function WorkOrderPopup({
       style={inline
         ? { position: 'static', background: 'transparent' }
         : isMobile
-        ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'var(--bg)' }
+        // top: 52 clears the Nav on mobile too. The Nav is z-index 99999 and is
+        // deliberately ABOVE all modals (see CLAUDE.md), so a sheet starting at
+        // top: 0 doesn't cover it — the Nav paints straight through the middle
+        // of the sheet. The desktop branch below has always offset by 52 for
+        // exactly this reason; the mobile branch just never carried it over.
+        // The Nav is 52px tall on mobile as well (the 44px is the hamburger
+        // button inside it, not the bar).
+        ? { position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'var(--bg)' }
         : { position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.75)', overflowY: 'auto' }}
       onClick={inline || isMobile ? undefined : e => { if (e.target === e.currentTarget) handleClose() }}
     >
@@ -1740,13 +1754,16 @@ export function WorkOrderPopup({
       )}
       <div
         style={isMobile
-          ? { display: 'flex', flexDirection: 'column', height: '100dvh', padding: 0, boxSizing: 'border-box' }
+          // height: '100%' rather than 100dvh — the fixed parent is now inset
+          // 52px from the top, so 100dvh would overflow the viewport by exactly
+          // the height of the Nav and push the footer buttons off-screen.
+          ? { display: 'flex', flexDirection: 'column', height: '100%', padding: 0, boxSizing: 'border-box' }
           : { display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '100%', padding: '20px 16px', boxSizing: 'border-box' }}
         onClick={inline || isMobile ? undefined : e => { if (e.target === e.currentTarget) { readOnly ? onClose() : handleClose() } }}
       >
       <div
         style={isMobile
-          ? { background: 'var(--bg)', border: 'none', borderRadius: 0, width: '100vw', height: '100dvh', maxWidth: 'none', minWidth: 0, margin: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }
+          ? { background: 'var(--bg)', border: 'none', borderRadius: 0, width: '100vw', height: '100%', maxWidth: 'none', minWidth: 0, margin: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }
           : { background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.13)', borderRadius: 10, width: '100%', maxWidth: 920, minWidth: 780, marginBottom: 20, alignSelf: 'flex-start' }}
         onClick={e => e.stopPropagation()}
       >
@@ -1754,7 +1771,7 @@ export function WorkOrderPopup({
         {/* ── HEADER ────────────────────────────────────────────────────────── */}
         {isMobile ? (
           /* Mobile: matches the Runner Hub WO header (back arrow + title + sub) */
-          <div style={{ background: 'var(--surface)', borderBottom: `3px solid ${accent}`, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10, flexShrink: 0 }}>
+          <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10, flexShrink: 0 }}>
             <button onClick={() => handleCancel()} disabled={saving} aria-label="Close" style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: saving ? 'default' : 'pointer', fontSize: 18, padding: '0 4px', flexShrink: 0 }}>←</button>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne, sans-serif' }}>

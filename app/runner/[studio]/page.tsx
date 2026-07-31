@@ -46,20 +46,52 @@ export default function StudioDailyOpsPage() {
     setBookings(filtered)
 
     if (filtered.length > 0) {
-      const ids = filtered.map((b: Booking) => b.id)
-      const { data: wos } = await supabase
-        .from('work_orders')
-        .select('id, booking_id, status, created_at')
-        .in('booking_id', ids)
-        .order('created_at', { ascending: true })
+      // ── Resolving a booking card → its work order ────────────────────────
+      // Since the July 2026 rebuild the WO is the source of truth and `bookings`
+      // rows are PROJECTION CARDS it writes on save — one per consecutive
+      // same-room run, ALL carrying `work_order_id`. But `work_orders.booking_id`
+      // points at only ONE of them (the original).
+      //
+      // So the old lookup — "which WO has booking_id = this card?" — resolved
+      // for the original card and silently failed for every other one, sending
+      // the runner to /wo/new and the dead-end "Work order not yet created"
+      // screen. Any multi-day or multi-room session hit it.
+      //
+      // Read the card's OWN forward link first; keep the reverse link as a
+      // fallback for pre-rebuild rows whose work_order_id was never populated.
+      const bookingIds = filtered.map((b: Booking) => b.id)
+      const woIds = Array.from(
+        new Set(filtered.map((b: Booking) => b.work_order_id).filter(Boolean)),
+      ) as string[]
+
+      const [byWoId, byBookingId] = await Promise.all([
+        woIds.length
+          ? supabase.from('work_orders').select('id, status').in('id', woIds)
+          : Promise.resolve({ data: [] as { id: string; status: string }[] }),
+        supabase
+          .from('work_orders')
+          .select('id, booking_id, status, created_at')
+          .in('booking_id', bookingIds)
+          .order('created_at', { ascending: true }),
+      ])
+
+      const woById: Record<string, WOStatus> = {}
+      for (const wo of byWoId.data ?? []) woById[wo.id] = { id: wo.id, status: wo.status }
+
+      const legacyByBooking: Record<string, WOStatus> = {}
+      for (const wo of byBookingId.data ?? []) {
+        // First-wins (earliest created): deterministic if legacy duplicate WOs
+        // exist, and the same row the WO page adopts when the card is tapped.
+        if (wo.booking_id && !legacyByBooking[wo.booking_id]) {
+          legacyByBooking[wo.booking_id] = { id: wo.id, status: wo.status }
+        }
+      }
+
       const map: Record<string, WOStatus> = {}
-      for (const wo of wos ?? []) {
-        // First-wins (earliest created): deterministic if legacy duplicate WOs exist,
-        // and the same earliest row the runner WO page adopts when the card is tapped.
-        // The unique constraint on booking_id makes one-WO-per-booking the steady state.
-        // `.in('booking_id', ids)` already excludes null booking_id rows, so the guard
-        // below is defensive only — every row here maps to a real booking.
-        if (wo.booking_id && !map[wo.booking_id]) map[wo.booking_id] = { id: wo.id, status: wo.status }
+      for (const b of filtered) {
+        const found = (b.work_order_id ? woById[b.work_order_id] : undefined)
+          ?? legacyByBooking[b.id]
+        if (found) map[b.id] = found
       }
       setWoMap(map)
     } else {
