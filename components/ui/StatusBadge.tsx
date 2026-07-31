@@ -1,4 +1,5 @@
 import React from 'react'
+import { StatusPill as CarvedStatusPill } from '@/components/carved'
 
 // Unified status → color mapping for every status badge in the app.
 // Colors are stored as 6-digit hex so the badge can derive a translucent
@@ -45,9 +46,30 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({
+  status,
+  carved = false,
+}: {
+  status: string
+  /**
+   * Carved design system variant (docs/PRSFLO-DESIGN-SPEC.md §5/§8): a solid
+   * status fill with chip ink, raised off the surface — never tinted text in a
+   * bordered box, which Law 1 forbids. Extends this component rather than
+   * duplicating it, per spec §8. Default false — existing callers are untouched.
+   *
+   * Note the mapping differs from the legacy one above on purpose: `uncontacted`
+   * is harbor (a live lead state), while `open`/`tech` are driftglass (inert).
+   * The legacy map made both grey.
+   */
+  carved?: boolean
+}) {
   const color = STATUS_COLORS[normalizeStatus(status)] ?? DEFAULT_COLOR
   const label = (status || '').replace(/_/g, ' ')
+
+  if (carved) {
+    return <CarvedStatusPill status={status} label={label} />
+  }
+
   return (
     <span
       style={{

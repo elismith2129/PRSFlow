@@ -20,14 +20,40 @@ export function SectionHeader({
   countColor = 'lime',
   action,
   actionColor = 'var(--accent)',
+  carved = false,
 }: {
   title: string
   count?: number
   countColor?: CountColor
   action?: SectionHeaderAction
   actionColor?: string
+  /**
+   * Carved design system variant (docs/PRSFLO-DESIGN-SPEC.md §8): renders as a
+   * capsule lozenge resting on the surface instead of the legacy bare label.
+   * Extends this component rather than duplicating it, per spec §8. Default
+   * false — every existing caller is untouched.
+   */
+  carved?: boolean
 }) {
   const pill = COUNT_COLORS[countColor]
+
+  if (carved) {
+    return (
+      <div className="c-lozenge c-anchor">
+        <b>
+          {title}
+          {count !== undefined && <span className="c-count c-raised-chip">{count}</span>}
+        </b>
+        {action &&
+          (action.href ? (
+            <a href={action.href}>{action.label}</a>
+          ) : (
+            <button onClick={action.onClick}>{action.label}</button>
+          ))}
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
       <span

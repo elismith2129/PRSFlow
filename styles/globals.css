@@ -392,16 +392,19 @@ select {
   outline: none;
 }
 
-/* (5) INPUT DEPTH — recessed inset shadow on all form fields */
-input, textarea, select {
+/* (5) INPUT DEPTH — recessed inset shadow on all form fields.
+   `.c-input` is excluded: the carved system supplies its own inset via .c-inset2,
+   and this rule would otherwise sit on top of it. */
+input:not(.c-input), textarea:not(.c-input), select:not(.c-input) {
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 /* (FIX 1) In light mode the dark inset shadow reads as a distracting box outline —
-   remove it on all inputs. */
-[data-theme="light"] input,
-[data-theme="light"] textarea,
-[data-theme="light"] select {
+   remove it on all inputs. `.c-input` excluded for the same reason as above: this
+   rule is !important and would flatten the carved input in light mode. */
+[data-theme="light"] input:not(.c-input),
+[data-theme="light"] textarea:not(.c-input),
+[data-theme="light"] select:not(.c-input) {
   box-shadow: none !important;
 }
 
@@ -618,4 +621,284 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   box-shadow: 0 0 0 1000px var(--surface) inset;
   caret-color: var(--text);
   transition: background-color 9999s ease-out 0s;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CARVED DESIGN SYSTEM — PRIMITIVES
+   docs/PRSFLO-DESIGN-SPEC.md §7/§8/§9 · mock: prsflo-final-mock.html
+   Consumed by components/carved/index.tsx. Nothing else in the app uses these
+   yet, so this section is inert — it only renders on /dev-style.
+
+   POLARITY: dark is the base (attribute absent); light is the override. Every
+   recipe below is written dark-first, with the light values in a following
+   [data-theme="light"] rule. The spec prints them the other way round.
+
+   LAWS: no borders/dividers anywhere (border-radius only); containers carve IN,
+   controls raise OUT and press IN on :active; colour is status only; dark gets
+   no large bright surfaces; nothing animates except .c-newpulse.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Surface + type ─────────────────────────────────────────────────────── */
+.c-root {
+  background: var(--c-bg);
+  color: var(--c-fg);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.6;
+}
+.c-arch { font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 400; }
+.c-mono { font-family: 'DM Mono', ui-monospace, monospace; font-size: 12px; }
+.c-label {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.1em;
+  text-transform: uppercase; opacity: 0.45;
+}
+.c-sub { font-size: 12.5px; opacity: 0.6; }
+
+/* ── Containers: carved IN ──────────────────────────────────────────────── */
+.c-panel {
+  background: var(--c-bg);
+  border-radius: 40px;
+  padding: 17px;
+  box-shadow: inset 5px 5px 15px rgba(0, 0, 0, .4),
+              inset -5px -5px 15px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-panel {
+  box-shadow: inset 5px 5px 14px rgba(42, 39, 34, .08),
+              inset -5px -5px 14px rgba(255, 255, 255, .7);
+}
+
+/* second-level cuts: inputs, empty room cards, tasks, alternating rows */
+.c-inset2 {
+  background: var(--c-bg);
+  box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .34),
+              inset -3px -3px 9px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-inset2 {
+  box-shadow: inset 3px 3px 8px rgba(42, 39, 34, .07),
+              inset -3px -3px 8px rgba(255, 255, 255, .65);
+}
+
+/* colored pools: a status fill set INTO the surface */
+.c-pool {
+  color: var(--c-chip-ink);
+  box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .35),
+              inset -2px -2px 6px rgba(255, 255, 255, .06);
+}
+[data-theme="light"] .c-pool {
+  box-shadow: inset 3px 3px 8px rgba(0, 0, 0, .16),
+              inset -2px -2px 6px rgba(255, 255, 255, .25);
+}
+
+/* ── Controls: raised OUT ───────────────────────────────────────────────── */
+.c-raised { box-shadow: 2px 2px 7px rgba(0, 0, 0, .38), -2px -2px 7px rgba(255, 255, 255, .04); }
+[data-theme="light"] .c-raised { box-shadow: 2px 2px 6px rgba(42, 39, 34, .09), -2px -2px 6px rgba(255, 255, 255, .7); }
+
+.c-raised-primary { box-shadow: 3px 3px 10px rgba(0, 0, 0, .55), -2px -2px 7px rgba(255, 255, 255, .04); }
+[data-theme="light"] .c-raised-primary { box-shadow: 3px 3px 9px rgba(42, 39, 34, .28), -2px -2px 6px rgba(255, 255, 255, .5); }
+
+.c-raised-chip { box-shadow: 2.5px 2.5px 8px rgba(0, 0, 0, .5); }
+[data-theme="light"] .c-raised-chip { box-shadow: 2.5px 2.5px 7px rgba(42, 39, 34, .2), -1px -1px 4px rgba(255, 255, 255, .35); }
+
+/* Display anchors — rest ON the surface. Objects, not holes, not pressable. */
+.c-anchor { box-shadow: 2px 2px 8px rgba(0, 0, 0, .5); }
+[data-theme="light"] .c-anchor { box-shadow: 2px 2px 7px rgba(42, 39, 34, .22); }
+
+/* THE PRESS — every control depresses into the material while held. */
+.c-control {
+  cursor: pointer;
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.c-control:hover { transform: translateY(-1px); }
+.c-control:active {
+  transform: translateY(1px);
+  box-shadow: inset 3px 3px 7px rgba(0, 0, 0, .28);
+}
+
+/* ── Button (primary) ───────────────────────────────────────────────────── */
+.c-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border-radius: 99px; padding: 9px 19px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  background: var(--c-ivory); color: #1b1a17;
+}
+[data-theme="light"] .c-btn { background: var(--c-fg); color: var(--c-bg); }
+
+/* ── SoftButton / Pill ──────────────────────────────────────────────────── */
+.c-soft {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border-radius: 99px; padding: 8px 17px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  background: var(--c-bg); color: var(--c-fg);
+}
+.c-soft.c-on { background: var(--c-ivory); color: #1b1a17; }
+[data-theme="light"] .c-soft.c-on { background: var(--c-fg); color: var(--c-bg); }
+
+/* ── Input ──────────────────────────────────────────────────────────────── */
+.c-input {
+  display: block; width: 100%;
+  border-radius: 99px; padding: 11px 18px;
+  background: var(--c-bg); color: var(--c-fg);
+  font-family: inherit; font-size: 13.5px;
+}
+.c-input::placeholder { color: var(--c-fg); opacity: 0.35; }
+/* Focus is a depth change, not an outline (Law 1). */
+.c-input:focus { outline: none; background: var(--c-wash2); }
+
+/* ── Panel header lozenge / table head / section header ─────────────────── */
+.c-lozenge {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  border-radius: 99px; padding: 10px 18px; margin-bottom: 14px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  background: var(--c-wash2); color: var(--c-fg);
+}
+[data-theme="light"] .c-lozenge { background: var(--c-fg); color: var(--c-bg); }
+.c-lozenge a, .c-lozenge button {
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+  color: inherit; opacity: 0.55; text-decoration: none; cursor: pointer;
+  background: none; padding: 0; font-family: inherit;
+}
+
+/* ── StatusPill / StatusDot ─────────────────────────────────────────────── */
+.c-pill {
+  display: inline-flex; align-items: center; flex-shrink: 0;
+  border-radius: 99px; padding: 4px 11px;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--c-chip-ink);
+}
+[data-theme="dark"] .c-pill,
+:root:not([data-theme="light"]) .c-pill { filter: saturate(.82) brightness(.88); }
+.c-pill.c-pill-hot { color: var(--c-hot-text); }
+
+.c-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  display: inline-block; flex-shrink: 0;
+}
+
+/* ── Count badge ────────────────────────────────────────────────────────── */
+.c-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 19px; height: 19px; padding: 0 6px; border-radius: 99px;
+  font-size: 10px; font-weight: 800;
+  background: var(--c-ivory); color: #1b1a17;
+}
+[data-theme="light"] .c-count { background: var(--c-fg); color: var(--c-bg); }
+
+/* ── RoomCard ───────────────────────────────────────────────────────────── */
+.c-room {
+  position: relative; display: flex; flex-direction: column;
+  border-radius: 26px; min-height: 92px; padding: 11px 13px;
+}
+.c-room.c-room-empty { opacity: 0.6; }
+.c-room .c-room-name {
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.08em;
+  text-transform: uppercase; opacity: 0.45;
+}
+.c-room .c-room-artist { font-size: 16px; margin-top: 5px; }
+.c-room .c-room-meta { font-size: 11px; opacity: 0.7; }
+.c-room .c-room-eng { position: absolute; right: 13px; bottom: 9px; font-size: 9.5px; opacity: 0.5; }
+/* Dark: pools are alpha washes of the status colour with normal ink (Law 5). */
+:root:not([data-theme="light"]) .c-room.c-pool { color: var(--c-fg); }
+:root:not([data-theme="light"]) .c-room.c-pool .c-room-name { opacity: 1; }
+
+/* ── EventChip (calendar) ───────────────────────────────────────────────── */
+.c-ev {
+  border-radius: 14px; padding: 5px 10px; min-width: 0; overflow: hidden;
+  color: var(--c-chip-ink);
+}
+.c-ev .c-ev-title {
+  font-size: 12px; display: block;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.c-ev .c-ev-meta { font-size: 10.5px; opacity: 0.75; display: block; white-space: nowrap; overflow: hidden; }
+.c-ev .c-ev-eng { font-size: 9px; opacity: 0.6; text-align: right; display: block; }
+.c-ev.c-ev-cancelled .c-ev-title { text-decoration: line-through; }
+
+/* ── List row (capsule) ─────────────────────────────────────────────────── */
+.c-row {
+  display: flex; align-items: center; gap: 13px;
+  padding: 12px 14px; border-radius: 99px; margin-bottom: 2px;
+}
+.c-row.c-selected {
+  box-shadow: inset 3px 3px 8px rgba(0, 0, 0, .22);
+  background: var(--c-wash2);
+}
+
+/* ── Table ──────────────────────────────────────────────────────────────── */
+.c-table { width: 100%; }
+.c-table-row {
+  display: grid; align-items: baseline;
+  padding: 10px 18px; border-radius: 26px;
+  font-size: 12.5px;
+}
+.c-table-row:nth-child(odd) {
+  background: var(--c-bg);
+  box-shadow: inset 2px 2px 8px rgba(0, 0, 0, .3),
+              inset -2px -2px 8px rgba(255, 255, 255, .025);
+}
+[data-theme="light"] .c-table-row:nth-child(odd) {
+  box-shadow: inset 2px 2px 7px rgba(42, 39, 34, .05),
+              inset -2px -2px 7px rgba(255, 255, 255, .55);
+}
+
+/* ── Modal ──────────────────────────────────────────────────────────────── */
+/* The one permitted outer shadow besides raised controls: a floating carved
+   panel needs to read as lifted off the page. Derived from the raised family. */
+.c-modal-backdrop {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  background: rgba(0, 0, 0, .55);
+}
+[data-theme="light"] .c-modal-backdrop { background: rgba(42, 39, 34, .35); }
+.c-modal {
+  background: var(--c-bg); border-radius: 40px; padding: 24px;
+  max-width: 520px; width: 100%;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .6),
+              inset 5px 5px 15px rgba(0, 0, 0, .4),
+              inset -5px -5px 15px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-modal {
+  box-shadow: 0 18px 50px rgba(42, 39, 34, .22),
+              inset 5px 5px 14px rgba(42, 39, 34, .08),
+              inset -5px -5px 14px rgba(255, 255, 255, .7);
+}
+
+/* ── Status fills (§5) — the only colour in the system ──────────────────── */
+/* Solid fills at full brightness. Light mode uses them as-is; dark dims by rule
+   (§6) — pills via filter, chips and pools via alpha, never a second palette. */
+.c-fill-hot    { background: var(--c-st-hot); }
+.c-fill-warm   { background: var(--c-st-warm); }
+.c-fill-cold   { background: var(--c-st-cold); }
+.c-fill-booked { background: var(--c-st-booked); }
+.c-fill-uncon  { background: var(--c-st-uncon); }
+.c-fill-dead   { background: var(--c-st-dead); }
+
+/* Dark register — calendar chips become alpha fills so they sit in the room. */
+:root:not([data-theme="light"]) .c-ev.c-fill-booked { background: rgba(67, 223, 174, .72); }
+:root:not([data-theme="light"]) .c-ev.c-fill-warm   { background: rgba(157, 140, 255, .68); }
+:root:not([data-theme="light"]) .c-ev.c-fill-uncon  { background: rgba(127, 178, 229, .68); }
+:root:not([data-theme="light"]) .c-ev.c-fill-dead   { background: rgba(204, 209, 207, .5); }
+:root:not([data-theme="light"]) .c-ev.c-fill-hot    { background: rgba(255, 90, 77, .7); }
+:root:not([data-theme="light"]) .c-ev.c-fill-cold   { background: rgba(95, 201, 232, .68); }
+
+/* Dark register — room pools are faint washes with normal ink, not bright slabs. */
+:root:not([data-theme="light"]) .c-room.c-fill-booked { background: rgba(67, 223, 174, .18); }
+:root:not([data-theme="light"]) .c-room.c-fill-warm   { background: rgba(157, 140, 255, .18); }
+:root:not([data-theme="light"]) .c-room.c-fill-uncon  { background: rgba(127, 178, 229, .18); }
+:root:not([data-theme="light"]) .c-room.c-fill-dead   { background: rgba(204, 209, 207, .14); }
+:root:not([data-theme="light"]) .c-room.c-fill-hot    { background: rgba(255, 90, 77, .18); }
+:root:not([data-theme="light"]) .c-room.c-fill-cold   { background: rgba(95, 201, 232, .18); }
+
+/* ── New-lead pulse (§9) — the ONLY animated element in the system ──────── */
+.c-newpulse {
+  width: 9px; height: 9px; border-radius: 50%;
+  display: inline-block; flex-shrink: 0;
+  background: #f0ede4;
+  animation: c-newpulse 1.6s ease-in-out infinite;
+}
+[data-theme="light"] .c-newpulse { background: rgba(42, 39, 34, .85); }
+@keyframes c-newpulse { 0%, 100% { opacity: .25 } 50% { opacity: 1 } }
+
+@media (prefers-reduced-motion: reduce) {
+  .c-newpulse { animation: none; opacity: 1; }
+  .c-control { transition: none; }
+  .c-control:hover, .c-control:active { transform: none; }
 }
