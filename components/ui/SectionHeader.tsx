@@ -46,9 +46,9 @@ export function SectionHeader({
         </b>
         {action &&
           (action.href ? (
-            <a href={action.href}>{action.label}</a>
+            <a className="c-lz-action" href={action.href}>{action.label}</a>
           ) : (
-            <button onClick={action.onClick}>{action.label}</button>
+            <button className="c-lz-action" onClick={action.onClick}>{action.label}</button>
           ))}
       </div>
     )

@@ -709,11 +709,16 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   background: var(--c-wash2); color: var(--c-fg);
 }
 [data-theme="light"] .c-lozenge { background: var(--c-fg); color: var(--c-bg); }
-.c-lozenge a, .c-lozenge button {
+.c-lozenge a, .c-lozenge button,
+.c-lz-action {
   font-size: 9.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+  /* `inherit` is load-bearing: the lozenge is an INK FILL in light mode, so its
+     action must take the lozenge's own contrast colour. Setting this to --c-fg
+     paints dark text on a dark bar and the link vanishes. */
   color: inherit; opacity: 0.55; text-decoration: none; cursor: pointer;
-  background: none; padding: 0; font-family: inherit;
+  background: none; box-shadow: none; padding: 0; border-radius: 0; font-family: inherit;
 }
+.c-lz-action:hover { opacity: 0.85; }
 
 /* ── StatusPill / StatusDot ─────────────────────────────────────────────── */
 /* Status is INFORMATION, not an affordance — it is never pressed, so it must not
@@ -1036,35 +1041,25 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 
    Inline backgrounds were stripped from those controls so these rules can win
    without !important. */
-.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff),
-.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff) {
+.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action),
+.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) {
   border-radius: 99px; padding: 8px 16px; cursor: pointer;
   background: var(--c-bg); color: var(--c-fg);
   font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
   transition: transform .16s ease, box-shadow .16s ease;
   box-shadow: 2px 2px 7px rgba(0, 0, 0, .38), -1px -1px 3px rgba(255, 255, 255, .03);
 }
-[data-theme="light"] .c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff),
-[data-theme="light"] .c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff) {
+[data-theme="light"] .c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action),
+[data-theme="light"] .c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) {
   box-shadow: 2px 2px 6px rgba(42, 39, 34, .09), -2px -2px 6px rgba(255, 255, 255, .7);
 }
-.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):active,
-.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):active {
+.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):active,
+.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):active {
   transform: translateY(1px);
   box-shadow: inset 3px 3px 7px rgba(0, 0, 0, .28);
 }
 .c-sheet button:disabled, .c-panel button:disabled { opacity: 0.5; cursor: default; }
 
-/* A lozenge's action is a quiet text link, NOT a control. It has to survive the
-   scoped button defaults directly above: those carry five :not() clauses, which
-   inflate them to (0,6,1) and let a "generic" default outrank the targeted
-   `.c-lozenge button` rule (0,1,1). Same chain here to match the weight, and it
-   MUST stay after them — at equal specificity, source order is what decides. */
-.c-lozenge button:not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-x),
-.c-lozenge a:not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-x) {
-  background: none; box-shadow: none; padding: 0; border-radius: 0;
-  font-size: 9.5px; font-weight: 800;
-}
 
 .c-sheet input:not([type="file"]):not(.c-input),
 .c-sheet select,
