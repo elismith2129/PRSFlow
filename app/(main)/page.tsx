@@ -865,7 +865,13 @@ export default function DashboardPage() {
         </div>
 
         {/* COL 2 — TODAY'S SESSIONS */}
-        <div className="c-panel" style={{ height: isMobile ? 'auto' : 556, order: isMobile ? 1 : 0 }}>
+        {/* height 556 + overflow:hidden is the original contract from main: the
+            11-room grid is sized to fit exactly four rows inside the panel. The
+            carved header lozenge is taller than the old bare label, so the room
+            cards drop 120→110 to keep all four rows INSIDE the panel. Without
+            this the last row spilled out the bottom and overlapped the Flags
+            panel below — which is what made cards look misplaced. */}
+        <div className="c-panel" style={{ height: isMobile ? 'auto' : 556, overflow: 'hidden', order: isMobile ? 1 : 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <SectionHeader carved title="Today's sessions" />
@@ -907,7 +913,7 @@ export default function DashboardPage() {
                     onClick={() => booking ? openBookingEdit(booking) : openNewRoomBooking(room)}
                     className={`c-room ${poolStatus ? `c-pool ${statusFillClass(poolStatus)}` : 'c-inset2 c-room-empty'}`}
                     style={{
-                      height: isMobile ? undefined : 120,
+                      height: isMobile ? undefined : 110,
                       minHeight: isMobile ? 72 : undefined,
                       cursor: 'pointer',
                       overflow: 'hidden',
