@@ -640,10 +640,10 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 }
 
 /* ── Controls: raised OUT ───────────────────────────────────────────────── */
-.c-raised { box-shadow: 2px 2px 7px rgba(0, 0, 0, .38), -2px -2px 7px rgba(255, 255, 255, .04); }
+.c-raised { box-shadow: 2px 2px 7px rgba(0, 0, 0, .38), -1px -1px 3px rgba(255, 255, 255, .03); }
 [data-theme="light"] .c-raised { box-shadow: 2px 2px 6px rgba(42, 39, 34, .09), -2px -2px 6px rgba(255, 255, 255, .7); }
 
-.c-raised-primary { box-shadow: 3px 3px 10px rgba(0, 0, 0, .55), -2px -2px 7px rgba(255, 255, 255, .04); }
+.c-raised-primary { box-shadow: 3px 3px 10px rgba(0, 0, 0, .55); }
 [data-theme="light"] .c-raised-primary { box-shadow: 3px 3px 9px rgba(42, 39, 34, .28), -2px -2px 6px rgba(255, 255, 255, .5); }
 
 .c-raised-chip { box-shadow: 2.5px 2.5px 8px rgba(0, 0, 0, .5); }
@@ -713,6 +713,14 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   font-size: 9.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
   color: inherit; opacity: 0.55; text-decoration: none; cursor: pointer;
   background: none; padding: 0; font-family: inherit;
+}
+/* A lozenge's action is a quiet text link, NOT a control — it must survive the
+   scoped .c-panel/.c-sheet button defaults, which outrank the rule above on
+   specificity. Same :not() chain so the weights match; declared later, so it wins. */
+.c-lozenge button:not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-x),
+.c-lozenge a:not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-x) {
+  background: none; box-shadow: none; padding: 0; border-radius: 0;
+  font-size: 9.5px; font-weight: 800;
 }
 
 /* ── StatusPill / StatusDot ─────────────────────────────────────────────── */
@@ -1042,7 +1050,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   background: var(--c-bg); color: var(--c-fg);
   font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
   transition: transform .16s ease, box-shadow .16s ease;
-  box-shadow: 2px 2px 7px rgba(0, 0, 0, .38), -2px -2px 7px rgba(255, 255, 255, .04);
+  box-shadow: 2px 2px 7px rgba(0, 0, 0, .38), -1px -1px 3px rgba(255, 255, 255, .03);
 }
 [data-theme="light"] .c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff),
 .c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff) {
