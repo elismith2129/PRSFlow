@@ -164,7 +164,7 @@ export function Panel({
         <div className="c-lozenge c-anchor">
           <b>
             {title}
-            {count !== undefined && <span className="c-count c-raised-chip">{count}</span>}
+            {count !== undefined && <span className="c-count">{count}</span>}
           </b>
           {action &&
             (action.href ? (
@@ -183,10 +183,11 @@ export function Panel({
 
 export function StatusPill({ status, label, className }: { status: string; label?: string; className?: string }) {
   const slot = toCarvedStatus(status)
+  // No .c-raised-chip here: status is information, not a control. Raising it
+  // made HOT/WARM read as pressable buttons, which breaks Law 2. The minimal
+  // contact shadow lives on .c-pill itself.
   return (
-    <span
-      className={cx('c-pill', 'c-raised-chip', `c-fill-${slot}`, slot === 'hot' && 'c-pill-hot', className)}
-    >
+    <span className={cx('c-pill', `c-fill-${slot}`, slot === 'hot' && 'c-pill-hot', className)}>
       {label ?? (status || '').replace(/_/g, ' ')}
     </span>
   )

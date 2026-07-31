@@ -165,6 +165,15 @@ export default function DashboardPage() {
     () => typeof window !== 'undefined' && sessionStorage.getItem('showWelcome') === 'true'
   )
   const [welcomeFading, setWelcomeFading] = useState(false)
+  // Carved surfaces paint their own ground: mark <html> while this route is
+  // mounted so the legacy page background (light gradient / dark #0d0f14) can't
+  // frame the migrated page. Removed on unmount so un-migrated routes are
+  // untouched. Dies with the legacy --bg once every surface is migrated.
+  useEffect(() => {
+    document.documentElement.classList.add('c-page')
+    return () => document.documentElement.classList.remove('c-page')
+  }, [])
+
   // Name fades in 300ms after the splash mounts (greeting + footer show immediately).
   const [nameVisible, setNameVisible] = useState(false)
   // Content starts hidden until the welcome check resolves, so the dashboard
@@ -865,13 +874,14 @@ export default function DashboardPage() {
         </div>
 
         {/* COL 2 — TODAY'S SESSIONS */}
-        {/* height 556 + overflow:hidden is the original contract from main: the
-            11-room grid is sized to fit exactly four rows inside the panel. The
-            carved header lozenge is taller than the old bare label, so the room
-            cards drop 120→110 to keep all four rows INSIDE the panel. Without
-            this the last row spilled out the bottom and overlapped the Flags
-            panel below — which is what made cards look misplaced. */}
-        <div className="c-panel" style={{ height: isMobile ? 'auto' : 556, overflow: 'hidden', order: isMobile ? 1 : 0 }}>
+        {/* The contract from main is "four room rows, fully inside the panel,
+            clipped" — 556 was just the number that satisfied it for the OLD bare
+            header. The carved lozenge is taller and the grid gap is 9, so the
+            same contract now needs 596. Columns 1 and 3 are alignItems:start, so
+            this column's height doesn't move them. Cards stay 120: at 110 a fully
+            populated card (room + artist + label + time + 1ST/2ND) can't fit its
+            own content at carved type sizes and clips from the bottom. */}
+        <div className="c-panel" style={{ height: isMobile ? 'auto' : 596, overflow: 'hidden', order: isMobile ? 1 : 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <SectionHeader carved title="Today's sessions" />
@@ -913,7 +923,7 @@ export default function DashboardPage() {
                     onClick={() => booking ? openBookingEdit(booking) : openNewRoomBooking(room)}
                     className={`c-room ${poolStatus ? `c-pool ${statusFillClass(poolStatus)}` : 'c-inset2 c-room-empty'}`}
                     style={{
-                      height: isMobile ? undefined : 110,
+                      height: isMobile ? undefined : 120,
                       minHeight: isMobile ? 72 : undefined,
                       cursor: 'pointer',
                       overflow: 'hidden',
@@ -922,8 +932,12 @@ export default function DashboardPage() {
                     <span className="c-room-name">{room.label}</span>
                     {booking && (
                       <>
+                        {/* lineHeight 1.35, not 1.15: Archivo Black has deep
+                            descenders, and this element clips its own overflow for
+                            the ellipsis — a tight line box guillotined the y in
+                            "Skilla Baby". */}
                         <div className="c-room-artist c-arch" style={{
-                          fontSize: isMobile ? 13 : 15, lineHeight: 1.15,
+                          fontSize: isMobile ? 13 : 15, lineHeight: 1.35,
                           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                         }}>
                           {primaryName}
@@ -937,7 +951,7 @@ export default function DashboardPage() {
                         )}
                         {timeStr && <div className="c-room-meta">{timeStr}</div>}
                         {(eng || asst) && (
-                          <div className="c-mono" style={{ marginTop: 'auto', textAlign: 'right', fontSize: 9.5, opacity: 0.55, lineHeight: 1.35 }}>
+                          <div className="c-mono" style={{ marginTop: 'auto', textAlign: 'right', fontSize: 9.5, opacity: 0.55, lineHeight: 1.4, paddingTop: 2 }}>
                             {eng && <div style={{ whiteSpace: 'nowrap' }}>1ST-{eng}</div>}
                             {asst && <div style={{ whiteSpace: 'nowrap' }}>2ND-{asst}</div>}
                           </div>
@@ -963,7 +977,10 @@ export default function DashboardPage() {
           {ownOnly ? (
             <div className="c-label" style={{ marginBottom: 13 }}>My Tasks</div>
           ) : (
-            <div className="hide-scrollbar" style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 13 }}>
+            // Grid, not flex-wrap: with 6 tabs a wrapping flex row left a ragged
+            // last line with one orphan pill. Equal columns fill each row and the
+            // pills stay the same width regardless of label length.
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 13 }}>
               {visibleTabs.map(tab => (
                 <SoftButton
                   key={tab.key}

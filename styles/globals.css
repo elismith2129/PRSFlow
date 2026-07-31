@@ -618,12 +618,27 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
    no large bright surfaces; nothing animates except .c-newpulse.
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* ── Page ground ────────────────────────────────────────────────────────── */
+/* A migrated route adds `c-page` to <html> on mount (and removes it on unmount),
+   so the ground under it is carved paper edge to edge. Without this the OLD
+   ground frames the new surface in BOTH registers: in light the legacy --bg is
+   `transparent` and the blue→rose html gradient shows around the page; in dark
+   the legacy #0d0f14 sits visibly darker than the carved #1b1a17.
+
+   Declared here, at the end of the file, so it beats the legacy rules on source
+   order at equal specificity — no !important needed. The :root.c-page:not(...)
+   selector on the glow is deliberately heavier than the (0,2,1) rule it kills. */
+html.c-page,
+html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
+:root.c-page:not([data-theme="light"]) body::before { content: none; display: none; }
+
 /* ── Surface + type ─────────────────────────────────────────────────────── */
 .c-root {
   background: var(--c-bg);
   color: var(--c-fg);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 1.6;
+  min-height: 100%;
 }
 .c-arch { font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 400; }
 .c-mono { font-family: 'DM Mono', ui-monospace, monospace; font-size: 12px; }
@@ -738,12 +753,17 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 }
 
 /* ── StatusPill / StatusDot ─────────────────────────────────────────────── */
+/* Status is INFORMATION, not an affordance — it is never pressed, so it must not
+   look raised (Law 2). It gets the minimal contact shadow from spec §7 and
+   nothing else. Do not add .c-raised-chip to this. */
 .c-pill {
   display: inline-flex; align-items: center; flex-shrink: 0;
   border-radius: 99px; padding: 4px 11px;
   font-size: 9px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
   color: var(--c-chip-ink);
+  box-shadow: 1.5px 1.5px 4px rgba(0, 0, 0, .35);
 }
+[data-theme="light"] .c-pill { box-shadow: 1.5px 1.5px 4px rgba(42, 39, 34, .14); }
 [data-theme="dark"] .c-pill,
 :root:not([data-theme="light"]) .c-pill { filter: saturate(.82) brightness(.88); }
 .c-pill.c-pill-hot { color: var(--c-hot-text); }
@@ -756,11 +776,16 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 /* ── Count badge ────────────────────────────────────────────────────────── */
 .c-count {
   display: inline-flex; align-items: center; justify-content: center;
-  min-width: 19px; height: 19px; padding: 0 6px; border-radius: 99px;
-  font-size: 10px; font-weight: 800;
+  min-width: 17px; height: 17px; padding: 0 5px; border-radius: 99px;
+  font-size: 9.5px; font-weight: 800; line-height: 1; margin-left: 6px;
   background: var(--c-ivory); color: #1b1a17;
 }
 [data-theme="light"] .c-count { background: var(--c-fg); color: var(--c-bg); }
+/* Inside a lozenge the badge must invert, or it vanishes: in light the lozenge is
+   already an ink fill, so an ink badge on it is invisible. Also drops the shadow —
+   a badge sitting on an anchor doesn't need its own contact shadow. */
+.c-lozenge .c-count { background: var(--c-bg); color: var(--c-fg); box-shadow: none; }
+[data-theme="light"] .c-lozenge .c-count { background: var(--c-bg); color: var(--c-fg); }
 
 /* ── RoomCard ───────────────────────────────────────────────────────────── */
 .c-room {
@@ -768,13 +793,17 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   border-radius: 26px; min-height: 92px; padding: 11px 13px;
 }
 .c-room.c-room-empty { opacity: 0.6; }
+/* Explicit line-heights throughout: the card clips its own overflow, and both
+   Archivo Black (artist) and Inter at small sizes have descenders that a tight
+   or inherited line box guillotines — this is what cut the "y" in Skilla Baby
+   and the "p" in Interscope. Every value here is descender-safe. */
 .c-room .c-room-name {
   font-size: 9.5px; font-weight: 800; letter-spacing: 0.08em;
-  text-transform: uppercase; opacity: 0.45;
+  text-transform: uppercase; opacity: 0.45; line-height: 1.3;
 }
-.c-room .c-room-artist { font-size: 16px; margin-top: 5px; }
-.c-room .c-room-meta { font-size: 11px; opacity: 0.7; }
-.c-room .c-room-eng { position: absolute; right: 13px; bottom: 9px; font-size: 9.5px; opacity: 0.5; }
+.c-room .c-room-artist { font-size: 16px; margin-top: 4px; line-height: 1.35; }
+.c-room .c-room-meta { font-size: 11px; opacity: 0.7; line-height: 1.45; }
+.c-room .c-room-eng { position: absolute; right: 13px; bottom: 9px; font-size: 9.5px; opacity: 0.5; line-height: 1.35; }
 /* Dark: pools are alpha washes of the status colour with normal ink (Law 5). */
 :root:not([data-theme="light"]) .c-room.c-pool { color: var(--c-fg); }
 :root:not([data-theme="light"]) .c-room.c-pool .c-room-name { opacity: 1; }
@@ -856,8 +885,12 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 
 /* Full-width control (panel footers: + new lead / + add task / + add flag). */
 .c-block { display: flex; width: 100%; }
-/* Compact pill for dense tab rows. */
-.c-soft-sm { padding: 4px 11px; font-size: 8.5px; }
+/* Compact pill for dense tab rows. min-width:0 lets it shrink inside a grid
+   track instead of forcing the column wider than its share. */
+.c-soft-sm {
+  padding: 6px 8px; font-size: 8.5px; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
+}
 /* Bare dismiss affordance — not a raised control, so it gets no shadow. */
 .c-x {
   background: none; cursor: pointer; flex-shrink: 0;

@@ -42,7 +42,7 @@ export function SectionHeader({
       <div className="c-lozenge c-anchor">
         <b>
           {title}
-          {count !== undefined && <span className="c-count c-raised-chip">{count}</span>}
+          {count !== undefined && <span className="c-count">{count}</span>}
         </b>
         {action &&
           (action.href ? (
