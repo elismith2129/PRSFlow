@@ -98,30 +98,29 @@ export function RegistrationsView() {
   const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   const inputStyle: React.CSSProperties = {
-    background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4,
-    color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '6px 9px', outline: 'none',
+    background: 'var(--c-wash)', borderRadius: 4,
+    color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '6px 9px', outline: 'none',
   }
   const headCell: React.CSSProperties = {
-    fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em',
-    textTransform: 'uppercase', color: 'var(--text3)',
+    fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.1em',
+    textTransform: 'uppercase', color: 'var(--c-fg-3)',
   }
   const cell: React.CSSProperties = {
-    fontSize: 11, fontFamily: 'Inter', color: 'var(--text2)',
+    fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)',
     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
   }
   const pagerBtn = (disabled: boolean): React.CSSProperties => ({
-    padding: '4px 10px', borderRadius: 4, border: '1px solid var(--border)',
-    background: 'transparent', color: disabled ? 'var(--text3)' : 'var(--text)',
-    fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em',
+    padding: '4px 10px', borderRadius: 4, background: 'transparent', color: disabled ? 'var(--c-fg-3)' : 'var(--c-fg)',
+    fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.08em',
     textTransform: 'uppercase', cursor: disabled ? 'default' : 'pointer',
     opacity: disabled ? 0.45 : 1,
   })
 
   return (
-    <div data-panel="crm-registrations" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
+    <div className="c-panel" style={{ display: 'flex', flexDirection: 'column', background: 'var(--c-bg)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
 
       {/* Header + filters */}
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+      <div style={{ padding: '12px 16px', flexShrink: 0 }}>
         <SectionHeader title="Registrations" count={filtered.length > 0 ? filtered.length : undefined} />
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <input
@@ -133,13 +132,13 @@ export function RegistrationsView() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ ...headCell }}>Submitted</span>
             <input type="date" value={from} onChange={e => setFrom(e.target.value)} title="From" style={{ ...inputStyle, cursor: 'pointer' }} />
-            <span style={{ color: 'var(--text3)', fontSize: 11 }}>–</span>
+            <span style={{ color: 'var(--c-fg-3)', fontSize: 11 }}>–</span>
             <input type="date" value={to} onChange={e => setTo(e.target.value)} title="To" style={{ ...inputStyle, cursor: 'pointer' }} />
           </div>
           {(search || from || to) && (
             <button
               onClick={() => { setSearch(''); setFrom(''); setTo('') }}
-              style={{ padding: '5px 10px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
+              style={{ padding: '5px 10px', background: 'transparent', color: 'var(--c-fg-2)', borderRadius: 4, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
             >
               Clear
             </button>
@@ -148,7 +147,7 @@ export function RegistrationsView() {
       </div>
 
       {/* Column headers */}
-      <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: 10, padding: '8px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: 10, padding: '8px 16px', flexShrink: 0 }}>
         <div style={headCell}>Name</div>
         <div style={headCell}>Email</div>
         <div style={headCell}>Phone</div>
@@ -160,9 +159,9 @@ export function RegistrationsView() {
       {/* Rows */}
       <div style={{ overflowY: 'auto', flex: 1 }}>
         {loading ? (
-          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11 }}>Loading…</div>
+          <div style={{ padding: 20, textAlign: 'center', color: 'var(--c-fg-3)', fontSize: 11 }}>Loading…</div>
         ) : pageRows.length === 0 ? (
-          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11 }}>
+          <div style={{ padding: 20, textAlign: 'center', color: 'var(--c-fg-3)', fontSize: 11 }}>
             {rows.length === 0 ? 'No registrations yet.' : 'No registrations match those filters.'}
           </div>
         ) : pageRows.map(r => (
@@ -170,20 +169,20 @@ export function RegistrationsView() {
             key={r.id}
             onClick={() => setOpenId(r.id)}
             title="Open registration record"
-            style={{ display: 'grid', gridTemplateColumns: COLS, gap: 10, alignItems: 'center', padding: '10px 16px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
+            style={{ display: 'grid', gridTemplateColumns: COLS, gap: 10, alignItems: 'center', padding: '10px 16px', cursor: 'pointer' }}
           >
-            <div style={{ ...cell, color: 'var(--text)', fontWeight: 500 }}>{displayName(r)}</div>
+            <div style={{ ...cell, color: 'var(--c-fg)', fontWeight: 500 }}>{displayName(r)}</div>
             <div style={cell}>{r.email || '—'}</div>
             <div style={cell}>{r.phone || '—'}</div>
             <div style={cell}>{[r.address_city, r.address_state].filter(Boolean).join(', ') || '—'}</div>
             <div style={cell}>{fmtSubmitted(r.registered_at)}</div>
             <div>
               {r.id_file_url ? (
-                <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--accent)', background: 'rgba(var(--accent-rgb),0.08)', border: '1px solid rgba(var(--accent-rgb),0.25)', padding: '2px 6px', borderRadius: 3, whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.08em', color: 'var(--c-fg)', background: 'rgba(var(--accent-rgb),0.08)', padding: '2px 6px', borderRadius: 3, whiteSpace: 'nowrap' }}>
                   ON FILE
                 </span>
               ) : (
-                <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text3)', background: 'var(--surface2)', border: '1px solid var(--border)', padding: '2px 6px', borderRadius: 3, whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.08em', color: 'var(--c-fg-3)', background: 'var(--c-wash)', padding: '2px 6px', borderRadius: 3, whiteSpace: 'nowrap' }}>
                   NONE
                 </span>
               )}
@@ -193,15 +192,15 @@ export function RegistrationsView() {
       </div>
 
       {/* Pager */}
-      <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexShrink: 0 }}>
-        <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)' }}>
+      <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexShrink: 0 }}>
+        <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>
           {filtered.length === 0
             ? '0 registrations'
             : `${(safePage - 1) * PAGE_SIZE + 1}–${Math.min(safePage * PAGE_SIZE, filtered.length)} of ${filtered.length}`}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1} style={pagerBtn(safePage <= 1)}>‹ Prev</button>
-          <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)' }}>Page {safePage} of {pageCount}</span>
+          <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>Page {safePage} of {pageCount}</span>
           <button onClick={() => setPage(p => Math.min(pageCount, p + 1))} disabled={safePage >= pageCount} style={pagerBtn(safePage >= pageCount)}>Next ›</button>
         </div>
       </div>

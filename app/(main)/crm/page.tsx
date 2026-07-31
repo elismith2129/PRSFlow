@@ -349,6 +349,15 @@ type UniSuggestion = {
 }
 
 export default function CRMPage() {
+  // Carved surfaces paint their own ground. Without this the page sits on the
+  // LEGACY background — #0d0f14 in dark, the blue→orange gradient in light —
+  // while the panels on top of it are carved paper. Same mount/unmount marker the
+  // dashboard uses; every migrated route needs it until the legacy --bg dies.
+  useEffect(() => {
+    document.documentElement.classList.add('c-page')
+    return () => document.documentElement.classList.remove('c-page')
+  }, [])
+
   const [leads, setLeads] = useState<Lead[]>([])
   const [latestTouches, setLatestTouches] = useState<TouchMap>({})
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -1263,8 +1272,8 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
               <div onClick={() => onSelect(l.id)} className={leadRowClass({ selected: selectedId === l.id })} style={leadRowStyle({ prompting: isPrompting })}>
                 {isUnacked(l.id) && <NewLeadPulse />}
                 <LeadAvatar lead={l} />
-                <div data-lead-content style={{ flex: 1, minWidth: 0 }}>
-                  <div data-lead-name style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
                     {l.label && l.artist_name
                       ? <>{l.label} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.artist_name}</>
                       : l.artist_name && !l.label
@@ -1511,8 +1520,8 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
               <div onClick={() => onSelect(l.id)} className={leadRowClass({ selected: selectedId === l.id })} style={leadRowStyle({ prompting: isPrompting })}>
                 {isUnacked(l.id) && <NewLeadPulse />}
                 <LeadAvatar lead={l} />
-                <div data-lead-content style={{ flex: 1, minWidth: 0 }}>
-                  <div data-lead-name style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
                     {l.label && l.artist_name
                       ? <>{l.label} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.artist_name}</>
                       : l.artist_name && !l.label
@@ -1585,7 +1594,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
 
 function FieldGroupLabel({ label, mt }: { label: string; mt?: number }) {
   return (
-    <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 4, marginTop: mt ?? 8 }}>
+    <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 4, marginTop: mt ?? 8 }}>
       {label}
     </div>
   )
@@ -1726,8 +1735,8 @@ const parsedLoc0 = parseLocation(lead.location || '')
         }))
         // Lead Created is rendered as a dedicated always-last row below the log, not injected here.
         const synth: Array<{ ts: string; label: string; color: string }> = []
-        if (regTokenDates?.created_at) synth.push({ ts: regTokenDates.created_at, label: 'Reg Link Sent', color: 'var(--accent)' })
-        if (regTokenDates?.used_at) synth.push({ ts: regTokenDates.used_at, label: 'Registration Returned', color: 'var(--booked)' })
+        if (regTokenDates?.created_at) synth.push({ ts: regTokenDates.created_at, label: 'Reg Link Sent', color: 'var(--c-fg)' })
+        if (regTokenDates?.used_at) synth.push({ ts: regTokenDates.used_at, label: 'Registration Returned', color: 'var(--c-st-booked)' })
         const all = [...items, ...synth].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
         setActivityLog(all)
       })
@@ -1842,9 +1851,9 @@ const parsedLoc0 = parseLocation(lead.location || '')
   }
 
   const selStyle: React.CSSProperties = {
-    background: 'var(--surface2)', border: '1px solid var(--border)',
-    color: 'var(--text)', padding: '4px 6px', fontFamily: 'Inter',
-    fontSize: 12, outline: 'none', borderRadius: 4, cursor: 'pointer', flex: 1, minWidth: 0,
+    background: 'var(--c-bg)', color: 'var(--c-fg)', padding: '8px 14px', fontFamily: 'Inter',
+    fontSize: 12, outline: 'none', borderRadius: 99, cursor: 'pointer', flex: 1, minWidth: 0,
+    boxShadow: 'inset 3px 3px 9px rgba(0,0,0,.34), inset -3px -3px 9px rgba(255,255,255,.03)',
   }
 
   async function generateRegLink() {
@@ -1920,15 +1929,15 @@ const parsedLoc0 = parseLocation(lead.location || '')
   const pillBase: React.CSSProperties = {
     display: 'inline-flex', alignItems: 'center',
     padding: '3px 10px', borderRadius: 20,
-    fontSize: 10, fontFamily: 'Syne', fontWeight: 700,
+    fontSize: 10, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400,
     letterSpacing: '0.08em', textTransform: 'uppercase',
-    cursor: 'pointer', border: 'none', outline: 'none',
+    cursor: 'pointer', outline: 'none',
   }
 
   function iStyle(key: string): React.CSSProperties {
     return {
-      background: focusedInput === key ? 'var(--surface2)' : 'transparent',
-      border: 'none', color: 'var(--text)', padding: '4px 6px',
+      background: focusedInput === key ? 'var(--c-wash)' : 'transparent',
+      color: 'var(--c-fg)', padding: '4px 6px',
       fontFamily: 'Inter', fontSize: 12, outline: 'none',
       width: '100%', borderRadius: 4, transition: 'background 0.1s',
     }
@@ -1947,32 +1956,30 @@ const parsedLoc0 = parseLocation(lead.location || '')
 
   const ddStyle: React.CSSProperties = {
     position: 'absolute', top: '100%', left: 0, right: 0,
-    background: 'var(--surface)', border: '1px solid var(--border)',
-    borderRadius: 6, zIndex: 50, overflow: 'hidden', marginTop: 2,
-    boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+    background: 'var(--c-bg)', borderRadius: 20, zIndex: 50, overflow: 'hidden', marginTop: 4,
+    boxShadow: '0 14px 34px rgba(0,0,0,.5)',
   }
   const ddItemStyle: React.CSSProperties = {
-    padding: '7px 8px', cursor: 'pointer', fontSize: 11,
-    borderBottom: '1px solid var(--border)', fontFamily: 'Inter',
+    padding: '9px 14px', cursor: 'pointer', fontSize: 11, fontFamily: 'Inter',
   }
 
   return (
     <div>
       {/* ═══ Zone 1 (transparent — lets the panel gradient show through) — identity + contact ═══════════ */}
-      <div style={{ background: 'transparent', margin: '0 -16px', padding: isMobile ? '12px 16px 6px' : '12px 16px', borderBottom: '1px solid var(--border)' }}>
+      <div style={{ background: 'transparent', margin: '0 -16px', padding: isMobile ? '12px 16px 6px' : '12px 16px' }}>
       {/* ─── Status strip ─────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 26, marginBottom: 10, borderBottom: '1px solid #1e2028' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 26, marginBottom: 10 }}>
         <div ref={statusPillRef} style={{ position: 'relative', flexShrink: 0 }}>
           <button
             type="button"
             onClick={() => setStatusDDOpen(o => !o)}
-            style={{ ...pillBase, gap: 5, background: `color-mix(in srgb, ${LEAD_AVATAR_COLORS[local.status || lead.status] || LEAD_AVATAR_COLORS.uncontacted} 13%, transparent)`, color: LEAD_AVATAR_COLORS[local.status || lead.status] || LEAD_AVATAR_COLORS.uncontacted, border: 'none' }}
+            style={{ ...pillBase, gap: 5, background: `color-mix(in srgb, ${LEAD_AVATAR_COLORS[local.status || lead.status] || LEAD_AVATAR_COLORS.uncontacted} 13%, transparent)`, color: LEAD_AVATAR_COLORS[local.status || lead.status] || LEAD_AVATAR_COLORS.uncontacted }}
           >
             <span>{statusLabel(local.status || lead.status)}</span>
             <span style={{ fontSize: 8, lineHeight: 1, transform: statusDDOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
           </button>
           {statusDDOpen && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 60, overflow: 'hidden', boxShadow: '0 6px 20px rgba(0,0,0,0.45)', minWidth: 150 }}>
+            <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'var(--c-bg)', borderRadius: 8, zIndex: 60, overflow: 'hidden', boxShadow: '0 6px 20px rgba(0,0,0,0.45)', minWidth: 150 }}>
               {['uncontacted', 'hot', 'warm', 'cold', 'booked', 'dead'].map(s => {
                 const c = LEAD_AVATAR_COLORS[s] || LEAD_AVATAR_COLORS.uncontacted
                 const active = (local.status || lead.status) === s
@@ -2000,9 +2007,9 @@ const parsedLoc0 = parseLocation(lead.location || '')
                       }
                       update('status', s); saveStatus(s)
                     }}
-                    onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface2)' }}
+                    onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--c-wash)' }}
                     onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', background: active ? 'var(--surface2)' : 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: c }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', background: active ? 'var(--c-wash)' : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: c }}
                   >
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: c, flexShrink: 0 }} />
                     {statusLabel(s)}
@@ -2013,21 +2020,21 @@ const parsedLoc0 = parseLocation(lead.location || '')
           )}
         </div>
         {lead.needs_contact !== false && (<>
-          <span style={{ color: 'var(--text3)', fontSize: 9, flexShrink: 0 }}>·</span>
+          <span style={{ color: 'var(--c-fg-3)', fontSize: 9, flexShrink: 0 }}>·</span>
           <button
             onClick={() => { save('needs_contact', false); onUpdate('needs_contact', false) }}
-            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--cold)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, flexShrink: 0 }}
+            style={{ background: 'transparent', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, flexShrink: 0 }}
           >
             Needs Contact
           </button>
         </>)}
       </div>
 
-      {savedField && <span style={{ fontSize: 9, color: 'var(--booked)', fontFamily: 'Inter', display: 'block', marginBottom: 4 }}>saved</span>}
+      {savedField && <span style={{ fontSize: 9, color: 'var(--c-st-booked)', fontFamily: 'Inter', display: 'block', marginBottom: 4 }}>saved</span>}
 
       {/* ─── Missing warning ─────────────────────────────── */}
       {missing.length > 0 && (
-        <div style={{ fontSize: 10, color: 'var(--warm)', background: 'rgba(249,115,22,0.08)', padding: '6px 10px', borderRadius: 6, marginBottom: 6 }}>
+        <div style={{ fontSize: 10, color: 'var(--c-st-warm)', background: 'rgba(249,115,22,0.08)', padding: '6px 10px', borderRadius: 6, marginBottom: 6 }}>
           ⚠ Missing: {missing.join(', ')}
         </div>
       )}
@@ -2040,7 +2047,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
             {lead.billing !== 'COD' ? (
               <>
                 <div style={{ display: 'inline-grid', minWidth: '3ch', position: 'relative' }}>
-                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
                     {local.label || 'Label'}
                   </span>
                   <input
@@ -2050,7 +2057,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     onKeyDown={enterBlur}
                     onBlur={e => { setFocusedInput(null); setShowLabelDD(false); save('label', e.target.value) }}
                     placeholder="Label"
-                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'label' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'label' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
                   />
                   {showLabelDD && labelSuggestions.length > 0 && (
                     <div style={{ ...ddStyle, right: 'auto', width: 'max-content', minWidth: 220, maxWidth: 320 }}>
@@ -2060,9 +2067,9 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     </div>
                   )}
                 </div>
-                <span style={{ color: 'var(--text3)', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, flexShrink: 0 }}> — </span>
+                <span style={{ color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, flexShrink: 0 }}> — </span>
                 <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
-                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
                     {local.artist_name || 'Artist'}
                   </span>
                   <input
@@ -2072,14 +2079,14 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     onKeyDown={enterBlur}
                     onBlur={e => { setFocusedInput(null); save('artist_name', e.target.value) }}
                     placeholder="Artist"
-                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'artist_name' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'artist_name' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
                   />
                 </div>
               </>
             ) : (
               <>
                 <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
-                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
                     {fnameVal || 'First'}
                   </span>
                   <input
@@ -2089,11 +2096,11 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
                     onBlur={() => { setFocusedInput(null); save('fname', fnameVal.trim()) }}
                     placeholder="First"
-                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: leadNameColor(lead), fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: leadNameColor(lead), fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
                   />
                 </div>
                 <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
-                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
                     {lnameVal || 'Last'}
                   </span>
                   <input
@@ -2103,7 +2110,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
                     onBlur={() => { setFocusedInput(null); save('lname', lnameVal.trim()) }}
                     placeholder="Last"
-                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'lname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: leadNameColor(lead), fontFamily: 'DM Serif Display', fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'lname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: leadNameColor(lead), fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
                   />
                 </div>
               </>
@@ -2116,20 +2123,20 @@ const parsedLoc0 = parseLocation(lead.location || '')
             <button
               onClick={startBooking}
               title={lead.client_id ? 'Open a Work Order for this lead' : 'Confirm the client profile, then open a Work Order'}
-              style={{ padding: '5px 12px', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer', whiteSpace: 'nowrap' as const }}
+              style={{ padding: '5px 12px', background: 'transparent', color: 'var(--c-fg)', borderRadius: 4, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer', whiteSpace: 'nowrap' as const }}
             >
               Start Booking
             </button>
             {lead.billing !== 'Billing' && (regTokenDates?.used_at ? (
-              <button onClick={() => setRegViewOpen(true)} style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.12)', color: 'var(--booked)', border: '1px solid rgba(20,184,166,0.35)', borderRadius: 4, fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
+              <button onClick={() => setRegViewOpen(true)} style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.12)', color: 'var(--c-st-booked)', borderRadius: 4, fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
                 ✓ Registered
               </button>
             ) : existingTokenStr && regActioned ? (
-              <button onClick={async () => { const done = await refreshRegStatus(); if (!done) setRegPanelOpen(v => !v) }} style={{ padding: '5px 12px', background: regPanelOpen ? 'rgba(249,115,22,0.18)' : 'rgba(249,115,22,0.08)', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.35)', borderRadius: 4, fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
+              <button onClick={async () => { const done = await refreshRegStatus(); if (!done) setRegPanelOpen(v => !v) }} style={{ padding: '5px 12px', background: regPanelOpen ? 'rgba(249,115,22,0.18)' : 'rgba(249,115,22,0.08)', color: 'var(--c-st-warm)', borderRadius: 4, fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
                 Reg Sent
               </button>
             ) : (
-              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '5px 12px', background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Inter', fontSize: 10, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
+              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '5px 12px', background: 'transparent', color: 'var(--c-fg-3)', borderRadius: 4, fontFamily: 'Inter', fontSize: 10, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
                 {regLinkGenerating ? '…' : 'Send Reg'}
               </button>
             ))}
@@ -2138,23 +2145,23 @@ const parsedLoc0 = parseLocation(lead.location || '')
 
         {/* Reg link panel — expands directly below the hero name row */}
         {regPanelOpen && regLinkUrl && !regTokenDates?.used_at && (
-          <div style={{ marginBottom: 8, background: 'var(--surface2)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 5, padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ marginBottom: 8, background: 'var(--c-wash)', borderRadius: 5, padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <a href={regLinkUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--booked)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+              <a href={regLinkUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-st-booked)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                 Register Here
               </a>
-              <button onClick={() => setRegPanelOpen(false)} style={{ padding: '2px 6px', background: 'transparent', color: 'var(--text3)', border: 'none', borderRadius: 3, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer', flexShrink: 0, lineHeight: 1 }}>
+              <button onClick={() => setRegPanelOpen(false)} style={{ padding: '2px 6px', background: 'transparent', color: 'var(--c-fg-3)', borderRadius: 3, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer', flexShrink: 0, lineHeight: 1 }}>
                 ✕
               </button>
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
-              <button onClick={copyRegLink} style={{ padding: '3px 10px', background: 'var(--text)', color: 'var(--bg)', border: 'none', borderRadius: 3, fontFamily: 'Syne', fontWeight: 700, fontSize: 8, letterSpacing: '0.08em', cursor: 'pointer' }}>
+              <button onClick={copyRegLink} style={{ padding: '3px 10px', background: 'var(--c-fg)', color: 'var(--c-bg)', borderRadius: 3, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 8, letterSpacing: '0.08em', cursor: 'pointer' }}>
                 {regLinkCopied ? 'Copied!' : 'Copy Link'}
               </button>
-              <button onClick={emailRegLink} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 3, fontFamily: 'Inter', fontSize: 8, cursor: 'pointer' }}>
+              <button onClick={emailRegLink} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--c-fg-2)', borderRadius: 3, fontFamily: 'Inter', fontSize: 8, cursor: 'pointer' }}>
                 Email
               </button>
-              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.4)', borderRadius: 3, fontFamily: 'Inter', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
+              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--c-st-warm)', borderRadius: 3, fontFamily: 'Inter', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
                 {regLinkGenerating ? '…' : 'Resend'}
               </button>
             </div>
@@ -2175,7 +2182,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 onKeyDown={enterBlur}
                 onBlur={e => { setFocusedInput(null); save('artist_name', e.target.value) }}
                 placeholder="Artist name"
-                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'artist_name' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text2)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
+                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'artist_name' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg-2)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
               />
             </div>
           </div>
@@ -2195,7 +2202,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
                 onBlur={() => { setFocusedInput(null); save('fname', fnameVal.trim()) }}
                 placeholder="First"
-                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text2)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
+                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg-2)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
               />
             </div>
             <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
@@ -2209,10 +2216,10 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
                 onBlur={() => { setFocusedInput(null); save('lname', lnameVal.trim()) }}
                 placeholder="Last"
-                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'lname' ? 'var(--surface2)' : 'transparent', border: 'none', outline: 'none', color: 'var(--text2)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
+                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'lname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg-2)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
               />
             </div>
-            <span style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, fontFamily: 'Inter', flexShrink: 0 }}>A&amp;R</span>
+            <span style={{ fontSize: 9, color: 'var(--c-fg-3)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, fontFamily: 'Inter', flexShrink: 0 }}>A&amp;R</span>
           </div>
         )}
 
@@ -2227,10 +2234,10 @@ const parsedLoc0 = parseLocation(lead.location || '')
               onFocus={() => setFocusedInput('email')} onBlur={e => { setFocusedInput(null); save('email', e.target.value) }}
               onKeyDown={enterBlur} placeholder="Add email" style={{ ...iStyle('email'), ...(isMobile ? { flex: '0 1 auto', width: 190, minWidth: 0, paddingLeft: 0 } : { flex: 1, minWidth: 0, paddingLeft: 0 }) }} />
             {local.email && (
-              <a href={`mailto:${local.email}`} style={{ ...aBtnStyle('var(--text2)'), flexShrink: 0 }}>Email</a>
+              <a href={`mailto:${local.email}`} style={{ ...aBtnStyle('var(--c-fg-2)'), flexShrink: 0 }}>Email</a>
             )}
           </div>
-          {!isMobile && <span style={{ color: 'var(--text3)', fontSize: 11, flexShrink: 0 }}>·</span>}
+          {!isMobile && <span style={{ color: 'var(--c-fg-3)', fontSize: 11, flexShrink: 0 }}>·</span>}
           <div style={isMobile
             ? { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, minWidth: 0 }
             : { display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 200px', minWidth: 0 }}>
@@ -2238,8 +2245,8 @@ const parsedLoc0 = parseLocation(lead.location || '')
               onFocus={() => setFocusedInput('phone')} onBlur={e => { setFocusedInput(null); const f = fmtPhone(e.target.value); if (f !== e.target.value) update('phone', f); save('phone', f) }}
               onKeyDown={enterBlur} placeholder="Add phone" style={{ ...iStyle('phone'), ...(isMobile ? { flex: '0 0 auto', width: 132, minWidth: 0, paddingLeft: 0 } : { flex: 1, minWidth: 0 }) }} />
             {local.phone && (<>
-              <a href={`tel:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('var(--text2)'), flexShrink: 0 }}>Call</a>
-              <a href={`sms:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('var(--text2)'), flexShrink: 0 }}>Text</a>
+              <a href={`tel:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('var(--c-fg-2)'), flexShrink: 0 }}>Call</a>
+              <a href={`sms:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('var(--c-fg-2)'), flexShrink: 0 }}>Text</a>
             </>)}
           </div>
         </div>
@@ -2248,23 +2255,23 @@ const parsedLoc0 = parseLocation(lead.location || '')
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: isMobile ? 6 : 8 }}>
           <button
             onClick={() => { const nb = (local.billing || lead.billing) === 'COD' ? 'Billing' : 'COD'; update('billing', nb); save('billing', nb) }}
-            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--cold)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>
+            style={{ background: 'transparent', padding: 0, cursor: 'pointer', color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>
             {local.billing || lead.billing || 'COD'}
           </button>
           {lead.booking && (<>
             <span style={{ color: '#2d3140', fontSize: 9 }}>·</span>
-            <span style={{ color: 'var(--cold)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{lead.booking}</span>
+            <span style={{ color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{lead.booking}</span>
           </>)}
           {lead.source && (<>
             <span style={{ color: '#2d3140', fontSize: 9 }}>·</span>
-            <span style={{ color: 'var(--cold)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{lead.source}</span>
+            <span style={{ color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{lead.source}</span>
           </>)}
         </div>
       </div>
       </div>
 
-      {/* ═══ Zone 2 (bg var(--surface2)) — session info ═══════════════ */}
-      <div style={{ background: 'var(--surface2)', margin: '0 -16px', padding: isMobile ? '6px 16px 12px' : '12px 16px' }}>
+      {/* ═══ Zone 2 (bg var(--c-wash)) — session info ═══════════════ */}
+      <div style={{ background: 'var(--c-wash)', margin: '0 -16px', padding: isMobile ? '6px 16px 12px' : '12px 16px' }}>
       {/* ─── Session & Quote ─────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 48px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -2300,7 +2307,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 onChange={e => { update('session_date', e.target.value); save('session_date', e.target.value) }}
                 style={{ ...iStyle('session_date'), cursor: 'pointer', paddingLeft: 0 }}
               />
-              <span style={{ color: 'var(--text3)', fontSize: 11, flexShrink: 0 }}>–</span>
+              <span style={{ color: 'var(--c-fg-3)', fontSize: 11, flexShrink: 0 }}>–</span>
               <input
                 type="date"
                 value={local.session_end_date || ''}
@@ -2316,8 +2323,8 @@ const parsedLoc0 = parseLocation(lead.location || '')
           <div>
             <div style={fieldLabelStyle}>Quote / Rate</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-              <button type="button" onClick={() => setDetailRateType('hourly')} style={{ padding: '3px 7px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '4px 0 0 4px', border: '1px solid var(--border)', background: detailRateType === 'hourly' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: detailRateType === 'hourly' ? 'var(--accent)' : 'var(--text3)' }}>/ hr</button>
-              <button type="button" onClick={() => setDetailRateType('daily')} style={{ padding: '3px 7px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '0 4px 4px 0', border: '1px solid var(--border)', borderLeft: 'none', background: detailRateType === 'daily' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: detailRateType === 'daily' ? 'var(--accent)' : 'var(--text3)' }}>/ day</button>
+              <button type="button" onClick={() => setDetailRateType('hourly')} style={{ padding: '3px 7px', fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '4px 0 0 4px', background: detailRateType === 'hourly' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: detailRateType === 'hourly' ? 'var(--c-fg)' : 'var(--c-fg-3)' }}>/ hr</button>
+              <button type="button" onClick={() => setDetailRateType('daily')} style={{ padding: '3px 7px', fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '0 4px 4px 0', background: detailRateType === 'daily' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: detailRateType === 'daily' ? 'var(--c-fg)' : 'var(--c-fg-3)' }}>/ day</button>
               <input
                 ref={quoteRef}
                 value={detailRateType === 'hourly' ? (local.quote || '') : (local.rate_daily || '')}
@@ -2332,7 +2339,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 }}
                 onKeyDown={enterBlur}
                 placeholder="—"
-                style={{ ...iStyle('quote'), width: 72, flex: 'none', borderRadius: '0 4px 4px 0', borderLeft: 'none' }}
+                style={{ ...iStyle('quote'), width: 72, flex: 'none', borderRadius: '0 4px 4px 0' }}
               />
             </div>
           </div>
@@ -2346,7 +2353,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 placeholder="Start"
                 style={{ ...iStyle('session_start'), width: 78, flex: 'none' }}
               />
-              <span style={{ color: 'var(--text3)', fontSize: 11, flexShrink: 0 }}>–</span>
+              <span style={{ color: 'var(--c-fg-3)', fontSize: 11, flexShrink: 0 }}>–</span>
               <TimeInput
                 value={local.session_end || ''}
                 onChange={v => { update('session_end', v) }}
@@ -2388,7 +2395,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
         onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
         ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px' } }}
         placeholder="Add notes…"
-        style={{ width: '100%', minHeight: 38, marginTop: 16, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '6px 10px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, resize: 'none', outline: 'none', lineHeight: 1.6, overflow: 'hidden' }}
+        style={{ width: '100%', minHeight: 38, marginTop: 16, background: 'var(--c-wash)', color: 'var(--c-fg)', padding: '6px 10px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, resize: 'none', outline: 'none', lineHeight: 1.6, overflow: 'hidden' }}
       />
 
       {/* ─── Activity Log ──────────────────────────────── */}
@@ -2397,29 +2404,29 @@ const parsedLoc0 = parseLocation(lead.location || '')
           <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: entry.color, flexShrink: 0, marginTop: 3 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>{fmtActivityTime(entry.ts)} · </span>
-              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>{entry.label}</span>
+              <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'DM Mono' }}>{fmtActivityTime(entry.ts)} · </span>
+              <span style={{ fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>{entry.label}</span>
             </div>
           </div>
         ))}
         {/* Dedicated Lead Created row — always the oldest (last) entry */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--text2)', flexShrink: 0, marginTop: 3 }} />
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--c-fg-2)', flexShrink: 0, marginTop: 3 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'DM Mono' }}>{fmtActivityTime(lead.created_at)} · </span>
-            <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>{creationLabel}</span>
+            <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'DM Mono' }}>{fmtActivityTime(lead.created_at)} · </span>
+            <span style={{ fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>{creationLabel}</span>
           </div>
         </div>
       </div>
 
       {/* ─── Tags ──────────────────────────────── */}
-      <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+      <div style={{ marginTop: 16, paddingTop: 10 }}>
         <button
           onClick={() => setTagsOpen(o => !o)}
-          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: 'var(--text3)', fontFamily: 'Inter', fontSize: 10 }}
+          style={{ background: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: 'var(--c-fg-3)', fontFamily: 'Inter', fontSize: 10 }}
         >
           <span style={{ fontSize: 9, transform: tagsOpen ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block', transition: 'transform 0.15s' }}>▶</span>
-          TAGS {localTags.length > 0 && <span style={{ color: 'var(--text2)' }}>({localTags.length})</span>}
+          TAGS {localTags.length > 0 && <span style={{ color: 'var(--c-fg-2)' }}>({localTags.length})</span>}
         </button>
         {tagsOpen && (
           <div style={{ marginTop: 10 }}>
@@ -2427,11 +2434,11 @@ const parsedLoc0 = parseLocation(lead.location || '')
             {localTags.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
                 {localTags.map(tag => (
-                  <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>
+                  <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--c-wash)', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>
                     {tag}
                     <button
                       onClick={() => removeTag(tag)}
-                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text3)', lineHeight: 1, fontSize: 11 }}
+                      style={{ background: 'none', padding: 0, cursor: 'pointer', color: 'var(--c-fg-3)', lineHeight: 1, fontSize: 11 }}
                     >×</button>
                   </span>
                 ))}
@@ -2443,7 +2450,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 <button
                   key={tag}
                   onClick={() => addTag(tag)}
-                  style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', cursor: 'pointer' }}
+                  style={{ background: 'transparent', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', cursor: 'pointer' }}
                 >
                   + {tag}
                 </button>
@@ -2460,13 +2467,13 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 }}
                 onBlur={() => setTimeout(() => setTagDDOpen(false), 150)}
                 placeholder="Add custom tag…"
-                style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', fontSize: 10, color: 'var(--text)', fontFamily: 'Inter', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', background: 'var(--c-wash)', borderRadius: 4, padding: '5px 8px', fontSize: 10, color: 'var(--c-fg)', fontFamily: 'Inter', outline: 'none', boxSizing: 'border-box' }}
               />
               {tagDDOpen && tagInput.trim() && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, zIndex: 100, marginTop: 2 }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--c-bg)', borderRadius: 4, zIndex: 100, marginTop: 2 }}>
                   <button
                     onMouseDown={() => { addTag(tagInput); setTagInput(''); setTagDDOpen(false) }}
-                    style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '6px 10px', fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter', cursor: 'pointer' }}
+                    style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', padding: '6px 10px', fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter', cursor: 'pointer' }}
                   >
                     Add &ldquo;{tagInput.trim()}&rdquo;
                   </button>
@@ -2477,26 +2484,26 @@ const parsedLoc0 = parseLocation(lead.location || '')
         )}
       </div>
 
-      <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ marginTop: 10, paddingTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          style={{ background: 'rgba(239,68,68,0.12)', color: 'var(--hot)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 4, padding: '4px 10px', fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}
+          style={{ background: 'rgba(239,68,68,0.12)', color: 'var(--c-st-hot)', borderRadius: 4, padding: '4px 10px', fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}
         >
           Delete Lead
         </button>
       </div>
 
       {showDeleteConfirm && (
-        <div onClick={() => setShowDeleteConfirm(false)} style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px', maxWidth: 400, width: '100%' }}>
-            <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 14, marginBottom: 8 }}>
+        <div onClick={() => setShowDeleteConfirm(false)} className="c-modal-backdrop" style={{ zIndex: 2000 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--c-bg)', borderRadius: 12, padding: '20px 24px', maxWidth: 400, width: '100%' }}>
+            <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 14, marginBottom: 8 }}>
               Delete {[lead.fname, lead.lname].filter(Boolean).join(' ') || 'this lead'}?
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', lineHeight: 1.7, marginBottom: 20 }}>
+            <div style={{ fontSize: 11, color: 'var(--c-fg-2)', fontFamily: 'Inter', lineHeight: 1.7, marginBottom: 20 }}>
               This will permanently delete this lead and all contact log entries. This action cannot be undone.
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowDeleteConfirm(false)} style={{ background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 14px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={() => setShowDeleteConfirm(false)} style={{ background: 'transparent', color: 'var(--c-fg-3)', borderRadius: 4, padding: '6px 14px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}>Cancel</button>
               <button
                 onClick={async () => {
                   setDeleting(true)
@@ -2508,7 +2515,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                   onDelete?.()
                 }}
                 disabled={deleting}
-                style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--hot)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 4, padding: '6px 16px', fontSize: 10, fontFamily: 'Inter', cursor: deleting ? 'default' : 'pointer', opacity: deleting ? 0.7 : 1 }}
+                style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--c-st-hot)', borderRadius: 4, padding: '6px 16px', fontSize: 10, fontFamily: 'Inter', cursor: deleting ? 'default' : 'pointer', opacity: deleting ? 0.7 : 1 }}
               >
                 {deleting ? 'Deleting…' : 'Delete Permanently'}
               </button>
@@ -2543,16 +2550,16 @@ const parsedLoc0 = parseLocation(lead.location || '')
           the Start Booking path redirects into the Work Order instead. */}
       {showSuccessModal && (
         <div
-          style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          className="c-modal-backdrop" style={{ zIndex: 3000 }}
           onClick={e => { if (e.target === e.currentTarget) setShowSuccessModal(false) }}
         >
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '22px 24px', maxWidth: 420, width: '100%' }}>
-            <div style={{ fontFamily: 'DM Serif Display', fontSize: 18, color: 'var(--text)', marginBottom: 8 }}>Client Account Created</div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', lineHeight: 1.7, marginBottom: 20 }}>New client account created successfully. Proceed to standard booking protocols.</div>
+          <div style={{ background: 'var(--c-bg)', borderRadius: 12, padding: '22px 24px', maxWidth: 420, width: '100%' }}>
+            <div style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 18, color: 'var(--c-fg)', marginBottom: 8 }}>Client Account Created</div>
+            <div style={{ fontSize: 11, color: 'var(--c-fg-2)', fontFamily: 'Inter', lineHeight: 1.7, marginBottom: 20 }}>New client account created successfully. Proceed to standard booking protocols.</div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setShowSuccessModal(false)}
-                style={{ padding: '7px 18px', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.05em', border: 'none', cursor: 'pointer', background: 'var(--accent)', color: 'var(--bg)' }}
+                style={{ padding: '7px 18px', borderRadius: 5, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, letterSpacing: '0.05em', cursor: 'pointer', background: 'var(--c-fg)', color: 'var(--c-bg)' }}
               >
                 Done
               </button>
@@ -2564,12 +2571,12 @@ const parsedLoc0 = parseLocation(lead.location || '')
           status change. Booking an actual session is the Start Booking button. */}
       {showBookedModal && (
         <div
-          style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          className="c-modal-backdrop" style={{ zIndex: 3000 }}
           onClick={e => { if (e.target === e.currentTarget) setShowBookedModal(false) }}
         >
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '22px 24px', maxWidth: 420, width: '100%' }}>
-            <div style={{ fontFamily: 'DM Serif Display', fontSize: 18, color: 'var(--text)', marginBottom: 8 }}>Mark as Booked</div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', lineHeight: 1.7, marginBottom: 20 }}>This client has been marked as booked. Proceed to standard booking protocols.</div>
+          <div style={{ background: 'var(--c-bg)', borderRadius: 12, padding: '22px 24px', maxWidth: 420, width: '100%' }}>
+            <div style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 18, color: 'var(--c-fg)', marginBottom: 8 }}>Mark as Booked</div>
+            <div style={{ fontSize: 11, color: 'var(--c-fg-2)', fontFamily: 'Inter', lineHeight: 1.7, marginBottom: 20 }}>This client has been marked as booked. Proceed to standard booking protocols.</div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 onClick={async () => {
@@ -2581,7 +2588,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                   setShowBookedModal(false)
                 }}
                 disabled={markingBooked}
-                style={{ padding: '7px 18px', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.05em', border: 'none', cursor: markingBooked ? 'default' : 'pointer', background: 'var(--accent)', color: 'var(--bg)', opacity: markingBooked ? 0.7 : 1 }}
+                style={{ padding: '7px 18px', borderRadius: 5, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, letterSpacing: '0.05em', cursor: markingBooked ? 'default' : 'pointer', background: 'var(--c-fg)', color: 'var(--c-bg)', opacity: markingBooked ? 0.7 : 1 }}
               >
                 {markingBooked ? 'Saving…' : 'Confirm'}
               </button>
@@ -2654,19 +2661,19 @@ function ConfirmClientModal({ lead, onClose, onCreated, markBooked = true }: {
     onCreated(clientId)
   }
 
-  const overlay: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }
-  const fL: React.CSSProperties = { fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 3, display: 'block' as const }
-  const inp: React.CSSProperties = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '6px 9px', outline: 'none', boxSizing: 'border-box' as const }
+  const overlay: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'rgba(0,0,0,.55)' }
+  const fL: React.CSSProperties = { fontSize: 10, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 5, display: 'block' as const }
+  const inp: React.CSSProperties = { width: '100%', background: 'var(--c-bg)', borderRadius: 99, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12, padding: '10px 16px', outline: 'none', boxSizing: 'border-box' as const, boxShadow: 'inset 3px 3px 9px rgba(0,0,0,.34), inset -3px -3px 9px rgba(255,255,255,.03)' }
 
   return (
     <div style={overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, width: '100%', maxWidth: 480, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+      <div style={{ background: 'var(--c-bg)', borderRadius: 10, width: '100%', maxWidth: 480, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ padding: '16px 20px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
-            <div style={{ fontFamily: 'DM Serif Display', fontSize: 18, color: 'var(--text)' }}>Confirm Client Account</div>
-            <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)', marginTop: 2 }}>Review and complete before starting booking</div>
+            <div style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 18, color: 'var(--c-fg)' }}>Confirm Client Account</div>
+            <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)', marginTop: 2 }}>Review and complete before starting booking</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
+          <button onClick={onClose} style={{ background: 'none', color: 'var(--c-fg-3)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
         </div>
 
         <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -2676,12 +2683,11 @@ function ConfirmClientModal({ lead, onClose, onCreated, markBooked = true }: {
               {(['individual', 'label'] as const).map(t => (
                 <button key={t} type="button" onClick={() => setType(t)} style={{
                   flex: 1, padding: '6px 0', borderRadius: 5, fontSize: 10,
-                  fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+                  fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.06em', textTransform: 'uppercase',
                   cursor: 'pointer',
-                  background: type === t ? 'rgba(139,144,168,0.12)' : 'var(--surface2)',
-                  color: type === t ? 'var(--text)' : 'var(--text3)',
-                  border: '1px solid var(--border)',
-                }}>
+                  background: type === t ? 'rgba(139,144,168,0.12)' : 'var(--c-wash)',
+                  color: type === t ? 'var(--c-fg)' : 'var(--c-fg-3)',
+                  }}>
                   {t === 'label' ? 'Label / Billing' : 'COD'}
                 </button>
               ))}
@@ -2735,30 +2741,29 @@ function ConfirmClientModal({ lead, onClose, onCreated, markBooked = true }: {
           </div>
 
           {!hasContact && (
-            <div style={{ fontSize: 10, color: 'var(--warm)', fontFamily: 'Inter', padding: '6px 10px', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 4 }}>
+            <div style={{ fontSize: 10, color: 'var(--c-st-warm)', fontFamily: 'Inter', padding: '6px 10px', background: 'rgba(249,115,22,0.08)', borderRadius: 4 }}>
               Requires at minimum a name and email or phone number.
             </div>
           )}
           {error && (
-            <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'Inter', padding: '6px 10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 4 }}>
+            <div style={{ fontSize: 10, color: 'var(--c-st-hot)', fontFamily: 'Inter', padding: '6px 10px', background: 'rgba(239,68,68,0.08)', borderRadius: 4 }}>
               {error}
             </div>
           )}
         </div>
 
-        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8, flexShrink: 0 }}>
-          <button onClick={onClose} style={{ padding: '7px 16px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 5, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>
+        <div style={{ padding: '12px 20px', display: 'flex', justifyContent: 'flex-end', gap: 8, flexShrink: 0 }}>
+          <button onClick={onClose} style={{ padding: '7px 16px', background: 'transparent', color: 'var(--c-fg-2)', borderRadius: 5, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={!valid || saving}
             style={{
-              padding: '7px 18px', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700,
-              fontSize: 11, letterSpacing: '0.05em', border: 'none',
-              cursor: (valid && !saving) ? 'pointer' : 'default',
-              background: valid ? 'var(--accent)' : 'var(--surface2)',
-              color: valid ? 'var(--bg)' : 'var(--text3)',
+              padding: '7px 18px', borderRadius: 5, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400,
+              fontSize: 11, letterSpacing: '0.05em', cursor: (valid && !saving) ? 'pointer' : 'default',
+              background: valid ? 'var(--c-fg)' : 'var(--c-wash)',
+              color: valid ? 'var(--c-bg)' : 'var(--c-fg-3)',
             }}
           >
             {saving ? 'Creating…' : 'Start Booking →'}
@@ -3152,14 +3157,17 @@ function NewLeadModal({ leads, onClose, onSave }: {
     }
   }
 
-  const inputStyle: React.CSSProperties = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '7px 10px', borderRadius: 6, fontFamily: 'Inter', fontSize: 12, outline: 'none' }
-  const labelS: React.CSSProperties = { fontSize: 9, color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4, display: 'block' }
+  // Carved input: capsule, carved IN, focus is a depth change. Callers that spread
+  // this (`{...inputStyle}`) still work; the depth comes from the class below, so
+  // anything spreading it must ALSO carry className="c-input c-inset2".
+  const inputStyle: React.CSSProperties = { width: '100%', background: 'var(--c-bg)', color: 'var(--c-fg)', padding: '10px 16px', borderRadius: 99, fontFamily: 'Inter', fontSize: 12, outline: 'none', boxShadow: 'inset 3px 3px 9px rgba(0,0,0,.34), inset -3px -3px 9px rgba(255,255,255,.03)' }
+  const labelS: React.CSSProperties = { fontSize: 10, fontWeight: 800, color: 'var(--c-fg-3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 5, display: 'block' }
 
   const modeToggle = (
     <div style={{ display: 'flex', justifyContent: 'center' }}>
-      <div style={{ display: 'flex', gap: 2, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
+      <div style={{ display: 'flex', gap: 2, background: 'var(--c-bg)', borderRadius: 8, padding: 3 }}>
         {(['cod', 'label'] as const).map(m => (
-          <button key={m} type="button" onClick={() => setMode(m)} style={{ padding: '7px 28px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, fontWeight: 500, background: mode === m ? 'var(--surface2)' : 'transparent', color: mode === m ? 'var(--text)' : 'var(--text2)', transition: 'all 0.15s', letterSpacing: '0.04em' }}>
+          <button key={m} type="button" onClick={() => setMode(m)} style={{ padding: '7px 28px', borderRadius: 6, cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, fontWeight: 500, background: mode === m ? 'var(--c-wash)' : 'transparent', color: mode === m ? 'var(--c-fg)' : 'var(--c-fg-2)', transition: 'all 0.15s', letterSpacing: '0.04em' }}>
             {m === 'cod' ? 'COD' : 'Label/Billing'}
           </button>
         ))}
@@ -3172,11 +3180,11 @@ function NewLeadModal({ leads, onClose, onSave }: {
       <label style={labelS}>Lead Temperature</label>
       <div style={{ display: 'flex', gap: 8 }}>
         {([
-          { key: 'hot', label: 'Hot', color: 'var(--hot)' },
-          { key: 'warm', label: 'Warm', color: 'var(--warm)' },
-          { key: 'booking', label: 'Move to Booking', color: 'var(--booked)' },
+          { key: 'hot', label: 'Hot', color: 'var(--c-st-hot)' },
+          { key: 'warm', label: 'Warm', color: 'var(--c-st-warm)' },
+          { key: 'booking', label: 'Move to Booking', color: 'var(--c-st-booked)' },
         ] as const).map(opt => (
-          <button key={opt.key} type="button" onClick={() => setTemperature(opt.key)} style={{ flex: opt.key === 'booking' ? 2 : 1, padding: '7px 0', borderRadius: 6, border: `1px solid ${temperature === opt.key ? opt.color : 'var(--border)'}`, background: temperature === opt.key ? `color-mix(in srgb, ${opt.color} 13%, transparent)` : 'transparent', color: temperature === opt.key ? opt.color : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.15s' }}>
+          <button key={opt.key} type="button" onClick={() => setTemperature(opt.key)} style={{ flex: opt.key === 'booking' ? 2 : 1, padding: '7px 0', borderRadius: 6, background: temperature === opt.key ? `color-mix(in srgb, ${opt.color} 13%, transparent)` : 'transparent', color: temperature === opt.key ? opt.color : 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.15s' }}>
             {opt.label}
           </button>
         ))}
@@ -3188,7 +3196,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
     <button
       type="button"
       onClick={() => setNeedsContact(nc => !nc)}
-      style={{ alignSelf: 'flex-start', padding: '5px 14px', borderRadius: 20, border: `1px solid ${needsContact ? 'var(--uncontacted)' : 'var(--border)'}`, background: needsContact ? 'rgba(123,167,188,0.12)' : 'transparent', color: needsContact ? 'var(--uncontacted)' : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.15s' }}
+      style={{ alignSelf: 'flex-start', padding: '5px 14px', borderRadius: 20, background: needsContact ? 'rgba(123,167,188,0.12)' : 'transparent', color: needsContact ? 'var(--c-st-uncon)' : 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.15s' }}
     >
       {needsContact ? '● Needs Contact' : '○ Needs Contact'}
     </button>
@@ -3196,7 +3204,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
 
   const sessionDetails = (
     <div>
-      <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8, fontFamily: 'Syne', fontWeight: 700 }}>Session Details</div>
+      <div style={{ fontSize: 9, color: 'var(--c-fg-3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 700 }}>Session Details</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <div>
           <label style={labelS}>Studio / Location</label>
@@ -3214,14 +3222,14 @@ function NewLeadModal({ leads, onClose, onSave }: {
         <div>
           <label style={labelS}>Quote / Rate</label>
           <div style={{ display: 'flex', gap: 0 }}>
-            <button type="button" onClick={() => setRateType('hourly')} style={{ padding: '4px 8px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '4px 0 0 4px', border: '1px solid var(--border)', background: rateType === 'hourly' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: rateType === 'hourly' ? 'var(--accent)' : 'var(--text3)' }}>/ hr</button>
-            <button type="button" onClick={() => setRateType('daily')} style={{ padding: '4px 8px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '0 4px 4px 0', border: '1px solid var(--border)', borderLeft: 'none', background: rateType === 'daily' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: rateType === 'daily' ? 'var(--accent)' : 'var(--text3)' }}>/ day</button>
+            <button type="button" onClick={() => setRateType('hourly')} style={{ padding: '4px 8px', fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '4px 0 0 4px', background: rateType === 'hourly' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: rateType === 'hourly' ? 'var(--c-fg)' : 'var(--c-fg-3)' }}>/ hr</button>
+            <button type="button" onClick={() => setRateType('daily')} style={{ padding: '4px 8px', fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase' as const, cursor: 'pointer', borderRadius: '0 4px 4px 0', background: rateType === 'daily' ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: rateType === 'daily' ? 'var(--c-fg)' : 'var(--c-fg-3)' }}>/ day</button>
             <input
               value={rateType === 'hourly' ? form.quote : form.rate_daily}
               onChange={e => set(rateType === 'hourly' ? 'quote' : 'rate_daily', e.target.value)}
               onBlur={e => { const f = fmtMoney(e.target.value); const key = rateType === 'hourly' ? 'quote' : 'rate_daily'; if (f !== e.target.value) set(key, f) }}
               placeholder="$0"
-              style={{ ...inputStyle, borderRadius: '0 4px 4px 0', borderLeft: 'none', marginLeft: 6 }}
+              style={{ ...inputStyle, borderRadius: '0 4px 4px 0', marginLeft: 6 }}
             />
           </div>
         </div>
@@ -3232,7 +3240,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
         <div><label style={labelS}>Session Date</label><input type="date" value={form.session_date} onChange={e => set('session_date', e.target.value)} style={inputStyle} /></div>
         <div>
-          <label style={labelS}>End Date <span style={{ color: 'var(--text3)', fontWeight: 400 }}>(optional)</span></label>
+          <label style={labelS}>End Date <span style={{ color: 'var(--c-fg-3)', fontWeight: 400 }}>(optional)</span></label>
           <input
             type="date"
             value={form.session_end_date}
@@ -3262,11 +3270,11 @@ function NewLeadModal({ leads, onClose, onSave }: {
   )
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '64px 20px 24px' }}>
-      <div onClick={e => e.stopPropagation()} data-modal-gradient="" style={{ width: 540, maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'var(--surface)' }}>
-          <span style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15 }}>New Lead</span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
+    <div onClick={onClose} className="c-modal-backdrop" style={{ zIndex: 1000, paddingTop: 64 }}>
+      <div onClick={e => e.stopPropagation()} className="c-sheet" style={{ width: 540, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'var(--c-bg)' }}>
+          <span style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15 }}>New Lead</span>
+          <button onClick={onClose} style={{ background: 'none', color: 'var(--c-fg-3)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
         </div>
 
         <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', flex: 1, minHeight: 0 }}>
@@ -3284,20 +3292,20 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   <input value={form.lname} onChange={e => { set('lname', e.target.value); setShowNameDD(true) }} onFocus={() => setShowNameDD(nameSuggestions.length > 0)} onBlur={() => setTimeout(() => setShowNameDD(false), 200)} onKeyDown={handleNameKeyDown} style={inputStyle} />
                 </div>
                 {showNameDD && nameSuggestions.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--c-wash)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
                     {nameSuggestions.map((item, i) => {
                       const r = item.record; const isClient = item.type === 'client'
                       return (
-                        <div key={`${item.type}-${r.id}`} onMouseDown={() => applyAutofill(item)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i === nameHighlight ? 'var(--surface)' : isClient ? 'rgba(20,184,166,0.04)' : 'transparent' }}>
+                        <div key={`${item.type}-${r.id}`} onMouseDown={() => applyAutofill(item)} style={{ padding: '10px 14px', cursor: 'pointer', background: i === nameHighlight ? 'var(--c-bg)' : isClient ? 'rgba(20,184,166,0.04)' : 'transparent' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: isClient ? 'var(--booked)' : 'var(--text)' }}>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: isClient ? 'var(--c-st-booked)' : 'var(--c-fg)' }}>
                               {isClient ? (r as Client).name || `${r.fname || ''} ${r.lname || ''}`.trim() : `${r.fname} ${r.lname}`}
                             </span>
-                            <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: isClient ? 'rgba(20,184,166,0.15)' : 'rgba(139,144,168,0.12)', color: isClient ? 'var(--booked)' : 'var(--text3)', fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                            <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: isClient ? 'rgba(20,184,166,0.15)' : 'rgba(139,144,168,0.12)', color: isClient ? 'var(--c-st-booked)' : 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                               {isClient ? '★ Client' : 'Prev. Inquiry'}
                             </span>
                           </div>
-                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
+                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>
                             {r.email && <span>{r.email}</span>}
                             {r.phone && <span>{r.phone}</span>}
                             {!isClient && (r as Lead).booking && <span>{(r as Lead).booking}</span>}
@@ -3306,16 +3314,16 @@ function NewLeadModal({ leads, onClose, onSave }: {
                         </div>
                       )
                     })}
-                    <div onMouseDown={() => { setMatchedClientId(null); setShowNameDD(false); setNameHighlight(-1) }} style={{ padding: '9px 14px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div onMouseDown={() => { setMatchedClientId(null); setShowNameDD(false); setNameHighlight(-1) }} style={{ padding: '9px 14px', cursor: 'pointer', color: 'var(--c-fg)', fontSize: 11, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> None of these — New Client
                     </div>
                   </div>
                 )}
                 {matchedClientId && (
-                  <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.2)', borderRadius: 6 }}>
-                    <span style={{ color: 'var(--booked)', fontSize: 12 }}>★</span>
-                    <span style={{ fontSize: 11, color: 'var(--booked)', fontFamily: 'Inter', flex: 1 }}>Matched to existing client profile</span>
-                    <button onMouseDown={() => setMatchedClientId(null)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                  <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'rgba(20,184,166,0.08)', borderRadius: 6 }}>
+                    <span style={{ color: 'var(--c-st-booked)', fontSize: 12 }}>★</span>
+                    <span style={{ fontSize: 11, color: 'var(--c-st-booked)', fontFamily: 'Inter', flex: 1 }}>Matched to existing client profile</span>
+                    <button onMouseDown={() => setMatchedClientId(null)} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
                   </div>
                 )}
               </div>
@@ -3362,14 +3370,14 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   style={inputStyle}
                 />
                 {showUniDD && uniSuggestions.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden', maxHeight: 280, overflowY: 'auto' }}>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--c-wash)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden', maxHeight: 280, overflowY: 'auto' }}>
                     {uniSuggestions.map((s, i) => (
-                      <div key={`${s.clientId}-${s.artist}-${s.anrContactId || ''}-${i}`} onMouseDown={() => selectUniClient(s)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i === uniHighlight ? 'var(--surface)' : 'transparent' }}>
-                        <div style={{ fontSize: 12, color: 'var(--text)', marginBottom: 2 }}>
+                      <div key={`${s.clientId}-${s.artist}-${s.anrContactId || ''}-${i}`} onMouseDown={() => selectUniClient(s)} style={{ padding: '10px 14px', cursor: 'pointer', background: i === uniHighlight ? 'var(--c-bg)' : 'transparent' }}>
+                        <div style={{ fontSize: 12, color: 'var(--c-fg)', marginBottom: 2 }}>
                           {s.artist && <span style={{ fontWeight: 700 }}>{s.artist}</span>}
-                          {s.artist && (s.labelName || s.anrName) && <span style={{ color: 'var(--text3)' }}> · </span>}
-                          {s.labelName && <span style={{ color: 'var(--text2)' }}>{s.labelName}</span>}
-                          {s.anrName && <span style={{ color: 'var(--text3)' }}> · {s.anrName}</span>}
+                          {s.artist && (s.labelName || s.anrName) && <span style={{ color: 'var(--c-fg-3)' }}> · </span>}
+                          {s.labelName && <span style={{ color: 'var(--c-fg-2)' }}>{s.labelName}</span>}
+                          {s.anrName && <span style={{ color: 'var(--c-fg-3)' }}> · {s.anrName}</span>}
                         </div>
                       </div>
                     ))}
@@ -3386,9 +3394,9 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   style={inputStyle}
                 />
                 {labelClientId && (
-                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--booked)', fontFamily: 'Inter' }}>
+                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--c-st-booked)', fontFamily: 'Inter' }}>
                     <span>★ Linked to label client</span>
-                    <button onMouseDown={() => { setLabelClientId(null); setAnrContactId(null); setSelectedAnr(null); setAnrQuery(''); setAnrHighlight(-1) }} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 0 }}>×</button>
+                    <button onMouseDown={() => { setLabelClientId(null); setAnrContactId(null); setSelectedAnr(null); setAnrQuery(''); setAnrHighlight(-1) }} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 0 }}>×</button>
                   </div>
                 )}
               </div>
@@ -3405,18 +3413,18 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   style={inputStyle}
                 />
                 {showAnrDD && labelClientId && (anrFiltered.length > 0 || anrQuery.trim().length >= 2) && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--c-wash)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
                     {anrFiltered.map((c, i) => (
-                      <div key={c.id} onMouseDown={() => selectAnr(c)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i === anrHighlight ? 'var(--surface)' : 'transparent' }}>
+                      <div key={c.id} onMouseDown={() => selectAnr(c)} style={{ padding: '10px 14px', cursor: 'pointer', background: i === anrHighlight ? 'var(--c-bg)' : 'transparent' }}>
                         <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 2 }}>{c.fname} {c.lname}</div>
-                        <div style={{ display: 'flex', gap: 10, fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
+                        <div style={{ display: 'flex', gap: 10, fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>
                           {c.email && <span>{c.email}</span>}
                           {c.phone && <span>{c.phone}</span>}
                         </div>
                       </div>
                     ))}
                     {anrQuery.trim().length >= 2 && !anrFiltered.some(c => `${c.fname || ''} ${c.lname || ''}`.trim().toLowerCase() === anrQuery.trim().toLowerCase()) && (
-                      <div onMouseDown={() => addNewAnrContact(anrQuery.trim())} style={{ padding: '9px 14px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: anrFiltered.length > 0 ? '1px solid var(--border)' : undefined, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div onMouseDown={() => addNewAnrContact(anrQuery.trim())} style={{ padding: '9px 14px', cursor: 'pointer', color: 'var(--c-fg)', fontSize: 11, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this A&R? Add &ldquo;{anrQuery.trim()}&rdquo;
                       </div>
                     )}
@@ -3436,12 +3444,12 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   style={inputStyle}
                 />
                 {showArtistDD && (artistSuggestions.length > 0 || (artistQuery.trim().length >= 2 && !labelArtists.some(a => a.toLowerCase() === artistQuery.trim().toLowerCase()))) && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--c-wash)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
                     {artistSuggestions.map((a, i) => (
-                      <div key={a} onMouseDown={() => { setArtistQuery(a); set('artist_name', a); setShowArtistDD(false); setArtistHighlight(-1) }} style={{ padding: '9px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 12, fontFamily: 'Inter', background: i === artistHighlight ? 'var(--surface)' : 'transparent' }}>{a}</div>
+                      <div key={a} onMouseDown={() => { setArtistQuery(a); set('artist_name', a); setShowArtistDD(false); setArtistHighlight(-1) }} style={{ padding: '9px 14px', cursor: 'pointer', fontSize: 12, fontFamily: 'Inter', background: i === artistHighlight ? 'var(--c-bg)' : 'transparent' }}>{a}</div>
                     ))}
                     {artistQuery.trim().length >= 2 && !labelArtists.some(a => a.toLowerCase() === artistQuery.trim().toLowerCase()) && (
-                      <div onMouseDown={() => addArtistImmediately(artistQuery.trim())} style={{ padding: '9px 14px', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', borderTop: artistSuggestions.length > 0 ? '1px solid var(--border)' : undefined, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div onMouseDown={() => addArtistImmediately(artistQuery.trim())} style={{ padding: '9px 14px', cursor: 'pointer', color: 'var(--c-fg)', fontSize: 11, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Don&apos;t see this artist? Add &ldquo;{artistQuery.trim()}&rdquo;{anrContactId && selectedAnr ? ` under ${selectedAnr.fname || ''}` : ' to roster'}
                       </div>
                     )}
@@ -3474,15 +3482,15 @@ function NewLeadModal({ leads, onClose, onSave }: {
           </div>
 
           {/* ─── Tags ─────────────────────────────── */}
-          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+          <div style={{ paddingTop: 12 }}>
             <label style={labelS}>Tags</label>
             {/* Applied tags */}
             {newLeadTags.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
                 {newLeadTags.map(tag => (
-                  <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>
+                  <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--c-wash)', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>
                     {tag}
-                    <button onClick={() => setNewLeadTags(ts => ts.filter(t => t !== tag))} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text3)', lineHeight: 1, fontSize: 11 }}>×</button>
+                    <button onClick={() => setNewLeadTags(ts => ts.filter(t => t !== tag))} style={{ background: 'none', padding: 0, cursor: 'pointer', color: 'var(--c-fg-3)', lineHeight: 1, fontSize: 11 }}>×</button>
                   </span>
                 ))}
               </div>
@@ -3490,7 +3498,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
             {/* Starter chips */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
               {STARTER_TAGS.filter(t => !newLeadTags.includes(t)).map(tag => (
-                <button key={tag} type="button" onClick={() => setNewLeadTags(ts => [...ts, tag])} style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', cursor: 'pointer' }}>
+                <button key={tag} type="button" onClick={() => setNewLeadTags(ts => [...ts, tag])} style={{ background: 'transparent', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', cursor: 'pointer' }}>
                   + {tag}
                 </button>
               ))}
@@ -3509,10 +3517,10 @@ function NewLeadModal({ leads, onClose, onSave }: {
                 style={{ ...inputStyle, padding: '5px 8px', fontSize: 10 }}
               />
               {newTagDDOpen && newTagInput.trim() && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, zIndex: 100, marginTop: 2 }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--c-bg)', borderRadius: 4, zIndex: 100, marginTop: 2 }}>
                   <button
                     onMouseDown={() => { if (!newLeadTags.includes(newTagInput.trim())) setNewLeadTags(ts => [...ts, newTagInput.trim()]); setNewTagInput(''); setNewTagDDOpen(false) }}
-                    style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '6px 10px', fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter', cursor: 'pointer' }}
+                    style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', padding: '6px 10px', fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter', cursor: 'pointer' }}
                   >
                     Add &ldquo;{newTagInput.trim()}&rdquo;
                   </button>
@@ -3522,15 +3530,15 @@ function NewLeadModal({ leads, onClose, onSave }: {
           </div>
         </div>
 
-        <div style={{ padding: '12px 20px 20px', flexShrink: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
+        <div style={{ padding: '12px 20px 20px', flexShrink: 0, background: 'var(--c-bg)' }}>
           {bookingError && (
-            <div style={{ marginBottom: 8, fontSize: 11, color: 'var(--hot)', fontFamily: 'Inter' }}>{bookingError}</div>
+            <div style={{ marginBottom: 8, fontSize: 11, color: 'var(--c-st-hot)', fontFamily: 'Inter' }}>{bookingError}</div>
           )}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '9px 0', background: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: saving ? 0.6 : 1 }}>
+            <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '9px 0', background: 'var(--c-fg)', color: 'var(--c-bg)', borderRadius: 6, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: saving ? 0.6 : 1 }}>
               {saving ? 'Saving…' : temperature === 'booking' ? 'Save & Go to Booking →' : 'Create Lead'}
             </button>
-            <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
+            <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', color: 'var(--c-fg-2)', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
           </div>
         </div>
       </div>
@@ -3554,24 +3562,24 @@ function EmailModal({ lead, onClose }: { lead: Lead, onClose: () => void }) {
   }
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 520, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div onClick={onClose} className="c-modal-backdrop" style={{ zIndex: 1000 }}>
+      <div onClick={e => e.stopPropagation()} className="c-sheet" style={{ width: 520 }}>
+        <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15 }}>Email {lead.fname} {lead.lname}</div>
-            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2, fontFamily: 'Inter' }}>{lead.email || 'No email on file'}</div>
+            <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15 }}>Email {lead.fname} {lead.lname}</div>
+            <div style={{ fontSize: 10, color: 'var(--c-fg-3)', marginTop: 2, fontFamily: 'Inter' }}>{lead.email || 'No email on file'}</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
+          <button onClick={onClose} style={{ background: 'none', color: 'var(--c-fg-3)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
         </div>
         <div style={{ padding: '16px 20px' }}>
-          <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Subject: {subject}</div>
-          <textarea value={body} onChange={e => setBody(e.target.value)} style={{ width: '100%', height: 220, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '10px 12px', borderRadius: 7, fontFamily: 'Inter', fontSize: 11, resize: 'none', outline: 'none', lineHeight: 1.6 }} />
+          <div style={{ fontSize: 9, color: 'var(--c-fg-3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Subject: {subject}</div>
+          <textarea value={body} onChange={e => setBody(e.target.value)} style={{ width: '100%', height: 220, background: 'var(--c-wash)', color: 'var(--c-fg)', padding: '10px 12px', borderRadius: 7, fontFamily: 'Inter', fontSize: 11, resize: 'none', outline: 'none', lineHeight: 1.6 }} />
         </div>
         <div style={{ padding: '0 20px 20px', display: 'flex', gap: 8 }}>
-          <button onClick={handleCopyAndOpen} disabled={!lead.email} style={{ flex: 1, padding: '9px 0', background: lead.email ? 'var(--accent)' : 'var(--surface2)', color: lead.email ? 'var(--bg)' : 'var(--text3)', border: 'none', borderRadius: 6, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: lead.email ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          <button onClick={handleCopyAndOpen} disabled={!lead.email} style={{ flex: 1, padding: '9px 0', background: lead.email ? 'var(--c-fg)' : 'var(--c-wash)', color: lead.email ? 'var(--c-bg)' : 'var(--c-fg-3)', borderRadius: 6, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, cursor: lead.email ? 'pointer' : 'not-allowed', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
             {copied ? '✓ Copied!' : '✉ Copy & Open Mail'}
           </button>
-          <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', color: 'var(--c-fg-2)', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
         </div>
       </div>
     </div>
@@ -3593,14 +3601,14 @@ function DonutChart({ segments, size = 100 }: {
 
   if (total === 0) return (
     <svg width={size} height={size}>
-      <circle cx={cx} cy={cy} r={r} fill="transparent" style={{ stroke: 'var(--border)' }} strokeWidth={sw} />
+      <circle cx={cx} cy={cy} r={r} fill="transparent" style={{ stroke: 'var(--c-wash2)' }} strokeWidth={sw} />
     </svg>
   )
 
   let cumLen = 0
   return (
     <svg width={size} height={size} style={{ flexShrink: 0 }}>
-      <circle cx={cx} cy={cy} r={r} fill="transparent" style={{ stroke: 'var(--border)' }} strokeWidth={sw} />
+      <circle cx={cx} cy={cy} r={r} fill="transparent" style={{ stroke: 'var(--c-wash2)' }} strokeWidth={sw} />
       {segments.map((seg, i) => {
         const L = (seg.value / total) * C
         const dashOffset = C - cumLen
@@ -3628,23 +3636,23 @@ function ChartCard({ title, subtitle, segments }: {
 }) {
   const total = segments.reduce((s, seg) => s + seg.value, 0)
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 20 }}>
-      <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{title}</div>
-      <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 16, fontFamily: 'Inter' }}>{subtitle}</div>
+    <div style={{ background: 'var(--c-bg)', borderRadius: 10, padding: 20 }}>
+      <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 13, marginBottom: 2 }}>{title}</div>
+      <div style={{ fontSize: 10, color: 'var(--c-fg-3)', marginBottom: 16, fontFamily: 'Inter' }}>{subtitle}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <DonutChart segments={segments} size={90} />
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
           {segments.slice(0, 6).map(seg => (
             <div key={seg.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 7, height: 7, borderRadius: '50%', background: seg.color, flexShrink: 0 }} />
-              <span style={{ fontSize: 10, color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{seg.label}</span>
-              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', flexShrink: 0 }}>
+              <span style={{ fontSize: 10, color: 'var(--c-fg-2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{seg.label}</span>
+              <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', flexShrink: 0 }}>
                 {seg.value} <span style={{ opacity: 0.6 }}>({total ? Math.round(seg.value / total * 100) : 0}%)</span>
               </span>
             </div>
           ))}
           {segments.length > 6 && (
-            <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter' }}>+{segments.length - 6} more</div>
+            <div style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>+{segments.length - 6} more</div>
           )}
         </div>
       </div>
@@ -3681,19 +3689,19 @@ function AnalyticsView({ leads }: { leads: Lead[] }) {
     { title: 'Bookings by Label', subtitle: `${labelLeads.length} sessions with label data, ${rangeLabelLower}`, segs: toSegments(groupBy(labelLeads, 'label')) },
   ]
 
-  const dateInputStyle = { background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', padding: '6px 10px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, outline: 'none', cursor: 'pointer' } as const
+  const dateInputStyle = { background: 'var(--c-bg)', color: 'var(--c-fg-2)', padding: '6px 10px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, outline: 'none', cursor: 'pointer' } as const
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 10, flexWrap: 'wrap' }}>
-        <h1 style={{ fontFamily: 'DM Serif Display', fontSize: 32, letterSpacing: -1 }}>
-          Analytics <em style={{ fontStyle: 'italic', color: 'var(--accent)' }}>&amp; Insights</em>
+        <h1 style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 32, letterSpacing: -1 }}>
+          Analytics <em style={{ fontStyle: 'italic', color: 'var(--c-fg)' }}>&amp; Insights</em>
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <select
             value={rangePreset}
             onChange={e => setRangePreset(e.target.value as AnalyticsRangePreset)}
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', padding: '6px 12px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, outline: 'none', cursor: 'pointer' }}
+            style={{ background: 'var(--c-bg)', color: 'var(--c-fg-2)', padding: '6px 12px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, outline: 'none', cursor: 'pointer' }}
           >
             {(Object.keys(ANALYTICS_RANGE_LABELS) as AnalyticsRangePreset[]).map(p => (
               <option key={p} value={p}>{ANALYTICS_RANGE_LABELS[p]}</option>
@@ -3710,14 +3718,14 @@ function AnalyticsView({ leads }: { leads: Lead[] }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
         {[
-          { label: 'Total Leads', value: total.toLocaleString(), color: 'var(--accent)', sub: rangeLabel },
-          { label: 'Booked', value: booked.toLocaleString(), color: 'var(--accent)', sub: 'Confirmed sessions' },
-          { label: 'Conversion Rate', value: `${convRate}%`, color: 'var(--accent)', sub: 'Leads to booked' },
+          { label: 'Total Leads', value: total.toLocaleString(), color: 'var(--c-fg)', sub: rangeLabel },
+          { label: 'Booked', value: booked.toLocaleString(), color: 'var(--c-fg)', sub: 'Confirmed sessions' },
+          { label: 'Conversion Rate', value: `${convRate}%`, color: 'var(--c-fg)', sub: 'Leads to booked' },
         ].map(stat => (
-          <div key={stat.label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '18px 20px' }}>
-            <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)', marginBottom: 8 }}>{stat.label}</div>
-            <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 36, color: stat.color }}>{stat.value}</div>
-            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>{stat.sub}</div>
+          <div key={stat.label} style={{ background: 'var(--c-bg)', borderRadius: 10, padding: '18px 20px' }}>
+            <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-2)', marginBottom: 8 }}>{stat.label}</div>
+            <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 36, color: stat.color }}>{stat.value}</div>
+            <div style={{ fontSize: 10, color: 'var(--c-fg-3)', marginTop: 4 }}>{stat.sub}</div>
           </div>
         ))}
       </div>

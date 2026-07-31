@@ -155,17 +155,9 @@ html[data-theme="light"] {
    already invert per theme, so there is nothing left to patch. The lime and red
    went with the accent colour (Law 3). */
 
-/* (PART 3) Unique per-panel gradients in light mode. Declared after the glass-card
-   rule so they win at equal specificity; the frosted border/shadow still apply. */
-/* The four dashboard panels (needs-action / today-sessions / tasks / flags) were
-   removed here on 2026-07-30: the dashboard migrated to the carved system, which
-   carries its own surface treatment, and those data-panel hooks no longer exist
-   in the markup. This is the override layer shrinking as intended (spec §1 step 5). */
-[data-theme="light"] [data-panel="crm-leads"]      { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="crm-detail"]     { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="crm-registrations"] { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="clients-list"]   { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="clients-detail"] { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
+/* The CRM and Clients per-panel gradients were removed 2026-07-30 with the CRM
+   migration — those panels are carved containers now. Only admin-sidebar remains,
+   until the admin page migrates. */
 [data-theme="light"] [data-panel="admin-sidebar"]  { background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important; }
 
 /* [data-room-cell] and [data-session-active] rules were removed on 2026-07-30 with
@@ -242,12 +234,8 @@ html[data-theme="light"] {
 /* [data-studio-card] removed 2026-07-30 — the LocationStrip cards are carved
    raised controls now and carry their own light/dark treatment. */
 
-/* (FIX 5) Selected lead row: subtle blue tint + a blue left bar (inset shadow, so no
-   layout shift) in light mode. */
-[data-theme="light"] [data-selected] {
-  background: rgba(59, 130, 246, 0.08) !important;
-  box-shadow: inset 3px 0 0 #3b82f6 !important;
-}
+/* [data-selected] removed 2026-07-30 — a selected lead row is a CARVE now, not a
+   blue tint with a blue bar, and it reads the same in both themes. */
 
 /* The four per-studio alternating gradients ([data-studio-index]) were removed
    2026-07-30 with the LocationStrip migration. Per-studio colour coding was
@@ -258,11 +246,8 @@ html[data-theme="light"] {
    SUBSTRING matchers — the fragile class the redesign exists to delete — so this
    is the first real drop in the §11 metric. */
 
-/* (light) CRM lead cards read stronger: bolder names, and darker secondary/tertiary
-   metadata. The scoped --text2/--text3 override darkens only this card's text
-   (secondary → #334155, tertiary → #475569) without touching those tokens elsewhere. */
-[data-theme="light"] [data-lead-name] { font-weight: 600 !important; }
-[data-theme="light"] [data-lead-content] { --text2: #334155; --text3: #475569; }
+/* [data-lead-name] / [data-lead-content] removed 2026-07-30 — the carved lead row
+   sets its own weight and muted-ink steps directly, in both themes. */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1027,25 +1012,31 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 
    Inline backgrounds were stripped from those controls so these rules can win
    without !important. */
-.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft) {
+.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff),
+.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff) {
   border-radius: 99px; padding: 8px 16px; cursor: pointer;
   background: var(--c-bg); color: var(--c-fg);
   font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
   transition: transform .16s ease, box-shadow .16s ease;
   box-shadow: 2px 2px 7px rgba(0, 0, 0, .38), -2px -2px 7px rgba(255, 255, 255, .04);
 }
-[data-theme="light"] .c-sheet button:not(.c-x):not(.c-btn):not(.c-soft) {
+[data-theme="light"] .c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff),
+.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff) {
   box-shadow: 2px 2px 6px rgba(42, 39, 34, .09), -2px -2px 6px rgba(255, 255, 255, .7);
 }
-.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):active {
+.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):active,
+.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):active {
   transform: translateY(1px);
   box-shadow: inset 3px 3px 7px rgba(0, 0, 0, .28);
 }
-.c-sheet button:disabled { opacity: 0.5; cursor: default; }
+.c-sheet button:disabled, .c-panel button:disabled { opacity: 0.5; cursor: default; }
 
 .c-sheet input:not([type="file"]):not(.c-input),
 .c-sheet select,
-.c-sheet textarea:not(.c-textarea) {
+.c-sheet textarea:not(.c-textarea),
+.c-panel input:not([type="file"]):not(.c-input),
+.c-panel select,
+.c-panel textarea:not(.c-textarea) {
   border-radius: 18px; padding: 11px 16px; width: 100%;
   background: var(--c-bg); color: var(--c-fg);
   font-family: inherit; font-size: 13px; box-sizing: border-box;
@@ -1053,10 +1044,14 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 }
 [data-theme="light"] .c-sheet input:not([type="file"]):not(.c-input),
 [data-theme="light"] .c-sheet select,
-[data-theme="light"] .c-sheet textarea:not(.c-textarea) {
+[data-theme="light"] .c-sheet textarea:not(.c-textarea),
+[data-theme="light"] .c-panel input:not([type="file"]):not(.c-input),
+[data-theme="light"] .c-panel select,
+[data-theme="light"] .c-panel textarea:not(.c-textarea) {
   box-shadow: inset 3px 3px 8px rgba(42, 39, 34, .07), inset -3px -3px 8px rgba(255, 255, 255, .65);
 }
-.c-sheet input:focus, .c-sheet select:focus, .c-sheet textarea:focus {
+.c-sheet input:focus, .c-sheet select:focus, .c-sheet textarea:focus,
+.c-panel input:focus, .c-panel select:focus, .c-panel textarea:focus {
   outline: none; background: var(--c-wash2);
 }
 
