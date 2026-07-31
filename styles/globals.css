@@ -655,6 +655,13 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-anchor { box-shadow: 2px 2px 8px rgba(0, 0, 0, .5); }
 [data-theme="light"] .c-anchor { box-shadow: 2px 2px 7px rgba(42, 39, 34, .22); }
 
+/* A control that is LATCHED ON stays pressed into the material — the same
+   geometry as :active, but persistent. Sign-offs use this: checking something off
+   is an act of pressing, so a completed sign-off reads as a pressed, filled
+   control rather than a raised one. Pair with .c-on for the fill. */
+.c-pressed { box-shadow: inset 3px 3px 7px rgba(0, 0, 0, .38); }
+[data-theme="light"] .c-pressed { box-shadow: inset 3px 3px 7px rgba(42, 39, 34, .22); }
+
 /* THE PRESS — every control depresses into the material while held. */
 .c-control {
   cursor: pointer;
@@ -917,6 +924,27 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* Empty room cards hint they're clickable without lifting — containers don't lift. */
 .c-room-empty { transition: opacity .16s ease; }
 .c-room-empty:hover { opacity: 0.85; }
+
+/* Daily-ops row: a carved-in slot holding a checklist category. It's a container
+   (it HOLDS the sign-off controls), so it stays carved and never lifts — the
+   hover is a brightness hint only, replacing the JS background swaps it used to
+   carry. Circular sign-off toggles pair with .c-pressed when latched. */
+.c-oprow {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  border-radius: 20px; padding: 12px 16px; cursor: pointer;
+  transition: opacity .16s ease;
+}
+.c-oprow:hover { opacity: 0.85; }
+.c-signoff {
+  display: inline-flex; align-items: center; gap: 6px;
+  border-radius: 99px; padding: 5px 12px;
+  background: var(--c-bg); color: var(--c-fg);
+  font-family: inherit; font-size: 9px; font-weight: 800;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.c-signoff.c-on { background: var(--c-ivory); color: #1b1a17; }
+[data-theme="light"] .c-signoff.c-on { background: var(--c-fg); color: var(--c-bg); }
 
 /* ── Status fills (§5) — the only colour in the system ──────────────────── */
 /* Solid fills at full brightness. Light mode uses them as-is; dark dims by rule

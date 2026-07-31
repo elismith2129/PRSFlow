@@ -30,7 +30,7 @@ const MIC_GROUPS = [
 ]
 
 const CONDITION_COLORS: Record<string, string> = {
-  good: '#4ade80', fair: 'var(--c-fg-2)', damaged: '#f87171', '': 'var(--c-fg-2)',
+  good: 'var(--c-st-booked)', fair: 'var(--c-st-warm)', damaged: 'var(--c-st-hot)', '': 'var(--c-st-dead)',
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -208,7 +208,7 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
 
         {/* Needs Attention banner — shown AT TOP before checklist */}
         {flagged && (
-          <div style={{ background: '#f0a24e18', borderRadius: 12, padding: '14px 16px' }}>
+          <div className="c-inset2" style={{ borderRadius: 20, padding: '14px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: notesText || photosToShow.length > 0 ? 10 : 0 }}>
               <span style={{ fontSize: 14, color: 'var(--c-fg-2)' }}>⚠</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-fg-2)', fontFamily: "'Archivo Black', sans-serif" }}>
@@ -216,7 +216,7 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
               </span>
             </div>
             {notesText && (
-              <div style={{ fontSize: 12, color: 'var(--c-fg)', fontFamily: 'Inter', lineHeight: 1.6, background: 'var(--c-wash)', borderRadius: 8, padding: '10px 12px', marginBottom: photosToShow.length > 0 ? 10 : 0 }}>
+              <div style={{ fontSize: 12, color: 'var(--c-fg)', fontFamily: 'Inter', lineHeight: 1.6, background: 'var(--c-wash)', borderRadius: 14, padding: '10px 12px', marginBottom: photosToShow.length > 0 ? 10 : 0 }}>
                 {notesText}
               </div>
             )}
@@ -278,7 +278,7 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
         {notesText && !flagged && (
           <div>
             <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", marginBottom: 6 }}>Notes</div>
-            <div style={{ fontSize: 12, color: 'var(--c-fg)', fontFamily: 'Inter', lineHeight: 1.6, background: 'var(--c-bg)', borderRadius: 8, padding: '10px 12px' }}>
+            <div style={{ fontSize: 12, color: 'var(--c-fg)', fontFamily: 'Inter', lineHeight: 1.6, background: 'var(--c-wash)', borderRadius: 14, padding: '10px 12px' }}>
               {notesText}
             </div>
           </div>
@@ -308,11 +308,11 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {/* Balance summary */}
-        <div style={{ background: 'var(--c-bg)', borderRadius: 10, padding: '14px 16px' }}>
+        <div className="c-inset2" style={{ borderRadius: 20, padding: '14px 16px' }}>
           {([
             ['Opening Balance', openingBalance != null ? `$${Number(openingBalance).toFixed(2)}` : '—', 'var(--c-fg-2)'],
-            ['Cash In', `+$${totalIn.toFixed(2)}`, '#4ade80'],
-            ['Cash Out', `-$${totalOut.toFixed(2)}`, '#f87171'],
+            ['Cash In', `+$${totalIn.toFixed(2)}`, 'var(--c-fg)'],
+            ['Cash Out', `-$${totalOut.toFixed(2)}`, 'var(--c-fg)'],
             ['Closing Balance', `$${closing.toFixed(2)}`, 'var(--c-fg)'],
           ] as [string, string, string][]).map(([l, v, c], i, arr) => (
             <div key={l} style={{
@@ -326,7 +326,7 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
 
         {/* Transaction ledger */}
         {cashEntries.length > 0 ? (
-          <div style={{ background: 'var(--c-bg)', borderRadius: 10, overflow: 'hidden' }}>
+          <div className="c-inset2" style={{ borderRadius: 20, overflow: 'hidden', padding: '4px 0' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 48px', padding: '6px 14px', background: 'var(--c-wash)' }}>
               {['Description', 'Amount', 'Type'].map(h => (
                 <span key={h} style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif" }}>{h}</span>
@@ -338,7 +338,7 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
                 padding: '9px 14px',
                 }}>
                 <span style={{ fontSize: 11, color: 'var(--c-fg)', fontFamily: 'Inter' }}>{e.description || '—'}</span>
-                <span style={{ fontSize: 11, fontWeight: 600, fontFamily: 'Inter', color: e.type === 'in' ? '#4ade80' : '#f87171' }}>
+                <span style={{ fontSize: 11, fontWeight: 600, fontFamily: 'Inter', color: 'var(--c-fg)' }}>
                   {e.type === 'in' ? '+' : '−'}${Number(e.amount).toFixed(2)}
                 </span>
                 <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>{e.type}</span>
@@ -361,7 +361,7 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {lowCount > 0 && (
-          <div style={{ background: '#f0a24e18', borderRadius: 8, padding: '8px 12px', marginBottom: 6 }}>
+          <div className="c-inset2" style={{ borderRadius: 14, padding: '8px 12px', marginBottom: 6 }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>
               ⚠ {lowCount} item{lowCount !== 1 ? 's' : ''} flagged low
             </span>
@@ -383,8 +383,8 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
               <span style={{
                 fontSize: 9, fontWeight: 700, fontFamily: 'Inter',
                 padding: '2px 7px', borderRadius: 4,
-                color: it.low ? 'var(--c-fg-2)' : '#4ade80',
-                background: it.low ? '#f0a24e22' : '#4ade8022',
+                color: 'var(--c-chip-ink)',
+                background: it.low ? 'var(--c-st-warm)' : 'var(--c-st-booked)',
               }}>
                 {it.low ? 'LOW' : 'OK'}
               </span>
@@ -481,7 +481,7 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
             </div>
             <div style={{ display: 'flex', gap: 5 }}>
               {h.submitted_at ? (
-                <span style={{ fontSize: 9, fontWeight: 700, color: '#4ade80', background: '#4ade8022', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>Submitted</span>
+                <span className="c-pill c-fill-booked" style={{ fontSize: 9 }}>Submitted</span>
               ) : (
                 <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--c-fg-3)', background: 'var(--c-wash)', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>Pending</span>
               )}
@@ -504,15 +504,10 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
 
   const modal = (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 20px' }}
+      className="c-modal-backdrop" style={{ zIndex: 10002 }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div style={{
-        background: 'var(--c-bg)', width: '100%', maxWidth: 680,
-        maxHeight: '88dvh', borderRadius: 16, overflow: 'hidden',
-        display: 'flex', flexDirection: 'column',
-        boxShadow: '0 32px 96px #000a',
-        }}>
+      <div className="c-sheet" style={{ width: '100%', maxWidth: 680, maxHeight: '88dvh', display: 'flex', flexDirection: 'column' }}>
 
         {/* Header */}
         <div style={{
@@ -520,7 +515,7 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
           flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button onClick={onClose} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 4px' }}>←</button>
+            <button onClick={onClose} aria-label="Back" className="c-control c-raised" style={{ width: 34, height: 34, borderRadius: 99, flexShrink: 0, background: 'var(--c-bg)', color: 'var(--c-fg)', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
             <div>
               <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 800, fontSize: 16, color: 'var(--c-fg)' }}>
                 {CATEGORY_LABELS[category] ?? category}
@@ -560,7 +555,7 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
           <section>
             <SectionHead label={isChecklist && !isSubmitted ? 'Current Progress' : 'Submitted Content'} />
             {!isSubmitted && !alwaysShowContent ? (
-              <div style={{ background: 'var(--c-bg)', borderRadius: 10, padding: '32px 22px', textAlign: 'center' }}>
+              <div className="c-inset2" style={{ borderRadius: 20, padding: '32px 22px', textAlign: 'center' }}>
                 <div style={{ fontSize: 13, color: 'var(--c-fg-2)', fontFamily: "'Archivo Black', sans-serif", marginBottom: 6 }}>
                   Awaiting runner submission
                 </div>

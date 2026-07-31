@@ -6,7 +6,7 @@ import { DailyOpsModal, type DailyOpsSubmission } from '@/components/dashboard/D
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 import { CHECKLISTS, flattenSections } from '@/lib/checklist-items'
 import { useIsMobile } from '@/hooks/useIsMobile'
-import { StatusDot } from '@/components/carved'
+import { StatusDot, StatusPill, statusFillClass } from '@/components/carved'
 
 const LOCATIONS = [
   { label: 'Paramount', key: 'paramount', abbr: 'PRS' },
@@ -57,24 +57,23 @@ function matchesLoc(loc: string | null, key: string, abbr: string) {
   return l.includes(key) || l.includes(abbr.toLowerCase())
 }
 
-// Runner/Admin confirmation toggle. Carved: unchecked is a raised control you can
-// press; checked is a filled ink pill that reads as done. The `color` prop is gone
-// — it defaulted to the retired accent, and a completion state is not one of the
-// three things allowed to carry colour (§5).
+// Runner / Admin sign-off. Signing something off IS an act of pressing, so the
+// affordance law does the work here: unchecked is RAISED and empty (something to
+// press), checked is PRESSED IN and filled (something already pressed). No colour
+// — a completion state isn't one of the three things allowed to carry it (§5).
 function TwoCheckbox({ label, checked, clickable = false, loading = false, onClick }: {
   label: string; checked: boolean; clickable?: boolean; loading?: boolean; onClick?: () => void
 }) {
   return (
     <button
       onClick={clickable && !loading ? onClick : undefined}
-      className={`c-soft c-soft-sm${checked ? ' c-on' : ''}${clickable && !loading ? ' c-control c-raised' : ''}`}
+      className={`c-signoff ${checked ? 'c-on c-pressed' : 'c-raised'}${clickable && !loading ? ' c-control' : ''}`}
       style={{
-        display: 'inline-flex', alignItems: 'center', gap: 5,
         cursor: clickable && !loading ? 'pointer' : 'default',
         opacity: loading ? 0.5 : 1,
       }}
     >
-      <span style={{ lineHeight: 1 }}>{checked ? '✓' : '○'}</span>
+      <span style={{ lineHeight: 1, fontSize: 10 }}>{checked ? '✓' : '○'}</span>
       <span>{loading ? '…' : label}</span>
     </button>
   )
@@ -258,51 +257,53 @@ export function LocationStrip() {
     DAILY_CATS.some(cat => { const r = yestOpsRows.find(o => o.category === cat.key); return r?.submitted_at && !r?.admin_approved_at })
   ))
 
+  // A session block IS a session, so it gets the identical treatment to the
+  // dashboard room cards: a colored pool carved INTO the surface, status fill,
+  // room label in small caps, artist in Archivo, times and engineer in mono.
+  // Same recipe, same tokens — the two surfaces should be indistinguishable.
   function SessionCard({ b, wo, isYesterday }: { b: Booking; wo: WO | null; isYesterday?: boolean }) {
     const completed      = wo?.status === 'completed'
     const needsAttention = !!(wo?.needs_attention_notes)
-    const borderColor    = completed ? 'var(--c-fg)' : isYesterday ? 'var(--c-fg-2)' : 'var(--c-fg)'
+    const studio         = (b as any).studio as string | undefined
     return (
       <div
         onClick={() => setWoBooking(b)}
-        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
-        onMouseLeave={e => (e.currentTarget.style.background = 'var(--c-bg)')}
-        style={{
-          background: 'var(--c-bg)',
-          borderRadius: 10, padding: '12px 14px',
-          cursor: 'pointer',
-        }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-          <div>
-            {/* Studio is the hero — matches the runner hub cards. "Which room"
-                is the first thing anyone reads off a daily-ops card. */}
-            {/* No "Studio " prefix — bookings.studio is already the full room
-                label ("Studio X", "North"). See the runner hub card. */}
-            {(b as any).studio && (
-              <div style={{ fontFamily: 'Archivo Black', fontSize: 19, lineHeight: 1.1, color: 'var(--c-fg)', marginBottom: 2 }}>
-                {(b as any).studio}
-              </div>
-            )}
-            <div style={{ fontSize: 12, fontWeight: 700, color: (b as any).studio ? 'var(--c-fg-2)' : 'var(--c-fg)' }}>{b.artist || b.client_name || '—'}</div>
-            {b.artist && b.client_name && <div style={{ fontSize: 10, color: 'var(--c-fg-3)', marginTop: 1 }}>{b.client_name}</div>}
+        className={`c-room c-pool ${statusFillClass((b as any).status || 'confirmed')}`}
+        style={{ borderRadius: 26, padding: '13px 15px', cursor: 'pointer', minHeight: 0 }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+          <div style={{ minWidth: 0 }}>
+            {/* Room first — "which room" is the first thing anyone reads off a
+                daily-ops card. No "Studio " prefix: bookings.studio already holds
+                the full label ("Studio X", "North"). */}
+            {studio && <span className="c-room-name">{studio}</span>}
+            <div className="c-room-artist c-arch" style={{ fontSize: 17 }}>
+              {b.artist || b.client_name || '—'}
+            </div>
+            {b.artist && b.client_name && <div className="c-room-meta">{b.client_name}</div>}
           </div>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {needsAttention && (
-              <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--c-fg-2)', background: '#f9731622', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>⚠ Needs Attention</span>
-            )}
-            {completed && (
-              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--c-fg)', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>COMPLETED</span>
-            )}
+          <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 0 }}>
+            {needsAttention && <StatusPill status="warm" label="⚠ Attention" />}
+            {completed && <StatusPill status="booked" label="Completed" />}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 10 }}>
-          {b.from_time && <span style={{ fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>{b.from_time}–{b.to_time ?? '?'}</span>}
-          {/* Studio moved to the hero above — not repeated here. */}
-          {(b as any).engineer_name && <span style={{ fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>Eng: {(b as any).engineer_name}</span>}
-          {(b as any).payment_type && <span style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter', borderRadius: 4, padding: '1px 5px' }}>{(b as any).payment_type}</span>}
+        <div className="c-mono" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8, fontSize: 10, opacity: 0.7 }}>
+          {b.from_time && <span>{b.from_time}–{b.to_time ?? '?'}</span>}
+          {(b as any).engineer_name && <span>ENG {(b as any).engineer_name}</span>}
+          {(b as any).payment_type && <span>{String((b as any).payment_type).toUpperCase()}</span>}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingTop: 9 }}>
-          <a href={wo ? `/wo/${wo.id}/print` : '#'} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", textDecoration: 'none', padding: '4px 9px', borderRadius: 6 }}>PDF</a>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+          {/* A link you click is a control: small raised pill, not floating text. */}
+          <a
+            href={wo ? `/wo/${wo.id}/print` : '#'}
+            target="_blank"
+            rel="noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="c-soft c-soft-sm c-control c-raised"
+            style={{ textDecoration: 'none' }}
+          >
+            PDF
+          </a>
         </div>
       </div>
     )
@@ -361,22 +362,33 @@ export function LocationStrip() {
           className="c-modal-backdrop" style={{ zIndex: 10001, background: isMobile ? 'var(--c-bg)' : undefined, padding: isMobile ? 0 : 24 }}
           onClick={e => e.target === e.currentTarget && closeDrawer()}
         >
-          <div style={{
-            background: 'var(--c-bg)', width: '100%', maxWidth: isMobile ? '100vw' : 920,
+          <div className="c-sheet" style={{
+            width: '100%', maxWidth: isMobile ? '100vw' : 920,
             maxHeight: isMobile ? '100dvh' : '88dvh', height: isMobile ? '100dvh' : undefined,
-            borderRadius: isMobile ? 0 : 16, overflow: 'hidden',
             display: 'flex', flexDirection: 'column',
-            boxShadow: '0 32px 96px #0009',
             }}>
             {/* Header */}
-            <div style={{ padding: '18px 26px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-              <div>
-                <div style={{ fontFamily: 'Archivo Black', fontWeight: 400, fontSize: 20, color: 'var(--c-fg)' }}>{selectedLoc.label}</div>
-                <div style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 2 }}>
+            <div style={{ padding: '22px 26px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+              <div style={{ minWidth: 0 }}>
+                <div className="c-arch" style={{ fontSize: 22, letterSpacing: '-0.02em' }}>{selectedLoc.label}</div>
+                <div className="c-label" style={{ marginTop: 4 }}>
                   {new Date(today + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} · Daily Ops
                 </div>
               </div>
-              <button onClick={closeDrawer} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '4px 8px' }}>✕</button>
+              {/* Close is a control: raised circle that presses in when held. */}
+              <button
+                onClick={closeDrawer}
+                aria-label="Close"
+                className="c-control c-raised"
+                style={{
+                  width: 36, height: 36, borderRadius: 99, flexShrink: 0,
+                  background: 'var(--c-bg)', color: 'var(--c-fg)',
+                  fontSize: 15, lineHeight: 1, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                ✕
+              </button>
             </div>
 
             {/* Scrollable body */}
@@ -389,12 +401,7 @@ export function LocationStrip() {
                   {/* ── LEFT — Yesterday ── */}
                   {!pastRetentionWindow && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingBottom: 10 }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--c-fg-3)', fontFamily: 'Archivo Black' }}>Yesterday</span>
-                      <span style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>
-                        {new Date(yesterday + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                      </span>
-                    </div>
+                    <SectionLabel label="Yesterday" date={yesterday} />
 
                     {(() => {
                       return (
@@ -407,7 +414,7 @@ export function LocationStrip() {
                             </div>
                           )}
 
-                          <div style={{ background: 'var(--c-bg)', borderRadius: 10, overflow: 'hidden' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {DAILY_CATS.map((cat, i) => {
                               const row        = yestOpsRows.find(o => o.category === cat.key)
                               const runnerDone = !!row?.submitted_at
@@ -416,14 +423,12 @@ export function LocationStrip() {
                               return (
                                 <div key={cat.key}
                                   onClick={() => setOpenModal({ category: cat.key, date: yesterday })}
-                                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2, var(--c-wash))')}
-                                  onMouseLeave={e => (e.currentTarget.style.background = needsReview ? '#f0a24e08' : 'transparent')}
-                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: needsReview ? '#f0a24e08' : 'transparent', transition: 'background 0.1s' }}
+                                  className="c-oprow c-inset2"
                                 >
                                   <div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                                      <span style={{ fontSize: 12, color: 'var(--c-fg)', fontFamily: 'Archivo Black', fontWeight: 600 }}>{cat.label}</span>
-                                      {needsReview && <span style={{ fontSize: 9, fontWeight: 700, color: '#f0a24e', background: '#f0a24e22', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>Review</span>}
+                                      <span className="c-arch" style={{ fontSize: 13 }}>{cat.label}</span>
+                                      {needsReview && <StatusPill status="warm" label="Review" />}
                                     </div>
                                     {row?.staff_name && (
                                       <div style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 2 }}>
@@ -447,12 +452,7 @@ export function LocationStrip() {
 
                   {/* ── RIGHT — Today ── */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingBottom: 10 }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--c-fg-3)', fontFamily: 'Archivo Black' }}>Today</span>
-                      <span style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>
-                        {new Date(today + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                      </span>
-                    </div>
+                    <SectionLabel label="Today" date={today} />
 
                     {(() => {
                       if (sessions.length === 0) {
@@ -469,7 +469,7 @@ export function LocationStrip() {
 
                     {(() => {
                       return (
-                      <div style={{ background: 'var(--c-bg)', borderRadius: 10, overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {OPS_CATS.map((cat, i) => {
                         const row         = opsRows.find(o => o.category === cat.key)
                         const runnerDone  = !!row?.submitted_at
@@ -479,19 +479,17 @@ export function LocationStrip() {
                         return (
                           <div key={cat.key}
                             onClick={() => setOpenModal({ category: cat.key, date: today })}
-                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2, var(--c-wash))')}
-                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', transition: 'background 0.1s' }}
+                            className="c-oprow c-inset2"
                           >
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 12, color: 'var(--c-fg)', fontFamily: 'Archivo Black', fontWeight: 600 }}>{cat.label}</span>
+                                <span className="c-arch" style={{ fontSize: 13 }}>{cat.label}</span>
                                 {isChecklist && checklistProgress[cat.key]?.needsAttention && !adminDone && (
-                                  <span style={{ fontSize: 9, fontWeight: 700, color: '#f0a24e', background: '#f0a24e22', padding: '2px 6px', borderRadius: 4, fontFamily: 'Inter' }}>⚠</span>
+                                  <StatusPill status="warm" label="⚠" />
                                 )}
                               </div>
                               {isChecklist && prog && (
-                                <div style={{ fontSize: 9, color: runnerDone ? '#4ade80' : 'var(--c-fg-2)', fontFamily: 'Inter', marginTop: 2 }}>
+                                <div style={{ fontSize: 9, color: 'var(--c-fg-2)', fontFamily: 'Inter', marginTop: 2 }}>
                                   {prog.checked}/{prog.total} checked
                                 </div>
                               )}
