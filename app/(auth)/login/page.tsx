@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
 import { Wordmark } from '@/components/layout/Wordmark'
 import { Eye, EyeOff } from 'lucide-react'
+import { StatusPill } from '@/components/carved'
 
 type Mode = 'pin' | 'email'
 type PinMsg = { text: string; color: string } | null
@@ -28,9 +29,15 @@ const PIN_LOGIN_ENABLED = false
 
 const LOCKOUT_MS = 30_000
 
-const COLOR_ERROR = 'var(--hot)'
-const COLOR_SUCCESS = 'var(--accent)'
-const COLOR_LOCK = 'var(--warm)'
+// These are carved STATUS SLOTS, not CSS colours (they were `var(--hot)` /
+// `var(--accent)` / `var(--warm)` and were painted straight onto the message
+// text). The carved system never tints body copy — the palette only appears as a
+// solid fill — so the PIN message renders as a StatusPill and these feed its
+// `status` prop. They're still used as equality sentinels, so the values only
+// have to be distinct; the names are kept so that comparison code reads the same.
+const COLOR_ERROR = 'hot'
+const COLOR_SUCCESS = 'booked'
+const COLOR_LOCK = 'warm'
 
 type LockoutStore = { attempts: number; lockedUntil: number | null }
 
@@ -323,9 +330,9 @@ export default function LoginPage() {
 
   return (
     <div
+      className="c-root"
       style={{
         minHeight: '100vh',
-        background: 'var(--bg)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -345,7 +352,7 @@ export default function LoginPage() {
           maxWidth: 380,
         }}
       >
-        {/* Header — byte-for-byte the locked PRSFlo wordmark (source: Nav.tsx). */}
+        {/* Header — renders the shared <Wordmark/>, which IS the locked convention. */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, marginTop: 26 }}>
           <div style={fadeUpStyle(0.1, 0.4)}>
             <PRSFloIcon size={72} />
@@ -354,16 +361,8 @@ export default function LoginPage() {
             <Wordmark size={48} />
           </div>
           <div
-            style={{
-              fontFamily: 'Inter',
-              fontSize: 11,
-              letterSpacing: '0.2em',
-              color: 'var(--cold)',
-              textTransform: 'uppercase',
-              textAlign: 'center',
-              marginTop: 6,
-              ...fadeUpStyle(0.38, 0.4),
-            }}
+            className="c-label"
+            style={{ letterSpacing: '0.2em', textAlign: 'center', marginTop: 8, ...fadeUpStyle(0.38, 0.4) }}
           >
             Paramount Recording Group
           </div>
@@ -381,33 +380,26 @@ export default function LoginPage() {
                 animation: shake ? 'pinShake 0.4s ease' : undefined,
               }}
             >
+              {/* Filled = ink resting on the surface; empty = a carved hole.
+                  The old 2px ring is gone (Law 1) — depth marks the empty slot. */}
               {[0, 1, 2, 3].map(i => (
                 <div
                   key={i}
+                  className={i < pin.length ? 'c-anchor' : 'c-inset2'}
                   style={{
                     width: 14,
                     height: 14,
                     borderRadius: '50%',
-                    background: i < pin.length ? COLOR_SUCCESS : 'transparent',
-                    border: `2px solid ${i < pin.length ? COLOR_SUCCESS : 'var(--border)'}`,
-                    transition: 'background 0.12s ease, border-color 0.12s ease',
+                    background: i < pin.length ? 'var(--c-fg)' : 'var(--c-bg)',
+                    transition: 'background 0.12s ease',
                   }}
                 />
               ))}
             </div>
 
             {/* Message line (fixed height so the numpad doesn't jump) */}
-            <div
-              style={{
-                minHeight: 18,
-                marginBottom: 18,
-                fontFamily: 'Inter',
-                fontSize: 12,
-                textAlign: 'center',
-                color: displayMsg?.color ?? 'transparent',
-              }}
-            >
-              {displayMsg?.text ?? ' '}
+            <div style={{ minHeight: 22, marginBottom: 18, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              {displayMsg ? <StatusPill status={displayMsg.color} label={displayMsg.text} /> : null}
             </div>
 
             {/* 3x4 numpad */}
@@ -427,15 +419,14 @@ export default function LoginPage() {
                 if (key === '') return <div key={`empty-${i}`} />
                 const isBack = key === '⌫'
                 return (
+                  // Raised control that presses into the material on :active —
+                  // the manual mouseDown/Up background swap is now .c-control's job.
                   <button
                     key={key}
-                    data-login-key=""
                     type="button"
                     onClick={() => (isBack ? pressBack() : pressDigit(key))}
+                    className="c-control c-raised"
                     style={numKeyStyle}
-                    onMouseDown={(e) => (e.currentTarget.style.background = 'var(--surface2)')}
-                    onMouseUp={(e) => (e.currentTarget.style.background = 'var(--surface)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--surface)')}
                   >
                     {key}
                   </button>
@@ -446,14 +437,8 @@ export default function LoginPage() {
             {/* Toggle to email login */}
             <div
               onClick={() => { setMode('email'); setPin(''); setPinMsg(null) }}
-              style={{
-                marginTop: 28,
-                fontFamily: 'Inter',
-                fontSize: 11,
-                color: 'var(--cold)',
-                cursor: 'pointer',
-                textAlign: 'center',
-              }}
+              className="c-sub"
+              style={{ marginTop: 28, fontSize: 11.5, cursor: 'pointer', textAlign: 'center' }}
             >
               sign in with email instead
             </div>
@@ -470,16 +455,15 @@ export default function LoginPage() {
               marginTop: 40,
             }}
           >
+            {/* Carved inputs: no border, and focus is a depth change rather than
+                an accent ring — so the focus/blur borderColor handlers are gone. */}
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
               autoComplete="email"
-              className="auth-input"
-              style={authInputStyle}
-              onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
-              onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
+              className="c-input c-inset2"
             />
             <div style={{ position: 'relative', width: '100%' }}>
               <input
@@ -488,28 +472,21 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
                 autoComplete="current-password"
-                className="auth-input"
-                style={{ ...authInputStyle, paddingRight: 44 }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
-                onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
+                className="c-input c-inset2"
+                style={{ paddingRight: 48 }}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(s => !s)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="c-x"
                 style={{
                   position: 'absolute',
-                  right: 8,
+                  right: 14,
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 6,
-                  cursor: 'pointer',
-                  color: 'var(--cold)',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
                 }}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -518,67 +495,41 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              data-login-submit=""
               disabled={loading}
-              style={authButtonStyle}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+              className="c-btn c-control c-raised-primary c-block"
+              style={{ padding: '13px', justifyContent: 'center' }}
             >
               {loading ? 'Signing In…' : 'Sign In'}
             </button>
 
             <div
               onClick={handleForgotPassword}
-              style={{
-                fontFamily: 'Inter',
-                fontSize: 11,
-                color: 'var(--cold)',
-                cursor: 'pointer',
-                textAlign: 'center',
-                textDecoration: 'none',
-                marginTop: 2,
-              }}
+              className="c-sub"
+              style={{ fontSize: 11.5, cursor: 'pointer', textAlign: 'center', marginTop: 2 }}
             >
               Forgot password?
             </div>
 
+            {/* Errors and confirmations render as status chips rather than tinted
+                text: §5 says the palette only ever appears as a solid fill, and
+                coloured body copy is exactly what Law 3 rules out. */}
             {error && (
-              <div
-                style={{
-                  fontFamily: 'Inter',
-                  fontSize: 11,
-                  color: 'var(--hot)',
-                  textAlign: 'center',
-                }}
-              >
-                {error}
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <StatusPill status="hot" label={error} />
               </div>
             )}
 
             {success && (
-              <div
-                style={{
-                  fontFamily: 'Inter',
-                  fontSize: 11,
-                  color: 'var(--accent)',
-                  textAlign: 'center',
-                }}
-              >
-                {success}
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <StatusPill status="booked" label={success} />
               </div>
             )}
 
             {PIN_LOGIN_ENABLED && (
               <div
                 onClick={() => { setMode('pin'); setError(''); setSuccess('') }}
-                style={{
-                  fontFamily: 'Inter',
-                  fontSize: 11,
-                  color: 'var(--cold)',
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  marginTop: 6,
-                }}
+                className="c-sub"
+                style={{ fontSize: 11.5, cursor: 'pointer', textAlign: 'center', marginTop: 6 }}
               >
                 use PIN instead
               </div>
@@ -595,50 +546,17 @@ function fadeUpStyle(delay: number, duration: number): React.CSSProperties {
   return { opacity: 0, animation: `fadeUp ${duration}s ease ${delay}s forwards` }
 }
 
+// Layout only — depth, colour and radius come from .c-control/.c-raised.
 const numKeyStyle: React.CSSProperties = {
   height: 68,
-  background: 'var(--surface)',
-  border: '1px solid var(--border)',
-  borderRadius: 12,
-  color: 'var(--text)',
+  borderRadius: 99,
+  background: 'var(--c-bg)',
+  color: 'var(--c-fg)',
   fontFamily: "'DM Mono', monospace",
   fontSize: 24,
   fontWeight: 500,
-  cursor: 'pointer',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
   userSelect: 'none',
-  transition: 'background 0.1s ease',
-}
-
-const authInputStyle: React.CSSProperties = {
-  width: '100%',
-  maxWidth: 380,
-  background: 'var(--surface)',
-  border: '1px solid var(--border)',
-  borderRadius: 6,
-  padding: '12px 14px',
-  color: 'var(--text)',
-  fontFamily: 'Inter',
-  fontSize: 13,
-  outline: 'none',
-  boxSizing: 'border-box',
-}
-
-const authButtonStyle: React.CSSProperties = {
-  width: '100%',
-  maxWidth: 380,
-  background: 'transparent',
-  color: 'var(--text)',
-  fontFamily: 'Inter',
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: '0.1em',
-  textTransform: 'uppercase',
-  padding: '13px',
-  borderRadius: 6,
-  border: '1px solid var(--border)',
-  cursor: 'pointer',
-  boxSizing: 'border-box',
 }

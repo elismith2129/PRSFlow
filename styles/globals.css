@@ -141,23 +141,11 @@ html[data-theme="light"] {
   -webkit-backdrop-filter: none !important;
 }
 
-/* (DECISION 2) Nav becomes white glass in light mode; its text switches to dark.
-   Overrides the inline dark gradient/box-shadow set in Nav.tsx (needs !important). */
-[data-theme="light"] nav {
-  background: rgba(255, 255, 255, 1) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border-bottom: 1px solid #e2e8f0 !important;
-  box-shadow: 0 1px 8px rgba(0,0,0,0.08) !important;
-}
-[data-theme="light"] nav a,
-[data-theme="light"] nav button {
-  color: var(--text) !important;
-}
-/* Keep the Feedback link lime and Sign Out red even in light mode — higher
-   specificity than the blanket nav-text rule above, so these two win. */
-[data-theme="light"] nav [data-feedback] { color: #c8f04e !important; }
-[data-theme="light"] nav [data-signout] { color: #ef4444 !important; }
+/* The four light-mode nav rules (white-glass bar, blanket text colour, lime
+   Feedback, red Sign Out) were removed 2026-07-30 with the nav's carved
+   migration. The bar now paints --c-bg and its links carry --c-fg, both of which
+   already invert per theme, so there is nothing left to patch. The lime and red
+   went with the accent colour (Law 3). */
 
 /* (PART 3) Unique per-panel gradients in light mode. Declared after the glass-card
    rule so they win at equal specificity; the frosted border/shadow still apply. */
@@ -197,28 +185,10 @@ html[data-theme="light"] {
   padding: 12px;
 }
 
-/* (LIGHT LOGIN) Clean the login controls in light mode — the glass-card rule would
-   otherwise frost the PIN keys / inputs (they use var(--surface)). */
-[data-theme="light"] [data-login-key] {
-  background: #ffffff !important;
-  border-color: #e2e8f0 !important;
-  color: #1e293b !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-[data-theme="light"] .auth-input {
-  background: #ffffff !important;
-  border-color: #e2e8f0 !important;
-  color: #1e293b !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-[data-theme="light"] [data-login-submit] {
-  background: #3b82f6 !important;
-  border-color: #3b82f6 !important;
-  color: #ffffff !important;
-}
+/* The three light-mode login patches ([data-login-key], .auth-input,
+   [data-login-submit]) were removed 2026-07-30 with the login page's carved
+   migration. PIN keys are raised controls, inputs are carved .c-input, and the
+   submit is a .c-btn — all of which already invert per theme. */
 
 /* (LIGHT) The welcome splash + AuthGuard hold use var(--bg) (transparent in light),
    so give them the app's light gradient to stay opaque full-screen covers. */
@@ -589,17 +559,18 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   }
 }
 
-/* Login (auth) inputs: muted placeholder + defeat the browser autofill light
-   background so desktop autofill keeps the dark-theme styling. */
-.auth-input::placeholder { color: #6B7280; }
-.auth-input:-webkit-autofill,
-.auth-input:-webkit-autofill:hover,
-.auth-input:-webkit-autofill:focus,
-.auth-input:-webkit-autofill:active {
-  -webkit-text-fill-color: var(--text);
-  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
-  box-shadow: 0 0 0 1000px var(--surface) inset;
-  caret-color: var(--text);
+/* Defeat the browser's autofill background so desktop autofill keeps the carved
+   styling. Retargeted from .auth-input to .c-input when the login page migrated;
+   the inset box-shadow trick has to repaint --c-bg now, and it deliberately does
+   NOT restore the carved inset (autofill state reading slightly flat is fine). */
+.c-input:-webkit-autofill,
+.c-input:-webkit-autofill:hover,
+.c-input:-webkit-autofill:focus,
+.c-input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--c-fg);
+  -webkit-box-shadow: 0 0 0 1000px var(--c-bg) inset;
+  box-shadow: 0 0 0 1000px var(--c-bg) inset;
+  caret-color: var(--c-fg);
   transition: background-color 9999s ease-out 0s;
 }
 
@@ -869,6 +840,49 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
               inset 5px 5px 14px rgba(42, 39, 34, .08),
               inset -5px -5px 14px rgba(255, 255, 255, .7);
 }
+
+/* ── Nav ────────────────────────────────────────────────────────────────── */
+/* The bar is just ground — no border, no gradient, no accent-tinted shadow
+   (Law 1 + §7). Separation from the content comes from the carved panels below
+   it having their own depth, not from a rule across the top. */
+.c-nav { background: var(--c-bg); }
+.c-navlink {
+  display: flex; align-items: center;
+  padding: 7px 13px; border-radius: 99px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--c-fg); opacity: 0.5; text-decoration: none; white-space: nowrap;
+  transition: opacity .16s ease, background .16s ease;
+}
+.c-navlink:hover { opacity: 0.8; }
+/* Active tab is a small ink/ivory pill — the lime underline is retired with the
+   accent colour. Small element, so ivory in dark is allowed (Law 5). */
+.c-navlink.c-on { opacity: 1; background: var(--c-ivory); color: #1b1a17; }
+[data-theme="light"] .c-navlink.c-on { background: var(--c-fg); color: var(--c-bg); }
+
+.c-navbtn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: none; cursor: pointer; padding: 0;
+  color: var(--c-fg); opacity: 0.5;
+  font-family: inherit; font-size: 10px; font-weight: 800;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  transition: opacity .16s ease;
+}
+.c-navbtn:hover { opacity: 1; }
+
+/* Mobile dropdown: a carved sheet floating on the permitted drop shadow. */
+.c-navmenu {
+  background: var(--c-bg);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
+}
+[data-theme="light"] .c-navmenu { box-shadow: 0 18px 40px rgba(42, 39, 34, .18); }
+.c-navmenu-item {
+  display: flex; align-items: center; gap: 10px;
+  height: 48px; padding: 0 18px; width: 100%;
+  background: none; cursor: pointer; text-align: left;
+  font-family: inherit; font-size: 13px; text-decoration: none;
+  color: var(--c-fg); opacity: 0.6;
+}
+.c-navmenu-item.c-on { opacity: 1; font-weight: 700; }
 
 /* ── Wordmark ───────────────────────────────────────────────────────────── */
 /* Rendered ONLY by components/layout/Wordmark.tsx. Monochrome in both themes —

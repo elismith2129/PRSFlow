@@ -111,11 +111,9 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
   }, [])
 
   return (
-    <nav style={{
+    <nav className="c-nav" style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: isMobile ? '0 12px' : '0 32px', height: 52,
-      background: 'linear-gradient(180deg, var(--surface2) 0%, var(--bg) 100%)', borderBottom: '1px solid var(--border)',
-      boxShadow: '0 1px 0 rgba(var(--accent-rgb), 0.07), 0 4px 24px rgba(0, 0, 0, 0.5)',
       position: 'sticky', top: 0, zIndex: 99999,
       // Hidden during the fresh-login welcome splash so it doesn't flash before the
       // splash covers it; fades in with the dashboard once the splash dismisses.
@@ -131,11 +129,9 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
       </div>
 
       {!isMobile && (
-      <div style={{ display: 'flex', gap: 2, height: '100%', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
         {visibleNavItems.map(item => {
           const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
-          // TEMPORARY: remove when rollout period ends — Feedback stands out in lime
-          const isFeedback = item.href === '/feedback'
           const badge = item.href === '/crm' && unreviewedRegs > 0
             ? unreviewedRegs
             : 0
@@ -143,33 +139,14 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
             <Link
               key={item.href}
               href={item.href}
-              data-feedback={isFeedback ? '' : undefined}
-              onMouseEnter={active || isFeedback ? undefined : (e) => { e.currentTarget.style.color = 'var(--text2)' }}
-              onMouseLeave={active || isFeedback ? undefined : (e) => { e.currentTarget.style.color = 'var(--cold)' }}
-              style={{
-                position: 'relative', display: 'flex', alignItems: 'center', height: '100%',
-                padding: '0 10px', fontSize: 11,
-                fontFamily: 'Inter', fontWeight: 500, letterSpacing: '0.04em',
-                background: 'transparent',
-                color: isFeedback ? 'var(--accent)' : active ? 'var(--text)' : 'var(--cold)',
-                borderBottom: active ? '2px solid var(--accent)' : 'none',
-                borderRadius: 0,
-                textDecoration: 'none', transition: 'color 0.15s ease',
-              }}
+              className={`c-navlink${active ? ' c-on' : ''}`}
+              style={{ position: 'relative' }}
             >
               {item.label}
-              {badge > 0 && (
-                <span style={{
-                  position: 'absolute', top: 2, right: 2,
-                  background: 'var(--hot)', color: '#fff',
-                  borderRadius: '50%', minWidth: 16, height: 16,
-                  fontSize: 9, fontFamily: 'Inter', fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  padding: '0 3px', lineHeight: 1,
-                }}>
-                  {badge > 99 ? '99+' : badge}
-                </span>
-              )}
+              {/* Ink badge, not red: a pending-registration count is not one of
+                  the three things allowed to carry colour (§5). The DEV link's
+                  lime is gone for the same reason — the accent no longer exists. */}
+              {badge > 0 && <span className="c-count">{badge > 99 ? '99+' : badge}</span>}
             </Link>
           )
         })}
@@ -178,33 +155,12 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
 
       {!isMobile && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <button
-          onClick={toggleTheme}
-          aria-label="Toggle light/dark theme"
-          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--cold)' }}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'transparent', border: 'none', cursor: 'pointer',
-            color: 'var(--cold)', padding: 0, transition: 'color 0.15s ease',
-          }}
-        >
+        <button onClick={toggleTheme} aria-label="Toggle light/dark theme" className="c-navbtn">
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
-        <button
-          onClick={handleSignOut}
-          data-signout=""
-          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--cold)' }}
-          style={{
-            background: 'transparent', border: 'none',
-            borderLeft: '1px solid rgba(255,255,255,0.08)',
-            padding: 0, paddingLeft: 12, marginLeft: 8,
-            fontFamily: 'Inter', fontSize: 10, fontWeight: 500,
-            letterSpacing: '0.08em', textTransform: 'uppercase',
-            color: 'var(--cold)', cursor: 'pointer', transition: 'color 0.15s ease',
-          }}
-        >
+        {/* The divider rule that used to separate these is gone (Law 1) — the
+            gap does the separating now. */}
+        <button onClick={handleSignOut} className="c-navbtn">
           Sign Out
         </button>
       </div>
@@ -221,13 +177,8 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
                 <Link
                   key={item.href}
                   href={item.href}
-                  style={{
-                    display: 'flex', alignItems: 'center', height: 44, padding: '0 8px',
-                    fontFamily: 'Inter', fontSize: 12, fontWeight: 500, letterSpacing: '0.04em',
-                    textDecoration: 'none', whiteSpace: 'nowrap',
-                    color: active ? 'var(--text)' : 'var(--cold)',
-                    borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
-                  }}
+                  className={`c-navlink${active ? ' c-on' : ''}`}
+                  style={{ height: 36 }}
                 >
                   {item.label}
                 </Link>
@@ -236,11 +187,8 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
           <button
             onClick={() => setMenuOpen(o => !o)}
             aria-label="Menu"
-            style={{
-              width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'transparent', border: 'none', cursor: 'pointer',
-              color: 'var(--text)', fontSize: 24, lineHeight: 1, padding: 0,
-            }}
+            className="c-navbtn"
+            style={{ width: 44, height: 44, fontSize: 24, opacity: 1 }}
           >
             ≡
           </button>
@@ -254,53 +202,31 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
             onClick={() => setMenuOpen(false)}
             style={{ position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, background: 'transparent', zIndex: 1 }}
           />
-          <div style={{
+          <div className="c-navmenu" style={{
             position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 2,
-            background: 'var(--surface)', borderBottom: '1px solid rgba(255,255,255,0.1)',
             display: 'flex', flexDirection: 'column',
           }}>
             {visibleNavItems.map(item => {
               const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
-              // TEMPORARY: remove when rollout period ends — Feedback stands out in lime
-              const isFeedback = item.href === '/feedback'
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  data-feedback={isFeedback ? '' : undefined}
+                  className={`c-navmenu-item${active ? ' c-on' : ''}`}
                   onClick={() => setMenuOpen(false)}
-                  style={{
-                    display: 'flex', alignItems: 'center', height: 48, paddingLeft: 16,
-                    fontFamily: 'Inter', fontSize: 13, textDecoration: 'none',
-                    color: isFeedback ? 'var(--accent)' : active ? 'var(--text)' : 'var(--text2)',
-                    borderLeft: active ? '2px solid var(--accent)' : '2px solid transparent',
-                  }}
                 >
                   {item.label}
                 </Link>
               )
             })}
-            <button
-              onClick={toggleTheme}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10, height: 48, width: '100%', paddingLeft: 16,
-                fontFamily: 'Inter', fontSize: 13, color: 'var(--text2)',
-                background: 'transparent', border: 'none', borderTop: '1px solid rgba(255,255,255,0.06)',
-                cursor: 'pointer', textAlign: 'left',
-              }}
-            >
+            {/* The 1px separator rules between these rows are gone (Law 1). */}
+            <button onClick={toggleTheme} className="c-navmenu-item">
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
               {theme === 'dark' ? 'Light mode' : 'Dark mode'}
             </button>
             <button
               onClick={async () => { setMenuOpen(false); await handleSignOut() }}
-              data-signout=""
-              style={{
-                display: 'flex', alignItems: 'center', height: 48, width: '100%', paddingLeft: 16,
-                fontFamily: 'Inter', fontSize: 13, color: 'var(--hot)',
-                background: 'transparent', border: 'none', borderTop: '1px solid rgba(255,255,255,0.06)',
-                cursor: 'pointer', textAlign: 'left',
-              }}
+              className="c-navmenu-item"
             >
               Sign Out
             </button>
