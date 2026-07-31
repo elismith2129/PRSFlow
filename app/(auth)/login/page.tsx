@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
+import { Wordmark } from '@/components/layout/Wordmark'
 import { Eye, EyeOff } from 'lucide-react'
 
 type Mode = 'pin' | 'email'
@@ -349,18 +350,8 @@ export default function LoginPage() {
           <div style={fadeUpStyle(0.1, 0.4)}>
             <PRSFloIcon size={72} />
           </div>
-          <div
-            style={{
-              fontFamily: 'Syne',
-              fontWeight: 800,
-              fontSize: 48,
-              letterSpacing: -0.5,
-              lineHeight: 1,
-              ...fadeUpStyle(0.25, 0.4),
-            }}
-          >
-            <span style={{ color: 'var(--accent)' }}>PRS</span>
-            <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flo</span>
+          <div style={fadeUpStyle(0.25, 0.4)}>
+            <Wordmark size={48} />
           </div>
           <div
             style={{

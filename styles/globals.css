@@ -870,6 +870,22 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
               inset -5px -5px 14px rgba(255, 255, 255, .7);
 }
 
+/* ── Wordmark ───────────────────────────────────────────────────────────── */
+/* Rendered ONLY by components/layout/Wordmark.tsx. Monochrome in both themes —
+   `--c-fg` is warm ivory in dark and soft charcoal in light, so the mark simply
+   inverts with the ground. No accent colour, by design (Law 3). */
+.c-wordmark {
+  font-family: 'Archivo Black', system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--c-fg);
+  display: inline-flex;
+  align-items: baseline;
+  line-height: 1;
+  white-space: nowrap;
+}
+.c-wordmark-flo { opacity: 0.45; }
+
 /* ── Display anchors + small utilities ──────────────────────────────────── */
 /* Date chip: an object resting on the surface, not a hole and not pressable. */
 .c-datechip {

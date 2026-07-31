@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
+import { Wordmark } from '@/components/layout/Wordmark'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -69,18 +70,7 @@ export default function ResetPasswordPage() {
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, marginTop: 26 }}>
           <PRSFloIcon size={72} />
-          <div
-            style={{
-              fontFamily: 'Syne',
-              fontWeight: 800,
-              fontSize: 48,
-              letterSpacing: -0.5,
-              lineHeight: 1,
-            }}
-          >
-            <span style={{ color: 'var(--accent)' }}>PRS</span>
-            <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flo</span>
-          </div>
+          <Wordmark size={48} />
         </div>
 
         <form

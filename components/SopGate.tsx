@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
+import { Wordmark } from '@/components/layout/Wordmark'
 
 // First-login gate: a full-screen, non-dismissable modal shown until the user
 // acknowledges the SOP. Mounted in the (main) layout so it overlays every
@@ -60,10 +61,7 @@ export function SopGate() {
             Flo = text, opacity 0.45, weight 500). Only fontSize differs. */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
           <PRSFloIcon size={64} />
-          <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 40, letterSpacing: -0.5, lineHeight: 1 }}>
-            <span style={{ color: 'var(--accent)' }}>PRS</span>
-            <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flo</span>
-          </div>
+          <Wordmark size={40} />
         </div>
 
         <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 22, color: 'var(--text)', marginTop: 32 }}>

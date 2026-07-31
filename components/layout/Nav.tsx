@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
+import { Wordmark } from '@/components/layout/Wordmark'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useClientsVersion } from '@/hooks/useClientsVersion'
 import { Sun, Moon } from 'lucide-react'
@@ -124,11 +125,8 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <PRSFloIcon size={38} />
-        <Link href="/" style={{ textDecoration: 'none' }}>
-          <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 20, letterSpacing: -0.5, cursor: 'pointer' }}>
-            <span style={{ color: 'var(--accent)' }}>PRS</span>
-            <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flo</span>
-          </div>
+        <Link href="/" style={{ textDecoration: 'none', cursor: 'pointer' }}>
+          <Wordmark size={20} />
         </Link>
       </div>
 

@@ -7,7 +7,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 *Locked — must not drift. Copy exact values from the cited source of truth; never recreate from memory or description.*
 
-- **PRSFlo wordmark: `components/layout/Nav.tsx` is the single source of truth for PRS/Flo span styling (font-family, weight, color). Always copy these exact values when the wordmark appears elsewhere — never recreate from description.** It must be byte-for-byte identical everywhere it appears site-wide (nav, login, reset-password, runner hub, welcome splash, and any future placement). The exact values, from Nav.tsx: container `fontFamily: 'Syne'`, `fontWeight: 800`, `letterSpacing: -0.5`; `PRS` span `color: var(--accent)`; `Flo` span `color: var(--text)`, `opacity: 0.45`, `fontWeight: 500`. Only `fontSize` may differ per placement. (This rule exists because the login page once drifted to the wrong font/color.)
+- **PRSFlo wordmark: `components/layout/Wordmark.tsx` is the single source of truth — render it, never re-implement it.** (Superseded the Nav.tsx copy-these-values rule on July 30, 2026, carved redesign.) The wordmark is now a component, so identity across placements is structural rather than a rule people have to remember: nav, login, reset-password, runner hub and the SOP gate all render `<Wordmark />`, and only the `size` prop may differ. **Do not reintroduce inline `PRS`/`Flo` spans anywhere.** If the wordmark changes, change the component.
+  - Current treatment (spec §4): **Archivo Black**, weight 400, `PRS` at full strength + `FLO` at `opacity 0.45`, `letter-spacing: -0.02em`, **monochrome `--c-fg` in both themes**. The Syne/lime-accent version is retired along with the accent colour itself.
+  - `components/PRSFloIcon.tsx` is likewise monochrome — three `currentColor` waves separated by opacity (0.35 / 0.6 / 1), no gradients, no glow. It is no longer a client component; CSS handles the theme, so it needs no `data-theme` observer.
+  - (The original rule existed because the login page drifted to the wrong font and colour. A shared component removes the failure mode rather than restating the rule.)
 
 ## Standing Architecture Rules
 

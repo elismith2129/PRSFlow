@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
+import { Wordmark } from '@/components/layout/Wordmark'
 import { getLocalToday } from '@/lib/time'
 
 
@@ -76,10 +77,7 @@ export default function RunnerPage() {
       <div style={{ textAlign: 'center', marginBottom: 40 }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, marginBottom: 26 }}>
           <PRSFloIcon size={32} />
-          <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 18, letterSpacing: -0.5 }}>
-            <span style={{ color: 'var(--accent)' }}>PRS</span>
-            <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flo</span>
-          </div>
+          <Wordmark size={18} />
         </div>
         <div style={{ fontSize: 11, letterSpacing: '0.2em', color: 'var(--text2)', textTransform: 'uppercase', marginBottom: 6 }}>
           Paramount Recording Group
