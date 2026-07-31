@@ -300,9 +300,17 @@ body {
   z-index: -1;
 }
 
+/* Scrollbars. These were painting the legacy --border (#2a2e3d dark / #cbd5e1
+   light) — both desaturated BLUE, which read as a stray blue bar down the edge of
+   every scrolling surface once the ground went warm. Carved ink instead, and the
+   track is transparent so it disappears into whatever it's sitting on rather than
+   drawing a second vertical line beside the thumb. */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: var(--surface); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--c-fg-3); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--c-fg-2); }
+/* Firefox equivalent (it has no thumb/track pseudo-elements). */
+* { scrollbar-width: thin; scrollbar-color: var(--c-fg-3) transparent; }
 
 /* Visually hide the scrollbar while keeping the element scrollable */
 .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
@@ -328,6 +336,13 @@ select {
   appearance: none;
   outline: none;
 }
+
+/* Native widget chrome (dropdown lists, the date picker panel) is drawn by the OS
+   from color-scheme, not from our tokens — pinned to dark it renders a dark panel
+   on light paper. Same class of bug as the blue scrollbar: global chrome that
+   never got a light register. */
+[data-theme="light"] select,
+[data-theme="light"] input[type="date"] { color-scheme: light; }
 
 /* (5) INPUT DEPTH — recessed inset shadow on all form fields.
    `.c-input` is excluded: the carved system supplies its own inset via .c-inset2,
