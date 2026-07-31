@@ -82,13 +82,11 @@ export function StaffPicker({ role, name, onChange, disabled, listId = 'staff-ro
     onChange({ role: next, name: next === 'none' ? '' : '' })
   }
 
-  // ENG / ASST / NO STAFF selector. These are the controls that were rendering in
-  // the retired accent blue — there is no accent in this system. Carved: raised
-  // when unselected, ink-fill (light) / ivory-fill (dark) and pressed IN when
-  // selected, exactly like the daily-ops sign-offs. Selection is an act of
-  // pressing, so the pressed state carries it without any colour at all.
-  const modeCls = (on: boolean) =>
-    `c-soft c-soft-sm${on ? ' c-on c-pressed' : ' c-raised'}${disabled ? '' : ' c-control'}`
+  // ENG / ASST / NO STAFF. V3: a segmented control is ONE raised housing with the
+  // selected segment pressed in and filled — not three separate raised pills side
+  // by side. No colour: selecting is an act of pressing, and the pressed state
+  // carries the meaning in both registers.
+  const modeCls = (on: boolean) => (on ? 'c-on' : '')
 
   const modeBtn = (_on: boolean, _isNone: boolean): React.CSSProperties => ({
     cursor: disabled ? 'default' : 'pointer',
@@ -97,7 +95,7 @@ export function StaffPicker({ role, name, onChange, disabled, listId = 'staff-ro
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      <div style={{ display: 'flex', gap: 4 }}>
+      <div className="c-seg">
         {MODES.map(m => (
           <button
             key={m.key}
@@ -123,10 +121,8 @@ export function StaffPicker({ role, name, onChange, disabled, listId = 'staff-ro
             disabled={disabled}
             onChange={e => onChange({ role: active, name: e.target.value })}
             placeholder={active === 'engineer' ? 'Engineer (optional)' : 'Assistant (optional)'}
-            style={{
-              flex: 1, minWidth: 140, background: 'var(--c-wash)', borderRadius: 4, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11,
-              padding: '5px 9px', outline: 'none',
-            }}
+            className="c-input c-inset2"
+            style={{ flex: 1, minWidth: 150 }}
           />
           <datalist id={listId}>
             {options.map(n => <option key={n} value={n} />)}

@@ -296,6 +296,18 @@ function fmtSessionLine(l: Lead): string | null {
   return parts.length > 0 ? parts.join(' · ') : null
 }
 
+// Compact age for the identity meta line: "2h", "3d", "just now". Mono, lower
+// case — it's a measurement, not a label.
+function touchAge(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h`
+  return `${Math.floor(hrs / 24)}d`
+}
+
 function getMissing(l: Lead) {
   const m: string[] = []
   if (!l.fname) m.push('first name')
@@ -2161,6 +2173,28 @@ const parsedLoc0 = parseLocation(lead.location || '')
           </div>
         )}
 
+        {/* V3 meta line — payment · source · last-touch age. Payment type is
+            client classification and has to be readable at first glance, so it
+            sits directly under the name at full opacity; source and age trail it
+            at reduced weight. Middots are the separator, not chips. */}
+        <div className="c-metaline">
+          <span
+            className="c-pay"
+            onClick={() => { const nb = (local.billing || lead.billing) === 'COD' ? 'Billing' : 'COD'; update('billing', nb); save('billing', nb) }}
+            title="Click to switch between COD and Billing"
+          >
+            {local.billing || lead.billing || 'COD'}
+          </span>
+          {lead.source && (<>
+            <span className="c-sep">·</span>
+            <span className="c-src">{lead.source}</span>
+          </>)}
+          {latestTouch && (<>
+            <span className="c-sep">·</span>
+            <span className="c-age">{touchAge(latestTouch.created_at)} since contact</span>
+          </>)}
+        </div>
+
         {/* Stage name (COD only) */}
         {lead.billing === 'COD' && (
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 6, minWidth: 0 }}>
@@ -2244,27 +2278,12 @@ const parsedLoc0 = parseLocation(lead.location || '')
           </div>
         </div>
 
-        {/* Meta row: billing · session type · source — plain muted text chips */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: isMobile ? 6 : 8 }}>
-          <button
-            onClick={() => { const nb = (local.billing || lead.billing) === 'COD' ? 'Billing' : 'COD'; update('billing', nb); save('billing', nb) }}
-            style={{ background: 'transparent', padding: 0, cursor: 'pointer', color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>
-            {local.billing || lead.billing || 'COD'}
-          </button>
-          {lead.booking && (<>
-            <span style={{ color: 'var(--c-fg-3)', fontSize: 9 }}>·</span>
-            <span style={{ color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{lead.booking}</span>
-          </>)}
-          {lead.source && (<>
-            <span style={{ color: 'var(--c-fg-3)', fontSize: 9 }}>·</span>
-            <span style={{ color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{lead.source}</span>
-          </>)}
-        </div>
       </div>
       </div>
 
       {/* ═══ Zone 2 (bg var(--c-wash)) — session info ═══════════════ */}
-      <div className="c-inset2" style={{ borderRadius: 26, padding: isMobile ? '12px 14px' : '16px 18px', marginTop: 10 }}>
+      <div className="c-band">
+      <div className="c-band-head">Session</div>
       {/* ─── Session & Quote ─────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 48px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -2315,9 +2334,11 @@ const parsedLoc0 = parseLocation(lead.location || '')
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div>
             <div style={fieldLabelStyle}>Quote / Rate</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-              <button type="button" onClick={() => setDetailRateType('hourly')} className={`c-soft c-soft-sm c-control ${detailRateType === 'hourly' ? 'c-on c-pressed' : 'c-raised'}`}>/ hr</button>
-              <button type="button" onClick={() => setDetailRateType('daily')} className={`c-soft c-soft-sm c-control ${detailRateType === 'daily' ? 'c-on c-pressed' : 'c-raised'}`}>/ day</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="c-seg c-seg-tiny">
+              <button type="button" onClick={() => setDetailRateType('hourly')} className={detailRateType === 'hourly' ? 'c-on' : ''}>/ hr</button>
+              <button type="button" onClick={() => setDetailRateType('daily')} className={detailRateType === 'daily' ? 'c-on' : ''}>/ day</button>
+              </span>
               <input
                 ref={quoteRef}
                 value={detailRateType === 'hourly' ? (local.quote || '') : (local.rate_daily || '')}
@@ -2381,18 +2402,24 @@ const parsedLoc0 = parseLocation(lead.location || '')
       </div>
 
       {/* ─── Session Notes ─────────────────────────────── */}
+      <div className="c-band">
+      <div className="c-band-head">Notes</div>
       <textarea
+        className="c-well c-well-area"
         value={notesVal}
         onChange={e => setNotesVal(e.target.value)}
         onBlur={() => { if (notesDirty) save('notes', notesVal) }}
         onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
         ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px' } }}
         placeholder="Add notes…"
-        style={{ width: '100%', minHeight: 38, marginTop: 16, background: 'var(--c-wash)', color: 'var(--c-fg)', padding: '6px 10px', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, resize: 'none', outline: 'none', lineHeight: 1.6, overflow: 'hidden' }}
+        style={{ width: '100%', resize: 'none', overflow: 'hidden', lineHeight: 1.6 }}
       />
+      </div>
 
       {/* ─── Activity Log ──────────────────────────────── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 16 }}>
+      <details className="c-fold">
+      <summary>Activity · {activityLog.length + 1}</summary>
+      <div className="c-fold-body" style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         {activityLog.map((entry, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: entry.color, flexShrink: 0, marginTop: 3 }} />
@@ -2411,18 +2438,13 @@ const parsedLoc0 = parseLocation(lead.location || '')
           </div>
         </div>
       </div>
+      </details>
 
       {/* ─── Tags ──────────────────────────────── */}
-      <div style={{ marginTop: 16, paddingTop: 10 }}>
-        <button
-          onClick={() => setTagsOpen(o => !o)}
-          style={{ background: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: 'var(--c-fg-3)', fontFamily: 'Inter', fontSize: 10 }}
-        >
-          <span style={{ fontSize: 9, transform: tagsOpen ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block', transition: 'transform 0.15s' }}>▶</span>
-          TAGS {localTags.length > 0 && <span style={{ color: 'var(--c-fg-2)' }}>({localTags.length})</span>}
-        </button>
-        {tagsOpen && (
-          <div style={{ marginTop: 10 }}>
+      <details className="c-fold" open={tagsOpen} onToggle={e => setTagsOpen((e.currentTarget as HTMLDetailsElement).open)}>
+        <summary>Tags{localTags.length > 0 ? ` · ${localTags.length}` : ''}</summary>
+        {(
+          <div className="c-fold-body">
             {/* Existing tags */}
             {localTags.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
@@ -2475,14 +2497,13 @@ const parsedLoc0 = parseLocation(lead.location || '')
             </div>
           </div>
         )}
-      </div>
+      </details>
 
-      <div style={{ marginTop: 10, paddingTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
-        <button
-          onClick={() => setShowDeleteConfirm(true)}
-          style={{ background: 'rgba(239,68,68,0.12)', color: 'var(--c-st-hot)', borderRadius: 4, padding: '4px 10px', fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}
-        >
-          Delete Lead
+      {/* Footer — destructive action, right-aligned. Hot is sanctioned here by the
+          §5 ruling that --c-st-hot is dual-purpose: temperature AND critical. */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: 14 }}>
+        <button className="c-danger" onClick={() => setShowDeleteConfirm(true)}>
+          Delete lead
         </button>
       </div>
 
@@ -3215,9 +3236,11 @@ function NewLeadModal({ leads, onClose, onSave }: {
         </div>
         <div>
           <label style={labelS}>Quote / Rate</label>
-          <div style={{ display: 'flex', gap: 0 }}>
-            <button type="button" onClick={() => setRateType('hourly')} className={`c-soft c-soft-sm c-control ${rateType === 'hourly' ? 'c-on c-pressed' : 'c-raised'}`}>/ hr</button>
-            <button type="button" onClick={() => setRateType('daily')} className={`c-soft c-soft-sm c-control ${rateType === 'daily' ? 'c-on c-pressed' : 'c-raised'}`}>/ day</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="c-seg c-seg-tiny">
+            <button type="button" onClick={() => setRateType('hourly')} className={rateType === 'hourly' ? 'c-on' : ''}>/ hr</button>
+            <button type="button" onClick={() => setRateType('daily')} className={rateType === 'daily' ? 'c-on' : ''}>/ day</button>
+            </span>
             <input
               value={rateType === 'hourly' ? form.quote : form.rate_daily}
               onChange={e => set(rateType === 'hourly' ? 'quote' : 'rate_daily', e.target.value)}
