@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Syne:wght@400;500;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Syne:wght@400;500;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -54,6 +54,62 @@
   --uncontacted: #3b82f6;
   --dead: #94a3b8;
 }
+
+/* ═══ CARVED DESIGN SYSTEM — TOKENS ═════════════════════════════════════════
+   The redesign token set (docs/PRSFLO-DESIGN-SPEC.md §3, mock: prsflo-final-mock.html).
+   Additive and inert: nothing consumes these yet, so the live app is unchanged.
+
+   NAMING — every token carries the `--c-` prefix (c = carved), permanently.
+   Two reasons: (1) `--bg` already exists and means something incompatible here
+   (#0d0f14 dark / `transparent` light, with 66 override rules and the page
+   gradient depending on that) — redefining it in place would break the app
+   instantly; (2) one prefix makes the whole new system greppable. There is NO
+   planned rename sweep to reclaim the bare names. Legacy tokens keep their
+   names and are deleted individually as their last consumer migrates.
+
+   THEME POLARITY — inverted from the spec, deliberately. The spec/mock put light
+   on `:root` and dark on `[data-theme="dark"]`. This app is the other way round:
+   dark is the ABSENCE of the attribute (Nav.tsx calls removeAttribute; app/layout.tsx
+   only ever sets "light"), so `[data-theme="dark"]` would match nothing. Dark values
+   therefore live on `:root` and light overrides in `[data-theme="light"]`.
+   Equal specificity — the light block MUST stay after this one.
+
+   LAWS (spec §2, enforced by review not by CSS): no borders/dividers; containers
+   carve IN, controls raise OUT; colour is status only; dark has no large bright
+   surfaces. There is no accent colour in this system.                        */
+
+:root {
+  /* DARK — the dim room (attribute absent) */
+  --c-bg:       #1b1a17;
+  --c-fg:       #d9d6cd;              /* warm ivory, NOT white */
+  --c-wash:     rgba(217, 214, 205, .07);   /* grouping fill, level 1 */
+  --c-wash2:    rgba(217, 214, 205, .13);   /* grouping fill, level 2 */
+  --c-chip-ink: #1c2626;              /* text ON status fills — same both themes */
+
+  /* Status palette — Lagoon. Identical values in both themes: dark dims them by
+     rule (spec §6), never by substituting a second palette. */
+  --c-st-hot:    #ff5a4d;             /* signal red   — hot lead / urgent / cancelled */
+  --c-st-warm:   #9d8cff;             /* violet       — warm lead / tentative session */
+  --c-st-cold:   #5fc9e8;             /* lagoon       — cold lead */
+  --c-st-booked: #43dfae;             /* sea green    — booked / confirmed / live room */
+  --c-st-uncon:  #7fb2e5;             /* harbor       — uncontacted / tour */
+  --c-st-dead:   #cfd6d4;             /* driftglass   — DNB / tech / open hours */
+
+  /* Semantic aliases — components reference these, never a raw slot. */
+  --c-ivory:    #d5d0c2;              /* dark-mode SMALL accents only (spec Law 5) */
+  --c-hot-text: #fff4f2;              /* text on --c-st-hot fills; all others use --c-chip-ink */
+}
+
+[data-theme="light"] {
+  /* LIGHT — warm paper, soft charcoal ink */
+  --c-bg:    #f5f3ee;
+  --c-fg:    #2a2722;
+  --c-wash:  rgba(42, 39, 34, .05);
+  --c-wash2: rgba(42, 39, 34, .095);
+  /* --c-chip-ink, the status palette and the aliases are theme-independent. */
+}
+
+/* ═══ END CARVED TOKENS ═════════════════════════════════════════════════════ */
 
 /* (STEP 2) Page gradient on <html> (which carries data-theme). The body must be
    transparent in light mode, otherwise its opaque --bg would hide the gradient. */
