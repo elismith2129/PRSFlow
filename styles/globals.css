@@ -95,6 +95,12 @@
   --c-st-uncon:  #7fb2e5;             /* harbor       — uncontacted / tour */
   --c-st-dead:   #cfd6d4;             /* driftglass   — DNB / tech / open hours */
 
+  /* Muted ink steps. The spec works in opacity, which is right for whole elements
+     but useless when only the text colour should drop — these give the legacy
+     --text2/--text3/--cold tokens a 1:1 carved equivalent during migration. */
+  --c-fg-2: rgba(217, 214, 205, .72);
+  --c-fg-3: rgba(217, 214, 205, .45);
+
   /* Semantic aliases — components reference these, never a raw slot. */
   --c-ivory:    #d5d0c2;              /* dark-mode SMALL accents only (spec Law 5) */
   --c-hot-text: #fff4f2;              /* text on --c-st-hot fills; all others use --c-chip-ink */
@@ -106,6 +112,8 @@
   --c-fg:    #2a2722;
   --c-wash:  rgba(42, 39, 34, .05);
   --c-wash2: rgba(42, 39, 34, .095);
+  --c-fg-2:  rgba(42, 39, 34, .72);
+  --c-fg-3:  rgba(42, 39, 34, .45);
   /* --c-chip-ink, the status palette and the aliases are theme-independent. */
 }
 
@@ -166,24 +174,9 @@ html[data-theme="light"] {
    handle their own light/dark registers — so these light-only patches are dead.
    Both attributes were dashboard-only; nothing else referenced them. */
 
-/* (FIX 4) Daily-ops modal + drawer cards are solid white in light mode (their inline
-   background is var(--bg) = transparent, which was showing the dark overlay). */
-[data-theme="light"] [data-ops-modal] { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
-
-/* (FIX 4) Yesterday vs Today: Today reads brighter/whiter to mark the current day. */
-[data-theme="light"] [data-ops-col="yesterday"] {
-  background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%);
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 12px;
-}
-[data-theme="light"] [data-ops-col="today"] {
-  background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%);
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 8px rgba(0,0,0,0.05);
-  border-radius: 12px;
-  padding: 12px;
-}
+/* [data-ops-modal] and the two [data-ops-col] rules were removed 2026-07-30 with
+   the daily-ops drawer + DailyOpsModal migration. Both are carved sheets now and
+   paint --c-bg in either theme, so the light-only gradients are dead. */
 
 /* The three light-mode login patches ([data-login-key], .auth-input,
    [data-login-submit]) were removed 2026-07-30 with the login page's carved
@@ -260,16 +253,10 @@ html[data-theme="light"] {
    2026-07-30 with the LocationStrip migration. Per-studio colour coding was
    already retired once before; the carved system has no place for it (Law 3). */
 
-/* (FIX 2) Daily Ops session cards — Yesterday blue / Today rose. Fixed-overlay
-   context so they outrank the modal-opaque rule (equal specificity, later → wins). */
-[data-theme="light"] [style*="position:fixed"] [data-session-card="yesterday"],
-[data-theme="light"] [style*="position: fixed"] [data-session-card="yesterday"] { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
-[data-theme="light"] [style*="position:fixed"] [data-session-card="today"],
-[data-theme="light"] [style*="position: fixed"] [data-session-card="today"] { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
-
-/* (FIX 3) Daily Ops grouped-checklist containers — subtle light-blue gradient. */
-[data-theme="light"] [style*="position:fixed"] [data-checklist-section],
-[data-theme="light"] [style*="position: fixed"] [data-checklist-section] { background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%) !important; }
+/* The [data-session-card] and [data-checklist-section] rules were removed
+   2026-07-30 with the same migration. These were six of the inline-style
+   SUBSTRING matchers — the fragile class the redesign exists to delete — so this
+   is the first real drop in the §11 metric. */
 
 /* (light) CRM lead cards read stronger: bolder names, and darker secondary/tertiary
    metadata. The scoped --text2/--text3 override darkens only this card's text
@@ -956,6 +943,91 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 :root:not([data-theme="light"]) .c-room.c-fill-dead   { background: rgba(204, 209, 207, .14); }
 :root:not([data-theme="light"]) .c-room.c-fill-hot    { background: rgba(255, 90, 77, .18); }
 :root:not([data-theme="light"]) .c-room.c-fill-cold   { background: rgba(95, 201, 232, .18); }
+
+/* ── Modal sheet ────────────────────────────────────────────────────────── */
+/* Like .c-modal but without the fixed max-width/padding, for modals that own
+   their own header / scrolling body / footer layout. Same recipe: a carved panel
+   floating on the one permitted outer drop shadow (§8). */
+.c-sheet {
+  background: var(--c-bg);
+  color: var(--c-fg);
+  border-radius: 40px;
+  overflow: hidden;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .6),
+              inset 5px 5px 15px rgba(0, 0, 0, .4),
+              inset -5px -5px 15px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-sheet {
+  box-shadow: 0 18px 50px rgba(42, 39, 34, .22),
+              inset 5px 5px 14px rgba(42, 39, 34, .08),
+              inset -5px -5px 14px rgba(255, 255, 255, .7);
+}
+/* Full-screen on mobile: the carve and the floating shadow are meaningless when
+   the sheet IS the viewport, and the 40px radius would clip content at the edges. */
+@media (max-width: 768px) {
+  .c-sheet { border-radius: 0; box-shadow: none; }
+}
+
+/* Scoped control defaults inside a sheet.
+   A DELIBERATE compromise, worth understanding before extending it: the ideal is
+   every control being an explicit primitive. These modals hold ~38 one-off
+   buttons and inputs, and converting each by hand is a large, error-prone diff
+   for no behavioural gain. So sheets give their raw <button>/<input>/<textarea>
+   carved defaults instead.
+
+   This is NOT the pattern the redesign is replacing. The old override layer
+   matched on inline-style SUBSTRINGS across the whole document — invisible
+   coupling that broke when an unrelated inline style changed. These are ordinary
+   component-scoped element selectors: they apply only inside .c-sheet, and they
+   are visible from the markup. Still, prefer primitives in NEW code; this exists
+   to migrate what's already written.
+
+   Inline backgrounds were stripped from those controls so these rules can win
+   without !important. */
+.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft) {
+  border-radius: 99px; padding: 8px 16px; cursor: pointer;
+  background: var(--c-bg); color: var(--c-fg);
+  font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+  transition: transform .16s ease, box-shadow .16s ease;
+  box-shadow: 2px 2px 7px rgba(0, 0, 0, .38), -2px -2px 7px rgba(255, 255, 255, .04);
+}
+[data-theme="light"] .c-sheet button:not(.c-x):not(.c-btn):not(.c-soft) {
+  box-shadow: 2px 2px 6px rgba(42, 39, 34, .09), -2px -2px 6px rgba(255, 255, 255, .7);
+}
+.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):active {
+  transform: translateY(1px);
+  box-shadow: inset 3px 3px 7px rgba(0, 0, 0, .28);
+}
+.c-sheet button:disabled { opacity: 0.5; cursor: default; }
+
+.c-sheet input:not([type="file"]):not(.c-input),
+.c-sheet select,
+.c-sheet textarea:not(.c-textarea) {
+  border-radius: 18px; padding: 11px 16px; width: 100%;
+  background: var(--c-bg); color: var(--c-fg);
+  font-family: inherit; font-size: 13px; box-sizing: border-box;
+  box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .34), inset -3px -3px 9px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-sheet input:not([type="file"]):not(.c-input),
+[data-theme="light"] .c-sheet select,
+[data-theme="light"] .c-sheet textarea:not(.c-textarea) {
+  box-shadow: inset 3px 3px 8px rgba(42, 39, 34, .07), inset -3px -3px 8px rgba(255, 255, 255, .65);
+}
+.c-sheet input:focus, .c-sheet select:focus, .c-sheet textarea:focus {
+  outline: none; background: var(--c-wash2);
+}
+
+/* Multi-line input. Same carve as .c-input, but a rectangle needs a real radius
+   rather than a capsule. Pair with .c-inset2, exactly like .c-input. */
+.c-textarea {
+  display: block; width: 100%;
+  border-radius: 18px; padding: 12px 16px;
+  background: var(--c-bg); color: var(--c-fg);
+  font-family: inherit; font-size: 13px;
+  resize: none; box-sizing: border-box;
+}
+.c-textarea::placeholder { color: var(--c-fg); opacity: 0.35; }
+.c-textarea:focus { outline: none; background: var(--c-wash2); }
 
 /* ── New-lead pulse (§9) — the ONLY animated element in the system ──────── */
 .c-newpulse {

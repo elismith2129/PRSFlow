@@ -30,7 +30,7 @@ const MIC_GROUPS = [
 ]
 
 const CONDITION_COLORS: Record<string, string> = {
-  good: '#4ade80', fair: '#f0a24e', damaged: '#f87171', '': 'var(--text2)',
+  good: '#4ade80', fair: 'var(--c-fg-2)', damaged: '#f87171', '': 'var(--c-fg-2)',
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -58,7 +58,6 @@ type Props = {
   category: string
   studio: string
   today: string
-  color: string
   studioLabel: string
   submission: DailyOpsSubmission | null
   onClose: () => void
@@ -77,8 +76,8 @@ function SectionHead({ label }: { label: string }) {
   return (
     <div style={{
       fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase',
-      color: 'var(--text3)', fontFamily: 'Syne, sans-serif',
-      borderBottom: '1px solid var(--border)', paddingBottom: 6, marginBottom: 12,
+      color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif",
+      paddingBottom: 6, marginBottom: 12,
     }}>
       {label}
     </div>
@@ -87,7 +86,7 @@ function SectionHead({ label }: { label: string }) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function DailyOpsModal({ category, studio, today, color, studioLabel, submission, onClose, onApprove }: Props) {
+export function DailyOpsModal({ category, studio, today, studioLabel, submission, onClose, onApprove }: Props) {
   const [approving, setApproving] = useState(false)
   const [loadingDetail, setLoadingDetail] = useState(true)
 
@@ -209,22 +208,22 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
 
         {/* Needs Attention banner — shown AT TOP before checklist */}
         {flagged && (
-          <div style={{ background: '#f0a24e18', border: '1px solid #f0a24e55', borderRadius: 12, padding: '14px 16px' }}>
+          <div style={{ background: '#f0a24e18', borderRadius: 12, padding: '14px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: notesText || photosToShow.length > 0 ? 10 : 0 }}>
-              <span style={{ fontSize: 14, color: '#f0a24e' }}>⚠</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#f0a24e', fontFamily: 'Syne, sans-serif' }}>
+              <span style={{ fontSize: 14, color: 'var(--c-fg-2)' }}>⚠</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-fg-2)', fontFamily: "'Archivo Black', sans-serif" }}>
                 Flagged by runner — Needs Attention
               </span>
             </div>
             {notesText && (
-              <div style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Inter', lineHeight: 1.6, background: '#0d0f1488', borderRadius: 8, padding: '10px 12px', marginBottom: photosToShow.length > 0 ? 10 : 0 }}>
+              <div style={{ fontSize: 12, color: 'var(--c-fg)', fontFamily: 'Inter', lineHeight: 1.6, background: 'var(--c-wash)', borderRadius: 8, padding: '10px 12px', marginBottom: photosToShow.length > 0 ? 10 : 0 }}>
                 {notesText}
               </div>
             )}
             {photosToShow.length > 0 && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {photosToShow.map((url, i) => (
-                  <SignedImage key={i} path={url} link alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid #f0a24e33' }} />
+                  <SignedImage key={i} path={url} link alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }} />
                 ))}
               </div>
             )}
@@ -233,11 +232,11 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
 
         {/* Progress */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
+          <span style={{ fontSize: 11, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>
             {`${doneCount} / ${totalItems} checked`}
           </span>
           {checklistData?.staff_name && (
-            <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
+            <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>
               {checklistData.staff_name}
               {checklistData.completed_at && ` · ${fmtTime(checklistData.completed_at)}`}
             </span>
@@ -247,7 +246,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
         {/* Sections */}
         {sections.map(sec => (
           <div key={sec.section}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'Syne, sans-serif', marginBottom: 6, paddingLeft: 2 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", marginBottom: 6, paddingLeft: 2 }}>
               {sec.section}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -256,18 +255,16 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
                 return (
                   <div key={i} style={{
                     display: 'flex', alignItems: 'flex-start', gap: 10,
-                    background: 'var(--surface)', borderRadius: 8, padding: '9px 12px',
-                    border: `1px solid ${on ? color + '33' : 'var(--border)'}`,
-                  }}>
+                    background: 'var(--c-bg)', borderRadius: 8, padding: '9px 12px',
+                    }}>
                     <div style={{
                       width: 18, height: 18, borderRadius: 5, flexShrink: 0, marginTop: 1,
-                      border: `1.5px solid ${on ? color : 'var(--border)'}`,
-                      background: on ? color : 'transparent',
+                      background: on ? 'var(--c-fg)' : 'transparent',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                      {on && <span style={{ fontSize: 10, color: 'var(--bg)', fontWeight: 900 }}>✓</span>}
+                      {on && <span style={{ fontSize: 10, color: 'var(--c-bg)', fontWeight: 900 }}>✓</span>}
                     </div>
-                    <span style={{ fontSize: 12, color: on ? 'var(--text)' : 'var(--text2)', fontFamily: 'Syne, sans-serif', lineHeight: 1.45, textDecoration: on ? 'none' : 'none' }}>
+                    <span style={{ fontSize: 12, color: on ? 'var(--c-fg)' : 'var(--c-fg-2)', fontFamily: "'Archivo Black', sans-serif", lineHeight: 1.45, textDecoration: on ? 'none' : 'none' }}>
                       {item}
                     </span>
                   </div>
@@ -280,8 +277,8 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
         {/* Notes (shown separately if not already in banner) */}
         {notesText && !flagged && (
           <div>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'Syne, sans-serif', marginBottom: 6 }}>Notes</div>
-            <div style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Inter', lineHeight: 1.6, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", marginBottom: 6 }}>Notes</div>
+            <div style={{ fontSize: 12, color: 'var(--c-fg)', fontFamily: 'Inter', lineHeight: 1.6, background: 'var(--c-bg)', borderRadius: 8, padding: '10px 12px' }}>
               {notesText}
             </div>
           </div>
@@ -290,10 +287,10 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
         {/* Photos (shown separately if not already in banner) */}
         {photosToShow.length > 0 && !flagged && (
           <div>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'Syne, sans-serif', marginBottom: 6 }}>Photos</div>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", marginBottom: 6 }}>Photos</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {photosToShow.map((url, i) => (
-                <SignedImage key={i} path={url} link alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
+                <SignedImage key={i} path={url} link alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }} />
               ))}
             </div>
           </div>
@@ -311,18 +308,17 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {/* Balance summary */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
+        <div style={{ background: 'var(--c-bg)', borderRadius: 10, padding: '14px 16px' }}>
           {([
-            ['Opening Balance', openingBalance != null ? `$${Number(openingBalance).toFixed(2)}` : '—', 'var(--text2)'],
+            ['Opening Balance', openingBalance != null ? `$${Number(openingBalance).toFixed(2)}` : '—', 'var(--c-fg-2)'],
             ['Cash In', `+$${totalIn.toFixed(2)}`, '#4ade80'],
             ['Cash Out', `-$${totalOut.toFixed(2)}`, '#f87171'],
-            ['Closing Balance', `$${closing.toFixed(2)}`, color],
+            ['Closing Balance', `$${closing.toFixed(2)}`, 'var(--c-fg)'],
           ] as [string, string, string][]).map(([l, v, c], i, arr) => (
             <div key={l} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '6px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none',
-            }}>
-              <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Syne, sans-serif' }}>{l}</span>
+              padding: '6px 0', }}>
+              <span style={{ fontSize: 11, color: 'var(--c-fg-2)', fontFamily: "'Archivo Black', sans-serif" }}>{l}</span>
               <span style={{ fontSize: 13, fontWeight: 700, color: c, fontFamily: 'Inter' }}>{v}</span>
             </div>
           ))}
@@ -330,28 +326,27 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
 
         {/* Transaction ledger */}
         {cashEntries.length > 0 ? (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 48px', padding: '6px 14px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ background: 'var(--c-bg)', borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 48px', padding: '6px 14px', background: 'var(--c-wash)' }}>
               {['Description', 'Amount', 'Type'].map(h => (
-                <span key={h} style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'Syne, sans-serif' }}>{h}</span>
+                <span key={h} style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif" }}>{h}</span>
               ))}
             </div>
             {cashEntries.map((e: any, i: number) => (
               <div key={i} style={{
                 display: 'grid', gridTemplateColumns: '1fr 80px 48px',
                 padding: '9px 14px',
-                borderBottom: i < cashEntries.length - 1 ? '1px solid var(--border)' : 'none',
-              }}>
-                <span style={{ fontSize: 11, color: 'var(--text)', fontFamily: 'Inter' }}>{e.description || '—'}</span>
+                }}>
+                <span style={{ fontSize: 11, color: 'var(--c-fg)', fontFamily: 'Inter' }}>{e.description || '—'}</span>
                 <span style={{ fontSize: 11, fontWeight: 600, fontFamily: 'Inter', color: e.type === 'in' ? '#4ade80' : '#f87171' }}>
                   {e.type === 'in' ? '+' : '−'}${Number(e.amount).toFixed(2)}
                 </span>
-                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>{e.type}</span>
+                <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>{e.type}</span>
               </div>
             ))}
           </div>
         ) : (
-          <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>No transactions recorded.</div>
+          <div style={{ fontSize: 11, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>No transactions recorded.</div>
         )}
       </div>
     )
@@ -366,8 +361,8 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {lowCount > 0 && (
-          <div style={{ background: '#f0a24e18', border: '1px solid #f0a24e44', borderRadius: 8, padding: '8px 12px', marginBottom: 6 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#f0a24e', fontFamily: 'Inter' }}>
+          <div style={{ background: '#f0a24e18', borderRadius: 8, padding: '8px 12px', marginBottom: 6 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>
               ⚠ {lowCount} item{lowCount !== 1 ? 's' : ''} flagged low
             </span>
           </div>
@@ -375,21 +370,20 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
         {items.map((it: any, i: number) => (
           <div key={i} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: 'var(--surface)', border: `1px solid ${it.low ? '#f0a24e44' : 'var(--border)'}`,
-            borderRadius: 8, padding: '9px 12px',
+            background: 'var(--c-bg)', borderRadius: 8, padding: '9px 12px',
           }}>
             <div>
-              <div style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Syne, sans-serif' }}>{it.item}</div>
-              {it.notes && <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>{it.notes}</div>}
+              <div style={{ fontSize: 12, color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif" }}>{it.item}</div>
+              {it.notes && <div style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 2 }}>{it.notes}</div>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {it.qty != null && (
-                <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>×{it.qty}</span>
+                <span style={{ fontSize: 11, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>×{it.qty}</span>
               )}
               <span style={{
                 fontSize: 9, fontWeight: 700, fontFamily: 'Inter',
                 padding: '2px 7px', borderRadius: 4,
-                color: it.low ? '#f0a24e' : '#4ade80',
+                color: it.low ? 'var(--c-fg-2)' : '#4ade80',
                 background: it.low ? '#f0a24e22' : '#4ade8022',
               }}>
                 {it.low ? 'LOW' : 'OK'}
@@ -407,13 +401,13 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {MIC_GROUPS.map(g => (
             <div key={g.group}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'Syne, sans-serif', marginBottom: 6 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", marginBottom: 6 }}>
                 {g.group}
               </div>
               {g.mics.map(name => (
-                <div key={name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 12px', marginBottom: 4 }}>
-                  <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Syne, sans-serif' }}>{name}</span>
-                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>—</span>
+                <div key={name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--c-bg)', borderRadius: 8, padding: '9px 12px', marginBottom: 4 }}>
+                  <span style={{ fontSize: 12, color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif" }}>{name}</span>
+                  <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>—</span>
                 </div>
               ))}
             </div>
@@ -434,26 +428,25 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         {Object.entries(byStudio).map(([s, mics]) => (
           <div key={s}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'Syne, sans-serif', marginBottom: 6 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", marginBottom: 6 }}>
               {s.charAt(0).toUpperCase() + s.slice(1)}
             </div>
             {mics.map((mic: any, i: number) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                background: 'var(--surface)', border: `1px solid ${mic.condition === 'damaged' ? '#f8717144' : 'var(--border)'}`,
-                borderRadius: 8, padding: '9px 12px', marginBottom: 4,
+                background: 'var(--c-bg)', borderRadius: 8, padding: '9px 12px', marginBottom: 4,
               }}>
                 <div>
-                  <div style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Syne, sans-serif' }}>{mic.name}</div>
-                  <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif" }}>{mic.name}</div>
+                  <div style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 2 }}>
                     {[mic.serial && `S/N: ${mic.serial}`, mic.location].filter(Boolean).join(' · ')}
                   </div>
                 </div>
                 {mic.condition && (
                   <span style={{
                     fontSize: 10, fontWeight: 700, fontFamily: 'Inter',
-                    color: CONDITION_COLORS[mic.condition] ?? 'var(--text3)',
-                    background: (CONDITION_COLORS[mic.condition] ?? 'var(--text2)') + '22',
+                    color: CONDITION_COLORS[mic.condition] ?? 'var(--c-fg-3)',
+                    background: (CONDITION_COLORS[mic.condition] ?? 'var(--c-fg-2)') + '22',
                     padding: '2px 8px', borderRadius: 4,
                   }}>
                     {mic.condition}
@@ -470,7 +463,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
   function renderHistory() {
     if (history.length === 0) {
       return (
-        <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>
+        <div style={{ fontSize: 11, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>
           No submissions in the last 7 days.
         </div>
       )
@@ -480,20 +473,20 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
         {history.map((h, i) => (
           <div key={i} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 12px',
+            background: 'var(--c-bg)', borderRadius: 8, padding: '9px 12px',
           }}>
             <div>
-              <div style={{ fontSize: 11, color: 'var(--text)', fontFamily: 'Inter' }}>{fmtShortDate(h.date)}</div>
-              {h.staff_name && <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>{h.staff_name}</div>}
+              <div style={{ fontSize: 11, color: 'var(--c-fg)', fontFamily: 'Inter' }}>{fmtShortDate(h.date)}</div>
+              {h.staff_name && <div style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 2 }}>{h.staff_name}</div>}
             </div>
             <div style={{ display: 'flex', gap: 5 }}>
               {h.submitted_at ? (
                 <span style={{ fontSize: 9, fontWeight: 700, color: '#4ade80', background: '#4ade8022', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>Submitted</span>
               ) : (
-                <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text3)', background: 'var(--surface2)', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>Pending</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--c-fg-3)', background: 'var(--c-wash)', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>Pending</span>
               )}
               {h.admin_approved_at && (
-                <span style={{ fontSize: 9, fontWeight: 700, color, background: color + '22', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>Approved</span>
+                <span className="c-pill c-fill-booked" style={{ fontSize: 9 }}>Approved</span>
               )}
             </div>
           </div>
@@ -514,36 +507,32 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
       style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 20px' }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div data-ops-modal="" style={{
-        background: 'var(--bg)', width: '100%', maxWidth: 680,
+      <div style={{
+        background: 'var(--c-bg)', width: '100%', maxWidth: 680,
         maxHeight: '88dvh', borderRadius: 16, overflow: 'hidden',
         display: 'flex', flexDirection: 'column',
         boxShadow: '0 32px 96px #000a',
-        border: `1px solid ${color}33`,
-      }}>
-        {/* Color accent bar */}
-        <div style={{ height: 3, background: color, flexShrink: 0 }} />
+        }}>
 
         {/* Header */}
         <div style={{
-          padding: '18px 22px 14px', borderBottom: '1px solid var(--border)',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '18px 22px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 4px' }}>←</button>
+            <button onClick={onClose} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 4px' }}>←</button>
             <div>
-              <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 16, color: 'var(--text)' }}>
+              <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 800, fontSize: 16, color: 'var(--c-fg)' }}>
                 {CATEGORY_LABELS[category] ?? category}
               </div>
-              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>
+              <div style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 2 }}>
                 {category === 'mic_inventory' ? 'Global' : studioLabel}
                 {' · '}
                 {fmtShortDate(today)}
               </div>
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '0 4px' }}>✕</button>
+          <button onClick={onClose} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '0 4px' }}>✕</button>
         </div>
 
         {/* Scrollable body */}
@@ -554,13 +543,13 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
             <span style={{
               fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
               padding: '3px 10px', borderRadius: 6, fontFamily: 'Inter',
-              color: isApproved ? color : isSubmitted ? '#4ade80' : hasLiveProgress ? 'var(--text2)' : '#f0a24e',
-              background: isApproved ? color + '22' : isSubmitted ? '#4ade8022' : hasLiveProgress ? '#8b90a822' : '#f0a24e22',
+              color: 'var(--c-chip-ink)',
+              background: isApproved || isSubmitted ? 'var(--c-st-booked)' : hasLiveProgress ? 'var(--c-st-warm)' : 'var(--c-st-dead)',
             }}>
               {isApproved ? 'Approved' : isSubmitted ? 'Submitted' : hasLiveProgress ? 'In Progress' : 'Not Started'}
             </span>
             {submission?.staff_name && (
-              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
+              <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>
                 {submission.staff_name}
                 {submission.submitted_at && ` · ${fmtTime(submission.submitted_at)}`}
               </span>
@@ -571,16 +560,16 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
           <section>
             <SectionHead label={isChecklist && !isSubmitted ? 'Current Progress' : 'Submitted Content'} />
             {!isSubmitted && !alwaysShowContent ? (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '32px 22px', textAlign: 'center' }}>
-                <div style={{ fontSize: 13, color: 'var(--text2)', fontFamily: 'Syne, sans-serif', marginBottom: 6 }}>
+              <div style={{ background: 'var(--c-bg)', borderRadius: 10, padding: '32px 22px', textAlign: 'center' }}>
+                <div style={{ fontSize: 13, color: 'var(--c-fg-2)', fontFamily: "'Archivo Black', sans-serif", marginBottom: 6 }}>
                   Awaiting runner submission
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>
+                <div style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>
                   The runner has not submitted this form yet today.
                 </div>
               </div>
             ) : loadingDetail ? (
-              <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>Loading…</div>
+              <div style={{ fontSize: 11, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>Loading…</div>
             ) : (
               <>
                 {(category === 'opening_checklist' || category === 'closing_checklist') && renderChecklist()}
@@ -599,21 +588,14 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
 
           {/* ── Approve button — BOTTOM ONLY, after all content ── */}
           {isSubmitted && !isApproved && canApprove && (
-            <div style={{ paddingTop: 20, borderTop: '2px solid var(--border)' }}>
-              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginBottom: 14, lineHeight: 1.6 }}>
+            <div style={{ paddingTop: 20 }}>
+              <div style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginBottom: 14, lineHeight: 1.6 }}>
                 You have reviewed all submitted content above. Approving confirms this submission is complete and accurate.
               </div>
               <button
                 onClick={handleApprove}
                 disabled={approving}
-                style={{
-                  width: '100%', padding: '14px 0',
-                  background: approving ? color + '88' : color,
-                  color: 'var(--bg)', border: 'none', borderRadius: 10,
-                  fontSize: 14, fontWeight: 800, fontFamily: 'Syne, sans-serif',
-                  cursor: approving ? 'not-allowed' : 'pointer',
-                  letterSpacing: '0.04em', textTransform: 'uppercase',
-                }}
+                className="c-btn c-control c-raised-primary c-block" style={{ padding: '14px 0', fontSize: 12, justifyContent: 'center', cursor: approving ? 'not-allowed' : 'pointer' }}
               >
                 {approving ? 'Approving…' : 'Approve Submission'}
               </button>
@@ -621,7 +603,7 @@ export function DailyOpsModal({ category, studio, today, color, studioLabel, sub
           )}
 
           {isApproved && submission?.admin_approved_at && (
-            <div style={{ textAlign: 'center', padding: '12px 0', borderTop: '1px solid var(--border)', fontSize: 10, color: color, fontFamily: 'Inter' }}>
+            <div style={{ textAlign: 'center', padding: '12px 0', fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>
               ✓ Approved {fmtTime(submission.admin_approved_at)}
               {submission.admin_approved_by ? ` by ${submission.admin_approved_by}` : ''}
             </div>

@@ -57,32 +57,25 @@ function matchesLoc(loc: string | null, key: string, abbr: string) {
   return l.includes(key) || l.includes(abbr.toLowerCase())
 }
 
-function TwoCheckbox({ label, checked, clickable = false, loading = false, onClick, color = 'var(--accent)' }: {
-  label: string; checked: boolean; clickable?: boolean; loading?: boolean; onClick?: () => void; color?: string
+// Runner/Admin confirmation toggle. Carved: unchecked is a raised control you can
+// press; checked is a filled ink pill that reads as done. The `color` prop is gone
+// — it defaulted to the retired accent, and a completion state is not one of the
+// three things allowed to carry colour (§5).
+function TwoCheckbox({ label, checked, clickable = false, loading = false, onClick }: {
+  label: string; checked: boolean; clickable?: boolean; loading?: boolean; onClick?: () => void
 }) {
   return (
     <button
       onClick={clickable && !loading ? onClick : undefined}
+      className={`c-soft c-soft-sm${checked ? ' c-on' : ''}${clickable && !loading ? ' c-control c-raised' : ''}`}
       style={{
-        display: 'flex', alignItems: 'center', gap: 5,
-        background: checked ? color + '18' : 'var(--surface2, var(--surface2))',
-        border: `1px solid ${checked ? color + '66' : 'var(--border)'}`,
-        borderRadius: 6, padding: '4px 9px',
+        display: 'inline-flex', alignItems: 'center', gap: 5,
         cursor: clickable && !loading ? 'pointer' : 'default',
-        opacity: loading ? 0.5 : 1, transition: 'all 0.12s',
+        opacity: loading ? 0.5 : 1,
       }}
     >
-      <div style={{
-        width: 11, height: 11, borderRadius: 3, flexShrink: 0,
-        border: `1.5px solid ${checked ? color : 'var(--text3, #666)'}`,
-        background: checked ? color : 'transparent',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        {checked && <span style={{ fontSize: 7, color: 'var(--bg)', fontWeight: 900, lineHeight: 1 }}>✓</span>}
-      </div>
-      <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 700, letterSpacing: '0.05em', color: checked ? color : 'var(--text3, #666)' }}>
-        {loading ? '…' : label}
-      </span>
+      <span style={{ lineHeight: 1 }}>{checked ? '✓' : '○'}</span>
+      <span>{loading ? '…' : label}</span>
     </button>
   )
 }
@@ -268,16 +261,14 @@ export function LocationStrip() {
   function SessionCard({ b, wo, isYesterday }: { b: Booking; wo: WO | null; isYesterday?: boolean }) {
     const completed      = wo?.status === 'completed'
     const needsAttention = !!(wo?.needs_attention_notes)
-    const borderColor    = completed ? 'var(--booked)' : isYesterday ? 'var(--warm)' : 'var(--accent)'
+    const borderColor    = completed ? 'var(--c-fg)' : isYesterday ? 'var(--c-fg-2)' : 'var(--c-fg)'
     return (
       <div
-        data-session-card={isYesterday ? 'yesterday' : 'today'}
         onClick={() => setWoBooking(b)}
         onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
-        onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'var(--c-bg)')}
         style={{
-          background: 'var(--surface)',
-          border: `1px solid ${borderColor}`,
+          background: 'var(--c-bg)',
           borderRadius: 10, padding: '12px 14px',
           cursor: 'pointer',
         }}>
@@ -288,44 +279,47 @@ export function LocationStrip() {
             {/* No "Studio " prefix — bookings.studio is already the full room
                 label ("Studio X", "North"). See the runner hub card. */}
             {(b as any).studio && (
-              <div style={{ fontFamily: 'DM Serif Display', fontSize: 19, lineHeight: 1.1, color: 'var(--text)', marginBottom: 2 }}>
+              <div style={{ fontFamily: 'Archivo Black', fontSize: 19, lineHeight: 1.1, color: 'var(--c-fg)', marginBottom: 2 }}>
                 {(b as any).studio}
               </div>
             )}
-            <div style={{ fontSize: 12, fontWeight: 700, color: (b as any).studio ? 'var(--text2)' : 'var(--text)' }}>{b.artist || b.client_name || '—'}</div>
-            {b.artist && b.client_name && <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 1 }}>{b.client_name}</div>}
+            <div style={{ fontSize: 12, fontWeight: 700, color: (b as any).studio ? 'var(--c-fg-2)' : 'var(--c-fg)' }}>{b.artist || b.client_name || '—'}</div>
+            {b.artist && b.client_name && <div style={{ fontSize: 10, color: 'var(--c-fg-3)', marginTop: 1 }}>{b.client_name}</div>}
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {needsAttention && (
-              <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--warm)', background: '#f9731622', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>⚠ Needs Attention</span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--c-fg-2)', background: '#f9731622', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>⚠ Needs Attention</span>
             )}
             {completed && (
-              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--booked)', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>COMPLETED</span>
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--c-fg)', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>COMPLETED</span>
             )}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 10 }}>
-          {b.from_time && <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>{b.from_time}–{b.to_time ?? '?'}</span>}
+          {b.from_time && <span style={{ fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>{b.from_time}–{b.to_time ?? '?'}</span>}
           {/* Studio moved to the hero above — not repeated here. */}
-          {(b as any).engineer_name && <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>Eng: {(b as any).engineer_name}</span>}
-          {(b as any).payment_type && <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px' }}>{(b as any).payment_type}</span>}
+          {(b as any).engineer_name && <span style={{ fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>Eng: {(b as any).engineer_name}</span>}
+          {(b as any).payment_type && <span style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter', borderRadius: 4, padding: '1px 5px' }}>{(b as any).payment_type}</span>}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingTop: 9, borderTop: '1px solid var(--border)' }}>
-          <a href={wo ? `/wo/${wo.id}/print` : '#'} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Syne, sans-serif', textDecoration: 'none', padding: '4px 9px', border: '1px solid var(--border)', borderRadius: 6 }}>PDF</a>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingTop: 9 }}>
+          <a href={wo ? `/wo/${wo.id}/print` : '#'} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", textDecoration: 'none', padding: '4px 9px', borderRadius: 6 }}>PDF</a>
         </div>
       </div>
     )
   }
 
-  function SectionLabel({ label, date, orange }: { label: string; date: string; orange?: boolean }) {
-    const c = orange ? '#f0a24e' : 'var(--text3)'
+  // Yesterday / Today section heading. The 1px-tall spacer div that used to run
+  // between the label and the date was a divider wearing a disguise — Law 1 rules
+  // out hairlines however they're built, so the label is a capsule lozenge now and
+  // the date sits at the far end. The `orange` variant is gone with it: "needs
+  // review" is conveyed by the badge on the row, not by tinting the heading.
+  function SectionLabel({ label, date }: { label: string; date: string; orange?: boolean }) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: c, fontFamily: 'Syne', whiteSpace: 'nowrap' }}>{label}</div>
-        <div style={{ flex: 1, height: 1, background: orange ? '#f0a24e33' : 'var(--border)' }} />
-        <div style={{ fontSize: 9, color: orange ? '#f0a24e88' : 'var(--text3)', fontFamily: 'Inter', whiteSpace: 'nowrap' }}>
+      <div className="c-lozenge c-anchor" style={{ marginBottom: 12 }}>
+        <b style={{ whiteSpace: 'nowrap' }}>{label}</b>
+        <span className="c-mono" style={{ fontSize: 10, opacity: 0.6, whiteSpace: 'nowrap' }}>
           {new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-        </div>
+        </span>
       </div>
     )
   }
@@ -364,41 +358,40 @@ export function LocationStrip() {
       {/* ── Centered Dialog — zIndex above nav (9999) ── */}
       {selectedLoc && (
         <div
-          style={{ position: 'fixed', inset: 0, background: '#000000cc', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? 0 : '24px 20px' }}
+          className="c-modal-backdrop" style={{ zIndex: 10001, background: isMobile ? 'var(--c-bg)' : undefined, padding: isMobile ? 0 : 24 }}
           onClick={e => e.target === e.currentTarget && closeDrawer()}
         >
-          <div data-ops-modal="" style={{
-            background: 'var(--bg)', width: '100%', maxWidth: isMobile ? '100vw' : 920,
+          <div style={{
+            background: 'var(--c-bg)', width: '100%', maxWidth: isMobile ? '100vw' : 920,
             maxHeight: isMobile ? '100dvh' : '88dvh', height: isMobile ? '100dvh' : undefined,
             borderRadius: isMobile ? 0 : 16, overflow: 'hidden',
             display: 'flex', flexDirection: 'column',
             boxShadow: '0 32px 96px #0009',
-            border: '1px solid var(--border)',
-          }}>
+            }}>
             {/* Header */}
-            <div style={{ padding: '18px 26px 14px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+            <div style={{ padding: '18px 26px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
               <div>
-                <div style={{ fontFamily: 'Syne', fontWeight: 900, fontSize: 20, color: 'var(--text)' }}>{selectedLoc.label}</div>
-                <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>
+                <div style={{ fontFamily: 'Archivo Black', fontWeight: 400, fontSize: 20, color: 'var(--c-fg)' }}>{selectedLoc.label}</div>
+                <div style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 2 }}>
                   {new Date(today + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} · Daily Ops
                 </div>
               </div>
-              <button onClick={closeDrawer} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '4px 8px' }}>✕</button>
+              <button onClick={closeDrawer} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '4px 8px' }}>✕</button>
             </div>
 
             {/* Scrollable body */}
             {drawerLoading ? (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', fontFamily: 'Syne' }}>Loading…</div>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--c-fg-3)', fontFamily: 'Archivo Black' }}>Loading…</div>
             ) : (
               <div style={{ flex: 1, overflowY: 'auto', padding: '22px 26px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: (isMobile || pastRetentionWindow) ? '1fr' : '1fr 1fr', gap: 24, alignItems: 'start' }}>
 
                   {/* ── LEFT — Yesterday ── */}
                   {!pastRetentionWindow && (
-                  <div data-ops-col="yesterday" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'Syne' }}>Yesterday</span>
-                      <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingBottom: 10 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--c-fg-3)', fontFamily: 'Archivo Black' }}>Yesterday</span>
+                      <span style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>
                         {new Date(yesterday + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                       </span>
                     </div>
@@ -414,7 +407,7 @@ export function LocationStrip() {
                             </div>
                           )}
 
-                          <div data-checklist-section="" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                          <div style={{ background: 'var(--c-bg)', borderRadius: 10, overflow: 'hidden' }}>
                             {DAILY_CATS.map((cat, i) => {
                               const row        = yestOpsRows.find(o => o.category === cat.key)
                               const runnerDone = !!row?.submitted_at
@@ -423,24 +416,24 @@ export function LocationStrip() {
                               return (
                                 <div key={cat.key}
                                   onClick={() => setOpenModal({ category: cat.key, date: yesterday })}
-                                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2, var(--surface2))')}
+                                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2, var(--c-wash))')}
                                   onMouseLeave={e => (e.currentTarget.style.background = needsReview ? '#f0a24e08' : 'transparent')}
-                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: needsReview ? '#f0a24e08' : 'transparent', borderBottom: i < DAILY_CATS.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.1s' }}
+                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: needsReview ? '#f0a24e08' : 'transparent', transition: 'background 0.1s' }}
                                 >
                                   <div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                                      <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Syne', fontWeight: 600 }}>{cat.label}</span>
+                                      <span style={{ fontSize: 12, color: 'var(--c-fg)', fontFamily: 'Archivo Black', fontWeight: 600 }}>{cat.label}</span>
                                       {needsReview && <span style={{ fontSize: 9, fontWeight: 700, color: '#f0a24e', background: '#f0a24e22', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>Review</span>}
                                     </div>
                                     {row?.staff_name && (
-                                      <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>
+                                      <div style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 2 }}>
                                         {row.staff_name}{row.submitted_at && ` · ${new Date(row.submitted_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`}
                                       </div>
                                     )}
                                   </div>
                                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                    <TwoCheckbox label="Runner" checked={runnerDone} color="var(--warm)" />
-                                    <TwoCheckbox label="Admin"  checked={adminDone}  color="var(--booked)" />
+                                    <TwoCheckbox label="Runner" checked={runnerDone} />
+                                    <TwoCheckbox label="Admin"  checked={adminDone} />
                                   </div>
                                 </div>
                               )
@@ -453,17 +446,17 @@ export function LocationStrip() {
                   )}
 
                   {/* ── RIGHT — Today ── */}
-                  <div data-ops-col="today" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'Syne' }}>Today</span>
-                      <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingBottom: 10 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--c-fg-3)', fontFamily: 'Archivo Black' }}>Today</span>
+                      <span style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>
                         {new Date(today + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                       </span>
                     </div>
 
                     {(() => {
                       if (sessions.length === 0) {
-                        return <div style={{ color: 'var(--text3)', fontSize: 12, fontFamily: 'Syne', padding: '10px 0' }}>No sessions booked today.</div>
+                        return <div style={{ color: 'var(--c-fg-3)', fontSize: 12, fontFamily: 'Archivo Black', padding: '10px 0' }}>No sessions booked today.</div>
                       }
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -476,7 +469,7 @@ export function LocationStrip() {
 
                     {(() => {
                       return (
-                      <div data-checklist-section="" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                      <div style={{ background: 'var(--c-bg)', borderRadius: 10, overflow: 'hidden' }}>
                       {OPS_CATS.map((cat, i) => {
                         const row         = opsRows.find(o => o.category === cat.key)
                         const runnerDone  = !!row?.submitted_at
@@ -486,31 +479,31 @@ export function LocationStrip() {
                         return (
                           <div key={cat.key}
                             onClick={() => setOpenModal({ category: cat.key, date: today })}
-                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2, var(--surface2))')}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2, var(--c-wash))')}
                             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', borderBottom: i < OPS_CATS.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.1s' }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', transition: 'background 0.1s' }}
                           >
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Syne', fontWeight: 600 }}>{cat.label}</span>
+                                <span style={{ fontSize: 12, color: 'var(--c-fg)', fontFamily: 'Archivo Black', fontWeight: 600 }}>{cat.label}</span>
                                 {isChecklist && checklistProgress[cat.key]?.needsAttention && !adminDone && (
                                   <span style={{ fontSize: 9, fontWeight: 700, color: '#f0a24e', background: '#f0a24e22', padding: '2px 6px', borderRadius: 4, fontFamily: 'Inter' }}>⚠</span>
                                 )}
                               </div>
                               {isChecklist && prog && (
-                                <div style={{ fontSize: 9, color: runnerDone ? '#4ade80' : 'var(--text2)', fontFamily: 'Inter', marginTop: 2 }}>
+                                <div style={{ fontSize: 9, color: runnerDone ? '#4ade80' : 'var(--c-fg-2)', fontFamily: 'Inter', marginTop: 2 }}>
                                   {prog.checked}/{prog.total} checked
                                 </div>
                               )}
                               {row?.staff_name && (
-                                <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>
+                                <div style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 2 }}>
                                   {row.staff_name}{row.submitted_at && ` · ${new Date(row.submitted_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`}
                                 </div>
                               )}
                             </div>
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                              <TwoCheckbox label="Runner" checked={runnerDone} color="var(--accent)" />
-                              <TwoCheckbox label="Admin"  checked={adminDone}  color="var(--accent)" />
+                              <TwoCheckbox label="Runner" checked={runnerDone} />
+                              <TwoCheckbox label="Admin"  checked={adminDone} />
                             </div>
                           </div>
                         )
@@ -544,7 +537,6 @@ export function LocationStrip() {
             category={category}
             studio={studioKey}
             today={date}
-            color="var(--accent)"
             studioLabel={cat?.label ?? selectedLoc.label}
             submission={submission}
             onClose={() => setOpenModal(null)}
