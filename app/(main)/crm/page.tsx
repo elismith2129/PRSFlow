@@ -1534,11 +1534,6 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                     {l.booking && <span>{BOOKING_ICONS[l.booking] || ''} {l.booking} · </span>}
                     {l.last_contact ? `${daysSince(l.last_contact)}d ago` : `added ${fmtDate(l.created_at)}`}
                     {touch?.initials && <span style={{ color: 'var(--c-fg-3)' }}> · {touch.initials}{touch.method ? ` via ${touch.method}` : ''}</span>}
-                    {missing.length > 0 && (
-                      <span className="c-pill c-fill-hot" style={{ marginLeft: 6, fontSize: 8.5, padding: '3px 8px' }}>
-                        missing: {missing.join(', ')}
-                      </span>
-                    )}
                   </div>
                 </div>
                 {showKeepHot && (
@@ -1970,9 +1965,6 @@ const parsedLoc0 = parseLocation(lead.location || '')
       <div style={{ background: 'transparent', padding: isMobile ? '2px 0 4px' : '2px 0 6px' }}>
       {/* ─── Status strip ─────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-        {missing.length > 0 && (
-          <span className="c-pill c-fill-hot" style={{ order: 2 }}>⚠ Missing: {missing.join(', ')}</span>
-        )}
         <div ref={statusPillRef} style={{ position: 'relative', flexShrink: 0 }}>
           <button
             type="button"
