@@ -2398,3 +2398,72 @@ Five fails → 30-second lock → **counter back to zero**. So every IP got 5 fr
 **Evidence the attacker never got in.** `auth.users.last_sign_in_at` for every account except Eli's predates the attack window (timestamps are UTC; the 21:16 PT attack is 04:16 UTC on the 30th). Eli's own 05:09 UTC sign-in is him working the incident. Caveat for anyone re-checking this later: that column holds only the *most recent* sign-in, so it cannot rule out an earlier session that was later overwritten — it is good evidence, not proof.
 
 **Left for tomorrow, deliberately:** a "Change password" link in the nav. `/reset-password` works fine for a logged-in user — it calls `updateUser({ password })` and needs nothing but a session — but **nothing in the app links to it**; it was built purely as the landing page for reset emails. Handing nine people a temporary password with no in-app way to change it does not survive contact with reality. Small change, but not at midnight.
+
+### July 30, 2026 — "Carved" design system: tokens, primitives, and the first four surfaces
+
+Branch `redesign/carved`, nothing merged. Spec `docs/PRSFLO-DESIGN-SPEC.md` + `prsflo-final-mock.html`.
+Per-version detail is in CHANGELOG; this entry is the reasoning and the roads not taken.
+
+**Why a token+primitive layer at all.** Light mode was 63–66 `[data-theme="light"]` rules, ~20 of them
+matching on **inline-style substrings**, sitting over ~2,700 inline `style={{}}` objects. That is why
+changing the body font once took a 728-instance mechanical sweep. The goal state is that those override
+rules get **deleted**, not added to — so every surface migration has to pay down the layer, not just
+repaint on top of it.
+
+**Decisions taken, with the alternatives rejected:**
+
+- **`--c-` prefix, permanently.** Rejected: reusing the bare names, which breaks on contact (`--bg` means
+  `transparent` in the current light theme and the page gradient depends on it). Also rejected: a
+  rename-sweep at the end to reclaim the short names — Eli's call, and the right one. A sweep is a large
+  mechanical diff for cosmetics, and this codebase has already been bitten once by exactly that kind of
+  sweep. The prefix has a second benefit: `--c-` greps the entire new system.
+- **Dark on `:root`, light as the override.** The spec prints it the other way round. Copying it verbatim
+  would have produced a dark block that matches **nothing**, because this app expresses dark as the
+  *absence* of `data-theme`. Worth knowing that the spec's CSS examples all need mentally inverting.
+- **Carved CSS lives in `globals.css`, not a separate stylesheet.** Rejected: `styles/carved.css` +
+  `@import`. There is no `postcss-import` in the PostCSS config, so a plain `@import` may or may not be
+  inlined at build — unverifiable from here, and the failure mode is a broken preview.
+- **The wordmark became a component.** The old locked rule said "copy these exact spans out of `Nav.tsx`,
+  never recreate from description." It existed because the login page had already drifted, and it was
+  being enforced by hand across five files. Rejected: restating the rule harder. A copy-paste convention
+  fails eventually; `<Wordmark/>` removes the failure mode instead of forbidding it.
+- **`.c-sheet` gives raw controls carved defaults.** Rejected: converting ~38 one-off buttons and inputs
+  inside the migrated modals into primitives by hand — a large error-prone diff for no behavioural gain.
+  This is uncomfortably adjacent to the pattern being retired, so the distinction matters: the old layer
+  matched inline-style **substrings document-wide** (invisible coupling, broke when an unrelated inline
+  style changed); these are ordinary **component-scoped element selectors**, visible from the markup and
+  bounded by the class. New code should still use primitives.
+- **Status is not raised.** HOT/WARM pills shipped with the raised-control shadow and read as buttons.
+  Under Law 2 that is a category error: status is information, never pressed. They now carry only the
+  minimal contact shadow. Related: the count badge inside a lozenge was **ink on ink in light mode** —
+  invisible — and now inverts.
+- **Sign-offs are pressed, not just filled.** Runner/Admin toggles are raised-and-empty when unsigned and
+  **pressed-in and filled** when signed. Signing something off *is* an act of pressing, so the affordance
+  law carries the meaning with no colour. Added `.c-pressed` (persistent `:active` geometry) for this;
+  reusable for any latched control.
+
+**The mistake worth remembering.** The dashboard's seven modals were migrated with **scripted regex
+passes** — token swaps, font swaps, border stripping across ~1,800 lines. That is fine for *retiring*
+legacy values and useless for *applying* a design system: there is nothing in old markup for a regex to
+map a panel recipe or a carved pool onto. The result was "typography arrived, physics didn't" — Daily Ops
+came out as flat text on the void, correctly rejected on review, and had to be redone by hand. **A
+scripted token-swap is not a migration.** Apply recipes surface by surface.
+
+Eli's reviewer read the same symptom as evidence that surfaces were being migrated before `/dev-style`
+and the proof surface were approved. That wasn't the cause — the guide shipped and was approved, and the
+dashboard was the approved proof surface — but the instinct was sound and the method changed.
+
+**The success metric was wrong and has been replaced.** `[style*=` count (recommended earlier in this
+session) counts the **WO print stylesheet**: 38 of 52 occurrences live in `@media print`, and no amount of
+CRM work will move them. Track instead **`[data-theme="light"]` selectors that don't contain `.c-`** —
+the legacy override layer proper. **36 remain, from ~66.** Five are the substring matchers.
+
+**Open, deliberately:**
+- Engineer/assistant initials lost their confirmed/hold green-orange on the room cards, because §5 scopes
+  colour to lead temperature, session status and analytics — staffing confirmation isn't on that list.
+  Flagged to Eli; if he reads that colour operationally, the right fix is to widen §5, not to sneak it back.
+- Login errors and PIN messages render as **status chips** rather than tinted text (§5 forbids coloured
+  body copy). Reads well, but "error as a chip" stretches what §5 meant — easy to revert.
+- Petty cash lost its green/red on in/out; the +/− carries direction. Least confident of the colour calls.
+- `public/sop.html` NOT updated despite the four-doc ritual — spec §1 fences it off as a separate project.
+  Staff notes are owed when this merges.

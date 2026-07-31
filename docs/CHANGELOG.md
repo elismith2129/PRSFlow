@@ -19,6 +19,35 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.6.0 — UNRELEASED (branch `redesign/carved`) — Jul 30, 2026
+
+**"Carved" design system: real token + primitive layer replacing the light-mode patch layer. Dashboard, nav, login and Daily Ops migrated. Nothing merged to `main`.**
+
+Spec: `docs/PRSFLO-DESIGN-SPEC.md` + `prsflo-final-mock.html` (the mock is the visual source of truth). Read those before touching any of this.
+
+- **New token set, permanently `--c-` prefixed.** `--c-bg/-fg/-wash/-wash2/-chip-ink`, six `--c-st-*` status colours, `--c-ivory`, `--c-hot-text`, and two muted ink steps `--c-fg-2`/`--c-fg-3` added during migration. **The prefix is permanent — there is no planned sweep to reclaim the bare names.** `--bg` already existed meaning something incompatible (`#0d0f14` dark / `transparent` light, with the page gradient and ~66 override rules depending on it), so reusing the name would have broken the app on contact. One prefix also makes the whole new system greppable.
+- **Theme polarity is INVERTED from the spec, and must stay that way.** The spec and mock put light on `:root` and dark on `[data-theme="dark"]`. This app is the opposite: dark is the *absence* of the attribute (`Nav.tsx` calls `removeAttribute`, `app/layout.tsx` only ever sets `"light"`), so `[data-theme="dark"]` matches nothing here. Dark values live on `:root`, light overrides follow in `[data-theme="light"]` — **equal specificity, so the light block must stay after the root block.**
+- **Primitives** in `components/carved/index.tsx` — Button, SoftButton, Input, Panel, StatusPill, StatusDot, Count, RoomCard, EventChip, Row, Table, Modal, NewLeadPulse, plus `toCarvedStatus`/`statusFillClass`. Class-driven, zero inline style objects. `SectionHeader` and `StatusBadge` were **extended** with a `carved` prop rather than duplicated; default `false`, so every existing caller renders unchanged.
+- **`/dev-style`** — style guide at `app/(main)/dev-style/page.tsx`: every primitive and state, with a theme toggle. Auth-gated, no nav link (type the path).
+- **Wordmark is now a component**, `components/layout/Wordmark.tsx` — Archivo Black, `PRS` full + `FLO` at .45, tracking −.02em, monochrome in both themes. Rendered by nav, login, reset-password, runner hub and the SOP gate. **The locked rule in `CLAUDE.md` changed shape**: it used to say "copy these exact spans out of `Nav.tsx`", which had already failed once and was being enforced by hand across five files. `PRSFloIcon` went monochrome (three `currentColor` waves at .35/.6/1), lost its teal glow, and **dropped `'use client'`** — CSS handles the theme, so it no longer needs a `MutationObserver`.
+- **Surfaces migrated:** dashboard (panels, 11-room grid as carved status pools, tasks, flags, all seven modals), `LocationStrip` + its daily-ops drawer, `DailyOpsModal`, nav chrome, login, reset-password.
+- **31 legacy light-mode override rules deleted** as their markup migrated — the four dashboard `data-panel` gradients, `data-room-cell`, `data-session-active`, `data-studio-card`, four `data-studio-index` gradients, four nav rules, three login rules, `data-ops-modal`, two `data-ops-col`, two `data-session-card`, `data-checklist-section`.
+- **Scrollbars and native widget chrome** were still painting legacy `--border` (`#2a2e3d` / `#cbd5e1` — both desaturated blue), which read as a stray blue bar down every scrolling surface once the ground went warm. Retargeted to carved ink with a transparent track. `select`/`input[type=date]` got a light `color-scheme` so the OS stops drawing dark native panels on light paper.
+
+**Migrations:** none. This is presentation only — no schema, no queries, no handlers.
+
+**Watch-outs:**
+- **`.c-sheet` gives raw `<button>`/`<input>`/`<textarea>` carved defaults.** This is a deliberate compromise for ~38 one-off controls inside migrated modals, and it is *not* the pattern being retired: the old layer matched inline-style **substrings across the whole document**; these are component-scoped element selectors visible from the markup. **Prefer primitives in new code.** Those controls had their inline `background` stripped so the scoped rules win without `!important` — don't re-add inline backgrounds there.
+- **The `[style*=` metric recommended earlier was wrong.** 38 of the 52 occurrences are inside `@media print` (the WO print stylesheet) and have nothing to do with theming. **Track the legacy override layer instead: `[data-theme="light"]` selectors that do NOT contain `.c-` — 36 remaining, down from ~66.** Five of those are the fragile substring matchers.
+- **`DailyOpsModal` lost its required `color` prop** and `TwoCheckbox` lost its optional one — per-studio colour is retired. `LocationStrip`'s `SectionLabel` still *accepts* `orange` but **ignores it**; clean up or restore deliberately.
+- **A scripted token-swap is not a migration.** The first pass over the dashboard modals swapped tokens, fonts and borders by regex — which strips legacy styling but cannot *add* carved structure, producing "typography arrived, physics didn't". Daily Ops had to be redone applying recipes by hand. Migrate surfaces by applying recipes, not by find-and-replace.
+- **Still un-migrated and visibly legacy:** CRM, calendar, admin, WO Hub/popup, runner, `/tasks`, the welcome splash. The nav paints carved ground on *every* route, so those pages show a warm bar over the old ground until they migrate. CRM also still runs the `webInquiryPulse` accent glow, which §9 replaces with `.c-newpulse`.
+- **`public/sop.html` was deliberately NOT updated**, though the end-of-session ritual in `CLAUDE.md` requires it: spec §1 explicitly fences that file off as a separate project. Staff notes for this work are owed once it merges.
+
+**Files:** `styles/globals.css`, `components/carved/index.tsx`, `components/layout/Wordmark.tsx`, `components/layout/Nav.tsx`, `components/PRSFloIcon.tsx`, `components/ui/SectionHeader.tsx`, `components/ui/StatusBadge.tsx`, `components/SopGate.tsx`, `components/dashboard/LocationStrip.tsx`, `components/dashboard/DailyOpsModal.tsx`, `app/(main)/page.tsx`, `app/(main)/dev-style/page.tsx`, `app/(auth)/login/page.tsx`, `app/(auth)/reset-password/page.tsx`, `app/runner/page.tsx`, `docs/working-conventions.md`, `CLAUDE.md`.
+
+---
+
 ## v1.5.1 — Jul 30, 2026
 
 **Runner couldn't open work orders on multi-day sessions. Mobile WO sheet layout.**

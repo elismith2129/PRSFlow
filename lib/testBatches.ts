@@ -55,6 +55,91 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'carved-redesign-2026-07-30',
+    title: 'New look — dashboard, daily ops, login',
+    version: 'v1.6.0 (preview branch)',
+    date: 'Jul 30, 2026',
+    intro:
+      'The app has a new look: warm paper instead of dark blue-grey, and everything is either pressed INTO the page (things that hold information) or raised OUT of it (things you press). Nothing about how the app WORKS has changed — so if a button stops doing its job, that is a real bug and worth reporting loudly. Only the dashboard, the daily-ops pop-ups, the top bar and the login screen have been done so far; CRM, the calendar, admin and the runner still look the old way. That is expected, not a fault. Please do every item TWICE — once in light mode and once in dark (sun/moon icon, top right).',
+    items: [
+      {
+        id: 'carved-no-blue-frame', area: 'Dashboard', device: 'desktop',
+        what: 'The page background matches the panels, with no leftover blue edge',
+        how: 'Open the dashboard. Look at the very edges of the screen and down the right-hand side while you scroll. The background should be one continuous colour. Report any blue or grey strip, especially a thin vertical one.',
+      },
+      {
+        id: 'carved-press', area: 'Dashboard', device: 'desktop',
+        what: 'Buttons visibly sink when you hold them down',
+        how: 'Press and HOLD the "+ new lead" button without letting go. It should look like it sinks into the page, and pop back out when you release. Try the same on "+ add task".',
+      },
+      {
+        id: 'carved-room-cards', area: 'Dashboard', device: 'desktop',
+        what: 'Booked rooms are coloured, empty rooms are not, and each card names the right room',
+        how: 'Look at the room grid. Rooms with a session should be filled green (or purple if the session is only tentative); empty rooms should be plain and dim. Check that the room name on each coloured card matches the session you expect in that room.',
+      },
+      {
+        id: 'carved-card-text-whole', area: 'Dashboard', device: 'desktop',
+        what: 'No text is cut off on a booked room card',
+        how: 'Find the busiest room card — one showing artist, client, times and 1ST/2ND initials. Check the bottom of every line of text is fully visible. Letters that hang below the line (g, y, p) must not look sliced off.',
+      },
+      {
+        id: 'carved-nav-active', area: 'Top bar', device: 'desktop',
+        what: 'The page you are on is marked in the top bar',
+        how: 'Look at the top bar. The current page should sit inside a filled oval pill. Click through to CRM and back and check the pill moves with you.',
+      },
+      {
+        id: 'carved-ops-session-card', area: 'Daily ops', device: 'desktop',
+        what: 'Session blocks in the daily-ops pop-up look like the dashboard room cards',
+        how: 'On the dashboard click a studio name at the top (Paramount, Encore, Ameraycan or Track) to open the daily-ops pop-up. A session in there should be a filled green block with the room name, the artist in the big heavy font, and the times underneath — the same style as the dashboard room cards.',
+      },
+      {
+        id: 'carved-ops-signoff', area: 'Daily ops', device: 'desktop',
+        what: 'RUNNER / ADMIN sign-off buttons look raised when unsigned and pressed-in when signed',
+        how: 'In the same pop-up, look at the RUNNER and ADMIN buttons beside each checklist row. An unsigned one should look raised with an empty circle. A signed one should look pushed into the page and filled in. Find one of each and compare.',
+      },
+      {
+        id: 'carved-ops-opens', area: 'Daily ops', device: 'desktop',
+        what: 'Clicking a checklist row still opens it',
+        how: 'Click the "Opening Checklist" row in the daily-ops pop-up. The checklist detail should open as before, with its items readable. Close it with the arrow at the top left.',
+      },
+      {
+        id: 'carved-modals-work', area: 'Dashboard', device: 'desktop',
+        what: 'Adding a task still works end to end',
+        how: 'Click "+ add task", type a short task, assign it to yourself and save. It must appear in the Tasks list. Then open it and delete it. This is checking the pop-ups still FUNCTION, not how they look.',
+      },
+      {
+        id: 'carved-flag-modal', area: 'Dashboard', device: 'desktop',
+        what: 'Adding a flag still works end to end',
+        how: 'Click "+ add flag", pick a studio and a category, type a short note and save. It should appear in the Flags panel. Open it and delete it afterwards.',
+      },
+      {
+        id: 'carved-login', area: 'Login', device: 'desktop',
+        what: 'The login screen matches the new look and still signs you in',
+        how: 'Sign out. The login screen should be warm paper with the PRSFLO wordmark in a heavy black font, all one colour (no green or blue). Sign back in with your email and password.',
+      },
+      {
+        id: 'carved-login-error', area: 'Login', device: 'desktop',
+        what: 'A wrong password shows a red badge, not plain red writing',
+        how: 'Sign out and deliberately enter the wrong password. The message should appear as a small filled red badge. Then sign in properly.',
+      },
+      {
+        id: 'carved-dark-not-glaring', area: 'Whole app', device: 'desktop',
+        what: 'Dark mode has no big bright white areas',
+        how: 'Switch to dark mode (moon icon, top right) and look over the dashboard and the daily-ops pop-up. Large areas should be dark. Only small things — buttons, the count bubble, the current-page pill — may be bright cream. Report any large pale slab.',
+      },
+      {
+        id: 'carved-mobile', area: 'Whole app', device: 'phone',
+        what: 'The dashboard is still usable on a phone',
+        how: 'Open the dashboard on your phone. Scroll the whole way down. Nothing should be cut off at the sides, and you should not be able to scroll sideways. Open the menu (≡) and check the links work.',
+      },
+      {
+        id: 'carved-old-pages-ok', area: 'Whole app', device: 'desktop',
+        what: 'The not-yet-updated pages still work normally',
+        how: 'Visit CRM, Calendar, Admin and WO Hub. They will still look the OLD way — that is expected. You are only checking they still load and work. Report anything broken or unreadable, not the fact that they look different.',
+      },
+    ],
+  },
+  {
     id: 'auth-runner-wo-2026-07-30',
     title: 'Email login + runner work order fixes',
     version: 'v1.5.0 – v1.5.1',

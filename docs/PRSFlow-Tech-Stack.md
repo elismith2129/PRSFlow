@@ -113,6 +113,9 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 | `components/auth/AuthGuard.tsx` | Client-side route guard wrapping `app/(main)/layout.tsx`; redirects unauthenticated users to `/login` (localStorage sessions; no SSR middleware) |
 | `hooks/useUserProfile.ts` | `{ profile, loading }` — resolves the logged-in user's `user_profiles` row by session email. Single source of profile-fetch logic |
 | `hooks/useIsMobile.ts` | `useIsMobile(breakpoint = 768)` — `matchMedia` hook, desktop-first (`false` on first render, flips on mount). The single mobile breakpoint; gates every responsive layout (dashboard, Nav, CRM, calendar, BookingForm, WorkOrderPopup, LocationStrip) |
+| `components/carved/index.tsx` | **Carved design-system primitives** (July 30, 2026). Class-driven, zero inline styles, consumes `--c-` tokens only. Also exports `toCarvedStatus()` / `statusFillClass()` — the app-status → six-slot status mapping. Note it deliberately differs from the legacy `StatusBadge` map: here `uncontacted` is harbor (a live lead state) and `open`/`tech` are driftglass (inert). |
+| `components/layout/Wordmark.tsx` | **The PRSFlo wordmark — single source of truth, site-wide.** Rendered by nav, login, reset-password, runner hub, SOP gate; only `size` may differ. Do not reintroduce inline `PRS`/`Flo` spans. Replaces the old copy-these-values rule in `CLAUDE.md`. |
+| `app/(main)/dev-style/page.tsx` | Carved style guide — every primitive and state, both themes via a local `data-theme` toggle (doesn't write `localStorage`). Auth-gated, **no nav link** — type the path. Approve design changes here before touching real surfaces. |
 | `components/layout/NavGate.tsx` | Wraps `<Nav>`; hides the nav on first paint during the fresh-login welcome splash (`showWelcome` flag) and reveals it on the `welcomeDone` event (3s fallback). `layout.tsx` renders this instead of `<Nav>` directly |
 | `supabase/user_profiles.sql` | Migration: `user_profiles` table + seed (run manually in Supabase SQL editor) |
 | `supabase/dashboard-tasks-assignment.sql` | Migration: `dashboard_tasks.assigned_to` / `assigned_by` uuid FK → `user_profiles.id` |
@@ -240,6 +243,43 @@ Defined in `styles/globals.css`. **Dark theme (default token values):**
 
 **Light theme** (`[data-theme="light"]` — July 13–16, 2026) redefines the same vars: `--bg: transparent` (the `<html>` gradient shows through), `--surface: #ffffff`, `--surface2: #f1f5f9`, `--border: #cbd5e1`, `--text: #1e293b`, `--text2: #475569`, `--text3: #64748b`, `--accent: #3b82f6` (blue replaces lime), `--accent-rgb: 59, 130, 246`, `--accent2: #0ea5e9`, `--hot: #dc2626`, `--warm: #ea580c`, `--cold: #64748b`, `--booked: #0d9488`, `--uncontacted: #3b82f6`, `--dead: #94a3b8`. `html[data-theme="light"]` paints a `linear-gradient(135deg, #dbeafe, #ffe4e6)` page background; panels/modals get frosted-glass + per-surface gradients via the `data-*` markers.
 
+### ⚠️ The above is the LEGACY set — being replaced (July 30, 2026, branch `redesign/carved`)
+
+The tokens above are on their way out. They stay only until their last consumer migrates, then die
+individually. **New work consumes the `--c-` set below.** Spec: `docs/PRSFLO-DESIGN-SPEC.md`.
+
+```
+--c-bg          #1b1a17 dark / #f5f3ee light   Page ground (warm paper / dim room)
+--c-fg          #d9d6cd dark / #2a2722 light   Ink. Warm ivory, NOT white
+--c-wash        grouping fill, level 1
+--c-wash2       grouping fill, level 2
+--c-fg-2/-3     muted ink steps (migration equivalents for --text2 / --text3)
+--c-chip-ink    #1c2626   Text ON status fills — same in both themes
+--c-st-hot      #ff5a4d   Hot lead · urgent · cancelled session
+--c-st-warm     #9d8cff   Warm lead · tentative session
+--c-st-cold     #5fc9e8   Cold lead
+--c-st-booked   #43dfae   Booked · confirmed · live room
+--c-st-uncon    #7fb2e5   Uncontacted · tour
+--c-st-dead     #cfd6d4   DNB · tech · open hours
+--c-ivory       #d5d0c2   Dark-mode SMALL accents only (Law 5)
+--c-hot-text    #fff4f2   Text on hot fills; every other chip uses --c-chip-ink
+```
+
+**Three things that will trip you up:**
+1. **There is no accent colour.** Lime and teal are retired. Colour appears ONLY as lead temperature,
+   session/calendar status, and analytics — always as a solid fill, never as tinted text.
+2. **Polarity is inverted relative to the spec.** Dark values sit on `:root` (dark = the *absence* of
+   `data-theme`); light overrides follow in `[data-theme="light"]`. Equal specificity — **the light block
+   must stay after the root block.** The spec's CSS examples are printed the other way round.
+3. **Status colours are identical in both themes.** Dark dims them by rule (§6) — a filter on pills, alpha
+   fills on chips and pools — never by substituting a second palette.
+
+**Depth is the grammar:** containers carve IN (`.c-panel`, `.c-inset2`, `.c-pool`), controls raise OUT and
+press in on `:active` (`.c-raised`, `.c-raised-primary`, `.c-raised-chip`, `.c-control`), display anchors
+rest on the surface (`.c-anchor`), latched controls stay pressed (`.c-pressed`). **No borders, dividers or
+hairlines anywhere** — including 1px-tall spacer divs. No glows or outer halos; the only permitted outer
+shadows are raised controls and the modal drop shadow.
+
 ---
 
 ## Roadmap
@@ -248,6 +288,7 @@ Defined in `styles/globals.css`. **Dark theme (default token values):**
 
 | Chunk | What shipped |
 |---|---|
+| **"Carved" design system — tokens, primitives, first four surfaces ⏳ (July 30, 2026, v1.6.0, branch `redesign/carved`, NOT merged)** | Replaces the light-mode patch layer (63–66 override rules, ~20 matching inline-style substrings) with a real token + primitive system, both themes first-class. **Tokens:** the `--c-` set (permanently prefixed — see Design system tokens above). **Primitives:** `components/carved/index.tsx` — Button, SoftButton, Input, Panel, StatusPill, StatusDot, Count, RoomCard, EventChip, Row, Table, Modal, NewLeadPulse + `toCarvedStatus`/`statusFillClass`; `SectionHeader` and `StatusBadge` **extended** with a `carved` prop, never duplicated. **Style guide:** `/dev-style`. **Wordmark:** extracted to `components/layout/Wordmark.tsx` (Archivo Black, monochrome) — the locked `CLAUDE.md` rule changed from "copy these spans" to "render the component"; `PRSFloIcon` went monochrome and dropped `'use client'`. **Surfaces migrated:** dashboard + all seven modals, `LocationStrip` + daily-ops drawer, `DailyOpsModal`, nav chrome, login, reset-password. **31 legacy override rules deleted.** No migrations — presentation only. **Remaining:** CRM, calendar, admin, WO Hub/popup, runner, `/tasks`, welcome splash. **Track progress as `[data-theme="light"]` selectors without `.c-` — 36 left, from ~66** (NOT the `[style*=` count; 38 of those live in the WO print block). |
 | **PIN login taken down after a brute-force attempt ✅ (July 29–30, 2026, v1.5.0)** | `POST /api/auth/pin` took sustained guessing from **~50 distinct IPs**, spread so no single IP tripped the per-IP lockout. Root cause of the exposure: **`verify_staff_pin(p_pin)` takes only the PIN** — no username — and matches every staff row at once, so 4 digits against ~10 accounts is a ~1-in-1,000 hit rate per guess. Root cause of the *cheapness*: the lockout **reset `fail_count` to 0 on lockout**, handing out 5 fresh attempts every 30s forever. **Fixed** — counter only climbs, escalating `30s → 2m → 10m → 60m` (capped at 60 deliberately: studios share a public IP), 6-hour quiet-period decay, new append-only **`pin_login_failures`** (migration `20260729140000`; no insert policy — service-role writes only). **Then removed entirely** while the app is pre-launch: all `staff_pins` deleted, sessions revoked, everyone on email + password, **`PIN_LOGIN_ENABLED = false`** in `app/(auth)/login/page.tsx` (single flip to restore). New **`scripts/set-one-password.mjs`** (admin-API password set, no email — Supabase's built-in sender caps at ~2/hour; rejects macOS curly quotes). Vercel **Bot Protection → Challenge**. Also: registration ID viewer no longer auto-downloads (`isPdf` gates the iframe); client-facing forms forced dark. **Planned replacement:** device-bound PIN — sign in once with email + password, then the session is *encrypted with the PIN* so nothing usable sits on the device. |
 | **Runner WO lookup fixed for projection cards ✅ (July 30, 2026, v1.5.1)** | The runner resolved a booking's WO via `work_orders.booking_id`, which since the WO rebuild names only **one** of the several projection cards a save writes — so every card except the original dead-ended on "Work order not yet created". Now reads **`bookings.work_order_id`** first (both `app/runner/[studio]/page.tsx` `woMap` and the WO page resolver), with the reverse lookup kept as a fallback for pre-rebuild rows. **`work_orders.booking_id` is now a fallback, not the primary link** — still load-bearing for create-idempotency until Step 9. Mobile WO sheet offsets `top: 52` below the Nav (desktop always did; `100dvh` → `100%` so the footer isn't pushed off-screen), and the leftover per-studio header accent was removed — it mapped `ameraycan` → `var(--hot)`, the danger red. |
 | **Unified Work Order (Booking = WO) — ✅ FEATURE-COMPLETE (July 28, 2026; steps 8–9 cleanup deferred)** | Collapsing the two-form model into one Work Order that is the source of truth; `bookings` demoted to a calendar projection. Master plan `docs/WO-SPEC.md`. **Done:** `wo_number` (WO-1001…) + `bookings.work_order_id` + session-level fields + `booking_notes` migrations; `components/shared/ClientPanel.tsx`; `lib/seedStudioTimeRows.ts` (append-only Seed helper); rebuilt WO top (WO number, colored status bar, session type, billing, Booking Notes, ClientPanel) with per-day schedule removed from the top; collapsible Seed panel; Step 5a projection (studio+dates+times+`work_order_id` synced to the card, `roomLabelForVenue` bare-letter→full-label). Commits `3f64d95`→`c540614`, all on `main`. **Remaining:** 5b multi-room card splitting · 6 calendar opens WO directly (kills the extra click) · 7 richer card · 8 delete `BookingForm.tsx` · 9 drop `work_orders.booking_id` · 10 verify all projection consumers. |
