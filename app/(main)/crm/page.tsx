@@ -2051,8 +2051,8 @@ const parsedLoc0 = parseLocation(lead.location || '')
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, minWidth: 0, flex: 1, flexWrap: 'wrap' }}>
             {lead.billing !== 'COD' ? (
               <>
-                <div className="c-field-inline" style={{ display: 'inline-grid', minWidth: '3ch', position: 'relative' }}>
-                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
+                <div style={{ display: 'inline-grid', minWidth: '3ch', position: 'relative' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 28, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
                     {local.label || 'Label'}
                   </span>
                   <input
@@ -2062,7 +2062,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     onKeyDown={enterBlur}
                     onBlur={e => { setFocusedInput(null); setShowLabelDD(false); save('label', e.target.value) }}
                     placeholder="Label"
-                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'label' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'label' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif", fontSize: 28, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
                   />
                   {showLabelDD && labelSuggestions.length > 0 && (
                     <div style={{ ...ddStyle, right: 'auto', width: 'max-content', minWidth: 220, maxWidth: 320 }}>
@@ -2072,9 +2072,9 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     </div>
                   )}
                 </div>
-                <span style={{ color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, flexShrink: 0 }}> — </span>
-                <div className="c-field-inline" style={{ display: 'inline-grid', minWidth: '3ch' }}>
-                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
+                <span style={{ color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontSize: 28, letterSpacing: '-0.025em', lineHeight: 1.05, flexShrink: 0 }}> — </span>
+                <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 28, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
                     {local.artist_name || 'Artist'}
                   </span>
                   <input
@@ -2084,14 +2084,14 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     onKeyDown={enterBlur}
                     onBlur={e => { setFocusedInput(null); save('artist_name', e.target.value) }}
                     placeholder="Artist"
-                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'artist_name' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'artist_name' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif", fontSize: 28, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
                   />
                 </div>
               </>
             ) : (
               <>
-                <div className="c-field-inline" style={{ display: 'inline-grid', minWidth: '3ch' }}>
-                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
+                <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 28, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
                     {fnameVal || 'First'}
                   </span>
                   <input
@@ -2101,11 +2101,11 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
                     onBlur={() => { setFocusedInput(null); save('fname', fnameVal.trim()) }}
                     placeholder="First"
-                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: leadNameColor(lead), fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: leadNameColor(lead), fontFamily: "'Archivo Black', sans-serif", fontSize: 28, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
                   />
                 </div>
-                <div className="c-field-inline" style={{ display: 'inline-grid', minWidth: '3ch' }}>
-                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', whiteSpace: 'pre' }}>
+                <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 28, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
                     {lnameVal || 'Last'}
                   </span>
                   <input
@@ -2115,13 +2115,13 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
                     onBlur={() => { setFocusedInput(null); save('lname', lnameVal.trim()) }}
                     placeholder="Last"
-                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'lname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: leadNameColor(lead), fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: -0.5, padding: '4px 0', borderRadius: 4 }}
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'lname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: leadNameColor(lead), fontFamily: "'Archivo Black', sans-serif", fontSize: 28, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
                   />
                 </div>
               </>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginTop: 4 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
             {/* Start Booking — restored July 28, 2026. It was swapped out for the
                 temporary Confirm-Client flow back when there was no booking form
                 to send anyone to; the Work Order is that destination now. */}
@@ -2141,7 +2141,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 Reg Sent
               </button>
             ) : (
-              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '5px 12px', background: 'transparent', color: 'var(--c-fg-3)', borderRadius: 4, fontFamily: 'Inter', fontSize: 10, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
+              <button onClick={generateRegLink} disabled={regLinkGenerating} className="c-mini" style={{ cursor: regLinkGenerating ? 'default' : 'pointer' }}>
                 {regLinkGenerating ? '…' : 'Send Reg'}
               </button>
             ))}
@@ -2198,7 +2198,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
         {/* Stage name (COD only) */}
         {lead.billing === 'COD' && (
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 6, minWidth: 0 }}>
-            <div className="c-field-inline" style={{ display: 'inline-grid', minWidth: '3ch' }}>
+            <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
               <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
                 {local.artist_name || 'Artist name'}
               </span>
@@ -2218,7 +2218,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
         {/* Row 2 (Label/Billing only): A&R name line */}
         {lead.billing !== 'COD' && (
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 6, minWidth: 0, flexWrap: 'wrap' }}>
-            <div className="c-field-inline" style={{ display: 'inline-grid', minWidth: '3ch' }}>
+            <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
               <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
                 {fnameVal || 'First'}
               </span>
@@ -2232,7 +2232,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg-2)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
               />
             </div>
-            <div className="c-field-inline" style={{ display: 'inline-grid', minWidth: '3ch' }}>
+            <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
               <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
                 {lnameVal || 'Last'}
               </span>

@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo PRSFlo — Final Mock v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+/* PASTEL — off-white + black everywhere; colour exists ONLY as status.
+   Status colours are bright, warm, pastel — chips carry dark ink text in both themes. */
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626;
+/*PAL*/
+  --st-hot:#ff5a4d;      /* signal red      */
+  --st-warm:#9d8cff;     /* violet          */
+  --st-cold:#5fc9e8;     /* lagoon          */
+  --st-booked:#43dfae;   /* sea green       */
+  --st-uncon:#7fb2e5;    /* harbor          */
+  --st-dead:#cfd6d4;     /* driftglass      */
+/*/PAL*/
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--fg);
+  font:400 14.5px/1.55 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;
+  max-width:1200px;margin:0 auto;padding:0 24px 100px;transition:background .2s,color .2s}
+button,input{font:inherit;color:var(--fg);background:none;border:none}
+::selection{background:var(--fg);color:var(--bg)}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+.label{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.45}
+.sub{font-size:12.5px;opacity:.6}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:9px;font-weight:800;
+  letter-spacing:.08em;text-transform:uppercase}
+.act{background:var(--fg);color:var(--bg);border-radius:99px;padding:9px 19px;
+  font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.act:active{opacity:.75}
+.soft{background:var(--wash);border-radius:99px;padding:8px 17px;
+  font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.soft:active,.soft.on{background:var(--fg);color:var(--bg)}
+.input{background:var(--wash);border-radius:12px;padding:10px 14px;width:100%;
+  color:var(--fg);font-size:13.5px}
+.input::placeholder{color:var(--fg);opacity:.35}
+.input:focus{outline:none;background:var(--wash2)}
+.wm{display:inline-flex;align-items:baseline;font-family:'Archivo Black',sans-serif;letter-spacing:-.02em}
+.wm .flo{opacity:.45}
+
+.board{display:flex;align-items:center;gap:14px;padding:22px 0 20px;margin-bottom:36px}
+.board h1{font-size:22px;letter-spacing:-.03em}
+.section{margin:64px 0}
+.section>h2{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  opacity:.4;margin-bottom:20px}
+
+.nav{display:flex;align-items:center;gap:20px;margin-bottom:24px;flex-wrap:wrap}
+.nav .links{display:flex;gap:6px;flex:1;justify-content:center;flex-wrap:wrap}
+.nav a{font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--fg);opacity:.5;text-decoration:none;padding:7px 13px;border-radius:99px}
+.nav a.on{opacity:1;background:var(--fg);color:var(--bg)}
+.nav .right{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.5}
+
+.greethead{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.greethead .big{font-family:'Archivo Black',sans-serif;font-size:40px;letter-spacing:-.03em;line-height:1.04}
+.datechip{background:var(--fg);color:var(--bg);border-radius:18px;padding:12px 20px;
+  font-family:'Archivo Black',sans-serif;font-size:17px;text-align:center}
+.datechip small{display:block;font-size:11px;opacity:.6;font-family:system-ui;font-weight:800;letter-spacing:.1em}
+.locs{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:22px 0}
+.loc{background:var(--wash);border-radius:16px;padding:13px 17px}
+.loc.live{background:var(--fg);color:var(--bg)}
+.loc b{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:15px;display:block}
+.loc span{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.55;margin-top:3px;display:block}
+.cols{display:grid;grid-template-columns:280px 1fr 280px;gap:12px;align-items:start}
+.pane{background:var(--wash);border-radius:20px;padding:17px;overflow:hidden}
+.pane .ph{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:14px}
+.pane .ph b{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.pane .ph a{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  opacity:.4;text-decoration:none;color:var(--fg)}
+.lead{display:flex;align-items:center;gap:10px;margin-bottom:13px}
+.lead .nm{flex:1}
+.lead .nm b{font-size:13.5px;font-weight:700;display:block}
+.lead .nm span{font-size:11.5px;opacity:.5}
+/* status pill: pastel fill, dark ink text — both themes */
+.st{border-radius:99px;padding:4px 11px;font-size:9px;font-weight:800;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--chip-ink);flex-shrink:0}
+.addsoft{background:var(--wash2);border-radius:12px;padding:9px;text-align:center;
+  font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  opacity:.6;cursor:pointer;margin-top:4px}
+.rooms{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.room{background:var(--wash2);border-radius:16px;min-height:92px;padding:11px 13px;
+  position:relative;display:flex;flex-direction:column}
+.room .rn{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.45}
+.room.book{background:var(--fg);color:var(--bg)}
+.room.book .rn{opacity:.6}
+.room .artist{font-family:'Archivo Black',sans-serif;font-size:16px;margin-top:5px}
+.room .meta{font-size:11px;opacity:.7}
+.room .eng{position:absolute;right:11px;bottom:9px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;opacity:.5}
+.room.empty{background:var(--wash);opacity:.6}
+.stafftabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:13px}
+.stafftabs .soft{padding:4px 11px;font-size:8.5px}
+.task{background:var(--wash2);border-radius:14px;padding:11px 14px;display:flex;gap:9px;
+  align-items:center;font-size:13px;margin-bottom:9px}
+.cnt{background:var(--fg);color:var(--bg);border-radius:99px;min-width:19px;height:19px;
+  display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;padding:0 6px;margin-left:5px}
+
+.crmtabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.crmtabs .soft{font-family:'Archivo Black',sans-serif;font-weight:400;letter-spacing:.05em}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:20px}
+.fp{border-radius:99px;padding:6px 14px;font-size:9.5px;font-weight:800;letter-spacing:.07em;
+  text-transform:uppercase;cursor:pointer;color:var(--chip-ink)}
+.crmgrid{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;align-items:start}
+.leadlist{background:var(--wash);border-radius:20px;padding:10px}
+.bigrow{display:flex;align-items:center;gap:13px;padding:12px 14px;border-radius:14px;margin-bottom:2px}
+.bigrow .info{flex:1;min-width:0}
+.bigrow .info b{font-size:14px;font-weight:700}
+.bigrow.sel{background:var(--fg);color:var(--bg)}
+.bigrow.sel .sub{opacity:.75}
+.bigrow .go{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.45;cursor:pointer}
+.bigrow.sel .go{opacity:.85}
+.detail{background:var(--wash);border-radius:20px;padding:22px}
+.warn{background:var(--st-warm);color:var(--chip-ink);border-radius:99px;padding:6px 14px;
+  font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;display:inline-block;margin-bottom:14px}
+.detail h3{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:28px;letter-spacing:-.03em}
+.detail .actions{display:flex;gap:8px;margin:14px 0 16px;flex-wrap:wrap}
+.fieldrow{display:flex;gap:8px;margin-bottom:8px}
+
+.calbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.calbar h3{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:16px;flex:1}
+.calhead,.calrow{display:grid;grid-template-columns:150px repeat(8,1fr)}
+.calhead div{padding:8px 6px;text-align:center;font-size:9.5px;font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase;opacity:.4}
+.calhead div.today{opacity:1;background:var(--fg);color:var(--bg);border-radius:99px;margin:0 6px}
+.calloc{padding:14px 4px 8px;font-size:9.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.45}
+.calrow{min-height:60px;border-radius:14px}
+.calrow:nth-child(odd){background:var(--wash)}
+.calrow .rl{padding:10px 14px;font-size:12px;opacity:.55}
+/* SOLID pastel chips, dark ink text — the only colour in the app */
+.ev{margin:5px 4px;border-radius:11px;padding:5px 10px;min-width:0;overflow:hidden;z-index:1;
+  background:var(--wash2);color:var(--fg)}
+.ev b{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:12px;
+  display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev span{font-size:10.5px;opacity:.75;display:block;white-space:nowrap;overflow:hidden}
+.ev .eng{font-family:ui-monospace,Menlo,monospace;font-size:9px;opacity:.6;text-align:right;display:block}
+.ev.book{background:var(--st-booked);color:var(--chip-ink)}
+.ev.tent{background:var(--st-warm);color:var(--chip-ink)}
+.ev.tech{background:var(--st-dead);color:var(--chip-ink)}
+.ev.tour{background:var(--st-uncon);color:var(--chip-ink)}
+.legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;
+  font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+
+.wobar{display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.wobar h3{font-size:14px;font-weight:800}
+.wobar .grow{flex:1}
+.wobrand{text-align:center;margin-bottom:18px}
+.wobrand b{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:16px;letter-spacing:.22em}
+.wobrand p{font-size:11px;opacity:.45;margin-top:4px}
+.statuses{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.statuses .tent{background:var(--st-warm);color:var(--chip-ink)}
+.wt{background:var(--wash);border-radius:18px;padding:16px 18px;margin-top:18px}
+.whead{display:grid;grid-template-columns:1.2fr .7fr .7fr .7fr .5fr .7fr .8fr;
+  font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.4;padding-bottom:10px}
+.wr{display:grid;grid-template-columns:1.2fr .7fr .7fr .7fr .5fr .7fr .8fr;
+  font-family:ui-monospace,Menlo,monospace;font-size:12.5px;padding:8px 0;align-items:baseline}
+.wr .tot{font-weight:700}
+.sum{display:flex;justify-content:space-between;align-items:center;margin-top:14px;
+  background:var(--fg);color:var(--bg);border-radius:14px;padding:12px 18px}
+.sum .n{font-family:'Archivo Black',sans-serif;font-size:22px}
+.addsofts{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+
+.ana h3{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:26px;letter-spacing:-.03em;margin-bottom:22px}
+.bigs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.big{background:var(--wash);border-radius:18px;padding:18px 20px}
+.big.inv{background:var(--fg);color:var(--bg)}
+.big .n{font-family:'Archivo Black',sans-serif;font-size:42px;letter-spacing:-.02em;margin-top:4px}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chart{background:var(--wash);border-radius:18px;padding:18px 20px;display:flex;gap:20px;align-items:center}
+.donut{width:104px;height:104px;border-radius:50%;position:relative;flex-shrink:0}
+.donut::after{content:"";position:absolute;inset:22px;border-radius:50%;background:var(--bg)}
+.chart .lg{font-size:12px;flex:1}
+.chart .lg b{font-size:13px;font-weight:800;display:block;margin-bottom:7px}
+.chart .lg div{display:flex;align-items:center;gap:7px;margin:3px 0;opacity:.8}
+.chart .lg i{font-style:normal;margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:11px;opacity:.55}
+/* charts stay monochrome — colour belongs to status only */
+.dk1{background:var(--fg);opacity:.9}
+.dk2{background:var(--fg);opacity:.45}
+.dk3{background:var(--fg);opacity:.25}
+.dk4{background:var(--fg);opacity:.12}
+.d1{background:conic-gradient(rgba(20,18,16,.85) 0 291deg, rgba(20,18,16,.22) 291deg 360deg)}
+.d2{background:conic-gradient(rgba(20,18,16,.85) 0 209deg, rgba(20,18,16,.5) 209deg 288deg,
+  rgba(20,18,16,.28) 288deg 353deg, rgba(20,18,16,.12) 353deg 360deg)}
+[data-theme="dark"] .d1{background:conic-gradient(rgba(247,244,239,.9) 0 291deg, rgba(247,244,239,.25) 291deg 360deg)}
+[data-theme="dark"] .d2{background:conic-gradient(rgba(247,244,239,.9) 0 209deg, rgba(247,244,239,.55) 209deg 288deg,
+  rgba(247,244,239,.3) 288deg 353deg, rgba(247,244,239,.14) 353deg 360deg)}
+
+@media (max-width:940px){
+  .cols,.crmgrid,.charts,.bigs{grid-template-columns:1fr}
+  .locs{grid-template-columns:1fr 1fr}
+  .rooms{grid-template-columns:repeat(2,1fr)}
+  .greethead .big{font-size:30px}
+}
+
+/* Blocks ink-weight on the wash base */
+.pane .ph{background:var(--fg);color:var(--bg);margin:-17px -17px 14px;padding:12px 17px}
+.pane .ph a{color:var(--bg);opacity:.55}
+.crmtabs .soft.on{background:var(--fg);color:var(--bg)}
+.whead{background:var(--fg);color:var(--bg);opacity:1;margin:-16px -18px 10px;padding:10px 18px;border-radius:0}
+.calloc{background:var(--fg);color:var(--bg);opacity:1;border-radius:8px;padding:7px 14px;margin-bottom:6px}
+.room.book{background:var(--st-booked);color:var(--chip-ink)}
+.room.book .rn{opacity:.6}
+/* analytics donuts chart lead status → pastels */
+.d1{background:conic-gradient(var(--st-booked) 0 291deg, var(--st-cold) 291deg 360deg)}
+.d2{background:conic-gradient(var(--st-booked) 0 209deg, var(--st-cold) 209deg 288deg,
+  var(--st-hot) 288deg 353deg, var(--st-warm) 353deg 360deg)}
+[data-theme="dark"] .d1{background:conic-gradient(var(--st-booked) 0 291deg, var(--st-cold) 291deg 360deg)}
+[data-theme="dark"] .d2{background:conic-gradient(var(--st-booked) 0 209deg, var(--st-cold) 209deg 288deg,
+  var(--st-hot) 288deg 353deg, var(--st-warm) 353deg 360deg)}
+.dk1,.dk2,.dk3,.dk4{opacity:1}
+.dk1{background:var(--st-booked)}
+.dk2{background:var(--st-cold)}
+.dk3{background:var(--st-hot)}
+.dk4{background:var(--st-warm)}
+
+/* hot = red: pale text on the red chips for punch */
+.st[style*="--st-hot"],.fp[style*="--st-hot"]{color:#fff4f2}
+.ev.book~.ev{/*noop*/}
+
+/* ============ COMFORT PASS ============ */
+body{line-height:1.6}
+.pane,.leadlist,.detail,.wt,.big,.chart{border-radius:24px}
+.room{border-radius:18px}
+.greethead .big{letter-spacing:-.025em}
+/* light mode: ink bars stay, but ink is already softened above */
+
+/* dark mode: nothing large may be bright */
+[data-theme="dark"] .pane .ph{background:var(--wash2);color:var(--fg)}
+[data-theme="dark"] .pane .ph a{color:var(--fg);opacity:.45}
+[data-theme="dark"] .whead{background:var(--wash2);color:var(--fg)}
+[data-theme="dark"] .calloc{background:var(--wash2);color:var(--fg)}
+[data-theme="dark"] .datechip{background:var(--wash2);color:var(--fg)}
+[data-theme="dark"] .sum{background:var(--wash2);color:var(--fg)}
+[data-theme="dark"] .bigrow.sel{background:var(--wash2);color:var(--fg)}
+[data-theme="dark"] .bigrow.sel .sub{opacity:.6}
+[data-theme="dark"] .bigrow.sel .go{opacity:.6}
+[data-theme="dark"] .big.inv{background:var(--wash2);color:var(--fg)}
+[data-theme="dark"] .loc.live{background:var(--wash2);color:var(--fg)}
+[data-theme="dark"] .loc.live span{color:var(--st-booked);opacity:1}
+[data-theme="dark"] .room.book{background:rgba(67,223,174,.18);color:var(--fg)}
+[data-theme="dark"] .room.book .rn{color:var(--st-booked);opacity:1}
+/* small elements may stay ivory — they're accents, not surfaces */
+[data-theme="dark"] .act{background:#d5d0c2;color:#1b1a17}
+[data-theme="dark"] .cnt{background:#d5d0c2;color:#1b1a17}
+[data-theme="dark"] .calhead div.today{background:#d5d0c2;color:#1b1a17}
+[data-theme="dark"] .nav a.on{background:#d5d0c2;color:#1b1a17}
+[data-theme="dark"] .soft.on,[data-theme="dark"] .soft:active{background:#d5d0c2;color:#1b1a17}
+[data-theme="dark"] .crmtabs .soft.on{background:#d5d0c2;color:#1b1a17}
+/* dark chips: dim the fills slightly so they sit in the room */
+[data-theme="dark"] .ev.book{background:rgba(67,223,174,.72)}
+[data-theme="dark"] .ev.tent{background:rgba(157,140,255,.68)}
+[data-theme="dark"] .ev.tour{background:rgba(127,178,229,.68)}
+[data-theme="dark"] .ev.tech{background:rgba(204,209,207,.5)}
+[data-theme="dark"] .st,[data-theme="dark"] .fp{filter:saturate(.82) brightness(.88)}
+
+/* CARVED: the page is one material, pressed and carved. Raised panels, recessed inputs.
+   Content stays flat and sharp — the relief lives only on surfaces. Zero glow. */
+.pane,.leadlist,.detail,.wt,.big,.chart{background:var(--bg);border-radius:40px;
+  box-shadow:6px 6px 16px rgba(42,39,34,.08), -6px -6px 16px rgba(255,255,255,.7)}
+[data-theme="dark"] .pane,[data-theme="dark"] .leadlist,[data-theme="dark"] .detail,
+[data-theme="dark"] .wt,[data-theme="dark"] .big,[data-theme="dark"] .chart{
+  box-shadow:6px 6px 18px rgba(0,0,0,.38), -6px -6px 18px rgba(255,255,255,.035)}
+.input,.room.empty,.room:not(.book):not(.tent),.task,.addsoft{background:var(--bg);
+  box-shadow:inset 3px 3px 8px rgba(42,39,34,.07), inset -3px -3px 8px rgba(255,255,255,.65)}
+[data-theme="dark"] .input,[data-theme="dark"] .room:not(.book):not(.tent),
+[data-theme="dark"] .task,[data-theme="dark"] .addsoft{
+  box-shadow:inset 3px 3px 9px rgba(0,0,0,.34), inset -3px -3px 9px rgba(255,255,255,.03)}
+.room{border-radius:26px}
+.input{border-radius:99px;padding:11px 18px}
+.soft{background:var(--bg);box-shadow:2px 2px 6px rgba(42,39,34,.09), -2px -2px 6px rgba(255,255,255,.7)}
+[data-theme="dark"] .soft{box-shadow:2px 2px 7px rgba(0,0,0,.38), -2px -2px 7px rgba(255,255,255,.04)}
+.soft.on{box-shadow:inset 2px 2px 5px rgba(0,0,0,.18)}
+.bigrow{border-radius:99px}
+.bigrow.sel{box-shadow:inset 3px 3px 8px rgba(0,0,0,.22)}
+.calrow{border-radius:26px}
+.calrow:nth-child(odd){background:var(--bg);
+  box-shadow:inset 2px 2px 7px rgba(42,39,34,.05), inset -2px -2px 7px rgba(255,255,255,.55)}
+[data-theme="dark"] .calrow:nth-child(odd){
+  box-shadow:inset 2px 2px 8px rgba(0,0,0,.3), inset -2px -2px 8px rgba(255,255,255,.025)}
+.ev{border-radius:14px;box-shadow:1.5px 1.5px 4px rgba(42,39,34,.13)}
+.pane .ph{border-radius:99px;margin:0 0 14px}
+.whead{border-radius:99px;margin:0 0 10px;padding:10px 18px}
+.calloc{border-radius:99px}
+.datechip,.sum{border-radius:99px}
+
+
+/* ============ AFFORDANCE LAW: containers IN, controls OUT ============ */
+/* containers: carved in */
+.pane,.leadlist,.detail,.wt,.big,.chart{background:var(--bg);
+  box-shadow:inset 5px 5px 14px rgba(42,39,34,.08), inset -5px -5px 14px rgba(255,255,255,.7)}
+[data-theme="dark"] .pane,[data-theme="dark"] .leadlist,[data-theme="dark"] .detail,
+[data-theme="dark"] .wt,[data-theme="dark"] .big,[data-theme="dark"] .chart{
+  box-shadow:inset 5px 5px 15px rgba(0,0,0,.4), inset -5px -5px 15px rgba(255,255,255,.03)}
+/* booked rooms: colored pools set INTO the surface */
+.room.book,.room.tent{
+  box-shadow:inset 3px 3px 8px rgba(0,0,0,.16), inset -2px -2px 6px rgba(255,255,255,.25)}
+[data-theme="dark"] .room.book,[data-theme="dark"] .room.tent{
+  box-shadow:inset 3px 3px 9px rgba(0,0,0,.35), inset -2px -2px 6px rgba(255,255,255,.06)}
+/* controls: raised, always */
+.act{box-shadow:3px 3px 9px rgba(42,39,34,.28), -2px -2px 6px rgba(255,255,255,.5)}
+[data-theme="dark"] .act{box-shadow:3px 3px 10px rgba(0,0,0,.55), -2px -2px 7px rgba(255,255,255,.04)}
+.soft.on{box-shadow:2px 2px 6px rgba(42,39,34,.2), -2px -2px 6px rgba(255,255,255,.6)}
+[data-theme="dark"] .soft.on{box-shadow:2px 2px 7px rgba(0,0,0,.45), -2px -2px 7px rgba(255,255,255,.04)}
+.addsoft{background:var(--bg);opacity:.75;
+  box-shadow:2px 2px 6px rgba(42,39,34,.09), -2px -2px 6px rgba(255,255,255,.7)}
+[data-theme="dark"] .addsoft{box-shadow:2px 2px 7px rgba(0,0,0,.38), -2px -2px 7px rgba(255,255,255,.035)}
+.fp,.cnt{box-shadow:2px 2px 6px rgba(42,39,34,.16), -1px -1px 4px rgba(255,255,255,.4)}
+[data-theme="dark"] .fp,[data-theme="dark"] .cnt{box-shadow:2px 2px 7px rgba(0,0,0,.45)}
+.ev{box-shadow:2.5px 2.5px 7px rgba(42,39,34,.2), -1px -1px 4px rgba(255,255,255,.35)}
+[data-theme="dark"] .ev{box-shadow:2.5px 2.5px 8px rgba(0,0,0,.5)}
+.st{box-shadow:1.5px 1.5px 4px rgba(42,39,34,.14)}
+/* the press: any control depresses INTO the material while held */
+.act:active,.soft:active,.fp:active,.ev:active,.addsoft:active{
+  transform:translateY(1px);
+  box-shadow:inset 3px 3px 7px rgba(0,0,0,.28)}
+/* display anchors (date, totals, header lozenges) rest ON the surface, slight lift */
+.datechip,.sum,.pane .ph,.whead,.calloc{
+  box-shadow:2px 2px 7px rgba(42,39,34,.22)}
+[data-theme="dark"] .datechip,[data-theme="dark"] .sum,[data-theme="dark"] .pane .ph,
+[data-theme="dark"] .whead,[data-theme="dark"] .calloc{box-shadow:2px 2px 8px rgba(0,0,0,.5)}
+
+/* ============ NEW LEAD PULSE — no new colour, the system's own ink ============ */
+.newpulse{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0;
+  background:rgba(42,39,34,.85);animation:newpulse 1.6s ease-in-out infinite}
+[data-theme="dark"] .newpulse{background:#f0ede4}
+@keyframes newpulse{0%,100%{opacity:.25}50%{opacity:1}}
+@media (prefers-reduced-motion: reduce){.newpulse{animation:none;opacity:1}}
+</style>
+</head>
+<body>
+
+<div class="board">
+  <div style="flex:1">
+    <h1 class="arch">PRSFlo — Final Mock</h1>
+    <p class="sub" style="margin-top:6px;max-width:640px"><!--DESC-->The approved direction. Carved affordance law (containers in, controls out), bright Lagoon by day dimmed by night, no fog, and new leads pulse in the system's own ink — grey-ink in light mode, soft white in dark. This file plus the spec is the complete handoff.<!--/DESC--></p>
+  </div>
+  <button class="act" id="themeBtn" onclick="flip()">View dark</button>
+</div>
+
+<!-- DASHBOARD -->
+<div class="section">
+  <h2>Dashboard</h2>
+  <div class="nav">
+    <span class="wm" style="font-size:17px">PRS<span class="flo">FLO</span></span>
+    <span class="links">
+      <a class="on" href="#">Dashboard</a><a href="#">CRM</a><a href="#">Calendar</a><a href="#">Admin</a>
+      <a href="#">WO Hub</a><a href="#">Nadine's</a><a href="#">SOP</a><a href="#">DEV</a>
+    </span>
+    <span class="right">Sign out</span>
+  </div>
+  <span class="label">Good evening Eli — here's your briefing</span>
+  <div class="greethead" style="margin-top:8px">
+    <div class="big">Paramount<br>Recording Studios</div>
+    <div class="datechip">WED, JUL 29<small>11:13 PM</small></div>
+  </div>
+  <div class="locs">
+    <div class="loc live"><b>Paramount</b><span>1 session</span></div>
+    <div class="loc live"><b>Encore</b><span>1 session</span></div>
+    <div class="loc"><b>Ameraycan</b><span>Open</span></div>
+    <div class="loc live"><b>Track</b><span>1 session</span></div>
+  </div>
+  <div class="cols">
+    <div class="pane">
+      <div class="ph"><b>Needs action</b><a href="#">View all →</a></div>
+      <div class="lead"><span class="newpulse"></span><div class="nm"><b>Marina Olszak</b><span>New · never contacted</span></div><span class="st" style="background:var(--st-uncon)">Uncon</span></div>
+      <div class="lead"><div class="nm"><b>Sesen Tsegab</b><span>Follow up now</span></div><span class="st" style="background:var(--st-hot)">Hot</span></div>
+      <div class="lead"><div class="nm"><b>Austin Bessey</b><span>Follow up now</span></div><span class="st" style="background:var(--st-hot)">Hot</span></div>
+      <div class="lead"><div class="nm"><b>Spencer Nezey</b><span>Follow up now</span></div><span class="st" style="background:var(--st-hot)">Hot</span></div>
+      <div class="lead"><div class="nm"><b>Mark Kozelea</b><span>Follow up now</span></div><span class="st" style="background:var(--st-hot)">Hot</span></div>
+      <div class="addsoft">+ new lead</div>
+    </div>
+    <div class="pane">
+      <div class="ph"><b>Today's sessions</b><span class="mono" style="opacity:.5">‹ Wed, Jul 29 ›</span></div>
+      <div class="rooms">
+        <div class="room empty"><span class="rn">Paramount A</span></div>
+        <div class="room empty"><span class="rn">Paramount B</span></div>
+        <div class="room empty"><span class="rn">Paramount C</span></div>
+        <div class="room book"><span class="rn">Paramount X</span><div class="artist">Skilla Baby</div><div class="meta">Interscope · 2P–10P</div><span class="eng">1ST-LR</span></div>
+        <div class="room empty"><span class="rn">Ameraycan A</span></div>
+        <div class="room book"><span class="rn">Encore B</span><div class="artist">Mustard</div><div class="meta">10 Summers · 12P–12A</div><span class="eng">1ST-CU</span></div>
+        <div class="room empty"><span class="rn">Encore A</span></div>
+        <div class="room book"><span class="rn">Track North</span><div class="artist">Camper</div><div class="meta">DJ Camper</div></div>
+        <div class="room empty"><span class="rn">Track South</span></div>
+      </div>
+    </div>
+    <div class="pane">
+      <div class="ph"><b>Tasks<span class="cnt">1</span></b><a href="#">Show all →</a></div>
+      <div class="stafftabs">
+        <button class="soft on">Eli</button><button class="soft">Adam-Mike</button>
+        <button class="soft">Fernando</button><button class="soft">Aaron</button>
+        <button class="soft">Asst</button><button class="soft">Tech</button>
+      </div>
+      <div class="task"><span class="dot" style="background:var(--st-warm)"></span>Vendor invoices need approval for payment</div>
+      <div class="addsoft">+ add task</div>
+    </div>
+  </div>
+</div>
+
+<!-- CRM -->
+<div class="section">
+  <h2>CRM — leads</h2>
+  <div class="crmtabs">
+    <button class="soft on">Leads</button><button class="soft">Clients</button>
+    <button class="soft">Registrations</button><button class="soft">Campaigns</button>
+  </div>
+  <div class="filters">
+    <span class="fp" style="background:var(--st-uncon)">Uncontacted 2</span>
+    <span class="fp" style="background:var(--st-hot)">Hot 11</span>
+    <span class="fp" style="background:var(--st-warm)">Warm 11</span>
+    <span class="fp" style="background:var(--st-cold)">Cold 100</span>
+    <span class="fp" style="background:var(--st-dead)">DNB 1932</span>
+    <span class="fp" style="background:var(--st-booked)">Booked 1725</span>
+    <span style="flex:1"></span>
+    <button class="act">+ New lead</button>
+  </div>
+  <div class="crmgrid">
+    <div class="leadlist">
+      <div class="bigrow sel">
+        <span class="newpulse"></span><div class="info"><b>Marina Olszak</b><div class="sub">New · added 7/29 · missing: quote</div></div>
+        <span class="st" style="background:var(--st-uncon)">Uncon</span>
+        <span class="go">Contact →</span>
+      </div>
+      <div class="bigrow">
+        <div class="info"><b>Interscope / Sesen Tsegab / UntilJapan</b><div class="sub">$1450/day · PRS Studio X · Jul 29–Aug 1</div></div>
+        <span class="st" style="background:var(--st-hot)">Hot</span>
+        <span class="go">Contact →</span>
+      </div>
+      <div class="bigrow">
+        <div class="info"><b>Warner / Austin Bessey / AZ Chike</b><div class="sub">$3250 · PRS Studio C · Aug 6 5–9 PM</div></div>
+        <span class="st" style="background:var(--st-hot)">Hot</span>
+        <span class="go">Contact →</span>
+      </div>
+      <div class="bigrow">
+        <div class="info"><b>Pete Perez</b><div class="sub">Aug 2 2:00 PM · missing: quote</div></div>
+        <span class="st" style="background:var(--st-hot)">Hot</span>
+        <span class="go">Contact →</span>
+      </div>
+      <div class="bigrow">
+        <div class="info"><b>Skyler Lexx</b><div class="sub">$195 · PRS Studio C · Aug 1 10AM–2PM</div></div>
+        <span class="st" style="background:var(--st-warm)">Warm</span>
+        <span class="go">Contact →</span>
+      </div>
+    </div>
+    <div class="detail">
+      <span class="warn">⚠ Missing: quote</span>
+      <h3>Marina Olszak</h3>
+      <p class="sub" style="margin-top:2px">COD · Web inquiry · <span class="st" style="background:var(--st-uncon);font-size:8.5px">Uncontacted</span></p>
+      <div class="actions">
+        <button class="act">Start booking</button>
+        <button class="soft">Send reg</button>
+        <button class="soft">Call</button>
+        <button class="soft">Text</button>
+      </div>
+      <div class="fieldrow"><input class="input" value="o.marina899@gmail.com"></div>
+      <div class="fieldrow"><input class="input" value="+61 421 189 763"></div>
+      <span class="label" style="display:block;margin:12px 0 6px">Staffing</span>
+      <div class="fieldrow">
+        <button class="soft">ENG</button><button class="soft on">ASST</button><button class="soft">No staff</button>
+      </div>
+      <div class="fieldrow" style="margin-top:8px"><input class="input" placeholder="Assistant (optional)"></div>
+    </div>
+  </div>
+</div>
+
+<!-- CALENDAR -->
+<div class="section">
+  <h2>Calendar — layout untouched · pastel chips</h2>
+  <div class="calbar">
+    <h3>Jun 28 – Jul 11, 2026</h3>
+    <button class="soft">Day</button><button class="soft">Week</button>
+    <button class="soft on">2 Wks</button><button class="soft">Month</button>
+    <button class="act">+ New booking</button>
+  </div>
+  <div class="calhead">
+    <div></div><div>Sat 27</div><div>Sun 28</div><div>Mon 29</div><div>Tue 30</div>
+    <div class="today">Wed 1</div><div>Thu 2</div><div>Fri 3</div><div>Sat 4</div>
+  </div>
+  <div class="calloc">Paramount</div>
+  <div class="calrow">
+    <div class="rl">Studio A</div>
+    <div class="ev book" style="grid-column:6"><b>Mixed My…</b><span>8P–1A</span><span class="eng">1ST-JC</span></div>
+    <div class="ev tent" style="grid-column:8"><b>Apollo Red</b><span>Interscope · 8P–4A</span></div>
+  </div>
+  <div class="calrow">
+    <div class="rl">Studio E</div>
+    <div class="ev tech" style="grid-column:6"><b>TECH</b><span>9A–12P</span></div>
+  </div>
+  <div class="calrow">
+    <div class="rl">Studio X</div>
+    <div class="ev book" style="grid-column:5 / span 4"><b>UntilJapan</b><span>Interscope · 8P–8A</span><span class="eng">1ST-LR</span></div>
+  </div>
+  <div class="calloc">Ameraycan</div>
+  <div class="calrow">
+    <div class="rl">Studio A</div>
+    <div class="ev tent" style="grid-column:8"><b>Hold</b><span>Tentative</span></div>
+  </div>
+  <div class="calrow">
+    <div class="rl">Studio B</div>
+    <div class="ev tour" style="grid-column:7"><b>TOUR</b><span>Label walkthrough</span></div>
+  </div>
+  <div class="legend">
+    <span><span class="dot" style="background:var(--st-booked)"></span>Confirmed</span>
+    <span><span class="dot" style="background:var(--st-warm)"></span>Tentative</span>
+    <span><span class="dot" style="background:var(--st-hot)"></span>Cancelled</span>
+    <span><span class="dot" style="background:var(--st-uncon)"></span>Tour</span>
+    <span><span class="dot" style="background:var(--st-dead)"></span>Tech / Open</span>
+  </div>
+</div>
+
+<!-- WORK ORDER -->
+<div class="section">
+  <h2>Work order</h2>
+  <div class="wobar">
+    <h3>Work Order · <span class="mono">WO-1007</span></h3>
+    <span class="st" style="background:var(--st-booked)">Open</span>
+    <span class="grow"></span>
+    <button class="soft">Export PDF</button>
+    <button class="soft">Print</button>
+    <button class="soft" style="opacity:.7">Delete</button>
+    <button class="soft">Cancel</button>
+    <button class="act">Close &amp; save</button>
+  </div>
+  <div class="wobrand">
+    <b>PARAMOUNT RECORDING GROUP</b>
+    <p>Paramount · Encore · Ameraycan · Wilder · Track · Enterprise</p>
+  </div>
+  <div class="statuses">
+    <button class="soft">Confirmed</button>
+    <button class="soft tent">Tentative</button>
+    <button class="soft">Cancelled</button>
+    <button class="soft">Tour</button>
+    <button class="soft">Tech</button>
+    <button class="soft">Open Hours</button>
+  </div>
+  <div class="statuses">
+    <span class="label">Session type</span>
+    <button class="soft on">Recording</button>
+    <button class="soft">Filming</button>
+    <button class="soft">Event / Playback</button>
+  </div>
+  <div class="wt">
+    <div class="whead"><span>Studio</span><span>Date</span><span>From</span><span>To</span><span>Hrs</span><span>Rate</span><span style="text-align:right">Total</span></div>
+    <div class="wr"><span>PRS A</span><span>7-3</span><span>8:00 PM</span><span>4:00 AM</span><span>8h</span><span>$175/hr</span><span class="tot" style="text-align:right">$1,400.00</span></div>
+    <div class="wr" style="opacity:.5"><span>1ST</span><span>7-3</span><span>8:00 PM</span><span>4:00 AM</span><span>8h</span><span>Engineer…</span><span style="text-align:right">—</span></div>
+    <div class="addsofts">
+      <button class="soft">+ Studio time</button>
+      <button class="soft">+ Engineer</button>
+      <button class="soft">+ Assistant</button>
+    </div>
+    <div class="sum"><span class="label" style="opacity:.6">Studio total</span><span class="n arch">$1,400.00</span></div>
+  </div>
+</div>
+
+<!-- ANALYTICS -->
+<div class="section ana">
+  <h2>CRM — analytics</h2>
+  <h3>Analytics &amp; Insights</h3>
+  <div class="bigs">
+    <div class="big"><span class="label">Total leads</span><div class="n">3,783</div><div class="sub">All time</div></div>
+    <div class="big inv"><span class="label" style="opacity:.55">Booked</span><div class="n">1,725</div><div class="sub" style="opacity:.55">Confirmed sessions</div></div>
+    <div class="big"><span class="label">Conversion</span><div class="n">46%</div><div class="sub">Leads to booked</div></div>
+  </div>
+  <div class="charts">
+    <div class="chart">
+      <div class="donut d1"></div>
+      <div class="lg"><b>COD vs Billing</b>
+        <div><span class="dot dk1"></span>COD<i>3058 (81%)</i></div>
+        <div><span class="dot dk3"></span>Billing<i>725 (19%)</i></div>
+      </div>
+    </div>
+    <div class="chart">
+      <div class="donut d2"></div>
+      <div class="lg"><b>Inquiry source</b>
+        <div><span class="dot dk1"></span>Call<i>2201 (58%)</i></div>
+        <div><span class="dot dk2"></span>Squarespace<i>827 (22%)</i></div>
+        <div><span class="dot dk3"></span>Email<i>679 (18%)</i></div>
+        <div><span class="dot dk4"></span>Text<i>26 (1%)</i></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function flip(){
+  var h=document.documentElement;
+  var next=h.getAttribute('data-theme')==='light'?'dark':'light';
+  h.setAttribute('data-theme',next);
+  document.getElementById('themeBtn').textContent = next==='light'?'View dark':'View light';
+}
+</script>
+</body>
+</html>
