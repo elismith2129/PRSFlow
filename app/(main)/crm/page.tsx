@@ -1696,6 +1696,43 @@ const parsedLoc0 = parseLocation(lead.location || '')
   const [creatorInitials, setCreatorInitials] = useState<string | null>(null)
   const [regTokenDates, setRegTokenDates] = useState<{ created_at: string; used_at: string | null } | null>(null)
   const [statusDDOpen, setStatusDDOpen] = useState(false)
+
+  // ── Returning-client badge ────────────────────────────────────────────────
+  // Counts the lead's client's REAL prior sessions. Two traps this avoids:
+  //  1. `bookings` rows are PROJECTION CARDS — one save writes several rows for a
+  //     multi-day or multi-room session, all sharing `work_order_id`. Counting
+  //     rows would tell Eli "9 sessions" for one three-day booking, so we count
+  //     distinct engagements instead.
+  //  2. Having a client record does NOT mean they ever recorded (someone can
+  //     register and go quiet), so the badge only shows when the count is > 0.
+  // Tech / Tour / Open Hours / cancelled are excluded — they aren't sessions.
+  const [priorSessions, setPriorSessions] = useState<number | null>(null)
+  useEffect(() => {
+    const clientId = lead.client_id
+    if (!clientId) { setPriorSessions(null); return }
+    let cancelled = false
+    async function load() {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('id, work_order_id, status')
+        .eq('client_id', clientId)
+      if (cancelled || error) return
+      const REAL = new Set(['confirmed', 'completed'])
+      const engagements = new Set(
+        (data || [])
+          .filter((b: any) => REAL.has(String(b.status || '').toLowerCase()))
+          .map((b: any) => b.work_order_id || `bk:${b.id}`)
+      )
+      setPriorSessions(engagements.size)
+    }
+    load()
+    // Realtime is a hard rule in this app — the PWA can't be refreshed by hand.
+    const channel = supabase
+      .channel(`lead-returning-${clientId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => { load() })
+      .subscribe()
+    return () => { cancelled = true; supabase.removeChannel(channel) }
+  }, [lead.client_id])
   const statusPillRef = useRef<HTMLDivElement>(null)
 
   const emailRef = useRef<HTMLInputElement>(null)
@@ -2050,6 +2087,15 @@ const parsedLoc0 = parseLocation(lead.location || '')
             </div>
           )}
         </div>
+        {priorSessions !== null && priorSessions > 0 && (
+          <a
+            href={`/crm?clientId=${lead.client_id}`}
+            className="c-returning"
+            title="Open this client's profile"
+          >
+            Returning <small>· {priorSessions} session{priorSessions === 1 ? '' : 's'} →</small>
+          </a>
+        )}
         {lead.needs_contact !== false && (<>
           <span style={{ color: 'var(--c-fg-3)', fontSize: 9, flexShrink: 0 }}>·</span>
           <button

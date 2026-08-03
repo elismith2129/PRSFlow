@@ -1126,6 +1126,19 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-well-area { height: auto; min-height: 56px; padding: 11px 14px; align-items: flex-start; font-size: 13px; }
 .c-well .c-ico { opacity: .4; font-size: 13px; flex-shrink: 0; }
 
+/* RETURNING BADGE — reference .returning. Sits at the far right of the status
+   strip. Booked green is correct here: a returning client IS a booked-history
+   state, which is inside the §5 colour scope. */
+.c-returning {
+  border-radius: 99px; padding: 5px 12px; margin-left: auto;
+  font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  background: var(--c-st-booked); color: var(--c-chip-ink);
+  cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+  box-shadow: 1.5px 1.5px 4px rgba(0, 0, 0, .35);
+}
+[data-theme="light"] .c-returning { box-shadow: 1.5px 1.5px 4px rgba(42, 39, 34, .14); }
+.c-returning small { font-weight: 600; opacity: .7; letter-spacing: .04em; }
+
 /* AKA SUB-FIELD — reference .artist-sub / .aw. Deliberately NOT the 40px well:
    a stage name is secondary to the legal name, so it gets a shallower, shorter
    recess (height 28, radius 10) that sits under the name without competing. */
