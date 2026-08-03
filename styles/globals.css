@@ -978,6 +978,19 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-signoff.c-on { background: var(--c-ivory); color: #1b1a17; }
 [data-theme="light"] .c-signoff.c-on { background: var(--c-fg); color: var(--c-bg); }
 
+/* ── Calendar rows (§10 — styling only; the grid layout is fenced) ───────── */
+/* Alternating carved rows replace the 1px rules that used to separate studios.
+   The carve is deliberately shallower than .c-inset2: these are full-width bands
+   behind content, and at panel depth they'd read as trenches. */
+.c-calrow { border-radius: 26px; }
+.c-calrow-alt {
+  background: var(--c-bg);
+  box-shadow: inset 2px 2px 8px rgba(0, 0, 0, .3), inset -2px -2px 8px rgba(255, 255, 255, .025);
+}
+[data-theme="light"] .c-calrow-alt {
+  box-shadow: inset 2px 2px 7px rgba(42, 39, 34, .05), inset -2px -2px 7px rgba(255, 255, 255, .55);
+}
+
 /* ── Status fills (§5) — the only colour in the system ──────────────────── */
 /* Solid fills at full brightness. Light mode uses them as-is; dark dims by rule
    (§6) — pills via filter, chips and pools via alpha, never a second palette. */

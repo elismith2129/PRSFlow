@@ -10,6 +10,7 @@ import { createWorkOrderForBooking, bookingShouldHaveWorkOrder } from '@/lib/cre
 import { deleteSessionAndWO } from '@/lib/deleteSession'
 import { dateRange } from '@/lib/time'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { statusFillClass, StatusDot } from '@/components/carved'
 
 // ─── LOCATIONS ───────────────────────────────────────────────────────────────
 
@@ -25,13 +26,15 @@ const LOCATION_CODES: Record<string, string> = {
 
 // ─── COLOR TOKENS ────────────────────────────────────────────────────────────
 
-const STATUS_TOP_COLORS: Record<string, string> = {
-  confirmed:  'var(--booked)',
-  tentative:  'var(--warm)',
-  cancelled:  'var(--hot)',
-  tour:       '#a855f7',
-  tech:       'var(--cold)',
-  open_hours: '#e2e8f0',
+// Booking status -> carved status slot (§5). The calendar is the one surface
+// where every slot appears, so this is the canonical mapping.
+const STATUS_SLOT: Record<string, string> = {
+  confirmed:  'confirmed',
+  tentative:  'tentative',
+  cancelled:  'cancelled',
+  tour:       'tour',
+  tech:       'tech',
+  open_hours: 'open_hours',
 }
 
 // ─── LAYOUT CONSTANTS ────────────────────────────────────────────────────────
@@ -199,16 +202,10 @@ function BookingBlock({
   const width = (dur / totalDays) * 100
 
   const isBilling = booking.payment_type === 'billing'
-  const nameColor = 'var(--text)' // chip name text — white regardless of payment type
-  const topColor = STATUS_TOP_COLORS[booking.status] ?? STATUS_TOP_COLORS.confirmed
-  const sessionBorder = booking.session_type !== 'recording'
-  // Chip glow: orange (open WO / attention) or teal (confirmed); subtle, no layout impact
-  const chipGlowBorder = topColor === 'var(--warm)' ? 'rgba(249, 115, 22, 0.4)'
-    : topColor === 'var(--booked)' ? 'rgba(20, 184, 166, 0.4)'
-    : 'rgba(255,255,255,0.08)'
-  const chipGlow = topColor === 'var(--warm)' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
-    : topColor === 'var(--booked)' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
-    : 'none'
+  const slot = STATUS_SLOT[booking.status] ?? 'confirmed'
+  const isCancelled = booking.status === 'cancelled'
+  // Text on a status fill is always chip ink — except hot, which needs pale text.
+  const nameColor = slot === 'cancelled' ? 'var(--c-hot-text)' : 'var(--c-chip-ink)'
 
   // Line 1: artist (billing) or client name (COD)
   const primaryName = isBilling
@@ -225,8 +222,8 @@ function BookingBlock({
 
   const eng = initials(booking.engineer_name)
   const asst = initials(booking.assistant_name)
-  const engColor = 'var(--cold)' // chip engineer initials — muted
-  const asstColor = 'var(--cold)' // chip assistant initials — muted
+  const engColor = 'var(--c-fg-3)' // chip engineer initials — muted
+  const asstColor = 'var(--c-fg-3)' // chip assistant initials — muted
 
   const slotH = rowH / numLanes
   const blockTop = lane * slotH + 2
@@ -238,17 +235,12 @@ function BookingBlock({
   return (
     <div
       onClick={e => { e.stopPropagation(); onClick() }}
+      className={`c-ev c-control c-raised-chip ${statusFillClass(slot)}${isCancelled ? ' c-ev-cancelled' : ''}`}
       style={{
         position: 'absolute', top: blockTop, height: blockHeight,
         minHeight: isMobile ? 44 : undefined,
         left: `calc(${left}% + 2px)`, width: `calc(${width}% - 4px)`,
-        background: 'var(--bg)', boxSizing: 'border-box',
-        borderTop: `${micro ? 3 : 4}px solid ${topColor}`,
-        borderLeft: sessionBorder ? '2px solid rgba(var(--accent-rgb),0.7)' : `1px solid ${chipGlowBorder}`,
-        borderRight: sessionBorder ? '2px solid rgba(var(--accent-rgb),0.7)' : `1px solid ${chipGlowBorder}`,
-        borderBottom: sessionBorder ? '2px solid rgba(var(--accent-rgb),0.7)' : `1px solid ${chipGlowBorder}`,
-        borderRadius: 4,
-        boxShadow: chipGlow,
+        boxSizing: 'border-box',
         padding: micro ? '1px 4px' : compact ? '3px 5px' : '4px 6px',
         cursor: 'pointer', overflow: 'hidden',
         display: 'flex', flexDirection: micro ? 'row' : 'column',
@@ -260,11 +252,11 @@ function BookingBlock({
     >
       {micro ? (
         <>
-          <div style={{ color: nameColor, fontSize: 8, fontFamily: 'DM Serif Display', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 1 auto', minWidth: 0 }}>
+          <div style={{ color: nameColor, fontSize: 8, fontFamily: "'Archivo Black', sans-serif", lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 1 auto', minWidth: 0 }}>
             {primaryName}
           </div>
           {timeStr && (
-            <div style={{ fontSize: 7, fontFamily: 'Inter', color: 'var(--cold)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <div style={{ fontSize: 7, fontFamily: 'Inter', color: 'var(--c-fg-3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
               {timeStr}
             </div>
           )}
@@ -275,21 +267,21 @@ function BookingBlock({
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, minWidth: 0, overflow: 'hidden' }}>
             <div style={{
               color: nameColor, fontSize: isMobile ? 11 : (blockHeight >= 48 ? 12 : 10),
-              fontFamily: 'DM Serif Display', lineHeight: 1.2,
+              fontFamily: "'Archivo Black', sans-serif", lineHeight: 1.2,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               flex: '1 1 0', minWidth: 0,
             }}>
               {primaryName}
             </div>
             {!isBilling && codLabel && (
-              <span style={{ fontSize: 7, fontFamily: 'Inter', fontWeight: 700, color: '#f87171', flexShrink: 0, lineHeight: 1, letterSpacing: '0.03em' }}>
+              <span style={{ fontSize: 7, fontFamily: 'Inter', fontWeight: 700, opacity: 0.65, flexShrink: 0, lineHeight: 1, letterSpacing: '0.03em' }}>
                 {codLabel}
               </span>
             )}
           </div>
           {/* Row 2: time + eng/asst */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', overflow: 'hidden' }}>
-            <div style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--cold)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--c-fg-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
               {timeStr}
             </div>
             {(eng || asst) && (
@@ -303,7 +295,7 @@ function BookingBlock({
       ) : (
         <>
           <div style={{
-            color: nameColor, fontSize: isMobile ? 11 : 13, fontFamily: 'DM Serif Display', lineHeight: 1.2,
+            color: nameColor, fontSize: isMobile ? 11 : 13, fontFamily: "'Archivo Black', sans-serif", lineHeight: 1.2,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
             {primaryName}
@@ -311,21 +303,21 @@ function BookingBlock({
           {labelLine && (
             <div style={{
               fontSize: 10, fontFamily: 'Inter', lineHeight: 1.2, marginTop: 1,
-              color: 'var(--text2)',
+              color: 'var(--c-fg-2)',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>
               {labelLine}
             </div>
           )}
           {timeStr && (
-            <div style={{ fontSize: 9, fontFamily: 'Inter', lineHeight: 1.2, marginTop: 2, color: 'var(--cold)' }}>
+            <div style={{ fontSize: 9, fontFamily: 'Inter', lineHeight: 1.2, marginTop: 2, color: 'var(--c-fg-3)' }}>
               {timeStr}
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto' }}>
             <div>
               {!isBilling && booking.cod_method && (
-                <div style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, lineHeight: 1.3, color: '#f87171' }}>
+                <div style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, lineHeight: 1.3, opacity: 0.65 }}>
                   {booking.cod_method.toUpperCase()}
                 </div>
               )}
@@ -345,15 +337,6 @@ function BookingBlock({
 
 
 // ─── DAY VIEW ────────────────────────────────────────────────────────────────
-
-const DAY_STATUS_BG: Record<string, string> = {
-  confirmed:  '#1e40af',
-  tentative:  '#c2410c',
-  cancelled:  '#b91c1c',
-  tour:       '#6d28d9',
-  tech:       '#374151',
-  open_hours: '#111827',
-}
 
 function DayView({
   dayViewDate,
@@ -409,29 +392,28 @@ function DayView({
       {!isMobile && (
       <div style={{
         width: 216, flexShrink: 0, overflowY: 'auto',
-        background: 'var(--surface)',
-        borderRight: '1px solid rgba(255,255,255,0.08)',
+        background: 'var(--c-bg)',
         padding: '16px 14px',
       }}>
         {/* Month nav */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <button
             onClick={() => setMiniMonthStart(new Date(miniMonthStart.getFullYear(), miniMonthStart.getMonth() - 1, 1))}
-            style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 16, padding: '0 2px', lineHeight: 1 }}
+            style={{ background: 'none', color: 'var(--c-fg-2)', cursor: 'pointer', fontSize: 16, padding: '0 2px', lineHeight: 1 }}
           >‹</button>
-          <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 12, color: 'var(--text)', letterSpacing: '0.04em' }}>
+          <span style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 12, color: 'var(--c-fg)', letterSpacing: '0.04em' }}>
             {miniMonthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </span>
           <button
             onClick={() => setMiniMonthStart(new Date(miniMonthStart.getFullYear(), miniMonthStart.getMonth() + 1, 1))}
-            style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 16, padding: '0 2px', lineHeight: 1 }}
+            style={{ background: 'none', color: 'var(--c-fg-2)', cursor: 'pointer', fontSize: 16, padding: '0 2px', lineHeight: 1 }}
           >›</button>
         </div>
 
         {/* Weekday labels */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 2 }}>
           {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
-            <div key={d} style={{ textAlign: 'center', fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)', padding: '2px 0' }}>
+            <div key={d} style={{ textAlign: 'center', fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-3)', padding: '2px 0' }}>
               {d}
             </div>
           ))}
@@ -451,8 +433,8 @@ function DayView({
                   width: 24, height: 24, borderRadius: '50%', margin: '0 auto',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, fontFamily: 'Inter',
-                  background: isSelected ? 'var(--accent)' : isTodayCell ? 'rgba(255,255,255,0.1)' : 'transparent',
-                  color: isSelected ? 'var(--bg)' : 'var(--text2)',
+                  background: isSelected ? 'var(--c-fg)' : isTodayCell ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  color: isSelected ? 'var(--c-bg)' : 'var(--c-fg-2)',
                   fontWeight: isSelected || isTodayCell ? 700 : 400,
                   outline: isTodayCell && !isSelected ? '1px solid rgba(255,255,255,0.2)' : 'none',
                 }}>
@@ -472,20 +454,19 @@ function DayView({
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '10px 16px', flexShrink: 0,
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
-        }}>
-          <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
+          }}>
+          <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15, color: 'var(--c-fg)' }}>
             {dayViewDate.toLocaleDateString('en-US', isMobile
               ? { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }
               : { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <button onClick={() => setDayViewDate(addDays(dayViewDate, -1))}
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}>‹</button>
+              style={{ background: 'var(--c-wash)', color: 'var(--c-fg)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}>‹</button>
             <button onClick={() => setDayViewDate(new Date())}
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}>Today</button>
+              style={{ background: 'var(--c-wash)', color: 'var(--c-fg-2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}>Today</button>
             <button onClick={() => setDayViewDate(addDays(dayViewDate, 1))}
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}>›</button>
+              style={{ background: 'var(--c-wash)', color: 'var(--c-fg)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}>›</button>
           </div>
         </div>
 
@@ -499,17 +480,16 @@ function DayView({
               return (
                 <div key={`${loc}|${room}`} style={{
                   position: 'relative',
-                  background: 'var(--surface)',
+                  background: 'var(--c-bg)',
                   borderRadius: 6, overflow: 'hidden',
-                  border: cards.length > 0 ? '1px solid rgba(20, 184, 166, 0.2)' : '1px solid rgba(255,255,255,0.08)',
-                }}>
+                  }}>
                   {cards.length > 0 && (
                     /* 2px teal top bar */
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'var(--booked)', zIndex: 3 }} />
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'var(--c-st-booked)', zIndex: 3 }} />
                   )}
                   {/* Card header */}
-                  <div style={{ padding: '6px 10px', background: 'var(--surface2)', borderBottom: cards.length > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
-                    <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 11, color: 'var(--text2)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  <div style={{ padding: '6px 10px', background: 'var(--c-wash)' }}>
+                    <span style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, color: 'var(--c-fg-2)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                       {loc} {room}
                     </span>
                   </div>
@@ -517,7 +497,7 @@ function DayView({
                   {/* Booking blocks */}
                   {cards.map(b => {
                     const isBilling = b.payment_type === 'billing'
-                    const nameColor = 'var(--text)' // chip name text — white regardless of payment type
+                    const nameColor = 'var(--c-fg)' // chip name text — white regardless of payment type
                     const displayName = isBilling
                       ? (b.artist && b.label ? `${b.label} / ${b.artist}` : b.artist || b.label || b.client_name || '')
                       : (b.client_name || '')
@@ -527,38 +507,29 @@ function DayView({
                     const eng = b.engineer_name ? `1ST-${initials(b.engineer_name)}` : ''
                     const asst = b.assistant_name ? `2ND-${initials(b.assistant_name)}` : ''
                     const codLabel = !isBilling && b.cod_method ? `COD ${b.cod_method.toUpperCase()}` : null
-                    const hasSessionBorder = b.session_type !== 'recording'
-                    const topColor = STATUS_TOP_COLORS[b.status] ?? STATUS_TOP_COLORS.confirmed
-                    const chipGlowBorder = topColor === 'var(--warm)' ? 'rgba(249, 115, 22, 0.4)'
-                      : topColor === 'var(--booked)' ? 'rgba(20, 184, 166, 0.4)'
-                      : 'rgba(255,255,255,0.08)'
-                    const chipGlow = topColor === 'var(--warm)' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
-                      : topColor === 'var(--booked)' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
-                      : 'none'
+                    const slot = STATUS_SLOT[b.status] ?? 'confirmed'
+                    const isCancelled = b.status === 'cancelled'
 
                     return (
-                      <div key={b.id} onClick={() => onOpenEdit(b)} style={{
-                        padding: '7px 10px', cursor: 'pointer',
-                        background: 'var(--bg)',
-                        borderTop: `3px solid ${topColor}`,
-                        borderLeft: hasSessionBorder ? '3px solid rgba(var(--accent-rgb),0.7)' : `1px solid ${chipGlowBorder}`,
-                        borderRight: `1px solid ${chipGlowBorder}`,
-                        borderBottom: `1px solid ${chipGlowBorder}`,
-                        boxShadow: chipGlow,
-                      }}>
+                      <div
+                        key={b.id}
+                        onClick={() => onOpenEdit(b)}
+                        className={`c-ev c-control c-raised-chip ${statusFillClass(slot)}${isCancelled ? ' c-ev-cancelled' : ''}`}
+                        style={{ padding: '7px 10px', cursor: 'pointer' }}
+                      >
                         {/* Name */}
-                        <div style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: nameColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div className="c-ev-title c-arch" style={{ fontSize: 12 }}>
                           {displayName}
                         </div>
                         {/* Time */}
                         {timeStr && (
-                          <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--cold)', marginTop: 2 }}>
+                          <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-3)', marginTop: 2 }}>
                             {timeStr}
                           </div>
                         )}
                         {/* COD method */}
                         {codLabel && (
-                          <div style={{ fontFamily: 'Inter', fontSize: 9, fontWeight: 700, color: '#f87171', marginTop: 2 }}>
+                          <div style={{ fontFamily: 'Inter', fontSize: 9, fontWeight: 700, opacity: 0.65, marginTop: 2 }}>
                             {codLabel}
                           </div>
                         )}
@@ -568,7 +539,7 @@ function DayView({
                             <span style={{ fontFamily: 'Inter', fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>
                               {b.invoice_num ? `#${b.invoice_num}` : ''}
                             </span>
-                            <span style={{ fontFamily: 'Inter', fontSize: 9, color: 'var(--cold)' }}>
+                            <span style={{ fontFamily: 'Inter', fontSize: 9, color: 'var(--c-fg-3)' }}>
                               {[eng, asst].filter(Boolean).join(' ')}
                             </span>
                           </div>
@@ -638,35 +609,34 @@ function StudioView({
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '10px 16px', flexShrink: 0,
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
-      }}>
-        <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
-          <span style={{ color: 'var(--accent)', textTransform: 'uppercase' }}>{loc} {room}</span>
-          <span style={{ color: 'var(--text3)', margin: '0 8px' }}>—</span>
+        }}>
+        <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15, color: 'var(--c-fg)' }}>
+          <span style={{ color: 'var(--c-fg)', textTransform: 'uppercase' }}>{loc} {room}</span>
+          <span style={{ color: 'var(--c-fg-3)', margin: '0 8px' }}>—</span>
           {monthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <button
             onClick={() => setMonthStart(new Date(year, month - 1, 1))}
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
+            style={{ background: 'var(--c-wash)', color: 'var(--c-fg)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
           >‹</button>
           <button
             onClick={() => { const t = new Date(); setMonthStart(new Date(t.getFullYear(), t.getMonth(), 1)) }}
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}
+            style={{ background: 'var(--c-wash)', color: 'var(--c-fg-2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}
           >Today</button>
           <button
             onClick={() => setMonthStart(new Date(year, month + 1, 1))}
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
+            style={{ background: 'var(--c-wash)', color: 'var(--c-fg)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
           >›</button>
         </div>
       </div>
 
       {/* Weekday labels */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', flexShrink: 0 }}>
         {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
           <div key={d} style={{
             textAlign: 'center', padding: '5px 0',
-            fontFamily: 'Inter', fontSize: 10, color: 'var(--text3)',
+            fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-3)',
             letterSpacing: '0.05em', textTransform: 'uppercase',
           }}>{d}</div>
         ))}
@@ -683,8 +653,6 @@ function StudioView({
         {cells.map((cell, i) => {
           if (!cell) return (
             <div key={`empty-${i}`} style={{
-              borderRight: i % 7 < 6 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-              borderBottom: '1px solid rgba(255,255,255,0.05)',
               background: 'rgba(0,0,0,0.15)',
               minHeight: 80,
             }} />
@@ -699,18 +667,16 @@ function StudioView({
               key={cellStr}
               onDoubleClick={() => onOpenNew(loc, room, cellStr)}
               style={{
-                borderRight: i % 7 < 6 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                borderBottom: '1px solid rgba(255,255,255,0.05)',
                 padding: '4px 5px',
-                background: isTodayCell ? 'rgba(var(--accent-rgb),0.04)' : 'transparent',
+                background: isTodayCell ? 'var(--c-wash2)' : 'transparent',
               }}
             >
               {/* Date number */}
               <div style={{
                 width: 22, height: 22, borderRadius: '50%', marginBottom: 2,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: isTodayCell ? 'var(--accent)' : 'transparent',
-                color: isTodayCell ? 'var(--bg)' : 'var(--text3)',
+                background: isTodayCell ? 'var(--c-fg)' : 'transparent',
+                color: isTodayCell ? 'var(--c-bg)' : 'var(--c-fg-3)',
                 fontSize: 11, fontFamily: 'Inter', fontWeight: isTodayCell ? 700 : 400,
               }}>
                 {cell.getDate()}
@@ -718,7 +684,7 @@ function StudioView({
               {/* Booking blocks */}
               {cellBookings.map(b => {
                 const isBilling = b.payment_type === 'billing'
-                const nameColor = 'var(--text)' // chip name text — white regardless of payment type
+                const nameColor = 'var(--c-fg)' // chip name text — white regardless of payment type
                 const displayName = isBilling
                   ? (b.artist && b.label ? `${b.label} / ${b.artist}` : b.artist || b.label || b.client_name || '')
                   : (b.client_name || '')
@@ -730,44 +696,31 @@ function StudioView({
                   : null
                 const eng = b.engineer_name ? `1ST-${initials(b.engineer_name)}` : ''
                 const asst = b.assistant_name ? `2ND-${initials(b.assistant_name)}` : ''
-                const engColor = 'var(--cold)' // chip engineer initials — muted
-                const asstColor = 'var(--cold)' // chip assistant initials — muted
-                const topColor = STATUS_TOP_COLORS[b.status] ?? STATUS_TOP_COLORS.confirmed
-                const chipGlowBorder = topColor === 'var(--warm)' ? 'rgba(249, 115, 22, 0.4)'
-                  : topColor === 'var(--booked)' ? 'rgba(20, 184, 166, 0.4)'
-                  : 'rgba(255,255,255,0.08)'
-                const chipGlow = topColor === 'var(--warm)' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
-                  : topColor === 'var(--booked)' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
-                  : 'none'
+                const engColor = 'var(--c-fg-3)' // chip engineer initials — muted
+                const asstColor = 'var(--c-fg-3)' // chip assistant initials — muted
+                const slot = STATUS_SLOT[b.status] ?? 'confirmed'
+                const isCancelled = b.status === 'cancelled'
                 return (
                   <div
                     key={b.id}
                     onClick={e => { e.stopPropagation(); onOpenEdit(b) }}
-                    style={{
-                      marginBottom: 3, padding: '5px 7px', borderRadius: 3,
-                      background: 'var(--bg)',
-                      cursor: 'pointer',
-                      borderTop: `3px solid ${topColor}`,
-                      borderLeft: b.session_type !== 'recording' ? '2px solid rgba(var(--accent-rgb),0.7)' : `1px solid ${chipGlowBorder}`,
-                      borderRight: `1px solid ${chipGlowBorder}`,
-                      borderBottom: `1px solid ${chipGlowBorder}`,
-                      boxShadow: chipGlow,
-                    }}
+                    className={`c-ev c-control c-raised-chip ${statusFillClass(slot)}${isCancelled ? ' c-ev-cancelled' : ''}`}
+                    style={{ marginBottom: 3, padding: '5px 7px', cursor: 'pointer' }}
                   >
                     {/* Name */}
-                    <div style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: nameColor, wordBreak: 'break-word' }}>
+                    <div className="c-ev-title c-arch" style={{ fontSize: 11.5, whiteSpace: 'normal', wordBreak: 'break-word' }}>
                       {displayName}
                     </div>
                     {/* Time */}
                     {timeStr && (
-                      <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--cold)', marginTop: 2 }}>
+                      <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-3)', marginTop: 2 }}>
                         {timeStr}
                       </div>
                     )}
                     {/* COD method + engineer/assistant row */}
                     {(codLabel || eng || asst) && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                        <span style={{ fontFamily: 'Inter', fontSize: 9, fontWeight: 700, color: '#f87171' }}>
+                        <span style={{ fontFamily: 'Inter', fontSize: 9, fontWeight: 700, opacity: 0.65 }}>
                           {codLabel ?? ''}
                         </span>
                         <div style={{ display: 'flex', gap: 4 }}>
@@ -830,6 +783,13 @@ function CalendarPageInner() {
   const scrollCorrectionRef = useRef<number | null>(null)
   const shiftingRef = useRef(false)
   const isMobile = useIsMobile()
+
+  // Carved ground for this route — without it the page sits on the legacy
+  // background while its content is carved paper.
+  useEffect(() => {
+    document.documentElement.classList.add('c-page')
+    return () => document.documentElement.classList.remove('c-page')
+  }, [])
   // Narrower room-label column on mobile so day columns keep usable width
   const labelW = isMobile ? 80 : LABEL_W
 
@@ -1248,16 +1208,15 @@ function CalendarPageInner() {
       <div
         ref={gridRef}
         onScroll={handleGridScroll}
-        style={{ flex: 1, overflow: 'auto', minHeight: 0, border: '1px solid var(--border)', borderRadius: 6, WebkitOverflowScrolling: 'touch' }}
+        style={{ flex: 1, overflow: 'auto', minHeight: 0, borderRadius: 6, WebkitOverflowScrolling: 'touch' }}
       >
         <div style={{ minWidth: labelW + DAYS * colW }}>
         {/* Day header row */}
         <div style={{
           display: 'flex', position: 'sticky', top: 0, zIndex: 10,
-          background: 'var(--surface)', borderBottom: '2px solid var(--border)',
-        }}>
-          <div style={{ width: labelW, flexShrink: 0, borderRight: '1px solid var(--border)', position: 'sticky', left: 0, zIndex: 11, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 600, color: 'var(--cold)', letterSpacing: '0.05em' }}>
+          background: 'var(--c-bg)', }}>
+          <div style={{ width: labelW, flexShrink: 0, position: 'sticky', left: 0, zIndex: 11, background: 'var(--c-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 600, color: 'var(--c-fg-3)', letterSpacing: '0.05em' }}>
               {startDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
             </span>
           </div>
@@ -1268,37 +1227,36 @@ function CalendarPageInner() {
             const isWeekStart = d.getDay() === 1 && i > 0
             // inset box-shadow draws a left-edge stripe without affecting layout
             const shadow = isMonthStart
-              ? 'inset 2px 0 0 var(--accent)'
+              ? 'inset 2px 0 0 var(--c-fg)'
               : isWeekStart ? 'inset 2px 0 0 rgba(255,255,255,0.35)' : 'none'
             return (
               <div key={fmt(d)} style={{
                 flex: 1, minWidth: colW, textAlign: 'center', padding: '2px 2px',
                 background: wknd ? 'rgba(255,255,255,0.015)' : 'transparent',
-                borderRight: '1px solid var(--border)',
                 boxShadow: shadow,
                 position: 'relative',
               }}>
                 {isMonthStart && (
                   <div style={{
                     position: 'absolute', top: 2, left: 5,
-                    fontSize: 6, fontFamily: 'Inter', color: 'var(--accent)',
+                    fontSize: 6, fontFamily: 'Inter', color: 'var(--c-fg)',
                     letterSpacing: '0.1em', textTransform: 'uppercase', lineHeight: 1,
                   }}>
                     {d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
                   </div>
                 )}
                 <div style={{
-                  fontSize: isMobile ? 9 : 8, fontFamily: 'Inter', color: 'var(--text3)',
+                  fontSize: isMobile ? 9 : 8, fontFamily: 'Inter', color: 'var(--c-fg-3)',
                   letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1.2,
                 }}>
                   {d.toLocaleDateString('en-US', { weekday: 'short' })}
                 </div>
                 <div style={{
                   width: 22, height: 22, borderRadius: '50%', margin: '2px auto 0',
-                  background: todayFlag ? 'var(--accent)' : 'transparent',
+                  background: todayFlag ? 'var(--c-fg)' : 'transparent',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, fontFamily: 'Inter', fontWeight: todayFlag ? 700 : 400,
-                  color: todayFlag ? 'var(--bg)' : wknd ? 'var(--text2)' : 'var(--text)',
+                  color: todayFlag ? 'var(--c-bg)' : wknd ? 'var(--c-fg-2)' : 'var(--c-fg)',
                 }}>
                   {d.getDate()}
                 </div>
@@ -1311,25 +1269,26 @@ function CalendarPageInner() {
         {filteredLocations.map(loc => (
           <div key={loc.name}>
             {/* Location header — collapsible */}
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
+            <div style={{ display: 'flex', marginTop: 10, marginBottom: 4 }}>
               {/* Sticky label cell — always visible in the left column */}
               <div
                 onClick={() => toggleCollapse(loc.name)}
                 style={{
                   width: labelW, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '5px 10px', cursor: 'pointer', userSelect: 'none',
-                  background: 'var(--surface2)',
+                  cursor: 'pointer', userSelect: 'none',
                   position: 'sticky', left: 0, zIndex: 6,
+                  marginBottom: 0,
                 }}
+                className="c-lozenge c-anchor"
               >
                 <span style={{
-                  fontSize: 8, fontFamily: 'Inter', color: 'var(--text3)',
+                  fontSize: 8, fontFamily: 'Inter', color: 'var(--c-fg-3)',
                   display: 'inline-block', transition: 'transform 0.15s', flexShrink: 0,
                   transform: collapsed.has(loc.name) ? 'rotate(-90deg)' : 'rotate(0deg)',
                 }}>▼</span>
                 <span style={{
-                  fontSize: 10, fontFamily: 'Syne', fontWeight: 700,
-                  color: 'var(--text2)', letterSpacing: '0.06em', textTransform: 'uppercase',
+                  fontSize: 10, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400,
+                  color: 'var(--c-fg-2)', letterSpacing: '0.06em', textTransform: 'uppercase',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>{isMobile ? (LOCATION_CODES[loc.name] ?? loc.name) : loc.name}</span>
               </div>
@@ -1338,7 +1297,7 @@ function CalendarPageInner() {
             </div>
 
             {/* Room rows */}
-            {!collapsed.has(loc.name) && loc.rooms.map(room => {
+            {!collapsed.has(loc.name) && loc.rooms.map((room, roomIdx) => {
               const roomKey = `${loc.name}|${room}`
               const isRoomCollapsed = collapsedRooms.has(roomKey)
               const roomBookings = bookings.filter(b =>
@@ -1347,8 +1306,8 @@ function CalendarPageInner() {
               )
               const laneMap = assignLanes(roomBookings)
               return (
-                <div key={room} style={{
-                  display: 'flex', borderBottom: '1px solid var(--border)',
+                <div key={room} className={roomIdx % 2 === 0 ? 'c-calrow c-calrow-alt' : 'c-calrow'} style={{
+                  display: 'flex',
                   height: isRoomCollapsed ? COLLAPSED_ROOM_H : rowH,
                 }}>
                   {/* Room label — click to collapse/expand. On mobile the column is
@@ -1361,14 +1320,14 @@ function CalendarPageInner() {
                     })}
                     style={{
                       width: labelW, flexShrink: 0, display: 'flex', alignItems: 'center', gap: isMobile ? 3 : 5,
-                      padding: isMobile ? '0 6px' : '0 12px', fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)',
-                      borderRight: '1px solid var(--border)', cursor: 'pointer', userSelect: 'none',
+                      padding: isMobile ? '0 6px' : '0 12px', fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)',
+                      cursor: 'pointer', userSelect: 'none',
                       whiteSpace: 'nowrap', overflow: 'hidden',
-                      position: 'sticky', left: 0, zIndex: 5, background: 'var(--surface)',
+                      position: 'sticky', left: 0, zIndex: 5, background: 'var(--c-bg)',
                     }}
                   >
                     <span style={{
-                      fontSize: 7, color: 'var(--text3)', flexShrink: 0,
+                      fontSize: 7, color: 'var(--c-fg-3)', flexShrink: 0,
                       display: 'inline-block', transition: 'transform 0.15s',
                       transform: isRoomCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
                     }}>▼</span>
@@ -1390,9 +1349,8 @@ function CalendarPageInner() {
                               position: 'absolute', top: 0, bottom: 0,
                               left: `${(i / DAYS) * 100}%`, width: `${(1 / DAYS) * 100}%`,
                               background: isWeekend(d) ? 'rgba(255,255,255,0.012)' : 'transparent',
-                              borderRight: '1px solid var(--border)',
                               boxShadow: cellIsMonthStart
-                                ? 'inset 2px 0 0 rgba(var(--accent-rgb),0.3)'
+                                ? 'inset 2px 0 0 var(--c-wash2)'
                                 : cellIsWeekStart ? 'inset 2px 0 0 rgba(255,255,255,0.12)' : 'none',
                               cursor: 'crosshair',
                             }}
@@ -1434,14 +1392,13 @@ function CalendarPageInner() {
       {woWarning && (
         <div style={{
           flexShrink: 0, marginBottom: 12, padding: '10px 14px', borderRadius: 8,
-          background: 'rgba(240,78,122,0.10)', border: '1px solid rgba(240,78,122,0.35)',
-          color: 'var(--text)', fontFamily: 'Inter', fontSize: 12,
+          background: 'rgba(240,78,122,0.10)', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12,
           display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
         }}>
           <span>{woWarning}</span>
           <button
             onClick={() => setWoWarning(null)}
-            style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 14, lineHeight: 1, flexShrink: 0 }}
+            style={{ background: 'none', color: 'var(--c-fg-2)', cursor: 'pointer', fontSize: 14, lineHeight: 1, flexShrink: 0 }}
           >×</button>
         </div>
       )}
@@ -1464,7 +1421,7 @@ function CalendarPageInner() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <button
             onClick={goPrev}
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
+            style={{ background: 'var(--c-wash)', color: 'var(--c-fg)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
           >‹</button>
           <button
             onClick={() => {
@@ -1482,11 +1439,11 @@ function CalendarPageInner() {
                 }
               }
             }}
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}
+            style={{ background: 'var(--c-wash)', color: 'var(--c-fg-2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}
           >Today</button>
           <button
             onClick={goNext}
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
+            style={{ background: 'var(--c-wash)', color: 'var(--c-fg)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
           >›</button>
         </div>
 
@@ -1497,7 +1454,7 @@ function CalendarPageInner() {
         {isMobile ? (
           <div style={{ flex: 1, position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
             <span style={{
-              fontSize: 14, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text)',
+              fontSize: 14, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, color: 'var(--c-fg)',
               textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.3)', textUnderlineOffset: 3,
               cursor: 'pointer',
             }}>
@@ -1513,11 +1470,11 @@ function CalendarPageInner() {
                 setStartDate(getSunday(picked))
                 setDayViewDate(picked)
               }}
-              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, padding: 0, margin: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, padding: 0, margin: 0, background: 'transparent', cursor: 'pointer' }}
             />
           </div>
         ) : (
-          <div style={{ flex: 1, fontSize: 14, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text)' }}>
+          <div style={{ flex: 1, fontSize: 14, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, color: 'var(--c-fg)' }}>
             {rangeLabel(startDate, totalDays)}
           </div>
         )}
@@ -1535,8 +1492,7 @@ function CalendarPageInner() {
             onClick={() => { setLocFilter('All'); setView('2wks') }}
             style={{
               padding: '4px 14px', borderRadius: 20, fontSize: 10, fontFamily: 'Inter',
-              fontWeight: 700, cursor: 'pointer', border: '1px solid var(--border)',
-              background: 'var(--surface2)', color: 'var(--text2)',
+              fontWeight: 700, cursor: 'pointer', background: 'var(--c-wash)', color: 'var(--c-fg-2)',
               letterSpacing: '0.04em',
             }}
           >All</button>
@@ -1552,9 +1508,8 @@ function CalendarPageInner() {
             else if (view === 'studio') setView('day')
           }}
           style={{
-            background: locFilter.includes('|') ? 'rgba(var(--accent-rgb),0.08)' : 'var(--surface2)',
-            border: locFilter.includes('|') ? '1px solid rgba(var(--accent-rgb),0.4)' : '1px solid var(--border)',
-            color: locFilter.includes('|') ? 'var(--accent)' : 'var(--text2)',
+            background: locFilter.includes('|') ? 'var(--c-wash2)' : 'var(--c-wash)',
+            color: locFilter.includes('|') ? 'var(--c-fg)' : 'var(--c-fg-2)',
             borderRadius: 4, padding: '4px 10px',
             fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', outline: 'none',
           }}
@@ -1572,8 +1527,8 @@ function CalendarPageInner() {
 
         {/* View switcher */}
         <div style={{
-          display: 'flex', background: 'var(--surface2)',
-          borderRadius: 6, border: '1px solid var(--border)', overflow: 'hidden',
+          display: 'flex', background: 'var(--c-wash)',
+          borderRadius: 6, overflow: 'hidden',
         }}>
           {(['day', 'week', '2wks', 'month'] as ViewType[]).map(v => (
             <button key={v} onClick={() => {
@@ -1590,9 +1545,8 @@ function CalendarPageInner() {
               }
             }} style={{
               padding: '4px 12px', fontSize: 10, fontFamily: 'Inter',
-              cursor: 'pointer', border: 'none',
-              background: view === v ? 'var(--border)' : 'transparent',
-              color: view === v ? 'var(--accent)' : 'var(--text2)',
+              cursor: 'pointer', background: view === v ? 'var(--c-wash2)' : 'transparent',
+              color: view === v ? 'var(--c-fg)' : 'var(--c-fg-2)',
               fontWeight: view === v ? 700 : 400,
             }}>
               {v === '2wks' ? '2 Wks' : v.charAt(0).toUpperCase() + v.slice(1)}
@@ -1601,21 +1555,21 @@ function CalendarPageInner() {
         </div>
 
         {/* Zoom controls — hidden on mobile (fixed fit; use scroll) */}
-        <div style={{ display: isMobile ? 'none' : 'flex', alignItems: 'center', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+        <div style={{ display: isMobile ? 'none' : 'flex', alignItems: 'center', background: 'var(--c-wash)', borderRadius: 6, overflow: 'hidden' }}>
           <button
             onClick={() => setZoomLevel(z => Math.max(z - 1, 0))}
             title="Zoom out (−)"
-            style={{ padding: '4px 9px', fontSize: 14, lineHeight: 1, background: 'transparent', border: 'none', color: zoomLevel === 0 ? 'var(--text3)' : 'var(--text)', cursor: zoomLevel === 0 ? 'default' : 'pointer' }}
+            style={{ padding: '4px 9px', fontSize: 14, lineHeight: 1, background: 'transparent', color: zoomLevel === 0 ? 'var(--c-fg-3)' : 'var(--c-fg)', cursor: zoomLevel === 0 ? 'default' : 'pointer' }}
           >−</button>
           <span
             onClick={() => setZoomLevel(0)}
             title="Reset to fit all (0)"
-            style={{ fontSize: 9, fontFamily: 'Inter', color: zoomLevel === 0 ? 'var(--accent)' : 'var(--text2)', minWidth: 26, textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}
+            style={{ fontSize: 9, fontFamily: 'Inter', color: zoomLevel === 0 ? 'var(--c-fg)' : 'var(--c-fg-2)', minWidth: 26, textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}
           >{zoomLevel === 0 ? 'Fit' : `${rowH}px`}</span>
           <button
             onClick={() => setZoomLevel(z => Math.min(z + 1, ZOOM_FIXED.length))}
             title="Zoom in (+)"
-            style={{ padding: '4px 9px', fontSize: 14, lineHeight: 1, background: 'transparent', border: 'none', color: zoomLevel === ZOOM_FIXED.length ? 'var(--text3)' : 'var(--text)', cursor: zoomLevel === ZOOM_FIXED.length ? 'default' : 'pointer' }}
+            style={{ padding: '4px 9px', fontSize: 14, lineHeight: 1, background: 'transparent', color: zoomLevel === ZOOM_FIXED.length ? 'var(--c-fg-3)' : 'var(--c-fg)', cursor: zoomLevel === ZOOM_FIXED.length ? 'default' : 'pointer' }}
           >+</button>
         </div>
         </div>{/* end mobile row 2 */}
@@ -1628,9 +1582,8 @@ function CalendarPageInner() {
             borderRadius: isMobile ? 8 : 4,
             fontSize: isMobile ? 13 : 11, fontFamily: 'Inter',
             fontWeight: 700, cursor: 'pointer',
-            background: isMobile ? 'var(--accent)' : '#1e40af',
-            border: 'none',
-            color: isMobile ? 'var(--bg)' : '#fff',
+            background: 'var(--c-fg)',
+            color: 'var(--c-bg)',
             width: isMobile ? '100%' : undefined,
             minHeight: isMobile ? 44 : undefined,
             letterSpacing: isMobile ? '0.04em' : undefined,
