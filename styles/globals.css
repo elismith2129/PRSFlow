@@ -1126,6 +1126,24 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-well-area { height: auto; min-height: 56px; padding: 11px 14px; align-items: flex-start; font-size: 13px; }
 .c-well .c-ico { opacity: .4; font-size: 13px; flex-shrink: 0; }
 
+/* AKA SUB-FIELD — reference .artist-sub / .aw. Deliberately NOT the 40px well:
+   a stage name is secondary to the legal name, so it gets a shallower, shorter
+   recess (height 28, radius 10) that sits under the name without competing. */
+.c-artist-sub { display: inline-flex; align-items: center; gap: 7px; margin-top: 8px; font-size: 12.5px; }
+.c-aw {
+  background: var(--c-bg); border-radius: 10px; height: 28px;
+  display: flex; align-items: center; padding: 0 10px;
+  box-shadow: inset 2px 2px 6px rgba(0, 0, 0, .3), inset -2px -2px 6px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-aw {
+  box-shadow: inset 2px 2px 6px rgba(42, 39, 34, .06), inset -2px -2px 6px rgba(255, 255, 255, .55);
+}
+.c-artist-sub input {
+  font-size: 12.5px; width: 140px; background: none; color: var(--c-fg);
+  font-family: inherit; box-shadow: none; outline: none;
+}
+.c-artist-sub input::placeholder { color: var(--c-fg); opacity: .35; }
+
 /* BAND — grouping ground. One tone step, NO border and NO depth. This is the
    third grouping level: carved container > band > nothing. Bands must NOT carve,
    or nested groups turn into a hall of dents. */
@@ -1134,6 +1152,10 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
   opacity: .5; margin-bottom: 11px;
 }
+
+/* CALCLINE — derived result under the session fields. Mono, muted, bare on the
+   band: it is an output, not an input, so it must not look like a field. */
+.c-calcline { font-family: 'DM Mono', ui-monospace, monospace; font-size: 11.5px; opacity: .55; margin-top: 8px; }
 
 /* SEGMENTED CONTROL — raised housing, selected segment pressed IN and filled.
    Supersedes the loose individual pills used before. */

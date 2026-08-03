@@ -298,6 +298,26 @@ function fmtSessionLine(l: Lead): string | null {
 
 // Compact age for the identity meta line: "2h", "3d", "just now". Mono, lower
 // case — it's a measurement, not a label.
+// Hours between two 12-hour time strings, for the session calcline. Returns 0
+// when either side is missing or unparseable — the caller renders "—" then.
+function calcLeadHours(start?: string | null, end?: string | null): number {
+  if (!start || !end) return 0
+  const toMins = (t: string) => {
+    const m = t.match(/(\d+):?(\d*)\s*(am|pm)?/i)
+    if (!m) return NaN
+    let h = parseInt(m[1], 10)
+    const mm = m[2] ? parseInt(m[2], 10) : 0
+    const ap = (m[3] || '').toLowerCase()
+    if (ap === 'pm' && h < 12) h += 12
+    if (ap === 'am' && h === 12) h = 0
+    return h * 60 + mm
+  }
+  const a = toMins(start), b = toMins(end)
+  if (isNaN(a) || isNaN(b)) return 0
+  const diff = b >= a ? b - a : (24 * 60 - a) + b
+  return Math.round((diff / 60) * 10) / 10
+}
+
 function touchAge(iso: string | null | undefined): string {
   if (!iso) return ''
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
@@ -1942,12 +1962,14 @@ const parsedLoc0 = parseLocation(lead.location || '')
     cursor: 'pointer', outline: 'none',
   }
 
-  function iStyle(key: string): React.CSSProperties {
+  // Fields live INSIDE a .c-well now (reference: one well recipe, empty and
+  // filled identical). The well owns the recess, the radius and the focus state
+  // via :focus-within — so the input itself paints nothing.
+  function iStyle(_key: string): React.CSSProperties {
     return {
-      background: focusedInput === key ? 'var(--c-wash)' : 'transparent',
-      color: 'var(--c-fg)', padding: '4px 6px',
-      fontFamily: 'Inter', fontSize: 12, outline: 'none',
-      width: '100%', borderRadius: 4, transition: 'background 0.1s',
+      background: 'none', color: 'var(--c-fg)', padding: 0,
+      fontFamily: 'Inter', fontSize: 13.5, outline: 'none',
+      width: '100%', boxShadow: 'none',
     }
   }
 
@@ -2195,13 +2217,14 @@ const parsedLoc0 = parseLocation(lead.location || '')
           </>)}
         </div>
 
-        {/* Stage name (COD only) */}
+        {/* ─── aka well (COD only) ─────────────────────────
+            Reference .artist-sub: an "aka" micro-label beside a compact well
+            (height 28, radius 10, its own shallower inset — NOT the 40px field
+            well). Copied from docs/design-refs/lead-profile-final.html. */}
         {lead.billing === 'COD' && (
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 6, minWidth: 0 }}>
-            <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
-              <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', whiteSpace: 'pre' }}>
-                {local.artist_name || 'Artist name'}
-              </span>
+          <span className="c-artist-sub">
+            <span className="c-label" style={{ margin: 0 }}>aka</span>
+            <span className="c-aw">
               <input
                 value={local.artist_name || ''}
                 onChange={e => update('artist_name', e.target.value)}
@@ -2209,10 +2232,9 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 onKeyDown={enterBlur}
                 onBlur={e => { setFocusedInput(null); save('artist_name', e.target.value) }}
                 placeholder="Artist name"
-                style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'artist_name' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg-2)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0', borderRadius: 4 }}
               />
-            </div>
-          </div>
+            </span>
+          </span>
         )}
 
         {/* Row 2 (Label/Billing only): A&R name line */}
@@ -2250,34 +2272,47 @@ const parsedLoc0 = parseLocation(lead.location || '')
           </div>
         )}
 
-        {/* Tight contact line: email + Email · phone + Call/Text */}
-        <div style={isMobile
-          ? { display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 6, marginTop: 6 }
-          : { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
-          <div style={isMobile
-            ? { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, minWidth: 0 }
-            : { display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 200px', minWidth: 0 }}>
-            <input ref={emailRef} value={local.email || ''} onChange={e => update('email', e.target.value)}
-              onFocus={() => setFocusedInput('email')} onBlur={e => { setFocusedInput(null); save('email', e.target.value) }}
-              onKeyDown={enterBlur} placeholder="Add email" style={{ ...iStyle('email'), ...(isMobile ? { flex: '0 1 auto', width: 190, minWidth: 0, paddingLeft: 0 } : { flex: 1, minWidth: 0, paddingLeft: 0 }) }} />
+        {/* ─── CONTACT band ────────────────────────────────
+            Ported from docs/design-refs/lead-profile-final.html: a flat wash band
+            (no depth, no border) holding two wells side by side, each with its
+            actions as .c-mini adornments INSIDE the well. */}
+      </div>
+
+      <div className="c-band">
+        <div className="c-band-head">Contact</div>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
+          <div className="c-well">
+            <input
+              ref={emailRef}
+              type="email"
+              value={local.email || ''}
+              onChange={e => update('email', e.target.value)}
+              onFocus={() => setFocusedInput('email')}
+              onBlur={e => { setFocusedInput(null); save('email', e.target.value) }}
+              onKeyDown={enterBlur}
+              placeholder="Add email"
+            />
             {local.email && (
-              <a href={`mailto:${local.email}`} style={{ ...aBtnStyle('var(--c-fg-2)'), flexShrink: 0 }}>Email</a>
+              <a href={`mailto:${local.email}`} className="c-mini" title="Email">✉</a>
             )}
           </div>
-          {!isMobile && <span style={{ color: 'var(--c-fg-3)', fontSize: 11, flexShrink: 0 }}>·</span>}
-          <div style={isMobile
-            ? { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, minWidth: 0 }
-            : { display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 200px', minWidth: 0 }}>
-            <input ref={phoneRef} value={focusedInput === 'phone' ? (local.phone || '') : fmtPhone(local.phone || '')} onChange={e => update('phone', e.target.value)}
-              onFocus={() => setFocusedInput('phone')} onBlur={e => { setFocusedInput(null); const f = fmtPhone(e.target.value); if (f !== e.target.value) update('phone', f); save('phone', f) }}
-              onKeyDown={enterBlur} placeholder="Add phone" style={{ ...iStyle('phone'), ...(isMobile ? { flex: '0 0 auto', width: 132, minWidth: 0, paddingLeft: 0 } : { flex: 1, minWidth: 0 }) }} />
+          <div className="c-well">
+            <input
+              ref={phoneRef}
+              type="tel"
+              value={focusedInput === 'phone' ? (local.phone || '') : fmtPhone(local.phone || '')}
+              onChange={e => update('phone', e.target.value)}
+              onFocus={() => setFocusedInput('phone')}
+              onBlur={e => { setFocusedInput(null); const f = fmtPhone(e.target.value); if (f !== e.target.value) update('phone', f); save('phone', f) }}
+              onKeyDown={enterBlur}
+              placeholder="Add phone"
+            />
             {local.phone && (<>
-              <a href={`tel:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('var(--c-fg-2)'), flexShrink: 0 }}>Call</a>
-              <a href={`sms:${local.phone.replace(/\D/g, '')}`} style={{ ...aBtnStyle('var(--c-fg-2)'), flexShrink: 0 }}>Text</a>
+              <a href={`tel:${local.phone.replace(/\D/g, '')}`} className="c-mini">Call</a>
+              <a href={`sms:${local.phone.replace(/\D/g, '')}`} className="c-mini">Text</a>
             </>)}
           </div>
         </div>
-
       </div>
       </div>
 
@@ -2289,7 +2324,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div>
             <div style={fieldLabelStyle}>Location · Studio</div>
-            <div style={{ maxWidth: isMobile ? '100%' : 180 }}>
+            <div className="c-well" style={{ maxWidth: isMobile ? '100%' : 220 }}>
               <StudioSelect
                 location={localVenue}
                 studio={localStudio}
@@ -2312,7 +2347,8 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 blank for an ordinary one-day lead — the calendar seeds a
                 booking's end_date from it when present. */}
             <div style={fieldLabelStyle}>Session Date{local.session_end_date ? 's' : ''}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div className="c-well">
+              <span className="c-ico">▦</span>
               <input
                 type="date"
                 value={local.session_date || ''}
@@ -2334,7 +2370,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div>
             <div style={fieldLabelStyle}>Quote / Rate</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="c-well">
               <span className="c-seg c-seg-tiny">
               <button type="button" onClick={() => setDetailRateType('hourly')} className={detailRateType === 'hourly' ? 'c-on' : ''}>/ hr</button>
               <button type="button" onClick={() => setDetailRateType('daily')} className={detailRateType === 'daily' ? 'c-on' : ''}>/ day</button>
@@ -2353,13 +2389,13 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 }}
                 onKeyDown={enterBlur}
                 placeholder="—"
-                style={{ ...iStyle('quote'), width: 72, flex: 'none', borderRadius: '0 4px 4px 0' }}
+                style={{ ...iStyle('quote'), width: 72, flex: 'none' }}
               />
             </div>
           </div>
           <div>
             <div style={fieldLabelStyle}>Start – End</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div className="c-well">
               <TimeInput
                 value={local.session_start || ''}
                 onChange={v => { update('session_start', v) }}
@@ -2379,6 +2415,21 @@ const parsedLoc0 = parseLocation(lead.location || '')
           </div>
         </div>
       </div>
+      {/* Reference .calcline — the derived total, mono and muted. Reads straight
+          off the session fields; it is a RESULT, so it sits bare on the band
+          rather than in a well. */}
+      {(() => {
+        const hrs = calcLeadHours(local.session_start, local.session_end)
+        const rate = detailRateType === 'hourly' ? (local.quote || '') : (local.rate_daily || '')
+        if (!hrs && !rate) return null
+        const total = hrs && rate ? fmtMoney(String(hrs * Number(String(rate).replace(/[^0-9.]/g, '') || 0))) : '—'
+        return (
+          <div className="c-calcline">
+            {hrs ? `${hrs}h` : '—'} × {rate || '—'} = {detailRateType === 'hourly' ? total : (rate || '—')}
+          </div>
+        )
+      })()}
+
       {/* Staffing — Eng / Asst / No Staff plus an optional person. Whatever is
           chosen here seeds every studio-time row in the Work Order, so staff
           don't have to be typed onto each line by hand. Replaced the old
