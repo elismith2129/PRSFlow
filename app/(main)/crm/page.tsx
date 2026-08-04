@@ -1708,8 +1708,10 @@ const parsedLoc0 = parseLocation(lead.location || '')
   // Tech / Tour / Open Hours / cancelled are excluded — they aren't sessions.
   const [priorSessions, setPriorSessions] = useState<number | null>(null)
   useEffect(() => {
+    // Disabled pending F-2 sign-off on the email-OR-phone match (see O-2).
+    const RETURNING_BADGE_ENABLED = false
     const clientId = lead.client_id
-    if (!clientId) { setPriorSessions(null); return }
+    if (!RETURNING_BADGE_ENABLED || !clientId) { setPriorSessions(null); return }
     let cancelled = false
     async function load() {
       const { data, error } = await supabase
@@ -2087,20 +2089,16 @@ const parsedLoc0 = parseLocation(lead.location || '')
             </div>
           )}
         </div>
-        {priorSessions !== null && priorSessions > 0 && (
-          <a
-            href={`/crm?clientId=${lead.client_id}`}
-            className="c-returning"
-            title="Open this client's profile"
-          >
-            Returning <small>· {priorSessions} session{priorSessions === 1 ? '' : 's'} →</small>
-          </a>
-        )}
+        {/* Returning badge — WITHDRAWN pending F-2 sign-off. The ruling changes the
+            match from lead.client_id to normalized email-OR-phone against `clients`;
+            until Eli approves that query this renders nothing (absent, not a
+            placeholder). The lookup below is disabled, not deleted. */}
         {lead.needs_contact !== false && (<>
           <span style={{ color: 'var(--c-fg-3)', fontSize: 9, flexShrink: 0 }}>·</span>
           <button
             onClick={() => { save('needs_contact', false); onUpdate('needs_contact', false) }}
-            style={{ background: 'transparent', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase' as const, flexShrink: 0 }}
+            className="c-nc-toggle c-on"
+            title="Click to mark as contacted"
           >
             Needs Contact
           </button>

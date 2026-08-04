@@ -1159,6 +1159,19 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-well-area { height: auto; min-height: 56px; padding: 11px 14px; align-items: flex-start; font-size: 13px; }
 .c-well .c-ico { opacity: .4; font-size: 13px; flex-shrink: 0; }
 
+/* NEEDS CONTACT — flat tracked micro-caps toggle in the lead status strip
+   (F-2 ruling). Deliberately NOT a pill: it sits beside the temperature pill and
+   must not compete with it. Active = full ink, inactive = 40%. */
+.c-nc-toggle {
+  background: none; box-shadow: none; padding: 0; cursor: pointer; flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 4;
+  font-family: 'Inter', sans-serif; font-weight: 800; font-size: 9.5px;
+  letter-spacing: .11em; text-transform: uppercase; color: var(--c-fg);
+  opacity: .4; transition: opacity .16s ease;
+}
+.c-nc-toggle.c-on { opacity: 1; }
+.c-nc-toggle:hover { opacity: .75; }
+
 /* RETURNING BADGE — reference .returning. Sits at the far right of the status
    strip. Booked green is correct here: a returning client IS a booked-history
    state, which is inside the §5 colour scope. */
