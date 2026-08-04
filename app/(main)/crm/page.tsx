@@ -1723,15 +1723,38 @@ const parsedLoc0 = parseLocation(lead.location || '')
 
     async function load() {
       // 1 · find the client behind this lead
+      //
+      // DEVIATION FROM THE APPROVED SQL — read this before moving it to an RPC.
+      // The approved query compares regexp_replace(phone,'\D','') on both sides.
+      // PostgREST cannot express a function call on the STORED column in a
+      // filter, so the comparison happens in JS below and the server query is
+      // only a NARROWING step.
+      //
+      // The narrowing must survive mixed stored formats. `clients.phone` really
+      // is mixed, from two write paths:
+      //   • ClientProfile → PhoneInput stores DIGITS ONLY ("3106222328")
+      //     (normalizeUS strips; formatUS is display-only)
+      //   • /api/register stores RAW AS TYPED, .trim() only ("(310) 622-2328")
+      // So narrowing on the full digit string finds the first and MISSES the
+      // second — a silent absence indistinguishable from "no match" (F-8).
+      //
+      // Narrow on the LAST 4 DIGITS instead: the final group is 4 digits in every
+      // common US format, so it stays contiguous through "(310) 622-2328",
+      // "310-622-2328", "+1 310 622 2328" and bare digits. 7 would NOT work —
+      // "6222328" is split by the separator in "622-2328".
+      // Last-4 over-matches on purpose; the exact digits-only equality below is
+      // what actually decides. If this ever becomes an RPC/view, do the whole
+      // comparison in SQL with regexp_replace and delete this narrowing.
+      const last4 = phoneDigits.length >= 4 ? phoneDigits.slice(-4) : ''
       const ors: string[] = []
       if (email) ors.push(`email.ilike.${email}`)
-      if (phoneDigits) ors.push(`phone.ilike.%${phoneDigits}%`)
+      if (last4) ors.push(`phone.ilike.%${last4}%`)
+      if (!ors.length) { setPriorSessions(null); setReturningClientId(null); return }
       const { data: cs, error: cErr } = await supabase
         .from('clients').select('id, phone, email').or(ors.join(','))
       if (cancelled || cErr || !cs?.length) { setPriorSessions(null); setReturningClientId(null); return }
 
-      // Postgrest can't express digits-only comparison, so the phone side is
-      // narrowed with ilike above and confirmed exactly here.
+      // Exact match — this is the real comparison; the query above only narrowed.
       const match = cs.find((c: any) =>
         (email && String(c.email || '').toLowerCase() === email.toLowerCase()) ||
         (phoneDigits && String(c.phone || '').replace(/\D/g, '') === phoneDigits)
