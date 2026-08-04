@@ -1697,44 +1697,68 @@ const parsedLoc0 = parseLocation(lead.location || '')
   const [regTokenDates, setRegTokenDates] = useState<{ created_at: string; used_at: string | null } | null>(null)
   const [statusDDOpen, setStatusDDOpen] = useState(false)
 
-  // ── Returning-client badge ────────────────────────────────────────────────
-  // Counts the lead's client's REAL prior sessions. Two traps this avoids:
-  //  1. `bookings` rows are PROJECTION CARDS — one save writes several rows for a
-  //     multi-day or multi-room session, all sharing `work_order_id`. Counting
-  //     rows would tell Eli "9 sessions" for one three-day booking, so we count
-  //     distinct engagements instead.
-  //  2. Having a client record does NOT mean they ever recorded (someone can
-  //     register and go quiet), so the badge only shows when the count is > 0.
-  // Tech / Tour / Open Hours / cancelled are excluded — they aren't sessions.
+  // ── Returning-client badge (SQL approved F-7) ────────────────────────────
+  // Match the lead to a client on normalized EMAIL OR digits-only PHONE, then
+  // count that client's prior engagements. Notes that matter:
+  //  • `status = 'confirmed'` is the whole filter. tour / tech / open_hours /
+  //    cancelled are BookingStatus values, so they're already excluded — and
+  //    'completed' is a WORK ORDER status that would match nothing here.
+  //  • session_type is an explicit allow-list for legibility only; filming and
+  //    event_playback are real revenue sessions and must count.
+  //  • Count DISTINCT engagements. A booking row is a projection card, and one
+  //    save writes several rows sharing work_order_id — counting rows would
+  //    report a three-day two-room session as several sessions. Rows with a null
+  //    work_order_id are legacy pre-rebuild bookings, which are one row per
+  //    booking, so the `bk:` fallback is safe and must NOT be dropped or those
+  //    sessions silently vanish from the count.
+  // RLS: clients_sel / bookings_sel both grant SELECT to every role that can
+  // reach this surface (owner / manager / billing / asst_manager). Verified F-7.
   const [priorSessions, setPriorSessions] = useState<number | null>(null)
+  const [returningClientId, setReturningClientId] = useState<string | null>(null)
   useEffect(() => {
-    // Disabled pending F-2 sign-off on the email-OR-phone match (see O-2).
-    const RETURNING_BADGE_ENABLED = false
-    const clientId = lead.client_id
-    if (!RETURNING_BADGE_ENABLED || !clientId) { setPriorSessions(null); return }
+    const email = (lead.email || '').trim()
+    const phoneDigits = (lead.phone || '').replace(/\D/g, '')
+    if (!email && !phoneDigits) { setPriorSessions(null); setReturningClientId(null); return }
     let cancelled = false
+
     async function load() {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('id, work_order_id, status')
-        .eq('client_id', clientId)
-      if (cancelled || error) return
-      const REAL = new Set(['confirmed', 'completed'])
-      const engagements = new Set(
-        (data || [])
-          .filter((b: any) => REAL.has(String(b.status || '').toLowerCase()))
-          .map((b: any) => b.work_order_id || `bk:${b.id}`)
+      // 1 · find the client behind this lead
+      const ors: string[] = []
+      if (email) ors.push(`email.ilike.${email}`)
+      if (phoneDigits) ors.push(`phone.ilike.%${phoneDigits}%`)
+      const { data: cs, error: cErr } = await supabase
+        .from('clients').select('id, phone, email').or(ors.join(','))
+      if (cancelled || cErr || !cs?.length) { setPriorSessions(null); setReturningClientId(null); return }
+
+      // Postgrest can't express digits-only comparison, so the phone side is
+      // narrowed with ilike above and confirmed exactly here.
+      const match = cs.find((c: any) =>
+        (email && String(c.email || '').toLowerCase() === email.toLowerCase()) ||
+        (phoneDigits && String(c.phone || '').replace(/\D/g, '') === phoneDigits)
       )
+      if (!match) { setPriorSessions(null); setReturningClientId(null); return }
+
+      // 2 · count that client's distinct prior engagements
+      const { data: bk, error: bErr } = await supabase
+        .from('bookings')
+        .select('id, work_order_id, status, session_type')
+        .eq('client_id', match.id)
+        .eq('status', 'confirmed')
+        .in('session_type', ['recording', 'filming', 'event_playback'])
+      if (cancelled || bErr) return
+      const engagements = new Set((bk || []).map((b: any) => b.work_order_id || `bk:${b.id}`))
+      setReturningClientId(String(match.id))
       setPriorSessions(engagements.size)
     }
+
     load()
-    // Realtime is a hard rule in this app — the PWA can't be refreshed by hand.
+    // Realtime is a hard rule here — the PWA can't be hand-refreshed.
     const channel = supabase
-      .channel(`lead-returning-${clientId}`)
+      .channel(`lead-returning-${lead.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => { load() })
       .subscribe()
     return () => { cancelled = true; supabase.removeChannel(channel) }
-  }, [lead.client_id])
+  }, [lead.id, lead.email, lead.phone])
   const statusPillRef = useRef<HTMLDivElement>(null)
 
   const emailRef = useRef<HTMLInputElement>(null)
@@ -1923,11 +1947,14 @@ const parsedLoc0 = parseLocation(lead.location || '')
     boxShadow: 'inset 3px 3px 9px rgba(0,0,0,.34), inset -3px -3px 9px rgba(255,255,255,.03)',
   }
 
+  // NOTE: registration is an EDIT-mode action only — the new-lead modal has no
+  // reg control by design (F-6/3c). A lead has to exist before a token can point
+  // at it. Don't "fix" this by adding one to the create modal.
   async function generateRegLink() {
     setRegLinkGenerating(true)
     const token = crypto.randomUUID()
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-    await supabase.from('registration_tokens').insert({
+    const { error: tokenErr } = await supabase.from('registration_tokens').insert({
       token,
       lead_id: lead.id,
       client_id: lead.client_id || null,
@@ -1935,6 +1962,9 @@ const parsedLoc0 = parseLocation(lead.location || '')
       prefill_name: `${lead.fname || ''} ${lead.lname || ''}`.trim() || null,
       expires_at: expiresAt,
     })
+    // Unchecked before (F-6 audit): a failed insert returned a link that had
+    // never been persisted, so the registration page 404'd for the client.
+    if (!dbResult('Creating registration link', tokenErr)) { setRegLinkGenerating(false); return }
     setExistingTokenStr(token)
     setRegLinkUrl(`${process.env.NEXT_PUBLIC_BASE_URL || window.location.origin}/register/${token}`)
     setRegLinkGenerating(false)
@@ -2089,10 +2119,11 @@ const parsedLoc0 = parseLocation(lead.location || '')
             </div>
           )}
         </div>
-        {/* Returning badge — WITHDRAWN pending F-2 sign-off. The ruling changes the
-            match from lead.client_id to normalized email-OR-phone against `clients`;
-            until Eli approves that query this renders nothing (absent, not a
-            placeholder). The lookup below is disabled, not deleted. */}
+        {priorSessions !== null && priorSessions > 0 && returningClientId && (
+          <a href={`/crm?clientId=${returningClientId}`} className="c-returning" title="Open this client's profile">
+            Returning <small>· {priorSessions} session{priorSessions === 1 ? '' : 's'} →</small>
+          </a>
+        )}
         {lead.needs_contact !== false && (<>
           <span style={{ color: 'var(--c-fg-3)', fontSize: 9, flexShrink: 0 }}>·</span>
           <button
@@ -2229,9 +2260,27 @@ const parsedLoc0 = parseLocation(lead.location || '')
               <button onClick={copyRegLink} style={{ padding: '3px 10px', background: 'var(--c-fg)', color: 'var(--c-bg)', borderRadius: 3, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 8, letterSpacing: '0.08em', cursor: 'pointer' }}>
                 {regLinkCopied ? 'Copied!' : 'Copy Link'}
               </button>
-              <button onClick={emailRegLink} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--c-fg-2)', borderRadius: 3, fontFamily: 'Inter', fontSize: 8, cursor: 'pointer' }}>
-                Email
-              </button>
+              {/* Omitted, not disabled, when the lead has no email — otherwise
+                  mailto: fires with an empty recipient and opens a blank draft.
+                  Phone-only leads get the link via Copy Link or Text. */}
+              {lead.email && (
+                <button onClick={emailRegLink} className="c-mini" style={{ fontSize: 8, padding: '3px 10px' }}>
+                  Email
+                </button>
+              )}
+              {!lead.email && lead.phone && (
+                <button
+                  onClick={() => {
+                    if (!regLinkUrl) return
+                    setRegActioned(true); setRegPanelOpen(false)
+                    window.location.href = `sms:${lead.phone!.replace(/\D/g, '')}?&body=${encodeURIComponent(`Your Paramount Recording Studios registration link: ${regLinkUrl}`)}`
+                  }}
+                  className="c-mini"
+                  style={{ fontSize: 8, padding: '3px 10px' }}
+                >
+                  Text
+                </button>
+              )}
               <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--c-st-warm)', borderRadius: 3, fontFamily: 'Inter', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
                 {regLinkGenerating ? '…' : 'Resend'}
               </button>
