@@ -14,8 +14,10 @@ define, derive it from the laws below and flag it in your handoff notes.
 
 ## 0. Context — what this replaces and why
 
-The current light mode is 63 `[data-theme="light"]` override rules in `styles/globals.css`,
-20 of which match on inline-style substrings, over 2,720 inline `style={{}}` objects. It is
+The current light mode is a pile of `[data-theme="light"]` override rules in
+`styles/globals.css` (**verified baseline: 66 rules** as of `main@4c9f252` — this is the
+number §11 tracks), ~20 of which match on inline-style substrings, over 2,720 inline
+`style={{}}` objects. It is
 a patch layer over a dark-only design. This project replaces it with a real token +
 primitive system, both themes designed first-class. The goal state: the substring-matching
 override rules can eventually be **deleted**, not added to.
@@ -77,32 +79,55 @@ conventions + architecture rules), `docs/AUDIT-2026-07.md` item 10, `docs/CHANGE
 
 ## 3. Tokens — both themes first-class
 
+**Naming (LOCKED, decided during implementation kickoff):** the live app already defines
+`--bg` (dark `#0d0f14`; light `transparent` — the html gradient shows through) with 66
+override rules plus the splash/AuthGuard depending on it. New tokens therefore carry a
+**permanent `--c-` prefix** — including names that don't collide, so `--c-` greps the
+entire new system. Legacy tokens keep their names and die individually with their last
+consumer. There will be **no end-of-project rename sweep** to reclaim clean names.
+
 ```css
 :root{                                /* LIGHT — warm paper, soft charcoal ink */
-  --bg:      #f5f3ee;
-  --fg:      #2a2722;
-  --wash:    rgba(42,39,34,.05);      /* grouping fill, level 1 */
-  --wash2:   rgba(42,39,34,.095);     /* grouping fill, level 2 */
-  --chip-ink:#1c2626;                 /* text ON status fills */
+  --c-bg:      #f5f3ee;
+  --c-fg:      #2a2722;
+  --c-wash:    rgba(42,39,34,.05);    /* grouping fill, level 1 */
+  --c-wash2:   rgba(42,39,34,.095);   /* grouping fill, level 2 */
+  --c-chip-ink:#1c2626;               /* text ON status fills */
   /* status — Lagoon (bright register) */
-  --st-hot:    #ff5a4d;               /* signal red — pale text #fff4f2 on hot fills */
-  --st-warm:   #9d8cff;               /* violet   */
-  --st-cold:   #5fc9e8;               /* lagoon   */
-  --st-booked: #43dfae;               /* sea green — confirmed/booked/live */
-  --st-uncon:  #7fb2e5;               /* harbor — uncontacted/tour */
-  --st-dead:   #cfd6d4;               /* driftglass — DNB/tech/open */
+  --c-st-hot:    #ff5a4d;             /* signal red — pale text #fff4f2 on hot fills */
+  --c-st-warm:   #ffa94d;             /* amber-orange (changed from violet #9d8cff, 2026-07-31) */
+  --c-st-cold:   #5fc9e8;             /* lagoon   */
+  --c-st-booked: #43dfae;             /* sea green — confirmed/booked/live */
+  --c-st-uncon:  #7fb2e5;             /* harbor — uncontacted/tour */
+  --c-st-dead:   #cfd6d4;             /* driftglass — DNB/tech/open */
 }
 [data-theme="dark"]{                  /* DARK — the dim room */
-  --bg:      #1b1a17;
-  --fg:      #d9d6cd;                 /* warm ivory, NOT white */
-  --wash:    rgba(217,214,205,.07);
-  --wash2:   rgba(217,214,205,.13);
+  --c-bg:      #1b1a17;
+  --c-fg:      #d9d6cd;               /* warm ivory, NOT white */
+  --c-wash:    rgba(217,214,205,.07);
+  --c-wash2:   rgba(217,214,205,.13);
   /* status values unchanged — dimming is a rule, not a second palette (§6) */
 }
 ```
 
 Also define semantic aliases so components never reference raw slots:
-`--ivory:#d5d0c2` (dark-mode small accents), `--hot-text:#fff4f2`.
+`--c-ivory:#d5d0c2` (dark-mode small accents), `--c-hot-text:#fff4f2`.
+
+(All other CSS in this spec is written with unprefixed names for readability — in the
+app, every token reference is the `--c-` version. The mock uses unprefixed names; the
+mock is visual truth, not naming truth.)
+
+**⚠ THEME POLARITY — the app is inverted from this spec and the mock.** In the live app,
+dark mode is the ABSENCE of `data-theme` (`Nav.tsx` calls `removeAttribute`);
+`[data-theme="dark"]` is never set and would match nothing. Therefore in the app: dark
+values live on `:root`, light values live on `[data-theme="light"]` overrides after it.
+Every `[data-theme="dark"]` block in this spec and the mock must be read as "the `:root`
+defaults" and every unmarked `:root` block as "the `[data-theme="light"]` overrides."
+This was discovered and handled correctly in step 1 (2026-07-30); the comment header in
+`globals.css` documents it at the token block.
+
+**Fonts:** Archivo Black is NOT currently loaded (the `@import` has DM Serif, DM Mono,
+Inter, Syne). Add Archivo Black to the import in the same change set as the tokens.
 
 Legacy tokens (`--surface`, `--accent`, `--accent-rgb`, etc.) remain until their last
 consumer is migrated, then die. The lime/teal accent system is retired: **there is no
@@ -147,6 +172,7 @@ Scope (Law 3): lead temps, session/calendar status, analytics. Mapping:
 | Uncontacted lead / tour | `--st-uncon` | |
 | DNB / tech / open hours | `--st-dead` | |
 | Cancelled session | `--st-hot` fill + line-through title | |
+| Critical / destructive (RULING 2026-07-31) | `--st-hot` | missing-info banners, Delete buttons — hot is formally dual-purpose. `--st-warm` is lead-temp/tentative ONLY, never warnings |
 
 Presentation: status is always a **solid fill** (pill, chip, dot, or room pool) with
 `--chip-ink` text — never colored text on paper, never an outline. Calendar event chips
@@ -168,7 +194,7 @@ Dark mode dims the SAME palette by rule:
 [data-theme="dark"] .status-pill { filter: saturate(.82) brightness(.88); }
 /* calendar chips — alpha fills instead of solid */
 [data-theme="dark"] .chip-booked { background: rgba(67,223,174,.72); }
-[data-theme="dark"] .chip-tent   { background: rgba(157,140,255,.68); }
+[data-theme="dark"] .chip-tent   { background: rgba(255,169,77,.68); }
 [data-theme="dark"] .chip-tour   { background: rgba(127,178,229,.68); }
 [data-theme="dark"] .chip-dead   { background: rgba(204,209,207,.5);  }
 /* room pools */
@@ -285,9 +311,19 @@ may pulse.
 
 The calendar **layout** is untouched and locked: 11 studios stacked as rows grouped by
 location, days sliding horizontally, spanning multi-day bars, location group headers.
-Eli built it intentionally. This redesign restyles ONLY: solid status-fill chips
-(§5/§6), alternating carved rows, capsule location lozenges, no grid lines, legend as
-dots + labels. Zero structural or behavioral changes. When migrating the calendar
+Eli built it intentionally.
+
+**GRID EXEMPTION (RULING 2026-08-01):** the calendar is exempt from Law 1. Position is
+information on this surface, and the grid that encodes it is functional, not decorative.
+Required: visible row separators (1px, `--c-fg` at ~10–14% light / ~14–18% dark),
+day-column ticks at every day boundary with a heavier tick at week boundaries and the
+month boundary, and full-width location header bars (ink light / wash2+fg dark) — not
+floating lozenges. Row heights stay at the old calendar's density; the redesign may not
+cost vertical compactness. Event chips keep the full info payload: Archivo artist, client
+line, mono times, mono engineer tags — all in `--c-chip-ink` (secondary lines at ~70%
+opacity of chip-ink, never grey). Multi-day bars must render their title (pinned at the
+bar's start). Everything else on the surface (toolbar, view segments, buttons) follows
+the standard system rules. When migrating the calendar
 surface, change classes/styles only — if a layout change ever seems necessary, stop
 and ask Eli.
 
@@ -300,8 +336,12 @@ and ask Eli.
   large bright surfaces in dark; status colour appearing nowhere outside §5 scope;
   controls raised / containers carved (spot-check any new component against Law 2);
   only `.newpulse` animates.
-- Grep check before each merge-up: count of `[data-theme="light"]` substring-override
-  rules in globals.css must be monotonically decreasing across the migration.
+- Grep check before each merge-up: the metric is the count of `[style*=` substring-matcher
+  rules in globals.css — the actual fragile layer — and it must be monotonically
+  decreasing across the migration. **Baseline: 58** (verified at `main@4c9f252`).
+  (Superseded metric: raw `[data-theme="light"]` rule count — it counts legitimate
+  light-token blocks too and moved 66→68 just from adding the inert token set. The
+  63/65/66 figures in older docs all counted slightly different things; ignore them.)
 - One copy-paste git line for Eli, staging files by name.
 
 ## 12. What NOT to do
@@ -310,6 +350,9 @@ and ask Eli.
 - No borders/outlines/dividers (Law 1). No fog/glow/halos (§7).
 - No new blinking/pulsing elements beyond `.newpulse`.
 - No touching `public/sop.html`, no `git add -A`, nothing to `main` until Eli says.
+  (This overrides the older standing CC-prompt rule that ended prompts with
+  `git add -A && git commit && git push` — that rule predates multiple chats sharing
+  this repo. Stage by name, always.)
 - No wordmark/`Nav.tsx` changes without Eli's explicit go (§4).
 - No layout redesigns anywhere — this project restyles existing layouts. Layout is
   Eli's, surface is yours.

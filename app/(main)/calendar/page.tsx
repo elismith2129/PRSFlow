@@ -222,8 +222,6 @@ function BookingBlock({
 
   const eng = initials(booking.engineer_name)
   const asst = initials(booking.assistant_name)
-  const engColor = 'var(--c-fg-3)' // chip engineer initials — muted
-  const asstColor = 'var(--c-fg-3)' // chip assistant initials — muted
 
   const slotH = rowH / numLanes
   const blockTop = lane * slotH + 2
@@ -256,7 +254,7 @@ function BookingBlock({
             {primaryName}
           </div>
           {timeStr && (
-            <div style={{ fontSize: 7, fontFamily: 'Inter', color: 'var(--c-fg-3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <div style={{ fontSize: 7, fontFamily: 'Inter', whiteSpace: 'nowrap', flexShrink: 0 }} className="c-ev-2">
               {timeStr}
             </div>
           )}
@@ -281,13 +279,13 @@ function BookingBlock({
           </div>
           {/* Row 2: time + eng/asst */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', overflow: 'hidden' }}>
-            <div style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--c-fg-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+            <div className="c-ev-2" style={{ fontSize: 8, fontFamily: 'Inter', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
               {timeStr}
             </div>
             {(eng || asst) && (
               <div style={{ display: 'flex', gap: 3, flexShrink: 0, marginLeft: 4 }}>
-                {eng  && <div style={{ fontSize: 8, fontFamily: 'Inter', color: engColor, whiteSpace: 'nowrap' }}>1ST-{eng}</div>}
-                {asst && <div style={{ fontSize: 8, fontFamily: 'Inter', color: asstColor, whiteSpace: 'nowrap' }}>2ND-{asst}</div>}
+                {eng  && <div style={{ fontSize: 8, fontFamily: 'Inter', whiteSpace: 'nowrap' }} className="c-ev-2 c-mono">1ST-{eng}</div>}
+                {asst && <div style={{ fontSize: 8, fontFamily: 'Inter', whiteSpace: 'nowrap' }} className="c-ev-2 c-mono">2ND-{asst}</div>}
               </div>
             )}
           </div>
@@ -303,14 +301,13 @@ function BookingBlock({
           {labelLine && (
             <div style={{
               fontSize: 10, fontFamily: 'Inter', lineHeight: 1.2, marginTop: 1,
-              color: 'var(--c-fg-2)',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>
               {labelLine}
             </div>
           )}
           {timeStr && (
-            <div style={{ fontSize: 9, fontFamily: 'Inter', lineHeight: 1.2, marginTop: 2, color: 'var(--c-fg-3)' }}>
+            <div className="c-ev-2 c-mono" style={{ fontSize: 9, lineHeight: 1.2, marginTop: 2 }}>
               {timeStr}
             </div>
           )}
@@ -324,8 +321,8 @@ function BookingBlock({
             </div>
             {(eng || asst) && (
               <div style={{ textAlign: 'right' }}>
-                {eng  && <div style={{ fontSize: 8, fontFamily: 'Inter', lineHeight: 1.3, color: engColor }}>1ST-{eng}</div>}
-                {asst && <div style={{ fontSize: 8, fontFamily: 'Inter', lineHeight: 1.3, color: asstColor }}>2ND-{asst}</div>}
+                {eng  && <div style={{ fontSize: 8, fontFamily: 'Inter', lineHeight: 1.3 }} className="c-ev-2 c-mono">1ST-{eng}</div>}
+                {asst && <div style={{ fontSize: 8, fontFamily: 'Inter', lineHeight: 1.3 }} className="c-ev-2 c-mono">2ND-{asst}</div>}
               </div>
             )}
           </div>
@@ -696,8 +693,6 @@ function StudioView({
                   : null
                 const eng = b.engineer_name ? `1ST-${initials(b.engineer_name)}` : ''
                 const asst = b.assistant_name ? `2ND-${initials(b.assistant_name)}` : ''
-                const engColor = 'var(--c-fg-3)' // chip engineer initials — muted
-                const asstColor = 'var(--c-fg-3)' // chip assistant initials — muted
                 const slot = STATUS_SLOT[b.status] ?? 'confirmed'
                 const isCancelled = b.status === 'cancelled'
                 return (
@@ -724,8 +719,8 @@ function StudioView({
                           {codLabel ?? ''}
                         </span>
                         <div style={{ display: 'flex', gap: 4 }}>
-                          {eng  && <span style={{ fontFamily: 'Inter', fontSize: 9, color: engColor }}>{eng}</span>}
-                          {asst && <span style={{ fontFamily: 'Inter', fontSize: 9, color: asstColor }}>{asst}</span>}
+                          {eng  && <span className="c-ev-2 c-mono" style={{ fontSize: 9 }}>{eng}</span>}
+                          {asst && <span className="c-ev-2 c-mono" style={{ fontSize: 9 }}>{asst}</span>}
                         </div>
                       </div>
                     )}
@@ -1269,7 +1264,7 @@ function CalendarPageInner() {
         {filteredLocations.map(loc => (
           <div key={loc.name}>
             {/* Location header — collapsible */}
-            <div style={{ display: 'flex', marginTop: 10, marginBottom: 4 }}>
+            <div className="c-calloc">
               {/* Sticky label cell — always visible in the left column */}
               <div
                 onClick={() => toggleCollapse(loc.name)}
@@ -1277,9 +1272,7 @@ function CalendarPageInner() {
                   width: labelW, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6,
                   cursor: 'pointer', userSelect: 'none',
                   position: 'sticky', left: 0, zIndex: 6,
-                  marginBottom: 0,
                 }}
-                className="c-lozenge c-anchor"
               >
                 <span style={{
                   fontSize: 8, fontFamily: 'Inter', color: 'var(--c-fg-3)',
@@ -1309,6 +1302,11 @@ function CalendarPageInner() {
                 <div key={room} className={roomIdx % 2 === 0 ? 'c-calrow c-calrow-alt' : 'c-calrow'} style={{
                   display: 'flex',
                   height: isRoomCollapsed ? COLLAPSED_ROOM_H : rowH,
+                  // Day ticks every column, heavier every 7th (week/month boundary).
+                  // Offset by labelW so ticks line up with the day headers.
+                  backgroundImage: `repeating-linear-gradient(to right, var(--c-grid-tick-strong) 0 1px, transparent 1px ${colW * 7}px), repeating-linear-gradient(to right, var(--c-grid-tick) 0 1px, transparent 1px ${colW}px)`,
+                  backgroundPosition: `${labelW}px 0, ${labelW}px 0`,
+                  backgroundRepeat: 'repeat-x',
                 }}>
                   {/* Room label — click to collapse/expand. On mobile the column is
                       only 80px, so trim padding/gap so "Studio A" fits without truncating. */}

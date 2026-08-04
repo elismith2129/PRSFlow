@@ -978,18 +978,38 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-signoff.c-on { background: var(--c-ivory); color: #1b1a17; }
 [data-theme="light"] .c-signoff.c-on { background: var(--c-fg); color: var(--c-bg); }
 
-/* ── Calendar rows (§10 — styling only; the grid layout is fenced) ───────── */
-/* Alternating carved rows replace the 1px rules that used to separate studios.
-   The carve is deliberately shallower than .c-inset2: these are full-width bands
-   behind content, and at panel depth they'd read as trenches. */
-.c-calrow { border-radius: 26px; }
-.c-calrow-alt {
-  background: var(--c-bg);
-  box-shadow: inset 2px 2px 8px rgba(0, 0, 0, .3), inset -2px -2px 8px rgba(255, 255, 255, .025);
+/* ── Calendar grid (§10 GRID EXEMPTION, ruling 2026-08-01) ────────────────
+   The calendar is EXEMPT from Law 1. Position is information on this surface and
+   the grid that encodes it is functional, not decorative — 11 studios at density
+   are unreadable without it. The earlier "carved zebra, no rules" pass came from
+   the superseded §10 and is replaced here.
+   Separator: --c-fg at 12% light / 16% dark. Day ticks are painted by the row's
+   inline repeating-linear-gradient (needs colW, which only the component knows). */
+:root { --c-grid-line: rgba(217, 214, 205, .16); --c-grid-tick: rgba(217, 214, 205, .09); --c-grid-tick-strong: rgba(217, 214, 205, .2); }
+[data-theme="light"] { --c-grid-line: rgba(42, 39, 34, .12); --c-grid-tick: rgba(42, 39, 34, .07); --c-grid-tick-strong: rgba(42, 39, 34, .18); }
+
+.c-calrow { border-bottom: 1px solid var(--c-grid-line); }
+/* Faint zebra is kept as a secondary cue but no longer carries the job alone. */
+.c-calrow-alt { background: var(--c-wash); }
+
+/* Location header — a FULL-WIDTH bar, not a floating lozenge (§10 ruling).
+   Ink bar with bg text in light; wash2 with fg text in dark. */
+.c-calloc {
+  display: flex; align-items: center; gap: 6;
+  padding: 6px 12px; width: 100%;
+  font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+  background: var(--c-wash2); color: var(--c-fg);
 }
-[data-theme="light"] .c-calrow-alt {
-  box-shadow: inset 2px 2px 7px rgba(42, 39, 34, .05), inset -2px -2px 7px rgba(255, 255, 255, .55);
-}
+[data-theme="light"] .c-calloc { background: var(--c-fg); color: var(--c-bg); }
+/* The label inherits the bar's contrast colour — setting it to --c-fg paints dark
+   text on the dark ink bar and the name disappears. This was the bug. */
+.c-calloc, .c-calloc * { color: inherit; }
+
+/* Chip payload: ALL text is chip ink. Secondary lines at 70% of chip ink — never
+   the muted INK steps, which are light-grey and fail against a status fill. */
+.c-ev, .c-ev * { color: var(--c-chip-ink); }
+.c-ev-2 { opacity: .7; }
+.c-ev.c-ev-cancelled, .c-ev.c-ev-cancelled * { color: var(--c-hot-text); }
 
 /* ── Status fills (§5) — the only colour in the system ──────────────────── */
 /* Solid fills at full brightness. Light mode uses them as-is; dark dims by rule
