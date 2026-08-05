@@ -244,24 +244,13 @@ function BookingBlock({
         left: `calc(${left}% + 2px)`, width: `calc(${width}% - 4px)`,
         boxSizing: 'border-box',
         padding: micro ? '1px 4px' : compact ? '3px 5px' : '4px 6px',
-        cursor: 'pointer',
+        cursor: 'pointer', overflow: 'hidden',
+        display: 'flex', flexDirection: micro ? 'row' : 'column',
+        alignItems: micro ? 'center' : undefined,
+        gap: micro ? 4 : undefined,
         zIndex: 2, minWidth: 0,
       }}
     >
-      {/* Pinned payload — see note above. `left: 0` is relative to the horizontal
-          scrollport, so on a long bar the text rides along the left edge instead
-          of sitting weeks off-screen at the bar's start. On a short chip it never
-          moves, so normal chips are unaffected. */}
-      <div
-        style={{
-          position: 'sticky', left: 0,
-          width: 'max-content', maxWidth: '100%', overflow: 'hidden',
-          display: 'flex', flexDirection: micro ? 'row' : 'column',
-          alignItems: micro ? 'center' : undefined,
-          gap: micro ? 4 : undefined,
-          minWidth: 0,
-        }}
-      >
       {micro ? (
         <>
           <div style={{ color: nameColor, fontSize: 8, fontFamily: "'Archivo Black', sans-serif", lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 1 auto', minWidth: 0 }}>
@@ -320,23 +309,24 @@ function BookingBlock({
               {labelLine}
             </div>
           )}
-          {/* Time and engineer share ONE row. Stacking them cost ~11px and pushed
-              the payload past the available height at rowH 60 — the clipped
-              "Skilla Baby" card. */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6, marginTop: 2, minWidth: 0 }}>
-            <div className="c-ev-2 c-mono" style={{ fontSize: 9.5, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
-              {timeStr}
-              {!isBilling && booking.cod_method && ` · ${booking.cod_method.toUpperCase()}`}
-            </div>
-            {(eng || asst) && (
-              <div className="c-ev-2 c-mono" style={{ fontSize: 9, lineHeight: 1.25, whiteSpace: 'nowrap', flexShrink: 0, textAlign: 'right' }}>
-                {[eng && `1ST-${eng}`, asst && `2ND-${asst}`].filter(Boolean).join('  ')}
-              </div>
-            )}
+          <div className="c-ev-2 c-mono" style={{ fontSize: 9.5, lineHeight: 1.25, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {timeStr}
+            {!isBilling && booking.cod_method && ` · ${booking.cod_method.toUpperCase()}`}
           </div>
+          {/* Staffing sits bottom-right, ALWAYS. Absolutely positioned so it adds
+              no height to the flow — stacking it in-flow is what overran the chip
+              at rowH 60. Mirrors the dashboard room cards. */}
+          {(eng || asst) && (
+            <div className="c-ev-2 c-mono" style={{
+              position: 'absolute', right: 6, bottom: 4,
+              fontSize: 9, lineHeight: 1.3, textAlign: 'right', whiteSpace: 'nowrap',
+            }}>
+              {eng  && <div>1ST-{eng}</div>}
+              {asst && <div>2ND-{asst}</div>}
+            </div>
+          )}
         </>
       )}
-      </div>
     </div>
   )
 }
