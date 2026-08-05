@@ -193,7 +193,7 @@ function assignLanes(bookings: Booking[]): Map<string, { lane: number; numLanes:
 
 function BookingBlock({
   booking, gridStart, totalDays, lane, numLanes, rowH, onClick, isMobile = false, staffByDay = {},
-  onHover, onHoverEnd, scrollX = 0, colW = 0,
+  onHover, onHoverEnd, scrollX = 0, colW = 0, viewportW = 0,
 }: {
   booking: Booking; gridStart: Date; totalDays: number
   lane: number; numLanes: number; rowH: number; onClick: () => void
@@ -205,6 +205,8 @@ function BookingBlock({
   // payload along to stay on screen.
   scrollX?: number
   colW?: number
+  // Visible width of the day area, for centring in the bar/viewport intersection.
+  viewportW?: number
   isMobile?: boolean
 }) {
   const bStart = parse(booking.start_date)
@@ -279,9 +281,33 @@ function BookingBlock({
     if (w && Math.abs(w - payloadW) > 2) setPayloadW(w)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [primaryName, labelLine, timeStr, eng, asst, micro, compact, blockHeight])
-  const payloadShift = colW
-    ? Math.min(Math.max(0, scrollX - chipLeftPx), Math.max(0, chipWidthPx - payloadW - 12))
-    : 0
+  // ── Centered payload (F-13) ───────────────────────────────────────────────
+  // The payload is centred in the VISIBLE INTERSECTION of bar and viewport, so a
+  // month-long bar always shows its identity wherever you're scrolled, and a bar
+  // that fits entirely on screen degrades to a plain centre with no JS involved.
+  //
+  //   visStart = max(chipLeft, scrollLeft)
+  //   visEnd   = min(chipRight, scrollLeft + viewportW)
+  //   target   = (visStart + visEnd)/2 − payloadW/2 − chipLeft
+  //   shift    = clamp(0, target, chipWidth − payloadW)
+  //
+  // The wrapper is statically centred by `margin: 0 auto`, so the transform only
+  // ever carries the DELTA from that centre — chips not touching a viewport edge
+  // do no work at all and need no transform.
+  const chipRightPx = chipLeftPx + chipWidthPx
+  const clipped = colW > 0 && viewportW > 0 &&
+    (chipLeftPx < scrollX || chipRightPx > scrollX + viewportW)
+  const staticLeft = Math.max(0, (chipWidthPx - payloadW) / 2)
+  let payloadShift = 0
+  if (clipped) {
+    const visStartPx = Math.max(chipLeftPx, scrollX)
+    const visEndPx = Math.min(chipRightPx, scrollX + viewportW)
+    if (visEndPx > visStartPx) {
+      const target = (visStartPx + visEndPx) / 2 - payloadW / 2 - chipLeftPx
+      const clampedTarget = Math.min(Math.max(0, target), Math.max(0, chipWidthPx - payloadW))
+      payloadShift = clampedTarget - staticLeft
+    }
+  }
 
   return (
     <div
@@ -307,13 +333,15 @@ function BookingBlock({
       }}
     >
       <div ref={payloadRef} style={{
+        // Statically centred — this is the whole behaviour for single-day chips
+        // and for any bar fully in view. No JS, no transform.
+        width: 'fit-content', margin: '0 auto', maxWidth: '100%',
         transform: payloadShift ? `translateX(${payloadShift}px)` : undefined,
         display: 'flex', flexDirection: micro ? 'row' : 'column',
         alignItems: micro ? 'center' : undefined,
         gap: micro ? 4 : undefined,
-        minWidth: 0, maxWidth: '100%',
-        // Above the tape labels: when the sliding payload passes a week marker,
-        // the payload is the one that must stay readable.
+        minWidth: 0,
+        // Above the tape labels while both exist.
         position: 'relative', zIndex: 1,
       }}>
       {micro ? (
@@ -869,6 +897,8 @@ function CalendarPageInner() {
   const gridRef = useRef<HTMLDivElement>(null)
   // Horizontal scroll offset, used only to keep long-bar payloads visible.
   const [scrollX, setScrollX] = useState(0)
+  // Visible width of the DAY area (grid minus the sticky label column).
+  const [viewportW, setViewportW] = useState(0)
   const scrollRaf = useRef<number | null>(null)
   useEffect(() => () => { if (scrollRaf.current) cancelAnimationFrame(scrollRaf.current) }, [])
   const lastWheelStep = useRef(0)
@@ -1110,6 +1140,14 @@ function CalendarPageInner() {
       const target = scrollCorrectionRef.current
       scrollCorrectionRef.current = null
       el.scrollLeft = target
+      // Infinite scroll re-anchors the grid: startDate moves, every chip's offset
+      // is recomputed, and scrollLeft is corrected imperatively here. scrollX must
+      // be re-synced in the SAME breath or it stays measured against the previous
+      // origin — an error of 7*colW per shift that ACCUMULATES, which is what made
+      // long-bar payloads drift off the chip and vanish. Any feature reading
+      // scrollLeft inherits this bug unless it's fixed here.
+      setScrollX(target)
+      setViewportW(Math.max(0, el.clientWidth - labelW))
     } else {
       // View/date switch: block scroll handler until rAF sets the correct position,
       // preventing transitional scroll events (from content-width change) from
@@ -1117,6 +1155,8 @@ function CalendarPageInner() {
       shiftingRef.current = true
       const target = bufDays * colW
       requestAnimationFrame(() => {
+        setScrollX(target)
+        setViewportW(Math.max(0, (gridRef.current?.clientWidth ?? 0) - labelW))
         if (el) el.scrollLeft = target
         shiftingRef.current = false
       })
@@ -1143,8 +1183,12 @@ function CalendarPageInner() {
     if (!scrollRaf.current) {
       scrollRaf.current = requestAnimationFrame(() => {
         scrollRaf.current = null
-        const next = gridRef.current?.scrollLeft ?? 0
+        const el2 = gridRef.current
+        if (!el2) return
+        const next = el2.scrollLeft
         setScrollX(prev => (Math.abs(prev - next) > 4 ? next : prev))
+        const vw = Math.max(0, el2.clientWidth - labelW)
+        setViewportW(prev => (Math.abs(prev - vw) > 4 ? vw : prev))
       })
     }
 
@@ -1562,6 +1606,7 @@ function CalendarPageInner() {
                             onHoverEnd={hideHover}
                             scrollX={scrollX}
                             colW={colW}
+                            viewportW={viewportW}
                           />
                         )
                       })}
