@@ -19,7 +19,7 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
-## v1.6.0 — UNRELEASED (branch `redesign/carved`) — Jul 30, 2026
+## v1.6.0 — UNRELEASED (branch `redesign/carved`) — Jul 30 – Aug 1, 2026
 
 **"Carved" design system: real token + primitive layer replacing the light-mode patch layer. Dashboard, nav, login and Daily Ops migrated. Nothing merged to `main`.**
 
@@ -38,11 +38,32 @@ Spec: `docs/PRSFLO-DESIGN-SPEC.md` + `prsflo-final-mock.html` (the mock is the v
 
 **Watch-outs:**
 - **`.c-sheet` gives raw `<button>`/`<input>`/`<textarea>` carved defaults.** This is a deliberate compromise for ~38 one-off controls inside migrated modals, and it is *not* the pattern being retired: the old layer matched inline-style **substrings across the whole document**; these are component-scoped element selectors visible from the markup. **Prefer primitives in new code.** Those controls had their inline `background` stripped so the scoped rules win without `!important` — don't re-add inline backgrounds there.
-- **The `[style*=` metric recommended earlier was wrong.** 38 of the 52 occurrences are inside `@media print` (the WO print stylesheet) and have nothing to do with theming. **Track the legacy override layer instead: `[data-theme="light"]` selectors that do NOT contain `.c-` — 36 remaining, down from ~66.** Five of those are the fragile substring matchers.
+- **The `[style*=` metric recommended earlier was wrong.** 38 of the 54 occurrences are inside `@media print` (the WO print stylesheet) and have nothing to do with theming. **Track the legacy override layer instead: `[data-theme="light"]` selectors that do NOT contain `.c-` — 27 remaining as of Aug 1, down from ~66.**
 - **`DailyOpsModal` lost its required `color` prop** and `TwoCheckbox` lost its optional one — per-studio colour is retired. `LocationStrip`'s `SectionLabel` still *accepts* `orange` but **ignores it**; clean up or restore deliberately.
 - **A scripted token-swap is not a migration.** The first pass over the dashboard modals swapped tokens, fonts and borders by regex — which strips legacy styling but cannot *add* carved structure, producing "typography arrived, physics didn't". Daily Ops had to be redone applying recipes by hand. Migrate surfaces by applying recipes, not by find-and-replace.
-- **Still un-migrated and visibly legacy:** CRM, calendar, admin, WO Hub/popup, runner, `/tasks`, the welcome splash. The nav paints carved ground on *every* route, so those pages show a warm bar over the old ground until they migrate. CRM also still runs the `webInquiryPulse` accent glow, which §9 replaces with `.c-newpulse`.
+- **Still un-migrated as of Aug 1:** admin, WO Hub, **WorkOrderPopup** (2,835 lines — the largest remaining piece), runner, `/tasks`, the welcome splash. The nav paints carved ground on *every* route, so those pages show a warm bar over the old ground until they migrate. (CRM and the calendar were completed Jul 31 – Aug 1; `webInquiryPulse` went with the CRM pass.)
 - **`public/sop.html` was deliberately NOT updated**, though the end-of-session ritual in `CLAUDE.md` requires it: spec §1 explicitly fences that file off as a separate project. Staff notes for this work are owed once it merges.
+
+**Added Jul 31 – Aug 1 (CRM, calendar, references):**
+
+- **CRM migrated in full** — lead list, detail panel, clients, registrations, every modal, and the **seven shared components CRM renders** (`StaffPicker`, `StudioSelect`, `ClientPanel`, `RegViewModal`, `ContactPicker`, `ArtistPicker`, `PhoneInput`). *A page is not a surface; it is the page plus everything it renders* — the accent survived a "finished" CRM because those seven were missed.
+- **Lead profile ported to `docs/design-refs/lead-profile-final.html`** — meta-line identity (`COD · source · age`), bare-Archivo name with focus-only affordance, `aka` well, CONTACT/SESSION/NOTES bands (flat wash, zero depth), one well recipe, segmented housings, calcline, Activity/Tags folds, footer delete.
+- **V3 recipes added:** `.c-well`, `.c-band`, `.c-seg`, `.c-mini`, `.c-fold`, `.c-metaline`, `.c-artist-sub`, `.c-calcline`, `.c-returning`, `.c-danger`, `.c-nc-toggle`, `.c-pressed`.
+- **Field geometry radius 14 / height 40 app-wide** (supersedes §7 "inputs 99px"; mock wins).
+- **`--c-st-warm` violet → amber `#ffa94d`** — one token edit propagated to all 25 consumers with zero hardcoded literals, which is the first proof the token layer works.
+- **Returning badge** on approved email-OR-phone match against `clients`, counting DISTINCT engagements from `bookings`.
+- **Calendar** — status-fill chips, grid restored per the §10 exemption (row separators, day ticks, heavier week/month ticks), full-width location bars, chip payload in chip-ink, staffing bottom-right, **per-day staffing read from `studio_time_rows`**, long-bar tape labels.
+- **Design references committed** — `docs/PRSFLO-DESIGN-SPEC.md` and `docs/design-refs/` were session-only and are now in the repo.
+
+**Watch-outs added this period:**
+- **The `[style*=` metric is WRONG and is retired.** 38 of 54 occurrences are in `@media print`. Track `[data-theme="light"]` selectors without `.c-` — **27 left, from ~66.**
+- **Theme rules need the `[data-theme="light"]` prefix on EVERY selector in a comma group.** One missing prefix applied a 70%-white shadow in dark mode.
+- **`:not()` chains inflate specificity** — a scoped default at (0,6,1) silently outranks a targeted rule at (0,1,1). Use explicit opt-out classes, not source order.
+- **`clients.phone` holds MIXED formats** — `ClientProfile` writes digits-only, `/api/register` writes raw as typed. Any phone matching must normalise both sides; PostgREST can't, so narrow on the last 4 digits and compare exactly in JS.
+- **Calendar per-day staffing is a §10 behavioural exception**, display-only, Eli-approved. Do not "fix" it by splitting runs in `projectBookingCards` — that edits the atomic WO save path.
+- **A scripted token-swap is not a migration.** Regex retires legacy values; it cannot add carved structure. Apply recipes surface by surface.
+
+**Files (added):** `app/(main)/crm/page.tsx`, `app/(main)/calendar/page.tsx`, `components/clients/*`, `components/crm/*`, `components/shared/{StaffPicker,StudioSelect,ClientPanel,RegViewModal,ContactPicker,ArtistPicker,PhoneInput}.tsx`, `docs/PRSFLO-DESIGN-SPEC.md`, `docs/design-refs/*`.
 
 **Files:** `styles/globals.css`, `components/carved/index.tsx`, `components/layout/Wordmark.tsx`, `components/layout/Nav.tsx`, `components/PRSFloIcon.tsx`, `components/ui/SectionHeader.tsx`, `components/ui/StatusBadge.tsx`, `components/SopGate.tsx`, `components/dashboard/LocationStrip.tsx`, `components/dashboard/DailyOpsModal.tsx`, `app/(main)/page.tsx`, `app/(main)/dev-style/page.tsx`, `app/(auth)/login/page.tsx`, `app/(auth)/reset-password/page.tsx`, `app/runner/page.tsx`, `docs/working-conventions.md`, `CLAUDE.md`.
 

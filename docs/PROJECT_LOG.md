@@ -2467,3 +2467,90 @@ the legacy override layer proper. **36 remain, from ~66.** Five are the substrin
 - Petty cash lost its green/red on in/out; the +/− carries direction. Least confident of the colour calls.
 - `public/sop.html` NOT updated despite the four-doc ritual — spec §1 fences it off as a separate project.
   Staff notes are owed when this merges.
+
+### August 1, 2026 — Carved redesign: design + implementation status (sign-off)
+
+Branch `redesign/carved`, still unmerged. Detail per version is in CHANGELOG; this is the
+reasoning, the rulings, and the corrections. Design side authored by the Fable session;
+implementation by the Opus session. Both halves recorded together.
+
+**Design system.** "Carved" approved and specced — `docs/PRSFLO-DESIGN-SPEC.md` is law,
+`docs/design-refs/` holds the component references. Laws: no borders or lines (the calendar
+is grid-EXEMPT per the §10 ruling — position is information there and the grid encoding it
+is functional); carved affordance (containers inset, controls raised, press-in on `:active`);
+colour = status only (Lagoon set; warm moved violet → **amber `#ffa94d`**; hot is
+**dual-purpose** — temperature AND destructive/critical, per the §5 ruling, and warm is
+never a warning); two registers (bright light, dimmed dark, no large bright surfaces in
+dark); tokens `--c-` prefixed, permanently, legacy dying with its last consumer.
+
+**Surfaces migrated.** Dashboard, daily ops, CRM list + lead profile (per
+`lead-profile-final.html`: bands, wells, segmented controls, meta line, Returning badge on
+the approved email/phone SQL, Needs Contact toggle, Send-Reg guards + `dbResult` fix),
+calendar (grid restored per §10, full-width location bars, chip payload in chip-ink,
+staffing bottom-right, per-day staffing via `studio_time_rows` [Option B, approved display
+exception], long-bar tape labels). WorkOrderPopup is next, pending Eli's visual sweep.
+
+**Process.** F/O numbered relay adopted between the design and implementation sessions after
+FOUR messages were dropped in relay (the V3 layout prompt, a "Send Re—" fragment, and F-1/F-2).
+`docs/working-conventions.md` was rewritten for the Claude-direct workflow — sandbox shells
+never run git, Eli runs everything from provided one-liners — after the 2026-07-30
+credential/lock incident.
+
+**CORRECTION — the override metric in the design-side summary is superseded.** It records
+"`[style*=` count, baseline 58, monotonic decreasing". That metric measures the wrong
+population: of 54 occurrences today, **38 live inside `@media print`** (the WO print
+stylesheet) and have nothing to do with theming. No amount of migration moves them, so the
+number looks stalled while real progress happens — and would look falsely good later.
+**Track instead: `[data-theme="light"]` selectors that do NOT contain `.c-` — the legacy
+override layer proper. 27 remain, from ~66 at branch start.**
+
+**Decisions taken this period, with what was rejected:**
+
+- **`--c-` prefix is permanent.** Rejected: reusing bare names (breaks on contact — `--bg`
+  means `transparent` in the legacy light theme), and a rename sweep at the end (a large
+  mechanical diff for cosmetics, on a codebase already bitten by one).
+- **Dark on `:root`, light as the override.** The spec prints it the other way round, and
+  copying it verbatim produces a dark block that matches NOTHING — this app expresses dark
+  as the *absence* of `data-theme`. Every spec CSS example needs mentally inverting.
+- **Wordmark became a component** (`components/layout/Wordmark.tsx`). The locked rule in
+  `CLAUDE.md` changed shape from "copy these spans out of Nav.tsx" — a convention that had
+  already failed once and was being enforced by hand across five files. `PRSFloIcon` went
+  monochrome and dropped `'use client'` (CSS handles the theme; no MutationObserver needed).
+- **Field geometry: radius 14 / height 40, app-wide** — supersedes §7's "inputs 99px" on the
+  mock-wins rule. Applied to every input in the app, not just the lead profile.
+- **`.c-sheet` / `.c-panel` give raw controls carved defaults.** A deliberate compromise for
+  ~38 one-off buttons and inputs. NOT the pattern being retired: the old layer matched
+  inline-style *substrings document-wide*; these are component-scoped element selectors.
+  Prefer primitives in new code.
+- **Per-day calendar staffing = Option B (display-layer read).** Option A (splitting runs in
+  `projectBookingCards`) rejected: it edits the atomic WO save path and rewrites booking data
+  to fix a label, and WO regressions are the standing top hazard.
+
+**Bugs found and fixed that are worth not repeating:**
+
+- **A missing `[data-theme="light"]` prefix on ONE selector in a comma group** applied a
+  70%-white shadow in dark mode — the "white haze" on buttons. Multi-selector theme rules
+  need the prefix on EVERY line; a scan for this now exists.
+- **`:not()` chains inflate specificity.** `.c-panel button:not()×5` is (0,6,1) and silently
+  outranked the targeted `.c-lozenge button` (0,1,1) — turning quiet action links into pills,
+  then invisible text. Fixed by an explicit `c-lz-action` opt-out, not by fighting order.
+- **Scrollbars and native widget chrome** were the last global consumers of legacy `--border`
+  (a desaturated blue) — the "blue bars".
+- **Calendar chip thresholds were guessed, not measured**, truncating the client line at every
+  zoom under 80 where it actually fitted. Archivo Black also needs ~1.35 leading or its
+  descenders clip — the same lesson as the dashboard room cards, learned twice.
+- **The Returning badge's phone narrowing was broken for formatted numbers.** `clients.phone`
+  holds MIXED formats (ClientProfile stores digits-only; `/api/register` stores raw as typed),
+  so narrowing on the full digit string silently missed every registration-origin client.
+  Now narrows on the last 4 digits, which stays contiguous in every US format.
+
+**The methodological lesson.** The dashboard modals were first migrated with scripted regex
+passes — token, font and border swaps across ~1,800 lines. That retires legacy values but
+CANNOT add carved structure, because there is nothing in old markup for a regex to map a
+panel recipe onto. The result was "typography arrived, physics didn't", correctly rejected on
+review, and Daily Ops had to be redone by hand. **A scripted token-swap is not a migration.**
+
+**Also recorded:** `docs/design-refs/` and `docs/PRSFLO-DESIGN-SPEC.md` were not in the repo
+at all — they existed only in session uploads, so "open the reference" was impossible for any
+future session. Now committed. `public/sop.html` staff notes remain owed at merge (spec §1
+fences that file off).
