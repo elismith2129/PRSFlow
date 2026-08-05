@@ -226,8 +226,12 @@ function BookingBlock({
   const slotH = rowH / numLanes
   const blockTop = lane * slotH + 2
   const blockHeight = slotH - 3
-  const micro = blockHeight < 30
-  const compact = !micro && blockHeight < 60
+  // Measured, not guessed: full payload ≈ 49px (name 15.6 + client 12 + time
+  // 10.8 + eng 10.4), so anything with ~46px+ of block height can show all of it.
+  // These were 30/60, which forced compact at rowH 60 where the payload fits and
+  // truncated the client line at every zoom below 80.
+  const micro = blockHeight < 26
+  const compact = !micro && blockHeight < 46
   const codLabel = booking.cod_method === 'Credit Card' ? 'CC' : (booking.cod_method ?? '').toUpperCase()
 
   return (
@@ -254,7 +258,7 @@ function BookingBlock({
             {primaryName}
           </div>
           {timeStr && (
-            <div style={{ fontSize: 7, fontFamily: 'Inter', whiteSpace: 'nowrap', flexShrink: 0 }} className="c-ev-2">
+            <div style={{ fontSize: 8.5, fontFamily: 'Inter', whiteSpace: 'nowrap', flexShrink: 0 }} className="c-ev-2">
               {timeStr}
             </div>
           )}
@@ -272,20 +276,20 @@ function BookingBlock({
               {primaryName}
             </div>
             {!isBilling && codLabel && (
-              <span style={{ fontSize: 7, fontFamily: 'Inter', fontWeight: 700, opacity: 0.65, flexShrink: 0, lineHeight: 1, letterSpacing: '0.03em' }}>
+              <span style={{ fontSize: 8.5, fontFamily: 'Inter', fontWeight: 700, opacity: 0.75, flexShrink: 0, lineHeight: 1, letterSpacing: '0.03em' }}>
                 {codLabel}
               </span>
             )}
           </div>
           {/* Row 2: time + eng/asst */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', overflow: 'hidden' }}>
-            <div className="c-ev-2" style={{ fontSize: 8, fontFamily: 'Inter', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+            <div className="c-ev-2" style={{ fontSize: 9.5, fontFamily: 'Inter', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
               {timeStr}
             </div>
             {(eng || asst) && (
               <div style={{ display: 'flex', gap: 3, flexShrink: 0, marginLeft: 4 }}>
-                {eng  && <div style={{ fontSize: 8, fontFamily: 'Inter', whiteSpace: 'nowrap' }} className="c-ev-2 c-mono">1ST-{eng}</div>}
-                {asst && <div style={{ fontSize: 8, fontFamily: 'Inter', whiteSpace: 'nowrap' }} className="c-ev-2 c-mono">2ND-{asst}</div>}
+                {eng  && <div style={{ fontSize: 9.5, fontFamily: 'Inter', whiteSpace: 'nowrap' }} className="c-ev-2 c-mono">1ST-{eng}</div>}
+                {asst && <div style={{ fontSize: 9.5, fontFamily: 'Inter', whiteSpace: 'nowrap' }} className="c-ev-2 c-mono">2ND-{asst}</div>}
               </div>
             )}
           </div>
@@ -300,29 +304,29 @@ function BookingBlock({
           </div>
           {labelLine && (
             <div style={{
-              fontSize: 10, fontFamily: 'Inter', lineHeight: 1.2, marginTop: 1,
+              fontSize: 10.5, fontFamily: 'Inter', lineHeight: 1.2, marginTop: 1,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>
               {labelLine}
             </div>
           )}
           {timeStr && (
-            <div className="c-ev-2 c-mono" style={{ fontSize: 9, lineHeight: 1.2, marginTop: 2 }}>
+            <div className="c-ev-2 c-mono" style={{ fontSize: 9.5, lineHeight: 1.2, marginTop: 2 }}>
               {timeStr}
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto' }}>
             <div>
               {!isBilling && booking.cod_method && (
-                <div style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, lineHeight: 1.3, opacity: 0.65 }}>
+                <div style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 700, lineHeight: 1.3, opacity: 0.75 }}>
                   {booking.cod_method.toUpperCase()}
                 </div>
               )}
             </div>
             {(eng || asst) && (
               <div style={{ textAlign: 'right' }}>
-                {eng  && <div style={{ fontSize: 8, fontFamily: 'Inter', lineHeight: 1.3 }} className="c-ev-2 c-mono">1ST-{eng}</div>}
-                {asst && <div style={{ fontSize: 8, fontFamily: 'Inter', lineHeight: 1.3 }} className="c-ev-2 c-mono">2ND-{asst}</div>}
+                {eng  && <div style={{ fontSize: 9, fontFamily: 'Inter', lineHeight: 1.3 }} className="c-ev-2 c-mono">1ST-{eng}</div>}
+                {asst && <div style={{ fontSize: 9, fontFamily: 'Inter', lineHeight: 1.3 }} className="c-ev-2 c-mono">2ND-{asst}</div>}
               </div>
             )}
           </div>

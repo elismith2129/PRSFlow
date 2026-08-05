@@ -1008,7 +1008,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* Chip payload: ALL text is chip ink. Secondary lines at 70% of chip ink — never
    the muted INK steps, which are light-grey and fail against a status fill. */
 .c-ev, .c-ev * { color: var(--c-chip-ink); }
-.c-ev-2 { opacity: .7; }
+.c-ev-2 { opacity: .78; }
 .c-ev.c-ev-cancelled, .c-ev.c-ev-cancelled * { color: var(--c-hot-text); }
 
 /* ── Status fills (§5) — the only colour in the system ──────────────────── */
