@@ -315,7 +315,7 @@ function BookingBlock({
             {primaryName}
           </div>
           {labelLine && (
-            <div style={{
+            <div className="c-ev-meta" style={{
               fontSize: 10.5, fontFamily: 'Inter', lineHeight: 1.2, marginTop: 1,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>

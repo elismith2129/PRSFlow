@@ -1008,7 +1008,10 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* Chip payload: ALL text is chip ink. Secondary lines at 70% of chip ink — never
    the muted INK steps, which are light-grey and fail against a status fill. */
 .c-ev, .c-ev * { color: var(--c-chip-ink); }
-.c-ev-2 { opacity: .78; }
+.c-ev-2 { opacity: .85; font-weight: 500; }
+/* The client line is Inter, which has 600/700 loaded — the mono lines can't go
+   past 500 because DM Mono only ships 400/500 (see the @import at the top). */
+.c-ev-meta { font-weight: 700; opacity: .85; }
 .c-ev.c-ev-cancelled, .c-ev.c-ev-cancelled * { color: var(--c-hot-text); }
 
 /* ── Status fills (§5) — the only colour in the system ──────────────────── */
