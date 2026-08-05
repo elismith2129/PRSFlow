@@ -978,6 +978,29 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-signoff.c-on { background: var(--c-ivory); color: #1b1a17; }
 [data-theme="light"] .c-signoff.c-on { background: var(--c-fg); color: var(--c-bg); }
 
+/* ── Calendar hover card (F-11) ───────────────────────────────────────────
+   Floating ABOVE the surface, which is the sanctioned outer-shadow exception
+   class (§7): raised controls, modals, and this. Drop shadow plus the standard
+   inset top sheen so it reads as a lifted sheet rather than a flat tooltip.
+   pointer-events:none is load-bearing — the card must never intercept the click
+   that opens the WO. */
+.c-hovercard {
+  position: fixed; z-index: 9998; pointer-events: none;
+  background: var(--c-bg); border-radius: 20px; padding: 15px;
+  min-width: 210px; max-width: 300px;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .04);
+  animation: c-hovercard-in .12s ease both;
+}
+[data-theme="light"] .c-hovercard {
+  box-shadow: 0 10px 30px -10px rgba(42, 39, 34, .35), inset 0 1px 0 rgba(255, 255, 255, .7);
+}
+@keyframes c-hovercard-in { from { opacity: 0 } to { opacity: 1 } }
+@media (prefers-reduced-motion: reduce) { .c-hovercard { animation: none } }
+.c-hovercard-hint {
+  font-size: 9.5px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase;
+  opacity: .4; margin-top: 10px;
+}
+
 /* ── Calendar grid (§10 GRID EXEMPTION, ruling 2026-08-01) ────────────────
    The calendar is EXEMPT from Law 1. Position is information on this surface and
    the grid that encodes it is functional, not decorative — 11 studios at density

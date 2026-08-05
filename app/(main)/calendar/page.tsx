@@ -10,7 +10,7 @@ import { createWorkOrderForBooking, bookingShouldHaveWorkOrder } from '@/lib/cre
 import { deleteSessionAndWO } from '@/lib/deleteSession'
 import { dateRange } from '@/lib/time'
 import { useIsMobile } from '@/hooks/useIsMobile'
-import { statusFillClass, StatusDot } from '@/components/carved'
+import { statusFillClass, StatusDot, StatusPill } from '@/components/carved'
 
 // ─── LOCATIONS ───────────────────────────────────────────────────────────────
 
@@ -117,6 +117,13 @@ function fmtTime(t: string): string {
   return `${h}${min !== '00' ? ':' + min : ''}${suf}`
 }
 
+// "Aug 6" from a YYYY-MM-DD string. Parsed at noon so a timezone offset can't
+// roll the date backwards, the same guard the runner pages use.
+function shortDate(d: string): string {
+  if (!d) return ''
+  return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 function rangeLabel(start: Date, totalDays: number): string {
   const end = addDays(start, totalDays - 1)
   const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
@@ -186,11 +193,14 @@ function assignLanes(bookings: Booking[]): Map<string, { lane: number; numLanes:
 
 function BookingBlock({
   booking, gridStart, totalDays, lane, numLanes, rowH, onClick, isMobile = false, staffByDay = {},
+  onHover, onHoverEnd,
 }: {
   booking: Booking; gridStart: Date; totalDays: number
   lane: number; numLanes: number; rowH: number; onClick: () => void
   // work_order_id|date -> staff for that day (F-9 Option B). Empty for legacy rows.
   staffByDay?: Record<string, { eng?: string; asst?: string }>
+  onHover?: (booking: Booking, day: string, rect: DOMRect) => void
+  onHoverEnd?: () => void
   isMobile?: boolean
 }) {
   const bStart = parse(booking.start_date)
@@ -250,6 +260,15 @@ function BookingBlock({
   return (
     <div
       onClick={e => { e.stopPropagation(); onClick() }}
+      onMouseMove={onHover ? e => {
+        // Which day column is under the cursor — so a month-long bar reports the
+        // day being pointed at, not the day the bar happens to start on.
+        const r = e.currentTarget.getBoundingClientRect()
+        const frac = (e.clientX - r.left) / Math.max(1, r.width)
+        const idx = Math.min(spanDays - 1, Math.max(0, Math.floor(frac * spanDays)))
+        onHover(booking, fmt(addDays(visStart, idx)), r)
+      } : undefined}
+      onMouseLeave={onHoverEnd}
       className={`c-ev c-control c-raised-chip ${statusFillClass(slot)}${isCancelled ? ' c-ev-cancelled' : ''}`}
       style={{
         position: 'absolute', top: blockTop, height: blockHeight,
@@ -846,6 +865,41 @@ function CalendarPageInner() {
     : view === '2wks'
     ? Math.max(60, Math.floor(usableW / 14))
     : Math.max(44, Math.floor(usableW / totalDays))
+
+  // ── Hover card (F-11) ─────────────────────────────────────────────────────
+  // Built entirely from data already on the page (projection + the Option B
+  // per-day staffing map) — no new queries. `position: fixed` so the card can
+  // never be clipped by the calendar's overflow, and clamped to the viewport.
+  const [hoverCard, setHoverCard] = useState<
+    { booking: Booking; day: string; x: number; y: number; below: boolean } | null
+  >(null)
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastHoverEnd = useRef<number>(0)
+  const canHover = useRef(false)
+  useEffect(() => {
+    // Touch devices get no hover behaviour at all — tap stays click-to-open.
+    canHover.current = typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches
+  }, [])
+
+  function showHover(booking: Booking, day: string, rect: DOMRect) {
+    if (!canHover.current) return
+    const CARD_H = 190, CARD_W = 300, GAP = 10
+    const below = rect.top - CARD_H - GAP < 8
+    const x = Math.min(Math.max(8, rect.left), window.innerWidth - CARD_W - 8)
+    const y = below ? rect.bottom + GAP : rect.top - GAP
+    const next = { booking, day, x, y, below }
+    // Moving between chips inside 300ms shows the next card immediately.
+    const immediate = Date.now() - lastHoverEnd.current < 300
+    if (hoverTimer.current) clearTimeout(hoverTimer.current)
+    if (immediate) { setHoverCard(next); return }
+    hoverTimer.current = setTimeout(() => setHoverCard(next), 250)
+  }
+  function hideHover() {
+    if (hoverTimer.current) { clearTimeout(hoverTimer.current); hoverTimer.current = null }
+    lastHoverEnd.current = Date.now()
+    setHoverCard(null)
+  }
+  useEffect(() => () => { if (hoverTimer.current) clearTimeout(hoverTimer.current) }, [])
 
   // work_order_id|date -> { eng, asst } for the visible range. Empty when a
   // booking predates the WO rebuild; the chip falls back to the projection names.
@@ -1451,6 +1505,8 @@ function CalendarPageInner() {
                             onClick={() => openEdit(b)}
                             isMobile={isMobile}
                             staffByDay={staffByDay}
+                            onHover={showHover}
+                            onHoverEnd={hideHover}
                           />
                         )
                       })}
@@ -1696,6 +1752,54 @@ function CalendarPageInner() {
           reloadKey={reloadKey}
         />
       )}
+
+      {/* ── Hover card (F-11) ────────────────────────────────────────────────
+          Glanceable summary for anyone near a screen, so deliberately NO
+          financial data — no rate, quote or invoice number. Staffing follows the
+          day column under the cursor via the Option B map. Fixed-positioned and
+          pointer-events:none so it can never be clipped by the calendar's
+          overflow, and can never intercept the click that opens the WO. */}
+      {hoverCard && (() => {
+        const b = hoverCard.booking
+        const bill = b.payment_type === 'billing'
+        const artist = bill ? (b.artist || b.label || b.client_name || '—') : (b.client_name || '—')
+        const client = bill && b.label && b.label !== artist ? b.label : (bill ? '' : (b.artist || ''))
+        const st = hoverCard.booking.work_order_id
+          ? staffByDay[`${b.work_order_id}|${hoverCard.day}`]
+          : undefined
+        const engN = st?.eng ?? b.engineer_name
+        const asstN = st?.asst ?? b.assistant_name
+        const times = b.from_time ? `${fmtTime(b.from_time)}${b.to_time ? `–${fmtTime(b.to_time)}` : ''}` : ''
+        const dates = b.start_date === b.end_date
+          ? shortDate(b.start_date)
+          : `${shortDate(b.start_date)} – ${shortDate(b.end_date)}`
+        return (
+          <div
+            className="c-hovercard"
+            style={{
+              left: hoverCard.x,
+              top: hoverCard.below ? hoverCard.y : undefined,
+              bottom: hoverCard.below ? undefined : `calc(100vh - ${hoverCard.y}px)`,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span className="c-arch" style={{ fontSize: 15, letterSpacing: '-0.02em' }}>{artist}</span>
+              <StatusPill status={STATUS_SLOT[b.status] ?? 'confirmed'} />
+            </div>
+            {client && <div className="c-sub" style={{ marginTop: 2 }}>{client}</div>}
+            <div className="c-label" style={{ marginTop: 8 }}>{b.location} · {b.studio}</div>
+            <div className="c-mono" style={{ fontSize: 11.5, opacity: .75, marginTop: 4 }}>
+              {dates}{times ? ` · ${times}` : ''}
+            </div>
+            {(engN || asstN) && (
+              <div className="c-mono" style={{ fontSize: 11.5, opacity: .75, marginTop: 3 }}>
+                {[engN && `1ST ${engN}`, asstN && `2ND ${asstN}`].filter(Boolean).join('   ')}
+              </div>
+            )}
+            <div className="c-hovercard-hint">Click to open WO</div>
+          </div>
+        )
+      })()}
 
       {/* Work Order — opened directly from the calendar (Step 6; Step 8 made it
           the ONLY session/block editor — BookingForm deleted) */}
