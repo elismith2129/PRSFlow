@@ -199,7 +199,7 @@ function BookingBlock({
   lane: number; numLanes: number; rowH: number; onClick: () => void
   // work_order_id|date -> staff for that day (F-9 Option B). Empty for legacy rows.
   staffByDay?: Record<string, { eng?: string; asst?: string }>
-  onHover?: (booking: Booking, day: string, rect: DOMRect) => void
+  onHover?: (booking: Booking, day: string, rect: DOMRect, cursorX: number) => void
   onHoverEnd?: () => void
   // Horizontal scroll offset + day-column width, so a long bar can slide its
   // payload along to stay on screen.
@@ -226,9 +226,6 @@ function BookingBlock({
   // is still visible, so normal chips are completely unaffected.
   const chipLeftPx = offset * colW
   const chipWidthPx = dur * colW
-  const payloadShift = colW
-    ? Math.min(Math.max(0, scrollX - chipLeftPx), Math.max(0, chipWidthPx - 170))
-    : 0
 
   const isBilling = booking.payment_type === 'billing'
   const slot = STATUS_SLOT[booking.status] ?? 'confirmed'
@@ -271,6 +268,21 @@ function BookingBlock({
   const compact = !micro && blockHeight < 46
   const codLabel = booking.cod_method === 'Credit Card' ? 'CC' : (booking.cod_method ?? '').toUpperCase()
 
+  // The right-end reserve is MEASURED, not guessed — a long artist name plus a
+  // client line needs more room than a short one, and a fixed 170 clipped them.
+  // Measured when the CONTENT changes, never per scroll frame (scrollX is
+  // deliberately absent from the effect deps below).
+  const payloadRef = useRef<HTMLDivElement>(null)
+  const [payloadW, setPayloadW] = useState(170)
+  useLayoutEffect(() => {
+    const w = payloadRef.current?.scrollWidth
+    if (w && Math.abs(w - payloadW) > 2) setPayloadW(w)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [primaryName, labelLine, timeStr, eng, asst, micro, compact, blockHeight])
+  const payloadShift = colW
+    ? Math.min(Math.max(0, scrollX - chipLeftPx), Math.max(0, chipWidthPx - payloadW - 12))
+    : 0
+
   return (
     <div
       onClick={e => { e.stopPropagation(); onClick() }}
@@ -280,7 +292,7 @@ function BookingBlock({
         const r = e.currentTarget.getBoundingClientRect()
         const frac = (e.clientX - r.left) / Math.max(1, r.width)
         const idx = Math.min(spanDays - 1, Math.max(0, Math.floor(frac * spanDays)))
-        onHover(booking, fmt(addDays(visStart, idx)), r)
+        onHover(booking, fmt(addDays(visStart, idx)), r, e.clientX)
       } : undefined}
       onMouseLeave={onHoverEnd}
       className={`c-ev c-control c-raised-chip ${statusFillClass(slot)}${isCancelled ? ' c-ev-cancelled' : ''}`}
@@ -294,12 +306,15 @@ function BookingBlock({
         zIndex: 2, minWidth: 0,
       }}
     >
-      <div style={{
+      <div ref={payloadRef} style={{
         transform: payloadShift ? `translateX(${payloadShift}px)` : undefined,
         display: 'flex', flexDirection: micro ? 'row' : 'column',
         alignItems: micro ? 'center' : undefined,
         gap: micro ? 4 : undefined,
         minWidth: 0, maxWidth: '100%',
+        // Above the tape labels: when the sliding payload passes a week marker,
+        // the payload is the one that must stay readable.
+        position: 'relative', zIndex: 1,
       }}>
       {micro ? (
         <>
@@ -379,6 +394,7 @@ function BookingBlock({
                     position: 'absolute', top: 4, left: `calc(${(d / spanDays) * 100}% + 6px)`,
                     fontFamily: "'Archivo Black', sans-serif", fontSize: 11, lineHeight: 1.3,
                     opacity: 0.7, whiteSpace: 'nowrap', pointerEvents: 'none',
+                    zIndex: 0,
                   }}
                 >
                   {primaryName}
@@ -904,11 +920,14 @@ function CalendarPageInner() {
     canHover.current = typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches
   }, [])
 
-  function showHover(booking: Booking, day: string, rect: DOMRect) {
+  function showHover(booking: Booking, day: string, rect: DOMRect, cursorX: number) {
     if (!canHover.current) return
     const CARD_H = 190, CARD_W = 300, GAP = 10
     const below = rect.top - CARD_H - GAP < 8
-    const x = Math.min(Math.max(8, rect.left), window.innerWidth - CARD_W - 8)
+    // Anchored to the CURSOR, not the chip's left edge — on a long bar that edge
+    // can be weeks off-screen, which pinned the card to the far left and clipped
+    // it. Nudged left so the pointer sits just inside the card, then clamped.
+    const x = Math.min(Math.max(8, cursorX - 24), window.innerWidth - CARD_W - 8)
     const y = below ? rect.bottom + GAP : rect.top - GAP
     const next = { booking, day, x, y, below }
     // Moving between chips inside 300ms shows the next card immediately.
