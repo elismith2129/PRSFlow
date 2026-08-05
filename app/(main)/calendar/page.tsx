@@ -193,7 +193,7 @@ function assignLanes(bookings: Booking[]): Map<string, { lane: number; numLanes:
 
 function BookingBlock({
   booking, gridStart, totalDays, lane, numLanes, rowH, onClick, isMobile = false, staffByDay = {},
-  onHover, onHoverEnd,
+  onHover, onHoverEnd, scrollX = 0, colW = 0,
 }: {
   booking: Booking; gridStart: Date; totalDays: number
   lane: number; numLanes: number; rowH: number; onClick: () => void
@@ -201,6 +201,10 @@ function BookingBlock({
   staffByDay?: Record<string, { eng?: string; asst?: string }>
   onHover?: (booking: Booking, day: string, rect: DOMRect) => void
   onHoverEnd?: () => void
+  // Horizontal scroll offset + day-column width, so a long bar can slide its
+  // payload along to stay on screen.
+  scrollX?: number
+  colW?: number
   isMobile?: boolean
 }) {
   const bStart = parse(booking.start_date)
@@ -215,6 +219,16 @@ function BookingBlock({
   // Visible span in days — tape-label positions are percentages of the RENDERED
   // chip, so they must be based on what's on screen, not the booking's full length.
   const spanDays = dur
+  // How far the payload must slide right to stay on screen on a long bar.
+  //   chip's left edge (content px) = offset * colW
+  //   viewport's left edge          = scrollX
+  // Clamped so it never runs past the bar's right end. 0 for any chip whose start
+  // is still visible, so normal chips are completely unaffected.
+  const chipLeftPx = offset * colW
+  const chipWidthPx = dur * colW
+  const payloadShift = colW
+    ? Math.min(Math.max(0, scrollX - chipLeftPx), Math.max(0, chipWidthPx - 170))
+    : 0
 
   const isBilling = booking.payment_type === 'billing'
   const slot = STATUS_SLOT[booking.status] ?? 'confirmed'
@@ -277,12 +291,16 @@ function BookingBlock({
         boxSizing: 'border-box',
         padding: micro ? '1px 4px' : compact ? '3px 5px' : '4px 6px',
         cursor: 'pointer', overflow: 'hidden',
-        display: 'flex', flexDirection: micro ? 'row' : 'column',
-        alignItems: micro ? 'center' : undefined,
-        gap: micro ? 4 : undefined,
         zIndex: 2, minWidth: 0,
       }}
     >
+      <div style={{
+        transform: payloadShift ? `translateX(${payloadShift}px)` : undefined,
+        display: 'flex', flexDirection: micro ? 'row' : 'column',
+        alignItems: micro ? 'center' : undefined,
+        gap: micro ? 4 : undefined,
+        minWidth: 0, maxWidth: '100%',
+      }}>
       {micro ? (
         <>
           <div style={{ color: nameColor, fontSize: 8, fontFamily: "'Archivo Black', sans-serif", lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 1 auto', minWidth: 0 }}>
@@ -386,6 +404,7 @@ function BookingBlock({
           )}
         </>
       )}
+      </div>
     </div>
   )
 }
@@ -832,6 +851,10 @@ function CalendarPageInner() {
   const [gridH, setGridH] = useState(700)
   const [gridW, setGridW] = useState(1200)
   const gridRef = useRef<HTMLDivElement>(null)
+  // Horizontal scroll offset, used only to keep long-bar payloads visible.
+  const [scrollX, setScrollX] = useState(0)
+  const scrollRaf = useRef<number | null>(null)
+  useEffect(() => () => { if (scrollRaf.current) cancelAnimationFrame(scrollRaf.current) }, [])
   const lastWheelStep = useRef(0)
   const scrollCorrectionRef = useRef<number | null>(null)
   const shiftingRef = useRef(false)
@@ -1094,6 +1117,17 @@ function CalendarPageInner() {
   function handleGridScroll() {
     if (!gridRef.current) return
     const el = gridRef.current
+
+    // Long-bar readability: publish scrollLeft so each chip can slide its payload
+    // to stay on screen. rAF-throttled and quantised to 4px — this re-renders
+    // every visible chip, so it must not fire per scroll event.
+    if (!scrollRaf.current) {
+      scrollRaf.current = requestAnimationFrame(() => {
+        scrollRaf.current = null
+        const next = gridRef.current?.scrollLeft ?? 0
+        setScrollX(prev => (Math.abs(prev - next) > 4 ? next : prev))
+      })
+    }
 
     // Infinite extension: shift window when nearing edges
     if (bufDays > 0 && !shiftingRef.current) {
@@ -1507,6 +1541,8 @@ function CalendarPageInner() {
                             staffByDay={staffByDay}
                             onHover={showHover}
                             onHoverEnd={hideHover}
+                            scrollX={scrollX}
+                            colW={colW}
                           />
                         )
                       })}
