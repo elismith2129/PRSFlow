@@ -281,33 +281,34 @@ function BookingBlock({
     if (w && Math.abs(w - payloadW) > 2) setPayloadW(w)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [primaryName, labelLine, timeStr, eng, asst, micro, compact, blockHeight])
-  // ── Centered payload (F-13) ───────────────────────────────────────────────
-  // The payload is centred in the VISIBLE INTERSECTION of bar and viewport, so a
-  // month-long bar always shows its identity wherever you're scrolled, and a bar
-  // that fits entirely on screen degrades to a plain centre with no JS involved.
+  // ── Long-bar slide (F-12, restored by F-15) ───────────────────────────────
+  // The payload stays TOP-LEFT — the layout Eli approved. It slides right ONLY
+  // when the bar's own left edge has scrolled off screen, which is the single
+  // case that ever needed motion. Ordinary and single-day chips compute a shift
+  // of 0 and carry no transform at all.
   //
-  //   visStart = max(chipLeft, scrollLeft)
-  //   visEnd   = min(chipRight, scrollLeft + viewportW)
-  //   target   = (visStart + visEnd)/2 − payloadW/2 − chipLeft
-  //   shift    = clamp(0, target, chipWidth − payloadW)
+  // F-13's universal centering was reverted: it made every chip move to solve a
+  // problem only month-long bars have.
   //
-  // The wrapper is statically centred by `margin: 0 auto`, so the transform only
-  // ever carries the DELTA from that centre — chips not touching a viewport edge
-  // do no work at all and need no transform.
-  const chipRightPx = chipLeftPx + chipWidthPx
-  const clipped = colW > 0 && viewportW > 0 &&
-    (chipLeftPx < scrollX || chipRightPx > scrollX + viewportW)
-  const staticLeft = Math.max(0, (chipWidthPx - payloadW) / 2)
-  let payloadShift = 0
-  if (clipped) {
-    const visStartPx = Math.max(chipLeftPx, scrollX)
-    const visEndPx = Math.min(chipRightPx, scrollX + viewportW)
-    if (visEndPx > visStartPx) {
-      const target = (visStartPx + visEndPx) / 2 - payloadW / 2 - chipLeftPx
-      const clampedTarget = Math.min(Math.max(0, target), Math.max(0, chipWidthPx - payloadW))
-      payloadShift = clampedTarget - staticLeft
-    }
-  }
+  // The vanishing bug this used to have was the scrollX desync at the infinite-
+  // scroll re-anchor (see the correction site) — NOT this mechanism. That fix
+  // stays regardless.
+  //
+  // Reserve is the MEASURED payload width, never a magic number.
+  // Collision safety (F-15/4). The mashed "6P-2A1ST-CD" must be impossible at any
+  // size, so the staffing tag hides when it can't sit clear of the times line —
+  // the tag gives way, not the time, because the F-11 hover card carries staffing.
+  //
+  // DEVIATION FROM F-15, deliberate: the rule was specified as "< ~1.5 columns",
+  // but a SINGLE-DAY chip is exactly 1.0 columns by definition, so that threshold
+  // would hide staffing on EVERY single-day chip at EVERY zoom — including the
+  // ones in the approved screenshots. Using an absolute width instead: 128px is
+  // about what "6P–2A" plus "1ST-CD" needs side by side. Net effect matches the
+  // intent — narrow chips drop the tag, normal ones keep it.
+  const showStaffTag = chipWidthPx === 0 || chipWidthPx >= 128
+  const payloadShift = colW
+    ? Math.min(Math.max(0, scrollX - chipLeftPx), Math.max(0, chipWidthPx - payloadW - 12))
+    : 0
 
   return (
     <div
@@ -333,9 +334,9 @@ function BookingBlock({
       }}
     >
       <div ref={payloadRef} style={{
-        // Statically centred — this is the whole behaviour for single-day chips
-        // and for any bar fully in view. No JS, no transform.
-        width: 'fit-content', margin: '0 auto', maxWidth: '100%',
+        // Top-left, as approved. Transform is present only on a bar whose left
+        // edge has scrolled away; every other chip renders completely statically.
+        maxWidth: '100%',
         transform: payloadShift ? `translateX(${payloadShift}px)` : undefined,
         display: 'flex', flexDirection: micro ? 'row' : 'column',
         alignItems: micro ? 'center' : undefined,
@@ -378,7 +379,7 @@ function BookingBlock({
             <div className="c-ev-2" style={{ fontSize: 9.5, fontFamily: 'Inter', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
               {timeStr}
             </div>
-            {(eng || asst) && (
+            {showStaffTag && (eng || asst) && (
               <div style={{ display: 'flex', gap: 3, flexShrink: 0, marginLeft: 4 }}>
                 {eng  && <div style={{ fontSize: 9.5, fontFamily: 'Inter', whiteSpace: 'nowrap' }} className="c-ev-2 c-mono">1ST-{eng}</div>}
                 {asst && <div style={{ fontSize: 9.5, fontFamily: 'Inter', whiteSpace: 'nowrap' }} className="c-ev-2 c-mono">2ND-{asst}</div>}
@@ -437,7 +438,7 @@ function BookingBlock({
           {/* Staffing sits bottom-right, ALWAYS. Absolutely positioned so it adds
               no height to the flow — stacking it in-flow is what overran the chip
               at rowH 60. Mirrors the dashboard room cards. */}
-          {(eng || asst) && (
+          {showStaffTag && (eng || asst) && (
             <div className="c-ev-2 c-mono" style={{
               position: 'absolute', right: 6, bottom: 4,
               fontSize: 9, lineHeight: 1.3, textAlign: 'right', whiteSpace: 'nowrap',
