@@ -185,10 +185,12 @@ function assignLanes(bookings: Booking[]): Map<string, { lane: number; numLanes:
 // ─── BOOKING BLOCK ───────────────────────────────────────────────────────────
 
 function BookingBlock({
-  booking, gridStart, totalDays, lane, numLanes, rowH, onClick, isMobile = false,
+  booking, gridStart, totalDays, lane, numLanes, rowH, onClick, isMobile = false, staffByDay = {},
 }: {
   booking: Booking; gridStart: Date; totalDays: number
   lane: number; numLanes: number; rowH: number; onClick: () => void
+  // work_order_id|date -> staff for that day (F-9 Option B). Empty for legacy rows.
+  staffByDay?: Record<string, { eng?: string; asst?: string }>
   isMobile?: boolean
 }) {
   const bStart = parse(booking.start_date)
@@ -200,6 +202,9 @@ function BookingBlock({
   const dur = dayDiff(visStart, visEnd) + 1
   const left = (offset / totalDays) * 100
   const width = (dur / totalDays) * 100
+  // Visible span in days — tape-label positions are percentages of the RENDERED
+  // chip, so they must be based on what's on screen, not the booking's full length.
+  const spanDays = dur
 
   const isBilling = booking.payment_type === 'billing'
   const slot = STATUS_SLOT[booking.status] ?? 'confirmed'
@@ -220,8 +225,16 @@ function BookingBlock({
     ? `${fmtTime(booking.from_time)}–${fmtTime(booking.to_time)}`
     : booking.from_time ? fmtTime(booking.from_time) : ''
 
-  const eng = initials(booking.engineer_name)
-  const asst = initials(booking.assistant_name)
+  // Per-day staffing (F-9 Option B). A chip can span days, so it shows the staff
+  // for its FIRST day here; the week tape-labels below carry each later week's.
+  // Falls back to the projection's collapsed names when the booking has no
+  // studio_time_rows at all (legacy / pre-WO) — never blank.
+  function staffFor(dateStr: string): { eng: string; asst: string } {
+    const hit = booking.work_order_id ? staffByDay[`${booking.work_order_id}|${dateStr}`] : undefined
+    if (hit) return { eng: initials(hit.eng ?? null), asst: initials(hit.asst ?? null) }
+    return { eng: initials(booking.engineer_name), asst: initials(booking.assistant_name) }
+  }
+  const { eng, asst } = staffFor(booking.start_date)
 
   const slotH = rowH / numLanes
   const blockTop = lane * slotH + 2
@@ -313,6 +326,33 @@ function BookingBlock({
             {timeStr}
             {!isBilling && booking.cod_method && ` · ${booking.cod_method.toUpperCase()}`}
           </div>
+          {/* TAPE LABELS (F-9/2). A month-long bar puts its payload weeks off-screen,
+              so the artist name repeats at each week boundary inside the bar —
+              a tape label, not a second payload. Reduced size and opacity so it
+              never competes with the real one at the start. */}
+          {spanDays > 7 && Array.from({ length: Math.floor(spanDays / 7) }, (_, i) => (i + 1) * 7)
+            .filter(d => d < spanDays)
+            .map(d => {
+              const s2 = staffFor(fmt(addDays(visStart, d)))
+              return (
+                <div
+                  key={d}
+                  aria-hidden
+                  style={{
+                    position: 'absolute', top: 4, left: `calc(${(d / spanDays) * 100}% + 6px)`,
+                    fontFamily: "'Archivo Black', sans-serif", fontSize: 11, lineHeight: 1.3,
+                    opacity: 0.7, whiteSpace: 'nowrap', pointerEvents: 'none',
+                  }}
+                >
+                  {primaryName}
+                  {(s2.eng || s2.asst) && (
+                    <span className="c-mono" style={{ fontSize: 9, marginLeft: 6, opacity: 0.85 }}>
+                      {[s2.eng && `1ST-${s2.eng}`, s2.asst && `2ND-${s2.asst}`].filter(Boolean).join(' ')}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
           {/* Staffing sits bottom-right, ALWAYS. Absolutely positioned so it adds
               no height to the flow — stacking it in-flow is what overran the chip
               at rowH 60. Mirrors the dashboard room cards. */}
@@ -807,6 +847,10 @@ function CalendarPageInner() {
     ? Math.max(60, Math.floor(usableW / 14))
     : Math.max(44, Math.floor(usableW / totalDays))
 
+  // work_order_id|date -> { eng, asst } for the visible range. Empty when a
+  // booking predates the WO rebuild; the chip falls back to the projection names.
+  const [staffByDay, setStaffByDay] = useState<Record<string, { eng?: string; asst?: string }>>({})
+
   const load = useCallback(async () => {
     const buf = BUFFER_WEEKS * 7
     const total = totalDays + buf * 2
@@ -818,6 +862,39 @@ function CalendarPageInner() {
       .lte('start_date', fmt(end))
       .gte('end_date', fmt(renderStart))
     setBookings(data ?? [])
+
+    // ── Per-day staffing (F-9 / Option B) ──────────────────────────────────
+    // §10 BEHAVIOURAL EXCEPTION, Eli-approved, DISPLAY ONLY.
+    //
+    // A `bookings` row is a projection card and the projection deliberately FOLDS
+    // every studio-time row's staff into one card — so a Mon–Wed run with LR on
+    // Monday and JC on Tuesday stores both names, and the chip showed both on
+    // every day. Per-day truth lives in `studio_time_rows` (the WO is source of
+    // truth), so this is a display problem and gets a display-layer fix.
+    //
+    // Option A (splitting the run in projectBookingCards) was REJECTED: it edits
+    // the atomic WO save path and rewrites booking data to correct a label, and
+    // WO regressions are the standing top hazard on this project.
+    //
+    // ONE batched read for the whole visible range — never per-chip queries.
+    const woIds = Array.from(new Set((data ?? []).map((b: any) => b.work_order_id).filter(Boolean)))
+    if (woIds.length) {
+      const { data: stRows } = await supabase
+        .from('studio_time_rows')
+        .select('work_order_id, date, eng_name, eng_role')
+        .in('work_order_id', woIds)
+      const map: Record<string, { eng?: string; asst?: string }> = {}
+      for (const r of stRows ?? []) {
+        const name = (r as any).eng_name
+        if (!name || !(r as any).date) continue
+        const key = `${(r as any).work_order_id}|${(r as any).date}`
+        const slot = (r as any).eng_role === 'engineer' ? 'eng' : 'asst'
+        map[key] = { ...(map[key] || {}), [slot]: name }
+      }
+      setStaffByDay(map)
+    } else {
+      setStaffByDay({})
+    }
   }, [startDate, view])
 
   useEffect(() => { load() }, [load])
@@ -846,7 +923,15 @@ function CalendarPageInner() {
         loadRef.current()
       })
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    // Staffing edits land on studio_time_rows, not bookings — without this the
+    // per-day names would go stale until something else touched a booking.
+    const stChannel = supabase
+      .channel('calendar-studio-time-rows')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_time_rows' }, () => {
+        loadRef.current()
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel); supabase.removeChannel(stChannel) }
   }, [])
 
   // Restore collapse state on mount (client only — must be useEffect to avoid SSR hydration mismatch)
@@ -1365,6 +1450,7 @@ function CalendarPageInner() {
                             lane={lane} numLanes={numLanes} rowH={rowH}
                             onClick={() => openEdit(b)}
                             isMobile={isMobile}
+                            staffByDay={staffByDay}
                           />
                         )
                       })}
