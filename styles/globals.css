@@ -1090,13 +1090,14 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   background: rgba(0, 0, 0, .22);
   display: flex; align-items: center; gap: 6px;
   padding: 2px 8px;
-  /* 8px, not 9: DM Mono has a taller x-height and wider advance than Inter, so
-     matching the two on point size made BOTH read a step larger than the staff
-     tags did before. The number that matters is the apparent size, not the
-     declared one.
-     500, not 700: DM Mono only ships 400/500 (see the @import at the top), so
-     700 gets synthesised into a faux-bold. */
-  font-size: 8px; font-weight: 500; line-height: 1.35;
+  /* NEITHER HALF MAY CARRY .c-mono. That class sets font-family AND
+     `font-size: 12.5px`, and a child's own font-size beats an inherited one — so
+     anything wearing it renders at 12.5 no matter what this rule says. The
+     invoice had it from the start (which is why it always looked oversized next
+     to the staff tags), and adding it to the staff tag to match the typefaces
+     dragged that one up too. Both inherit from here now.
+     9px/800 is exactly what the staff tag rendered at before any of this. */
+  font-size: 9px; font-weight: 800; line-height: 1.35;
   white-space: nowrap; overflow: hidden;
   flex-shrink: 0;
 }
@@ -1109,6 +1110,9 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    made it look like a smaller, lesser field. Only their alignment differs. */
 .c-ev-foot .c-ev-wo    { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .c-ev-foot .c-ev-staff { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Belt and braces: if either span ever gets .c-mono again, it still can't
+   change size — only the typeface. */
+.c-ev-foot .c-mono { font-size: inherit; }
 
 /* COD strip — full-width hot bar on the chip's bottom edge, COD only.
    Sanctioned under §5 hot-as-critical: money to collect at the door is a
