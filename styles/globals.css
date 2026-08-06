@@ -463,15 +463,9 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   /* Textarea: limit height so notes don't overflow a page */
   [data-wo-portal] textarea { max-height: 60px !important; overflow: hidden !important; }
 
-  /* Tighten all gaps */
-  [data-wo-portal] [style*="gap: 28"],
-  [data-wo-portal] [style*="gap: 24"],
-  [data-wo-portal] [style*="gap: 20"] { gap: 8px !important; }
-  [data-wo-portal] [style*="gap: 16"] { gap: 5px !important; }
-  [data-wo-portal] [style*="gap: 12"],
-  [data-wo-portal] [style*="gap: 10"],
-  [data-wo-portal] [style*="gap: 9"],
-  [data-wo-portal] [style*="gap: 8"]  { gap: 3px !important; }
+  /* Tighten all gaps. One rule instead of eight that matched inline-style text
+     (`[style*="gap: 16"]` etc.) — those broke the moment a style changed. */
+  [data-wo-portal] * { gap: 4px !important; }
 
   /* Tighten section padding */
   [data-wo-portal] [style*="padding: 24px"],
@@ -493,25 +487,8 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     break-inside: avoid !important;
   }
 
-  /* Normalize all accent/dark colors to black */
-  [data-wo-portal] [style*="color: #c8f04e"],
-  [data-wo-portal] [style*="color: #f0f0f0"],
-  [data-wo-portal] [style*="color: #8a8fa0"],
-  [data-wo-portal] [style*="color: #4a4f64"],
-  [data-wo-portal] [style*="color: #4ade80"],
-  [data-wo-portal] [style*="color: #f87171"],
-  [data-wo-portal] [style*="color: #96A9FF"],
-  [data-wo-portal] [style*="color: #7BBFFF"],
-  [data-wo-portal] [style*="color: rgb"] { color: #111 !important; }
 
-  /* Normalize dark background colors */
-  [data-wo-portal] [style*="background: #13161d"],
-  [data-wo-portal] [style*="background: #1a1e28"],
-  [data-wo-portal] [style*="background: #1a1d27"],
-  [data-wo-portal] [style*="background: rgba"] { background: transparent !important; }
 
-  /* Section title labels: slightly smaller */
-  [data-wo-portal] [style*="letterSpacing"] { font-size: 8px !important; }
 
   /* marginBottom compression */
   [data-wo-portal] [style*="marginBottom: 20"],
