@@ -152,7 +152,7 @@ export function SessionCardBody({
       {showFooter && (invTag || staffTag) && (
         <div className="c-ev-foot">
           {invTag && <span className="c-ev-wo c-mono">{invTag}</span>}
-          {staffTag && <span className="c-ev-staff">{staffTag}</span>}
+          {staffTag && <span className="c-ev-staff c-mono">{staffTag}</span>}
         </div>
       )}
 
