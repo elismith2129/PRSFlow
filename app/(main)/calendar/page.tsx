@@ -218,8 +218,8 @@ function BookingBlock({
   const dur = dayDiff(visStart, visEnd) + 1
   const left = (offset / totalDays) * 100
   const width = (dur / totalDays) * 100
-  // Visible span in days — tape-label positions are percentages of the RENDERED
-  // chip, so they must be based on what's on screen, not the booking's full length.
+  // Visible span in days — used to map the cursor's x-position to a day column
+  // for the hover card.
   const spanDays = dur
   // How far the payload must slide right to stay on screen on a long bar.
   //   chip's left edge (content px) = offset * colW
@@ -249,7 +249,7 @@ function BookingBlock({
     : booking.from_time ? fmtTime(booking.from_time) : ''
 
   // Per-day staffing (F-9 Option B). A chip can span days, so it shows the staff
-  // for its FIRST day here; the week tape-labels below carry each later week's.
+  // for its FIRST day; the hover card reports the exact day under the cursor.
   // Falls back to the projection's collapsed names when the booking has no
   // studio_time_rows at all (legacy / pre-WO) — never blank.
   function staffFor(dateStr: string): { eng: string; asst: string } {
@@ -295,17 +295,19 @@ function BookingBlock({
   // stays regardless.
   //
   // Reserve is the MEASURED payload width, never a magic number.
-  // Collision safety (F-15/4). The mashed "6P-2A1ST-CD" must be impossible at any
-  // size, so the staffing tag hides when it can't sit clear of the times line —
-  // the tag gives way, not the time, because the F-11 hover card carries staffing.
-  //
-  // DEVIATION FROM F-15, deliberate: the rule was specified as "< ~1.5 columns",
-  // but a SINGLE-DAY chip is exactly 1.0 columns by definition, so that threshold
-  // would hide staffing on EVERY single-day chip at EVERY zoom — including the
-  // ones in the approved screenshots. Using an absolute width instead: 128px is
-  // about what "6P–2A" plus "1ST-CD" needs side by side. Net effect matches the
-  // intent — narrow chips drop the tag, normal ones keep it.
-  const showStaffTag = chipWidthPx === 0 || chipWidthPx >= 128
+  // ── Content tiers (F-17/3) ────────────────────────────────────────────────
+  // ONE rule, by WIDTH ONLY, so two chips of the same width always show the same
+  // content — no per-chip randomness. Breakpoints chosen against the real zoom
+  // ladder (colW 44/60/80/88/110/132):
+  //   narrow  <100px  title + times
+  //   medium  100–160 + staff
+  //   wide    >=160   + client (full payload)
+  // A 1-day chip is exactly colW wide, so it is narrow up to the 88 zoom, medium
+  // at 110/132. Any multi-day bar is >=2 columns and reaches wide quickly.
+  const tierWide = chipWidthPx >= 160
+  const tierMedium = chipWidthPx >= 100
+  const showClientLine = chipWidthPx === 0 || tierWide
+  const showStaffLine = chipWidthPx === 0 || tierMedium
   const payloadShift = colW
     ? Math.min(Math.max(0, scrollX - chipLeftPx), Math.max(0, chipWidthPx - payloadW - 12))
     : 0
@@ -342,7 +344,6 @@ function BookingBlock({
         alignItems: micro ? 'center' : undefined,
         gap: micro ? 4 : undefined,
         minWidth: 0,
-        // Above the tape labels while both exist.
         position: 'relative', zIndex: 1,
       }}>
       {micro ? (
@@ -379,7 +380,7 @@ function BookingBlock({
             <div className="c-ev-2" style={{ fontSize: 9.5, fontFamily: 'Inter', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
               {timeStr}
             </div>
-            {showStaffTag && (eng || asst) && (
+            {showStaffLine && (eng || asst) && (
               <div style={{ display: 'flex', gap: 3, flexShrink: 0, marginLeft: 4 }}>
                 {eng  && <div style={{ fontSize: 9.5, fontFamily: 'Inter', whiteSpace: 'nowrap' }} className="c-ev-2 c-mono">1ST-{eng}</div>}
                 {asst && <div style={{ fontSize: 9.5, fontFamily: 'Inter', whiteSpace: 'nowrap' }} className="c-ev-2 c-mono">2ND-{asst}</div>}
@@ -395,7 +396,7 @@ function BookingBlock({
           }}>
             {primaryName}
           </div>
-          {labelLine && (
+          {showClientLine && labelLine && (
             <div className="c-ev-meta" style={{
               fontSize: 10.5, fontFamily: 'Inter', lineHeight: 1.2, marginTop: 1,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -407,44 +408,13 @@ function BookingBlock({
             {timeStr}
             {!isBilling && booking.cod_method && ` · ${booking.cod_method.toUpperCase()}`}
           </div>
-          {/* TAPE LABELS (F-9/2). A month-long bar puts its payload weeks off-screen,
-              so the artist name repeats at each week boundary inside the bar —
-              a tape label, not a second payload. Reduced size and opacity so it
-              never competes with the real one at the start. */}
-          {spanDays > 7 && Array.from({ length: Math.floor(spanDays / 7) }, (_, i) => (i + 1) * 7)
-            .filter(d => d < spanDays)
-            .map(d => {
-              const s2 = staffFor(fmt(addDays(visStart, d)))
-              return (
-                <div
-                  key={d}
-                  aria-hidden
-                  style={{
-                    position: 'absolute', top: 4, left: `calc(${(d / spanDays) * 100}% + 6px)`,
-                    fontFamily: "'Archivo Black', sans-serif", fontSize: 11, lineHeight: 1.3,
-                    opacity: 0.7, whiteSpace: 'nowrap', pointerEvents: 'none',
-                    zIndex: 0,
-                  }}
-                >
-                  {primaryName}
-                  {(s2.eng || s2.asst) && (
-                    <span className="c-mono" style={{ fontSize: 9, marginLeft: 6, opacity: 0.85 }}>
-                      {[s2.eng && `1ST-${s2.eng}`, s2.asst && `2ND-${s2.asst}`].filter(Boolean).join(' ')}
-                    </span>
-                  )}
-                </div>
-              )
-            })}
-          {/* Staffing sits bottom-right, ALWAYS. Absolutely positioned so it adds
-              no height to the flow — stacking it in-flow is what overran the chip
-              at rowH 60. Mirrors the dashboard room cards. */}
-          {showStaffTag && (eng || asst) && (
-            <div className="c-ev-2 c-mono" style={{
-              position: 'absolute', right: 6, bottom: 4,
-              fontSize: 9, lineHeight: 1.3, textAlign: 'right', whiteSpace: 'nowrap',
-            }}>
-              {eng  && <div>1ST-{eng}</div>}
-              {asst && <div>2ND-{asst}</div>}
+          {/* Staff is the payload's LAST LINE (F-17/1) — not a floating corner tag.
+              One block: title / client / times / staff. It therefore travels with
+              the slide on long bars and can never be left behind. The dashboard
+              room cards keep their corner tag; that's a different surface. */}
+          {showStaffLine && (eng || asst) && (
+            <div className="c-ev-2 c-mono" style={{ fontSize: 9, lineHeight: 1.3, whiteSpace: 'nowrap' }}>
+              {[eng && `1ST-${eng}`, asst && `2ND-${asst}`].filter(Boolean).join('  ')}
             </div>
           )}
         </>
