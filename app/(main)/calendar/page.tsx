@@ -199,7 +199,7 @@ function assignLanes(bookings: Booking[]): Map<string, { lane: number; numLanes:
 
 function BookingBlock({
   booking, gridStart, totalDays, lane, numLanes, rowH, onClick, isMobile = false, staffByDay = {},
-  onHover, onHoverEnd, scrollX = 0, colW = 0, viewportW = 0,
+  onHover, onHoverEnd, scrollX = 0, colW = 0, viewportW = 0, scrollerRef, labelW = 0,
 }: {
   booking: Booking; gridStart: Date; totalDays: number
   lane: number; numLanes: number; rowH: number; onClick: () => void
@@ -211,8 +211,12 @@ function BookingBlock({
   // payload along to stay on screen.
   scrollX?: number
   colW?: number
-  // Visible width of the day area, for centring in the bar/viewport intersection.
+  // Visible width of the day area.
   viewportW?: number
+  // The horizontally-scrolling element and the sticky label column's width —
+  // together they give the first visible pixel of the day area.
+  scrollerRef?: React.RefObject<HTMLDivElement | null>
+  labelW?: number
   isMobile?: boolean
 }) {
   const bStart = parse(booking.start_date)
@@ -292,31 +296,47 @@ function BookingBlock({
     if (w && Math.abs(w - payloadW) > 2) setPayloadW(w)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [primaryName, labelLine, timeStr, eng, asst, micro, compact, blockHeight])
-  // ── Long-bar slide (F-12, restored by F-15) ───────────────────────────────
-  // The payload stays TOP-LEFT — the layout Eli approved. It slides right ONLY
-  // when the bar's own left edge has scrolled off screen, which is the single
-  // case that ever needed motion. Ordinary and single-day chips compute a shift
-  // of 0 and carry no transform at all.
+  // ── Long-bar slide — MEASURED, not derived ────────────────────────────────
+  // The payload stays TOP-LEFT and slides right only when the bar's own left edge
+  // has scrolled off screen. Ordinary and single-day chips never move.
   //
-  // F-13's universal centering was reverted: it made every chip move to solve a
-  // problem only month-long bars have.
+  // THIRD IMPLEMENTATION, and the reason matters. The first two computed the shift
+  // from `scrollLeft` arithmetic (scrollX − chipLeft). That holds until the
+  // calendar's INFINITE SCROLL re-anchors the grid: startDate moves, every chip's
+  // offset is rewritten, and scrollLeft is corrected imperatively. Any path that
+  // misses a resync leaves the two operands measured against different origins,
+  // and the error accumulates per shift until the clamp parks the payload off the
+  // chip — the "details disappear after ~12 days of scrolling" report.
   //
-  // The vanishing bug this used to have was the scrollX desync at the infinite-
-  // scroll re-anchor (see the correction site) — NOT this mechanism. That fix
-  // stays regardless.
+  // Reading the real geometry removes the whole failure class: there is no origin
+  // to drift, and it self-corrects after every re-anchor whatever caused it.
+  // Only bars wider than a screenful measure at all, so DOM reads stay cheap.
   //
-  // Reserve is the MEASURED payload width, never a magic number.
-  // ── No content tiers (F-18/2) ─────────────────────────────────────────────
-  // Tiering was deleted: it shed real information (staffing, payment tags) to save
-  // space, and the recovered pre-redesign inventory shows the old chip carried all
-  // of it. Every field renders at every width; tight chips ellipsis instead.
-  // The 60px column floor (MIN_COL_W) is what makes that viable.
-  const payloadShift = colW
-    ? Math.min(Math.max(0, scrollX - chipLeftPx), Math.max(0, chipWidthPx - payloadW - 12))
-    : 0
+  // No content tiers (F-18/2): every field renders at every width; tight chips
+  // ellipsis. The MIN_COL_W floor is what makes that viable.
+  const chipRef = useRef<HTMLDivElement>(null)
+  const [payloadShift, setPayloadShift] = useState(0)
+  useLayoutEffect(() => {
+    const chip = chipRef.current
+    const sc = scrollerRef?.current
+    if (!chip || !sc || chipWidthPx < 400) {
+      if (payloadShift !== 0) setPayloadShift(0)
+      return
+    }
+    const cr = chip.getBoundingClientRect()
+    const sr = sc.getBoundingClientRect()
+    // The label column is sticky and overlays the content, so the first visible
+    // pixel of the day area sits labelW in from the scroller's left edge.
+    const visibleLeft = sr.left + labelW
+    const raw = Math.max(0, visibleLeft - cr.left)
+    const maxShift = Math.max(0, cr.width - payloadW - 12)
+    const next = Math.min(raw, maxShift)
+    if (Math.abs(next - payloadShift) > 2) setPayloadShift(next)
+  })
 
   return (
     <div
+      ref={chipRef}
       onClick={e => { e.stopPropagation(); onClick() }}
       onMouseMove={onHover ? e => {
         // Which day column is under the cursor — so a month-long bar reports the
@@ -1591,6 +1611,8 @@ function CalendarPageInner() {
                             scrollX={scrollX}
                             colW={colW}
                             viewportW={viewportW}
+                            scrollerRef={gridRef}
+                            labelW={labelW}
                           />
                         )
                       })}
