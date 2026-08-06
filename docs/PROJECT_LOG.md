@@ -252,6 +252,32 @@ This applies to all new tables going forward. Existing tables are unaffected unt
 
 ---
 
+### HR & payroll layer — My Day, punch corrections, required training (August 5, 2026)
+*Documents live in `docs/hr/`. Technical spec is `docs/HR-SPEC.md`. Nothing built yet — queued behind the WO regressions.*
+
+- **ADP Workforce Now stays the system of record for pay. No integration.** WFN's API is Marketplace-gated and not worth negotiating for a 15-person company. PRSFlo is a **collection and audit layer only** — it captures what staff report, timestamps it, and never writes to ADP. If the two disagree, ADP is right about what was paid and PRSFlo is right about what was requested and confirmed. If a future session proposes syncing them, the answer is no.
+- **Time records are NOT linked to work orders. Hard separation.** No foreign keys, no `work_order_id` anywhere in the HR layer. Staff shifts and WOs do not line up — a person may cover three rooms in a night or none, a WO may span two people or zero. Deriving a shift from a WO produces wrong data most of the time. *(An earlier draft proposed auto-attaching WO context to punch corrections. That was wrong and is reversed.)*
+- **"My Day" is a separate surface from Tasks.** Todos are one-off and close forever; duties recur daily and are never permanently done. Merging them is why the task list stopped working — duties pile up as noise and everything reads as perpetually overdue, so staff disengage from the whole list.
+- **Duties are typed cumulative or point-in-time.** A cumulative duty is **never duplicated** when missed — one row with a growing `backlog_days` counter and visible scope (`Review timecards — covering 2 days`). 3+ days flags the card. A point-in-time duty (e.g. "confirm today's staffing") just goes red. Missing a day is recorded permanently regardless of later catch-up.
+- **Naming: "Daily Ops" is taken** by the existing session/room view (see the Runner Hub & Daily Ops subsection above). The duties surface is **My Day**.
+- **A few duty rows capture a number, not a checkmark.** "Exceptions cleared: 4" requires having done the work; a checkbox is one click and possibly untrue. These numbers feed the monthly reporting for free.
+- **Dashboard moves to a left side nav.** The top nav already carries 8 items and this layer adds 3 more; a horizontal bar runs out of room and hides things behind overflow. A side nav scales, supports grouping, and has room for count badges — the pending punch count is how Fernando knows to open the queue. The current top-nav dashboard is WIP and is **not** the target layout.
+- **My Day placement:** right column, directly above the Tasks card, reusing the existing role tabs. Duties above todos makes the distinction self-evident. Open to challenge in the redesign.
+- **The morning briefing has a home already.** The dashboard greeting reads "here's your briefing" with nothing beneath it. Render the Haiku-generated summary of yesterday there — no new real estate.
+- **Punch corrections are the highest-value feature. Ship it alone if nothing else gets built.** California requires written employee confirmation before any punch is edited; a timestamped in-app submission *is* that record. The same timestamp classifies the report as same-day / late / manager-found, which makes the coaching ladder count itself. Mobile-first — it gets used on a phone, at 1 AM, tired.
+- **Staff see their own ladder count and clean-shift streak. Not anyone else's.**
+- **All managers can see and work each other's cards and queues**, with a default owner and a `covered_by` field on the day.
+- **AR is two-phase.** AR lives in QuickBooks, not PRSFlo, so the queue cannot be built yet. **Phase 1 (now):** Aaron types three numbers into his My Day card — COD outstanding, accounts chased, accounts past 31 days. **Phase 2 (with the QB integration):** a nightly read-only sync computes the same three fields and the account-level queue appears beneath them. Same rows either way — build Phase 1 so swapping the source is a one-file change. Do not attempt Phase 2 before the QB integration exists.
+- **Payment terms reuse the existing COD vs. Billing client flag.** COD = 0 days, Billing = 30. Clients with no flag must surface in the queue as "terms not set" with two buttons, **never silently drop out** — an empty queue that should not be empty is the worst failure mode, because it looks like success.
+- **Eli creates hires and starts terminations in ADP; Fernando does everything else.** Fernando does not hold those permissions and is not being granted them (Lynair's recommendation, accepted). The ADP action is quick, and because Eli enters position and rate himself, nobody reviews those figures afterwards.
+- **Employee timecard approval is a hard requirement** and one of the seven clean-close conditions. An approved timecard is the employee affirming every hour in the period. **A manager never approves on an employee's behalf** — that produces something that looks like employee confirmation and is not.
+- **WPV training is self-contained, unlike harassment training.** Harassment uses an external CRD course producing a certificate we file. The WPV *plan document is* the training material, so the whole cycle lives in PRSFlo — assign, read, acknowledge, sign with PIN, auto-write the training record. Reuse the SOP gate mechanic.
+- **LC 6401.9(e) requires an interactive Q&A opportunity** with someone knowledgeable about the plan. A read-and-sign flow alone does **not** satisfy it — the acknowledgment must capture questions asked and who answered.
+- **The violent incident log must omit personal identifying information** of anyone who experienced or witnessed an incident. Do not put a `staff_id` foreign key on that table.
+- **Queue position: none of this starts before the WO regressions are fixed.** The only real deadline is January 1, 2027 for harassment training, and that can be met with a spreadsheet.
+
+---
+
 ## 2. Future Considerations
 *Things to think about when we get to a specific chunk. Don't build now, but don't forget.*
 
@@ -2554,3 +2580,82 @@ review, and Daily Ops had to be redone by hand. **A scripted token-swap is not a
 at all — they existed only in session uploads, so "open the reference" was impossible for any
 future session. Now committed. `public/sop.html` staff notes remain owed at merge (spec §1
 fences that file off).
+
+
+### August 5, 2026 — HR & payroll protocols, My Day layer, Workplace Violence Prevention Plan
+
+**No code written, no schema changes.** Ten business documents produced and committed to
+`docs/hr/`, plus the technical spec at `docs/HR-SPEC.md`. Queued behind the WO regressions and
+the dashboard redesign.
+
+**Context.** Fernando (Studio & Administration Manager) is taking on HR and payroll alongside
+operations. Lynair remains payroll processor and CalSavers administrator. Four problems in
+scope: daily timecard checking, onboarding/termination, missed punch accountability, and
+required training compliance.
+
+**Produced.** `PRG-P01`–`P04` working protocols (2–5 pages each, steps only) · `PRG-R01`–`R04`
+reference documents carrying legal basis and reasoning · `PRG-WVPP`, a complete 17-page
+Workplace Violence Prevention Plan that doubles as the training material and includes the
+acknowledgment form and hazard inspection checklist · `docs/HR-SPEC.md` with schemas · an HTML
+briefing sent to Lynair for review.
+
+**The P/R split.** Protocols carry no legal prose — Fernando gets steps. The reference documents
+hold the law and the reasoning and get read once by someone new, or when something unusual comes
+up. Every protocol also carries an "Until PRSFlo ships" box with the manual fallback, so nothing
+in the set waits on software.
+
+**Three corrections to the prior ADP instructions.**
+1. **Final pay timing was wrong.** The old LYNAIR document said 72 hours across the board.
+   Correct: **immediate at time of termination** for involuntary (LC 201); last day worked for a
+   quit with 72+ hours notice; within 72 hours for a quit with less (LC 202). Accrued unused PTO
+   included in all three. Waiting time penalties under LC 203 run up to 30 days of wages and
+   apply even when the delay was an honest administrative miss. P02 now requires 48 hours'
+   notice to Eli and Lynair before any planned involuntary termination so the check exists
+   before the conversation happens. **This is the highest-dollar item in the set.**
+2. **CalSavers at hire was an add, not a remove** — the termination action had been pasted into
+   the onboarding section. Corrected further after Lynair's review: enrolment cannot happen at
+   hire because it needs the employee's address and SSN, which only exist once onboarding
+   completes. The trigger is **onboarding completion**; the 30-day statutory clock still runs
+   from the hire date, so a slow onboarding compresses the window rather than extending it.
+3. **Hire date seven days early** confirmed as the standing convention — it also drives payroll
+   eligibility, benefits eligibility, and the CalSavers window, so it must be applied uniformly.
+
+**From Lynair's review (accepted).** Fernando does not hold ADP hire/fire permissions and should
+not — Eli initiates, Fernando monitors progress and approves uploaded documents including the
+I-9, Eli does the final approve. Fernando to call ADP during the next onboarding to confirm that
+access. **Employee timecard approval** is being reinstated as a hard requirement — compliance was
+good at WFN rollout and has slipped. What ADP already delivers at hire is visible at
+`Setup › Manage Onboarding › Standard › Tasks`, to be deduped against our notices list. ADP has
+a **Manager classification** usable as a first pass for supervisor training status. ADP's
+training workflow is not being used — per Lynair it amounts to reminders inside a convoluted
+process built for a much larger audience, same as the performance review flow.
+
+**Compliance findings.**
+- **Harassment prevention (Gov. Code 12950.1): all staff due by January 1, 2027.** ~15
+  employees, well over the 5-employee threshold. 2 hrs supervisory / 1 hr non-supervisory, every
+  2 years. Internal target December 1. Free CRD courses chosen over a paid vendor for this
+  cycle — compliant, six languages, manageable at our size. Note CRD does not store or reissue
+  certificates: close the browser without saving and the course is retaken.
+- **Workplace violence (LC 6401.9, enforceable since July 1, 2024):** the existing 2024 plan
+  covered definitions, reporting and non-retaliation, robbery response, suspicious persons, and
+  active shooter. **Eleven required elements were absent** — employee involvement,
+  multi-employer coordination, compliance procedures, communication, emergency alerting,
+  training procedures, hazard identification and inspection, hazard correction, post-incident
+  investigation, annual review, and the violent incident log. All eleven written into
+  `PRG-WVPP`. Hazard inspections set to **annual**, timed to precede the annual plan review;
+  the plan states plainly that the scheduled walk-through is a backstop and that
+  employee-reported hazards and incident-triggered evaluation are what actually find things.
+- **Whether the studios fall under the WPV mandate at all:** the exemption is fewer than 10
+  employees at a location *not accessible to the public*. Clients, artists, and guests pass
+  through all four rooms, so the exemption is assumed not to apply despite small per-studio
+  headcount. Flagged for legal confirmation.
+- **Cal/OSHA adopts formal WPV standards by December 31, 2026** — the plan should be reviewed
+  against them in early 2027.
+
+**Open items.** Confirm owner names in `PRG-WVPP` §3 (Mike Kerns, Adam Beilenson — taken from
+the 2024 plan) · Fernando to confirm ADP review-and-approve access · dedupe the notices list
+against the ADP STANDARD onboarding tasks · confirm the COD/Billing client flag is populated and
+that "Billing" means Net 30 · confirm exact WFN menu paths for company code 4DA and write them
+into P01 · confirm the Time Card Exceptions dashboard is enabled in our instance · legal review
+before go-live on final pay, WPV coverage, the notices list, and the missed punch ladder against
+the handbook.
