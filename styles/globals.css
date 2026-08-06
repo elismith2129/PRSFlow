@@ -1051,6 +1051,46 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-ev-meta { font-weight: 700; opacity: .85; }
 .c-ev.c-ev-cancelled, .c-ev.c-ev-cancelled * { color: var(--c-hot-text); }
 
+/* ── Chip footer band + COD strip (§10b) ────────────────────────────────── */
+/* The footer is the chip's operational deck: WO#/invoice# left, staff right.
+   It is a SHADE of the chip, not a second surface — rgba black over the status
+   fill, so it works against every fill without a per-status variant, and it is
+   not a border (Law 1): the tone step is the separation.
+
+   It exists because the codes had no permanent home. WO# lived only in the hover
+   card, and hover-only information is now forbidden outright (§13): the TV wall
+   has no cursor, so anything a card doesn't show is invisible on the wall. */
+.c-ev-foot {
+  background: rgba(0, 0, 0, .22);
+  display: flex; align-items: center; gap: 6px;
+  padding: 2px 8px;
+  font-size: 9px; font-weight: 700; line-height: 1.35;
+  white-space: nowrap; overflow: hidden;
+  flex-shrink: 0;
+}
+:root:not([data-theme="light"]) .c-ev-foot { background: rgba(0, 0, 0, .3); }
+/* Both halves shrink with ellipsis. The staff tags are pinned right but must be
+   allowed to truncate too — flex-shrink:0 on them clipped the tag mid-word at
+   narrow columns, which is worse than an ellipsis. */
+.c-ev-foot .c-ev-wo    { opacity: .65; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.c-ev-foot .c-ev-staff { font-weight: 800; margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* COD strip — full-width hot bar on the chip's bottom edge, COD only.
+   Sanctioned under §5 hot-as-critical: money to collect at the door is a
+   critical condition, not a temperature. Billing renders NOTHING — silence
+   means billing, which is why there is no billing variant of this rule. */
+.c-ev-cod {
+  background: var(--c-st-hot);
+  padding: 1px 8px;
+  font-size: 8.5px; font-weight: 800; letter-spacing: .07em;
+  line-height: 1.35; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+/* Beats `.c-ev *` above on source order at equal specificity — pale text, since
+   chip ink is unreadable on hot. */
+.c-ev .c-ev-cod, .c-ev .c-ev-cod * { color: var(--c-hot-text); }
+
 /* ── Status fills (§5) — the only colour in the system ──────────────────── */
 /* Solid fills at full brightness. Light mode uses them as-is; dark dims by rule
    (§6) — pills via filter, chips and pools via alpha, never a second palette. */

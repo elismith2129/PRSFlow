@@ -45,7 +45,17 @@ const COL_W = 120  // minimum day-column width; forces horizontal scroll when co
 // Renamed from ZOOM_ROW_H: the old name said nothing about the axis, and it was
 // mistaken for a column-width ladder — bumping it made every row taller instead
 // of making cells wider. Column width is COL_FLOOR below.
-const ZOOM_ROW_H = [60, 80, 88, 110, 132]
+// RAISED for the §10b card anatomy. The ladder used to start at 60, which was
+// the right floor when the chip was three text lines. It now carries a footer
+// band and a COD strip as well, and the anatomy measures ~76px:
+//   payload 46 (padding 6 + name 16 + client 12 + times 12) + footer 16 + COD 14.
+// Below that something has to be dropped, and dropping fields is exactly what
+// F-18/F-19 bar. So the floor follows the content rather than the content
+// following the floor. Level 1 = 80px rows (77px chips) is the new "tight".
+const ZOOM_ROW_H = [80, 96, 112, 132, 156]
+// The measured anatomy height. Used as the floor for fit-all so squeezing many
+// rooms into the viewport can't silently clip the strips off the bottom.
+const CHIP_MIN_H = 79
 
 // COLUMN WIDTH floors, per view. HORIZONTAL.
 // colW = max(floor, usableW / days) — so a floor only has an effect when it is
@@ -235,13 +245,6 @@ function BookingBlock({
   // Visible span in days — used to map the cursor's x-position to a day column
   // for the hover card.
   const spanDays = dur
-  // How far the payload must slide right to stay on screen on a long bar.
-  //   chip's left edge (content px) = offset * colW
-  //   viewport's left edge          = scrollX
-  // Clamped so it never runs past the bar's right end. 0 for any chip whose start
-  // is still visible, so normal chips are completely unaffected.
-  const chipLeftPx = offset * colW
-  const chipWidthPx = dur * colW
 
   const isBilling = booking.payment_type === 'billing'
   const slot = STATUS_SLOT[booking.status] ?? 'confirmed'
@@ -276,30 +279,24 @@ function BookingBlock({
   const slotH = rowH / numLanes
   const blockTop = lane * slotH + 2
   const blockHeight = slotH - 3
-  // Measured, not guessed: full payload ≈ 49px (name 15.6 + client 12 + time
-  // 10.8 + eng 10.4), so anything with ~46px+ of block height can show all of it.
-  // These were 30/60, which forced compact at rowH 60 where the payload fits and
-  // truncated the client line at every zoom below 80.
-  const micro = blockHeight < 26
-  const compact = !micro && blockHeight < 46
+  // NO CONTENT TIERS (F-18/F-19). The micro/compact branches are gone: every
+  // field renders at every size and truncates with an ellipsis. Hiding a field
+  // at small sizes is now barred outright, because §13 makes the card the sole
+  // carrier of its own information — the TV wall has no hover to fall back on.
   const codLabel = booking.cod_method === 'Credit Card' ? 'CC' : (booking.cod_method ?? '').toUpperCase()
+  // Footer identifiers. WO# and invoice# are IDs, not amounts, so they're inside
+  // the no-financials rule.
+  const woTag = [
+    booking.wo_number ? `WO-${booking.wo_number}` : '',
+    booking.invoice_num ? `#${booking.invoice_num}` : '',
+  ].filter(Boolean).join(' · ')
+  const staffTag = [eng && `1ST-${eng}`, asst && `2ND-${asst}`].filter(Boolean).join(' · ')
   // The old chip flagged non-recording sessions with an ACCENT-coloured border.
   // The accent is retired, so the distinction returns as a mono tag — it was in
   // the inventory and must not be lost, but it can't come back as colour (§5).
   const typeTag = booking.session_type === 'filming' ? 'FILM'
     : booking.session_type === 'event_playback' ? 'EVENT' : ''
 
-  // The right-end reserve is MEASURED, not guessed — a long artist name plus a
-  // client line needs more room than a short one, and a fixed 170 clipped them.
-  // Measured when the CONTENT changes, never per scroll frame (scrollX is
-  // deliberately absent from the effect deps below).
-  const payloadRef = useRef<HTMLDivElement>(null)
-  const [payloadW, setPayloadW] = useState(170)
-  useLayoutEffect(() => {
-    const w = payloadRef.current?.scrollWidth
-    if (w && Math.abs(w - payloadW) > 2) setPayloadW(w)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [primaryName, labelLine, timeStr, eng, asst, micro, compact, blockHeight])
   // ── Long bars: repeat the payload, don't chase the scroll ─────────────────
   // Three attempts to slide the payload with the scroll position all drifted and
   // dropped it mid-scroll. The cause is that the calendar re-anchors its grid as
@@ -331,17 +328,19 @@ function BookingBlock({
         minHeight: isMobile ? 44 : undefined,
         left: `calc(${left}% + 2px)`, width: `calc(${width}% - 4px)`,
         boxSizing: 'border-box',
-        padding: micro ? '1px 4px' : compact ? '3px 5px' : '4px 6px',
+        // Padding moves to the payload: the footer band and COD strip are
+        // full-bleed to the chip's edges, so the chip itself can't be inset.
+        padding: 0,
         cursor: 'pointer', overflow: 'hidden',
         zIndex: 2, minWidth: 0,
+        display: 'flex', flexDirection: 'column',
       }}
     >
-      <div ref={payloadRef} style={{
-        maxWidth: '100%',
-        display: 'flex', flexDirection: micro ? 'row' : 'column',
-        alignItems: micro ? 'center' : undefined,
-        gap: micro ? 4 : undefined,
-        minWidth: 0,
+      {/* ── 1. PAYLOAD ── artist/label · client · times, left-aligned. Takes the
+          space the two bottom strips don't. */}
+      <div style={{
+        flex: '1 1 auto', minHeight: 0, minWidth: 0, maxWidth: '100%',
+        padding: '4px 8px 2px', overflow: 'hidden',
         position: 'relative', zIndex: 1,
       }}>
       {/* Repeated copies of the payload every 7 days along a long bar, so the
@@ -360,85 +359,48 @@ function BookingBlock({
           {labelLine && <div className="c-ev-meta" style={{ fontSize: 10, lineHeight: 1.2 }}>{labelLine}</div>}
           <div className="c-ev-2 c-mono" style={{ fontSize: 9.5, lineHeight: 1.25 }}>
             {timeStr}
-            {[eng && ` 1ST-${eng}`, asst && ` 2ND-${asst}`].filter(Boolean).join('')}
           </div>
         </div>
       ))}
-      {micro ? (
-        <>
-          <div style={{ color: nameColor, fontSize: 8, fontFamily: "'Archivo Black', sans-serif", lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 1 auto', minWidth: 0 }}>
-            {primaryName}
-          </div>
-          {timeStr && (
-            <div style={{ fontSize: 8.5, fontFamily: 'Inter', whiteSpace: 'nowrap', flexShrink: 0 }} className="c-ev-2">
-              {timeStr}
-            </div>
-          )}
-        </>
-      ) : compact ? (
-        <>
-          {/* Row 1: name + inline COD badge + invoice# */}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, minWidth: 0, overflow: 'hidden' }}>
-            <div style={{
-              color: nameColor, fontSize: isMobile ? 11 : (blockHeight >= 48 ? 12 : 10),
-              fontFamily: "'Archivo Black', sans-serif", lineHeight: 1.2,
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              flex: '1 1 0', minWidth: 0,
-            }}>
-              {primaryName}
-            </div>
-            {!isBilling && codLabel && (
-              <span style={{ fontSize: 8.5, fontFamily: 'Inter', fontWeight: 700, opacity: 0.75, flexShrink: 0, lineHeight: 1, letterSpacing: '0.03em' }}>
-                {codLabel}
-              </span>
-            )}
-          </div>
-          {/* Row 2: time + eng/asst */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', overflow: 'hidden' }}>
-            <div className="c-ev-2" style={{ fontSize: 9.5, fontFamily: 'Inter', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
-              {timeStr}
-            </div>
-            {(eng || asst) && (
-              <div style={{ display: 'flex', gap: 3, flexShrink: 0, marginLeft: 4 }}>
-                {eng  && <div style={{ fontSize: 9.5, fontFamily: 'Inter', whiteSpace: 'nowrap' }} className="c-ev-2 c-mono">1ST-{eng}</div>}
-                {asst && <div style={{ fontSize: 9.5, fontFamily: 'Inter', whiteSpace: 'nowrap' }} className="c-ev-2 c-mono">2ND-{asst}</div>}
-              </div>
-            )}
-          </div>
-        </>
-      ) : (
-        <>
-          <div style={{
-            color: nameColor, fontSize: isMobile ? 11 : 13, fontFamily: "'Archivo Black', sans-serif", lineHeight: 1.35,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>
-            {primaryName}
-          </div>
-          {labelLine && (
-            <div className="c-ev-meta" style={{
-              fontSize: 10.5, fontFamily: 'Inter', lineHeight: 1.2, marginTop: 1,
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>
-              {labelLine}
-            </div>
-          )}
-          {/* One line: times + type tag on the left, payment + staff on the right.
-              Four stacked lines overflow a 60px row and leave a gap at 80. */}
-          <div className="c-ev-2 c-mono" style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-            gap: 6, fontSize: 9.5, lineHeight: 1.25, marginTop: 2, whiteSpace: 'nowrap',
-          }}>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
-              {timeStr}{typeTag ? `  ${typeTag}` : ''}
-            </span>
-            <span style={{ flexShrink: 0 }}>
-              {[!isBilling && codLabel ? codLabel : '', eng && `1ST-${eng}`, asst && `2ND-${asst}`]
-                .filter(Boolean).join('  ')}
-            </span>
-          </div>
-        </>
+      <div style={{
+        color: nameColor, fontSize: isMobile ? 11 : 12.5,
+        fontFamily: "'Archivo Black', sans-serif", lineHeight: 1.3,
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      }}>
+        {primaryName}
+      </div>
+      {labelLine && (
+        <div className="c-ev-meta" style={{
+          fontSize: 10, fontFamily: 'Inter', lineHeight: 1.2,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
+          {labelLine}
+        </div>
+      )}
+      {timeStr && (
+        <div className="c-ev-2 c-mono" style={{
+          fontSize: 9.5, lineHeight: 1.25,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
+          {timeStr}{typeTag ? `  ${typeTag}` : ''}
+        </div>
       )}
       </div>
+
+      {/* ── 2. FOOTER BAND ── WO#/invoice# left, staff right. */}
+      {(woTag || staffTag) && (
+        <div className="c-ev-foot">
+          {woTag && <span className="c-ev-wo c-mono">{woTag}</span>}
+          {staffTag && <span className="c-ev-staff">{staffTag}</span>}
+        </div>
+      )}
+
+      {/* ── 3. COD STRIP ── bottom edge, COD only. Billing shows nothing at all:
+          silence is the billing signal, so an "on account" label would be noise
+          on the large majority of cards. */}
+      {!isBilling && (
+        <div className="c-ev-cod">{codLabel ? `COD ${codLabel}` : 'COD'}</div>
+      )}
     </div>
   )
 }
@@ -604,8 +566,11 @@ function DayView({
 
                   {/* Booking blocks */}
                   {cards.map(b => {
+                    // Same anatomy as the grid chip (§10b) — payload, footer band,
+                    // COD strip. Day view had its own arrangement with the codes
+                    // as loose lines; one card design across every calendar view
+                    // is the point of the ruling.
                     const isBilling = b.payment_type === 'billing'
-                    const nameColor = 'var(--c-fg)' // chip name text — white regardless of payment type
                     const displayName = isBilling
                       ? (b.artist && b.label ? `${b.label} / ${b.artist}` : b.artist || b.label || b.client_name || '')
                       : (b.client_name || '')
@@ -614,7 +579,14 @@ function DayView({
                       : b.from_time ? fmtTime(b.from_time) : ''
                     const eng = b.engineer_name ? `1ST-${initials(b.engineer_name)}` : ''
                     const asst = b.assistant_name ? `2ND-${initials(b.assistant_name)}` : ''
-                    const codLabel = !isBilling && b.cod_method ? `COD ${b.cod_method.toUpperCase()}` : null
+                    const codLabel = !isBilling
+                      ? `COD${b.cod_method ? ` ${b.cod_method === 'Credit Card' ? 'CC' : b.cod_method.toUpperCase()}` : ''}`
+                      : null
+                    const woTag = [
+                      b.wo_number ? `WO-${b.wo_number}` : '',
+                      b.invoice_num ? `#${b.invoice_num}` : '',
+                    ].filter(Boolean).join(' · ')
+                    const staffTag = [eng, asst].filter(Boolean).join(' · ')
                     const slot = STATUS_SLOT[b.status] ?? 'confirmed'
                     const isCancelled = b.status === 'cancelled'
 
@@ -623,35 +595,25 @@ function DayView({
                         key={b.id}
                         onClick={() => onOpenEdit(b)}
                         className={`c-ev c-control c-raised-chip ${statusFillClass(slot)}${isCancelled ? ' c-ev-cancelled' : ''}`}
-                        style={{ padding: '7px 10px', cursor: 'pointer' }}
+                        style={{ padding: 0, cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
                       >
-                        {/* Name */}
-                        <div className="c-ev-title c-arch" style={{ fontSize: 12 }}>
-                          {displayName}
+                        <div style={{ padding: '6px 10px 4px', minWidth: 0 }}>
+                          <div className="c-ev-title c-arch" style={{ fontSize: 12, lineHeight: 1.3 }}>
+                            {displayName}
+                          </div>
+                          {timeStr && (
+                            <div className="c-ev-2 c-mono" style={{ fontSize: 9.5, lineHeight: 1.25, marginTop: 1 }}>
+                              {timeStr}
+                            </div>
+                          )}
                         </div>
-                        {/* Time */}
-                        {timeStr && (
-                          <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-3)', marginTop: 2 }}>
-                            {timeStr}
+                        {(woTag || staffTag) && (
+                          <div className="c-ev-foot">
+                            {woTag && <span className="c-ev-wo c-mono">{woTag}</span>}
+                            {staffTag && <span className="c-ev-staff">{staffTag}</span>}
                           </div>
                         )}
-                        {/* COD method */}
-                        {codLabel && (
-                          <div style={{ fontFamily: 'Inter', fontSize: 9, fontWeight: 700, opacity: 0.65, marginTop: 2 }}>
-                            {codLabel}
-                          </div>
-                        )}
-                        {/* Invoice + engineer */}
-                        {(b.invoice_num || eng || asst) && (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5 }}>
-                            <span style={{ fontFamily: 'Inter', fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>
-                              {b.invoice_num ? `#${b.invoice_num}` : ''}
-                            </span>
-                            <span style={{ fontFamily: 'Inter', fontSize: 9, color: 'var(--c-fg-3)' }}>
-                              {[eng, asst].filter(Boolean).join(' ')}
-                            </span>
-                          </div>
-                        )}
+                        {codLabel && <div className="c-ev-cod">{codLabel}</div>}
                       </div>
                     )
                   })}
@@ -799,11 +761,17 @@ function StudioView({
                 const timeStr = b.from_time && b.to_time
                   ? `${fmtTime(b.from_time)}–${fmtTime(b.to_time)}`
                   : b.from_time ? fmtTime(b.from_time) : ''
-                const codLabel = !isBilling && b.cod_method
-                  ? (b.cod_method === 'Credit Card' ? 'CC' : b.cod_method.toUpperCase())
+                // §10b anatomy, as in the grid and day views.
+                const codLabel = !isBilling
+                  ? `COD${b.cod_method ? ` ${b.cod_method === 'Credit Card' ? 'CC' : b.cod_method.toUpperCase()}` : ''}`
                   : null
                 const eng = b.engineer_name ? `1ST-${initials(b.engineer_name)}` : ''
                 const asst = b.assistant_name ? `2ND-${initials(b.assistant_name)}` : ''
+                const woTag = [
+                  b.wo_number ? `WO-${b.wo_number}` : '',
+                  b.invoice_num ? `#${b.invoice_num}` : '',
+                ].filter(Boolean).join(' · ')
+                const staffTag = [eng, asst].filter(Boolean).join(' · ')
                 const slot = STATUS_SLOT[b.status] ?? 'confirmed'
                 const isCancelled = b.status === 'cancelled'
                 return (
@@ -811,30 +779,25 @@ function StudioView({
                     key={b.id}
                     onClick={e => { e.stopPropagation(); onOpenEdit(b) }}
                     className={`c-ev c-control c-raised-chip ${statusFillClass(slot)}${isCancelled ? ' c-ev-cancelled' : ''}`}
-                    style={{ marginBottom: 3, padding: '5px 7px', cursor: 'pointer' }}
+                    style={{ marginBottom: 3, padding: 0, cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
                   >
-                    {/* Name */}
-                    <div className="c-ev-title c-arch" style={{ fontSize: 11.5, whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                      {displayName}
-                    </div>
-                    {/* Time */}
-                    {timeStr && (
-                      <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-3)', marginTop: 2 }}>
-                        {timeStr}
+                    <div style={{ padding: '5px 8px 3px', minWidth: 0 }}>
+                      <div className="c-ev-title c-arch" style={{ fontSize: 11.5, lineHeight: 1.3, whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                        {displayName}
                       </div>
-                    )}
-                    {/* COD method + engineer/assistant row */}
-                    {(codLabel || eng || asst) && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                        <span style={{ fontFamily: 'Inter', fontSize: 9, fontWeight: 700, opacity: 0.65 }}>
-                          {codLabel ?? ''}
-                        </span>
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          {eng  && <span className="c-ev-2 c-mono" style={{ fontSize: 9 }}>{eng}</span>}
-                          {asst && <span className="c-ev-2 c-mono" style={{ fontSize: 9 }}>{asst}</span>}
+                      {timeStr && (
+                        <div className="c-ev-2 c-mono" style={{ fontSize: 9.5, lineHeight: 1.25, marginTop: 1 }}>
+                          {timeStr}
                         </div>
+                      )}
+                    </div>
+                    {(woTag || staffTag) && (
+                      <div className="c-ev-foot">
+                        {woTag && <span className="c-ev-wo c-mono">{woTag}</span>}
+                        {staffTag && <span className="c-ev-staff">{staffTag}</span>}
                       </div>
                     )}
+                    {codLabel && <div className="c-ev-cod">{codLabel}</div>}
                   </div>
                 )
               })}
@@ -1216,12 +1179,12 @@ function CalendarPageInner() {
     if (collapsed.has(l.name)) return s
     return s + l.rooms.filter(r => collapsedRooms.has(`${l.name}|${r}`)).length
   }, 0)
-  const fitRowH = Math.max(20, Math.floor(
+  const fitRowH = Math.max(CHIP_MIN_H, Math.floor(
     (gridH - DAY_HDR_H - filteredLocations.length * LOC_HDR_H - indivCollapsedCount * COLLAPSED_ROOM_H) / Math.max(1, expandedRoomCount)
   ))
   // Mobile uses a fixed comfortable row height (zoom is hidden) so single-lane
   // booking chips clear the 44px tap target; the grid scrolls vertically instead.
-  const rowH = isMobile ? 56 : (zoomLevel === 0 ? fitRowH : ZOOM_ROW_H[zoomLevel - 1])
+  const rowH = isMobile ? CHIP_MIN_H : (zoomLevel === 0 ? fitRowH : ZOOM_ROW_H[zoomLevel - 1])
 
   // (Step 8: the old cal_form_draft restore died with BookingForm.)
 
@@ -1682,7 +1645,7 @@ function CalendarPageInner() {
           <div style={{ flex: 1, position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
             <span style={{
               fontSize: 14, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, color: 'var(--c-fg)',
-              textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.3)', textUnderlineOffset: 3,
+              textDecoration: 'underline', textDecorationColor: 'var(--c-fg-3)', textUnderlineOffset: 3,
               cursor: 'pointer',
             }}>
               {rangeLabel(startDate, totalDays)}
@@ -1891,6 +1854,16 @@ function CalendarPageInner() {
               <div className="c-mono" style={{ fontSize: 11, opacity: .55, marginTop: 6 }}>
                 {[b.wo_number && `WO ${b.wo_number}`, b.invoice_num && `INV ${b.invoice_num}`]
                   .filter(Boolean).join('   ')}
+              </div>
+            )}
+            {/* Payment, COD only — same silence-means-billing rule as the card.
+                The card already carries this; the hover repeats it with the full
+                method spelled out rather than abbreviated. */}
+            {!bill && (
+              <div style={{ marginTop: 8 }}>
+                <span className="c-pill c-pill-hot c-fill-hot">
+                  {b.cod_method ? `COD · ${b.cod_method} — collect` : 'COD — collect'}
+                </span>
               </div>
             )}
             <div className="c-hovercard-hint">Click to open WO</div>

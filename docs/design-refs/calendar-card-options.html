@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Calendar Card Redesign: 3 Options</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626;
+  --st-hot:#ff5a4d; --hot-text:#fff4f2;
+  --st-warm:#ffa94d; --st-booked:#43dfae;
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);
+  font:400 14.5px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;
+  max-width:1500px;margin:0 auto;padding:0 24px 100px;transition:background .2s,color .2s}
+button{font:inherit;color:var(--fg);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.sub{font-size:12.5px;opacity:.6}
+.board{display:flex;align-items:center;gap:14px;padding:22px 0 20px;margin-bottom:8px}
+.board h1{font-size:22px;letter-spacing:-.03em}
+.actbtn{background:var(--fg);color:var(--bg);border-radius:99px;padding:9px 19px;
+  font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+  box-shadow:3px 3px 9px rgba(0,0,0,.35)}
+.opt{margin:40px 0}
+.opt h2{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.45;margin-bottom:6px}
+.opt .why{font-size:12.5px;opacity:.6;margin-bottom:16px;max-width:860px}
+.sizes{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+.sz .cap{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.35;margin-bottom:7px}
+
+/* ============ shared chip base ============ */
+.chip{border-radius:12px;color:var(--chip-ink);overflow:hidden;position:relative;
+  box-shadow:2.5px 2.5px 7px rgba(0,0,0,.3);min-height:86px;display:flex;flex-direction:column}
+.chip.book{background:var(--st-booked)}
+.chip.tent{background:var(--st-warm)}
+.w60{width:74px}.w120{width:132px}.wbar{width:420px}
+.t{font-family:'Archivo Black',sans-serif;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c{opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m{font-family:ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ============ V1 — LEDGER (WordPress DNA) ============ */
+.v1{padding:8px 9px 0;text-align:center}
+.v1 .t{font-size:13px}
+.v1 .c{font-size:10.5px}
+.v1 .m{font-size:10.5px;opacity:.85;margin-top:1px}
+.v1 .row{display:flex;justify-content:space-between;gap:6px;margin-top:auto;
+  padding:3px 0 2px;font-size:9px;font-weight:700}
+.v1 .wo{opacity:.55}
+.v1 .eng{font-weight:800}
+.v1 .codline{background:var(--st-hot);color:var(--hot-text);text-align:center;
+  font-size:8.5px;font-weight:800;letter-spacing:.08em;padding:3px 4px;margin:4px -9px 0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v1wrap{display:flex;flex-direction:column;min-height:86px;flex:1}
+
+/* ============ V2 — FOOTER DECK ============ */
+.v2top{padding:8px 10px 4px;flex:1;min-width:0}
+.v2top .t{font-size:13px}
+.v2top .c{font-size:10.5px}
+.v2top .m{font-size:10.5px;opacity:.85}
+.v2foot{background:rgba(0,0,0,.22);padding:4px 9px;display:flex;align-items:center;gap:7px;
+  font-size:9px;font-weight:700;color:var(--chip-ink)}
+[data-theme="dark"] .v2foot{background:rgba(0,0,0,.3)}
+.v2foot .wo{opacity:.65;white-space:nowrap}
+.v2foot .eng{font-weight:800;white-space:nowrap}
+.v2foot .cod{margin-left:auto;color:var(--st-hot);font-weight:800;letter-spacing:.05em;
+  white-space:nowrap;text-shadow:0 0 1px rgba(0,0,0,.3)}
+.v2foot.stack{flex-wrap:wrap;gap:2px 7px}
+
+/* ============ V3 — TAG RAIL ============ */
+.v3{display:flex;flex:1;min-height:86px}
+.v3main{padding:8px 4px 8px 10px;flex:1;min-width:0}
+.v3main .t{font-size:13px}
+.v3main .c{font-size:10.5px}
+.v3main .m{font-size:10.5px;opacity:.85}
+.v3rail{display:flex;flex-direction:column;gap:3px;align-items:flex-end;
+  padding:7px 7px 7px 0;flex-shrink:0}
+.tagp{font-size:8px;font-weight:800;letter-spacing:.05em;border-radius:5px;padding:2px 5px;
+  background:rgba(0,0,0,.18);white-space:nowrap}
+.tagp.cod{background:var(--st-hot);color:var(--hot-text)}
+.tagp.wo{opacity:.75}
+
+/* ============ hover card ============ */
+.hovcard{background:var(--bg);border-radius:20px;padding:16px 18px;width:280px;
+  box-shadow:0 10px 30px -10px rgba(0,0,0,.6), inset 0 1.5px 0 rgba(255,255,255,.06)}
+[data-theme="light"] .hovcard{box-shadow:0 10px 30px -10px rgba(42,39,34,.35), inset 0 1.5px 0 rgba(255,255,255,.6)}
+.hovcard .hrow{display:flex;align-items:center;gap:9px;margin-bottom:3px}
+.hovcard .t{font-size:16px}
+.spill{border-radius:99px;padding:4px 11px;font-size:8.5px;font-weight:800;
+  letter-spacing:.08em;text-transform:uppercase;flex-shrink:0}
+.spill.tent{background:var(--st-warm);color:var(--chip-ink)}
+.spill.codp{background:var(--st-hot);color:var(--hot-text)}
+.hovcard .line{font-size:12.5px;margin-top:5px}
+.hovcard .line.mono{font-family:ui-monospace,Menlo,monospace;font-size:11.5px}
+.hovcard .dim{opacity:.55}
+.hovcard .hint{font-size:8.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
+  opacity:.4;margin-top:12px}
+</style>
+</head>
+<body>
+
+<div class="board">
+  <div style="flex:1">
+    <h1 class="arch">Calendar Cards — 3 Options</h1>
+    <p class="sub" style="margin-top:6px;max-width:860px">All three carry the full WordPress
+    inventory: artist/label · times · 1st + 2nd engineer · WO# · payment (red = collect).
+    Fill stays session-status (green confirmed / amber tentative). Rendered honestly at
+    ~60px, ~120px, and bar width. Toggle themes — the TVs run dark.</p>
+  </div>
+  <button class="actbtn" id="themeBtn" onclick="flip()">View light</button>
+</div>
+
+<!-- ============ V1 ============ -->
+<div class="opt">
+  <h2>V1 — Ledger · WordPress DNA</h2>
+  <p class="why">Your current TV card, translated: centered stack, bottom row WO# left / engineers
+  right, and the COD line as a full-width red strip on the card's bottom edge — unmissable from
+  across a room, exactly like the red text your staff already scan for. Most familiar; densest.</p>
+  <div class="sizes">
+    <div class="sz"><div class="cap">~60px · 1 day tight</div>
+      <div class="chip book w60"><div class="v1 v1wrap">
+        <div class="t">Epic/Melly…</div>
+        <div class="m">5P–12A</div>
+        <div class="row"><span class="eng">XD·JM</span></div>
+        <div class="codline">COD</div>
+      </div></div>
+    </div>
+    <div class="sz"><div class="cap">~130px · 1 day</div>
+      <div class="chip book w120"><div class="v1 v1wrap">
+        <div class="t">Epic/Melly Mike</div>
+        <div class="c">Epic Records</div>
+        <div class="m">5P–12A</div>
+        <div class="row"><span class="wo mono">#34551</span><span class="eng">1ST-XD·2ND-JM</span></div>
+        <div class="codline">COD ZELLE</div>
+      </div></div>
+    </div>
+    <div class="sz"><div class="cap">bar · multi-day (payload slides)</div>
+      <div class="chip tent wbar"><div class="v1 v1wrap">
+        <div class="t">INT / Pierre Bourne</div>
+        <div class="c">Interscope</div>
+        <div class="m">8P–4A</div>
+        <div class="row"><span class="wo mono">WO-1023 · #34589</span><span class="eng">1ST-XD · 2ND-JH</span></div>
+        <div class="codline">COD WIRE — COLLECT</div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ V2 ============ -->
+<div class="opt">
+  <h2>V2 — Footer Deck</h2>
+  <p class="why">Payload up top in the approved style (Archivo left-aligned), and ALL the
+  operational codes live in a darker footer band inside the chip: WO#, engineers, payment.
+  One consistent home for the "desk data" — red COD sits in the band where it reads against
+  the dark, not against the green. Cleanest separation of "who/when" from "codes".</p>
+  <div class="sizes">
+    <div class="sz"><div class="cap">~60px · 1 day tight</div>
+      <div class="chip book w60">
+        <div class="v2top"><div class="t">Epic/M…</div><div class="m">5P–12A</div></div>
+        <div class="v2foot stack"><span class="eng">XD·JM</span><span class="cod">COD</span></div>
+      </div>
+    </div>
+    <div class="sz"><div class="cap">~130px · 1 day</div>
+      <div class="chip book w120">
+        <div class="v2top"><div class="t">Epic/Melly Mike</div><div class="c">Epic Records</div><div class="m">5P–12A</div></div>
+        <div class="v2foot stack"><span class="wo mono">#34551</span><span class="eng">XD·JM</span><span class="cod">COD ZELLE</span></div>
+      </div>
+    </div>
+    <div class="sz"><div class="cap">bar · multi-day</div>
+      <div class="chip tent wbar">
+        <div class="v2top"><div class="t">INT / Pierre Bourne</div><div class="c">Interscope</div><div class="m">8P–4A</div></div>
+        <div class="v2foot"><span class="wo mono">WO-1023 · #34589</span><span class="eng">1ST-XD · 2ND-JH</span><span class="cod">COD WIRE</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ V3 ============ -->
+<div class="opt">
+  <h2>V3 — Tag Rail</h2>
+  <p class="why">Who/when on the left; a vertical rail of micro-tags down the right edge — WO#,
+  engineers, COD as a red tag. Scans like luggage tags; the red tag pops hardest of the three.
+  Weakest at very narrow widths (the rail eats horizontal space).</p>
+  <div class="sizes">
+    <div class="sz"><div class="cap">~60px · 1 day tight</div>
+      <div class="chip book w60"><div class="v3">
+        <div class="v3main"><div class="t">Epic…</div><div class="m">5P–12A</div></div>
+        <div class="v3rail"><span class="tagp">XD</span><span class="tagp cod">COD</span></div>
+      </div></div>
+    </div>
+    <div class="sz"><div class="cap">~130px · 1 day</div>
+      <div class="chip book w120"><div class="v3">
+        <div class="v3main"><div class="t">Epic/Melly</div><div class="c">Epic Rec.</div><div class="m">5P–12A</div></div>
+        <div class="v3rail"><span class="tagp wo mono">#34551</span><span class="tagp">XD·JM</span><span class="tagp cod">COD·Z</span></div>
+      </div></div>
+    </div>
+    <div class="sz"><div class="cap">bar · multi-day</div>
+      <div class="chip tent wbar"><div class="v3">
+        <div class="v3main"><div class="t">INT / Pierre Bourne</div><div class="c">Interscope</div><div class="m">8P–4A</div></div>
+        <div class="v3rail"><span class="tagp wo mono">WO-1023 · #34589</span><span class="tagp">1ST-XD · 2ND-JH</span><span class="tagp cod">COD WIRE</span></div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ HOVER ============ -->
+<div class="opt">
+  <h2>The hover card — upgraded (same for all three options)</h2>
+  <p class="why">Whatever the chip can't fit, the hover has: full staff names, WO# and Invoice#,
+  payment method as a proper red pill. No rates or amounts, ever.</p>
+  <div class="hovcard">
+    <div class="hrow"><span class="t arch">UntilJapan</span><span class="spill tent">Tentative</span></div>
+    <div class="line dim">Interscope</div>
+    <div class="line label" style="opacity:.55;margin-top:8px">Paramount · Studio C</div>
+    <div class="line mono">Aug 1 · 10A–10P</div>
+    <div class="line mono">1ST Xavier Daniel · 2ND Sam Lorimore</div>
+    <div class="line mono dim" style="margin-top:6px">WO-1023 · INV #34589</div>
+    <div class="line" style="margin-top:8px"><span class="spill codp">COD · WIRE — collect</span></div>
+    <div class="hint">Click to open WO</div>
+  </div>
+</div>
+
+<script>
+function flip(){
+  var h=document.documentElement;
+  var next=h.getAttribute('data-theme')==='light'?'dark':'light';
+  h.setAttribute('data-theme',next);
+  document.getElementById('themeBtn').textContent = next==='light'?'View dark':'View light';
+}
+</script>
+</body>
+</html>

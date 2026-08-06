@@ -329,6 +329,32 @@ and ask Eli.
 
 ---
 
+## 10b. Calendar card — final anatomy (RULING 2026-08-02)
+
+Fill = session status (continuity with the WordPress wall: blue→`--st-booked` confirmed,
+gold→`--st-warm` tentative; staff instincts preserved). Card anatomy, top to bottom:
+1. Payload (slides as one unit on long bars): Archivo artist/label · client line · mono
+   times, left-aligned.
+2. Footer band (darker overlay strip inside the chip): WO# / invoice# (mono, left) ·
+   engineer tags 1ST-XX · 2ND-XX (right).
+3. COD strip: full-width `--st-hot` bar with `--hot-text`, bottom edge of the chip,
+   ONLY when payment is COD (+ method: "COD ZELLE" etc.). Billing = no payment element
+   at all — silence means billing. Sanctioned under hot-as-critical (§5).
+All fields render at 60px column width and up (no tiers, ellipsis allowed). Hover card
+carries the long tail: full staff names, WO# + INV#, payment pill, status pill. No rates
+or amounts anywhere on calendar or hover.
+
+## 13. TV display mode (`/display/[room-slug]`) — design decisions, build later
+
+Roadmap project (after calendar module ships), decisions locked now:
+- Same card DNA as §10b — the card is already hover-independent by design (everything
+  visible). No hover-only information may ever exist on calendar cards for this reason.
+- Frame: traditional fixed month-grid per room, no zoom, no interaction, read-only,
+  auto-refreshing (realtime standard), no login (matches current WordPress-wall practice,
+  incl. visible COD/eng/WO# — Eli-accepted).
+- Ten-foot minimums: artist ≥ 15px equivalent at TV resolution, times/mono ≥ 12px,
+  COD strip full-width and unmissable. Dark register only (the wall runs dark).
+
 ## 11. Verification per handoff
 
 - `npx tsc --noEmit` clean.
