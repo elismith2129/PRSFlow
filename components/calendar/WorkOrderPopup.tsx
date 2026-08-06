@@ -1745,8 +1745,8 @@ export function WorkOrderPopup({
         // exactly this reason; the mobile branch just never carried it over.
         // The Nav is 52px tall on mobile as well (the 44px is the hamburger
         // button inside it, not the bar).
-        ? { position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'var(--bg)' }
-        : { position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.75)', overflowY: 'auto' }}
+        ? { position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'var(--c-bg)' }
+        : { position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.55)', overflowY: 'auto' }}
       onClick={inline || isMobile ? undefined : e => { if (e.target === e.currentTarget) handleClose() }}
     >
       {isMobile && (
@@ -1763,29 +1763,30 @@ export function WorkOrderPopup({
       >
       <div
         style={isMobile
-          ? { background: 'var(--bg)', border: 'none', borderRadius: 0, width: '100vw', height: '100%', maxWidth: 'none', minWidth: 0, margin: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }
-          : { background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.13)', borderRadius: 10, width: '100%', maxWidth: 920, minWidth: 780, marginBottom: 20, alignSelf: 'flex-start' }}
+          ? { width: '100vw', height: '100%', maxWidth: 'none', minWidth: 0, margin: 0, display: 'flex', flexDirection: 'column' }
+          : { width: '100%', maxWidth: 920, minWidth: 780, marginBottom: 20, alignSelf: 'flex-start' }}
+        className="c-sheet"
         onClick={e => e.stopPropagation()}
       >
 
         {/* ── HEADER ────────────────────────────────────────────────────────── */}
         {isMobile ? (
           /* Mobile: matches the Runner Hub WO header (back arrow + title + sub) */
-          <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10, flexShrink: 0 }}>
-            <button onClick={() => handleCancel()} disabled={saving} aria-label="Close" style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: saving ? 'default' : 'pointer', fontSize: 18, padding: '0 4px', flexShrink: 0 }}>←</button>
+          <div style={{ background: 'var(--c-bg)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10, flexShrink: 0 }}>
+            <button onClick={() => handleCancel()} disabled={saving} aria-label="Close" className="c-control c-raised" style={{ width: 34, height: 34, borderRadius: 99, background: 'var(--c-bg)', color: 'var(--c-fg)', cursor: saving ? 'default' : 'pointer', fontSize: 15, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne, sans-serif' }}>
+              <div className="c-arch" style={{ fontSize: 16 }}>
                 Work Order{wo.wo_number ? ` · ${wo.wo_number}` : ''}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div className="c-sub" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {(booking.client_name || wo.client || '—')} · {(booking.start_date || wo.session_date || '')}
               </div>
             </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'sticky', top: 0, background: 'var(--surface2)', zIndex: 10, borderRadius: '10px 10px 0 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 22px 12px', position: 'sticky', top: 0, background: 'var(--c-bg)', zIndex: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: '#f0f0f0' }}>
+              <span className="c-arch" style={{ fontSize: 15 }}>
                 Work Order{wo.wo_number ? ` · ${wo.wo_number}` : ''}
               </span>
               <StatusBadge status={wo.status} />
@@ -1795,13 +1796,13 @@ export function WorkOrderPopup({
                 <>
                   <button
                     onClick={() => printWithFilename()}
-                    style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text2)' }}
+                    className="c-soft c-soft-sm c-control c-raised"
                   >
                     Export PDF
                   </button>
                   <button
                     onClick={() => printWithFilename()}
-                    style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text2)' }}
+                    className="c-soft c-soft-sm c-control c-raised"
                   >
                     Print
                   </button>
@@ -1845,7 +1846,7 @@ export function WorkOrderPopup({
               {readOnly && (
                 <button
                   onClick={onClose}
-                  style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text2)' }}
+                  className="c-soft c-soft-sm c-control c-raised"
                 >
                   Close
                 </button>
@@ -2790,7 +2791,7 @@ export function WorkOrderPopup({
             <button
               onClick={handleComplete}
               disabled={completing}
-              style={{ width: '100%', minHeight: 48, borderRadius: 12, padding: '13px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 13, letterSpacing: '0.02em', textTransform: 'uppercase', cursor: completing ? 'default' : 'pointer', background: isCompleted ? 'rgba(255,255,255,0.06)' : completing ? 'rgba(20,184,166,0.5)' : 'var(--booked)', border: isCompleted ? '1px solid var(--border)' : 'none', color: isCompleted ? 'var(--text2)' : 'var(--bg)', opacity: completing ? 0.7 : 1 }}
+              className={`c-control c-block ${isCompleted ? 'c-soft c-raised' : 'c-pill c-fill-booked c-raised-chip'}`} style={{ minHeight: 48, justifyContent: 'center', cursor: completing ? 'default' : 'pointer', opacity: completing ? 0.7 : 1 }}
             >
               {completing ? (isCompleted ? 'Re-opening…' : 'Completing…') : isCompleted ? 'Re-open WO' : 'Complete WO'}
             </button>
@@ -2800,29 +2801,29 @@ export function WorkOrderPopup({
         </div>{/* end body */}
 
         {/* ── FOOTER ───────────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 8 : 10, padding: isMobile ? '12px 16px calc(12px + env(safe-area-inset-bottom)) 16px' : '14px 20px', borderTop: isMobile ? '1px solid var(--border)' : '1px solid rgba(255,255,255,0.07)', flexShrink: 0, background: isMobile ? 'var(--bg)' : 'var(--surface2)' }}>
-          <button onClick={() => printWithFilename()} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text2)', ...(isMobile ? { display: 'none' } : {}) }}>
+        <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 8 : 10, padding: isMobile ? '12px 16px calc(12px + env(safe-area-inset-bottom)) 16px' : '14px 22px', flexShrink: 0, background: 'var(--c-bg)' }}>
+          <button onClick={() => printWithFilename()} className="c-soft c-control c-raised" style={{ ...(isMobile ? { display: 'none' } : {}) }}>
             Export PDF
           </button>
           {!readOnly && (
           <>
-          <button onClick={() => handleCancel()} disabled={saving} style={{ padding: '7px 16px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text2)', ...(isMobile ? { flex: '1 1 0', minHeight: 48, fontSize: 13, borderRadius: 12, padding: '13px 0', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', letterSpacing: '0.02em' } : {}) }}>
+          <button onClick={() => handleCancel()} disabled={saving} className="c-soft c-control c-raised" style={{ cursor: saving ? 'default' : 'pointer', ...(isMobile ? { flex: '1 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
             Cancel
           </button>
           <button
             onClick={handleComplete}
             disabled={completing}
-            style={{ padding: '7px 18px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: completing ? 'default' : 'pointer', background: isCompleted ? 'rgba(255,255,255,0.08)' : completing ? 'rgba(20,184,166,0.5)' : 'var(--booked)', border: isCompleted ? '1px solid rgba(255,255,255,0.12)' : 'none', color: isCompleted ? 'var(--text2)' : 'var(--bg)', opacity: completing ? 0.7 : 1, ...(isMobile ? { display: 'none' } : {}) }}
+            className={`c-control ${isCompleted ? 'c-soft c-raised' : 'c-pill c-fill-booked c-raised-chip'}`} style={{ padding: '8px 18px', cursor: completing ? 'default' : 'pointer', opacity: completing ? 0.7 : 1, ...(isMobile ? { display: 'none' } : {}) }}
           >
             {completing ? (isCompleted ? 'Re-opening…' : 'Completing…') : isCompleted ? 'Re-open WO' : 'Complete WO'}
           </button>
-          <button onClick={handleClose} disabled={saving} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(var(--accent-rgb),0.5)' : 'var(--accent)', border: 'none', color: 'var(--bg)', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '2 1 0', minHeight: 48, fontSize: 13, fontWeight: 800, borderRadius: 12, padding: '13px 0', letterSpacing: '0.02em' } : {}) }}>
+          <button onClick={handleClose} disabled={saving} className="c-btn c-control c-raised-primary" style={{ cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '2 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
             {saving ? 'Saving…' : 'Close & Save'}
           </button>
           </>
           )}
           {readOnly && (
-            <button onClick={onClose} style={{ padding: '7px 22px', borderRadius: 5, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text2)', ...(isMobile ? { flex: '1 1 0', minHeight: 48, fontSize: 13, borderRadius: 12, padding: '13px 0', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', letterSpacing: '0.02em' } : {}) }}>
+            <button onClick={onClose} className="c-soft c-control c-raised" style={{ ...(isMobile ? { flex: '1 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
               Close
             </button>
           )}
