@@ -7,6 +7,9 @@ interface TimeInputProps {
   onBlur?: () => void
   placeholder?: string
   style?: React.CSSProperties
+  /** Lets callers hand it a system recipe (`c-input c-inset2`) instead of a
+      hand-written well in inline styles. */
+  className?: string
   disabled?: boolean
 }
 
@@ -81,7 +84,7 @@ function parseTime(input: string): string | null {
   return null
 }
 
-export default function TimeInput({ value, onChange, onBlur, placeholder = '—', style, disabled }: TimeInputProps) {
+export default function TimeInput({ value, onChange, onBlur, placeholder = '—', style, className, disabled }: TimeInputProps) {
   const [raw, setRaw] = useState(value || '')
   const focused = useRef(false)
 
@@ -123,9 +126,14 @@ export default function TimeInput({ value, onChange, onBlur, placeholder = '—'
       onBlur={handleBlur}
       disabled={disabled}
       placeholder={placeholder}
-      style={{
-        background: 'var(--surface2)',
-        color: raw ? '#f0f0f0' : '#555',
+      className={className}
+      // When a caller supplies a recipe class, this contributes NO visual style
+      // of its own — inline styles outrank classes, so a base background here
+      // would silently defeat `c-input c-inset2`. It only styles itself when
+      // left bare (the studio-time table cells, which want a naked input).
+      style={className ? style : {
+        background: 'transparent',
+        color: raw ? 'var(--c-fg)' : 'var(--c-fg-3)',
         border: 'none',
         fontSize: 11,
         fontFamily: 'Inter',

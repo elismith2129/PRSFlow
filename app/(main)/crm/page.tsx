@@ -2572,14 +2572,14 @@ const parsedLoc0 = parseLocation(lead.location || '')
       <div className="c-band">
       <div className="c-band-head">Notes</div>
       <textarea
-        className="c-well c-well-area"
+        className="c-area"
         value={notesVal}
         onChange={e => setNotesVal(e.target.value)}
         onBlur={() => { if (notesDirty) save('notes', notesVal) }}
         onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
         ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px' } }}
         placeholder="Add notes…"
-        style={{ width: '100%', resize: 'none', overflow: 'hidden', lineHeight: 1.6 }}
+        style={{ width: '100%', resize: 'none', overflow: 'hidden', lineHeight: 1.6, minHeight: 0 }}
       />
       </div>
 

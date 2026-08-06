@@ -1942,26 +1942,26 @@ export function WorkOrderPopup({
                 </div>
                 <div>
                   <div style={{ ...metaLabel, marginBottom: 6 }}>Title</div>
-                  <input value={wo.client} onChange={e => { setDirtyFields(prev => new Set(prev).add('client')); setWo(w => w ? { ...w, client: e.target.value } : w) }} placeholder="Name this block" style={inp} />
+                  <input value={wo.client} onChange={e => { setDirtyFields(prev => new Set(prev).add('client')); setWo(w => w ? { ...w, client: e.target.value } : w) }} placeholder="Name this block" className="c-input c-inset2" />
                 </div>
                 <div style={{ display: 'flex', gap: 12 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ ...metaLabel, marginBottom: 6 }}>Start date</div>
-                    <input type="date" value={blockStart} onChange={e => setBlockStart(e.target.value)} style={inp} />
+                    <input type="date" value={blockStart} onChange={e => setBlockStart(e.target.value)} className="c-input c-inset2" />
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ ...metaLabel, marginBottom: 6 }}>End date</div>
-                    <input type="date" value={blockEnd} onChange={e => setBlockEnd(e.target.value)} style={inp} />
+                    <input type="date" value={blockEnd} onChange={e => setBlockEnd(e.target.value)} className="c-input c-inset2" />
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 12 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ ...metaLabel, marginBottom: 6 }}>From</div>
-                    <TimeInput value={wo.from_time} onChange={v => { setDirtyFields(prev => new Set(prev).add('from_time')); setWo(w => w ? { ...w, from_time: v } : w) }} style={inp} />
+                    <TimeInput value={wo.from_time} onChange={v => { setDirtyFields(prev => new Set(prev).add('from_time')); setWo(w => w ? { ...w, from_time: v } : w) }} className="c-input c-inset2" />
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ ...metaLabel, marginBottom: 6 }}>To</div>
-                    <TimeInput value={wo.to_time} onChange={v => { setDirtyFields(prev => new Set(prev).add('to_time')); setWo(w => w ? { ...w, to_time: v } : w) }} style={inp} />
+                    <TimeInput value={wo.to_time} onChange={v => { setDirtyFields(prev => new Set(prev).add('to_time')); setWo(w => w ? { ...w, to_time: v } : w) }} className="c-input c-inset2" />
                   </div>
                 </div>
               </div>
@@ -2060,15 +2060,14 @@ export function WorkOrderPopup({
                   {/* Absorbs everything the meta row gave back — the notes are the
                       only field here anyone writes a paragraph into, so they get
                       the height rather than leaving it as dead panel. */}
-                  <div className="c-well c-well-area" style={{ flex: 1, minHeight: 190 }}>
-                    <textarea
-                      value={wo.booking_notes}
-                      disabled={readOnly}
-                      onChange={e => { setDirtyFields(prev => new Set(prev).add('booking_notes')); setWo(w => w ? { ...w, booking_notes: e.target.value } : w) }}
-                      placeholder="Ops notes about the booking — arrival, payment, past experience… never on the invoice."
-                      style={{ resize: 'vertical', fontFamily: 'Inter', fontSize: 13, lineHeight: 1.5, padding: 0 }}
-                    />
-                  </div>
+                  <textarea
+                    className="c-area"
+                    value={wo.booking_notes}
+                    disabled={readOnly}
+                    onChange={e => { setDirtyFields(prev => new Set(prev).add('booking_notes')); setWo(w => w ? { ...w, booking_notes: e.target.value } : w) }}
+                    placeholder="Ops notes about the booking — arrival, payment, past experience… never on the invoice."
+                    style={{ flex: 1, minHeight: 190 }}
+                  />
                 </div>
               </div>
 
@@ -2195,7 +2194,9 @@ export function WorkOrderPopup({
               const nDays = new Set(targets.map(r => r.date)).size
               const anyField = Object.values(batchOn).some(Boolean)
               const lbl: React.CSSProperties = { fontSize: 10, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.11em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }
-              const bInp: React.CSSProperties = { background: 'var(--c-bg)', borderRadius: 14, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13, padding: '0 14px', height: 40, outline: 'none', width: '100%', boxSizing: 'border-box', boxShadow: 'inset 3px 3px 9px rgba(0,0,0,.34), inset -3px -3px 9px rgba(255,255,255,.03)' }
+              // Was a hand-written duplicate of the well recipe. Deleted per F-22:
+              // one implementation, in CSS. `c-input c-inset2` IS that recipe.
+              const bInpCls = 'c-input c-inset2'
               const rowS: React.CSSProperties = { display: 'grid', gridTemplateColumns: '128px 1fr', gap: 10, alignItems: 'center' }
               // §8: a segmented control is ONE housing. These were pairs of
               // individually-raised pills sitting inside the already-raised batch
@@ -2223,9 +2224,9 @@ export function WorkOrderPopup({
                       </div>
                       {batchScope === 'range' && (
                         <>
-                          <input type="date" value={batchFrom} onChange={e => setBatchFrom(e.target.value)} style={{ ...bInp, width: 140 }} />
+                          <input type="date" value={batchFrom} onChange={e => setBatchFrom(e.target.value)} className={bInpCls} style={{ width: 140 }} />
                           <span style={{ color: 'var(--c-fg-3)', fontSize: 11 }}>–</span>
-                          <input type="date" value={batchTo} onChange={e => setBatchTo(e.target.value)} style={{ ...bInp, width: 140 }} />
+                          <input type="date" value={batchTo} onChange={e => setBatchTo(e.target.value)} className={bInpCls} style={{ width: 140 }} />
                         </>
                       )}
                     </div>
@@ -2240,7 +2241,7 @@ export function WorkOrderPopup({
                       value={`${batchVals.location || booking.location || ''}|${batchVals.studio}`}
                       disabled={!batchOn.room}
                       onChange={e => { const [loc, room] = e.target.value.split('|'); setBatchVals(v => ({ ...v, location: loc, studio: room })) }}
-                      style={{ ...bInp, opacity: batchOn.room ? 1 : 0.45 }}
+                      className={bInpCls} style={{ opacity: batchOn.room ? 1 : 0.45 }}
                     >
                       <option value={`${booking.location || ''}|`}>— select room —</option>
                       {STUDIO_LOCATIONS.map(l => l.rooms.map(room => {
@@ -2254,13 +2255,13 @@ export function WorkOrderPopup({
                   <div style={rowS}>
                     {check('from', 'Start time')}
                     <div style={{ maxWidth: 160, opacity: batchOn.from ? 1 : 0.45 }}>
-                      <TimeInput value={batchVals.from_time} onChange={v => setBatchVals(s2 => ({ ...s2, from_time: v }))} style={bInp} disabled={!batchOn.from} />
+                      <TimeInput value={batchVals.from_time} onChange={v => setBatchVals(s2 => ({ ...s2, from_time: v }))} className={bInpCls} disabled={!batchOn.from} />
                     </div>
                   </div>
                   <div style={rowS}>
                     {check('to', 'End time')}
                     <div style={{ maxWidth: 160, opacity: batchOn.to ? 1 : 0.45 }}>
-                      <TimeInput value={batchVals.to_time} onChange={v => setBatchVals(s2 => ({ ...s2, to_time: v }))} style={bInp} disabled={!batchOn.to} />
+                      <TimeInput value={batchVals.to_time} onChange={v => setBatchVals(s2 => ({ ...s2, to_time: v }))} className={bInpCls} disabled={!batchOn.to} />
                     </div>
                   </div>
 
@@ -2272,18 +2273,18 @@ export function WorkOrderPopup({
                         <button type="button" disabled={!batchOn.rate} onClick={() => setBatchVals(v => ({ ...v, rateType: 'hour' }))} className={scopeCls(batchVals.rateType === 'hour')} style={scopeBtn(batchVals.rateType === 'hour')}>/ hr</button>
                         <button type="button" disabled={!batchOn.rate} onClick={() => setBatchVals(v => ({ ...v, rateType: 'day' }))} className={scopeCls(batchVals.rateType === 'day')} style={scopeBtn(batchVals.rateType === 'day')}>/ day</button>
                       </div>
-                      <input value={batchVals.rate} disabled={!batchOn.rate} onChange={e => setBatchVals(v => ({ ...v, rate: e.target.value }))} placeholder={batchVals.rateType === 'day' ? '$0/day' : '$0/hr'} style={{ ...bInp, maxWidth: 130 }} />
+                      <input value={batchVals.rate} disabled={!batchOn.rate} onChange={e => setBatchVals(v => ({ ...v, rate: e.target.value }))} placeholder={batchVals.rateType === 'day' ? '$0/day' : '$0/hr'} className={bInpCls} style={{ maxWidth: 130 }} />
                     </div>
                   </div>
 
                   {/* OT */}
                   <div style={rowS}>
                     {check('ot_hours', 'OT hours')}
-                    <input value={batchVals.ot_hours} disabled={!batchOn.ot_hours} onChange={e => setBatchVals(v => ({ ...v, ot_hours: e.target.value }))} placeholder="0" style={{ ...bInp, maxWidth: 130, opacity: batchOn.ot_hours ? 1 : 0.45 }} />
+                    <input value={batchVals.ot_hours} disabled={!batchOn.ot_hours} onChange={e => setBatchVals(v => ({ ...v, ot_hours: e.target.value }))} placeholder="0" className={bInpCls} style={{ maxWidth: 130, opacity: batchOn.ot_hours ? 1 : 0.45 }} />
                   </div>
                   <div style={rowS}>
                     {check('ot_rate', 'OT rate')}
-                    <input value={batchVals.ot_rate} disabled={!batchOn.ot_rate} onChange={e => setBatchVals(v => ({ ...v, ot_rate: e.target.value }))} placeholder="$0" style={{ ...bInp, maxWidth: 130, opacity: batchOn.ot_rate ? 1 : 0.45 }} />
+                    <input value={batchVals.ot_rate} disabled={!batchOn.ot_rate} onChange={e => setBatchVals(v => ({ ...v, ot_rate: e.target.value }))} placeholder="$0" className={bInpCls} style={{ maxWidth: 130, opacity: batchOn.ot_rate ? 1 : 0.45 }} />
                   </div>
 
                   {/* Staff */}
@@ -2294,14 +2295,14 @@ export function WorkOrderPopup({
                         <button type="button" disabled={!batchOn.staff} onClick={() => setBatchVals(v => ({ ...v, staffRole: 'engineer' }))} className={scopeCls(batchVals.staffRole === 'engineer')} style={scopeBtn(batchVals.staffRole === 'engineer')}>1ST</button>
                         <button type="button" disabled={!batchOn.staff} onClick={() => setBatchVals(v => ({ ...v, staffRole: 'assistant' }))} className={scopeCls(batchVals.staffRole === 'assistant')} style={scopeBtn(batchVals.staffRole === 'assistant')}>2ND</button>
                       </div>
-                      <input list="wo-eng-roster" value={batchVals.staffName} disabled={!batchOn.staff} onChange={e => setBatchVals(v => ({ ...v, staffName: e.target.value }))} placeholder="Name (blank = unassign)" style={{ ...bInp, maxWidth: 220 }} />
+                      <input list="wo-eng-roster" value={batchVals.staffName} disabled={!batchOn.staff} onChange={e => setBatchVals(v => ({ ...v, staffName: e.target.value }))} placeholder="Name (blank = unassign)" className={bInpCls} style={{ maxWidth: 220 }} />
                     </div>
                   </div>
 
                   {/* Session notes */}
                   <div style={rowS}>
                     {check('notes', 'Session info')}
-                    <textarea value={batchVals.session_info} disabled={!batchOn.notes} onChange={e => setBatchVals(v => ({ ...v, session_info: e.target.value }))} rows={2} placeholder="Applies the same note to every day in scope" style={{ ...bInp, resize: 'vertical', lineHeight: 1.5, opacity: batchOn.notes ? 1 : 0.45 }} />
+                    <textarea value={batchVals.session_info} disabled={!batchOn.notes} onChange={e => setBatchVals(v => ({ ...v, session_info: e.target.value }))} rows={2} placeholder="Applies the same note to every day in scope" className="c-area" style={{ minHeight: 64, opacity: batchOn.notes ? 1 : 0.45 }} />
                   </div>
 
                   <div style={{ height: 1, background: 'var(--c-wash2)' }} />

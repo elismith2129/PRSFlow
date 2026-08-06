@@ -1269,28 +1269,60 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* WELL — the standard field. ONE recipe: empty and filled look identical, so an
    empty field still reads as somewhere you can type. Holds content, so it carves
    IN. Radius 14 / height 40 supersedes spec §7's "inputs 99px" (mock wins). */
+/* ── WELL — ported from docs/design-refs/wo-meta-compact.html `.well` ───────
+   Token + polarity translation only (the ref is light-first; this app is
+   dark-first). Height 40 / padding 14 per F-22 §3, superseding the ref's 38/13.
+
+   SPECIFICITY, READ BEFORE EDITING. `.c-sheet input:not([type="file"]):not(.c-input)`
+   (0,3,1) beat the old `.c-well input` (0,2,1), so every input inside a well got
+   the sheet's own carved box — a well inside a well, with 10px of its own padding
+   stacked on the well's 14. That is what shaved the first character off the email
+   field. The child rules below are written to outrank it. */
 .c-well {
   display: flex; align-items: center; gap: 8px;
   background: var(--c-bg); border-radius: 14px; height: 40px; padding: 0 14px;
-  font-size: 13.5px;
+  font-size: 13.5px; box-sizing: border-box;
   box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .34), inset -3px -3px 9px rgba(255, 255, 255, .03);
 }
 [data-theme="light"] .c-well {
   box-shadow: inset 3px 3px 8px rgba(42, 39, 34, .07), inset -3px -3px 8px rgba(255, 255, 255, .65);
 }
-.c-well input, .c-well textarea, .c-well select {
-  width: 100%; height: 100%; font-size: 13.5px;
-  background: none; color: var(--c-fg); font-family: inherit; box-shadow: none;
-  border: none; outline: none; min-width: 0;
+/* The control inside a well is BARE — no box, no padding, no shadow of its own.
+   The well is the box. */
+.c-well > input:not([type="file"]):not(.c-input),
+.c-well > textarea:not(.c-textarea),
+.c-well > select {
+  width: 100%; height: 100%; min-width: 0;
+  font-family: inherit; font-size: 13.5px; line-height: 1.4;
+  background: none; color: var(--c-fg);
+  border: none; outline: none; box-shadow: none;
+  padding: 0; margin: 0; border-radius: 0;
 }
-/* A <select> in a well drops the native chevron (the well supplies its own via
-   .c-ico) — the OS one lands outside the padding and fights the carve. */
-.c-well select { appearance: none; -webkit-appearance: none; cursor: pointer; }
-.c-well select option { background: var(--c-bg); color: var(--c-fg); }
-.c-well input::placeholder, .c-well textarea::placeholder { color: var(--c-fg); opacity: .35; }
-.c-well input:focus, .c-well textarea:focus { outline: none; background: none; }
-.c-well-area { height: auto; min-height: 56px; padding: 11px 14px; align-items: flex-start; font-size: 13px; }
+.c-well > input::placeholder, .c-well > textarea::placeholder { color: var(--c-fg); opacity: .3; }
+.c-well > input:focus, .c-well > textarea:focus, .c-well > select:focus {
+  outline: none; background: none; box-shadow: none;
+}
+.c-well > select { appearance: none; -webkit-appearance: none; cursor: pointer; }
+.c-well > select option { background: var(--c-bg); color: var(--c-fg); }
 .c-well .c-ico { opacity: .4; font-size: 13px; flex-shrink: 0; }
+
+/* ── AREA — ported from the reference `.area`. A textarea IS the well; it is
+   never nested inside one. Nesting gave the inner textarea `height: 100%`
+   against a flex parent, which clipped the top of line one. NO fixed height:
+   min-height plus its own padding, so the first line always clears the edge. */
+.c-area {
+  display: block; width: 100%; box-sizing: border-box;
+  background: var(--c-bg); border-radius: 14px;
+  padding: 11px 14px; min-height: 110px;
+  font-family: inherit; font-size: 13px; line-height: 1.5;
+  color: var(--c-fg); resize: vertical;
+  border: none; outline: none;
+  box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .34), inset -3px -3px 9px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-area {
+  box-shadow: inset 3px 3px 8px rgba(42, 39, 34, .07), inset -3px -3px 8px rgba(255, 255, 255, .65);
+}
+.c-area::placeholder { color: var(--c-fg); opacity: .3; }
 /* IdWell prefix (§8) — the field's LABEL, living inside the well.
    For short identifiers (invoice #, PO #, WO #) a label stacked above a
    full-width row spends a whole line and the width of the panel on five
@@ -1360,41 +1392,69 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 
 /* SEGMENTED CONTROL — raised housing, selected segment pressed IN and filled.
    Supersedes the loose individual pills used before. */
+/* ── SEGMENTED CONTROL — ported from docs/design-refs/wo-meta-compact.html
+   `.seg` / `.seg button` / `.seg button.on`. Token + polarity translation only.
+
+   ONE capsule carrying background + raised shadow. Options are TRANSPARENT
+   low-opacity text inside it. Only the selected option gets a fill and an inset
+   pressed shadow. (§8)
+
+   ══ SPECIFICITY — THE BUG THIS FIXES. READ BEFORE EDITING. ══
+   `.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)`
+   is (0,7,1) and applies to any bare <button> inside a sheet or panel. Segment
+   options ARE bare buttons, so on the WO popup every option was being painted
+   with that rule's own background and RAISED shadow: the housing vanished behind
+   six individual pills, and `.c-seg button.c-on.c-fill-booked` (0,3,1) never got
+   near the status colours. Two review passes were spent on this.
+   The rules below repeat that same :not() chain so they match at (0,7,1) and,
+   sitting later in the file, win. Do not "simplify" the chain away. */
 .c-seg {
-  display: inline-flex; background: var(--c-bg); border-radius: 99px; padding: 4px; gap: 2px;
+  display: inline-flex; background: var(--c-bg); border-radius: 99px;
+  padding: 4px; gap: 2px; box-sizing: border-box;
   box-shadow: 3px 3px 9px rgba(0, 0, 0, .5), -3px -3px 9px rgba(255, 255, 255, .04);
 }
 [data-theme="light"] .c-seg { box-shadow: 3px 3px 8px rgba(42, 39, 34, .14), -3px -3px 8px rgba(255, 255, 255, .7); }
-.c-seg button {
-  border-radius: 99px; padding: 6px 14px; font-size: 10px; font-weight: 800;
-  letter-spacing: .06em; text-transform: uppercase; cursor: pointer; opacity: .5;
-  background: none; color: var(--c-fg); font-family: inherit; box-shadow: none;
+/* inline-flex, NOT flex: a block-level housing stretches to the panel width and
+   stops reading as a control. It still wraps. */
+.c-seg-wrap { display: inline-flex; flex-wrap: wrap; max-width: 100%; }
+
+.c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) {
+  border-radius: 99px; padding: 6px 14px;
+  font-family: inherit; font-size: 10px; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase;
+  cursor: pointer; opacity: .5;
+  background: none; color: var(--c-fg);
+  box-shadow: none; border: none; transform: none;
+  white-space: nowrap; transition: opacity .16s ease;
 }
-.c-seg button.c-on {
+[data-theme="light"] .c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) { box-shadow: none; }
+.c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):active { transform: none; }
+
+/* SELECTED — filled + pressed IN. */
+.c-seg > button.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) {
   opacity: 1; background: var(--c-ivory); color: #1b1a17;
   box-shadow: inset 2px 2px 5px rgba(0, 0, 0, .35);
 }
-[data-theme="light"] .c-seg button.c-on { background: var(--c-fg); color: var(--c-bg); }
-/* STATUS-FILLED SEGMENT (§5 + §8). When the field IS the status, the pressed
-   segment fills with the status colour instead of ink/ivory — there, the colour
-   is the meaning, not decoration. Written per-status rather than via the generic
-   .c-fill-* classes because `.c-seg button.c-on` (0,2,1) outranks `.c-fill-x`
-   (0,1,0) and would keep painting them ivory. */
-.c-seg button.c-on.c-fill-booked { background: var(--c-st-booked); color: var(--c-chip-ink); }
-.c-seg button.c-on.c-fill-warm   { background: var(--c-st-warm);   color: var(--c-chip-ink); }
-.c-seg button.c-on.c-fill-cold   { background: var(--c-st-cold);   color: var(--c-chip-ink); }
-.c-seg button.c-on.c-fill-uncon  { background: var(--c-st-uncon);  color: var(--c-chip-ink); }
-.c-seg button.c-on.c-fill-dead   { background: var(--c-st-dead);   color: var(--c-chip-ink); }
-.c-seg button.c-on.c-fill-hot    { background: var(--c-st-hot);    color: var(--c-hot-text); }
-/* A segmented control that has to hold six options can't be an inline pill row
-   on a narrow panel — it wraps inside the one housing rather than becoming
-   several. */
-/* inline-flex, NOT flex: a block-level housing stretches to the panel width and
-   stops looking like a control. It still wraps. */
-.c-seg-wrap { display: inline-flex; flex-wrap: wrap; }
+[data-theme="light"] .c-seg > button.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) {
+  background: var(--c-fg); color: var(--c-bg);
+}
+
+/* STATUS-FILLED SEGMENT (§5 + §8). Where the field IS status, the pressed
+   segment fills with its own status colour rather than ink/ivory — there the
+   colour is the meaning, not decoration. Non-status groups stay ink/ivory. */
+.c-seg > button.c-on.c-fill-booked:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) { background: var(--c-st-booked); color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-warm:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)   { background: var(--c-st-warm);   color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-cold:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)   { background: var(--c-st-cold);   color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-uncon:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)  { background: var(--c-st-uncon);  color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-dead:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)   { background: var(--c-st-dead);   color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-hot:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)    { background: var(--c-st-hot);    color: var(--c-hot-text); }
+/* TINY — the housing variant for segments that sit inside an already-raised
+   panel (the batch editor). No shadow of its own: a raised housing inside a
+   raised panel is the nesting §8 forbids; the tone step alone reads as a
+   housing there. Same :not() chain as above — see the specificity note. */
 .c-seg-tiny { padding: 3px; box-shadow: none; background: var(--c-wash); }
 [data-theme="light"] .c-seg-tiny { box-shadow: none; }
-.c-seg-tiny button { padding: 4px 10px; font-size: 9px; }
+.c-seg-tiny > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) { padding: 4px 10px; font-size: 9px; }
 
 /* MINI — small raised control for in-well adornments (Call / Text / ✉). */
 .c-mini {

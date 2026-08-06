@@ -47,10 +47,6 @@ const fL: React.CSSProperties = {
   fontSize: 9, color: 'var(--c-fg-3)', letterSpacing: '0.08em',
   textTransform: 'uppercase', marginBottom: 3, display: 'block',
 }
-const inp: React.CSSProperties = {
-  background: 'var(--c-wash)', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11,
-  padding: '4px 8px', borderRadius: 4, width: '100%', outline: 'none',
-}
 
 // ─── Client profile popup (view full profile) ─────────────────────────────────
 
@@ -96,13 +92,13 @@ function ClientCardField({ label, value, fieldKey, onEdit }: {
   return (
     <div style={{ marginBottom: 8 }}>
       <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>{label}</div>
-      <input
-        type="text" value={local}
-        onChange={e => setLocal(e.target.value)}
-        onFocus={e => { e.currentTarget.style.borderBottomColor = 'var(--c-fg)' }}
-        onBlur={e => { e.currentTarget.style.borderBottomColor = 'var(--c-wash2)'; if (local !== value) onEdit(fieldKey, local) }}
-        style={{ width: '100%', background: 'var(--c-bg)', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5, transition: 'border-color 0.15s' }}
-      />
+      <div className="c-well">
+        <input
+          type="text" value={local}
+          onChange={e => setLocal(e.target.value)}
+          onBlur={() => { if (local !== value) onEdit(fieldKey, local) }}
+        />
+      </div>
     </div>
   )
 }
@@ -393,7 +389,7 @@ export function ClientPanel({
               if (e.key === 'Enter' && clientHighlight >= 0) { e.preventDefault(); applyClientAutofill(clientSuggestions[clientHighlight]) }
               if (e.key === 'Escape') setShowClientDD(false)
             }}
-            style={{ ...inp, padding: '8px 12px', fontSize: 11 }}
+            className="c-input c-inset2"
             autoComplete="off"
           />
           {showClientDD && clientSuggestions.length > 0 && (
