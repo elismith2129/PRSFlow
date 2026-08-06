@@ -1097,6 +1097,14 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    chip ink is unreadable on hot. */
 .c-ev .c-ev-cod, .c-ev .c-ev-cod * { color: var(--c-hot-text); }
 
+/* Sliver — the COD bar with the words taken out, for cards sharing a cell with
+   another session. The red edge is doing the work; the method is a detail you
+   read on hover. Costs 4px instead of 14, which is what buys back the times
+   line on a stacked card. */
+.c-ev-cod.c-ev-cod-sliver {
+  height: 4px; padding: 0; font-size: 0; line-height: 0;
+}
+
 /* ── Status fills (§5) — the only colour in the system ──────────────────── */
 /* Solid fills at full brightness. Light mode uses them as-is; dark dims by rule
    (§6) — pills via filter, chips and pools via alpha, never a second palette. */

@@ -295,18 +295,20 @@ function BookingBlock({
   // the cell between them, and the row height can't grow to compensate without
   // permanently deforming the grid. So a squeezed card sheds from the bottom up,
   // in reverse order of what you'd need at a glance:
-  //   full  — name · client · times · footer(invoice+staff) · COD
-  //   ≥50   — name · times · COD          (footer goes first: invoice and staff
-  //                                        are lookup data, and both are on hover)
-  //   ≥32   — name · COD                  (COD outlives times: money to collect
-  //                                        is the one thing you can't recover by
-  //                                        looking at the card later)
-  //   <32   — name                        (the hero always survives)
+  //   full  — name · client · times · footer(invoice+staff) · COD bar
+  //   ≥50   — name · client · times · COD sliver
+  //   ≥36   — name · times · COD sliver
+  //   <36   — name · COD sliver
+  // NAME AND TIMES ARE THE PRIORITY — who and when is the whole job of a wall
+  // card. The COD bar earns its place by shrinking rather than by leaving: at
+  // 4px with no text it still reads as a red edge across the bottom, which is
+  // the actual signal, and the method is one hover away. That trade is what
+  // buys the times line back on a two-up cell.
   // Normal single-session cells are always `full`; this only engages on overlap.
-  const showClient = blockHeight >= CHIP_FULL_H
   const showFooter = blockHeight >= CHIP_FULL_H
-  const showTimes  = blockHeight >= 50
-  const showCod    = blockHeight >= 32
+  const showClient = blockHeight >= 50
+  const showTimes  = blockHeight >= 36
+  const codSliver  = !showFooter
   const codLabel = booking.cod_method === 'Credit Card' ? 'CC' : (booking.cod_method ?? '').toUpperCase()
   // Footer identifier: INVOICE ONLY. The WO number came off the card — it's an
   // internal key nobody reads off a wall, and carrying both made the strip
@@ -363,7 +365,7 @@ function BookingBlock({
           space the two bottom strips don't. */}
       <div style={{
         flex: '1 1 auto', minHeight: 0, minWidth: 0, maxWidth: '100%',
-        padding: showClient ? '3px 8px 2px' : '2px 8px 1px', overflow: 'hidden',
+        padding: showFooter ? '3px 8px 2px' : '2px 8px 1px', overflow: 'hidden',
         display: 'flex', flexDirection: 'column', justifyContent: 'center',
         position: 'relative', zIndex: 1,
       }}>
@@ -422,8 +424,10 @@ function BookingBlock({
       {/* ── 3. COD STRIP ── bottom edge, COD only. Billing shows nothing at all:
           silence is the billing signal, so an "on account" label would be noise
           on the large majority of cards. */}
-      {!isBilling && showCod && (
-        <div className="c-ev-cod">{codLabel ? `COD ${codLabel}` : 'COD'}</div>
+      {!isBilling && (
+        <div className={`c-ev-cod${codSliver ? ' c-ev-cod-sliver' : ''}`}>
+          {codSliver ? '' : (codLabel ? `COD ${codLabel}` : 'COD')}
+        </div>
       )}
     </div>
   )
