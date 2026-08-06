@@ -1799,7 +1799,9 @@ export function WorkOrderPopup({
               </span>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              {woId && (
+              {/* Blocks have no WO body to put on paper — same reason the footer
+                  drops Export PDF for them. */}
+              {woId && !isBlock && (
                 <>
                   <button
                     onClick={() => printWithFilename()}
@@ -2855,9 +2857,13 @@ export function WorkOrderPopup({
 
         {/* ── FOOTER ───────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 8 : 10, padding: isMobile ? '12px 16px calc(12px + env(safe-area-inset-bottom)) 16px' : '14px 22px', flexShrink: 0, background: 'var(--c-bg)' }}>
-          <button onClick={() => printWithFilename()} className="c-soft c-control c-raised" style={{ ...(isMobile ? { display: 'none' } : {}) }}>
-            Export PDF
-          </button>
+          {/* Nothing to export for a block — there's no work order body, so the
+              PDF would be a header over an empty page. */}
+          {!isBlock && (
+            <button onClick={() => printWithFilename()} className="c-soft c-control c-raised" style={{ ...(isMobile ? { display: 'none' } : {}) }}>
+              Export PDF
+            </button>
+          )}
           {!readOnly && (
           <>
           <button onClick={() => handleCancel()} disabled={saving} className="c-soft c-control c-raised" style={{ cursor: saving ? 'default' : 'pointer', ...(isMobile ? { flex: '1 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
