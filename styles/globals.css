@@ -383,46 +383,39 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
    [data-wo-portal] is only in the DOM when the WO popup is open, so these
    rules only activate when printing with the WO visible.               */
 @media print {
-  /* Hide all body children except the WO portal */
-  body > * { display: none !important; }
+  /* PRINT ISOLATION — do not depend on DOM depth.
+     The old rules hid `body > *` and re-showed `body > [data-wo-portal]`, which
+     only works while the WO is a DIRECT child of body. Commit 2e67ec0 ("render
+     WorkOrderPopup inline instead of portaling to document.body") moved it inside
+     the page, so the re-show stopped matching and every printed WO came out
+     BLANK — on main too. Visibility-based isolation works at any nesting depth. */
+  body * { visibility: hidden !important; }
+  [data-wo-portal], [data-wo-portal] * { visibility: visible !important; }
 
-  /* Portal root: static, full width, white */
-  body > [data-wo-portal] {
-    display: block !important;
-    position: static !important;
-    overflow: visible !important;
-    background: white !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    inset: auto !important;
-  }
-
-  /* Flatten the centering flex wrapper */
-  body > [data-wo-portal] > * {
-    display: block !important;
-    position: static !important;
-    overflow: visible !important;
-    background: white !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    min-height: 0 !important;
-  }
-
-  /* WO card: full page width, no dark bg, no transform, no border */
-  body > [data-wo-portal] > * > * {
+  /* Lift the WO out of the page flow and give it the full sheet. */
+  [data-wo-portal] {
+    position: absolute !important;
+    left: 0 !important; top: 0 !important;
     width: 100% !important;
-    max-width: none !important;
-    min-width: 0 !important;
+    display: block !important;
     background: white !important;
-    border: none !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
+    padding: 0 !important; margin: 0 !important;
+    inset: auto !important; overflow: visible !important;
+    z-index: 2147483647 !important;
+  }
+  /* Its wrappers must not re-impose the on-screen frame. */
+  [data-wo-portal] > *, [data-wo-portal] > * > * {
+    display: block !important;
     position: static !important;
     overflow: visible !important;
-    padding: 4px 8px !important;
-    margin: 0 !important;
-    transform: none !important;
+    background: white !important;
+    width: 100% !important; max-width: none !important; min-width: 0 !important;
+    min-height: 0 !important; height: auto !important;
+    border: none !important; border-radius: 0 !important; box-shadow: none !important;
+    margin: 0 !important; padding: 0 !important; transform: none !important;
   }
+  /* The scrolling body must print in full, not one viewport's worth. */
+  [data-wo-portal] [style*="overflow"] { overflow: visible !important; max-height: none !important; }
 
   /* All inner content: black text, transparent bg, light borders, 10px */
   [data-wo-portal] * {
