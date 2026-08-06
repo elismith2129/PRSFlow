@@ -44,8 +44,8 @@ const SESSION_STATUSES: [string, string][] = [
 // Mirror the booking-form status colors (STATUS_TOP_COLORS). Active pill fills
 // with its status color; inactive stays neutral.
 const SESSION_STATUS_COLORS: Record<string, string> = {
-  confirmed: 'var(--booked)', tentative: 'var(--warm)', cancelled: 'var(--hot)',
-  tour: '#a855f7', tech: 'var(--cold)', open_hours: '#e2e8f0',
+  confirmed: 'var(--c-st-booked)', tentative: 'var(--c-st-warm)', cancelled: 'var(--c-st-hot)',
+  tour: 'var(--c-st-uncon)', tech: 'var(--c-fg-3)', open_hours: 'var(--c-fg-2)',
 }
 const SESSION_TYPES: [string, string][] = [
   ['recording', 'Recording'], ['filming', 'Filming'], ['event_playback', 'Event / Playback'],
@@ -64,7 +64,7 @@ const SESSION_TYPES: [string, string][] = [
 // Runner Hub header, which had itself moved to a neutral 1px border in that
 // same pass. The comment was stale, not the design.
 //
-// The header now uses var(--border), matching the runner. Don't reintroduce
+// The header now uses var(--c-wash2), matching the runner. Don't reintroduce
 // venue colours here without reintroducing them everywhere — and if you do,
 // don't borrow a colour that already carries meaning.
 
@@ -802,7 +802,7 @@ export function WorkOrderPopup({
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    ctx.strokeStyle = '#e8eaf2'
+    ctx.strokeStyle = 'var(--c-fg)'
     ctx.lineWidth = 2.5
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
@@ -837,7 +837,7 @@ export function WorkOrderPopup({
     const canvas = adminCanvasRef.current; if (!canvas) return
     adminIsDrawingRef.current = true
     const ctx = canvas.getContext('2d')!
-    ctx.strokeStyle = '#e8eaf2'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    ctx.strokeStyle = 'var(--c-fg)'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
     const pos = getAdminCanvasPos(e, canvas)
     ctx.beginPath(); ctx.moveTo(pos.x, pos.y)
   }
@@ -1597,17 +1597,16 @@ export function WorkOrderPopup({
   // ── Styles ────────────────────────────────────────────────────────────────
 
   const inp: React.CSSProperties = {
-    background: 'transparent', border: 'none',
-    color: '#f0f0f0', fontFamily: 'Inter', fontSize: 11,
+    background: 'transparent', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11,
     padding: '1px 0', outline: 'none', width: '100%', lineHeight: 1.4,
   }
   const cellS: React.CSSProperties = {
-    padding: '4px 8px', fontSize: 11, fontFamily: 'Inter', color: '#f0f0f0',
+    padding: '4px 8px', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)',
     display: 'flex', alignItems: 'center',
   }
   const thS: React.CSSProperties = {
-    padding: '4px 8px', fontSize: 8, fontFamily: 'Syne', fontWeight: 700,
-    letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text2)',
+    padding: '4px 8px', fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400,
+    letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-2)',
   }
   function shortDate(d: string) {
     if (!d) return '—'
@@ -1616,8 +1615,8 @@ export function WorkOrderPopup({
     return `${parseInt(parts[1], 10)}-${parseInt(parts[2], 10)}`
   }
   const metaLabel: React.CSSProperties = {
-    fontSize: 9, fontFamily: 'Syne', fontWeight: 700,
-    letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text2)',
+    fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400,
+    letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-2)',
   }
 
   // ── Client panel wiring ─────────────────────────────────────────────────────
@@ -1706,7 +1705,7 @@ export function WorkOrderPopup({
     <div style={inline
       ? { position: 'static', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }
       : { position: 'fixed', top: isMobile ? 0 : 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: '#f0f0f0', fontFamily: 'Inter', fontSize: 12 }}>Loading work order…</div>
+      <div style={{ color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12 }}>Loading work order…</div>
     </div>
   )
 
@@ -1714,9 +1713,9 @@ export function WorkOrderPopup({
     <div style={inline
       ? { position: 'static', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }
       : { position: 'fixed', top: isMobile ? 0 : 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ maxWidth: 360, padding: 24, background: 'var(--surface)', border: '1px solid rgba(240,78,122,0.35)', borderRadius: 12, textAlign: 'center' }}>
-        <div style={{ color: '#f04e7a', fontFamily: 'Inter', fontSize: 12, marginBottom: 14, lineHeight: 1.5 }}>{woMissing}</div>
-        <button onClick={onClose} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 6, padding: '7px 18px', fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>Close</button>
+      <div style={{ maxWidth: 360, padding: 24, background: 'var(--c-bg)', borderRadius: 12, textAlign: 'center' }}>
+        <div style={{ color: 'var(--c-st-hot)', fontFamily: 'Inter', fontSize: 12, marginBottom: 14, lineHeight: 1.5 }}>{woMissing}</div>
+        <button onClick={onClose} style={{ background: 'transparent', color: 'var(--c-fg)', borderRadius: 6, padding: '7px 18px', fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>Close</button>
       </div>
     </div>
   )
@@ -1727,10 +1726,14 @@ export function WorkOrderPopup({
   const isCompleted = wo.status === 'completed'
   // Tour/Tech/Open-Hours → render the simplified "block" view (title + times only).
   const isBlock = BLOCK_STATUSES.includes(wo.session_status)
-  // Runner-style section card (mobile only) — var(--surface) surface, var(--border) border,
+  // Runner-style section card (mobile only) — var(--c-bg) surface, var(--c-wash2) border,
   // radius 12, matching app/runner/[studio]/wo/[id]/page.tsx section cards.
-  const mCard: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 14, boxSizing: 'border-box' }
-  const mCardOrange: React.CSSProperties = { background: 'var(--surface)', border: '1px solid rgba(249,115,22,0.35)', borderRadius: 12, padding: 14, boxSizing: 'border-box' }
+  // Section containers are BANDS: one tone step, no depth, no border. Only the
+  // outer sheet carves — nesting dents inside dents is what made this read muddy.
+  const mCard: React.CSSProperties = { background: 'var(--c-wash)', borderRadius: 20, padding: 14, boxSizing: 'border-box' }
+  // "Needs attention" variant — same band, warm status dot supplies the signal
+  // rather than a coloured border (§5: colour is a fill, never an outline).
+  const mCardOrange: React.CSSProperties = { background: 'var(--c-wash2)', borderRadius: 20, padding: 14, boxSizing: 'border-box' }
 
   return (
     <div
@@ -1815,15 +1818,15 @@ export function WorkOrderPopup({
               {!readOnly && onDelete && (
                 confirmDeleteSession ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 4 }}>
-                    <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)' }}>Delete session?</span>
-                    <button onClick={() => { setConfirmDeleteSession(false); onDelete() }} style={{ padding: '5px 12px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'var(--hot)', border: 'none', color: 'var(--bg)' }}>Delete</button>
-                    <button onClick={() => setConfirmDeleteSession(false)} style={{ padding: '5px 12px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text2)' }}>Keep</button>
+                    <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>Delete session?</span>
+                    <button onClick={() => { setConfirmDeleteSession(false); onDelete() }} style={{ padding: '5px 12px', borderRadius: 5, fontSize: 10, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'var(--c-st-hot)', color: 'var(--c-bg)' }}>Delete</button>
+                    <button onClick={() => setConfirmDeleteSession(false)} style={{ padding: '5px 12px', borderRadius: 5, fontSize: 10, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', color: 'var(--c-fg-2)' }}>Keep</button>
                   </div>
                 ) : (
                   <button
                     onClick={() => setConfirmDeleteSession(true)}
                     disabled={saving}
-                    style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(240,78,122,0.35)', color: 'var(--hot)' }}
+                    style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', color: 'var(--c-st-hot)' }}
                   >
                     Delete
                   </button>
@@ -1834,14 +1837,14 @@ export function WorkOrderPopup({
               <button
                 onClick={() => handleCancel()}
                 disabled={saving}
-                style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text2)' }}
+                style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', color: 'var(--c-fg-2)' }}
               >
                 Cancel
               </button>
               <button
                 onClick={handleClose}
                 disabled={saving}
-                style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'rgba(var(--accent-rgb),0.5)' : 'rgba(var(--accent-rgb),0.12)', border: '1px solid rgba(var(--accent-rgb),0.3)', color: saving ? 'var(--text2)' : 'var(--accent)' }}
+                style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'var(--c-wash2)' : 'var(--c-wash2)', color: saving ? 'var(--c-fg-2)' : 'var(--c-fg)' }}
               >
                 {saving ? 'Saving…' : 'Close & Save'}
               </button>
@@ -1881,11 +1884,11 @@ export function WorkOrderPopup({
             ]
             return (
               <div style={mCard}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)', marginBottom: 10 }}>Session Info</div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-2)', marginBottom: 10 }}>Session Info</div>
                 {sessionRows.filter(([, v]) => v).map(([l, v]) => (
                   <div key={l} style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
-                    <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter', minWidth: 60 }}>{l}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text)', fontFamily: 'Inter' }}>{v}</span>
+                    <span style={{ fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter', minWidth: 60 }}>{l}</span>
+                    <span style={{ fontSize: 11, color: 'var(--c-fg)', fontFamily: 'Inter' }}>{v}</span>
                   </div>
                 ))}
               </div>
@@ -1893,14 +1896,14 @@ export function WorkOrderPopup({
           })()}
 
           {/* BRANDING — hidden on mobile + for block events (letterhead) */}
-          <div style={{ textAlign: 'center', paddingBottom: 20, borderBottom: '1px solid rgba(255,255,255,0.07)', display: (isMobile || isBlock) ? 'none' : 'block' }}>
-            <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15, color: '#f0f0f0', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Paramount Recording Group</div>
-            <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--text2)', marginTop: 3 }}>Paramount · Encore · Ameraycan · Wilder · Track · Enterprise</div>
+          <div style={{ textAlign: 'center', paddingBottom: 20, display: (isMobile || isBlock) ? 'none' : 'block' }}>
+            <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15, color: 'var(--c-fg)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Paramount Recording Group</div>
+            <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-2)', marginTop: 3 }}>Paramount · Encore · Ameraycan · Wilder · Track · Enterprise</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-              <span style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--text2)' }}>Recording Studios (323) 465-4000</span>
+              <span style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-2)' }}>Recording Studios (323) 465-4000</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--text2)' }}>Invoice #</span>
-                <span style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#f0f0f0', minWidth: 60 }}>{wo.invoice_number || '—'}</span>
+                <span style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-2)' }}>Invoice #</span>
+                <span style={{ fontFamily: 'DM Mono', fontSize: 11, color: 'var(--c-fg)', minWidth: 60 }}>{wo.invoice_number || '—'}</span>
               </div>
             </div>
           </div>
@@ -1915,11 +1918,11 @@ export function WorkOrderPopup({
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {SESSION_STATUSES.map(([val, lbl]) => {
                 const on = wo.session_status === val
-                const c = SESSION_STATUS_COLORS[val] ?? 'var(--accent)'
+                const c = SESSION_STATUS_COLORS[val] ?? 'var(--c-fg)'
                 return (
                   <button key={val} type="button" disabled={readOnly}
                     onClick={() => { setDirtyFields(prev => new Set(prev).add('session_status')); setWo(w => w ? { ...w, session_status: val } : w) }}
-                    style={{ padding: '7px 18px', borderRadius: 20, fontSize: 11, fontFamily: 'Inter', fontWeight: 700, cursor: readOnly ? 'default' : 'pointer', border: `1px solid ${on ? c : 'var(--border)'}`, background: on ? c : 'transparent', color: on ? (val === 'open_hours' ? '#0d0f14' : '#0d0f14') : 'var(--text2)', transition: 'all 0.15s' }}>
+                    style={{ padding: '7px 18px', borderRadius: 20, fontSize: 11, fontFamily: 'Inter', fontWeight: 700, cursor: readOnly ? 'default' : 'pointer', background: on ? c : 'transparent', color: on ? (val === 'open_hours' ? 'var(--c-bg)' : 'var(--c-bg)') : 'var(--c-fg-2)', transition: 'all 0.15s' }}>
                     {lbl}
                   </button>
                 )
@@ -1929,7 +1932,7 @@ export function WorkOrderPopup({
             {/* BLOCK view — Tour/Tech/Open-Hours: just a title + dates + times */}
             {isBlock && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 560 }}>
-                <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter' }}>
+                <div style={{ fontSize: 11, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>
                   {SESSION_STATUSES.find(([v]) => v === wo.session_status)?.[1]} block — no work order or billing, just a calendar event.
                 </div>
                 <div>
@@ -1964,7 +1967,7 @@ export function WorkOrderPopup({
             <div style={{ display: 'grid', gridTemplateColumns: '0.85fr 1fr', gap: 20, alignItems: 'stretch' }}>
 
               {/* Left — session type + billing, in a defined panel */}
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 16, display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <div style={{ background: 'var(--c-bg)', borderRadius: 8, padding: 16, display: 'flex', flexDirection: 'column', gap: 18 }}>
                 <div>
                   <div style={{ ...metaLabel, marginBottom: 8 }}>Session Type</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -1973,7 +1976,7 @@ export function WorkOrderPopup({
                       return (
                         <button key={val} type="button" disabled={readOnly}
                           onClick={() => { setDirtyFields(prev => new Set(prev).add('session_type')); setWo(w => w ? { ...w, session_type: val } : w) }}
-                          style={{ padding: '6px 14px', borderRadius: 6, fontSize: 11, fontFamily: 'Inter', fontWeight: 600, cursor: readOnly ? 'default' : 'pointer', border: `1px solid ${on ? 'var(--accent)' : 'var(--border)'}`, background: on ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: on ? 'var(--accent)' : 'var(--text2)' }}>
+                          style={{ padding: '6px 14px', borderRadius: 6, fontSize: 11, fontFamily: 'Inter', fontWeight: 600, cursor: readOnly ? 'default' : 'pointer', background: on ? 'var(--c-wash2)' : 'transparent', color: on ? 'var(--c-fg)' : 'var(--c-fg-2)' }}>
                           {lbl}
                         </button>
                       )
@@ -1991,7 +1994,7 @@ export function WorkOrderPopup({
                 <div>
                   <div style={{ ...metaLabel, marginBottom: 6 }}>Food Budget</div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button type="button" onClick={() => { setDirtyFields(prev => new Set(prev).add('food_budget')); setWo(w => w ? { ...w, food_budget: !w.food_budget } : w) }} style={{ padding: '4px 14px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', border: `1px solid ${wo.food_budget ? 'var(--accent)' : 'rgba(255,255,255,0.12)'}`, background: wo.food_budget ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: wo.food_budget ? 'var(--accent)' : 'var(--text2)' }}>
+                    <button type="button" onClick={() => { setDirtyFields(prev => new Set(prev).add('food_budget')); setWo(w => w ? { ...w, food_budget: !w.food_budget } : w) }} style={{ padding: '4px 14px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', background: wo.food_budget ? 'var(--c-wash2)' : 'transparent', color: wo.food_budget ? 'var(--c-fg)' : 'var(--c-fg-2)' }}>
                       {wo.food_budget ? 'Yes' : 'No'}
                     </button>
                     {wo.food_budget && <input value={wo.food_amount} onChange={e => { setDirtyFields(prev => new Set(prev).add('food_amount')); setWo(w => w ? { ...w, food_amount: e.target.value } : w) }} style={{ ...inp, width: 90 }} />}
@@ -2002,7 +2005,7 @@ export function WorkOrderPopup({
                 <div data-no-print="" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
                   <div style={{ ...metaLabel, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                     Booking Notes
-                    <span style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--warm)', border: '1px solid var(--warm)', borderRadius: 3, padding: '1px 5px', textTransform: 'uppercase' }}>Internal only</span>
+                    <span style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--c-st-warm)', borderRadius: 3, padding: '1px 5px', textTransform: 'uppercase' }}>Internal only</span>
                   </div>
                   <textarea
                     value={wo.booking_notes}
@@ -2022,17 +2025,17 @@ export function WorkOrderPopup({
 
           {/* Everything below the top is session-only — hidden for block events. */}
           {!isBlock && (<>
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }} />
+          <div style={{ }} />
 
           {/* SEED — bulk-append studio-time rows for a date range (WO-SPEC §6) */}
           {!readOnly && (
-            <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-              <button type="button" onClick={() => setSeedOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--surface2)', border: 'none', cursor: 'pointer', color: 'var(--text2)' }}>
-                <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>+ Seed — add multiple days</span>
+            <div style={{ borderRadius: 8, overflow: 'hidden' }}>
+              <button type="button" onClick={() => setSeedOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--c-wash)', cursor: 'pointer', color: 'var(--c-fg-2)' }}>
+                <span style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>+ Seed — add multiple days</span>
                 <span style={{ fontSize: 10 }}>{seedOpen ? '▲' : '▼'}</span>
               </button>
               {seedOpen && (
-                <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--border)' }}>
+                <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {/* Note: plain <div> wrappers, NOT <label> — a <label> forwards
                       clicks to its first control, which broke the Day/Hr toggle. */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
@@ -2059,9 +2062,9 @@ export function WorkOrderPopup({
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>Rate</span>
                       <div style={{ display: 'flex', gap: 4 }}>
-                        <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden' }}>
                           {(['day', 'hour'] as const).map(rt => (
-                            <button key={rt} type="button" onClick={() => setSeed(s => ({ ...s, rateType: rt }))} style={{ padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', fontWeight: 700, border: 'none', cursor: 'pointer', background: seed.rateType === rt ? 'var(--accent)' : 'transparent', color: seed.rateType === rt ? 'var(--bg)' : 'var(--text2)' }}>{rt === 'day' ? 'Day' : 'Hr'}</button>
+                            <button key={rt} type="button" onClick={() => setSeed(s => ({ ...s, rateType: rt }))} style={{ padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: seed.rateType === rt ? 'var(--c-fg)' : 'transparent', color: seed.rateType === rt ? 'var(--c-bg)' : 'var(--c-fg-2)' }}>{rt === 'day' ? 'Day' : 'Hr'}</button>
                           ))}
                         </div>
                         <input value={seed.rate} onChange={e => setSeed(s => ({ ...s, rate: e.target.value }))} style={{ ...inp, width: 64 }} />
@@ -2073,7 +2076,7 @@ export function WorkOrderPopup({
                   <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>Eng / Asst</span>
-                      <button type="button" onClick={() => setSeed(s => ({ ...s, engOn: !s.engOn }))} style={{ padding: '4px 18px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', border: `1px solid ${seed.engOn ? 'var(--accent)' : 'var(--border)'}`, background: seed.engOn ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: seed.engOn ? 'var(--accent)' : 'var(--text2)' }}>
+                      <button type="button" onClick={() => setSeed(s => ({ ...s, engOn: !s.engOn }))} style={{ padding: '4px 18px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: seed.engOn ? 'var(--c-wash2)' : 'transparent', color: seed.engOn ? 'var(--c-fg)' : 'var(--c-fg-2)' }}>
                         {seed.engOn ? 'Yes' : 'No'}
                       </button>
                     </div>
@@ -2081,9 +2084,9 @@ export function WorkOrderPopup({
                       <>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                           <span style={metaLabel}>Role</span>
-                          <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+                          <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden' }}>
                             {(['engineer', 'assistant'] as const).map(role => (
-                              <button key={role} type="button" onClick={() => setSeed(s => ({ ...s, engRole: role }))} style={{ padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', fontWeight: 700, border: 'none', cursor: 'pointer', background: seed.engRole === role ? 'var(--accent)' : 'transparent', color: seed.engRole === role ? 'var(--bg)' : 'var(--text2)' }}>
+                              <button key={role} type="button" onClick={() => setSeed(s => ({ ...s, engRole: role }))} style={{ padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: seed.engRole === role ? 'var(--c-fg)' : 'transparent', color: seed.engRole === role ? 'var(--c-bg)' : 'var(--c-fg-2)' }}>
                                 {role === 'engineer' ? '1ST' : '2ND'}
                               </button>
                             ))}
@@ -2102,8 +2105,8 @@ export function WorkOrderPopup({
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>Appends one row per day; dates already in the table are skipped.</span>
-                    <button type="button" disabled={seedBusy || !seed.start} onClick={handleSeed} style={{ padding: '7px 16px', borderRadius: 6, fontSize: 11, fontFamily: 'Syne', fontWeight: 700, border: 'none', cursor: seedBusy || !seed.start ? 'default' : 'pointer', background: seed.start ? 'var(--accent)' : 'rgba(255,255,255,0.08)', color: seed.start ? 'var(--bg)' : 'var(--text3)' }}>
+                    <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>Appends one row per day; dates already in the table are skipped.</span>
+                    <button type="button" disabled={seedBusy || !seed.start} onClick={handleSeed} style={{ padding: '7px 16px', borderRadius: 6, fontSize: 11, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, cursor: seedBusy || !seed.start ? 'default' : 'pointer', background: seed.start ? 'var(--c-fg)' : 'rgba(255,255,255,0.08)', color: seed.start ? 'var(--c-bg)' : 'var(--c-fg-3)' }}>
                       {seedBusy ? 'Adding…' : 'Add rows'}
                     </button>
                   </div>
@@ -2115,6 +2118,7 @@ export function WorkOrderPopup({
           {/* STUDIO TIME TABLE — unified per-row Day/Hr toggle */}
           <div style={isMobile ? mCard : undefined}>
             <SectionHeader
+              carved
               title="Studio Time"
               action={!readOnly && stRows.some(r => r.date && (r.studio || '').trim())
                 ? { label: batchOpen ? 'Close batch edit' : 'Batch edit', onClick: () => setBatchOpen(v => !v) }
@@ -2135,43 +2139,41 @@ export function WorkOrderPopup({
               const skipped = batchLockedSkipped()
               const nDays = new Set(targets.map(r => r.date)).size
               const anyField = Object.values(batchOn).some(Boolean)
-              const lbl: React.CSSProperties = { fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text3)' }
-              const bInp: React.CSSProperties = { background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '5px 8px', outline: 'none', width: '100%', boxSizing: 'border-box' }
+              const lbl: React.CSSProperties = { fontSize: 10, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.11em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }
+              const bInp: React.CSSProperties = { background: 'var(--c-bg)', borderRadius: 14, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13, padding: '0 14px', height: 40, outline: 'none', width: '100%', boxSizing: 'border-box', boxShadow: 'inset 3px 3px 9px rgba(0,0,0,.34), inset -3px -3px 9px rgba(255,255,255,.03)' }
               const rowS: React.CSSProperties = { display: 'grid', gridTemplateColumns: '128px 1fr', gap: 10, alignItems: 'center' }
-              const scopeBtn = (on: boolean): React.CSSProperties => ({
-                padding: '4px 10px', borderRadius: 5, cursor: 'pointer',
-                border: `1px solid ${on ? 'rgba(var(--accent-rgb),0.45)' : 'var(--border)'}`,
-                background: on ? 'rgba(var(--accent-rgb),0.12)' : 'transparent',
-                color: on ? 'var(--accent)' : 'var(--text2)',
-                fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.06em',
-              })
+              // Selected scope is PRESSED IN and filled, like every other toggle
+              // in the system — the accent tint it used is retired.
+              const scopeBtn = (_on: boolean): React.CSSProperties => ({ cursor: 'pointer' })
+              // Selected segment is pressed in and filled — the standard toggle.
+              const scopeCls = (on: boolean) => `c-soft c-soft-sm c-control ${on ? 'c-on c-pressed' : 'c-raised'}`
               // One checkbox + label per field; unticked fields are never written,
               // so a blank input can't wipe a column by accident.
               const check = (k: BatchField, text: string) => (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', ...lbl, color: batchOn[k] ? 'var(--accent)' : 'var(--text3)' }}>
-                  <input type="checkbox" checked={batchOn[k]} onChange={e => setBatchOn(p => ({ ...p, [k]: e.target.checked }))} style={{ cursor: 'pointer', accentColor: 'var(--accent)', width: 13, height: 13 }} />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', ...lbl, color: batchOn[k] ? 'var(--c-fg)' : 'var(--c-fg-3)' }}>
+                  <input type="checkbox" checked={batchOn[k]} onChange={e => setBatchOn(p => ({ ...p, [k]: e.target.checked }))} style={{ cursor: 'pointer', accentColor: 'var(--c-fg)', width: 13, height: 13 }} />
                   {text}
                 </label>
               )
               return (
-                <div style={{ border: '1px solid rgba(var(--accent-rgb),0.3)', background: 'rgba(var(--accent-rgb),0.04)', borderRadius: 6, padding: 12, marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ background: 'var(--c-wash2)', borderRadius: 6, padding: 12, marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {/* Scope */}
                   <div style={rowS}>
                     <span style={lbl}>Apply to</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <button type="button" onClick={() => setBatchScope('all')} style={scopeBtn(batchScope === 'all')}>All days</button>
-                      <button type="button" onClick={() => setBatchScope('range')} style={scopeBtn(batchScope === 'range')}>Date range</button>
+                      <button type="button" onClick={() => setBatchScope('all')} className={scopeCls(batchScope === 'all')} style={scopeBtn(batchScope === 'all')}>All days</button>
+                      <button type="button" onClick={() => setBatchScope('range')} className={scopeCls(batchScope === 'range')} style={scopeBtn(batchScope === 'range')}>Date range</button>
                       {batchScope === 'range' && (
                         <>
                           <input type="date" value={batchFrom} onChange={e => setBatchFrom(e.target.value)} style={{ ...bInp, width: 140 }} />
-                          <span style={{ color: 'var(--text3)', fontSize: 11 }}>–</span>
+                          <span style={{ color: 'var(--c-fg-3)', fontSize: 11 }}>–</span>
                           <input type="date" value={batchTo} onChange={e => setBatchTo(e.target.value)} style={{ ...bInp, width: 140 }} />
                         </>
                       )}
                     </div>
                   </div>
 
-                  <div style={{ height: 1, background: 'var(--border)' }} />
+                  <div style={{ height: 1, background: 'var(--c-wash2)' }} />
 
                   {/* Room */}
                   <div style={rowS}>
@@ -2208,8 +2210,8 @@ export function WorkOrderPopup({
                   <div style={rowS}>
                     {check('rate', 'Rate')}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: batchOn.rate ? 1 : 0.45 }}>
-                      <button type="button" disabled={!batchOn.rate} onClick={() => setBatchVals(v => ({ ...v, rateType: 'hour' }))} style={scopeBtn(batchVals.rateType === 'hour')}>/ hr</button>
-                      <button type="button" disabled={!batchOn.rate} onClick={() => setBatchVals(v => ({ ...v, rateType: 'day' }))} style={scopeBtn(batchVals.rateType === 'day')}>/ day</button>
+                      <button type="button" disabled={!batchOn.rate} onClick={() => setBatchVals(v => ({ ...v, rateType: 'hour' }))} className={scopeCls(batchVals.rateType === 'hour')} style={scopeBtn(batchVals.rateType === 'hour')}>/ hr</button>
+                      <button type="button" disabled={!batchOn.rate} onClick={() => setBatchVals(v => ({ ...v, rateType: 'day' }))} className={scopeCls(batchVals.rateType === 'day')} style={scopeBtn(batchVals.rateType === 'day')}>/ day</button>
                       <input value={batchVals.rate} disabled={!batchOn.rate} onChange={e => setBatchVals(v => ({ ...v, rate: e.target.value }))} placeholder={batchVals.rateType === 'day' ? '$0/day' : '$0/hr'} style={{ ...bInp, maxWidth: 130 }} />
                     </div>
                   </div>
@@ -2228,8 +2230,8 @@ export function WorkOrderPopup({
                   <div style={rowS}>
                     {check('staff', 'Staff')}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: batchOn.staff ? 1 : 0.45 }}>
-                      <button type="button" disabled={!batchOn.staff} onClick={() => setBatchVals(v => ({ ...v, staffRole: 'engineer' }))} style={scopeBtn(batchVals.staffRole === 'engineer')}>1ST</button>
-                      <button type="button" disabled={!batchOn.staff} onClick={() => setBatchVals(v => ({ ...v, staffRole: 'assistant' }))} style={scopeBtn(batchVals.staffRole === 'assistant')}>2ND</button>
+                      <button type="button" disabled={!batchOn.staff} onClick={() => setBatchVals(v => ({ ...v, staffRole: 'engineer' }))} className={scopeCls(batchVals.staffRole === 'engineer')} style={scopeBtn(batchVals.staffRole === 'engineer')}>1ST</button>
+                      <button type="button" disabled={!batchOn.staff} onClick={() => setBatchVals(v => ({ ...v, staffRole: 'assistant' }))} className={scopeCls(batchVals.staffRole === 'assistant')} style={scopeBtn(batchVals.staffRole === 'assistant')}>2ND</button>
                       <input list="wo-eng-roster" value={batchVals.staffName} disabled={!batchOn.staff} onChange={e => setBatchVals(v => ({ ...v, staffName: e.target.value }))} placeholder="Name (blank = unassign)" style={{ ...bInp, maxWidth: 220 }} />
                     </div>
                   </div>
@@ -2240,23 +2242,23 @@ export function WorkOrderPopup({
                     <textarea value={batchVals.session_info} disabled={!batchOn.notes} onChange={e => setBatchVals(v => ({ ...v, session_info: e.target.value }))} rows={2} placeholder="Applies the same note to every day in scope" style={{ ...bInp, resize: 'vertical', lineHeight: 1.5, opacity: batchOn.notes ? 1 : 0.45 }} />
                   </div>
 
-                  <div style={{ height: 1, background: 'var(--border)' }} />
+                  <div style={{ height: 1, background: 'var(--c-wash2)' }} />
 
                   {/* Footer: what will happen, stated plainly before you commit. */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text2)' }}>
+                    <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>
                       {nDays === 0
                         ? 'No days in range.'
                         : `Will change ${nDays} day${nDays === 1 ? '' : 's'}${skipped > 0 ? ` · skipping ${skipped} approved` : ''}.`}
-                      {!anyField && nDays > 0 && <span style={{ color: 'var(--text3)' }}> Tick a field to enable.</span>}
+                      {!anyField && nDays > 0 && <span style={{ color: 'var(--c-fg-3)' }}> Tick a field to enable.</span>}
                     </span>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button type="button" onClick={() => setBatchOpen(false)} style={{ padding: '6px 14px', borderRadius: 5, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text2)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Cancel</button>
+                      <button type="button" onClick={() => setBatchOpen(false)} style={{ padding: '6px 14px', borderRadius: 5, background: 'transparent', color: 'var(--c-fg-2)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, cursor: 'pointer' }}>Cancel</button>
                       <button
                         type="button"
                         onClick={applyBatch}
                         disabled={!anyField || nDays === 0}
-                        style={{ padding: '6px 16px', borderRadius: 5, border: 'none', background: 'var(--accent)', color: 'var(--bg)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: (!anyField || nDays === 0) ? 'default' : 'pointer', opacity: (!anyField || nDays === 0) ? 0.45 : 1 }}
+                        style={{ padding: '6px 16px', borderRadius: 5, background: 'var(--c-fg)', color: 'var(--c-bg)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, cursor: (!anyField || nDays === 0) ? 'default' : 'pointer', opacity: (!anyField || nDays === 0) ? 0.45 : 1 }}
                       >
                         Apply to {nDays} day{nDays === 1 ? '' : 's'}
                       </button>
@@ -2265,9 +2267,9 @@ export function WorkOrderPopup({
                 </div>
               )
             })()}
-            <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
+            <div style={{ borderRadius: 6, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
               {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock | Del */}
-              <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: 'var(--surface2)', borderBottom: '1px solid rgba(255,255,255,0.07)', minWidth: isMobile ? 880 : undefined }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: 'var(--c-wash)', minWidth: isMobile ? 880 : undefined }}>
                 {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total', '', ''].map((h, i) => <div key={i} style={thS}>{h}</div>)}
               </div>
               <div data-st-scroll="" style={{ maxHeight: 420, overflowY: 'auto', minWidth: isMobile ? 880 : undefined }}>
@@ -2282,16 +2284,16 @@ export function WorkOrderPopup({
                   const rowTotal = (r.charge ?? 0) + (r.ot_charge ?? 0)
                   const toggleStyle = (active: boolean): React.CSSProperties => ({
                     fontSize: 9, fontFamily: 'Inter', fontWeight: 700, padding: '2px 5px',
-                    borderRadius: 3, border: 'none', cursor: 'pointer',
-                    background: active ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
-                    color: active ? 'var(--bg)' : 'var(--text2)',
+                    borderRadius: 3, cursor: 'pointer',
+                    background: active ? 'var(--c-fg)' : 'rgba(255,255,255,0.06)',
+                    color: active ? 'var(--c-bg)' : 'var(--c-fg-2)',
                   })
                   const rowHrs = r.total_hours ?? calcHours(r.from_time, r.to_time)
                   const otHrsNum = parseFloat(r.ot_hours ?? '0') || 0
 
                   return (
                     <div key={r.id}>
-                      {!isEngOnly && <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: r.admin_locked ? 'rgba(20,184,166,0.04)' : undefined }}>
+                      {!isEngOnly && <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: r.admin_locked ? 'rgba(20,184,166,0.04)' : undefined }}>
                         {/* Studio */}
                         <div style={cellS}>
                           <select
@@ -2316,7 +2318,7 @@ export function WorkOrderPopup({
                             input alone only reacts on the browser's calendar-icon zone). */}
                         <div
                           key={r.id + '-date'}
-                          style={{ ...cellS, color: 'var(--text2)', fontSize: 10, position: 'relative', cursor: 'pointer' }}
+                          style={{ ...cellS, color: 'var(--c-fg-2)', fontSize: 10, position: 'relative', cursor: 'pointer' }}
                           onClick={e => { try { ((e.currentTarget as HTMLElement).querySelector('input[type="date"]') as any)?.showPicker?.() } catch {} }}
                         >
                           <span style={{ pointerEvents: 'none' }}>{shortDate(r.date)}</span>
@@ -2346,7 +2348,7 @@ export function WorkOrderPopup({
                             setSiPopoverPos({ top: rect.bottom + 4, left: rect.left })
                           }}
                         >
-                          <span data-si-input="" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', color: r.session_info ? '#f0f0f0' : 'var(--text3)', fontSize: 11 }}>
+                          <span data-si-input="" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', color: r.session_info ? 'var(--c-fg)' : 'var(--c-fg-3)', fontSize: 11 }}>
                             {r.session_info || '—'}
                           </span>
                           {r.session_info && <span data-si-print="" style={{ display: 'none' }}>{r.session_info}</span>}
@@ -2354,18 +2356,18 @@ export function WorkOrderPopup({
                         {siPopoverRowId === r.id && siPopoverPos && (
                           <>
                             <div style={{ position: 'fixed', inset: 0, zIndex: 199 }} onClick={() => setSiPopoverRowId(null)} />
-                            <div style={{ position: 'fixed', top: siPopoverPos.top, left: siPopoverPos.left, width: 280, zIndex: 200, background: 'var(--surface2)', border: '1px solid var(--accent)', borderRadius: 8, padding: 12 }} onClick={e => e.stopPropagation()}>
+                            <div style={{ position: 'fixed', top: siPopoverPos.top, left: siPopoverPos.left, width: 280, zIndex: 200, background: 'var(--c-wash)', borderRadius: 8, padding: 12 }} onClick={e => e.stopPropagation()}>
                               <textarea
                                 value={siPopoverText}
                                 onChange={e => setSiPopoverText(e.target.value)}
                                 autoFocus
                                 rows={4}
-                                style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'vertical', color: '#f0f0f0', fontFamily: 'Inter', fontSize: 11, lineHeight: 1.5, marginBottom: 8, boxSizing: 'border-box' }}
+                                style={{ width: '100%', background: 'transparent', outline: 'none', resize: 'vertical', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, lineHeight: 1.5, marginBottom: 8, boxSizing: 'border-box' }}
                                 placeholder="Session notes…"
                               />
                               <div style={{ display: 'flex', gap: 6 }}>
-                                <button onClick={() => { updateStRow(r.id, { session_info: siPopoverText }); setSiPopoverRowId(null) }} style={{ flex: 1, background: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: 5, padding: '5px 0', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Save</button>
-                                <button onClick={() => setSiPopoverRowId(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', color: 'var(--text2)', border: 'none', borderRadius: 5, padding: '5px 0', fontFamily: 'Syne', fontSize: 11, cursor: 'pointer' }}>Close</button>
+                                <button onClick={() => { updateStRow(r.id, { session_info: siPopoverText }); setSiPopoverRowId(null) }} style={{ flex: 1, background: 'var(--c-fg)', color: 'var(--c-bg)', borderRadius: 5, padding: '5px 0', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, cursor: 'pointer' }}>Save</button>
+                                <button onClick={() => setSiPopoverRowId(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', color: 'var(--c-fg-2)', borderRadius: 5, padding: '5px 0', fontFamily: "'Archivo Black', sans-serif", fontSize: 11, cursor: 'pointer' }}>Close</button>
                               </div>
                             </div>
                           </>
@@ -2374,7 +2376,7 @@ export function WorkOrderPopup({
                         <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} /></div>
                         <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} /></div>
                         {/* Total Hrs — always auto-calc */}
-                        <div style={{ ...cellS, color: 'var(--text2)', fontSize: 10 }}>{rowHrs != null ? `${rowHrs}h` : '—'}</div>
+                        <div style={{ ...cellS, color: 'var(--c-fg-2)', fontSize: 10 }}>{rowHrs != null ? `${rowHrs}h` : '—'}</div>
                         {/* Rate Type toggle */}
                         <div style={{ ...cellS, gap: 2, padding: '3px 4px' }}>
                           <button style={toggleStyle(isDayRow)} onClick={() => !isDayRow && toggleRowRateType(r.id)}>Day</button>
@@ -2390,7 +2392,7 @@ export function WorkOrderPopup({
                         {/* OT Hrs — day: auto display; hourly: editable */}
                         <div style={cellS}>
                           {isDayRow
-                            ? <span style={{ fontSize: 10, color: 'var(--text2)' }}>{otHrsNum > 0 ? `${otHrsNum}h` : '—'}</span>
+                            ? <span style={{ fontSize: 10, color: 'var(--c-fg-2)' }}>{otHrsNum > 0 ? `${otHrsNum}h` : '—'}</span>
                             : <input value={r.ot_hours ?? ''} onChange={e => updateStRow(r.id, { ot_hours: e.target.value })} style={inp} placeholder="0" />
                           }
                         </div>
@@ -2399,11 +2401,11 @@ export function WorkOrderPopup({
                           <input value={r.ot_rate ?? ''} onChange={e => updateStRow(r.id, { ot_rate: e.target.value })} style={inp} placeholder="$0" />
                         </div>
                         {/* OT Charge — computed read-only */}
-                        <div style={{ ...cellS, color: (r.ot_charge ?? 0) > 0 ? 'var(--accent)' : 'var(--text2)', fontSize: 10 }}>
+                        <div style={{ ...cellS, color: (r.ot_charge ?? 0) > 0 ? 'var(--c-fg)' : 'var(--c-fg-2)', fontSize: 10 }}>
                           {(r.ot_charge ?? 0) > 0 ? `$${r.ot_charge!.toFixed(2)}` : '—'}
                         </div>
                         {/* Total Charge = charge + OT charge */}
-                        <div style={{ ...cellS, color: rowTotal > 0 ? 'var(--accent)' : 'var(--text2)', fontWeight: rowTotal > 0 ? 600 : 400 }}>
+                        <div style={{ ...cellS, color: rowTotal > 0 ? 'var(--c-fg)' : 'var(--c-fg-2)', fontWeight: rowTotal > 0 ? 600 : 400 }}>
                           {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : '—'}
                         </div>
                         {/* Lock pill — always clickable even when WO is completed */}
@@ -2413,9 +2415,9 @@ export function WorkOrderPopup({
                             onClick={() => handleToggleLock(r.id, r.admin_locked)}
                             style={{
                               fontSize: 8, fontFamily: 'Inter', fontWeight: 700, padding: '2px 5px',
-                              borderRadius: 3, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-                              background: r.admin_locked ? 'var(--booked)' : 'rgba(255,255,255,0.06)',
-                              color: r.admin_locked ? 'var(--bg)' : 'var(--cold)',
+                              borderRadius: 3, cursor: 'pointer', whiteSpace: 'nowrap',
+                              background: r.admin_locked ? 'var(--c-st-booked)' : 'rgba(255,255,255,0.06)',
+                              color: r.admin_locked ? 'var(--c-bg)' : 'var(--c-fg-3)',
                             }}
                           >{r.admin_locked ? '🔒' : '✓'}</button>
                         </div>
@@ -2424,14 +2426,14 @@ export function WorkOrderPopup({
                         <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto', position: 'relative' }}>
                           {!readOnly && (
                             <>
-                              <button type="button" onClick={() => setConfirmDeleteRowId(confirmDeleteRowId === r.id ? null : r.id)} style={{ fontSize: 13, fontFamily: 'Inter', color: confirmDeleteRowId === r.id ? 'var(--hot)' : 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
+                              <button type="button" onClick={() => setConfirmDeleteRowId(confirmDeleteRowId === r.id ? null : r.id)} style={{ fontSize: 13, fontFamily: 'Inter', color: confirmDeleteRowId === r.id ? 'var(--c-st-hot)' : 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
                               {confirmDeleteRowId === r.id && (
                                 <>
                                   <div onClick={() => setConfirmDeleteRowId(null)} style={{ position: 'fixed', inset: 0, zIndex: 190 }} />
-                                  <div style={{ position: 'absolute', right: '130%', top: '50%', transform: 'translateY(-50%)', zIndex: 191, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface2)', border: '1px solid var(--hot)', borderRadius: 6, padding: '5px 9px', whiteSpace: 'nowrap', boxShadow: '0 6px 20px rgba(0,0,0,0.45)' }}>
-                                    <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>Delete row?</span>
-                                    <button type="button" onClick={() => deleteStRow(r.id)} style={{ fontSize: 10, fontFamily: 'Inter', fontWeight: 700, color: 'var(--bg)', background: 'var(--hot)', border: 'none', borderRadius: 4, cursor: 'pointer', padding: '3px 10px' }}>Delete</button>
-                                    <button type="button" onClick={() => setConfirmDeleteRowId(null)} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', background: 'rgba(255,255,255,0.07)', border: 'none', borderRadius: 4, cursor: 'pointer', padding: '3px 10px' }}>Cancel</button>
+                                  <div style={{ position: 'absolute', right: '130%', top: '50%', transform: 'translateY(-50%)', zIndex: 191, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--c-wash)', borderRadius: 6, padding: '5px 9px', whiteSpace: 'nowrap', boxShadow: '0 6px 20px rgba(0,0,0,0.45)' }}>
+                                    <span style={{ fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>Delete row?</span>
+                                    <button type="button" onClick={() => deleteStRow(r.id)} style={{ fontSize: 10, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-bg)', background: 'var(--c-st-hot)', borderRadius: 4, cursor: 'pointer', padding: '3px 10px' }}>Delete</button>
+                                    <button type="button" onClick={() => setConfirmDeleteRowId(null)} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'rgba(255,255,255,0.07)', borderRadius: 4, cursor: 'pointer', padding: '3px 10px' }}>Cancel</button>
                                   </div>
                                 </>
                               )}
@@ -2440,23 +2442,23 @@ export function WorkOrderPopup({
                         </div>
                       </div>}
                       {!isEngOnly && pendingLockedEdits[r.id] && (
-                        <div style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.08)', borderBottom: '1px solid rgba(20,184,166,0.2)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'Inter', color: 'var(--booked)' }}>
+                        <div style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.08)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'Inter', color: 'var(--c-st-booked)' }}>
                           <span>Editing a locked row —</span>
                           <button
                             type="button"
                             onClick={() => { handleToggleLock(r.id, true); setPendingLockedEdits(p => { const n = { ...p }; delete n[r.id]; return n }) }}
-                            style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid var(--booked)', background: 'rgba(20,184,166,0.15)', color: 'var(--booked)', fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}
+                            style={{ padding: '2px 8px', borderRadius: 3, background: 'rgba(20,184,166,0.15)', color: 'var(--c-st-booked)', fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}
                           >Update</button>
                           <button
                             type="button"
                             onClick={() => { const orig = pendingLockedEdits[r.id]; setStRows(prev => prev.map(row => row.id === r.id ? orig : row)); setPendingLockedEdits(p => { const n = { ...p }; delete n[r.id]; return n }) }}
-                            style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'var(--text2)', fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}
+                            style={{ padding: '2px 8px', borderRadius: 3, background: 'transparent', color: 'var(--c-fg-2)', fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}
                           >Revert</button>
                         </div>
                       )}
                       {r.eng_visible !== false && (
                         <>
-                          <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(var(--accent-rgb),0.03)' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: 'var(--c-wash2)' }}>
                             {/* 1ST/2ND role toggle — engineer vs assistant (every session has one OR the other) */}
                             <div style={{ ...cellS, padding: '2px 4px' }}>
                               <button
@@ -2464,7 +2466,7 @@ export function WorkOrderPopup({
                                 disabled={readOnly}
                                 onClick={() => updateStRow(r.id, { eng_role: r.eng_role === 'assistant' ? 'engineer' : 'assistant' })}
                                 title={r.eng_role === 'assistant' ? 'Assistant (2nd) — click to switch to Engineer' : 'Engineer (1st) — click to switch to Assistant'}
-                                style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, letterSpacing: '0.04em', padding: '2px 6px', borderRadius: 3, cursor: readOnly ? 'default' : 'pointer', background: 'transparent', border: `1px solid ${r.eng_role === 'assistant' ? 'rgba(249,115,22,0.45)' : 'rgba(var(--accent-rgb),0.45)'}`, color: r.eng_role === 'assistant' ? 'var(--warm)' : 'var(--accent)' }}
+                                style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, letterSpacing: '0.04em', padding: '2px 6px', borderRadius: 3, cursor: readOnly ? 'default' : 'pointer', background: 'transparent', color: r.eng_role === 'assistant' ? 'var(--c-st-warm)' : 'var(--c-fg)' }}
                               >
                                 {r.eng_role === 'assistant' ? '2ND' : '1ST'}
                               </button>
@@ -2472,7 +2474,7 @@ export function WorkOrderPopup({
                             {/* Date picker — uses r.date for eng-only rows; shared with main row for studio rows */}
                             <div
                               key={r.id + '-eng-date'}
-                              style={{ ...cellS, color: 'var(--text2)', fontSize: 10, position: 'relative', cursor: isEngOnly ? 'pointer' : 'default' }}
+                              style={{ ...cellS, color: 'var(--c-fg-2)', fontSize: 10, position: 'relative', cursor: isEngOnly ? 'pointer' : 'default' }}
                               onClick={e => { try { ((e.currentTarget as HTMLElement).querySelector('input[type="date"]') as any)?.showPicker?.() } catch {} }}
                             >
                               <span style={{ pointerEvents: 'none' }}>{shortDate(r.date)}</span>
@@ -2498,12 +2500,12 @@ export function WorkOrderPopup({
                                 value={r.eng_name || ''}
                                 onChange={e => updateStRow(r.id, { eng_name: e.target.value })}
                                 placeholder={engName || (r.eng_role === 'assistant' ? 'Assistant…' : 'Engineer…')}
-                                style={{ ...inp, fontSize: 10, color: 'var(--accent)' }}
+                                style={{ ...inp, fontSize: 10, color: 'var(--c-fg)' }}
                               />
                             </div>
                             <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} style={inp} /></div>
                             <div style={cellS}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} style={inp} /></div>
-                            <div style={{ ...cellS, color: 'var(--text2)', fontSize: 10 }}>{engHrs != null ? `${engHrs}h` : '—'}</div>
+                            <div style={{ ...cellS, color: 'var(--c-fg-2)', fontSize: 10 }}>{engHrs != null ? `${engHrs}h` : '—'}</div>
                             <div style={cellS} />
                             <div style={cellS}>
                               <input value={r.eng_rate || engRateDisplay} onChange={e => updateStRow(r.id, { eng_rate: e.target.value })} style={{ ...inp, width: 64 }} />
@@ -2511,23 +2513,23 @@ export function WorkOrderPopup({
                             <div style={cellS} />
                             <div style={cellS} />
                             <div style={cellS} />
-                            <div style={{ ...cellS, color: engCharge != null ? 'var(--accent)' : 'var(--text2)', fontWeight: engCharge != null ? 600 : 400 }}>
+                            <div style={{ ...cellS, color: engCharge != null ? 'var(--c-fg)' : 'var(--c-fg-2)', fontWeight: engCharge != null ? 600 : 400 }}>
                               {engCharge != null ? `$${engCharge.toFixed(2)}` : '—'}
                             </div>
                             {/* Eng lock */}
                             <div style={{ ...cellS, justifyContent: 'center', padding: '3px 4px', pointerEvents: 'auto' }}>
-                              <button type="button" onClick={() => handleToggleLock(r.id, r.admin_locked)} style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, padding: '2px 5px', borderRadius: 3, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', background: r.admin_locked ? 'var(--booked)' : 'rgba(255,255,255,0.06)', color: r.admin_locked ? 'var(--bg)' : 'var(--cold)' }}>{r.admin_locked ? '🔒' : '✓'}</button>
+                              <button type="button" onClick={() => handleToggleLock(r.id, r.admin_locked)} style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, padding: '2px 5px', borderRadius: 3, cursor: 'pointer', whiteSpace: 'nowrap', background: r.admin_locked ? 'var(--c-st-booked)' : 'rgba(255,255,255,0.06)', color: r.admin_locked ? 'var(--c-bg)' : 'var(--c-fg-3)' }}>{r.admin_locked ? '🔒' : '✓'}</button>
                             </div>
                             {/* Eng delete × */}
                             <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto' }}>
-                              {!readOnly && <button type="button" onClick={() => setConfirmClearEngId(r.id)} style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>}
+                              {!readOnly && <button type="button" onClick={() => setConfirmClearEngId(r.id)} style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>}
                             </div>
                           </div>
                           {confirmClearEngId === r.id && (
-                            <div style={{ padding: '5px 12px', background: 'rgba(249,115,22,0.08)', borderBottom: '1px solid rgba(249,115,22,0.2)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'Inter', color: 'var(--warm)' }}>
+                            <div style={{ padding: '5px 12px', background: 'rgba(249,115,22,0.08)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'Inter', color: 'var(--c-st-warm)' }}>
                               <span>Delete engineer row?</span>
-                              <button type="button" onClick={() => isEngOnly ? deleteStRow(r.id) : clearEngRow(r.id)} style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid var(--warm)', background: 'rgba(249,115,22,0.15)', color: 'var(--warm)', fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}>Y</button>
-                              <button type="button" onClick={() => setConfirmClearEngId(null)} style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'var(--text2)', fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}>N</button>
+                              <button type="button" onClick={() => isEngOnly ? deleteStRow(r.id) : clearEngRow(r.id)} style={{ padding: '2px 8px', borderRadius: 3, background: 'rgba(249,115,22,0.15)', color: 'var(--c-st-warm)', fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}>Y</button>
+                              <button type="button" onClick={() => setConfirmClearEngId(null)} style={{ padding: '2px 8px', borderRadius: 3, background: 'transparent', color: 'var(--c-fg-2)', fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}>N</button>
                             </div>
                           )}
                         </>
@@ -2536,21 +2538,21 @@ export function WorkOrderPopup({
                   )
                 })}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: 'var(--surface2)', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: 'var(--c-wash)' }}>
                 {!readOnly ? (
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                  <button type="button" onClick={addStRow} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add Studio Time</button>
-                  <button type="button" onClick={() => addEngRow('engineer')} style={{ fontSize: 10, fontFamily: 'Inter', color: 'rgba(var(--accent-rgb),0.55)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add Engineer</button>
-                  <button type="button" onClick={() => addEngRow('assistant')} style={{ fontSize: 10, fontFamily: 'Inter', color: 'rgba(249,115,22,0.65)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add Assistant</button>
+                  <button type="button" onClick={addStRow} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0 }}>+ Add Studio Time</button>
+                  <button type="button" onClick={() => addEngRow('engineer')} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-wash2)', background: 'none', cursor: 'pointer', padding: 0 }}>+ Add Engineer</button>
+                  <button type="button" onClick={() => addEngRow('assistant')} style={{ fontSize: 10, fontFamily: 'Inter', color: 'rgba(249,115,22,0.65)', background: 'none', cursor: 'pointer', padding: 0 }}>+ Add Assistant</button>
                 </div>
                 ) : <div />}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
-                  <span style={{ fontSize: 11, fontFamily: 'Inter', color: '#f0f0f0' }}>Studio: ${stTotal.toFixed(2)}</span>
+                  <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)' }}>Studio: ${stTotal.toFixed(2)}</span>
                   {engTotal > 0 && (
-                    <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--accent)' }}>Eng: ${engTotal.toFixed(2)}</span>
+                    <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)' }}>Eng: ${engTotal.toFixed(2)}</span>
                   )}
                   {engTotal > 0 && (
-                    <span style={{ fontSize: 11, fontFamily: 'Inter', color: '#f0f0f0', fontWeight: 700 }}>Total: ${(stTotal + engTotal).toFixed(2)}</span>
+                    <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)', fontWeight: 700 }}>Total: ${(stTotal + engTotal).toFixed(2)}</span>
                   )}
                 </div>
               </div>
@@ -2559,15 +2561,15 @@ export function WorkOrderPopup({
 
           {/* EQUIPMENT CONDITION — excluded from PDF via data-no-print */}
           <div data-no-print="" style={isMobile ? mCard : undefined}>
-            <SectionHeader title="Equipment Condition" />
+            <SectionHeader carved title="Equipment Condition" />
             {/* hidden file input for note photos */}
             <input ref={equipNoteFileRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={e => { const f = e.target.files?.[0]; if (f) uploadEquipNotePhoto(f) }} />
-            <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflowX: 'auto' }}>
+            <div style={{ borderRadius: 6, overflowX: 'auto' }}>
               <div style={{ minWidth: `${130 + Math.max(sessionDates.length, 1) * 90}px` }}>
                 {/* Header — equipment name cell sticky */}
-                <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, background: 'var(--surface2)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                  <div style={{ ...thS, position: 'sticky', left: 0, background: 'var(--surface2)', zIndex: 1 }}>Equipment</div>
+                <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, background: 'var(--c-wash)' }}>
+                  <div style={{ ...thS, position: 'sticky', left: 0, background: 'var(--c-wash)', zIndex: 1 }}>Equipment</div>
                   {sessionDates.length > 0
                     ? sessionDates.map(d => <div key={d} style={thS}>{fmtDate(d)}</div>)
                     : <div style={thS}>—</div>}
@@ -2577,8 +2579,8 @@ export function WorkOrderPopup({
                   const openDate = openNoteKey?.startsWith(`${eq}||`) ? openNoteKey.split('||')[1] : null
                   return (
                     <div key={eq}>
-                      <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                        <div style={{ ...cellS, color: '#f0f0f0', fontWeight: 500, position: 'sticky', left: 0, background: 'var(--surface2)', zIndex: 1 }}>{eq}</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)` }}>
+                        <div style={{ ...cellS, color: 'var(--c-fg)', fontWeight: 500, position: 'sticky', left: 0, background: 'var(--c-wash)', zIndex: 1 }}>{eq}</div>
                         {sessionDates.length > 0
                           ? sessionDates.map(d => {
                               const key = `${eq}||${d}`
@@ -2586,21 +2588,21 @@ export function WorkOrderPopup({
                               const cond = row?.condition ?? null
                               const hasNote = !!(equipNotes[key]?.note || (equipNotes[key]?.photo_urls?.length ?? 0) > 0)
                               return (
-                                <div key={d} style={{ ...cellS, display: 'flex', gap: 4, alignItems: 'center', borderRight: 'none' }}>
-                                  <button type="button" onClick={() => row && toggleEquip(eq, d, 'ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', border: `1px solid ${cond === 'ok' ? 'var(--booked)' : 'rgba(255,255,255,0.1)'}`, background: cond === 'ok' ? 'rgba(20,184,166,0.12)' : 'transparent', color: cond === 'ok' ? 'var(--booked)' : 'var(--text2)' }}>OK</button>
-                                  <button type="button" onClick={() => row && toggleEquip(eq, d, 'not_ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, cursor: 'pointer', border: `1px solid ${cond === 'not_ok' ? 'var(--hot)' : 'rgba(255,255,255,0.1)'}`, background: cond === 'not_ok' ? 'rgba(239,68,68,0.12)' : 'transparent', color: cond === 'not_ok' ? 'var(--hot)' : 'var(--text2)' }}>✗</button>
+                                <div key={d} style={{ ...cellS, display: 'flex', gap: 4, alignItems: 'center' }}>
+                                  <button type="button" onClick={() => row && toggleEquip(eq, d, 'ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, cursor: 'pointer', background: cond === 'ok' ? 'rgba(20,184,166,0.12)' : 'transparent', color: cond === 'ok' ? 'var(--c-st-booked)' : 'var(--c-fg-2)' }}>OK</button>
+                                  <button type="button" onClick={() => row && toggleEquip(eq, d, 'not_ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, cursor: 'pointer', background: cond === 'not_ok' ? 'rgba(239,68,68,0.12)' : 'transparent', color: cond === 'not_ok' ? 'var(--c-st-hot)' : 'var(--c-fg-2)' }}>✗</button>
                                   {cond === 'not_ok' && hasNote && (
-                                    <span style={{ width: 6, height: 6, borderRadius: 3, background: 'var(--warm)', display: 'inline-block', flexShrink: 0 }} />
+                                    <span style={{ width: 6, height: 6, borderRadius: 3, background: 'var(--c-st-warm)', display: 'inline-block', flexShrink: 0 }} />
                                   )}
                                 </div>
                               )
                             })
-                          : <div style={{ ...cellS, color: 'var(--text3)', borderRight: 'none' }}>—</div>}
+                          : <div style={{ ...cellS, color: 'var(--c-fg-3)' }}>—</div>}
                       </div>
                       {/* Note area — inline below the equipment row when a Not OK cell is open */}
                       {openDate && (
-                        <div style={{ padding: '8px 12px', background: 'var(--surface2)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                          <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--warm)', marginBottom: 6 }}>
+                        <div style={{ padding: '8px 12px', background: 'var(--c-wash)' }}>
+                          <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--c-st-warm)', marginBottom: 6 }}>
                             {eq} — {openDate}
                           </div>
                           <textarea
@@ -2611,12 +2613,12 @@ export function WorkOrderPopup({
                             }}
                             onBlur={e => upsertEquipNote(`${eq}||${openDate}`, eq, openDate, { note: e.target.value })}
                             placeholder="Note about this issue…"
-                            style={{ width: '100%', background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, color: '#f0f0f0', fontFamily: 'Inter', fontSize: 10, padding: '5px 7px', resize: 'none', outline: 'none', boxSizing: 'border-box', minHeight: 56 }}
+                            style={{ width: '100%', background: 'transparent', borderRadius: 4, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 10, padding: '5px 7px', resize: 'none', outline: 'none', boxSizing: 'border-box', minHeight: 56 }}
                           />
                           {(equipNotes[`${eq}||${openDate}`]?.photo_urls?.length ?? 0) > 0 && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
                               {equipNotes[`${eq}||${openDate}`].photo_urls.map((url, i) => (
-                                <SignedImage key={i} path={url} link alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)', display: 'block' }} />
+                                <SignedImage key={i} path={url} link alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4, display: 'block' }} />
                               ))}
                             </div>
                           )}
@@ -2625,7 +2627,7 @@ export function WorkOrderPopup({
                             type="button"
                             disabled={noteUploading}
                             onClick={() => { pendingNoteKey.current = { key: `${eq}||${openDate}`, equipment: eq, date: openDate }; equipNoteFileRef.current?.click() }}
-                            style={{ marginTop: 6, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, color: noteUploading ? 'var(--text3)' : 'var(--text2)', background: 'none', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, cursor: noteUploading ? 'not-allowed' : 'pointer', padding: '3px 10px' }}
+                            style={{ marginTop: 6, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, color: noteUploading ? 'var(--c-fg-3)' : 'var(--c-fg-2)', background: 'none', borderRadius: 4, cursor: noteUploading ? 'not-allowed' : 'pointer', padding: '3px 10px' }}
                           >
                             {noteUploading ? 'Uploading…' : '+ Photo'}
                           </button>
@@ -2641,32 +2643,32 @@ export function WorkOrderPopup({
 
           {/* RENTALS */}
           <div style={isMobile ? mCard : undefined}>
-            <SectionHeader title="Rentals" />
-            <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', background: 'var(--surface2)', borderBottom: '1px solid rgba(255,255,255,0.07)', minWidth: isMobile ? 540 : undefined }}>
+            <SectionHeader carved title="Rentals" />
+            <div style={{ borderRadius: 6, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', background: 'var(--c-wash)', minWidth: isMobile ? 540 : undefined }}>
                 {['Qty', 'Item', 'Supplier', "Date(s) Used", 'Rate', 'Charge', ''].map(h => <div key={h} style={thS}>{h}</div>)}
               </div>
               {rentRows.map((r, idx) => (
-                <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', borderBottom: idx < rentRows.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none', minWidth: isMobile ? 540 : undefined }}>
+                <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', minWidth: isMobile ? 540 : undefined }}>
                   <div style={cellS}><input value={r.qty} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, qty: e.target.value } : x))} style={inp} /></div>
                   <div style={cellS}><input value={r.item} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, item: e.target.value } : x))} style={inp} /></div>
                   <div style={cellS}><input value={r.supplier} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, supplier: e.target.value } : x))} style={inp} /></div>
                   <div style={cellS}><input value={r.dates_used} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, dates_used: e.target.value } : x))} style={inp} /></div>
                   <div style={cellS}><input value={r.rate} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, rate: e.target.value } : x))} style={inp} /></div>
                   <div style={cellS}><input value={r.charge} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, charge: e.target.value } : x))} placeholder="$0.00" style={inp} /></div>
-                  <div style={{ ...cellS, borderRight: 'none', padding: '6px 4px' }}>
-                    {!readOnly && <button type="button" onClick={() => setRentRows(p => p.filter(x => x.id !== r.id))} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>}
+                  <div style={{ ...cellS, padding: '6px 4px' }}>
+                    {!readOnly && <button type="button" onClick={() => setRentRows(p => p.filter(x => x.id !== r.id))} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>}
                   </div>
                 </div>
               ))}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: 'var(--surface2)', borderTop: '1px solid rgba(255,255,255,0.06)', minWidth: isMobile ? 540 : undefined }}>
-                {!readOnly ? <button type="button" onClick={() => setRentRows(p => [...p, { id: crypto.randomUUID(), qty: '', item: '', supplier: '', dates_used: '', rate: '', charge: '' }])} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button> : <span />}
-                <span style={{ fontSize: 11, fontFamily: 'Inter', color: '#f0f0f0', fontWeight: 700 }}>Total: ${rentTotal.toFixed(2)}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: 'var(--c-wash)', minWidth: isMobile ? 540 : undefined }}>
+                {!readOnly ? <button type="button" onClick={() => setRentRows(p => [...p, { id: crypto.randomUUID(), qty: '', item: '', supplier: '', dates_used: '', rate: '', charge: '' }])} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button> : <span />}
+                <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)', fontWeight: 700 }}>Total: ${rentTotal.toFixed(2)}</span>
               </div>
             </div>
           </div>
 
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', display: isMobile ? 'none' : 'block' }} />
+          <div style={{ display: isMobile ? 'none' : 'block' }} />
 
           {/* BOTTOM TWO COLUMNS */}
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 20 : 28 }}>
@@ -2674,29 +2676,29 @@ export function WorkOrderPopup({
             {/* Left — Notes + Legal */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, ...(isMobile ? mCard : {}) }}>
               <div>
-                <SectionHeader title="Session Notes" />
+                <SectionHeader carved title="Session Notes" />
                 <textarea value={wo.session_notes} onChange={e => setWo(w => w ? { ...w, session_notes: e.target.value } : w)}
-                  style={{ width: '100%', minHeight: 90, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 5, color: '#f0f0f0', fontFamily: 'Inter', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }} />
+                  style={{ width: '100%', minHeight: 90, background: 'var(--c-wash)', borderRadius: 5, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }} />
               </div>
               {wo.payment_status === 'COD' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)', lineHeight: 1.8, padding: '10px 12px', background: 'var(--surface2)', borderRadius: 5, border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-3)', lineHeight: 1.8, padding: '10px 12px', background: 'var(--c-wash)', borderRadius: 5 }}>
                     By signing below, I acknowledge that I am authorized to approve charges for this session. I accept responsibility for all associated costs and understand that payment is due in full at the time of service unless otherwise agreed. I also acknowledge that Paramount Recording is not responsible for any media, personal items, or equipment left behind.
                     <br /><br />
                     <em>No Tapes, CDs, DVDs, Thumb Drives, Computer Drives or other Recording Media will be released until payment in full is received.</em>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
                     <div style={metaLabel}>Date</div>
-                    <span style={{ fontSize: 11, fontFamily: 'Inter', color: '#f0f0f0' }}>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)' }}>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
                     <div style={metaLabel}>Print Name</div>
-                    <input value={wo.print_name} onChange={e => setWo(w => w ? { ...w, print_name: e.target.value } : w)} style={{ ...inp, borderBottom: '1px solid rgba(255,255,255,0.2)' }} />
+                    <input value={wo.print_name} onChange={e => setWo(w => w ? { ...w, print_name: e.target.value } : w)} style={{ ...inp }} />
                   </div>
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <div style={metaLabel}>Signature</div>
-                      {!readOnly && <button type="button" onClick={clearAdminSignature} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '2px 8px', color: 'var(--text2)', fontSize: 10, cursor: 'pointer', fontFamily: 'Inter' }}>Clear</button>}
+                      {!readOnly && <button type="button" onClick={clearAdminSignature} style={{ background: 'none', borderRadius: 4, padding: '2px 8px', color: 'var(--c-fg-2)', fontSize: 10, cursor: 'pointer', fontFamily: 'Inter' }}>Clear</button>}
                     </div>
                     {!readOnly && (
                     <canvas
@@ -2710,10 +2712,10 @@ export function WorkOrderPopup({
                       onTouchStart={startAdminDraw}
                       onTouchMove={continueAdminDraw}
                       onTouchEnd={endAdminDraw}
-                      style={{ width: '100%', height: 100, background: 'var(--bg)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', display: 'block', touchAction: 'none', cursor: 'crosshair' }}
+                      style={{ width: '100%', height: 100, background: 'var(--c-bg)', borderRadius: 6, display: 'block', touchAction: 'none', cursor: 'crosshair' }}
                     />
                     )}
-                    {wo.signature_data && <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 4 }}>Signature captured ✓</div>}
+                    {wo.signature_data && <div style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 4 }}>Signature captured ✓</div>}
                   </div>
                 </div>
               )}
@@ -2722,12 +2724,12 @@ export function WorkOrderPopup({
             {/* Right — Payments + Totals */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, ...(isMobile ? mCard : {}) }}>
               <div>
-                <SectionHeader title="Payments" />
-                <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
+                <SectionHeader carved title="Payments" />
+                <div style={{ borderRadius: 6, overflow: 'hidden' }}>
                   {payRows.map((p, idx) => {
                     const needsLast4 = p.payment_type === 'Credit Card' || p.payment_type === 'Debit Card'
                     return (
-                      <div key={p.id} style={{ display: 'grid', gridTemplateColumns: needsLast4 ? '130px 80px 1fr 70px 24px' : '130px 80px 1fr 24px', borderBottom: idx < payRows.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none', alignItems: 'center' }}>
+                      <div key={p.id} style={{ display: 'grid', gridTemplateColumns: needsLast4 ? '130px 80px 1fr 70px 24px' : '130px 80px 1fr 24px', alignItems: 'center' }}>
                         <div style={cellS}>
                           <select value={p.payment_type} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, payment_type: e.target.value, last_four: '' } : x))} style={{ ...inp, background: 'transparent', cursor: 'pointer' }}>
                             <option value="">— type —</option>
@@ -2739,29 +2741,29 @@ export function WorkOrderPopup({
                         {needsLast4 && (
                           <div style={cellS}><input value={p.last_four} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) } : x))} placeholder="last 4" maxLength={4} style={inp} /></div>
                         )}
-                        <div style={{ ...cellS, borderRight: 'none', padding: '6px 4px' }}>
-                          {!readOnly && <button type="button" onClick={() => setPayRows(p2 => p2.filter(x => x.id !== p.id))} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>}
+                        <div style={{ ...cellS, padding: '6px 4px' }}>
+                          {!readOnly && <button type="button" onClick={() => setPayRows(p2 => p2.filter(x => x.id !== p.id))} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>}
                         </div>
                       </div>
                     )
                   })}
                   <div style={{ padding: '7px 10px' }}>
-                    {!readOnly && <button type="button" onClick={() => setPayRows(p => [...p, { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '' }])} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Add payment</button>}
+                    {!readOnly && <button type="button" onClick={() => setPayRows(p => [...p, { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '' }])} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0 }}>+ Add payment</button>}
                   </div>
                 </div>
               </div>
               {/* Totals block */}
-              <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{ borderRadius: 6, overflow: 'hidden' }}>
                 {[
-                  { label: 'Studio Total', value: stTotal, color: '#f0f0f0', bold: false },
-                  ...(engTotal > 0 ? [{ label: 'Eng Total', value: engTotal, color: 'var(--accent)', bold: false }] : []),
-                  { label: 'Rentals Total', value: rentTotal, color: '#f0f0f0', bold: false },
-                  { label: 'Grand Total', value: grandTotal, color: '#f0f0f0', bold: true },
-                  { label: 'Total Paid', value: totalPaid, color: 'var(--booked)', bold: false },
-                  { label: 'Balance Due', value: balanceDue, color: balanceDue > 0 ? 'var(--hot)' : 'var(--booked)', bold: true },
+                  { label: 'Studio Total', value: stTotal, color: 'var(--c-fg)', bold: false },
+                  ...(engTotal > 0 ? [{ label: 'Eng Total', value: engTotal, color: 'var(--c-fg)', bold: false }] : []),
+                  { label: 'Rentals Total', value: rentTotal, color: 'var(--c-fg)', bold: false },
+                  { label: 'Grand Total', value: grandTotal, color: 'var(--c-fg)', bold: true },
+                  { label: 'Total Paid', value: totalPaid, color: 'var(--c-st-booked)', bold: false },
+                  { label: 'Balance Due', value: balanceDue, color: balanceDue > 0 ? 'var(--c-st-hot)' : 'var(--c-st-booked)', bold: true },
                 ].map(({ label, value, color, bold }) => (
-                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                    <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)' }}>{label}</span>
+                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px' }}>
+                    <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>{label}</span>
                     <span style={{ fontSize: bold ? 13 : 11, fontFamily: 'Inter', color, fontWeight: bold ? 700 : 400 }}>${value.toFixed(2)}</span>
                   </div>
                 ))}
@@ -2770,20 +2772,20 @@ export function WorkOrderPopup({
           </div>
 
           {/* NEEDS ATTENTION — internal only, never printed */}
-          <div data-no-print="" style={isMobile ? mCardOrange : { borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 20 }}>
-            <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 10, color: 'var(--warm)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
+          <div data-no-print="" style={isMobile ? mCardOrange : { paddingTop: 20 }}>
+            <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 10, color: 'var(--c-st-warm)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
               Needs Attention / Runner Notes
             </div>
             <textarea
               value={wo.needs_attention_notes}
               onChange={e => setWo(w => w ? { ...w, needs_attention_notes: e.target.value } : w)}
               placeholder="Internal notes only — never appears on the PDF export…"
-              style={{ width: '100%', minHeight: 80, background: 'var(--surface2)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 5, color: '#f0f0f0', fontFamily: 'Inter', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }}
+              style={{ width: '100%', minHeight: 80, background: 'var(--c-wash)', borderRadius: 5, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }}
             />
             {wo.needs_attention_photos?.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
                 {wo.needs_attention_photos.map((url, i) => (
-                  <SignedImage key={i} path={url} link linkStyle={{ display: 'block', flexShrink: 0 }} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, border: '2px solid rgba(249,115,22,0.4)', display: 'block' }} />
+                  <SignedImage key={i} path={url} link linkStyle={{ display: 'block', flexShrink: 0 }} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
                 ))}
               </div>
             )}
