@@ -41,7 +41,13 @@ const STATUS_SLOT: Record<string, string> = {
 
 const LABEL_W = 148
 const COL_W = 120  // minimum day-column width; forces horizontal scroll when cols × days > viewport
-const ZOOM_FIXED = [60, 80, 88, 110, 132] // zoom levels 1–5; level 0 = fit-all (≈44px)
+// Zoom steps, +15% over the pre-F-18 ladder (60/80/88/110/132) — Eli's call that
+// cells run wider across the board. Level 0 = fit-all, which now bottoms out at
+// the MIN_COL_W floor rather than shrinking to ~44 and squeezing content out.
+const ZOOM_FIXED = [69, 92, 101, 127, 152]
+// No day column may ever be narrower than this, at any view or zoom. This floor
+// is what makes "every field always renders" (F-18/2) viable.
+const MIN_COL_W = 60
 const BUFFER_WEEKS = 2 // weeks of buffer rendered on each side for endless horizontal scroll
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -269,6 +275,11 @@ function BookingBlock({
   const micro = blockHeight < 26
   const compact = !micro && blockHeight < 46
   const codLabel = booking.cod_method === 'Credit Card' ? 'CC' : (booking.cod_method ?? '').toUpperCase()
+  // The old chip flagged non-recording sessions with an ACCENT-coloured border.
+  // The accent is retired, so the distinction returns as a mono tag — it was in
+  // the inventory and must not be lost, but it can't come back as colour (§5).
+  const typeTag = booking.session_type === 'filming' ? 'FILM'
+    : booking.session_type === 'event_playback' ? 'EVENT' : ''
 
   // The right-end reserve is MEASURED, not guessed — a long artist name plus a
   // client line needs more room than a short one, and a fixed 170 clipped them.
@@ -295,19 +306,11 @@ function BookingBlock({
   // stays regardless.
   //
   // Reserve is the MEASURED payload width, never a magic number.
-  // ── Content tiers (F-17/3) ────────────────────────────────────────────────
-  // ONE rule, by WIDTH ONLY, so two chips of the same width always show the same
-  // content — no per-chip randomness. Breakpoints chosen against the real zoom
-  // ladder (colW 44/60/80/88/110/132):
-  //   narrow  <100px  title + times
-  //   medium  100–160 + staff
-  //   wide    >=160   + client (full payload)
-  // A 1-day chip is exactly colW wide, so it is narrow up to the 88 zoom, medium
-  // at 110/132. Any multi-day bar is >=2 columns and reaches wide quickly.
-  const tierWide = chipWidthPx >= 160
-  const tierMedium = chipWidthPx >= 100
-  const showClientLine = chipWidthPx === 0 || tierWide
-  const showStaffLine = chipWidthPx === 0 || tierMedium
+  // ── No content tiers (F-18/2) ─────────────────────────────────────────────
+  // Tiering was deleted: it shed real information (staffing, payment tags) to save
+  // space, and the recovered pre-redesign inventory shows the old chip carried all
+  // of it. Every field renders at every width; tight chips ellipsis instead.
+  // The 60px column floor (MIN_COL_W) is what makes that viable.
   const payloadShift = colW
     ? Math.min(Math.max(0, scrollX - chipLeftPx), Math.max(0, chipWidthPx - payloadW - 12))
     : 0
@@ -380,7 +383,7 @@ function BookingBlock({
             <div className="c-ev-2" style={{ fontSize: 9.5, fontFamily: 'Inter', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
               {timeStr}
             </div>
-            {showStaffLine && (eng || asst) && (
+            {(eng || asst) && (
               <div style={{ display: 'flex', gap: 3, flexShrink: 0, marginLeft: 4 }}>
                 {eng  && <div style={{ fontSize: 9.5, fontFamily: 'Inter', whiteSpace: 'nowrap' }} className="c-ev-2 c-mono">1ST-{eng}</div>}
                 {asst && <div style={{ fontSize: 9.5, fontFamily: 'Inter', whiteSpace: 'nowrap' }} className="c-ev-2 c-mono">2ND-{asst}</div>}
@@ -396,7 +399,7 @@ function BookingBlock({
           }}>
             {primaryName}
           </div>
-          {showClientLine && labelLine && (
+          {labelLine && (
             <div className="c-ev-meta" style={{
               fontSize: 10.5, fontFamily: 'Inter', lineHeight: 1.2, marginTop: 1,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -405,16 +408,26 @@ function BookingBlock({
             </div>
           )}
           <div className="c-ev-2 c-mono" style={{ fontSize: 9.5, lineHeight: 1.25, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {timeStr}
-            {!isBilling && booking.cod_method && ` · ${booking.cod_method.toUpperCase()}`}
+            {timeStr}{typeTag ? `  ${typeTag}` : ''}
           </div>
           {/* Staff is the payload's LAST LINE (F-17/1) — not a floating corner tag.
               One block: title / client / times / staff. It therefore travels with
               the slide on long bars and can never be left behind. The dashboard
               room cards keep their corner tag; that's a different surface. */}
-          {showStaffLine && (eng || asst) && (
-            <div className="c-ev-2 c-mono" style={{ fontSize: 9, lineHeight: 1.3, whiteSpace: 'nowrap' }}>
-              {[eng && `1ST-${eng}`, asst && `2ND-${asst}`].filter(Boolean).join('  ')}
+          {/* Bottom line of the block: payment tag left, staff right — exactly
+              what the pre-redesign chip carried (recovered from main @4370761).
+              In-flow, so the whole block still slides as one unit on long bars. */}
+          {(codLabel || eng || asst) && (
+            <div className="c-ev-2 c-mono" style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+              gap: 6, fontSize: 9, lineHeight: 1.3, whiteSpace: 'nowrap',
+            }}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {!isBilling && codLabel ? codLabel : ''}
+              </span>
+              <span style={{ flexShrink: 0 }}>
+                {[eng && `1ST-${eng}`, asst && `2ND-${asst}`].filter(Boolean).join('  ')}
+              </span>
             </div>
           )}
         </>
@@ -901,10 +914,10 @@ function CalendarPageInner() {
   // Column width fills the viewport for the canonical window; month uses a smaller fixed size
   const usableW = Math.max(gridW - labelW, isMobile ? 200 : 400)
   const colW = view === 'week'
-    ? Math.max(isMobile ? 40 : 80, Math.floor(usableW / 7))
+    ? Math.max(isMobile ? MIN_COL_W : 92, Math.floor(usableW / 7))
     : view === '2wks'
-    ? Math.max(60, Math.floor(usableW / 14))
-    : Math.max(44, Math.floor(usableW / totalDays))
+    ? Math.max(MIN_COL_W, Math.floor(usableW / 14))
+    : Math.max(MIN_COL_W, Math.floor(usableW / totalDays))
 
   // ── Hover card (F-11) ─────────────────────────────────────────────────────
   // Built entirely from data already on the page (projection + the Option B
@@ -1865,6 +1878,15 @@ function CalendarPageInner() {
             {(engN || asstN) && (
               <div className="c-mono" style={{ fontSize: 11.5, opacity: .75, marginTop: 3 }}>
                 {[engN && `1ST ${engN}`, asstN && `2ND ${asstN}`].filter(Boolean).join('   ')}
+              </div>
+            )}
+            {/* Identifiers (F-18/5). WO# and Invoice# are IDs, not amounts — the
+                no-financials rule bars rates and totals, not identifiers. Both are
+                already on the booking projection, so no extra query. */}
+            {(b.wo_number || b.invoice_num) && (
+              <div className="c-mono" style={{ fontSize: 11, opacity: .55, marginTop: 6 }}>
+                {[b.wo_number && `WO ${b.wo_number}`, b.invoice_num && `INV ${b.invoice_num}`]
+                  .filter(Boolean).join('   ')}
               </div>
             )}
             <div className="c-hovercard-hint">Click to open WO</div>
