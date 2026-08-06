@@ -1090,9 +1090,13 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   background: rgba(0, 0, 0, .22);
   display: flex; align-items: center; gap: 6px;
   padding: 2px 8px;
-  /* 500, not 700: both halves are DM Mono now, which only ships 400/500 (see the
-     @import at the top). Asking for 700 gets a synthesised faux-bold. */
-  font-size: 9px; font-weight: 500; line-height: 1.35;
+  /* 8px, not 9: DM Mono has a taller x-height and wider advance than Inter, so
+     matching the two on point size made BOTH read a step larger than the staff
+     tags did before. The number that matters is the apparent size, not the
+     declared one.
+     500, not 700: DM Mono only ships 400/500 (see the @import at the top), so
+     700 gets synthesised into a faux-bold. */
+  font-size: 8px; font-weight: 500; line-height: 1.35;
   white-space: nowrap; overflow: hidden;
   flex-shrink: 0;
 }
