@@ -6,6 +6,7 @@ import { createWorkOrderForBooking, bookingShouldHaveWorkOrder } from '@/lib/cre
 import TimeInput from '@/components/shared/TimeInput'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
+import { statusFillClass } from '@/components/carved'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { SignedImage } from '@/components/shared/SignedImage'
@@ -1916,15 +1917,17 @@ export function WorkOrderPopup({
               mobile; the read-only SESSION INFO card above replaces it there. */}
           <div style={isMobile ? { display: 'none' } : { display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-            {/* Status bar — colored per booking-form status */}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {/* Status — ONE housing (§8). This was six separate raised pills; the
+                selected one now presses IN and fills with its own status colour,
+                which is sanctioned here because the field IS status (§5). */}
+            <div className="c-seg c-seg-wrap" style={{ alignSelf: 'flex-start', maxWidth: '100%' }}>
               {SESSION_STATUSES.map(([val, lbl]) => {
                 const on = wo.session_status === val
-                const c = SESSION_STATUS_COLORS[val] ?? 'var(--c-fg)'
                 return (
                   <button key={val} type="button" disabled={readOnly}
+                    className={on ? `c-on ${statusFillClass(val)}` : ''}
                     onClick={() => { setDirtyFields(prev => new Set(prev).add('session_status')); setWo(w => w ? { ...w, session_status: val } : w) }}
-                    style={{ padding: '7px 18px', borderRadius: 20, fontSize: 11, fontFamily: 'Inter', fontWeight: 700, cursor: readOnly ? 'default' : 'pointer', background: on ? c : 'transparent', color: on ? (val === 'open_hours' ? 'var(--c-bg)' : 'var(--c-bg)') : 'var(--c-fg-2)', transition: 'all 0.15s' }}>
+                    style={{ cursor: readOnly ? 'default' : 'pointer' }}>
                     {lbl}
                   </button>
                 )
@@ -1968,21 +1971,24 @@ export function WorkOrderPopup({
             {!isBlock && (
             <div style={{ display: 'grid', gridTemplateColumns: '0.85fr 1fr', gap: 20, alignItems: 'stretch' }}>
 
-              {/* Left — session type + billing, in a defined panel */}
-              <div style={{ background: 'var(--c-bg)', borderRadius: 8, padding: 16, display: 'flex', flexDirection: 'column', gap: 18 }}>
+              {/* Left — session type + meta + notes. NO container of its own:
+                  the wells carve into the sheet directly. It used to be a
+                  c-bg box sitting inside the sheet, which put a surface between
+                  panel and control for no reason (§8: panel → control, nothing
+                  between). */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                 <div>
                   <div style={{ ...metaLabel, marginBottom: 8 }}>Session Type</div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {SESSION_TYPES.map(([val, lbl]) => {
-                      const on = wo.session_type === val
-                      return (
-                        <button key={val} type="button" disabled={readOnly}
-                          onClick={() => { setDirtyFields(prev => new Set(prev).add('session_type')); setWo(w => w ? { ...w, session_type: val } : w) }}
-                          style={{ padding: '6px 14px', borderRadius: 6, fontSize: 11, fontFamily: 'Inter', fontWeight: 600, cursor: readOnly ? 'default' : 'pointer', background: on ? 'var(--c-wash2)' : 'transparent', color: on ? 'var(--c-fg)' : 'var(--c-fg-2)' }}>
-                          {lbl}
-                        </button>
-                      )
-                    })}
+                  {/* ONE housing (§8) — was three loose pills. */}
+                  <div className="c-seg c-seg-wrap">
+                    {SESSION_TYPES.map(([val, lbl]) => (
+                      <button key={val} type="button" disabled={readOnly}
+                        className={wo.session_type === val ? 'c-on' : ''}
+                        onClick={() => { setDirtyFields(prev => new Set(prev).add('session_type')); setWo(w => w ? { ...w, session_type: val } : w) }}
+                        style={{ cursor: readOnly ? 'default' : 'pointer' }}>
+                        {lbl}
+                      </button>
+                    ))}
                   </div>
                 </div>
                 {/* ONE SLIM ROW (§8 IdWell). Invoice #, PO # and Food budget were
@@ -2191,11 +2197,12 @@ export function WorkOrderPopup({
               const lbl: React.CSSProperties = { fontSize: 10, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.11em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }
               const bInp: React.CSSProperties = { background: 'var(--c-bg)', borderRadius: 14, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13, padding: '0 14px', height: 40, outline: 'none', width: '100%', boxSizing: 'border-box', boxShadow: 'inset 3px 3px 9px rgba(0,0,0,.34), inset -3px -3px 9px rgba(255,255,255,.03)' }
               const rowS: React.CSSProperties = { display: 'grid', gridTemplateColumns: '128px 1fr', gap: 10, alignItems: 'center' }
-              // Selected scope is PRESSED IN and filled, like every other toggle
-              // in the system — the accent tint it used is retired.
+              // §8: a segmented control is ONE housing. These were pairs of
+              // individually-raised pills sitting inside the already-raised batch
+              // panel — bubbles in bubbles. The housing is what says "these two
+              // are the choices for one field".
               const scopeBtn = (_on: boolean): React.CSSProperties => ({ cursor: 'pointer' })
-              // Selected segment is pressed in and filled — the standard toggle.
-              const scopeCls = (on: boolean) => `c-soft c-soft-sm c-control ${on ? 'c-on c-pressed' : 'c-raised'}`
+              const scopeCls = (on: boolean) => (on ? 'c-on' : '')
               // One checkbox + label per field; unticked fields are never written,
               // so a blank input can't wipe a column by accident.
               const check = (k: BatchField, text: string) => (
@@ -2210,8 +2217,10 @@ export function WorkOrderPopup({
                   <div style={rowS}>
                     <span style={lbl}>Apply to</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <button type="button" onClick={() => setBatchScope('all')} className={scopeCls(batchScope === 'all')} style={scopeBtn(batchScope === 'all')}>All days</button>
-                      <button type="button" onClick={() => setBatchScope('range')} className={scopeCls(batchScope === 'range')} style={scopeBtn(batchScope === 'range')}>Date range</button>
+                      <div className="c-seg c-seg-tiny">
+                        <button type="button" onClick={() => setBatchScope('all')} className={scopeCls(batchScope === 'all')} style={scopeBtn(batchScope === 'all')}>All days</button>
+                        <button type="button" onClick={() => setBatchScope('range')} className={scopeCls(batchScope === 'range')} style={scopeBtn(batchScope === 'range')}>Date range</button>
+                      </div>
                       {batchScope === 'range' && (
                         <>
                           <input type="date" value={batchFrom} onChange={e => setBatchFrom(e.target.value)} style={{ ...bInp, width: 140 }} />
@@ -2259,8 +2268,10 @@ export function WorkOrderPopup({
                   <div style={rowS}>
                     {check('rate', 'Rate')}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: batchOn.rate ? 1 : 0.45 }}>
-                      <button type="button" disabled={!batchOn.rate} onClick={() => setBatchVals(v => ({ ...v, rateType: 'hour' }))} className={scopeCls(batchVals.rateType === 'hour')} style={scopeBtn(batchVals.rateType === 'hour')}>/ hr</button>
-                      <button type="button" disabled={!batchOn.rate} onClick={() => setBatchVals(v => ({ ...v, rateType: 'day' }))} className={scopeCls(batchVals.rateType === 'day')} style={scopeBtn(batchVals.rateType === 'day')}>/ day</button>
+                      <div className="c-seg c-seg-tiny">
+                        <button type="button" disabled={!batchOn.rate} onClick={() => setBatchVals(v => ({ ...v, rateType: 'hour' }))} className={scopeCls(batchVals.rateType === 'hour')} style={scopeBtn(batchVals.rateType === 'hour')}>/ hr</button>
+                        <button type="button" disabled={!batchOn.rate} onClick={() => setBatchVals(v => ({ ...v, rateType: 'day' }))} className={scopeCls(batchVals.rateType === 'day')} style={scopeBtn(batchVals.rateType === 'day')}>/ day</button>
+                      </div>
                       <input value={batchVals.rate} disabled={!batchOn.rate} onChange={e => setBatchVals(v => ({ ...v, rate: e.target.value }))} placeholder={batchVals.rateType === 'day' ? '$0/day' : '$0/hr'} style={{ ...bInp, maxWidth: 130 }} />
                     </div>
                   </div>
@@ -2279,8 +2290,10 @@ export function WorkOrderPopup({
                   <div style={rowS}>
                     {check('staff', 'Staff')}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: batchOn.staff ? 1 : 0.45 }}>
-                      <button type="button" disabled={!batchOn.staff} onClick={() => setBatchVals(v => ({ ...v, staffRole: 'engineer' }))} className={scopeCls(batchVals.staffRole === 'engineer')} style={scopeBtn(batchVals.staffRole === 'engineer')}>1ST</button>
-                      <button type="button" disabled={!batchOn.staff} onClick={() => setBatchVals(v => ({ ...v, staffRole: 'assistant' }))} className={scopeCls(batchVals.staffRole === 'assistant')} style={scopeBtn(batchVals.staffRole === 'assistant')}>2ND</button>
+                      <div className="c-seg c-seg-tiny">
+                        <button type="button" disabled={!batchOn.staff} onClick={() => setBatchVals(v => ({ ...v, staffRole: 'engineer' }))} className={scopeCls(batchVals.staffRole === 'engineer')} style={scopeBtn(batchVals.staffRole === 'engineer')}>1ST</button>
+                        <button type="button" disabled={!batchOn.staff} onClick={() => setBatchVals(v => ({ ...v, staffRole: 'assistant' }))} className={scopeCls(batchVals.staffRole === 'assistant')} style={scopeBtn(batchVals.staffRole === 'assistant')}>2ND</button>
+                      </div>
                       <input list="wo-eng-roster" value={batchVals.staffName} disabled={!batchOn.staff} onChange={e => setBatchVals(v => ({ ...v, staffName: e.target.value }))} placeholder="Name (blank = unassign)" style={{ ...bInp, maxWidth: 220 }} />
                     </div>
                   </div>

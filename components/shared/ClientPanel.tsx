@@ -331,26 +331,32 @@ export function ClientPanel({
 
       {/* SRS + COD / Label-Billing toggle row */}
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
-        <button
-          type="button"
-          disabled={readOnly}
-          onClick={() => { if (readOnly) return; if (!value.is_srs) setShowSrsModal(true); else set('is_srs', false) }}
-          style={{
-            padding: '7px 16px', borderRadius: 6,
-            cursor: readOnly ? 'default' : 'pointer', fontFamily: 'Inter', fontSize: 11, fontWeight: 700,
-            background: value.is_srs ? 'rgba(255,59,59,0.12)' : 'transparent',
-            color: value.is_srs ? '#ff3b3b' : 'var(--c-fg-3)', letterSpacing: '0.08em', transition: 'all 0.15s',
-          }}
-        >SRS</button>
+        {/* SRS is a FLAG, not one of the payment options — it stays its own
+            control rather than joining the housing beside it, because a housing
+            means "pick one of these" and SRS is orthogonal to COD/Billing.
+            Two controls side by side is fine; §8 bars raised INSIDE raised. */}
+        <div className="c-seg">
+          <button
+            type="button"
+            disabled={readOnly}
+            className={value.is_srs ? 'c-on c-fill-hot' : ''}
+            onClick={() => { if (readOnly) return; if (!value.is_srs) setShowSrsModal(true); else set('is_srs', false) }}
+            style={{ padding: '6px 18px', cursor: readOnly ? 'default' : 'pointer' }}
+          >SRS</button>
+        </div>
 
-        <div style={{ display: 'flex', gap: 2, background: 'var(--c-bg)', borderRadius: 8, padding: 3 }}>
+        {/* ONE housing (§8) — was a flat box holding two flat buttons, which read
+            as neither a control nor a container. Selected segment presses in. */}
+        <div className="c-seg">
           {(['COD', 'billing'] as const).map(m => (
-            <button key={m} type="button" disabled={readOnly} onClick={() => { if (readOnly) return; if (m !== value.payment_type) clearClient(); set('payment_type', m) }} style={{
-              padding: '7px 28px', borderRadius: 6, cursor: readOnly ? 'default' : 'pointer',
-              fontFamily: 'Inter', fontSize: 11, fontWeight: 500,
-              background: value.payment_type === m ? 'var(--c-wash)' : 'transparent',
-              color: value.payment_type === m ? 'var(--c-fg)' : 'var(--c-fg-2)', transition: 'all 0.15s', letterSpacing: '0.04em',
-            }}>{m === 'COD' ? 'COD' : 'Label/Billing'}</button>
+            <button
+              key={m}
+              type="button"
+              disabled={readOnly}
+              className={value.payment_type === m ? 'c-on' : ''}
+              onClick={() => { if (readOnly) return; if (m !== value.payment_type) clearClient(); set('payment_type', m) }}
+              style={{ padding: '6px 22px', cursor: readOnly ? 'default' : 'pointer' }}
+            >{m === 'COD' ? 'COD' : 'Label/Billing'}</button>
           ))}
         </div>
       </div>
@@ -592,13 +598,23 @@ export function ClientPanel({
       )}
 
       {/* COD method — only shown when COD toggle active */}
+      {/* COD method — Was a flat grey box left over from before the carved
+          system. Now the standard well, with its label inside as an IdWell
+          prefix (§8): the field holds one short value, so a stacked label above
+          it was a wasted line. */}
       {value.payment_type === 'COD' && (
-        <div>
-          <label style={fL}>COD Payment Method</label>
-          <select value={value.cod_method} disabled={readOnly} onChange={e => set('cod_method', e.target.value)} style={inp}>
-            <option value="">Select method...</option>
+        <div className="c-well">
+          <span className="c-pfx">Method</span>
+          <select
+            value={value.cod_method}
+            disabled={readOnly}
+            onChange={e => set('cod_method', e.target.value)}
+            style={{ cursor: readOnly ? 'default' : 'pointer', appearance: 'none' }}
+          >
+            <option value="">Select…</option>
             {COD_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
+          <span className="c-ico" aria-hidden>▾</span>
         </div>
       )}
 

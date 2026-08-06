@@ -285,6 +285,16 @@ besides raised controls), `SectionHeader` (extend the existing component, don't 
 
 Existing `SectionHeader` and `StatusBadge` components: extend, never duplicate.
 
+**Segmented controls (RULING 2026-08-05):** A segmented control is ONE raised housing
+containing its options; the selected option is pressed-in + filled. Options are NEVER
+individual raised elements. Raised elements never nest inside other raised elements —
+containment depth is panel → control, nothing between.
+(Failure this fixes: every option group on the WO popup was built as separate raised pills
+sitting inside a raised box — "bubbles in bubbles". The housing is what says "these are the
+choices for one field"; loose pills say "here are several unrelated buttons".)
+Where the field IS status, the pressed segment fills with its STATUS colour rather than
+ink/ivory — sanctioned under §5, because there the colour is the meaning.
+
 **`IdWell` (RULING 2026-08-02):** short identifier fields (invoice #, PO #, WO #, and any
 field whose content is ~a handful of characters) render as wells with the label INSIDE as
 a micro-caps prefix ("INV # ___"), and they SHARE rows at natural widths — never a full-width
