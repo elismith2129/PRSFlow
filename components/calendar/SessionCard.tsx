@@ -35,7 +35,13 @@ export type Sessionish = {
   to_time?: string | null
   invoice_num?: string | number | null
   session_type?: string | null
+  status?: string | null
 }
+
+// Tour / Tech / Open Hours are BLOCK events, not sessions: no work order, no
+// client, nothing to collect. They must never show a payment element — a red COD
+// bar on a tech-work block is a false alarm about money that doesn't exist.
+const BLOCK_STATUSES = ['tour', 'tech', 'open_hours']
 
 /** "9:00 PM" → "9P", "9:30 PM" → "9:30P". Was duplicated byte-for-byte in the
  *  calendar and the dashboard. */
@@ -93,7 +99,12 @@ export function SessionCardBody({
    *  repeated payload copies on long multi-day bars. */
   children?: React.ReactNode
 }) {
+  const isBlock = BLOCK_STATUSES.includes(booking.status ?? '')
   const isBilling = booking.payment_type === 'billing'
+  // Kept separate from isBilling on purpose. Folding blocks into "billing" would
+  // have suppressed the COD bar correctly but also flipped which name leads,
+  // which is a different decision that happens to share a boolean.
+  const showPayment = !isBlock && !isBilling
   const { showFooter, showClient, showTimes, codSliver } = cardTiers(height)
 
   // Billing leads with the artist; COD leads with who's paying.
@@ -156,7 +167,7 @@ export function SessionCardBody({
         </div>
       )}
 
-      {!isBilling && (
+      {showPayment && (
         <div className={`c-ev-cod${codSliver ? ' c-ev-cod-sliver' : ''}`}>
           {codSliver ? '' : (codLabel ? `COD ${codLabel}` : 'COD')}
         </div>

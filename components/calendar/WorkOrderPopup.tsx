@@ -2863,6 +2863,10 @@ export function WorkOrderPopup({
           <button onClick={() => handleCancel()} disabled={saving} className="c-soft c-control c-raised" style={{ cursor: saving ? 'default' : 'pointer', ...(isMobile ? { flex: '1 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
             Cancel
           </button>
+          {/* Blocks (Tour / Tech / Open Hours) have no work order to complete —
+              they're calendar occupancy, not billable work. The mobile twin of
+              this button is already inside the !isBlock branch above. */}
+          {!isBlock && (
           <button
             onClick={handleComplete}
             disabled={completing}
@@ -2870,6 +2874,7 @@ export function WorkOrderPopup({
           >
             {completing ? (isCompleted ? 'Re-opening…' : 'Completing…') : isCompleted ? 'Re-open WO' : 'Complete WO'}
           </button>
+          )}
           <button onClick={handleClose} disabled={saving} className="c-btn c-control c-raised-primary" style={{ cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '2 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
             {saving ? 'Saving…' : 'Close & Save'}
           </button>
