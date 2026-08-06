@@ -1789,7 +1789,11 @@ export function WorkOrderPopup({
               <span className="c-arch" style={{ fontSize: 15 }}>
                 Work Order{wo.wo_number ? ` · ${wo.wo_number}` : ''}
               </span>
-              <StatusBadge status={wo.status} />
+              {/* Open / Completed is an INTERNAL state — never on the client's
+                  printed WO. data-no-print is the existing hook for that. */}
+              <span data-no-print="">
+                <StatusBadge status={wo.status} />
+              </span>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               {woId && (

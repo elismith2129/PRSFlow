@@ -491,7 +491,9 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 
   /* FLATTEN THE UI. A printed WO is a document a client receives, not a
      screenshot of an app — so pills, chips, badges and carved surfaces lose
-     their fills, radii and depth and print as plain text on white. */
+     their fills, radii and depth and print as plain text on white.
+     (The WO's own Open/Completed badge is internal and is excluded from print
+     entirely via data-no-print, not flattened.) */
   [data-wo-portal] .c-pill,
   [data-wo-portal] .c-count,
   [data-wo-portal] .c-returning,
