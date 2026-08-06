@@ -53,9 +53,16 @@ const COL_W = 120  // minimum day-column width; forces horizontal scroll when co
 // F-18/F-19 bar. So the floor follows the content rather than the content
 // following the floor. Level 1 = 80px rows (77px chips) is the new "tight".
 const ZOOM_ROW_H = [80, 96, 112, 132, 156]
-// The measured anatomy height. Used as the floor for fit-all so squeezing many
-// rooms into the viewport can't silently clip the strips off the bottom.
+// The measured anatomy height. Used as the floor for fit-all and for the mobile
+// row height, so squeezing many rooms into the viewport can't silently clip the
+// strips off the bottom.
 const CHIP_MIN_H = 79
+// The height at which the FULL anatomy still fits, measured with the tightened
+// payload padding: 5 + name 16 + client 12 + times 12 + footer 16 + COD 14 = 75.
+// Deliberately BELOW CHIP_MIN_H − 3: a level-1 row (80px) yields a 77px chip, and
+// a threshold at 76+ would have put every ordinary single-session card one pixel
+// into the reduced ladder.
+const CHIP_FULL_H = 74
 
 // COLUMN WIDTH — the horizontal zoom, in px per day.
 // This replaced the Week / 2 Wks / Month buttons. Those were only ever three
@@ -282,10 +289,24 @@ function BookingBlock({
   const slotH = rowH / numLanes
   const blockTop = lane * slotH + 2
   const blockHeight = slotH - 3
-  // NO CONTENT TIERS (F-18/F-19). The micro/compact branches are gone: every
-  // field renders at every size and truncates with an ellipsis. Hiding a field
-  // at small sizes is now barred outright, because §13 makes the card the sole
-  // carrier of its own information — the TV wall has no hover to fall back on.
+  // ── Content ladder ────────────────────────────────────────────────────────
+  // No tiers by WIDTH (F-18/F-19) — a narrow column truncates, it never hides.
+  // But height is different: two or three sessions in one room on one day split
+  // the cell between them, and the row height can't grow to compensate without
+  // permanently deforming the grid. So a squeezed card sheds from the bottom up,
+  // in reverse order of what you'd need at a glance:
+  //   full  — name · client · times · footer(invoice+staff) · COD
+  //   ≥50   — name · times · COD          (footer goes first: invoice and staff
+  //                                        are lookup data, and both are on hover)
+  //   ≥32   — name · COD                  (COD outlives times: money to collect
+  //                                        is the one thing you can't recover by
+  //                                        looking at the card later)
+  //   <32   — name                        (the hero always survives)
+  // Normal single-session cells are always `full`; this only engages on overlap.
+  const showClient = blockHeight >= CHIP_FULL_H
+  const showFooter = blockHeight >= CHIP_FULL_H
+  const showTimes  = blockHeight >= 50
+  const showCod    = blockHeight >= 32
   const codLabel = booking.cod_method === 'Credit Card' ? 'CC' : (booking.cod_method ?? '').toUpperCase()
   // Footer identifier: INVOICE ONLY. The WO number came off the card — it's an
   // internal key nobody reads off a wall, and carrying both made the strip
@@ -342,7 +363,8 @@ function BookingBlock({
           space the two bottom strips don't. */}
       <div style={{
         flex: '1 1 auto', minHeight: 0, minWidth: 0, maxWidth: '100%',
-        padding: '4px 8px 2px', overflow: 'hidden',
+        padding: showClient ? '3px 8px 2px' : '2px 8px 1px', overflow: 'hidden',
+        display: 'flex', flexDirection: 'column', justifyContent: 'center',
         position: 'relative', zIndex: 1,
       }}>
       {/* Repeated copies of the payload every 7 days along a long bar, so the
@@ -365,13 +387,13 @@ function BookingBlock({
         </div>
       ))}
       <div style={{
-        color: nameColor, fontSize: isMobile ? 11 : 12.5,
+        color: nameColor, fontSize: isMobile ? 11 : (showTimes ? 12.5 : 11),
         fontFamily: "'Archivo Black', sans-serif", lineHeight: 1.3,
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>
         {primaryName}
       </div>
-      {labelLine && (
+      {labelLine && showClient && (
         <div className="c-ev-meta" style={{
           fontSize: 10, fontFamily: 'Inter', lineHeight: 1.2,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -379,7 +401,7 @@ function BookingBlock({
           {labelLine}
         </div>
       )}
-      {timeStr && (
+      {timeStr && showTimes && (
         <div className="c-ev-2 c-mono" style={{
           fontSize: 9.5, lineHeight: 1.25,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -389,8 +411,8 @@ function BookingBlock({
       )}
       </div>
 
-      {/* ── 2. FOOTER BAND ── WO#/invoice# left, staff right. */}
-      {(woTag || staffTag) && (
+      {/* ── 2. FOOTER BAND ── invoice# left, staff right. First to go. */}
+      {showFooter && (woTag || staffTag) && (
         <div className="c-ev-foot">
           {woTag && <span className="c-ev-wo c-mono">{woTag}</span>}
           {staffTag && <span className="c-ev-staff">{staffTag}</span>}
@@ -400,7 +422,7 @@ function BookingBlock({
       {/* ── 3. COD STRIP ── bottom edge, COD only. Billing shows nothing at all:
           silence is the billing signal, so an "on account" label would be noise
           on the large majority of cards. */}
-      {!isBilling && (
+      {!isBilling && showCod && (
         <div className="c-ev-cod">{codLabel ? `COD ${codLabel}` : 'COD'}</div>
       )}
     </div>
@@ -1530,17 +1552,13 @@ function CalendarPageInner() {
                 b.start_date <= winEnd && b.end_date >= winStart
               )
               const laneMap = assignLanes(roomBookings)
-              // ROWS GROW WITH OVERLAP. Lanes used to divide a fixed row height,
-              // so a second session on the same day halved every chip and the
-              // anatomy collapsed to just the footer strip. Splitting the height
-              // is a way of hiding fields, which §10b bars — so the ROW gets
-              // taller instead and every card keeps its full anatomy.
-              const maxLanes = laneMap.size
-                ? Math.max(...Array.from(laneMap.values(), v => v.numLanes))
-                : 1
-              const roomRowH = isRoomCollapsed
-                ? COLLAPSED_ROOM_H
-                : Math.max(rowH, maxLanes * CHIP_MIN_H)
+              // ROW HEIGHT IS FIXED. Growing the row to fit stacked sessions was
+              // tried and rejected: a doubled row is permanent visual damage to
+              // the grid's rhythm, paid every day of the year, to solve something
+              // that happens occasionally and never exceeds three. Stacked cards
+              // share the normal cell and shed content instead — see the tier
+              // ladder in BookingBlock.
+              const roomRowH = isRoomCollapsed ? COLLAPSED_ROOM_H : rowH
               return (
                 <div key={room} className={roomIdx % 2 === 0 ? 'c-calrow c-calrow-alt' : 'c-calrow'} style={{
                   display: 'flex',
