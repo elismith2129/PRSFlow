@@ -489,6 +489,37 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   [data-wo-portal] [style*="marginBottom: 12"],
   [data-wo-portal] [style*="marginBottom: 8"]  { margin-bottom: 3px !important; }
 
+  /* FLATTEN THE UI. A printed WO is a document a client receives, not a
+     screenshot of an app — so pills, chips, badges and carved surfaces lose
+     their fills, radii and depth and print as plain text on white. */
+  [data-wo-portal] .c-pill,
+  [data-wo-portal] .c-count,
+  [data-wo-portal] .c-returning,
+  [data-wo-portal] [class*="c-fill-"] {
+    background: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    color: #111 !important;
+    letter-spacing: 0 !important;
+    font-weight: 600 !important;
+  }
+  [data-wo-portal] .c-sheet,
+  [data-wo-portal] .c-panel,
+  [data-wo-portal] .c-band,
+  [data-wo-portal] .c-well,
+  [data-wo-portal] .c-inset2,
+  [data-wo-portal] .c-seg,
+  [data-wo-portal] .c-raised,
+  [data-wo-portal] .c-raised-primary,
+  [data-wo-portal] .c-raised-chip {
+    background: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  /* Status dots carry no meaning once colour is gone. */
+  [data-wo-portal] .c-dot { display: none !important; }
+
   /* Studio time scroll container: show all rows in print/PDF, no clipping */
   [data-st-scroll] { max-height: none !important; overflow: visible !important; }
 
