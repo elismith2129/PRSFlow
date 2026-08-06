@@ -10,8 +10,8 @@ import { createWorkOrderForBooking, bookingShouldHaveWorkOrder } from '@/lib/cre
 import { deleteSessionAndWO } from '@/lib/deleteSession'
 import { dateRange } from '@/lib/time'
 import { useIsMobile } from '@/hooks/useIsMobile'
-import { SessionCardBody, CARD_FULL_H, initials } from '@/components/calendar/SessionCard'
-import { statusFillClass, StatusDot, StatusPill } from '@/components/carved'
+import { SessionCardBody, CARD_FULL_H, initials, sessionFillClass } from '@/components/calendar/SessionCard'
+import { StatusDot, StatusPill } from '@/components/carved'
 
 // ─── LOCATIONS ───────────────────────────────────────────────────────────────
 
@@ -29,6 +29,9 @@ const LOCATION_CODES: Record<string, string> = {
 
 // Booking status -> carved status slot (§5). The calendar is the one surface
 // where every slot appears, so this is the canonical mapping.
+// Only the hover card's StatusPill still needs this — it takes a status NAME,
+// not a fill class. Chip colour comes from sessionFillClass (one decision, one
+// place). Do not reintroduce a second status→colour map here.
 const STATUS_SLOT: Record<string, string> = {
   confirmed:  'confirmed',
   tentative:  'tentative',
@@ -247,7 +250,6 @@ function BookingBlock({
   // for the hover card.
   const spanDays = dur
 
-  const slot = STATUS_SLOT[booking.status] ?? 'confirmed'
   const isCancelled = booking.status === 'cancelled'
   const isBilling = booking.payment_type === 'billing'
 
@@ -307,7 +309,7 @@ function BookingBlock({
         onHover(booking, fmt(addDays(visStart, idx)), r, e.clientX)
       } : undefined}
       onMouseLeave={onHoverEnd}
-      className={`c-ev c-control c-raised-chip ${statusFillClass(slot)}${isCancelled ? ' c-ev-cancelled' : ''}`}
+      className={`c-ev c-control c-raised-chip ${sessionFillClass(booking.status)}${isCancelled ? ' c-ev-cancelled' : ''}`}
       style={{
         position: 'absolute', top: blockTop, height: blockHeight,
         minHeight: isMobile ? 44 : undefined,
@@ -501,7 +503,6 @@ function DayView({
 
                   {/* Booking blocks */}
                   {cards.map(b => {
-                    const slot = STATUS_SLOT[b.status] ?? 'confirmed'
                     const isCancelled = b.status === 'cancelled'
                     // Height is fixed here — the day view has room, so the card
                     // always renders its full anatomy.
@@ -509,7 +510,7 @@ function DayView({
                       <div
                         key={b.id}
                         onClick={() => onOpenEdit(b)}
-                        className={`c-ev c-control c-raised-chip ${statusFillClass(slot)}${isCancelled ? ' c-ev-cancelled' : ''}`}
+                        className={`c-ev c-control c-raised-chip ${sessionFillClass(b.status)}${isCancelled ? ' c-ev-cancelled' : ''}`}
                         style={{ padding: 0, cursor: 'pointer', minHeight: CARD_FULL_H }}
                       >
                         <SessionCardBody
@@ -661,13 +662,12 @@ function StudioView({
                 // derivation lives in SessionCardBody now — this view used to
                 // build a different display name ("Label / Artist") from the
                 // grid's, which is exactly the drift the shared card ends.
-                const slot = STATUS_SLOT[b.status] ?? 'confirmed'
                 const isCancelled = b.status === 'cancelled'
                 return (
                   <div
                     key={b.id}
                     onClick={e => { e.stopPropagation(); onOpenEdit(b) }}
-                    className={`c-ev c-control c-raised-chip ${statusFillClass(slot)}${isCancelled ? ' c-ev-cancelled' : ''}`}
+                    className={`c-ev c-control c-raised-chip ${sessionFillClass(b.status)}${isCancelled ? ' c-ev-cancelled' : ''}`}
                     style={{ marginBottom: 3, padding: 0, cursor: 'pointer', minHeight: CARD_FULL_H }}
                   >
                     <SessionCardBody

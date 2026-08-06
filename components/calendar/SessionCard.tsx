@@ -24,6 +24,7 @@
 // glance, and the COD bar shrinks to a 4px sliver rather than leaving — the red
 // edge is the signal; the method is one hover away.
 import React from 'react'
+import { statusFillClass } from '@/components/carved'
 
 export type Sessionish = {
   payment_type?: string | null
@@ -42,6 +43,23 @@ export type Sessionish = {
 // client, nothing to collect. They must never show a payment element — a red COD
 // bar on a tech-work block is a false alarm about money that doesn't exist.
 const BLOCK_STATUSES = ['tour', 'tech', 'open_hours']
+
+/** The fill class for a session's status — the ONE place that decision is made.
+ *
+ *  The dashboard used to decide it locally with
+ *      status === 'tentative' ? tentative : booking ? 'confirmed' : null
+ *  which sent every other status — tech, tour, open hours, CANCELLED — down the
+ *  'confirmed' branch and painted them green. A tech-work block showing as a
+ *  confirmed session is a scheduling error waiting to happen, so this belongs
+ *  next to the card that renders it, not in each caller.
+ *
+ *  Mapping (via toCarvedStatus): confirmed→booked green · tentative→warm amber ·
+ *  cancelled→hot red · tour→uncon blue · tech→dead grey · open_hours→dead grey.
+ *  Unknown statuses fall back to confirmed rather than grey, matching what the
+ *  calendar has always done for rows with unexpected data. */
+export function sessionFillClass(status: string | null | undefined): string {
+  return statusFillClass(status || 'confirmed')
+}
 
 /** "9:00 PM" → "9P", "9:30 PM" → "9:30P". Was duplicated byte-for-byte in the
  *  calendar and the dashboard. */

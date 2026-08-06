@@ -8,7 +8,7 @@ import { deleteSessionAndWO } from '@/lib/deleteSession'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { Row, SoftButton, StatusDot, NewLeadPulse, statusFillClass } from '@/components/carved'
-import { SessionCardBody, initials } from '@/components/calendar/SessionCard'
+import { SessionCardBody, initials, sessionFillClass } from '@/components/calendar/SessionCard'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { ASSIGN_OPTIONS, resolveAssignTo, nameForId, visibleTabsForRole, idsForTab, fetchTasks, fetchMyTasks, fetchMyCompletedTasks, isOwnOnlyRole } from '@/lib/tasks'
@@ -894,7 +894,9 @@ export default function DashboardPage() {
                 const booking = bookings.find(b =>
                   b.location === room.venue && b.studio === room.studio
                 )
-                const slot = booking?.status === 'tentative' ? 'tentative' : booking ? 'confirmed' : null
+                // Status → colour is decided in ONE place (sessionFillClass).
+                // This used to be a local ternary that only knew 'tentative',
+                // so tech, tour, open hours and cancelled all came out green.
                 // A BOOKED room card is the calendar's chip — same classes, same
                 // fill, same body. It used to be a carved pool (dark alpha wash,
                 // normal ink) while the calendar was a raised chip (bright fill,
@@ -905,7 +907,7 @@ export default function DashboardPage() {
                   <div
                     key={room.label}
                     onClick={() => openBookingEdit(booking)}
-                    className={`c-ev c-control c-raised-chip ${statusFillClass(slot!)}`}
+                    className={`c-ev c-control c-raised-chip ${sessionFillClass(booking.status)}`}
                     style={{
                       height: isMobile ? undefined : ROOM_CARD_H,
                       minHeight: isMobile ? 84 : undefined,
