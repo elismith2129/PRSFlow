@@ -41,13 +41,24 @@ const STATUS_SLOT: Record<string, string> = {
 
 const LABEL_W = 148
 const COL_W = 120  // minimum day-column width; forces horizontal scroll when cols × days > viewport
-// Zoom steps, +15% over the pre-F-18 ladder (60/80/88/110/132) — Eli's call that
-// cells run wider across the board. Level 0 = fit-all, which now bottoms out at
-// the MIN_COL_W floor rather than shrinking to ~44 and squeezing content out.
-const ZOOM_FIXED = [69, 92, 101, 127, 152]
-// No day column may ever be narrower than this, at any view or zoom. This floor
-// is what makes "every field always renders" (F-18/2) viable.
-const MIN_COL_W = 60
+// ROW HEIGHTS in px for zoom levels 1–5 (level 0 = fit-all). VERTICAL ONLY.
+// Renamed from ZOOM_ROW_H: the old name said nothing about the axis, and it was
+// mistaken for a column-width ladder — bumping it made every row taller instead
+// of making cells wider. Column width is COL_FLOOR below.
+const ZOOM_ROW_H = [60, 80, 88, 110, 132]
+
+// COLUMN WIDTH floors, per view. HORIZONTAL.
+// colW = max(floor, usableW / days) — so a floor only has an effect when it is
+// WIDER than fit-to-width. The old floors (44/60/80) sat below the natural fit on
+// any normal screen, which is why raising them changed nothing visible. These are
+// set above it deliberately: cells run wider and the grid scrolls horizontally,
+// which it is already built to do.
+const COL_FLOOR = {
+  week: 150,   // 7 days  -> 1050px
+  twoWks: 120, // 14 days -> 1680px, scrolls on most screens
+  other: 100,  // month / custom ranges
+  mobile: 76,
+}
 const BUFFER_WEEKS = 2 // weeks of buffer rendered on each side for endless horizontal scroll
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -313,7 +324,7 @@ function BookingBlock({
   // Only bars wider than a screenful measure at all, so DOM reads stay cheap.
   //
   // No content tiers (F-18/2): every field renders at every width; tight chips
-  // ellipsis. The MIN_COL_W floor is what makes that viable.
+  // ellipsis. The COL_FLOOR widths are what make that viable.
   const chipRef = useRef<HTMLDivElement>(null)
   const [payloadShift, setPayloadShift] = useState(0)
   useLayoutEffect(() => {
@@ -895,7 +906,7 @@ function CalendarPageInner() {
   const [dayViewDate, setDayViewDate] = useState<Date>(() => new Date())
   const [reloadKey, setReloadKey] = useState(0)
   const [woWarning, setWoWarning] = useState<string | null>(null)
-  const [zoomLevel, setZoomLevel] = useState(0) // 0 = fit-all; 1–6 = ZOOM_FIXED steps
+  const [zoomLevel, setZoomLevel] = useState(0) // 0 = fit-all; 1–6 = ZOOM_ROW_H steps
   const [gridH, setGridH] = useState(700)
   const [gridW, setGridW] = useState(1200)
   const gridRef = useRef<HTMLDivElement>(null)
@@ -934,10 +945,10 @@ function CalendarPageInner() {
   // Column width fills the viewport for the canonical window; month uses a smaller fixed size
   const usableW = Math.max(gridW - labelW, isMobile ? 200 : 400)
   const colW = view === 'week'
-    ? Math.max(isMobile ? MIN_COL_W : 92, Math.floor(usableW / 7))
+    ? Math.max(isMobile ? COL_FLOOR.mobile : COL_FLOOR.week, Math.floor(usableW / 7))
     : view === '2wks'
-    ? Math.max(MIN_COL_W, Math.floor(usableW / 14))
-    : Math.max(MIN_COL_W, Math.floor(usableW / totalDays))
+    ? Math.max(isMobile ? COL_FLOOR.mobile : COL_FLOOR.twoWks, Math.floor(usableW / 14))
+    : Math.max(isMobile ? COL_FLOOR.mobile : COL_FLOOR.other, Math.floor(usableW / totalDays))
 
   // ── Hover card (F-11) ─────────────────────────────────────────────────────
   // Built entirely from data already on the page (projection + the Option B
@@ -1110,7 +1121,7 @@ function CalendarPageInner() {
 
   // Zoom: keyboard (+/-/0) and Cmd+trackpad scroll
   useEffect(() => {
-    const MAX = ZOOM_FIXED.length
+    const MAX = ZOOM_ROW_H.length
     function onKey(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if (e.key === '=' || e.key === '+') { e.preventDefault(); setZoomLevel(z => Math.min(z + 1, MAX)) }
@@ -1235,7 +1246,7 @@ function CalendarPageInner() {
   ))
   // Mobile uses a fixed comfortable row height (zoom is hidden) so single-lane
   // booking chips clear the 44px tap target; the grid scrolls vertically instead.
-  const rowH = isMobile ? 56 : (zoomLevel === 0 ? fitRowH : ZOOM_FIXED[zoomLevel - 1])
+  const rowH = isMobile ? 56 : (zoomLevel === 0 ? fitRowH : ZOOM_ROW_H[zoomLevel - 1])
 
   // (Step 8: the old cal_form_draft restore died with BookingForm.)
 
@@ -1812,9 +1823,9 @@ function CalendarPageInner() {
             style={{ fontSize: 9, fontFamily: 'Inter', color: zoomLevel === 0 ? 'var(--c-fg)' : 'var(--c-fg-2)', minWidth: 26, textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}
           >{zoomLevel === 0 ? 'Fit' : `${rowH}px`}</span>
           <button
-            onClick={() => setZoomLevel(z => Math.min(z + 1, ZOOM_FIXED.length))}
+            onClick={() => setZoomLevel(z => Math.min(z + 1, ZOOM_ROW_H.length))}
             title="Zoom in (+)"
-            style={{ padding: '4px 9px', fontSize: 14, lineHeight: 1, background: 'transparent', color: zoomLevel === ZOOM_FIXED.length ? 'var(--c-fg-3)' : 'var(--c-fg)', cursor: zoomLevel === ZOOM_FIXED.length ? 'default' : 'pointer' }}
+            style={{ padding: '4px 9px', fontSize: 14, lineHeight: 1, background: 'transparent', color: zoomLevel === ZOOM_ROW_H.length ? 'var(--c-fg-3)' : 'var(--c-fg)', cursor: zoomLevel === ZOOM_ROW_H.length ? 'default' : 'pointer' }}
           >+</button>
         </div>
         </div>{/* end mobile row 2 */}
