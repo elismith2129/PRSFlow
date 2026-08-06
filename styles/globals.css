@@ -1057,6 +1057,17 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-ev-meta { font-weight: 700; opacity: .85; }
 .c-ev.c-ev-cancelled, .c-ev.c-ev-cancelled * { color: var(--c-hot-text); }
 
+/* ── The session card body (§10b) ───────────────────────────────────────── */
+/* Container-agnostic on purpose. The calendar wraps it in a raised chip (.c-ev)
+   and the dashboard in a carved pool (.c-pool) — the CARD is the same object in
+   both, so its rules can't hang off either container's class. */
+.c-evbody {
+  display: flex; flex-direction: column;
+  height: 100%; min-width: 0; overflow: hidden;
+  color: var(--c-chip-ink);
+}
+.c-evbody * { color: var(--c-chip-ink); }
+
 /* ── Chip footer band + COD strip (§10b) ────────────────────────────────── */
 /* The footer is the chip's operational deck: WO#/invoice# left, staff right.
    It is a SHADE of the chip, not a second surface — rgba black over the status
@@ -1095,7 +1106,8 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 }
 /* Beats `.c-ev *` above on source order at equal specificity — pale text, since
    chip ink is unreadable on hot. */
-.c-ev .c-ev-cod, .c-ev .c-ev-cod * { color: var(--c-hot-text); }
+.c-ev .c-ev-cod, .c-ev .c-ev-cod *,
+.c-evbody .c-ev-cod, .c-evbody .c-ev-cod * { color: var(--c-hot-text); }
 
 /* Sliver — the COD bar with the words taken out, for cards sharing a cell with
    another session. The red edge is doing the work; the method is a detail you

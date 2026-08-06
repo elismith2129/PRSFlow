@@ -10,6 +10,7 @@ import { createWorkOrderForBooking, bookingShouldHaveWorkOrder } from '@/lib/cre
 import { deleteSessionAndWO } from '@/lib/deleteSession'
 import { dateRange } from '@/lib/time'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { SessionCardBody, CARD_FULL_H, initials } from '@/components/calendar/SessionCard'
 import { statusFillClass, StatusDot, StatusPill } from '@/components/carved'
 
 // ─── LOCATIONS ───────────────────────────────────────────────────────────────
@@ -41,28 +42,23 @@ const STATUS_SLOT: Record<string, string> = {
 
 const LABEL_W = 148
 const COL_W = 120  // minimum day-column width; forces horizontal scroll when cols × days > viewport
-// ROW HEIGHTS in px for zoom levels 1–5 (level 0 = fit-all). VERTICAL ONLY.
-// Renamed from ZOOM_ROW_H: the old name said nothing about the axis, and it was
-// mistaken for a column-width ladder — bumping it made every row taller instead
-// of making cells wider. Column width is the horizontal zoom below.
-// RAISED for the §10b card anatomy. The ladder used to start at 60, which was
-// the right floor when the chip was three text lines. It now carries a footer
-// band and a COD strip as well, and the anatomy measures ~76px:
-//   payload 46 (padding 6 + name 16 + client 12 + times 12) + footer 16 + COD 14.
-// Below that something has to be dropped, and dropping fields is exactly what
-// F-18/F-19 bar. So the floor follows the content rather than the content
-// following the floor. Level 1 = 80px rows (77px chips) is the new "tight".
-const ZOOM_ROW_H = [80, 96, 112, 132, 156]
-// The measured anatomy height. Used as the floor for fit-all and for the mobile
-// row height, so squeezing many rooms into the viewport can't silently clip the
-// strips off the bottom.
+// ROW HEIGHT — two modes, not a ladder. VERTICAL ONLY (column width is the
+// horizontal zoom, below; the two were confused once and bumping this made every
+// row taller instead of the cells wider).
+//
+// The old five-step ladder went because four steps were useless: 'Fit' and the
+// 80px step looked identical (the fit calculation was floored at one card's
+// height, so it never actually squeezed anything), and taller than 80 bought
+// nothing — the card's content is fixed, so extra height is just empty chip.
+// The only direction anyone wanted was SMALLER.
+//   'card'  — one card's natural height. The default. Never changes.
+//   'rooms' — divide the viewport by the visible room count so the whole
+//             calendar fits with no vertical scrolling; cards shed content
+//             through the ladder in SessionCardBody as they shrink.
+const ROW_H_CARD = 80
+type RowMode = 'card' | 'rooms'
+// Mobile row height — one full card, since mobile has no mode switch.
 const CHIP_MIN_H = 79
-// The height at which the FULL anatomy still fits, measured with the tightened
-// payload padding: 5 + name 16 + client 12 + times 12 + footer 16 + COD 14 = 75.
-// Deliberately BELOW CHIP_MIN_H − 3: a level-1 row (80px) yields a 77px chip, and
-// a threshold at 76+ would have put every ordinary single-session card one pixel
-// into the reduced ladder.
-const CHIP_FULL_H = 74
 
 // COLUMN WIDTH — the horizontal zoom, in px per day.
 // This replaced the Week / 2 Wks / Month buttons. Those were only ever three
@@ -130,11 +126,6 @@ function isToday(d: Date) {
   return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate()
 }
 
-function initials(name: string | null): string {
-  if (!name?.trim()) return ''
-  const p = name.trim().split(/\s+/)
-  return p.length === 1 ? p[0].slice(0, 2).toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase()
-}
 
 function genInvoice(): string {
   return String(Math.floor(1000 + Math.random() * 9000))
@@ -256,13 +247,12 @@ function BookingBlock({
   // for the hover card.
   const spanDays = dur
 
-  const isBilling = booking.payment_type === 'billing'
   const slot = STATUS_SLOT[booking.status] ?? 'confirmed'
   const isCancelled = booking.status === 'cancelled'
-  // Text on a status fill is always chip ink — except hot, which needs pale text.
-  const nameColor = slot === 'cancelled' ? 'var(--c-hot-text)' : 'var(--c-chip-ink)'
+  const isBilling = booking.payment_type === 'billing'
 
-  // Line 1: artist (billing) or client name (COD)
+  // Only needed for the repeated payload copies on long bars; the card itself
+  // derives its own.
   const primaryName = isBilling
     ? (booking.artist || booking.label || booking.client_name || '')
     : (booking.client_name || '')
@@ -289,38 +279,8 @@ function BookingBlock({
   const slotH = rowH / numLanes
   const blockTop = lane * slotH + 2
   const blockHeight = slotH - 3
-  // ── Content ladder ────────────────────────────────────────────────────────
-  // No tiers by WIDTH (F-18/F-19) — a narrow column truncates, it never hides.
-  // But height is different: two or three sessions in one room on one day split
-  // the cell between them, and the row height can't grow to compensate without
-  // permanently deforming the grid. So a squeezed card sheds from the bottom up,
-  // in reverse order of what you'd need at a glance:
-  //   full  — name · client · times · footer(invoice+staff) · COD bar
-  //   ≥50   — name · client · times · COD sliver
-  //   ≥36   — name · times · COD sliver
-  //   <36   — name · COD sliver
-  // NAME AND TIMES ARE THE PRIORITY — who and when is the whole job of a wall
-  // card. The COD bar earns its place by shrinking rather than by leaving: at
-  // 4px with no text it still reads as a red edge across the bottom, which is
-  // the actual signal, and the method is one hover away. That trade is what
-  // buys the times line back on a two-up cell.
-  // Normal single-session cells are always `full`; this only engages on overlap.
-  const showFooter = blockHeight >= CHIP_FULL_H
-  const showClient = blockHeight >= 50
-  const showTimes  = blockHeight >= 36
-  const codSliver  = !showFooter
-  const codLabel = booking.cod_method === 'Credit Card' ? 'CC' : (booking.cod_method ?? '').toUpperCase()
-  // Footer identifier: INVOICE ONLY. The WO number came off the card — it's an
-  // internal key nobody reads off a wall, and carrying both made the strip
-  // truncate at exactly the widths where the staff tags matter. WO# is still on
-  // the hover card for anyone who needs it.
-  const woTag = booking.invoice_num ? `#${booking.invoice_num}` : ''
-  const staffTag = [eng && `1ST-${eng}`, asst && `2ND-${asst}`].filter(Boolean).join(' · ')
-  // The old chip flagged non-recording sessions with an ACCENT-coloured border.
-  // The accent is retired, so the distinction returns as a mono tag — it was in
-  // the inventory and must not be lost, but it can't come back as colour (§5).
-  const typeTag = booking.session_type === 'filming' ? 'FILM'
-    : booking.session_type === 'event_playback' ? 'EVENT' : ''
+  // Fields drop by HEIGHT inside SessionCardBody — see the ladder there. This
+  // component only supplies the measurement.
 
   // ── Long bars: repeat the payload, don't chase the scroll ─────────────────
   // Three attempts to slide the payload with the scroll position all drifted and
@@ -361,74 +321,21 @@ function BookingBlock({
         display: 'flex', flexDirection: 'column',
       }}
     >
-      {/* ── 1. PAYLOAD ── artist/label · client · times, left-aligned. Takes the
-          space the two bottom strips don't. */}
-      <div style={{
-        flex: '1 1 auto', minHeight: 0, minWidth: 0, maxWidth: '100%',
-        padding: showFooter ? '3px 8px 2px' : '2px 8px 1px', overflow: 'hidden',
-        display: 'flex', flexDirection: 'column', justifyContent: 'center',
-        position: 'relative', zIndex: 1,
-      }}>
-      {/* Repeated copies of the payload every 7 days along a long bar, so the
-          session is identifiable wherever you're scrolled. Static — no scroll
-          maths, nothing to drift. */}
-      {repeatOffsets.map(d => (
-        <div
-          key={d}
-          aria-hidden
-          style={{
+      <SessionCardBody booking={booking} height={blockHeight} eng={eng} asst={asst} isMobile={isMobile}>
+        {/* Repeated copies of the payload every 7 days along a long bar, so the
+            session stays identifiable wherever you're scrolled. Static — no
+            scroll maths, nothing to drift. */}
+        {repeatOffsets.map(d => (
+          <div key={d} aria-hidden style={{
             position: 'absolute', top: 4, left: `calc(${(d / spanDays) * 100}% + 6px)`,
             pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 0,
-          }}
-        >
-          <div className="c-arch" style={{ fontSize: 12, lineHeight: 1.3 }}>{primaryName}</div>
-          {labelLine && <div className="c-ev-meta" style={{ fontSize: 10, lineHeight: 1.2 }}>{labelLine}</div>}
-          <div className="c-ev-2 c-mono" style={{ fontSize: 9.5, lineHeight: 1.25 }}>
-            {timeStr}
+          }}>
+            <div className="c-arch" style={{ fontSize: 12, lineHeight: 1.3 }}>{primaryName}</div>
+            {labelLine && <div className="c-ev-meta" style={{ fontSize: 10, lineHeight: 1.2 }}>{labelLine}</div>}
+            <div className="c-ev-2 c-mono" style={{ fontSize: 9.5, lineHeight: 1.25 }}>{timeStr}</div>
           </div>
-        </div>
-      ))}
-      <div style={{
-        color: nameColor, fontSize: isMobile ? 11 : (showTimes ? 12.5 : 11),
-        fontFamily: "'Archivo Black', sans-serif", lineHeight: 1.3,
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-      }}>
-        {primaryName}
-      </div>
-      {labelLine && showClient && (
-        <div className="c-ev-meta" style={{
-          fontSize: 10, fontFamily: 'Inter', lineHeight: 1.2,
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>
-          {labelLine}
-        </div>
-      )}
-      {timeStr && showTimes && (
-        <div className="c-ev-2 c-mono" style={{
-          fontSize: 9.5, lineHeight: 1.25,
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>
-          {timeStr}{typeTag ? `  ${typeTag}` : ''}
-        </div>
-      )}
-      </div>
-
-      {/* ── 2. FOOTER BAND ── invoice# left, staff right. First to go. */}
-      {showFooter && (woTag || staffTag) && (
-        <div className="c-ev-foot">
-          {woTag && <span className="c-ev-wo c-mono">{woTag}</span>}
-          {staffTag && <span className="c-ev-staff">{staffTag}</span>}
-        </div>
-      )}
-
-      {/* ── 3. COD STRIP ── bottom edge, COD only. Billing shows nothing at all:
-          silence is the billing signal, so an "on account" label would be noise
-          on the large majority of cards. */}
-      {!isBilling && (
-        <div className={`c-ev-cod${codSliver ? ' c-ev-cod-sliver' : ''}`}>
-          {codSliver ? '' : (codLabel ? `COD ${codLabel}` : 'COD')}
-        </div>
-      )}
+        ))}
+      </SessionCardBody>
     </div>
   )
 }
@@ -594,51 +501,23 @@ function DayView({
 
                   {/* Booking blocks */}
                   {cards.map(b => {
-                    // Same anatomy as the grid chip (§10b) — payload, footer band,
-                    // COD strip. Day view had its own arrangement with the codes
-                    // as loose lines; one card design across every calendar view
-                    // is the point of the ruling.
-                    const isBilling = b.payment_type === 'billing'
-                    const displayName = isBilling
-                      ? (b.artist && b.label ? `${b.label} / ${b.artist}` : b.artist || b.label || b.client_name || '')
-                      : (b.client_name || '')
-                    const timeStr = b.from_time && b.to_time
-                      ? `${fmtTime(b.from_time)}–${fmtTime(b.to_time)}`
-                      : b.from_time ? fmtTime(b.from_time) : ''
-                    const eng = b.engineer_name ? `1ST-${initials(b.engineer_name)}` : ''
-                    const asst = b.assistant_name ? `2ND-${initials(b.assistant_name)}` : ''
-                    const codLabel = !isBilling
-                      ? `COD${b.cod_method ? ` ${b.cod_method === 'Credit Card' ? 'CC' : b.cod_method.toUpperCase()}` : ''}`
-                      : null
-                    const woTag = b.invoice_num ? `#${b.invoice_num}` : ''
-                    const staffTag = [eng, asst].filter(Boolean).join(' · ')
                     const slot = STATUS_SLOT[b.status] ?? 'confirmed'
                     const isCancelled = b.status === 'cancelled'
-
+                    // Height is fixed here — the day view has room, so the card
+                    // always renders its full anatomy.
                     return (
                       <div
                         key={b.id}
                         onClick={() => onOpenEdit(b)}
                         className={`c-ev c-control c-raised-chip ${statusFillClass(slot)}${isCancelled ? ' c-ev-cancelled' : ''}`}
-                        style={{ padding: 0, cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
+                        style={{ padding: 0, cursor: 'pointer', minHeight: CARD_FULL_H }}
                       >
-                        <div style={{ padding: '6px 10px 4px', minWidth: 0 }}>
-                          <div className="c-ev-title c-arch" style={{ fontSize: 12, lineHeight: 1.3 }}>
-                            {displayName}
-                          </div>
-                          {timeStr && (
-                            <div className="c-ev-2 c-mono" style={{ fontSize: 9.5, lineHeight: 1.25, marginTop: 1 }}>
-                              {timeStr}
-                            </div>
-                          )}
-                        </div>
-                        {(woTag || staffTag) && (
-                          <div className="c-ev-foot">
-                            {woTag && <span className="c-ev-wo c-mono">{woTag}</span>}
-                            {staffTag && <span className="c-ev-staff">{staffTag}</span>}
-                          </div>
-                        )}
-                        {codLabel && <div className="c-ev-cod">{codLabel}</div>}
+                        <SessionCardBody
+                          booking={b}
+                          height={CARD_FULL_H}
+                          eng={initials(b.engineer_name)}
+                          asst={initials(b.assistant_name)}
+                        />
                       </div>
                     )
                   })}
@@ -778,22 +657,10 @@ function StudioView({
               </div>
               {/* Booking blocks */}
               {cellBookings.map(b => {
-                const isBilling = b.payment_type === 'billing'
-                const nameColor = 'var(--c-fg)' // chip name text — white regardless of payment type
-                const displayName = isBilling
-                  ? (b.artist && b.label ? `${b.label} / ${b.artist}` : b.artist || b.label || b.client_name || '')
-                  : (b.client_name || '')
-                const timeStr = b.from_time && b.to_time
-                  ? `${fmtTime(b.from_time)}–${fmtTime(b.to_time)}`
-                  : b.from_time ? fmtTime(b.from_time) : ''
-                // §10b anatomy, as in the grid and day views.
-                const codLabel = !isBilling
-                  ? `COD${b.cod_method ? ` ${b.cod_method === 'Credit Card' ? 'CC' : b.cod_method.toUpperCase()}` : ''}`
-                  : null
-                const eng = b.engineer_name ? `1ST-${initials(b.engineer_name)}` : ''
-                const asst = b.assistant_name ? `2ND-${initials(b.assistant_name)}` : ''
-                const woTag = b.invoice_num ? `#${b.invoice_num}` : ''
-                const staffTag = [eng, asst].filter(Boolean).join(' · ')
+                // §10b anatomy, as in the grid and day views. Name/time/payment
+                // derivation lives in SessionCardBody now — this view used to
+                // build a different display name ("Label / Artist") from the
+                // grid's, which is exactly the drift the shared card ends.
                 const slot = STATUS_SLOT[b.status] ?? 'confirmed'
                 const isCancelled = b.status === 'cancelled'
                 return (
@@ -801,25 +668,14 @@ function StudioView({
                     key={b.id}
                     onClick={e => { e.stopPropagation(); onOpenEdit(b) }}
                     className={`c-ev c-control c-raised-chip ${statusFillClass(slot)}${isCancelled ? ' c-ev-cancelled' : ''}`}
-                    style={{ marginBottom: 3, padding: 0, cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
+                    style={{ marginBottom: 3, padding: 0, cursor: 'pointer', minHeight: CARD_FULL_H }}
                   >
-                    <div style={{ padding: '5px 8px 3px', minWidth: 0 }}>
-                      <div className="c-ev-title c-arch" style={{ fontSize: 11.5, lineHeight: 1.3, whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                        {displayName}
-                      </div>
-                      {timeStr && (
-                        <div className="c-ev-2 c-mono" style={{ fontSize: 9.5, lineHeight: 1.25, marginTop: 1 }}>
-                          {timeStr}
-                        </div>
-                      )}
-                    </div>
-                    {(woTag || staffTag) && (
-                      <div className="c-ev-foot">
-                        {woTag && <span className="c-ev-wo c-mono">{woTag}</span>}
-                        {staffTag && <span className="c-ev-staff">{staffTag}</span>}
-                      </div>
-                    )}
-                    {codLabel && <div className="c-ev-cod">{codLabel}</div>}
+                    <SessionCardBody
+                      booking={b}
+                      height={CARD_FULL_H}
+                      eng={initials(b.engineer_name)}
+                      asst={initials(b.assistant_name)}
+                    />
                   </div>
                 )
               })}
@@ -868,7 +724,7 @@ function CalendarPageInner() {
   const [dayViewDate, setDayViewDate] = useState<Date>(() => new Date())
   const [reloadKey, setReloadKey] = useState(0)
   const [woWarning, setWoWarning] = useState<string | null>(null)
-  const [zoomLevel, setZoomLevel] = useState(1) // ROW HEIGHT. 1 = tightest step, 0 = fit-all.
+  const [rowMode, setRowMode] = useState<RowMode>('card')
   // COLUMN WIDTH — px per day. Driven by trackpad pinch, the +/- buttons, and
   // [ / ]. Persisted so the calendar reopens at the density you left it at.
   const [colZoom, setColZoom] = useState<number>(() => {
@@ -1101,12 +957,11 @@ function CalendarPageInner() {
 
   // Zoom: keyboard (+/-/0) and Cmd+trackpad scroll
   useEffect(() => {
-    const MAX = ZOOM_ROW_H.length
     function onKey(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      if (e.key === '=' || e.key === '+') { e.preventDefault(); setZoomLevel(z => Math.min(z + 1, MAX)) }
-      if (e.key === '-') { e.preventDefault(); setZoomLevel(z => Math.max(z - 1, 0)) }
-      if (e.key === '0') { e.preventDefault(); setZoomLevel(0) }
+      if (e.key === '=' || e.key === '+') { e.preventDefault(); setRowMode('card') }
+      if (e.key === '-') { e.preventDefault(); setRowMode('rooms') }
+      if (e.key === '0') { e.preventDefault(); setRowMode('rooms') }
       // [ / ] — the horizontal twin of - / +, for anyone without a trackpad.
       if (e.key === '[') { e.preventDefault(); setColZoom(w => clampColZoom(w - COL_ZOOM_STEP)) }
       if (e.key === ']') { e.preventDefault(); setColZoom(w => clampColZoom(w + COL_ZOOM_STEP)) }
@@ -1129,8 +984,7 @@ function CalendarPageInner() {
       const now = Date.now()
       if (now - lastWheelStep.current < 200) return
       lastWheelStep.current = now
-      if (e.deltaY > 0) setZoomLevel(z => Math.max(z - 1, 0))
-      else if (e.deltaY < 0) setZoomLevel(z => Math.min(z + 1, MAX))
+      setRowMode(e.deltaY > 0 ? 'rooms' : 'card')
     }
     window.addEventListener('keydown', onKey)
     window.addEventListener('wheel', onWheel, { passive: false })
@@ -1249,12 +1103,16 @@ function CalendarPageInner() {
     if (collapsed.has(l.name)) return s
     return s + l.rooms.filter(r => collapsedRooms.has(`${l.name}|${r}`)).length
   }, 0)
-  const fitRowH = Math.max(CHIP_MIN_H, Math.floor(
+  // NO FLOOR. The floor was CHIP_MIN_H, which is precisely why 'fit' never
+  // looked different from the fixed step — it refused to go below one card's
+  // height, so it never fit anything that didn't already fit. Squeezing is the
+  // entire point of this mode; the card handles being short.
+  const roomsRowH = Math.max(24, Math.floor(
     (gridH - DAY_HDR_H - filteredLocations.length * LOC_HDR_H - indivCollapsedCount * COLLAPSED_ROOM_H) / Math.max(1, expandedRoomCount)
   ))
   // Mobile uses a fixed comfortable row height (zoom is hidden) so single-lane
   // booking chips clear the 44px tap target; the grid scrolls vertically instead.
-  const rowH = isMobile ? CHIP_MIN_H : (zoomLevel === 0 ? fitRowH : ZOOM_ROW_H[zoomLevel - 1])
+  const rowH = isMobile ? CHIP_MIN_H : (rowMode === 'rooms' ? roomsRowH : ROW_H_CARD)
 
   // (Step 8: the old cal_form_draft restore died with BookingForm.)
 
@@ -1847,23 +1705,22 @@ function CalendarPageInner() {
           >+</button>
         </div>
 
-        {/* VERTICAL zoom — row height. */}
-        <div style={{ display: isMobile ? 'none' : 'flex', alignItems: 'center', background: 'var(--c-wash)', borderRadius: 6, overflow: 'hidden' }}>
-          <button
-            onClick={() => setZoomLevel(z => Math.max(z - 1, 0))}
-            title="Zoom out (−)"
-            style={{ padding: '4px 9px', fontSize: 14, lineHeight: 1, background: 'transparent', color: zoomLevel === 0 ? 'var(--c-fg-3)' : 'var(--c-fg)', cursor: zoomLevel === 0 ? 'default' : 'pointer' }}
-          >−</button>
-          <span
-            onClick={() => setZoomLevel(0)}
-            title="Reset to fit all (0)"
-            style={{ fontSize: 9, fontFamily: 'Inter', color: zoomLevel === 0 ? 'var(--c-fg)' : 'var(--c-fg-2)', minWidth: 26, textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}
-          >{zoomLevel === 0 ? 'Fit' : `${rowH}px`}</span>
-          <button
-            onClick={() => setZoomLevel(z => Math.min(z + 1, ZOOM_ROW_H.length))}
-            title="Zoom in (+)"
-            style={{ padding: '4px 9px', fontSize: 14, lineHeight: 1, background: 'transparent', color: zoomLevel === ZOOM_ROW_H.length ? 'var(--c-fg-3)' : 'var(--c-fg)', cursor: zoomLevel === ZOOM_ROW_H.length ? 'default' : 'pointer' }}
-          >+</button>
+        {/* VERTICAL — two modes. See ROW_H_CARD / RowMode for why this stopped
+            being a five-step ladder. */}
+        <div style={{ display: isMobile || view !== 'grid' ? 'none' : 'flex', alignItems: 'center', background: 'var(--c-wash)', borderRadius: 6, overflow: 'hidden' }}>
+          {([['card', 'Card'], ['rooms', 'All rooms']] as [RowMode, string][]).map(([m, label]) => (
+            <button
+              key={m}
+              onClick={() => setRowMode(m)}
+              title={m === 'card' ? 'Full-height cards (+)' : 'Squeeze every room onto one screen (−)'}
+              style={{
+                padding: '4px 10px', fontSize: 9, fontFamily: 'Inter',
+                background: rowMode === m ? 'var(--c-wash2)' : 'transparent',
+                color: rowMode === m ? 'var(--c-fg)' : 'var(--c-fg-2)',
+                fontWeight: rowMode === m ? 700 : 400, cursor: 'pointer',
+              }}
+            >{label}</button>
+          ))}
         </div>
         </div>{/* end mobile row 2 */}
 

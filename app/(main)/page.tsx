@@ -8,6 +8,7 @@ import { deleteSessionAndWO } from '@/lib/deleteSession'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { Row, SoftButton, StatusDot, NewLeadPulse, statusFillClass } from '@/components/carved'
+import { SessionCardBody, initials } from '@/components/calendar/SessionCard'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { ASSIGN_OPTIONS, resolveAssignTo, nameForId, visibleTabsForRole, idsForTab, fetchTasks, fetchMyTasks, fetchMyCompletedTasks, isOwnOnlyRole } from '@/lib/tasks'
@@ -50,6 +51,15 @@ function fullscreenCardOnMobile(isMobile: boolean, viewportHeight: number | null
   }
 }
 
+// Room-card geometry. The card must clear the shared session card's full
+// anatomy (74px) plus the room-name line, or the dashboard would silently render
+// the reduced ladder while the calendar showed the full one — the exact drift
+// this grid was unified to stop.
+// (engInitials/fmtSessionTime lived here as byte-identical twins of the
+//  calendar's — both now come from the shared card module.)
+const ROOM_NAME_H = 20
+const ROOM_CARD_H = 120
+
 const ROOMS = [
   { venue: 'Paramount', studio: 'Studio A', label: 'Paramount A' },
   { venue: 'Paramount', studio: 'Studio B', label: 'Paramount B' },
@@ -64,25 +74,7 @@ const ROOMS = [
   { venue: 'Track', studio: 'South', label: 'Track South' },
 ]
 
-function engInitials(name: string | null): string {
-  if (!name?.trim()) return ''
-  const p = name.trim().split(/\s+/)
-  return p.length === 1 ? p[0].slice(0, 2).toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase()
-}
 
-function fmtSessionTime(t: string): string {
-  if (!t) return ''
-  const m = t.match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i)
-  if (!m) return t
-  let h = parseInt(m[1])
-  const min = m[2]
-  const ap = m[3]?.toUpperCase()
-  if (ap) return `${h}${min !== '00' ? ':' + min : ''}${ap === 'AM' ? 'A' : 'P'}`
-  const suf = h >= 12 ? 'P' : 'A'
-  if (h > 12) h -= 12
-  if (h === 0) h = 12
-  return `${h}${min !== '00' ? ':' + min : ''}${suf}`
-}
 
 // Canonical formatter (lib/format). Local alias keeps existing call sites.
 const fmtTime = fmtTimestamp
@@ -902,61 +894,36 @@ export default function DashboardPage() {
                 const booking = bookings.find(b =>
                   b.location === room.venue && b.studio === room.studio
                 )
-                const isBilling = booking?.payment_type === 'billing'
-                // Carved: the room card IS the session status — a colored pool cut
-                // into the surface. Tentative (warm) still takes priority over
-                // confirmed, exactly as the old accent logic did.
                 const poolStatus = booking?.status === 'tentative' ? 'tentative' : booking ? 'confirmed' : null
-                const primaryName = booking
-                  ? (isBilling ? (booking.artist || booking.label || booking.client_name || '') : (booking.client_name || ''))
-                  : ''
-                const labelLine = booking && isBilling && booking.label && booking.label !== primaryName ? booking.label : ''
-                const timeStr = booking?.from_time && booking?.to_time
-                  ? `${fmtSessionTime(booking.from_time)}–${fmtSessionTime(booking.to_time)}`
-                  : booking?.from_time ? fmtSessionTime(booking.from_time) : ''
-                const eng = booking?.engineer_name ? engInitials(booking.engineer_name) : ''
-                const asst = booking?.assistant_name ? engInitials(booking.assistant_name) : ''
-                const isEmpty = !booking
                 return (
                   <div
                     key={room.label}
                     onClick={() => booking ? openBookingEdit(booking) : openNewRoomBooking(room)}
                     className={`c-room ${poolStatus ? `c-pool ${statusFillClass(poolStatus)}` : 'c-inset2 c-room-empty'}`}
                     style={{
-                      height: isMobile ? undefined : 120,
-                      minHeight: isMobile ? 72 : undefined,
+                      height: isMobile ? undefined : ROOM_CARD_H,
+                      minHeight: isMobile ? 84 : undefined,
                       cursor: 'pointer',
                       overflow: 'hidden',
+                      padding: booking ? 0 : undefined,
+                      display: 'flex', flexDirection: 'column',
                     }}
                   >
-                    <span className="c-room-name">{room.label}</span>
+                    {/* The room name is the dashboard's own addition — the grid is
+                        organised by room, so the card has to say which one it is.
+                        Everything below it is the SHARED session card, identical
+                        to the calendar's. */}
+                    <span className="c-room-name" style={booking ? { padding: '7px 8px 0' } : undefined}>{room.label}</span>
                     {booking && (
-                      <>
-                        {/* lineHeight 1.35, not 1.15: Archivo Black has deep
-                            descenders, and this element clips its own overflow for
-                            the ellipsis — a tight line box guillotined the y in
-                            "Skilla Baby". */}
-                        <div className="c-room-artist c-arch" style={{
-                          fontSize: isMobile ? 13 : 15, lineHeight: 1.35,
-                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        }}>
-                          {primaryName}
-                        </div>
-                        {labelLine && (
-                          <div className="c-room-meta" style={{
-                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                          }}>
-                            {labelLine}
-                          </div>
-                        )}
-                        {timeStr && <div className="c-room-meta">{timeStr}</div>}
-                        {(eng || asst) && (
-                          <div className="c-mono" style={{ marginTop: 'auto', textAlign: 'right', fontSize: 9.5, opacity: 0.55, lineHeight: 1.4, paddingTop: 2 }}>
-                            {eng && <div style={{ whiteSpace: 'nowrap' }}>1ST-{eng}</div>}
-                            {asst && <div style={{ whiteSpace: 'nowrap' }}>2ND-{asst}</div>}
-                          </div>
-                        )}
-                      </>
+                      <div style={{ flex: 1, minHeight: 0 }}>
+                        <SessionCardBody
+                          booking={booking}
+                          height={(isMobile ? 84 : ROOM_CARD_H) - ROOM_NAME_H}
+                          eng={initials(booking.engineer_name)}
+                          asst={initials(booking.assistant_name)}
+                          isMobile={isMobile}
+                        />
+                      </div>
                     )}
                   </div>
                 )
