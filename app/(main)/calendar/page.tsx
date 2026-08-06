@@ -210,7 +210,7 @@ function assignLanes(bookings: Booking[]): Map<string, { lane: number; numLanes:
 
 function BookingBlock({
   booking, gridStart, totalDays, lane, numLanes, rowH, onClick, isMobile = false, staffByDay = {},
-  onHover, onHoverEnd, scrollX = 0, colW = 0, viewportW = 0, scrollerRef, labelW = 0,
+  onHover, onHoverEnd, colW = 0,
 }: {
   booking: Booking; gridStart: Date; totalDays: number
   lane: number; numLanes: number; rowH: number; onClick: () => void
@@ -220,14 +220,7 @@ function BookingBlock({
   onHoverEnd?: () => void
   // Horizontal scroll offset + day-column width, so a long bar can slide its
   // payload along to stay on screen.
-  scrollX?: number
   colW?: number
-  // Visible width of the day area.
-  viewportW?: number
-  // The horizontally-scrolling element and the sticky label column's width —
-  // together they give the first visible pixel of the day area.
-  scrollerRef?: React.RefObject<HTMLDivElement | null>
-  labelW?: number
   isMobile?: boolean
 }) {
   const bStart = parse(booking.start_date)
@@ -307,47 +300,21 @@ function BookingBlock({
     if (w && Math.abs(w - payloadW) > 2) setPayloadW(w)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [primaryName, labelLine, timeStr, eng, asst, micro, compact, blockHeight])
-  // ── Long-bar slide — MEASURED, not derived ────────────────────────────────
-  // The payload stays TOP-LEFT and slides right only when the bar's own left edge
-  // has scrolled off screen. Ordinary and single-day chips never move.
-  //
-  // THIRD IMPLEMENTATION, and the reason matters. The first two computed the shift
-  // from `scrollLeft` arithmetic (scrollX − chipLeft). That holds until the
-  // calendar's INFINITE SCROLL re-anchors the grid: startDate moves, every chip's
-  // offset is rewritten, and scrollLeft is corrected imperatively. Any path that
-  // misses a resync leaves the two operands measured against different origins,
-  // and the error accumulates per shift until the clamp parks the payload off the
-  // chip — the "details disappear after ~12 days of scrolling" report.
-  //
-  // Reading the real geometry removes the whole failure class: there is no origin
-  // to drift, and it self-corrects after every re-anchor whatever caused it.
-  // Only bars wider than a screenful measure at all, so DOM reads stay cheap.
-  //
-  // No content tiers (F-18/2): every field renders at every width; tight chips
-  // ellipsis. The COL_FLOOR widths are what make that viable.
-  const chipRef = useRef<HTMLDivElement>(null)
-  const [payloadShift, setPayloadShift] = useState(0)
-  useLayoutEffect(() => {
-    const chip = chipRef.current
-    const sc = scrollerRef?.current
-    if (!chip || !sc || chipWidthPx < 400) {
-      if (payloadShift !== 0) setPayloadShift(0)
-      return
-    }
-    const cr = chip.getBoundingClientRect()
-    const sr = sc.getBoundingClientRect()
-    // The label column is sticky and overlays the content, so the first visible
-    // pixel of the day area sits labelW in from the scroller's left edge.
-    const visibleLeft = sr.left + labelW
-    const raw = Math.max(0, visibleLeft - cr.left)
-    const maxShift = Math.max(0, cr.width - payloadW - 12)
-    const next = Math.min(raw, maxShift)
-    if (Math.abs(next - payloadShift) > 2) setPayloadShift(next)
-  })
+  // ── Long bars: repeat the payload, don't chase the scroll ─────────────────
+  // Three attempts to slide the payload with the scroll position all drifted and
+  // dropped it mid-scroll. The cause is that the calendar re-anchors its grid as
+  // you scroll (infinite scroll), so any position derived from scroll offset can
+  // desync. A static repeat has NO scroll dependency, so it cannot drift: the
+  // payload is simply drawn again every 7 days along the bar. Whatever part of a
+  // long bar is on screen, a copy is within a week of it.
+  const REPEAT_DAYS = 7
+  const repeatOffsets = spanDays > REPEAT_DAYS * 1.5
+    ? Array.from({ length: Math.floor(spanDays / REPEAT_DAYS) }, (_, i) => (i + 1) * REPEAT_DAYS)
+        .filter(d => d < spanDays - 1)
+    : []
 
   return (
     <div
-      ref={chipRef}
       onClick={e => { e.stopPropagation(); onClick() }}
       onMouseMove={onHover ? e => {
         // Which day column is under the cursor — so a month-long bar reports the
@@ -370,16 +337,33 @@ function BookingBlock({
       }}
     >
       <div ref={payloadRef} style={{
-        // Top-left, as approved. Transform is present only on a bar whose left
-        // edge has scrolled away; every other chip renders completely statically.
         maxWidth: '100%',
-        transform: payloadShift ? `translateX(${payloadShift}px)` : undefined,
         display: 'flex', flexDirection: micro ? 'row' : 'column',
         alignItems: micro ? 'center' : undefined,
         gap: micro ? 4 : undefined,
         minWidth: 0,
         position: 'relative', zIndex: 1,
       }}>
+      {/* Repeated copies of the payload every 7 days along a long bar, so the
+          session is identifiable wherever you're scrolled. Static — no scroll
+          maths, nothing to drift. */}
+      {repeatOffsets.map(d => (
+        <div
+          key={d}
+          aria-hidden
+          style={{
+            position: 'absolute', top: 4, left: `calc(${(d / spanDays) * 100}% + 6px)`,
+            pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 0,
+          }}
+        >
+          <div className="c-arch" style={{ fontSize: 12, lineHeight: 1.3 }}>{primaryName}</div>
+          {labelLine && <div className="c-ev-meta" style={{ fontSize: 10, lineHeight: 1.2 }}>{labelLine}</div>}
+          <div className="c-ev-2 c-mono" style={{ fontSize: 9.5, lineHeight: 1.25 }}>
+            {timeStr}
+            {[eng && ` 1ST-${eng}`, asst && ` 2ND-${asst}`].filter(Boolean).join('')}
+          </div>
+        </div>
+      ))}
       {micro ? (
         <>
           <div style={{ color: nameColor, fontSize: 8, fontFamily: "'Archivo Black', sans-serif", lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 1 auto', minWidth: 0 }}>
@@ -438,29 +422,20 @@ function BookingBlock({
               {labelLine}
             </div>
           )}
-          <div className="c-ev-2 c-mono" style={{ fontSize: 9.5, lineHeight: 1.25, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {timeStr}{typeTag ? `  ${typeTag}` : ''}
+          {/* One line: times + type tag on the left, payment + staff on the right.
+              Four stacked lines overflow a 60px row and leave a gap at 80. */}
+          <div className="c-ev-2 c-mono" style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+            gap: 6, fontSize: 9.5, lineHeight: 1.25, marginTop: 2, whiteSpace: 'nowrap',
+          }}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+              {timeStr}{typeTag ? `  ${typeTag}` : ''}
+            </span>
+            <span style={{ flexShrink: 0 }}>
+              {[!isBilling && codLabel ? codLabel : '', eng && `1ST-${eng}`, asst && `2ND-${asst}`]
+                .filter(Boolean).join('  ')}
+            </span>
           </div>
-          {/* Staff is the payload's LAST LINE (F-17/1) — not a floating corner tag.
-              One block: title / client / times / staff. It therefore travels with
-              the slide on long bars and can never be left behind. The dashboard
-              room cards keep their corner tag; that's a different surface. */}
-          {/* Bottom line of the block: payment tag left, staff right — exactly
-              what the pre-redesign chip carried (recovered from main @4370761).
-              In-flow, so the whole block still slides as one unit on long bars. */}
-          {(codLabel || eng || asst) && (
-            <div className="c-ev-2 c-mono" style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-              gap: 6, fontSize: 9, lineHeight: 1.3, whiteSpace: 'nowrap',
-            }}>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {!isBilling && codLabel ? codLabel : ''}
-              </span>
-              <span style={{ flexShrink: 0 }}>
-                {[eng && `1ST-${eng}`, asst && `2ND-${asst}`].filter(Boolean).join('  ')}
-              </span>
-            </div>
-          )}
         </>
       )}
       </div>
@@ -906,7 +881,7 @@ function CalendarPageInner() {
   const [dayViewDate, setDayViewDate] = useState<Date>(() => new Date())
   const [reloadKey, setReloadKey] = useState(0)
   const [woWarning, setWoWarning] = useState<string | null>(null)
-  const [zoomLevel, setZoomLevel] = useState(0) // 0 = fit-all; 1–6 = ZOOM_ROW_H steps
+  const [zoomLevel, setZoomLevel] = useState(1) // 1 = 60px rows, the default. 0 = fit-all.
   const [gridH, setGridH] = useState(700)
   const [gridW, setGridW] = useState(1200)
   const gridRef = useRef<HTMLDivElement>(null)
@@ -1619,11 +1594,7 @@ function CalendarPageInner() {
                             staffByDay={staffByDay}
                             onHover={showHover}
                             onHoverEnd={hideHover}
-                            scrollX={scrollX}
                             colW={colW}
-                            viewportW={viewportW}
-                            scrollerRef={gridRef}
-                            labelW={labelW}
                           />
                         )
                       })}
