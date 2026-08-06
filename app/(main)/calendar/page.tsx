@@ -44,7 +44,7 @@ const COL_W = 120  // minimum day-column width; forces horizontal scroll when co
 // ROW HEIGHTS in px for zoom levels 1–5 (level 0 = fit-all). VERTICAL ONLY.
 // Renamed from ZOOM_ROW_H: the old name said nothing about the axis, and it was
 // mistaken for a column-width ladder — bumping it made every row taller instead
-// of making cells wider. Column width is COL_FLOOR below.
+// of making cells wider. Column width is the horizontal zoom below.
 // RAISED for the §10b card anatomy. The ladder used to start at 60, which was
 // the right floor when the chip was three text lines. It now carries a footer
 // band and a COD strip as well, and the anatomy measures ~76px:
@@ -57,18 +57,21 @@ const ZOOM_ROW_H = [80, 96, 112, 132, 156]
 // rooms into the viewport can't silently clip the strips off the bottom.
 const CHIP_MIN_H = 79
 
-// COLUMN WIDTH floors, per view. HORIZONTAL.
-// colW = max(floor, usableW / days) — so a floor only has an effect when it is
-// WIDER than fit-to-width. The old floors (44/60/80) sat below the natural fit on
-// any normal screen, which is why raising them changed nothing visible. These are
-// set above it deliberately: cells run wider and the grid scrolls horizontally,
-// which it is already built to do.
-const COL_FLOOR = {
-  week: 150,   // 7 days  -> 1050px
-  twoWks: 120, // 14 days -> 1680px, scrolls on most screens
-  other: 100,  // month / custom ranges
-  mobile: 76,
-}
+// COLUMN WIDTH — the horizontal zoom, in px per day.
+// This replaced the Week / 2 Wks / Month buttons. Those were only ever three
+// fixed column widths wearing different names, and picking a named window is a
+// worse fit for the actual question ("how much do I want to see at once?") than
+// simply spreading the days apart. Pinch on a trackpad drives it directly.
+//   MIN — below this a card can't show its anatomy legibly.
+//   MAX — beyond this you're reading one day at a time; use Day view.
+const COL_ZOOM_MIN = 48
+const COL_ZOOM_MAX = 320
+const COL_ZOOM_DEFAULT = 120  // ≈ the old 2-week feel, which was the default view
+const COL_ZOOM_STEP = 24      // one press of the +/- buttons or [ / ]
+const clampColZoom = (w: number) => Math.min(COL_ZOOM_MAX, Math.max(COL_ZOOM_MIN, Math.round(w)))
+// Mobile has no pinch (the whole page zooms instead), so it keeps fit-to-width
+// with a floor.
+const COL_FLOOR_MOBILE = 76
 const BUFFER_WEEKS = 2 // weeks of buffer rendered on each side for endless horizontal scroll
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -804,7 +807,9 @@ function StudioView({
 
 // ─── MAIN PAGE ───────────────────────────────────────────────────────────────
 
-type ViewType = 'day' | 'studio' | 'week' | '2wks' | 'month'
+// 'grid' replaced 'week' | '2wks' | 'month' — those were three fixed column
+// widths, and the horizontal zoom covers all of them continuously.
+type ViewType = 'day' | 'studio' | 'grid'
 
 export default function CalendarPage() {
   return <Suspense><CalendarPageInner /></Suspense>
@@ -820,7 +825,7 @@ function CalendarPageInner() {
   const [view, setView] = useState<ViewType>(() => {
     if (typeof window !== 'undefined' && typeof window.matchMedia === 'function'
       && window.matchMedia('(max-width: 768px)').matches) return 'day'
-    return '2wks'
+    return 'grid'
   })
   const [startDate, setStartDate] = useState(() => getSunday(new Date()))
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -837,7 +842,17 @@ function CalendarPageInner() {
   const [dayViewDate, setDayViewDate] = useState<Date>(() => new Date())
   const [reloadKey, setReloadKey] = useState(0)
   const [woWarning, setWoWarning] = useState<string | null>(null)
-  const [zoomLevel, setZoomLevel] = useState(1) // 1 = 60px rows, the default. 0 = fit-all.
+  const [zoomLevel, setZoomLevel] = useState(1) // ROW HEIGHT. 1 = tightest step, 0 = fit-all.
+  // COLUMN WIDTH — px per day. Driven by trackpad pinch, the +/- buttons, and
+  // [ / ]. Persisted so the calendar reopens at the density you left it at.
+  const [colZoom, setColZoom] = useState<number>(() => {
+    if (typeof window === 'undefined') return COL_ZOOM_DEFAULT
+    const saved = Number(window.localStorage.getItem('prsflo-cal-colzoom'))
+    return saved >= COL_ZOOM_MIN && saved <= COL_ZOOM_MAX ? saved : COL_ZOOM_DEFAULT
+  })
+  useEffect(() => {
+    try { window.localStorage.setItem('prsflo-cal-colzoom', String(colZoom)) } catch {}
+  }, [colZoom])
   const [gridH, setGridH] = useState(700)
   const [gridW, setGridW] = useState(1200)
   const gridRef = useRef<HTMLDivElement>(null)
@@ -862,9 +877,16 @@ function CalendarPageInner() {
   const labelW = isMobile ? 80 : LABEL_W
 
 
-  const totalDays = view === 'month'
-    ? new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate()
-    : view === 'week' ? 7 : 14
+  // The window is derived from the zoom, not chosen: enough whole weeks to fill
+  // the viewport at the current column width. WHOLE weeks matters — startDate
+  // stays a Sunday, which is what keeps the heavy week ticks landing on real week
+  // boundaries and the infinite-scroll shift (±7 days) aligned.
+  const zoomColW = isMobile
+    ? 0 // computed below from viewport; mobile doesn't zoom
+    : Math.min(COL_ZOOM_MAX, Math.max(COL_ZOOM_MIN, colZoom))
+  const totalDays = isMobile
+    ? 7
+    : Math.max(7, Math.ceil(Math.ceil(Math.max(1, gridW - labelW) / zoomColW) / 7) * 7)
   // No horizontal-scroll buffer on mobile: the week fits the viewport exactly, so
   // there's no native horizontal scroll or infinite-scroll shifting to fight with
   // the touch swipe handler (which is then the sole, discrete week navigator).
@@ -873,13 +895,14 @@ function CalendarPageInner() {
   const gridRenderStart = addDays(startDate, -bufDays)
   const days = Array.from({ length: totalRenderDays }, (_, i) => addDays(gridRenderStart, i))
 
-  // Column width fills the viewport for the canonical window; month uses a smaller fixed size
   const usableW = Math.max(gridW - labelW, isMobile ? 200 : 400)
-  const colW = view === 'week'
-    ? Math.max(isMobile ? COL_FLOOR.mobile : COL_FLOOR.week, Math.floor(usableW / 7))
-    : view === '2wks'
-    ? Math.max(isMobile ? COL_FLOOR.mobile : COL_FLOOR.twoWks, Math.floor(usableW / 14))
-    : Math.max(isMobile ? COL_FLOOR.mobile : COL_FLOOR.other, Math.floor(usableW / totalDays))
+  // Desktop: the zoom IS the column width. Mobile: fit a week to the viewport.
+  const colW = isMobile
+    ? Math.max(COL_FLOOR_MOBILE, Math.floor(usableW / 7))
+    : zoomColW
+  // How many days are actually on screen — used for the header label, so it
+  // describes what you're looking at rather than the rendered window.
+  const visibleDays = Math.max(1, Math.round(usableW / colW))
 
   // ── Hover card (F-11) ─────────────────────────────────────────────────────
   // Built entirely from data already on the page (projection + the Option B
@@ -973,10 +996,10 @@ function CalendarPageInner() {
 
   // On mobile, default to Day view (all rooms as rows, vertically scrollable).
   // Fires once when the breakpoint resolves to mobile; only overrides the initial
-  // '2wks' default, never a view the user has since chosen.
+  // 'grid' default, never a view the user has since chosen.
   const didSetMobileDefaultView = useRef(false)
   useEffect(() => {
-    if (isMobile && !didSetMobileDefaultView.current && view === '2wks') {
+    if (isMobile && !didSetMobileDefaultView.current && view === 'grid') {
       didSetMobileDefaultView.current = true
       setView('day')
     }
@@ -1058,8 +1081,23 @@ function CalendarPageInner() {
       if (e.key === '=' || e.key === '+') { e.preventDefault(); setZoomLevel(z => Math.min(z + 1, MAX)) }
       if (e.key === '-') { e.preventDefault(); setZoomLevel(z => Math.max(z - 1, 0)) }
       if (e.key === '0') { e.preventDefault(); setZoomLevel(0) }
+      // [ / ] — the horizontal twin of - / +, for anyone without a trackpad.
+      if (e.key === '[') { e.preventDefault(); setColZoom(w => clampColZoom(w - COL_ZOOM_STEP)) }
+      if (e.key === ']') { e.preventDefault(); setColZoom(w => clampColZoom(w + COL_ZOOM_STEP)) }
     }
     function onWheel(e: WheelEvent) {
+      // TRACKPAD PINCH. A pinch gesture arrives as a wheel event with ctrlKey
+      // set — that's how browsers report it, and it's the same signal the page's
+      // own zoom listens for, so preventDefault is required or the whole page
+      // scales instead of the calendar. Continuous, not stepped: pinch is an
+      // analogue gesture and stepping it feels broken.
+      if (e.ctrlKey) {
+        e.preventDefault()
+        // Multiplicative so the gesture feels the same at every density —
+        // a fixed px delta crawls when columns are wide and lurches when narrow.
+        setColZoom(w => clampColZoom(Math.round(w * (1 - e.deltaY * 0.012))))
+        return
+      }
       if (!e.metaKey) return
       e.preventDefault()
       const now = Date.now()
@@ -1075,6 +1113,22 @@ function CalendarPageInner() {
       window.removeEventListener('wheel', onWheel)
     }
   }, [])
+
+  // ZOOM ANCHORING. Changing the column width changes the whole content width,
+  // so a fixed scrollLeft would land on a different date every pinch step and the
+  // grid would appear to fly sideways while you zoom. Scaling scrollLeft by the
+  // same ratio as the column keeps the leftmost visible day put.
+  // Runs BEFORE paint (layout effect), so the corrected position is never drawn.
+  const prevColW = useRef(colW)
+  useLayoutEffect(() => {
+    const el = gridRef.current
+    if (!el || prevColW.current === colW || prevColW.current <= 0) { prevColW.current = colW; return }
+    const ratio = colW / prevColW.current
+    prevColW.current = colW
+    const next = el.scrollLeft * ratio
+    el.scrollLeft = next
+    setScrollX(next)
+  }, [colW])
 
   // Scroll to put startDate (Sunday) at the left edge whenever startDate/view changes
   useEffect(() => {
@@ -1109,15 +1163,12 @@ function CalendarPageInner() {
     }
   }, [startDate, view]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Week navigation, shared by the prev/next buttons and mobile swipe.
-  function goPrev() {
-    if (view === 'month') setStartDate(d => addDays(d, -totalDays))
-    else setStartDate(d => addDays(d, -7))
-  }
-  function goNext() {
-    if (view === 'month') setStartDate(d => addDays(d, totalDays))
-    else setStartDate(d => addDays(d, 7))
-  }
+  // Navigation, shared by the prev/next buttons and mobile swipe. One screenful
+  // per press — which used to be "one week" or "one month" and now follows the
+  // zoom, since there is no named window any more. totalDays is already a whole
+  // number of weeks, so startDate stays a Sunday.
+  function goPrev() { setStartDate(d => addDays(d, -totalDays)) }
+  function goNext() { setStartDate(d => addDays(d, totalDays)) }
 
   function handleGridScroll() {
     if (!gridRef.current) return
@@ -1688,7 +1739,7 @@ function CalendarPageInner() {
         {/* "All" pill — only shown when a specific studio is selected */}
         {locFilter.includes('|') && (
           <button
-            onClick={() => { setLocFilter('All'); setView('2wks') }}
+            onClick={() => { setLocFilter('All'); setView('grid') }}
             style={{
               padding: '4px 14px', borderRadius: 20, fontSize: 10, fontFamily: 'Inter',
               fontWeight: 700, cursor: 'pointer', background: 'var(--c-wash)', color: 'var(--c-fg-2)',
@@ -1729,7 +1780,7 @@ function CalendarPageInner() {
           display: 'flex', background: 'var(--c-wash)',
           borderRadius: 6, overflow: 'hidden',
         }}>
-          {(['day', 'week', '2wks', 'month'] as ViewType[]).map(v => (
+          {(['day', 'grid'] as ViewType[]).map(v => (
             <button key={v} onClick={() => {
               const today = new Date()
               const thisSunday = getSunday(today)
@@ -1748,12 +1799,33 @@ function CalendarPageInner() {
               color: view === v ? 'var(--c-fg)' : 'var(--c-fg-2)',
               fontWeight: view === v ? 700 : 400,
             }}>
-              {v === '2wks' ? '2 Wks' : v.charAt(0).toUpperCase() + v.slice(1)}
+              {v === 'grid' ? 'Grid' : 'Day'}
             </button>
           ))}
         </div>
 
-        {/* Zoom controls — hidden on mobile (fixed fit; use scroll) */}
+        {/* HORIZONTAL zoom — days across. The pinch gesture's visible twin, so
+            the feature is discoverable without knowing the gesture exists.
+            Hidden in Day view, which has no columns to spread. */}
+        <div style={{ display: isMobile || view !== 'grid' ? 'none' : 'flex', alignItems: 'center', background: 'var(--c-wash)', borderRadius: 6, overflow: 'hidden' }}>
+          <button
+            onClick={() => setColZoom(w => clampColZoom(w - COL_ZOOM_STEP))}
+            title="Show more days (pinch in, or [)"
+            style={{ padding: '4px 9px', fontSize: 14, lineHeight: 1, background: 'transparent', color: colZoom <= COL_ZOOM_MIN ? 'var(--c-fg-3)' : 'var(--c-fg)', cursor: colZoom <= COL_ZOOM_MIN ? 'default' : 'pointer' }}
+          >−</button>
+          <span
+            onClick={() => setColZoom(COL_ZOOM_DEFAULT)}
+            title="Reset density"
+            style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-2)', minWidth: 30, textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}
+          >{visibleDays}d</span>
+          <button
+            onClick={() => setColZoom(w => clampColZoom(w + COL_ZOOM_STEP))}
+            title="Show fewer, wider days (pinch out, or ])"
+            style={{ padding: '4px 9px', fontSize: 14, lineHeight: 1, background: 'transparent', color: colZoom >= COL_ZOOM_MAX ? 'var(--c-fg-3)' : 'var(--c-fg)', cursor: colZoom >= COL_ZOOM_MAX ? 'default' : 'pointer' }}
+          >+</button>
+        </div>
+
+        {/* VERTICAL zoom — row height. */}
         <div style={{ display: isMobile ? 'none' : 'flex', alignItems: 'center', background: 'var(--c-wash)', borderRadius: 6, overflow: 'hidden' }}>
           <button
             onClick={() => setZoomLevel(z => Math.max(z - 1, 0))}
@@ -1791,7 +1863,7 @@ function CalendarPageInner() {
       </div>
 
       {/* Calendar content */}
-      {(view === '2wks' || view === 'week' || view === 'month') && renderGrid()}
+      {view === 'grid' && renderGrid()}
 
       {view === 'day' && (
         <DayView
