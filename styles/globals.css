@@ -1025,7 +1025,13 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 :root { --c-grid-line: rgba(217, 214, 205, .16); --c-grid-tick: rgba(217, 214, 205, .09); --c-grid-tick-strong: rgba(217, 214, 205, .2); }
 [data-theme="light"] { --c-grid-line: rgba(42, 39, 34, .12); --c-grid-tick: rgba(42, 39, 34, .07); --c-grid-tick-strong: rgba(42, 39, 34, .18); }
 
-.c-calrow { border-bottom: 1px solid var(--c-grid-line); }
+/* NO border-bottom here. It ran edge to edge, straight through the sticky room-
+   label column, so the labels read as cells in the grid rather than as the rail
+   the grid hangs off. The row line is now painted as a background layer on the
+   row itself, offset by the label width, so it starts where the grid starts —
+   same trick the day ticks already use. See the room-row style in the calendar
+   page; the offset has to live there because it depends on labelW. */
+.c-calrow { }
 /* Faint zebra is kept as a secondary cue but no longer carries the job alone. */
 .c-calrow-alt { background: var(--c-wash); }
 

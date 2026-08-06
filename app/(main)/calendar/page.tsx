@@ -284,12 +284,11 @@ function BookingBlock({
   // at small sizes is now barred outright, because §13 makes the card the sole
   // carrier of its own information — the TV wall has no hover to fall back on.
   const codLabel = booking.cod_method === 'Credit Card' ? 'CC' : (booking.cod_method ?? '').toUpperCase()
-  // Footer identifiers. WO# and invoice# are IDs, not amounts, so they're inside
-  // the no-financials rule.
-  const woTag = [
-    booking.wo_number ? `WO-${booking.wo_number}` : '',
-    booking.invoice_num ? `#${booking.invoice_num}` : '',
-  ].filter(Boolean).join(' · ')
+  // Footer identifier: INVOICE ONLY. The WO number came off the card — it's an
+  // internal key nobody reads off a wall, and carrying both made the strip
+  // truncate at exactly the widths where the staff tags matter. WO# is still on
+  // the hover card for anyone who needs it.
+  const woTag = booking.invoice_num ? `#${booking.invoice_num}` : ''
   const staffTag = [eng && `1ST-${eng}`, asst && `2ND-${asst}`].filter(Boolean).join(' · ')
   // The old chip flagged non-recording sessions with an ACCENT-coloured border.
   // The accent is retired, so the distinction returns as a mono tag — it was in
@@ -582,10 +581,7 @@ function DayView({
                     const codLabel = !isBilling
                       ? `COD${b.cod_method ? ` ${b.cod_method === 'Credit Card' ? 'CC' : b.cod_method.toUpperCase()}` : ''}`
                       : null
-                    const woTag = [
-                      b.wo_number ? `WO-${b.wo_number}` : '',
-                      b.invoice_num ? `#${b.invoice_num}` : '',
-                    ].filter(Boolean).join(' · ')
+                    const woTag = b.invoice_num ? `#${b.invoice_num}` : ''
                     const staffTag = [eng, asst].filter(Boolean).join(' · ')
                     const slot = STATUS_SLOT[b.status] ?? 'confirmed'
                     const isCancelled = b.status === 'cancelled'
@@ -767,10 +763,7 @@ function StudioView({
                   : null
                 const eng = b.engineer_name ? `1ST-${initials(b.engineer_name)}` : ''
                 const asst = b.assistant_name ? `2ND-${initials(b.assistant_name)}` : ''
-                const woTag = [
-                  b.wo_number ? `WO-${b.wo_number}` : '',
-                  b.invoice_num ? `#${b.invoice_num}` : '',
-                ].filter(Boolean).join(' · ')
+                const woTag = b.invoice_num ? `#${b.invoice_num}` : ''
                 const staffTag = [eng, asst].filter(Boolean).join(' · ')
                 const slot = STATUS_SLOT[b.status] ?? 'confirmed'
                 const isCancelled = b.status === 'cancelled'
@@ -1486,14 +1479,30 @@ function CalendarPageInner() {
                 b.start_date <= winEnd && b.end_date >= winStart
               )
               const laneMap = assignLanes(roomBookings)
+              // ROWS GROW WITH OVERLAP. Lanes used to divide a fixed row height,
+              // so a second session on the same day halved every chip and the
+              // anatomy collapsed to just the footer strip. Splitting the height
+              // is a way of hiding fields, which §10b bars — so the ROW gets
+              // taller instead and every card keeps its full anatomy.
+              const maxLanes = laneMap.size
+                ? Math.max(...Array.from(laneMap.values(), v => v.numLanes))
+                : 1
+              const roomRowH = isRoomCollapsed
+                ? COLLAPSED_ROOM_H
+                : Math.max(rowH, maxLanes * CHIP_MIN_H)
               return (
                 <div key={room} className={roomIdx % 2 === 0 ? 'c-calrow c-calrow-alt' : 'c-calrow'} style={{
                   display: 'flex',
-                  height: isRoomCollapsed ? COLLAPSED_ROOM_H : rowH,
-                  // Day ticks every column, heavier every 7th (week/month boundary).
-                  // Offset by labelW so ticks line up with the day headers.
-                  backgroundImage: `repeating-linear-gradient(to right, var(--c-grid-tick-strong) 0 1px, transparent 1px ${colW * 7}px), repeating-linear-gradient(to right, var(--c-grid-tick) 0 1px, transparent 1px ${colW}px)`,
-                  backgroundPosition: `${labelW}px 0, ${labelW}px 0`,
+                  height: roomRowH,
+                  // Three background layers, all offset by the label column so the
+                  // grid's ink starts where the grid does:
+                  //   1. the row's bottom line (was a border-bottom, which ran
+                  //      through the label column — see .c-calrow in globals.css)
+                  //   2. heavy tick every 7th column (week boundary)
+                  //   3. light tick every column
+                  backgroundImage: `linear-gradient(var(--c-grid-line), var(--c-grid-line)), repeating-linear-gradient(to right, var(--c-grid-tick-strong) 0 1px, transparent 1px ${colW * 7}px), repeating-linear-gradient(to right, var(--c-grid-tick) 0 1px, transparent 1px ${colW}px)`,
+                  backgroundPosition: `${labelW}px bottom, ${labelW}px 0, ${labelW}px 0`,
+                  backgroundSize: '100% 1px, auto, auto',
                   backgroundRepeat: 'repeat-x',
                 }}>
                   {/* Room label — click to collapse/expand. On mobile the column is
@@ -1551,7 +1560,7 @@ function CalendarPageInner() {
                           <BookingBlock
                             key={b.id} booking={b}
                             gridStart={gridRenderStart} totalDays={DAYS}
-                            lane={lane} numLanes={numLanes} rowH={rowH}
+                            lane={lane} numLanes={numLanes} rowH={roomRowH}
                             onClick={() => openEdit(b)}
                             isMobile={isMobile}
                             staffByDay={staffByDay}
