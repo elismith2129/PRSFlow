@@ -1983,21 +1983,63 @@ export function WorkOrderPopup({
                     })}
                   </div>
                 </div>
-                <div>
-                  <div style={{ ...metaLabel, marginBottom: 6 }}>Invoice #</div>
-                  <input value={wo.invoice_number} onChange={e => { setDirtyFields(prev => new Set(prev).add('invoice_number')); setWo(w => w ? { ...w, invoice_number: e.target.value } : w) }} style={{ ...inp, fontFamily: 'DM Mono' }} />
-                </div>
-                <div>
-                  <div style={{ ...metaLabel, marginBottom: 6 }}>PO #</div>
-                  <input value={wo.po_number} onChange={e => { setDirtyFields(prev => new Set(prev).add('po_number')); setWo(w => w ? { ...w, po_number: e.target.value } : w) }} style={inp} />
-                </div>
-                <div>
-                  <div style={{ ...metaLabel, marginBottom: 6 }}>Food Budget</div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button type="button" onClick={() => { setDirtyFields(prev => new Set(prev).add('food_budget')); setWo(w => w ? { ...w, food_budget: !w.food_budget } : w) }} style={{ padding: '4px 14px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', background: wo.food_budget ? 'var(--c-wash2)' : 'transparent', color: wo.food_budget ? 'var(--c-fg)' : 'var(--c-fg-2)' }}>
-                      {wo.food_budget ? 'Yes' : 'No'}
-                    </button>
-                    {wo.food_budget && <input value={wo.food_amount} onChange={e => { setDirtyFields(prev => new Set(prev).add('food_amount')); setWo(w => w ? { ...w, food_amount: e.target.value } : w) }} style={{ ...inp, width: 90 }} />}
+                {/* ONE SLIM ROW (§8 IdWell). Invoice #, PO # and Food budget were
+                    three full-width rows with labels stacked above — three lines
+                    and the panel's whole width spent on about five characters
+                    each. They now share a line at their natural widths, and the
+                    reclaimed height all goes to Booking Notes below. */}
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div className="c-well" style={{ flex: '1 1 132px', minWidth: 118 }}>
+                    <span className="c-pfx">Inv #</span>
+                    <input
+                      className="c-mono"
+                      value={wo.invoice_number}
+                      disabled={readOnly}
+                      placeholder="—"
+                      onChange={e => { setDirtyFields(prev => new Set(prev).add('invoice_number')); setWo(w => w ? { ...w, invoice_number: e.target.value } : w) }}
+                    />
+                  </div>
+                  <div className="c-well" style={{ flex: '1 1 120px', minWidth: 110 }}>
+                    <span className="c-pfx">PO #</span>
+                    <input
+                      className="c-mono"
+                      value={wo.po_number}
+                      disabled={readOnly}
+                      placeholder="—"
+                      onChange={e => { setDirtyFields(prev => new Set(prev).add('po_number')); setWo(w => w ? { ...w, po_number: e.target.value } : w) }}
+                    />
+                  </div>
+                  {/* Food budget — a real two-state segment, not one button whose
+                      label flips. "Yes" reveals the amount beside it; toggling back
+                      to No hides the well but KEEPS the value in state, so an
+                      accidental tap doesn't silently wipe a figure. */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                    <span className="c-pfx">Food</span>
+                    <div className="c-seg" style={{ height: 40 }}>
+                      {([[false, 'No'], [true, 'Yes']] as [boolean, string][]).map(([val, lbl]) => (
+                        <button
+                          key={lbl}
+                          type="button"
+                          disabled={readOnly}
+                          className={wo.food_budget === val ? 'c-on' : ''}
+                          onClick={() => { setDirtyFields(prev => new Set(prev).add('food_budget')); setWo(w => w ? { ...w, food_budget: val } : w) }}
+                          style={{ cursor: readOnly ? 'default' : 'pointer' }}
+                        >{lbl}</button>
+                      ))}
+                    </div>
+                    {wo.food_budget && (
+                      <div className="c-well" style={{ width: 108, flexShrink: 0 }}>
+                        <span className="c-pfx">$</span>
+                        <input
+                          className="c-mono"
+                          value={wo.food_amount}
+                          disabled={readOnly}
+                          inputMode="decimal"
+                          placeholder="0"
+                          onChange={e => { setDirtyFields(prev => new Set(prev).add('food_amount')); setWo(w => w ? { ...w, food_amount: e.target.value } : w) }}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -2007,13 +2049,18 @@ export function WorkOrderPopup({
                     Booking Notes
                     <span style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--c-st-warm)', borderRadius: 3, padding: '1px 5px', textTransform: 'uppercase' }}>Internal only</span>
                   </div>
-                  <textarea
-                    value={wo.booking_notes}
-                    disabled={readOnly}
-                    onChange={e => { setDirtyFields(prev => new Set(prev).add('booking_notes')); setWo(w => w ? { ...w, booking_notes: e.target.value } : w) }}
-                    placeholder="Ops notes about the booking — arrival, payment, past experience… never on the invoice."
-                    style={{ ...inp, minHeight: 120, flex: 1, resize: 'vertical', fontFamily: 'Inter', lineHeight: 1.5, padding: '8px 10px' }}
-                  />
+                  {/* Absorbs everything the meta row gave back — the notes are the
+                      only field here anyone writes a paragraph into, so they get
+                      the height rather than leaving it as dead panel. */}
+                  <div className="c-well c-well-area" style={{ flex: 1, minHeight: 190 }}>
+                    <textarea
+                      value={wo.booking_notes}
+                      disabled={readOnly}
+                      onChange={e => { setDirtyFields(prev => new Set(prev).add('booking_notes')); setWo(w => w ? { ...w, booking_notes: e.target.value } : w) }}
+                      placeholder="Ops notes about the booking — arrival, payment, past experience… never on the invoice."
+                      style={{ resize: 'vertical', fontFamily: 'Inter', fontSize: 13, lineHeight: 1.5, padding: 0 }}
+                    />
+                  </div>
                 </div>
               </div>
 

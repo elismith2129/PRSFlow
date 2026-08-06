@@ -285,6 +285,14 @@ besides raised controls), `SectionHeader` (extend the existing component, don't 
 
 Existing `SectionHeader` and `StatusBadge` components: extend, never duplicate.
 
+**`IdWell` (RULING 2026-08-02):** short identifier fields (invoice #, PO #, WO #, and any
+field whose content is ~a handful of characters) render as wells with the label INSIDE as
+a micro-caps prefix ("INV # ___"), and they SHARE rows at natural widths — never a full-width
+row each. General law: **field width follows content width; short fields share rows.**
+Reference: docs/design-refs/wo-meta-compact.html (option B, plus A's food-budget toggle).
+Conditional reveal pattern: a segmented No/Yes control may reveal an adjacent amount/detail
+well when Yes; the well hides (value preserved, not cleared) when toggled back to No.
+
 ---
 
 ## 9. New-lead pulse (approved)

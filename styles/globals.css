@@ -1090,7 +1090,9 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   background: rgba(0, 0, 0, .22);
   display: flex; align-items: center; gap: 6px;
   padding: 2px 8px;
-  font-size: 9px; font-weight: 700; line-height: 1.35;
+  /* 500, not 700: both halves are DM Mono now, which only ships 400/500 (see the
+     @import at the top). Asking for 700 gets a synthesised faux-bold. */
+  font-size: 9px; font-weight: 500; line-height: 1.35;
   white-space: nowrap; overflow: hidden;
   flex-shrink: 0;
 }
@@ -1098,8 +1100,11 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* Both halves shrink with ellipsis. The staff tags are pinned right but must be
    allowed to truncate too — flex-shrink:0 on them clipped the tag mid-word at
    narrow columns, which is worse than an ellipsis. */
-.c-ev-foot .c-ev-wo    { opacity: .65; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.c-ev-foot .c-ev-staff { font-weight: 800; margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Both halves are the same typeface, size, weight and opacity — they're two
+   codes on one strip, and the invoice reading lighter and in a different face
+   made it look like a smaller, lesser field. Only their alignment differs. */
+.c-ev-foot .c-ev-wo    { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.c-ev-foot .c-ev-staff { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
 /* COD strip — full-width hot bar on the chip's bottom edge, COD only.
    Sanctioned under §5 hot-as-critical: money to collect at the door is a
@@ -1273,6 +1278,15 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-well input:focus, .c-well textarea:focus { outline: none; background: none; }
 .c-well-area { height: auto; min-height: 56px; padding: 11px 14px; align-items: flex-start; font-size: 13px; }
 .c-well .c-ico { opacity: .4; font-size: 13px; flex-shrink: 0; }
+/* IdWell prefix (§8) — the field's LABEL, living inside the well.
+   For short identifiers (invoice #, PO #, WO #) a label stacked above a
+   full-width row spends a whole line and the width of the panel on five
+   characters. In the well it costs nothing and the fields can share a row.
+   General law: field width follows content width. */
+.c-pfx {
+  font-size: 9px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
+  opacity: .4; flex-shrink: 0; white-space: nowrap;
+}
 
 /* NEEDS CONTACT — flat tracked micro-caps toggle in the lead status strip
    (F-2 ruling). Deliberately NOT a pill: it sits beside the temperature pill and
