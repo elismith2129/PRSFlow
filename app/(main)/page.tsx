@@ -894,37 +894,48 @@ export default function DashboardPage() {
                 const booking = bookings.find(b =>
                   b.location === room.venue && b.studio === room.studio
                 )
-                const poolStatus = booking?.status === 'tentative' ? 'tentative' : booking ? 'confirmed' : null
-                return (
+                const slot = booking?.status === 'tentative' ? 'tentative' : booking ? 'confirmed' : null
+                // A BOOKED room card is the calendar's chip — same classes, same
+                // fill, same body. It used to be a carved pool (dark alpha wash,
+                // normal ink) while the calendar was a raised chip (bright fill,
+                // chip ink), so the two read as different objects even once they
+                // shared a body. Empty cells stay carved: an empty cell is a hole
+                // in the surface, not a card.
+                return booking ? (
                   <div
                     key={room.label}
-                    onClick={() => booking ? openBookingEdit(booking) : openNewRoomBooking(room)}
-                    className={`c-room ${poolStatus ? `c-pool ${statusFillClass(poolStatus)}` : 'c-inset2 c-room-empty'}`}
+                    onClick={() => openBookingEdit(booking)}
+                    className={`c-ev c-control c-raised-chip ${statusFillClass(slot!)}`}
                     style={{
                       height: isMobile ? undefined : ROOM_CARD_H,
                       minHeight: isMobile ? 84 : undefined,
-                      cursor: 'pointer',
-                      overflow: 'hidden',
-                      padding: booking ? 0 : undefined,
+                      cursor: 'pointer', overflow: 'hidden', padding: 0,
                       display: 'flex', flexDirection: 'column',
                     }}
                   >
-                    {/* The room name is the dashboard's own addition — the grid is
-                        organised by room, so the card has to say which one it is.
-                        Everything below it is the SHARED session card, identical
-                        to the calendar's. */}
-                    <span className="c-room-name" style={booking ? { padding: '7px 8px 0' } : undefined}>{room.label}</span>
-                    {booking && (
-                      <div style={{ flex: 1, minHeight: 0 }}>
-                        <SessionCardBody
-                          booking={booking}
-                          height={(isMobile ? 84 : ROOM_CARD_H) - ROOM_NAME_H}
-                          eng={initials(booking.engineer_name)}
-                          asst={initials(booking.assistant_name)}
-                          isMobile={isMobile}
-                        />
-                      </div>
-                    )}
+                    <span className="c-roomtag">{room.label}</span>
+                    <div style={{ flex: 1, minHeight: 0 }}>
+                      <SessionCardBody
+                        booking={booking}
+                        height={(isMobile ? 84 : ROOM_CARD_H) - ROOM_NAME_H}
+                        eng={initials(booking.engineer_name)}
+                        asst={initials(booking.assistant_name)}
+                        isMobile={isMobile}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    key={room.label}
+                    onClick={() => openNewRoomBooking(room)}
+                    className="c-room c-inset2 c-room-empty"
+                    style={{
+                      height: isMobile ? undefined : ROOM_CARD_H,
+                      minHeight: isMobile ? 84 : undefined,
+                      cursor: 'pointer', overflow: 'hidden',
+                    }}
+                  >
+                    <span className="c-room-name">{room.label}</span>
                   </div>
                 )
               })}
