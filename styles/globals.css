@@ -900,6 +900,78 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
               inset -5px -5px 14px rgba(255, 255, 255, .7);
 }
 
+/* ── THE FLO BOX (§14c) + console pieces (§14b) ─────────────────────────────
+   Ported from docs/design-refs/dashboard-final.html. Flat surface — NO carving
+   in either theme: Flo is a presence outlined in light, never a hole in the
+   material (deliberate contrast with Law 2, permitted only here). The ring +
+   halo are THE ONLY GLOW IN THE APP — glow means AI, exclusively (§7). */
+.c-ringwrap {
+  position: relative; border-radius: 15px; overflow: hidden; padding: 1.5px;
+  margin-bottom: 6px;
+  box-shadow: 0 0 16px 3px rgba(var(--c-flo-ink), .045);
+}
+.c-ringwrap::before {
+  content: ""; position: absolute; inset: -120%;
+  background: conic-gradient(
+    rgba(var(--c-flo-ink), .06) 0deg, rgba(var(--c-flo-ink), .32) 90deg,
+    rgba(var(--c-flo-ink), .06) 200deg, rgba(var(--c-flo-ink), .06) 360deg);
+  animation: c-flospin 8s linear infinite;
+}
+@keyframes c-flospin { to { transform: rotate(360deg); } }
+.c-ringwrap .c-flo-inner { position: relative; border-radius: 13.5px; background: var(--c-bg); padding: 10px 12px; }
+@media (prefers-reduced-motion: reduce) { .c-ringwrap::before { animation: none; } }
+.c-flohead { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.c-flohead .c-fname { font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 400; font-size: 13px; letter-spacing: -.01em; }
+.c-flohead .c-ftag { font-size: 7.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; opacity: .45; }
+.c-flob { display: flex; gap: 8px; align-items: baseline; font-size: 12px; line-height: 1.45; margin-bottom: 4px; }
+.c-flob .c-flodot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; position: relative; top: -1px; }
+.c-flob.c-alert { color: var(--c-st-hot); font-weight: 600; }
+.c-flosyn { font-size: 11px; opacity: .55; font-style: italic; margin-top: 3px; }
+.c-askflo { margin-top: 7px; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .4; cursor: pointer; }
+
+/* Console subheads + My Day rows (static stub until the HR layer ships). */
+.c-subhead { display: flex; align-items: center; justify-content: space-between; padding: 8px 3px 4px; }
+.c-subhead b { font-size: 8.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; opacity: .4; }
+.c-myday-item { display: flex; align-items: center; gap: 9px; padding: 4px 3px; font-size: 12.5px; }
+.c-myday-bx { width: 15px; height: 15px; border-radius: 6px; flex-shrink: 0; box-shadow: inset 2px 2px 5px rgba(0, 0, 0, .35); }
+[data-theme="light"] .c-myday-bx { box-shadow: inset 2px 2px 5px rgba(42, 39, 34, .2); }
+.c-myday-item.c-done .c-myday-bx { background: var(--c-st-booked); box-shadow: none; position: relative; }
+.c-myday-item.c-done .c-myday-bx::after {
+  content: "✓"; position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; font-size: 9px; font-weight: 800; color: var(--c-chip-ink);
+}
+.c-myday-item.c-done .c-myday-tx { text-decoration: line-through; opacity: .45; }
+.c-myday-tx { flex: 1; min-width: 0; }
+.c-myday-ct { font-family: 'DM Mono', ui-monospace, monospace; font-size: 9.5px; opacity: .5; flex-shrink: 0; }
+.c-myday-due {
+  background: var(--c-st-hot); color: var(--c-hot-text); border-radius: 99px; padding: 2px 7px;
+  font-size: 7.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; flex-shrink: 0;
+}
+.c-myday-prog {
+  font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px;
+  background: rgba(255, 169, 77, .2); color: var(--c-st-warm); border-radius: 99px; padding: 2px 8px;
+}
+.c-myday-backlog {
+  background: rgba(255, 90, 77, .15); border-radius: 10px; margin: 3px 0 6px;
+  padding: 6px 10px; font-size: 10.5px; color: var(--c-st-hot); font-weight: 600;
+}
+
+/* Location counts in the sessions pane header (the old location strip is retired). */
+.c-loccount { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+.c-loccount span {
+  font-size: 7.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  border-radius: 99px; padding: 2.5px 7px; background: var(--c-wash2); opacity: .7;
+}
+.c-loccount span.c-live { background: rgba(67, 223, 174, .2); color: var(--c-st-booked); opacity: 1; }
+
+/* Staff 14-day grid (§2.7 HR-SPEC — static stub until punches exist). */
+.c-dgrid table { border-collapse: separate; border-spacing: 2px; }
+.c-dgrid .c-who { font-size: 10px; font-weight: 600; text-align: left; padding-right: 7px; white-space: nowrap; }
+.c-dgrid td.c-sq { width: 10px; height: 10px; border-radius: 3px; background: var(--c-wash2); }
+.c-dgrid td.c-sq.c-g { background: var(--c-st-booked); }
+.c-dgrid td.c-sq.c-r { background: var(--c-st-hot); }
+.c-dgrid .c-bk { font-size: 8px; font-weight: 800; color: var(--c-st-hot); white-space: nowrap; padding-left: 5px; }
+
 /* ── Side nav rail (spec §14a, ported from docs/design-refs/dashboard-final.html) ──
    The rail replaces the top nav as the app frame. Wash fill, full height,
    sticky. Active item = filled pill (ivory-on-charcoal dark / ink-on-paper
@@ -1049,8 +1121,8 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* ── Display anchors + small utilities ──────────────────────────────────── */
 /* Date chip: an object resting on the surface, not a hole and not pressable. */
 .c-datechip {
-  border-radius: 99px; padding: 12px 20px; text-align: center;
-  font-size: 17px; line-height: 1.15;
+  border-radius: 99px; padding: 9px 16px; text-align: center;
+  font-size: 14px; line-height: 1.15;
   background: var(--c-wash2); color: var(--c-fg);
 }
 [data-theme="light"] .c-datechip { background: var(--c-fg); color: var(--c-bg); }

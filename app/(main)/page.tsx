@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { supabase, Lead, Booking, DashboardTask, DashboardTaskComment, Flag, FlagComment, UserProfile } from '@/lib/supabase'
-import { LocationStrip } from '@/components/dashboard/LocationStrip'
 import { useRouter } from 'next/navigation'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 import { deleteSessionAndWO } from '@/lib/deleteSession'
@@ -60,18 +59,86 @@ function fullscreenCardOnMobile(isMobile: boolean, viewportHeight: number | null
 const ROOM_NAME_H = 20
 const ROOM_CARD_H = 120
 
-const ROOMS = [
-  { venue: 'Paramount', studio: 'Studio A', label: 'Paramount A' },
-  { venue: 'Paramount', studio: 'Studio B', label: 'Paramount B' },
-  { venue: 'Paramount', studio: 'Studio C', label: 'Paramount C' },
-  { venue: 'Paramount', studio: 'Studio E', label: 'Paramount E' },
-  { venue: 'Paramount', studio: 'Studio X', label: 'Paramount X' },
-  { venue: 'Ameraycan', studio: 'Studio A', label: 'Ameraycan A' },
-  { venue: 'Ameraycan', studio: 'Studio B', label: 'Ameraycan B' },
-  { venue: 'Encore', studio: 'Studio A', label: 'Encore A' },
-  { venue: 'Encore', studio: 'Studio B', label: 'Encore B' },
-  { venue: 'Track', studio: 'North', label: 'Track North' },
-  { venue: 'Track', studio: 'South', label: 'Track South' },
+// §14b: rooms are 12, in this order — PRS A,B,C,E,X,Nadine's → ARS A,B →
+// ERS A,B → TRK N,S. Nadine's is PRS's sixth room but is not yet a bookable
+// studio in the data model (STUDIO_LOCATIONS has no Nadine's), so its card is
+// display-only (`bookable: false`) until that lands.
+const ROOMS: { venue: string; studio: string; label: string; bookable?: boolean }[] = [
+  { venue: 'Paramount', studio: 'Studio A', label: 'PRS · A' },
+  { venue: 'Paramount', studio: 'Studio B', label: 'PRS · B' },
+  { venue: 'Paramount', studio: 'Studio C', label: 'PRS · C' },
+  { venue: 'Paramount', studio: 'Studio E', label: 'PRS · E' },
+  { venue: 'Paramount', studio: 'Studio X', label: 'PRS · X' },
+  { venue: 'Paramount', studio: "Nadine's", label: "PRS · Nadine's", bookable: false },
+  { venue: 'Ameraycan', studio: 'Studio A', label: 'ARS · A' },
+  { venue: 'Ameraycan', studio: 'Studio B', label: 'ARS · B' },
+  { venue: 'Encore', studio: 'Studio A', label: 'ERS · A' },
+  { venue: 'Encore', studio: 'Studio B', label: 'ERS · B' },
+  { venue: 'Track', studio: 'North', label: 'TRK · N' },
+  { venue: 'Track', studio: 'South', label: 'TRK · S' },
+]
+
+// Location count chips for the sessions pane header (§14b — the old location
+// strip is retired; these are its replacement).
+const LOC_CHIPS = [
+  { code: 'PRS', venue: 'Paramount' },
+  { code: 'ARS', venue: 'Ameraycan' },
+  { code: 'ERS', venue: 'Encore' },
+  { code: 'TRK', venue: 'Track' },
+]
+
+// ─── STATIC console content (§14c/§14b) ──────────────────────────────────────
+// The Flo briefing, My Day duties and staff grid are PLACEHOLDERS copied from
+// docs/design-refs/dashboard-final.html — they go live with the HR layer
+// (docs/HR-SPEC.md). "Ask Flo →" is a dead affordance for now, by design.
+type FloBullet = { color: string; alert?: boolean; text: string }
+const FLO_STATIC: Record<'eli' | 'fernando', { bullets: FloBullet[]; synopsis: string }> = {
+  eli: {
+    bullets: [
+      { color: 'var(--c-st-hot)', alert: true, text: 'Aaron missed the AR follow-up queue again — 3-day backlog' },
+      { color: 'var(--c-st-warm)', text: 'COD outstanding: 2 accounts · nothing over 31 days' },
+      { color: 'var(--c-st-booked)', text: 'Fernando cleared all five duties yesterday' },
+    ],
+    synopsis: 'Quiet day overall — one thing needs you: Aaron’s AR backlog.',
+  },
+  fernando: {
+    bullets: [
+      { color: 'var(--c-st-hot)', alert: true, text: '3 punch requests waiting in your queue' },
+      { color: 'var(--c-st-warm)', text: 'Onboarding: I-9 due Friday' },
+      { color: 'var(--c-st-booked)', text: 'Tonight: Kestrel in PRS B, Harbor in ARS A' },
+    ],
+    synopsis: 'Steady day — clear the punch queue first, the rest can wait.',
+  },
+}
+type MyDayItem = { text: string; done?: boolean; ct?: string; due?: string }
+const MYDAY_STATIC: Record<'eli' | 'fernando', { prog: string; items: MyDayItem[]; backlog?: string }> = {
+  eli: {
+    prog: '2 of 4',
+    items: [
+      { text: 'Morning briefing reviewed', done: true },
+      { text: 'Approve pending WOs', done: true, ct: '2 approved' },
+      { text: 'Review staff grid' },
+      { text: 'Sign vendor invoices', due: 'Due today' },
+    ],
+  },
+  fernando: {
+    prog: '3 of 5',
+    items: [
+      { text: "Review yesterday's timecards", done: true, ct: '4 cleared' },
+      { text: 'Clear punch queue', done: true, ct: '2 done' },
+      { text: "Confirm today's staffing", done: true },
+      { text: 'Log missed punches' },
+      { text: 'Onboarding items due', due: 'I-9 due Fri' },
+    ],
+    backlog: 'Timecard review: 2-day backlog — clear today to reset the streak',
+  },
+}
+// Static 14-day staff grid (g = clear day, r = missed, n = non-working).
+const DGRID_STATIC: { who: string; days: string; bk?: string }[] = [
+  { who: 'Fernando', days: 'ggnggggngggggg' },
+  { who: 'Aaron', days: 'ggnggrgnggggrr', bk: '3d' },
+  { who: 'Quinn', days: 'ggnggggngggggg' },
+  { who: 'Sierra', days: 'grnggggngggggg' },
 ]
 
 
@@ -147,6 +214,17 @@ export default function DashboardPage() {
   const router = useRouter()
   const [calDate, setCalDate] = useState(new Date())
   const [hoverRoom, setHoverRoom] = useState<string | null>(null)
+  // §14b view-as toggle — Eli previews Fernando's console (greeting, briefing,
+  // My Day, default task tab, staff-grid visibility). Only Eli sees the toggle;
+  // everyone else gets their own view with no preview control.
+  const [viewAs, setViewAs] = useState<'eli' | 'fernando'>('eli')
+  const isEli = profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com'
+  function switchViewAs(v: 'eli' | 'fernando') {
+    setViewAs(v)
+    // Follow with the matching task tab when it exists for this role.
+    const tabs = visibleTabsForRole(profile?.role)
+    if (tabs.some(t => t.key === v)) setActiveTaskTab(v)
+  }
   // Step 8: booked room-grid cards open the Work Order directly (BookingForm deleted).
   const [dashEditBooking, setDashEditBooking] = useState<Booking | null>(null)
   // One-time post-login welcome splash (set by the login page in sessionStorage).
@@ -329,7 +407,7 @@ export default function DashboardPage() {
   // renders that aren't already live via the Needs Action (leadsVersion) path.
   // bookings/flags → re-run the leads/bookings/flags load (via dashDataVersion);
   // dashboard_tasks → reload the active task tab (via a ref so the channel is stable).
-  // (LocationStrip keeps its own bookings/work_orders channels for its own data.)
+  // (The LocationStrip that used to keep its own channels is retired — §14b.)
   const reloadTasksRef = useRef(reloadTasks)
   useEffect(() => { reloadTasksRef.current = reloadTasks })
   useEffect(() => {
@@ -790,37 +868,43 @@ export default function DashboardPage() {
       )}
 
       <div id="dashboard-content" className="c-root" style={{ opacity: contentReady && !showWelcome ? 1 : 0, transition: 'opacity 0.3s ease' }}>
-      {/* Header — carved: tiny tracked-out label over a mixed-case Archivo display
-          line, with the clock as a display anchor resting on the surface. The
-          all-caps shout and the accent-coloured italic were retired by the
-          redesign (spec §4: mixed case, and there is no accent colour). */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'flex-end', marginBottom: 20 }}>
+      {/* SOLO HEADER (§14b) — greeting micro-label over the Archivo title, then
+          flex-grow, the view-as segmented toggle (Eli only), and the datechip
+          anchor. Nothing else lives in the header. The old LocationStrip is
+          retired — location counts moved into the sessions pane header. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '2px 4px 14px', flexWrap: isMobile ? 'wrap' : undefined }}>
         <div>
-          <div className="c-label" style={{ marginBottom: 6 }}>
-            {greeting}{greetingName} — here's your briefing
-          </div>
-          <h1 className="c-arch" style={{ fontSize: isMobile ? 26 : 38, letterSpacing: '-0.03em', lineHeight: 1.04 }}>
-            Paramount{isMobile ? ' ' : <br />}Recording Studios
+          <span className="c-label" style={{ display: 'block', marginBottom: 3 }}>
+            {greeting}{viewAs === 'fernando' ? ' Fernando' : greetingName}
+          </span>
+          <h1 className="c-arch" style={{ fontSize: isMobile ? 20 : 26, letterSpacing: '-0.03em', lineHeight: 1.05 }}>
+            Paramount Recording Studios
           </h1>
         </div>
-        {/* Desktop-only live clock */}
+        <div style={{ flex: 1 }} />
+        {isEli && !isMobile && (
+          <span className="c-seg" style={{ flexShrink: 0 }}>
+            <button className={viewAs === 'eli' ? 'c-on' : ''} onClick={() => switchViewAs('eli')}>Eli</button>
+            <button className={viewAs === 'fernando' ? 'c-on' : ''} onClick={() => switchViewAs('fernando')}>Fernando</button>
+          </span>
+        )}
         {!isMobile && (
-          <div className="c-datechip c-anchor c-arch" style={{ flexShrink: 0, marginLeft: 24 }}>
+          <div className="c-datechip c-anchor c-arch" style={{ flexShrink: 0 }}>
             {clockDate.toUpperCase()}
             <small>{clockTime}</small>
           </div>
         )}
       </div>
 
-      {/* Location strip */}
-      <LocationStrip />
+      {/* THIRDS (§14b): LEFT = the console (Flo → My Day → Tasks) + Flags below;
+          MIDDLE = Needs Action + staff grid (Eli view only); RIGHT = Today's
+          Sessions. Positions are explicit grid placements so the JSX order can
+          stay stable; mobile is a single column reordered Sessions → Console →
+          Needs Action → Flags. Packing law: panes hug content. */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.05fr 1fr 1fr', gap: 12, alignItems: 'start' }}>
 
-      {/* 3-column grid — single column on mobile, reordered so Today's Sessions
-          leads, then Needs Action, then Tasks (via the `order` overrides below). */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr 1fr', gap: 14, alignItems: 'start', marginTop: 14 }}>
-
-        {/* COL 1 — NEEDS ACTION */}
-        <div className="c-panel" style={{ order: isMobile ? 2 : 0 }}>
+        {/* MIDDLE — NEEDS ACTION */}
+        <div className="c-panel" style={isMobile ? { order: 3 } : { gridColumn: '2', gridRow: '1' }}>
           <SectionHeader
             carved
             title="Needs action"
@@ -865,20 +949,22 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* COL 2 — TODAY'S SESSIONS */}
-        {/* The contract from main is "four room rows, fully inside the panel,
-            clipped" — 556 was just the number that satisfied it for the OLD bare
-            header. The carved lozenge is taller and the grid gap is 9, so the
-            same contract now needs 596. Columns 1 and 3 are alignItems:start, so
-            this column's height doesn't move them. Cards stay 120: at 110 a fully
-            populated card (room + artist + label + time + 1ST/2ND) can't fit its
-            own content at carved type sizes and clips from the bottom. */}
-        <div className="c-panel" style={{ height: isMobile ? 'auto' : 596, overflow: 'hidden', order: isMobile ? 1 : 0 }}>
+        {/* RIGHT — TODAY'S SESSIONS (§14b): loc counts as chips in the pane
+            header (the old location strip is retired), rooms 2-wide, pane hugs
+            its content. Day nav (‹ date ›) is kept — it's functionality the
+            mock simply didn't draw. */}
+        <div className="c-panel" style={isMobile ? { order: 1 } : { gridColumn: '3', gridRow: '1 / span 2' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <SectionHeader carved title="Today's sessions" />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14, flexShrink: 0 }}>
+              <span className="c-loccount">
+                {LOC_CHIPS.map(lc => {
+                  const n = bookings.filter(b => b.location === lc.venue).length
+                  return <span key={lc.code} className={n > 0 ? 'c-live' : undefined}>{lc.code} {n}</span>
+                })}
+              </span>
               <SoftButton onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() - 1); return n })}>‹</SoftButton>
               <div className="c-mono" style={{ whiteSpace: 'nowrap', opacity: 0.6 }}>
                 {calDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -889,7 +975,7 @@ export default function DashboardPage() {
           {loading ? (
             <div className="c-sub" style={{ padding: '12px 4px' }}>Loading…</div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 9 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {ROOMS.map(room => {
                 const booking = bookings.find(b =>
                   b.location === room.venue && b.studio === room.studio
@@ -929,12 +1015,11 @@ export default function DashboardPage() {
                 ) : (
                   <div
                     key={room.label}
-                    onClick={() => openNewRoomBooking(room)}
+                    onClick={room.bookable === false ? undefined : () => openNewRoomBooking(room)}
                     className="c-room c-inset2 c-room-empty"
                     style={{
-                      height: isMobile ? undefined : ROOM_CARD_H,
-                      minHeight: isMobile ? 84 : undefined,
-                      cursor: 'pointer', overflow: 'hidden',
+                      minHeight: isMobile ? 84 : 76,
+                      cursor: room.bookable === false ? 'default' : 'pointer', overflow: 'hidden',
                     }}
                   >
                     <span className="c-room-name">{room.label}</span>
@@ -945,14 +1030,57 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* COL 3 — TASKS */}
-        <div className="c-panel" style={{ order: isMobile ? 3 : 0 }}>
-          <SectionHeader
-            carved
-            title="Tasks"
-            count={tasks.length > 0 ? tasks.length : undefined}
-            action={{ label: 'Show all →', onClick: () => router.push('/tasks') }}
-          />
+        {/* LEFT — THE CONSOLE (§14b/§14c): Flo briefing → My Day duties → Tasks,
+            one pane. Flo + My Day are STATIC placeholders until the HR layer
+            ships; Tasks is live (dashboard_tasks). */}
+        <div className="c-panel" style={isMobile ? { order: 2 } : { gridColumn: '1', gridRow: '1' }}>
+
+          {/* THE FLO BOX — the app's single AI mouthpiece. Flat, ringed, and the
+              only glow in the system. "Ask Flo →" is a dead door for now. */}
+          <div className="c-ringwrap"><div className="c-flo-inner">
+            <div className="c-flohead">
+              <svg width="22" height="14" viewBox="0 0 22 14" fill="none" style={{ flexShrink: 0 }}>
+                <path d="M1 7c2.6-5.2 5.2-5.2 7.8 0s5.2 5.2 7.8 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                <path d="M3 10.5c2.2-3.6 4.4-3.6 6.6 0s4.4 3.6 6.6 0" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity=".45" />
+              </svg>
+              <span className="c-fname">Flo</span>
+              <span className="c-ftag">· Your briefing · {clockNow.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+            </div>
+            {FLO_STATIC[viewAs].bullets.map((b, i) => (
+              <div key={i} className={`c-flob${b.alert ? ' c-alert' : ''}`}>
+                <span className="c-flodot" style={{ background: b.color }} />
+                {b.text}
+              </div>
+            ))}
+            <div className="c-flosyn">{FLO_STATIC[viewAs].synopsis}</div>
+            <div className="c-askflo">Ask Flo →</div>
+          </div></div>
+
+          {/* MY DAY — duties (static stub; HR-SPEC §2). Duties ≠ tasks: fixed
+              per role, reset daily. Never merge them into the task list. */}
+          <div className="c-subhead">
+            <b>My day — duties</b>
+            <span className="c-myday-prog">{MYDAY_STATIC[viewAs].prog}</span>
+          </div>
+          {MYDAY_STATIC[viewAs].items.map((it, i) => (
+            <div key={i} className={`c-myday-item${it.done ? ' c-done' : ''}`}>
+              <span className="c-myday-bx" />
+              <span className="c-myday-tx">{it.text}</span>
+              {it.ct && <span className="c-myday-ct">{it.ct}</span>}
+              {it.due && <span className="c-myday-due">{it.due}</span>}
+            </div>
+          ))}
+          {MYDAY_STATIC[viewAs].backlog && (
+            <div className="c-myday-backlog">{MYDAY_STATIC[viewAs].backlog}</div>
+          )}
+
+          {/* TASKS — to-dos (live) */}
+          <div className="c-subhead">
+            <b>Tasks — to-dos{tasks.length > 0 ? ` · ${tasks.length}` : ''}</b>
+            <a onClick={() => router.push('/tasks')} style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', opacity: 0.4, cursor: 'pointer', color: 'var(--c-fg)' }}>
+              Show all →
+            </a>
+          </div>
           {/* Tab row (owner/manager/billing) OR a single "My Tasks" label (own-only tiers) */}
           {ownOnly ? (
             <div className="c-label" style={{ marginBottom: 13 }}>My Tasks</div>
@@ -987,8 +1115,8 @@ export default function DashboardPage() {
                   className="c-inset2"
                   style={{
                     display: 'flex', alignItems: 'center', gap: 9,
-                    padding: '11px 14px', borderRadius: 14,
-                    fontSize: 13, cursor: 'pointer',
+                    padding: '7px 10px', borderRadius: 12,
+                    fontSize: 12.5, cursor: 'pointer',
                   }}
                 >
                   {/* Runner/WO-sourced tasks keep their warm status dot; the old
@@ -1031,10 +1159,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-      </div>
-
-      {/* FLAGS PANEL */}
-      <div className="c-panel" style={{ marginTop: 14 }}>
+      {/* LEFT, BELOW THE CONSOLE — FLAGS (separate pane per §14b) */}
+      <div className="c-panel" style={isMobile ? { order: 4 } : { gridColumn: '1', gridRow: '2' }}>
         <SectionHeader
           carved
           title="Flags"
@@ -1096,6 +1222,31 @@ export default function DashboardPage() {
         <div style={{ marginTop: 8 }}>
           <SoftButton onClick={() => setAddingFlag(true)} className="c-block">+ add flag</SoftButton>
         </div>
+      </div>
+
+      {/* MIDDLE, BELOW NEEDS ACTION — STAFF 14-DAY GRID (§2.7 HR-SPEC). STATIC
+          placeholder until punch data exists; Eli's view only, desktop only. */}
+      {isEli && viewAs === 'eli' && !isMobile && (
+        <div className="c-panel" style={{ gridColumn: '2', gridRow: '2' }}>
+          <SectionHeader carved title="Staff — 14 days" action={{ label: 'HR →', onClick: () => router.push('/punches') }} />
+          <div className="c-dgrid">
+            <table>
+              <tbody>
+                {DGRID_STATIC.map(row => (
+                  <tr key={row.who}>
+                    <td className="c-who">{row.who}</td>
+                    {row.days.split('').map((d, i) => (
+                      <td key={i} className={`c-sq${d === 'g' ? ' c-g' : d === 'r' ? ' c-r' : ''}`} />
+                    ))}
+                    <td className="c-bk">{row.bk || ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       </div>
 
       {/* TASK MODAL */}
