@@ -954,17 +954,17 @@ export default function DashboardPage() {
             its content. Day nav (‹ date ›) is kept — it's functionality the
             mock simply didn't draw. */}
         <div className="c-panel" style={isMobile ? { order: 1 } : { gridColumn: '3', gridRow: '1 / span 2' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <SectionHeader carved title="Today's sessions" />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14, flexShrink: 0 }}>
-              <span className="c-loccount">
-                {LOC_CHIPS.map(lc => {
-                  const n = bookings.filter(b => b.location === lc.venue).length
-                  return <span key={lc.code} className={n > 0 ? 'c-live' : undefined}>{lc.code} {n}</span>
-                })}
-              </span>
+          <SectionHeader carved title="Today's sessions" />
+          {/* Chips + day nav get their own slim row — sharing the lozenge's row
+              squeezed the title into a blob at console widths. */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '-4px 0 10px' }}>
+            <span className="c-loccount" style={{ justifyContent: 'flex-start' }}>
+              {LOC_CHIPS.map(lc => {
+                const n = bookings.filter(b => b.location === lc.venue).length
+                return <span key={lc.code} className={n > 0 ? 'c-live' : undefined}>{lc.code} {n}</span>
+              })}
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
               <SoftButton onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() - 1); return n })}>‹</SoftButton>
               <div className="c-mono" style={{ whiteSpace: 'nowrap', opacity: 0.6 }}>
                 {calDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
