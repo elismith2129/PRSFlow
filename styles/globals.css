@@ -1372,7 +1372,12 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    rule are exactly what let the legacy light overrides take these cells. */
 .c-cellwell {
   width: 100%; box-sizing: border-box;
-  background: var(--c-bg); border-radius: 10px; height: 28px; padding: 0 8px;
+  /* 6px, not 8. The bare inputs these replaced had ZERO horizontal padding —
+     the cell supplied it — so a well at 8px each side ate 16px of a 66px column
+     and clipped "10:00". Cell padding was trimmed to match; between them the
+     text gets back exactly the width it had before the wells. */
+  background: var(--c-bg); border-radius: 10px; height: 28px; padding: 0 6px;
+  min-width: 0;
   font-family: inherit; font-size: 11px; line-height: 1.4;
   color: var(--c-fg); border: none; outline: none;
   box-shadow: inset 2px 2px 6px rgba(0, 0, 0, .3), inset -2px -2px 6px rgba(255, 255, 255, .025);

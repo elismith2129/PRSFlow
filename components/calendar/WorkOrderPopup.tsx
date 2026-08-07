@@ -1600,7 +1600,7 @@ export function WorkOrderPopup({
   // (`inp` deleted — every consumer was a table-cell control and now uses
   //  the `c-cellwell` recipe, which exists in BOTH registers.)
   const cellS: React.CSSProperties = {
-    padding: '3px 4px', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)',
+    padding: '3px 2px', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)',
     display: 'flex', alignItems: 'center',
   }
   const thS: React.CSSProperties = {
@@ -2330,7 +2330,7 @@ export function WorkOrderPopup({
             })()}
             <div style={{ borderRadius: 6, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
               {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock | Del */}
-              <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: 'var(--c-wash)', minWidth: isMobile ? 880 : undefined }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '64px 65px 1fr 69px 69px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: 'var(--c-wash)', minWidth: isMobile ? 880 : undefined }}>
                 {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total', '', ''].map((h, i) => <div key={i} style={thS}>{h}</div>)}
               </div>
               <div data-st-scroll="" style={{ maxHeight: 420, overflowY: 'auto', minWidth: isMobile ? 880 : undefined }}>
@@ -2354,7 +2354,7 @@ export function WorkOrderPopup({
 
                   return (
                     <div key={r.id}>
-                      {!isEngOnly && <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: r.admin_locked ? 'rgba(20,184,166,0.04)' : undefined }}>
+                      {!isEngOnly && <div style={{ display: 'grid', gridTemplateColumns: '64px 65px 1fr 69px 69px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: r.admin_locked ? 'rgba(20,184,166,0.04)' : undefined }}>
                         {/* Studio */}
                         <div style={cellS}>
                           <select
@@ -2519,7 +2519,7 @@ export function WorkOrderPopup({
                       )}
                       {r.eng_visible !== false && (
                         <>
-                          <div style={{ display: 'grid', gridTemplateColumns: '70px 65px 1fr 66px 66px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: 'var(--c-wash2)' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '64px 65px 1fr 69px 69px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: 'var(--c-wash2)' }}>
                             {/* 1ST/2ND role toggle — engineer vs assistant (every session has one OR the other) */}
                             <div style={{ ...cellS, padding: '2px 4px' }}>
                               <button
