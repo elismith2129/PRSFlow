@@ -77,6 +77,28 @@ conventions + architecture rules), `docs/AUDIT-2026-07.md` item 10, `docs/CHANGE
 
 ---
 
+## 2b. Density law (RULING 2026-08-07)
+
+Born on the CRM after the carved migration: the recipes were right but the scale drifted
+big — 40px wells, three-line list rows, a lead profile that scrolled its whole length.
+Eli's ruling, **app-wide**:
+
+- **Compact is the default.** Nothing may be so big that routine information needs
+  scrolling. A list surface shows **at least ~10 rows** on a laptop; a detail panel
+  (lead profile: contact, session, notes, activity, delete) fits in **one viewport**.
+- **List rows are ONE line:** identity on the left, metadata trailing to the RIGHT on
+  the same line (muted, ellipsised), then the row's actions. Sub-lines under the name
+  are retired on desktop (mobile may stack — narrow screens are exempt).
+- **Compact scale (the new primitive values, single source in globals.css):**
+  wells/inputs 32px high (was 40), area min-height 64 (was 110), band padding 10×12
+  (was 14×15), row padding 6×12 (was 13×16), avatar 26 (was 36), profile hero 22
+  (was 28), lozenge 7×14 (was 10×18). Buttons/pills drop ~1–2px of padding.
+- Field width still follows content (IdWell law §8); grids that share a row use
+  `minmax(0,1fr)` columns and modest gaps so content can never push a sibling out
+  of the panel (the session-date/quote overflow this ruling fixed).
+- This extends the packing law (§14b): panes hug content AND the content itself
+  stays small. When porting mocks, treat mock sizes as the CEILING, not the floor.
+
 ## 3. Tokens — both themes first-class
 
 **Naming (LOCKED, decided during implementation kickoff):** the live app already defines

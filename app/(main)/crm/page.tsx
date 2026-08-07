@@ -61,13 +61,36 @@ function LeadAvatar({ lead }: { lead: Lead }) {
     <div
       className={`c-dot ${statusFillClass(lead.status)}`}
       style={{
-        width: 36, height: 36, flexShrink: 0,
+        width: 26, height: 26, flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: 'DM Mono, monospace', fontSize: 12, fontWeight: 700,
+        fontFamily: 'DM Mono, monospace', fontSize: 10, fontWeight: 700,
         letterSpacing: '0.02em', color: 'var(--c-chip-ink)',
       }}
     >
       {leadInitials(lead) || '—'}
+    </div>
+  )
+}
+
+// ONE-LINE row body — §2b density ruling (2026-08-07). Identity on the left,
+// metadata trailing RIGHT on the same line, both ellipsised, so a row costs one
+// line and the list shows 10+ leads without scrolling. Mobile keeps the stacked
+// two-line layout (narrow screens are exempt per the ruling). Shared by BOTH
+// lead lists so they can't diverge.
+function LeadRowText({ name, meta }: { name: React.ReactNode; meta: React.ReactNode }) {
+  const isMobile = useIsMobile()
+  if (isMobile) {
+    return (
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--c-fg)' }}>{name}</div>
+        <div style={{ fontSize: 10, color: 'var(--c-fg-2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meta}</div>
+      </div>
+    )
+  }
+  return (
+    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--c-fg)', flexShrink: 0, maxWidth: '55%' }}>{name}</div>
+      <div style={{ flex: 1, minWidth: 0, fontSize: 10.5, color: 'var(--c-fg-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right' }}>{meta}</div>
     </div>
   )
 }
@@ -1304,26 +1327,20 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
               <div onClick={() => onSelect(l.id)} className={leadRowClass({ selected: selectedId === l.id })} style={leadRowStyle({ prompting: isPrompting })}>
                 {isUnacked(l.id) && <NewLeadPulse />}
                 <LeadAvatar lead={l} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
-                    {l.label && l.artist_name
-                      ? <>{l.label} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.artist_name}</>
-                      : l.artist_name && !l.label
-                        ? <>{l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>·</span> {l.artist_name}</>
-                        : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--c-fg-3)', fontWeight: 400 }}> · {l.company}</span>}</>}
-                  </div>
-                  {fmtSessionLine(l) && (
-                    <div style={{ fontSize: 10, color: 'var(--c-fg-2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {fmtSessionLine(l)}
-                    </div>
-                  )}
-                  <div style={{ fontSize: 10, color: 'var(--c-fg-2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <LeadRowText
+                  name={l.label && l.artist_name
+                    ? <>{l.label} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.artist_name}</>
+                    : l.artist_name && !l.label
+                      ? <>{l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>·</span> {l.artist_name}</>
+                      : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--c-fg-3)', fontWeight: 400 }}> · {l.company}</span>}</>}
+                  meta={<>
+                    {fmtSessionLine(l) && <>{fmtSessionLine(l)} <span style={{ color: 'var(--c-fg-3)' }}>·</span> </>}
                     {l.booking && <span>{BOOKING_ICONS[l.booking] || ''} {l.booking} · </span>}
                     {activeBucket.key === 'uncontacted'
                       ? <span style={{ color: 'var(--c-fg-3)' }}>never contacted · added {fmtDate(l.created_at)}</span>
                       : <>{daysSince(l.last_contact || l.created_at)}d ago{touch?.initials && <span style={{ color: 'var(--c-fg-2)' }}> · {touch.initials}{touch.method ? ` via ${touch.method}` : ''}</span>}</>}
-                  </div>
-                </div>
+                  </>}
+                />
                 {(l.status === 'hot' || l.status === 'warm') && daysUntilKhu(l) !== null && (daysUntilKhu(l) as number) <= 1 && (
                   <button
                     onClick={e => {
@@ -1542,32 +1559,26 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
           return (
             <React.Fragment key={l.id}>
               {showDateSep && (
-                <div className="c-label" style={{ margin: '16px 4px 6px' }}>
+                <div className="c-label" style={{ margin: '8px 4px 4px' }}>
                   {dateSepLabel(l.created_at)}
                   </div>
               )}
               <div onClick={() => onSelect(l.id)} className={leadRowClass({ selected: selectedId === l.id })} style={leadRowStyle({ prompting: isPrompting })}>
                 {isUnacked(l.id) && <NewLeadPulse />}
                 <LeadAvatar lead={l} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leadNameColor(l) }}>
-                    {l.label && l.artist_name
-                      ? <>{l.label} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.artist_name}</>
-                      : l.artist_name && !l.label
-                        ? <>{l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>·</span> {l.artist_name}</>
-                        : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--c-fg-3)', fontWeight: 400 }}> · {l.company}</span>}</>}
-                  </div>
-                  {fmtSessionLine(l) && (
-                    <div style={{ fontSize: 10, color: 'var(--c-fg-2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {fmtSessionLine(l)}
-                    </div>
-                  )}
-                  <div style={{ fontSize: 10, color: 'var(--c-fg-2)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <LeadRowText
+                  name={l.label && l.artist_name
+                    ? <>{l.label} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.artist_name}</>
+                    : l.artist_name && !l.label
+                      ? <>{l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>·</span> {l.artist_name}</>
+                      : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--c-fg-3)', fontWeight: 400 }}> · {l.company}</span>}</>}
+                  meta={<>
+                    {fmtSessionLine(l) && <>{fmtSessionLine(l)} <span style={{ color: 'var(--c-fg-3)' }}>·</span> </>}
                     {l.booking && <span>{BOOKING_ICONS[l.booking] || ''} {l.booking} · </span>}
                     {l.last_contact ? `${daysSince(l.last_contact)}d ago` : `added ${fmtDate(l.created_at)}`}
                     {touch?.initials && <span style={{ color: 'var(--c-fg-3)' }}> · {touch.initials}{touch.method ? ` via ${touch.method}` : ''}</span>}
-                  </div>
-                </div>
+                  </>}
+                />
                 {showKeepHot && (
                   <button onClick={e => { e.stopPropagation(); setTouchPromptId(null); setKeepHotPromptId(isKeepHotPrompting ? null : l.id) }}
                     style={{ flexShrink: 0, padding: '3px 8px', background: 'transparent', color: 'var(--c-fg)', borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
@@ -2060,7 +2071,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
   function iStyle(_key: string): React.CSSProperties {
     return {
       background: 'none', color: 'var(--c-fg)', padding: 0,
-      fontFamily: 'Inter', fontSize: 13.5, outline: 'none',
+      fontFamily: 'Inter', fontSize: 12.5, outline: 'none',
       width: '100%', boxShadow: 'none',
     }
   }
@@ -2172,7 +2183,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
             {lead.billing !== 'COD' ? (
               <>
                 <div style={{ display: 'inline-grid', minWidth: '3ch', position: 'relative' }}>
-                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 28, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
                     {local.label || 'Label'}
                   </span>
                   <input
@@ -2182,7 +2193,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     onKeyDown={enterBlur}
                     onBlur={e => { setFocusedInput(null); setShowLabelDD(false); save('label', e.target.value) }}
                     placeholder="Label"
-                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'label' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif", fontSize: 28, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'label' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
                   />
                   {showLabelDD && labelSuggestions.length > 0 && (
                     <div style={{ ...ddStyle, right: 'auto', width: 'max-content', minWidth: 220, maxWidth: 320 }}>
@@ -2192,9 +2203,9 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     </div>
                   )}
                 </div>
-                <span style={{ color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontSize: 28, letterSpacing: '-0.025em', lineHeight: 1.05, flexShrink: 0 }}> — </span>
+                <span style={{ color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: '-0.025em', lineHeight: 1.05, flexShrink: 0 }}> — </span>
                 <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
-                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 28, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
                     {local.artist_name || 'Artist'}
                   </span>
                   <input
@@ -2204,14 +2215,14 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     onKeyDown={enterBlur}
                     onBlur={e => { setFocusedInput(null); save('artist_name', e.target.value) }}
                     placeholder="Artist"
-                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'artist_name' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif", fontSize: 28, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'artist_name' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
                   />
                 </div>
               </>
             ) : (
               <>
                 <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
-                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 28, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
                     {fnameVal || 'First'}
                   </span>
                   <input
@@ -2221,11 +2232,11 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
                     onBlur={() => { setFocusedInput(null); save('fname', fnameVal.trim()) }}
                     placeholder="First"
-                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: leadNameColor(lead), fontFamily: "'Archivo Black', sans-serif", fontSize: 28, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: leadNameColor(lead), fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
                   />
                 </div>
                 <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
-                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 28, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
                     {lnameVal || 'Last'}
                   </span>
                   <input
@@ -2235,7 +2246,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
                     onBlur={() => { setFocusedInput(null); save('lname', lnameVal.trim()) }}
                     placeholder="Last"
-                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'lname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: leadNameColor(lead), fontFamily: "'Archivo Black', sans-serif", fontSize: 28, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'lname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: leadNameColor(lead), fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
                   />
                 </div>
               </>
@@ -2436,7 +2447,9 @@ const parsedLoc0 = parseLocation(lead.location || '')
       <div className="c-band">
       <div className="c-band-head">Session</div>
       {/* ─── Session & Quote ─────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 48px' }}>
+      {/* minmax(0,1fr) + modest gap per §2b: content can never push the sibling
+          column out of the panel (the 48px gap + fixed 1fr did exactly that). */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '6px 14px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div>
             <div style={fieldLabelStyle}>Location · Studio</div>
@@ -2469,7 +2482,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 type="date"
                 value={local.session_date || ''}
                 onChange={e => { update('session_date', e.target.value); save('session_date', e.target.value) }}
-                style={{ ...iStyle('session_date'), cursor: 'pointer', paddingLeft: 0 }}
+                style={{ ...iStyle('session_date'), cursor: 'pointer', paddingLeft: 0, width: 'auto', flex: 1, minWidth: 0 }}
               />
               <span style={{ color: 'var(--c-fg-3)', fontSize: 11, flexShrink: 0 }}>–</span>
               <input
@@ -2478,7 +2491,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 min={local.session_date || undefined}
                 title="Optional — set only when the client wants more than one day"
                 onChange={e => { update('session_end_date', e.target.value); save('session_end_date', e.target.value || null) }}
-                style={{ ...iStyle('session_end_date'), cursor: 'pointer', paddingLeft: 0, opacity: local.session_end_date ? 1 : 0.6 }}
+                style={{ ...iStyle('session_end_date'), cursor: 'pointer', paddingLeft: 0, opacity: local.session_end_date ? 1 : 0.6, width: 'auto', flex: 1, minWidth: 0 }}
               />
             </div>
           </div>
@@ -2505,7 +2518,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 }}
                 onKeyDown={enterBlur}
                 placeholder="—"
-                style={{ ...iStyle('quote'), width: 72, flex: 'none' }}
+                style={{ ...iStyle('quote'), width: 60, flex: 'none' }}
               />
             </div>
           </div>
@@ -2517,7 +2530,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 onChange={v => { update('session_start', v) }}
                 onBlur={() => { setFocusedInput(null); save('session_start', local.session_start || '') }}
                 placeholder="Start"
-                style={{ ...iStyle('session_start'), width: 78, flex: 'none' }}
+                style={{ ...iStyle('session_start'), width: 64, flex: 'none' }}
               />
               <span style={{ color: 'var(--c-fg-3)', fontSize: 11, flexShrink: 0 }}>–</span>
               <TimeInput
@@ -2525,7 +2538,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 onChange={v => { update('session_end', v) }}
                 onBlur={() => { setFocusedInput(null); save('session_end', local.session_end || '') }}
                 placeholder="End"
-                style={{ ...iStyle('session_end'), width: 78, flex: 'none' }}
+                style={{ ...iStyle('session_end'), width: 64, flex: 'none' }}
               />
             </div>
           </div>
@@ -2668,7 +2681,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
 
       {/* Footer — destructive action, right-aligned. Hot is sanctioned here by the
           §5 ruling that --c-st-hot is dual-purpose: temperature AND critical. */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: 8 }}>
         <button className="c-danger" onClick={() => setShowDeleteConfirm(true)}>
           Delete lead
         </button>

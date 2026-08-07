@@ -719,8 +719,8 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* ── Button (primary) ───────────────────────────────────────────────────── */
 .c-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  border-radius: 99px; padding: 9px 19px;
-  font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  border-radius: 99px; padding: 7px 15px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
   background: var(--c-ivory); color: #1b1a17;
 }
 [data-theme="light"] .c-btn { background: var(--c-fg); color: var(--c-bg); }
@@ -728,8 +728,8 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* ── SoftButton / Pill ──────────────────────────────────────────────────── */
 .c-soft {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  border-radius: 99px; padding: 8px 17px;
-  font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  border-radius: 99px; padding: 6px 13px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
   background: var(--c-bg); color: var(--c-fg);
 }
 .c-soft.c-on { background: var(--c-ivory); color: #1b1a17; }
@@ -738,9 +738,9 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* ── Input ──────────────────────────────────────────────────────────────── */
 .c-input {
   display: block; width: 100%;
-  border-radius: 14px; padding: 0 14px; height: 40px;
+  border-radius: 12px; padding: 0 10px; height: 32px;
   background: var(--c-bg); color: var(--c-fg);
-  font-family: inherit; font-size: 13.5px; font-weight: 500;
+  font-family: inherit; font-size: 12.5px; font-weight: 500;
 }
 .c-input::placeholder { color: var(--c-fg); opacity: 0.35; }
 /* Focus is a depth change, not an outline (Law 1). */
@@ -749,7 +749,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* ── Panel header lozenge / table head / section header ─────────────────── */
 .c-lozenge {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
-  border-radius: 99px; padding: 10px 18px; margin-bottom: 14px;
+  border-radius: 99px; padding: 7px 14px; margin-bottom: 10px;
   font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
   background: var(--c-wash2); color: var(--c-fg);
 }
@@ -847,12 +847,12 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 
 /* ── List row (capsule) ─────────────────────────────────────────────────── */
 .c-row {
-  display: flex; align-items: center; gap: 13px;
-  padding: 13px 16px; border-radius: 99px; margin-bottom: 2px;
-  font-size: 14.5px;
+  display: flex; align-items: center; gap: 9px;
+  padding: 6px 12px; border-radius: 99px; margin-bottom: 2px;
+  font-size: 12.5px;
 }
 /* The primary identifier in a list row (lead name, client name). */
-.c-row-name { font-size: 15.5px; font-weight: 700; line-height: 1.35; }
+.c-row-name { font-size: 13px; font-weight: 700; line-height: 1.35; }
 [data-theme="light"] .c-row.c-selected {
   box-shadow: inset 3px 3px 7px rgba(42, 39, 34, .11);
 }
@@ -1397,9 +1397,10 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    stacked on the well's 14. That is what shaved the first character off the email
    field. The child rules below are written to outrank it. */
 .c-well {
-  display: flex; align-items: center; gap: 8px;
-  background: var(--c-bg); border-radius: 14px; height: 40px; padding: 0 14px;
-  font-size: 13.5px; box-sizing: border-box;
+  /* Compact per §2b density ruling (2026-08-07) — was h40 / r14 / p14 / f13.5. */
+  display: flex; align-items: center; gap: 7px;
+  background: var(--c-bg); border-radius: 12px; height: 32px; padding: 0 10px;
+  font-size: 12.5px; box-sizing: border-box;
   box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .34), inset -3px -3px 9px rgba(255, 255, 255, .03);
 }
 [data-theme="light"] .c-well {
@@ -1411,7 +1412,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-well > textarea:not(.c-textarea),
 .c-well > select {
   width: 100%; height: 100%; min-width: 0;
-  font-family: inherit; font-size: 13.5px; font-weight: 500; line-height: 1.4;
+  font-family: inherit; font-size: 12.5px; font-weight: 500; line-height: 1.4;
   background: none; color: var(--c-fg);
   border: none; outline: none; box-shadow: none;
   padding: 0; margin: 0; border-radius: 0;
@@ -1484,10 +1485,11 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    against a flex parent, which clipped the top of line one. NO fixed height:
    min-height plus its own padding, so the first line always clears the edge. */
 .c-area {
+  /* Compact per §2b density ruling — was p11×14 / min-h 110. */
   display: block; width: 100%; box-sizing: border-box;
-  background: var(--c-bg); border-radius: 14px;
-  padding: 11px 14px; min-height: 110px;
-  font-family: inherit; font-size: 13px; font-weight: 500; line-height: 1.5;
+  background: var(--c-bg); border-radius: 12px;
+  padding: 8px 10px; min-height: 64px;
+  font-family: inherit; font-size: 12.5px; font-weight: 500; line-height: 1.5;
   color: var(--c-fg); resize: vertical;
   border: none; outline: none;
   box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .34), inset -3px -3px 9px rgba(255, 255, 255, .03);
@@ -1553,10 +1555,10 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* BAND — grouping ground. One tone step, NO border and NO depth. This is the
    third grouping level: carved container > band > nothing. Bands must NOT carve,
    or nested groups turn into a hall of dents. */
-.c-band { background: var(--c-wash); border-radius: 20px; padding: 14px 15px; margin-top: 14px; }
+.c-band { background: var(--c-wash); border-radius: 16px; padding: 10px 12px; margin-top: 8px; }
 .c-band-head {
   font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
-  opacity: .5; margin-bottom: 11px;
+  opacity: .5; margin-bottom: 6px;
 }
 
 /* CALCLINE — derived result under the session fields. Mono, muted, bare on the
@@ -1632,8 +1634,8 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 
 /* MINI — small raised control for in-well adornments (Call / Text / ✉). */
 .c-mini {
-  background: var(--c-bg); border-radius: 99px; padding: 6px 12px;
-  font-size: 9.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  background: var(--c-bg); border-radius: 99px; padding: 4px 10px;
+  font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
   cursor: pointer; flex-shrink: 0; color: var(--c-fg); font-family: inherit;
   box-shadow: 2px 2px 7px rgba(0, 0, 0, .45), -2px -2px 7px rgba(255, 255, 255, .035);
   transition: transform .16s ease, box-shadow .16s ease;
@@ -1642,11 +1644,11 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-mini:active { transform: translateY(1px); box-shadow: inset 2px 2px 5px rgba(0, 0, 0, .25); }
 
 /* FOLD — <details> disclosure for secondary content (activity, tags). */
-.c-fold { margin-top: 10px; }
+.c-fold { margin-top: 6px; }
 .c-fold summary {
   list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
   font-size: 9.5px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase;
-  opacity: .45; padding: 7px 0;
+  opacity: .45; padding: 4px 0;
 }
 .c-fold summary::-webkit-details-marker { display: none; }
 .c-fold summary::before { content: "\203A"; font-size: 14px; transition: transform .15s; display: inline-block; }
