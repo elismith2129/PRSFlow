@@ -1810,65 +1810,32 @@ export function WorkOrderPopup({
                 <StatusBadge status={wo.status} />
               </span>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {/* Blocks have no WO body to put on paper — same reason the footer
-                  drops Export PDF for them. */}
-              {woId && !isBlock && (
+            {/* HEADER ACTIONS — Close & Save only, in the footer's primary
+                treatment. Export PDF, Print and Delete moved to the footer:
+                three destructive-or-terminal actions crowding the title bar made
+                the one action people actually want compete with them. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {!readOnly ? (
                 <>
                   <button
-                    onClick={() => printWithFilename()}
-                    className="c-soft c-soft-sm c-control c-raised"
+                    onClick={() => handleCancel()}
+                    disabled={saving}
+                    className="c-soft c-control c-raised"
+                    style={{ cursor: saving ? 'default' : 'pointer' }}
                   >
-                    Export PDF
+                    Cancel
                   </button>
                   <button
-                    onClick={() => printWithFilename()}
-                    className="c-soft c-soft-sm c-control c-raised"
+                    onClick={handleClose}
+                    disabled={saving}
+                    className="c-btn c-control c-raised-primary"
+                    style={{ padding: '10px 22px', cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}
                   >
-                    Print
+                    {saving ? 'Saving…' : 'Close & Save'}
                   </button>
                 </>
-              )}
-              {!readOnly && onDelete && (
-                confirmDeleteSession ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 4 }}>
-                    <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>Delete session?</span>
-                    <button onClick={() => { setConfirmDeleteSession(false); onDelete() }} style={{ padding: '5px 12px', borderRadius: 5, fontSize: 10, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'var(--c-st-hot)', color: 'var(--c-bg)' }}>Delete</button>
-                    <button onClick={() => setConfirmDeleteSession(false)} style={{ padding: '5px 12px', borderRadius: 5, fontSize: 10, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', background: 'transparent', color: 'var(--c-fg-2)' }}>Keep</button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setConfirmDeleteSession(true)}
-                    disabled={saving}
-                    style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', color: 'var(--c-st-hot)' }}
-                  >
-                    Delete
-                  </button>
-                )
-              )}
-              {!readOnly && (
-              <>
-              <button
-                onClick={() => handleCancel()}
-                disabled={saving}
-                style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: 'transparent', color: 'var(--c-fg-2)' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleClose}
-                disabled={saving}
-                style={{ padding: '5px 13px', borderRadius: 5, fontSize: 10, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: saving ? 'default' : 'pointer', background: saving ? 'var(--c-wash2)' : 'var(--c-wash2)', color: saving ? 'var(--c-fg-2)' : 'var(--c-fg)' }}
-              >
-                {saving ? 'Saving…' : 'Close & Save'}
-              </button>
-              </>
-              )}
-              {readOnly && (
-                <button
-                  onClick={onClose}
-                  className="c-soft c-soft-sm c-control c-raised"
-                >
+              ) : (
+                <button onClick={onClose} className="c-soft c-control c-raised">
                   Close
                 </button>
               )}
@@ -2891,12 +2858,42 @@ export function WorkOrderPopup({
 
         {/* ── FOOTER ───────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 8 : 10, padding: isMobile ? '12px 16px calc(12px + env(safe-area-inset-bottom)) 16px' : '14px 22px', flexShrink: 0, background: 'var(--c-bg)' }}>
-          {/* Nothing to export for a block — there's no work order body, so the
-              PDF would be a header over an empty page. */}
+          {/* Document + destructive actions live HERE, not in the title bar.
+              Nothing to export for a block — no WO body, so the PDF would be a
+              header over an empty page. */}
           {!isBlock && (
             <button onClick={() => printWithFilename()} className="c-soft c-control c-raised" style={{ ...(isMobile ? { display: 'none' } : {}) }}>
               Export PDF
             </button>
+          )}
+          {!isBlock && (
+            <button onClick={() => printWithFilename()} className="c-soft c-control c-raised" style={{ ...(isMobile ? { display: 'none' } : {}) }}>
+              Print
+            </button>
+          )}
+          {/* Delete, moved down from the header. It keeps its two-step confirm —
+              a one-click delete next to Close & Save would be a bad neighbour. */}
+          {!readOnly && onDelete && (
+            confirmDeleteSession ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 'auto' }}>
+                <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>Delete session?</span>
+                <button onClick={() => { setConfirmDeleteSession(false); onDelete() }} className="c-pill c-fill-hot c-control c-raised-chip" style={{ cursor: 'pointer' }}>
+                  Delete
+                </button>
+                <button onClick={() => setConfirmDeleteSession(false)} className="c-soft c-control c-raised">
+                  Keep
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmDeleteSession(true)}
+                disabled={saving}
+                className="c-soft c-control c-raised"
+                style={{ marginRight: 'auto', color: 'var(--c-st-hot)', cursor: saving ? 'default' : 'pointer', ...(isMobile ? { display: 'none' } : {}) }}
+              >
+                Delete
+              </button>
+            )
           )}
           {!readOnly && (
           <>
