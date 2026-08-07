@@ -176,13 +176,6 @@ html[data-theme="light"] {
    migration. PIN keys are raised controls, inputs are carved .c-input, and the
    submit is a .c-btn — all of which already invert per theme. */
 
-/* (LIGHT) The welcome splash + AuthGuard hold use var(--bg) (transparent in light),
-   so give them the app's light gradient to stay opaque full-screen covers. */
-[data-theme="light"] [data-splash],
-[data-theme="light"] [data-auth-hold] {
-  background: linear-gradient(135deg, #dbeafe 0%, #ffe4e6 100%) !important;
-}
-
 
 /* (FIX 1/6) Text set to color:var(--bg) is "contrast text on an accent fill" — but
    var(--bg) is transparent in light, so it disappears (submit buttons, the TASKS

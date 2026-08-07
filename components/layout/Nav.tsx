@@ -69,10 +69,12 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
     fetchCount()
   }, [clientsVersion])
 
-  // Apply the saved theme on mount (default light). data-theme lives on <html>.
+  // Apply the saved theme on mount (DEFAULT DARK). data-theme lives on <html>.
+  // Must agree with the pre-paint script in app/layout.tsx — if these disagree
+  // the page paints one theme and then flips on hydration.
   useEffect(() => {
     const saved = localStorage.getItem('prsflo-theme')
-    const t = saved === 'dark' ? 'dark' : 'light'
+    const t = saved === 'light' ? 'light' : 'dark'
     setTheme(t)
     const root = document.documentElement
     if (t === 'light') root.setAttribute('data-theme', 'light')
