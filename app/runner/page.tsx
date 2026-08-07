@@ -149,6 +149,33 @@ export default function RunnerPage() {
           </button>
         ))}
       </div>
+
+      {/* SIGN OUT. The PIN login mints a real Supabase session, but the runner
+          subtree has no nav — so a runner (or anyone who borrowed the phone)
+          was signed in permanently with no way back to the login screen. This
+          is the only exit; it has to live where every runner lands. */}
+      <button
+        onClick={async () => {
+          await supabase.auth.signOut()
+          router.replace('/login')
+        }}
+        style={{
+          marginTop: 34,
+          background: 'transparent',
+          border: 'none',
+          color: 'var(--text2)',
+          fontFamily: 'Inter',
+          fontSize: 12,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          padding: '14px 22px',
+          minHeight: 44,
+          cursor: 'pointer',
+          WebkitTapHighlightColor: 'transparent',
+        }}
+      >
+        Sign out
+      </button>
     </div>
   )
 }
