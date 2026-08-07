@@ -1597,8 +1597,8 @@ export function WorkOrderPopup({
 
   // ── Styles ────────────────────────────────────────────────────────────────
 
-  // (`inp` deleted — every consumer was a table-cell control and now uses
-  //  the `c-cellwell` recipe, which exists in BOTH registers.)
+  // (`inp` deleted. Table cells now use `c-tin` — bare, per the §8 TABLE
+  //  EXEMPTION; form fields use the `c-input c-inset2` well recipe.)
   const cellS: React.CSSProperties = {
     padding: '3px 2px', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)',
     display: 'flex', alignItems: 'center',
@@ -2093,23 +2093,23 @@ export function WorkOrderPopup({
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>Studio</span>
-                      <input value={seed.studio} onChange={e => setSeed(s => ({ ...s, studio: e.target.value }))} className="c-cellwell" />
+                      <input value={seed.studio} onChange={e => setSeed(s => ({ ...s, studio: e.target.value }))} className="c-input c-inset2" />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>Start date</span>
-                      <input type="date" value={seed.start} onChange={e => setSeed(s => ({ ...s, start: e.target.value }))} className="c-cellwell" />
+                      <input type="date" value={seed.start} onChange={e => setSeed(s => ({ ...s, start: e.target.value }))} className="c-input c-inset2" />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>End date</span>
-                      <input type="date" value={seed.end} onChange={e => setSeed(s => ({ ...s, end: e.target.value }))} className="c-cellwell" />
+                      <input type="date" value={seed.end} onChange={e => setSeed(s => ({ ...s, end: e.target.value }))} className="c-input c-inset2" />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>From</span>
-                      <TimeInput value={seed.from} onChange={v => setSeed(s => ({ ...s, from: v }))} className="c-cellwell" />
+                      <TimeInput value={seed.from} onChange={v => setSeed(s => ({ ...s, from: v }))} className="c-input c-inset2" />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>To</span>
-                      <TimeInput value={seed.to} onChange={v => setSeed(s => ({ ...s, to: v }))} className="c-cellwell" />
+                      <TimeInput value={seed.to} onChange={v => setSeed(s => ({ ...s, to: v }))} className="c-input c-inset2" />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>Rate</span>
@@ -2119,7 +2119,7 @@ export function WorkOrderPopup({
                             <button key={rt} type="button" onClick={() => setSeed(s => ({ ...s, rateType: rt }))} style={{ padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: seed.rateType === rt ? 'var(--c-fg)' : 'transparent', color: seed.rateType === rt ? 'var(--c-bg)' : 'var(--c-fg-2)' }}>{rt === 'day' ? 'Day' : 'Hr'}</button>
                           ))}
                         </div>
-                        <input value={seed.rate} onChange={e => setSeed(s => ({ ...s, rate: e.target.value }))} className="c-cellwell" style={{ width: 64 }} />
+                        <input value={seed.rate} onChange={e => setSeed(s => ({ ...s, rate: e.target.value }))} className="c-input c-inset2" style={{ width: 64 }} />
                       </div>
                     </div>
                   </div>
@@ -2146,11 +2146,11 @@ export function WorkOrderPopup({
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: '0 1 220px' }}>
                           <span style={metaLabel}>{seed.engRole === 'assistant' ? 'Assistant name' : 'Engineer name'}</span>
-                          <input list="wo-eng-roster" value={seed.engName} onChange={e => setSeed(s => ({ ...s, engName: e.target.value }))} className="c-cellwell" />
+                          <input list="wo-eng-roster" value={seed.engName} onChange={e => setSeed(s => ({ ...s, engName: e.target.value }))} className="c-input c-inset2" />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, width: 80 }}>
                           <span style={metaLabel}>Rate</span>
-                          <input value={seed.engRate} onChange={e => setSeed(s => ({ ...s, engRate: e.target.value }))} className="c-cellwell" />
+                          <input value={seed.engRate} onChange={e => setSeed(s => ({ ...s, engRate: e.target.value }))} className="c-input c-inset2" />
                         </div>
                       </>
                     )}
@@ -2158,7 +2158,7 @@ export function WorkOrderPopup({
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>Appends one row per day; dates already in the table are skipped.</span>
-                    <button type="button" disabled={seedBusy || !seed.start} onClick={handleSeed} style={{ padding: '7px 16px', borderRadius: 6, fontSize: 11, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, cursor: seedBusy || !seed.start ? 'default' : 'pointer', background: seed.start ? 'var(--c-fg)' : 'rgba(255,255,255,0.08)', color: seed.start ? 'var(--c-bg)' : 'var(--c-fg-3)' }}>
+                    <button type="button" disabled={seedBusy || !seed.start} onClick={handleSeed} style={{ padding: '7px 16px', borderRadius: 6, fontSize: 11, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, cursor: seedBusy || !seed.start ? 'default' : 'pointer', background: seed.start ? 'var(--c-fg)' : 'var(--c-wash)', color: seed.start ? 'var(--c-bg)' : 'var(--c-fg-3)' }}>
                       {seedBusy ? 'Adding…' : 'Add rows'}
                     </button>
                   </div>
@@ -2330,11 +2330,12 @@ export function WorkOrderPopup({
             })()}
             <div style={{ borderRadius: 6, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
               {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock | Del */}
-              <div style={{ display: 'grid', gridTemplateColumns: '64px 65px 1fr 69px 69px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: 'var(--c-wash)', minWidth: isMobile ? 880 : undefined }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px', background: 'var(--c-wash)', minWidth: isMobile ? 880 : undefined }}>
                 {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total', '', ''].map((h, i) => <div key={i} style={thS}>{h}</div>)}
               </div>
               <div data-st-scroll="" style={{ maxHeight: 420, overflowY: 'auto', minWidth: isMobile ? 880 : undefined }}>
-                {stRows.map(r => {
+                {stRows.map((r, rowIdx) => {
+                  const zebra = rowIdx % 2 === 1 ? ' c-trow-alt' : ''
                   const isEngOnly = r.studio === ''
                   const isDayRow = r.row_rate_type === 'day'
                   const engName = wo?.engineer || liveForm?.engineer_name || booking.engineer_name || ''
@@ -2346,7 +2347,7 @@ export function WorkOrderPopup({
                   const toggleStyle = (active: boolean): React.CSSProperties => ({
                     fontSize: 9, fontFamily: 'Inter', fontWeight: 700, padding: '2px 5px',
                     borderRadius: 3, cursor: 'pointer',
-                    background: active ? 'var(--c-fg)' : 'rgba(255,255,255,0.06)',
+                    background: active ? 'var(--c-fg)' : 'var(--c-wash)',
                     color: active ? 'var(--c-bg)' : 'var(--c-fg-2)',
                   })
                   const rowHrs = r.total_hours ?? calcHours(r.from_time, r.to_time)
@@ -2354,7 +2355,7 @@ export function WorkOrderPopup({
 
                   return (
                     <div key={r.id}>
-                      {!isEngOnly && <div style={{ display: 'grid', gridTemplateColumns: '64px 65px 1fr 69px 69px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: r.admin_locked ? 'rgba(20,184,166,0.04)' : undefined }}>
+                      {!isEngOnly && <div className={zebra} style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px', background: r.admin_locked ? 'var(--c-wash)' : undefined }}>
                         {/* Studio */}
                         <div style={cellS}>
                           <select
@@ -2363,7 +2364,7 @@ export function WorkOrderPopup({
                               const [loc, room] = e.target.value.split('|')
                               updateStRow(r.id, { location: loc === (booking.location || '') ? '' : loc, studio: room })
                             }}
-                            className="c-cellwell" style={{ padding: '2px 2px', fontSize: 10 }}
+                            className="c-tin" style={{ padding: '2px 2px', fontSize: 10 }}
                           >
                             {!STUDIO_LOCATIONS.some(l => l.name === (r.location || booking.location)) && (
                               <option value={`${r.location || booking.location || ''}|${toStudioLetter(r.studio)}`}>{toStudioLetter(r.studio) || '—'}</option>
@@ -2428,14 +2429,14 @@ export function WorkOrderPopup({
                               />
                               <div style={{ display: 'flex', gap: 6 }}>
                                 <button onClick={() => { updateStRow(r.id, { session_info: siPopoverText }); setSiPopoverRowId(null) }} style={{ flex: 1, background: 'var(--c-fg)', color: 'var(--c-bg)', borderRadius: 5, padding: '5px 0', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, cursor: 'pointer' }}>Save</button>
-                                <button onClick={() => setSiPopoverRowId(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', color: 'var(--c-fg-2)', borderRadius: 5, padding: '5px 0', fontFamily: "'Archivo Black', sans-serif", fontSize: 11, cursor: 'pointer' }}>Close</button>
+                                <button onClick={() => setSiPopoverRowId(null)} style={{ flex: 1, background: 'var(--c-wash2)', color: 'var(--c-fg-2)', borderRadius: 5, padding: '5px 0', fontFamily: "'Archivo Black', sans-serif", fontSize: 11, cursor: 'pointer' }}>Close</button>
                               </div>
                             </div>
                           </>
                         )}
                         {/* From / To */}
-                        <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} className="c-cellwell" /></div>
-                        <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} className="c-cellwell" /></div>
+                        <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} className="c-tin c-tin-mono" /></div>
+                        <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} className="c-tin c-tin-mono" /></div>
                         {/* Total Hrs — always auto-calc */}
                         <div style={{ ...cellS, color: 'var(--c-fg-2)', fontSize: 10 }}>{rowHrs != null ? `${rowHrs}h` : '—'}</div>
                         {/* Rate Type toggle */}
@@ -2446,27 +2447,27 @@ export function WorkOrderPopup({
                         {/* Rate */}
                         <div style={cellS}>
                           {isDayRow
-                            ? <input value={r.rate_daily} onChange={e => updateStRow(r.id, { rate_daily: e.target.value })} className="c-cellwell" placeholder="$0/day" />
-                            : <input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} className="c-cellwell" placeholder="$0/hr" />
+                            ? <input value={r.rate_daily} onChange={e => updateStRow(r.id, { rate_daily: e.target.value })} className="c-tin" placeholder="$0/day" />
+                            : <input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} className="c-tin c-tin-mono" placeholder="$0/hr" />
                           }
                         </div>
                         {/* OT Hrs — day: auto display; hourly: editable */}
                         <div style={cellS}>
                           {isDayRow
                             ? <span style={{ fontSize: 10, color: 'var(--c-fg-2)' }}>{otHrsNum > 0 ? `${otHrsNum}h` : '—'}</span>
-                            : <input value={r.ot_hours ?? ''} onChange={e => updateStRow(r.id, { ot_hours: e.target.value })} className="c-cellwell" placeholder="0" />
+                            : <input value={r.ot_hours ?? ''} onChange={e => updateStRow(r.id, { ot_hours: e.target.value })} className="c-tin c-tin-mono" placeholder="0" />
                           }
                         </div>
                         {/* OT Rate — editable (auto-populated but overridable) */}
                         <div style={cellS}>
-                          <input value={r.ot_rate ?? ''} onChange={e => updateStRow(r.id, { ot_rate: e.target.value })} className="c-cellwell" placeholder="$0" />
+                          <input value={r.ot_rate ?? ''} onChange={e => updateStRow(r.id, { ot_rate: e.target.value })} className="c-tin c-tin-mono" placeholder="$0" />
                         </div>
                         {/* OT Charge — computed read-only */}
                         <div style={{ ...cellS, color: (r.ot_charge ?? 0) > 0 ? 'var(--c-fg)' : 'var(--c-fg-2)', fontSize: 10 }}>
                           {(r.ot_charge ?? 0) > 0 ? `$${r.ot_charge!.toFixed(2)}` : '—'}
                         </div>
                         {/* Total Charge = charge + OT charge */}
-                        <div style={{ ...cellS, color: rowTotal > 0 ? 'var(--c-fg)' : 'var(--c-fg-2)', fontWeight: rowTotal > 0 ? 600 : 400 }}>
+                        <div className="c-tnum" style={{ ...cellS, display: 'block', color: rowTotal > 0 ? 'var(--c-fg)' : 'var(--c-fg-2)', fontWeight: rowTotal > 0 ? 600 : 400 }}>
                           {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : '—'}
                         </div>
                         {/* Lock pill — always clickable even when WO is completed */}
@@ -2477,7 +2478,7 @@ export function WorkOrderPopup({
                             style={{
                               fontSize: 8, fontFamily: 'Inter', fontWeight: 700, padding: '2px 5px',
                               borderRadius: 3, cursor: 'pointer', whiteSpace: 'nowrap',
-                              background: r.admin_locked ? 'var(--c-st-booked)' : 'rgba(255,255,255,0.06)',
+                              background: r.admin_locked ? 'var(--c-st-booked)' : 'var(--c-wash)',
                               color: r.admin_locked ? 'var(--c-bg)' : 'var(--c-fg-3)',
                             }}
                           >{r.admin_locked ? '🔒' : '✓'}</button>
@@ -2494,7 +2495,7 @@ export function WorkOrderPopup({
                                   <div style={{ position: 'absolute', right: '130%', top: '50%', transform: 'translateY(-50%)', zIndex: 191, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--c-wash)', borderRadius: 6, padding: '5px 9px', whiteSpace: 'nowrap', boxShadow: '0 6px 20px rgba(0,0,0,0.45)' }}>
                                     <span style={{ fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>Delete row?</span>
                                     <button type="button" onClick={() => deleteStRow(r.id)} style={{ fontSize: 10, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-bg)', background: 'var(--c-st-hot)', borderRadius: 4, cursor: 'pointer', padding: '3px 10px' }}>Delete</button>
-                                    <button type="button" onClick={() => setConfirmDeleteRowId(null)} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'rgba(255,255,255,0.07)', borderRadius: 4, cursor: 'pointer', padding: '3px 10px' }}>Cancel</button>
+                                    <button type="button" onClick={() => setConfirmDeleteRowId(null)} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'var(--c-wash2)', borderRadius: 4, cursor: 'pointer', padding: '3px 10px' }}>Cancel</button>
                                   </div>
                                 </>
                               )}
@@ -2503,12 +2504,12 @@ export function WorkOrderPopup({
                         </div>
                       </div>}
                       {!isEngOnly && pendingLockedEdits[r.id] && (
-                        <div style={{ padding: '5px 12px', background: 'rgba(20,184,166,0.08)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'Inter', color: 'var(--c-st-booked)' }}>
+                        <div style={{ padding: '5px 12px', background: 'var(--c-wash)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'Inter', color: 'var(--c-st-booked)' }}>
                           <span>Editing a locked row —</span>
                           <button
                             type="button"
                             onClick={() => { handleToggleLock(r.id, true); setPendingLockedEdits(p => { const n = { ...p }; delete n[r.id]; return n }) }}
-                            style={{ padding: '2px 8px', borderRadius: 3, background: 'rgba(20,184,166,0.15)', color: 'var(--c-st-booked)', fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}
+                            style={{ padding: '2px 8px', borderRadius: 3, background: 'var(--c-wash2)', color: 'var(--c-st-booked)', fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}
                           >Update</button>
                           <button
                             type="button"
@@ -2519,7 +2520,7 @@ export function WorkOrderPopup({
                       )}
                       {r.eng_visible !== false && (
                         <>
-                          <div style={{ display: 'grid', gridTemplateColumns: '64px 65px 1fr 69px 69px 40px 52px 76px 50px 70px 68px 76px 40px 24px', background: 'var(--c-wash2)' }}>
+                          <div className={zebra} style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px' }}>
                             {/* 1ST/2ND role toggle — engineer vs assistant (every session has one OR the other) */}
                             <div style={{ ...cellS, padding: '2px 4px' }}>
                               <button
@@ -2561,15 +2562,15 @@ export function WorkOrderPopup({
                                 value={r.eng_name || ''}
                                 onChange={e => updateStRow(r.id, { eng_name: e.target.value })}
                                 placeholder={engName || (r.eng_role === 'assistant' ? 'Assistant…' : 'Engineer…')}
-                                className="c-cellwell" style={{ fontSize: 10, color: 'var(--c-fg)' }}
+                                className="c-tin" style={{ fontSize: 10, color: 'var(--c-fg)' }}
                               />
                             </div>
-                            <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} className="c-cellwell" /></div>
-                            <div style={cellS}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} className="c-cellwell" /></div>
+                            <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} className="c-tin c-tin-mono" /></div>
+                            <div style={cellS}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} className="c-tin c-tin-mono" /></div>
                             <div style={{ ...cellS, color: 'var(--c-fg-2)', fontSize: 10 }}>{engHrs != null ? `${engHrs}h` : '—'}</div>
                             <div style={cellS} />
                             <div style={cellS}>
-                              <input value={r.eng_rate || engRateDisplay} onChange={e => updateStRow(r.id, { eng_rate: e.target.value })} className="c-cellwell" style={{ width: 64 }} />
+                              <input value={r.eng_rate || engRateDisplay} onChange={e => updateStRow(r.id, { eng_rate: e.target.value })} className="c-tin c-tin-mono" style={{ width: 64 }} />
                             </div>
                             <div style={cellS} />
                             <div style={cellS} />
@@ -2579,7 +2580,7 @@ export function WorkOrderPopup({
                             </div>
                             {/* Eng lock */}
                             <div style={{ ...cellS, justifyContent: 'center', padding: '3px 4px', pointerEvents: 'auto' }}>
-                              <button type="button" onClick={() => handleToggleLock(r.id, r.admin_locked)} style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, padding: '2px 5px', borderRadius: 3, cursor: 'pointer', whiteSpace: 'nowrap', background: r.admin_locked ? 'var(--c-st-booked)' : 'rgba(255,255,255,0.06)', color: r.admin_locked ? 'var(--c-bg)' : 'var(--c-fg-3)' }}>{r.admin_locked ? '🔒' : '✓'}</button>
+                              <button type="button" onClick={() => handleToggleLock(r.id, r.admin_locked)} style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, padding: '2px 5px', borderRadius: 3, cursor: 'pointer', whiteSpace: 'nowrap', background: r.admin_locked ? 'var(--c-st-booked)' : 'var(--c-wash)', color: r.admin_locked ? 'var(--c-bg)' : 'var(--c-fg-3)' }}>{r.admin_locked ? '🔒' : '✓'}</button>
                             </div>
                             {/* Eng delete × */}
                             <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto' }}>
@@ -2587,9 +2588,9 @@ export function WorkOrderPopup({
                             </div>
                           </div>
                           {confirmClearEngId === r.id && (
-                            <div style={{ padding: '5px 12px', background: 'rgba(249,115,22,0.08)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'Inter', color: 'var(--c-st-warm)' }}>
+                            <div style={{ padding: '5px 12px', background: 'var(--c-wash)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, fontFamily: 'Inter', color: 'var(--c-st-warm)' }}>
                               <span>Delete engineer row?</span>
-                              <button type="button" onClick={() => isEngOnly ? deleteStRow(r.id) : clearEngRow(r.id)} style={{ padding: '2px 8px', borderRadius: 3, background: 'rgba(249,115,22,0.15)', color: 'var(--c-st-warm)', fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}>Y</button>
+                              <button type="button" onClick={() => isEngOnly ? deleteStRow(r.id) : clearEngRow(r.id)} style={{ padding: '2px 8px', borderRadius: 3, background: 'var(--c-wash2)', color: 'var(--c-st-warm)', fontSize: 9, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer' }}>Y</button>
                               <button type="button" onClick={() => setConfirmClearEngId(null)} style={{ padding: '2px 8px', borderRadius: 3, background: 'transparent', color: 'var(--c-fg-2)', fontSize: 9, fontFamily: 'Inter', cursor: 'pointer' }}>N</button>
                             </div>
                           )}
@@ -2602,18 +2603,18 @@ export function WorkOrderPopup({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: 'var(--c-wash)' }}>
                 {!readOnly ? (
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                  <button type="button" onClick={addStRow} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0 }}>+ Add Studio Time</button>
-                  <button type="button" onClick={() => addEngRow('engineer')} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-wash2)', background: 'none', cursor: 'pointer', padding: 0 }}>+ Add Engineer</button>
-                  <button type="button" onClick={() => addEngRow('assistant')} style={{ fontSize: 10, fontFamily: 'Inter', color: 'rgba(249,115,22,0.65)', background: 'none', cursor: 'pointer', padding: 0 }}>+ Add Assistant</button>
+                  <button type="button" onClick={addStRow} className="c-x" style={{ fontSize: 10, color: 'var(--c-fg-2)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Studio Time</button>
+                  <button type="button" onClick={() => addEngRow('engineer')} className="c-x" style={{ fontSize: 10, color: 'var(--c-fg)', opacity: 0.4, background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Engineer</button>
+                  <button type="button" onClick={() => addEngRow('assistant')} className="c-x" style={{ fontSize: 10, color: 'var(--c-st-warm)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Assistant</button>
                 </div>
                 ) : <div />}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
-                  <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)' }}>Studio: ${stTotal.toFixed(2)}</span>
+                  <span className="c-tnum" style={{ color: 'var(--c-fg)' }}>Studio: ${stTotal.toFixed(2)}</span>
                   {engTotal > 0 && (
-                    <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)' }}>Eng: ${engTotal.toFixed(2)}</span>
+                    <span className="c-tnum" style={{ color: 'var(--c-fg)' }}>Eng: ${engTotal.toFixed(2)}</span>
                   )}
                   {engTotal > 0 && (
-                    <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)', fontWeight: 700 }}>Total: ${(stTotal + engTotal).toFixed(2)}</span>
+                    <span className="c-tnum" style={{ color: 'var(--c-fg)', fontWeight: 700 }}>Total: ${(stTotal + engTotal).toFixed(2)}</span>
                   )}
                 </div>
               </div>
@@ -2636,12 +2637,15 @@ export function WorkOrderPopup({
                     : <div style={thS}>—</div>}
                 </div>
                 {/* Equipment rows */}
-                {EQUIPMENT_ITEMS.map(eq => {
+                {EQUIPMENT_ITEMS.map((eq, eqIdx) => {
                   const openDate = openNoteKey?.startsWith(`${eq}||`) ? openNoteKey.split('||')[1] : null
                   return (
                     <div key={eq}>
-                      <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)` }}>
-                        <div style={{ ...cellS, color: 'var(--c-fg)', fontWeight: 500, position: 'sticky', left: 0, background: 'var(--c-wash)', zIndex: 1 }}>{eq}</div>
+                      <div className={eqIdx % 2 === 1 ? 'c-trow-alt' : ''} style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)` }}>
+                        {/* Sticky label column. It must be OPAQUE (cells scroll
+                            under it) but it takes the row's own band, not a
+                            permanent wash — that read as a highlighted column. */}
+                        <div style={{ ...cellS, color: 'var(--c-fg)', fontWeight: 500, position: 'sticky', left: 0, background: eqIdx % 2 === 1 ? 'var(--c-surface-band)' : 'var(--c-bg)', zIndex: 1 }}>{eq}</div>
                         {sessionDates.length > 0
                           ? sessionDates.map(d => {
                               const key = `${eq}||${d}`
@@ -2650,8 +2654,8 @@ export function WorkOrderPopup({
                               const hasNote = !!(equipNotes[key]?.note || (equipNotes[key]?.photo_urls?.length ?? 0) > 0)
                               return (
                                 <div key={d} style={{ ...cellS, display: 'flex', gap: 4, alignItems: 'center' }}>
-                                  <button type="button" onClick={() => row && toggleEquip(eq, d, 'ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, cursor: 'pointer', background: cond === 'ok' ? 'rgba(20,184,166,0.12)' : 'transparent', color: cond === 'ok' ? 'var(--c-st-booked)' : 'var(--c-fg-2)' }}>OK</button>
-                                  <button type="button" onClick={() => row && toggleEquip(eq, d, 'not_ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, cursor: 'pointer', background: cond === 'not_ok' ? 'rgba(239,68,68,0.12)' : 'transparent', color: cond === 'not_ok' ? 'var(--c-st-hot)' : 'var(--c-fg-2)' }}>✗</button>
+                                  <button type="button" onClick={() => row && toggleEquip(eq, d, 'ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", cursor: 'pointer', background: 'transparent', color: cond === 'ok' ? 'var(--c-st-booked)' : 'var(--c-fg-3)', fontWeight: cond === 'ok' ? 700 : 400 }}>OK</button>
+                                  <button type="button" onClick={() => row && toggleEquip(eq, d, 'not_ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", cursor: 'pointer', background: 'transparent', color: cond === 'not_ok' ? 'var(--c-st-hot)' : 'var(--c-fg-3)', fontWeight: cond === 'not_ok' ? 700 : 400 }}>✗</button>
                                   {cond === 'not_ok' && hasNote && (
                                     <span style={{ width: 6, height: 6, borderRadius: 3, background: 'var(--c-st-warm)', display: 'inline-block', flexShrink: 0 }} />
                                   )}
@@ -2710,13 +2714,13 @@ export function WorkOrderPopup({
                 {['Qty', 'Item', 'Supplier', "Date(s) Used", 'Rate', 'Charge', ''].map(h => <div key={h} style={thS}>{h}</div>)}
               </div>
               {rentRows.map((r, idx) => (
-                <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', minWidth: isMobile ? 540 : undefined }}>
-                  <div style={cellS}><input value={r.qty} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, qty: e.target.value } : x))} className="c-cellwell" /></div>
-                  <div style={cellS}><input value={r.item} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, item: e.target.value } : x))} className="c-cellwell" /></div>
-                  <div style={cellS}><input value={r.supplier} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, supplier: e.target.value } : x))} className="c-cellwell" /></div>
-                  <div style={cellS}><input value={r.dates_used} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, dates_used: e.target.value } : x))} className="c-cellwell" /></div>
-                  <div style={cellS}><input value={r.rate} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, rate: e.target.value } : x))} className="c-cellwell" /></div>
-                  <div style={cellS}><input value={r.charge} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, charge: e.target.value } : x))} placeholder="$0.00" className="c-cellwell" /></div>
+                <div key={r.id} className={idx % 2 === 1 ? 'c-trow-alt' : ''} style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', minWidth: isMobile ? 540 : undefined }}>
+                  <div style={cellS}><input value={r.qty} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, qty: e.target.value } : x))} className="c-tin c-tin-mono" /></div>
+                  <div style={cellS}><input value={r.item} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, item: e.target.value } : x))} className="c-tin" /></div>
+                  <div style={cellS}><input value={r.supplier} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, supplier: e.target.value } : x))} className="c-tin" /></div>
+                  <div style={cellS}><input value={r.dates_used} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, dates_used: e.target.value } : x))} className="c-tin" /></div>
+                  <div style={cellS}><input value={r.rate} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, rate: e.target.value } : x))} className="c-tin c-tin-mono" /></div>
+                  <div style={cellS}><input value={r.charge} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, charge: e.target.value } : x))} placeholder="$0.00" className="c-tin c-tin-mono" /></div>
                   <div style={{ ...cellS, padding: '6px 4px' }}>
                     {!readOnly && <button type="button" onClick={() => setRentRows(p => p.filter(x => x.id !== r.id))} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>}
                   </div>
@@ -2724,7 +2728,7 @@ export function WorkOrderPopup({
               ))}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: 'var(--c-wash)', minWidth: isMobile ? 540 : undefined }}>
                 {!readOnly ? <button type="button" onClick={() => setRentRows(p => [...p, { id: crypto.randomUUID(), qty: '', item: '', supplier: '', dates_used: '', rate: '', charge: '' }])} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button> : <span />}
-                <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)', fontWeight: 700 }}>Total: ${rentTotal.toFixed(2)}</span>
+                <span className="c-tnum" style={{ color: 'var(--c-fg)', fontWeight: 700 }}>Total: ${rentTotal.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -2754,7 +2758,7 @@ export function WorkOrderPopup({
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
                     <div style={metaLabel}>Print Name</div>
-                    <input value={wo.print_name} onChange={e => setWo(w => w ? { ...w, print_name: e.target.value } : w)} className="c-cellwell" />
+                    <input value={wo.print_name} onChange={e => setWo(w => w ? { ...w, print_name: e.target.value } : w)} className="c-tin" />
                   </div>
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -2790,17 +2794,17 @@ export function WorkOrderPopup({
                   {payRows.map((p, idx) => {
                     const needsLast4 = p.payment_type === 'Credit Card' || p.payment_type === 'Debit Card'
                     return (
-                      <div key={p.id} style={{ display: 'grid', gridTemplateColumns: needsLast4 ? '130px 80px 1fr 70px 24px' : '130px 80px 1fr 24px', alignItems: 'center' }}>
+                      <div key={p.id} className={idx % 2 === 1 ? 'c-trow-alt' : ''} style={{ display: 'grid', gridTemplateColumns: needsLast4 ? '130px 80px 1fr 70px 24px' : '130px 80px 1fr 24px', alignItems: 'center' }}>
                         <div style={cellS}>
-                          <select value={p.payment_type} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, payment_type: e.target.value, last_four: '' } : x))} className="c-cellwell" style={{ background: 'transparent', cursor: 'pointer' }}>
+                          <select value={p.payment_type} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, payment_type: e.target.value, last_four: '' } : x))} className="c-tin" style={{ background: 'transparent', cursor: 'pointer' }}>
                             <option value="">— type —</option>
                             {['Cash', 'Zelle', 'Credit Card', 'Debit Card', 'Check', 'Other'].map(t => <option key={t} value={t}>{t}</option>)}
                           </select>
                         </div>
-                        <div style={cellS}><input value={p.amount} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x))} onBlur={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: formatCurrency(e.target.value) } : x))} placeholder="0.00" className="c-cellwell" /></div>
-                        <div style={cellS}><input value={p.memo} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))} placeholder="memo" className="c-cellwell" /></div>
+                        <div style={cellS}><input value={p.amount} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x))} onBlur={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: formatCurrency(e.target.value) } : x))} placeholder="0.00" className="c-tin c-tin-mono" /></div>
+                        <div style={cellS}><input value={p.memo} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))} placeholder="memo" className="c-tin" /></div>
                         {needsLast4 && (
-                          <div style={cellS}><input value={p.last_four} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) } : x))} placeholder="last 4" maxLength={4} className="c-cellwell" /></div>
+                          <div style={cellS}><input value={p.last_four} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) } : x))} placeholder="last 4" maxLength={4} className="c-tin c-tin-mono" /></div>
                         )}
                         <div style={{ ...cellS, padding: '6px 4px' }}>
                           {!readOnly && <button type="button" onClick={() => setPayRows(p2 => p2.filter(x => x.id !== p.id))} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>}

@@ -214,9 +214,9 @@ html[data-theme="light"] {
    code: React writes inline styles through the CSSOM, and the browser serialises
    the style attribute as `position: fixed` WITH a space. They could never match
    anything this app renders. */
-[data-theme="light"] [style*="position: fixed"] input:not(.c-input):not(.c-area):not(.c-cellwell),
-[data-theme="light"] [style*="position: fixed"] textarea:not(.c-textarea):not(.c-area):not(.c-cellwell),
-[data-theme="light"] [style*="position: fixed"] select:not(.c-cellwell) {
+[data-theme="light"] [style*="position: fixed"] input:not(.c-input):not(.c-area):not(.c-tin),
+[data-theme="light"] [style*="position: fixed"] textarea:not(.c-textarea):not(.c-area):not(.c-tin),
+[data-theme="light"] [style*="position: fixed"] select:not(.c-tin) {
   background: #f8fafc !important;
   border: 1px solid #cbd5e1 !important;
 }
@@ -229,7 +229,7 @@ html[data-theme="light"] {
    strip the legacy modal styling those un-migrated surfaces still need. */
 [data-theme="light"] .c-well > input:not([type="file"]):not(.c-input):not(.c-x):not(.c-btn),
 [data-theme="light"] .c-well > textarea:not(.c-textarea):not(.c-area):not(.c-x):not(.c-btn),
-[data-theme="light"] .c-well > select:not(.c-cellwell):not(.c-x):not(.c-btn):not(.c-soft) {
+[data-theme="light"] .c-well > select:not(.c-tin):not(.c-x):not(.c-btn):not(.c-soft) {
   background: none !important;
   border: none !important;
   box-shadow: none !important;
@@ -359,12 +359,12 @@ input:not(.c-input), textarea:not(.c-input), select:not(.c-input) {
 /* (FIX 1) In light mode the dark inset shadow reads as a distracting box outline —
    remove it on all inputs. `.c-input` excluded for the same reason as above: this
    rule is !important and would flatten the carved input in light mode. */
-/* Kills leftover legacy shadows in light. `.c-area` and `.c-cellwell` join
+/* Kills leftover legacy shadows in light. `.c-area` and `.c-tin` join
    `.c-input` on the exclusion list — this rule was flattening the carved inset
    off the notes box and the studio-time cells in light mode only. */
-[data-theme="light"] input:not(.c-input):not(.c-area):not(.c-cellwell),
-[data-theme="light"] textarea:not(.c-input):not(.c-area):not(.c-cellwell),
-[data-theme="light"] select:not(.c-input):not(.c-cellwell) {
+[data-theme="light"] input:not(.c-input):not(.c-area):not(.c-tin),
+[data-theme="light"] textarea:not(.c-input):not(.c-area):not(.c-tin),
+[data-theme="light"] select:not(.c-input):not(.c-tin) {
   box-shadow: none !important;
 }
 
@@ -1364,30 +1364,51 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-well > select option { background: var(--c-bg); color: var(--c-fg); }
 .c-well .c-ico { opacity: .4; font-size: 13px; flex-shrink: 0; }
 
-/* ── CELL WELL (§10/F-25 §5) — the well recipe at table scale, for the
-   studio-time From/To/Rate/OT inputs. Same construction as .c-well: carved in,
-   no border, never white. Only the geometry shrinks (radius 10, height 28) so a
-   dense row still reads as a row.
-   Written for BOTH registers explicitly — dark-first recipes with no light-side
-   rule are exactly what let the legacy light overrides take these cells. */
-.c-cellwell {
-  width: 100%; box-sizing: border-box;
-  /* 6px, not 8. The bare inputs these replaced had ZERO horizontal padding —
-     the cell supplied it — so a well at 8px each side ate 16px of a 66px column
-     and clipped "10:00". Cell padding was trimmed to match; between them the
-     text gets back exactly the width it had before the wells. */
-  background: var(--c-bg); border-radius: 10px; height: 28px; padding: 0 6px;
-  min-width: 0;
+/* ── DATA TABLE CELLS — TABLE EXEMPTION (§8) ───────────────────────────────
+   Inside a data table the GRID is the container. Cells are BARE: no wells, no
+   carving, no per-cell bubbles.
+
+   This supersedes the cell-well experiment. A well costs ~12px of horizontal
+   room per cell in padding and radius, which a form can afford and a 14-column
+   table cannot — the tax showed up immediately as "6:00 P" and truncated staff
+   names. Delineation comes from the zebra, not from drawing a box around every
+   value.
+
+   The edit affordance moves to interaction: a cell fills with wash on hover and
+   a step darker on focus. At rest it is text on the row.
+
+   Applies to studio time, rentals, payments and equipment condition. */
+.c-tin {
+  width: 100%; min-width: 0; box-sizing: border-box;
+  background: transparent; border: none; outline: none; box-shadow: none;
+  padding: 3px 5px; border-radius: 6px;
   font-family: inherit; font-size: 11px; line-height: 1.4;
-  color: var(--c-fg); border: none; outline: none;
-  box-shadow: inset 2px 2px 6px rgba(0, 0, 0, .3), inset -2px -2px 6px rgba(255, 255, 255, .025);
+  color: var(--c-fg);
+  transition: background .12s ease;
 }
-[data-theme="light"] .c-cellwell {
-  background: var(--c-bg);
-  box-shadow: inset 2px 2px 5px rgba(42, 39, 34, .06), inset -2px -2px 5px rgba(255, 255, 255, .6);
+.c-tin:hover:not(:disabled) { background: var(--c-wash); }
+.c-tin:focus { background: var(--c-wash2); }
+.c-tin::placeholder { color: var(--c-fg); opacity: .3; }
+.c-tin:disabled { opacity: .4; }
+/* Mono for times and numbers. NOT `.c-mono` — that class carries its own
+   `font-size: 12.5px`, which is the trap that oversized the card footer. */
+.c-tin-mono { font-family: 'DM Mono', ui-monospace, monospace; }
+
+/* Zebra. Parity is passed in as a class rather than :nth-child because rows are
+   emitted through fragments and conditional sub-rows, so DOM position and row
+   number are not the same thing. */
+.c-trow-alt { background: var(--c-surface-band); }
+/* The zebra band, as an opaque colour rather than a wash — a sticky first column
+   has to paint the same band, and an alpha wash over the scrolling cells beneath
+   it lets them show through. */
+:root { --c-surface-band: #201f1c; }
+[data-theme="light"] { --c-surface-band: #efece5; }
+
+/* Row totals and the section total — bare bold mono, no container. */
+.c-tnum {
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 11px; font-weight: 500; text-align: right;
 }
-.c-cellwell::placeholder { color: var(--c-fg); opacity: .3; }
-.c-cellwell:focus { outline: none; }
 
 /* ── AREA — ported from the reference `.area`. A textarea IS the well; it is
    never nested inside one. Nesting gave the inner textarea `height: 100%`

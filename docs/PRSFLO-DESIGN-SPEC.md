@@ -295,6 +295,14 @@ choices for one field"; loose pills say "here are several unrelated buttons".)
 Where the field IS status, the pressed segment fills with its STATUS colour rather than
 ink/ivory — sanctioned under §5, because there the colour is the meaning.
 
+**TABLE EXEMPTION (RULING 2026-08-03):** data tables (studio time, rentals, payments,
+equipment condition, and any row-per-record editing grid) are FLAT — no wells, no carving,
+no per-cell bubbles, no borders. The grid is the container; cells are bare text/inputs.
+Construction: header = capsule lozenge as now; rows delineated by alternating wash zebra
+(no rules); editable cells are transparent inputs, mono where numeric/time, that show a
+wash fill on hover/focus only; column widths follow content (times must fit "10:00 PM"
+uncut); tiny controls (Day/Hr segment, ✓, ×) stay as-is. Same both themes.
+
 **`IdWell` (RULING 2026-08-02):** short identifier fields (invoice #, PO #, WO #, and any
 field whose content is ~a handful of characters) render as wells with the label INSIDE as
 a micro-caps prefix ("INV # ___"), and they SHARE rows at natural widths — never a full-width
