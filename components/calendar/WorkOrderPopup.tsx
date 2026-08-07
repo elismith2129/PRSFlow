@@ -1599,14 +1599,25 @@ export function WorkOrderPopup({
 
   // (`inp` deleted. Table cells now use `c-tin` — bare, per the §8 TABLE
   //  EXEMPTION; form fields use the `c-input c-inset2` well recipe.)
+
+  // The single horizontal inset for every data table on this surface. Change it
+  // here and headers, text cells and input cells all move together.
+  const TCELL_X = 6
   const cellS: React.CSSProperties = {
-    padding: '3px 2px', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)',
-    display: 'flex', alignItems: 'center',
+    padding: `3px ${TCELL_X}px`, fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)',
+    display: 'flex', alignItems: 'center', minWidth: 0,
   }
+  // A cell whose child is a .c-tin input: no inset of its own, because the input
+  // carries it. Otherwise the inset would be applied twice and input columns
+  // would sit 6px right of text columns — which is what was misaligned.
+  const cellIn: React.CSSProperties = { ...cellS, padding: '3px 0' }
   const thS: React.CSSProperties = {
-    padding: '4px 8px', fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400,
+    padding: `5px ${TCELL_X}px`, fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400,
     letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-2)',
+    display: 'flex', alignItems: 'center', minWidth: 0,
   }
+  // Right-aligned header, for the money columns whose values are right-aligned.
+  const thR: React.CSSProperties = { ...thS, justifyContent: 'flex-end' }
   function shortDate(d: string) {
     if (!d) return '—'
     const parts = d.split('-')
@@ -2331,7 +2342,11 @@ export function WorkOrderPopup({
             <div style={{ borderRadius: 6, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
               {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock | Del */}
               <div style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px', background: 'var(--c-wash)', minWidth: isMobile ? 880 : undefined }}>
-                {['Studio', 'Date', 'Session Info', 'From', 'To', 'Hrs', 'Type', 'Rate', 'OT Hrs', 'OT Rate', 'OT Chg', 'Total', '', ''].map((h, i) => <div key={i} style={thS}>{h}</div>)}
+                {/* `right` marks the money columns — header and value share an
+                    alignment, or the column reads as two ragged edges. */}
+                {([['Studio'], ['Date'], ['Session Info'], ['From'], ['To'], ['Hrs'], ['Type'],
+                   ['Rate'], ['OT Hrs'], ['OT Rate'], ['OT Chg', 'right'], ['Total', 'right'], [''], ['']] as [string, string?][])
+                  .map(([h, align], i) => <div key={i} style={align === 'right' ? thR : thS}>{h}</div>)}
               </div>
               <div data-st-scroll="" style={{ maxHeight: 420, overflowY: 'auto', minWidth: isMobile ? 880 : undefined }}>
                 {stRows.map((r, rowIdx) => {
@@ -2435,8 +2450,8 @@ export function WorkOrderPopup({
                           </>
                         )}
                         {/* From / To */}
-                        <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} className="c-tin c-tin-mono" /></div>
-                        <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} className="c-tin c-tin-mono" /></div>
+                        <div style={cellIn}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} className="c-tin c-tin-mono" /></div>
+                        <div style={cellIn}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} className="c-tin c-tin-mono" /></div>
                         {/* Total Hrs — always auto-calc */}
                         <div style={{ ...cellS, color: 'var(--c-fg-2)', fontSize: 10 }}>{rowHrs != null ? `${rowHrs}h` : '—'}</div>
                         {/* Rate Type toggle */}
@@ -2463,15 +2478,15 @@ export function WorkOrderPopup({
                           <input value={r.ot_rate ?? ''} onChange={e => updateStRow(r.id, { ot_rate: e.target.value })} className="c-tin c-tin-mono" placeholder="$0" />
                         </div>
                         {/* OT Charge — computed read-only */}
-                        <div style={{ ...cellS, color: (r.ot_charge ?? 0) > 0 ? 'var(--c-fg)' : 'var(--c-fg-2)', fontSize: 10 }}>
+                        <div className="c-tnum" style={{ ...cellS, justifyContent: 'flex-end', color: (r.ot_charge ?? 0) > 0 ? 'var(--c-fg)' : 'var(--c-fg-2)' }}>
                           {(r.ot_charge ?? 0) > 0 ? `$${r.ot_charge!.toFixed(2)}` : '—'}
                         </div>
                         {/* Total Charge = charge + OT charge */}
-                        <div className="c-tnum" style={{ ...cellS, display: 'block', color: rowTotal > 0 ? 'var(--c-fg)' : 'var(--c-fg-2)', fontWeight: rowTotal > 0 ? 600 : 400 }}>
+                        <div className="c-tnum" style={{ ...cellS, justifyContent: 'flex-end', color: rowTotal > 0 ? 'var(--c-fg)' : 'var(--c-fg-2)', fontWeight: rowTotal > 0 ? 600 : 400 }}>
                           {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : '—'}
                         </div>
                         {/* Lock pill — always clickable even when WO is completed */}
-                        <div style={{ ...cellS, justifyContent: 'center', padding: '3px 4px', pointerEvents: 'auto' }}>
+                        <div style={{ ...cellS, justifyContent: 'center', pointerEvents: 'auto' }}>
                           <button
                             type="button"
                             onClick={() => handleToggleLock(r.id, r.admin_locked)}
@@ -2522,13 +2537,13 @@ export function WorkOrderPopup({
                         <>
                           <div className={zebra} style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px' }}>
                             {/* 1ST/2ND role toggle — engineer vs assistant (every session has one OR the other) */}
-                            <div style={{ ...cellS, padding: '2px 4px' }}>
+                            <div style={{ ...cellS, paddingTop: 2, paddingBottom: 2 }}>
                               <button
                                 type="button"
                                 disabled={readOnly}
                                 onClick={() => updateStRow(r.id, { eng_role: r.eng_role === 'assistant' ? 'engineer' : 'assistant' })}
                                 title={r.eng_role === 'assistant' ? 'Assistant (2nd) — click to switch to Engineer' : 'Engineer (1st) — click to switch to Assistant'}
-                                style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, letterSpacing: '0.04em', padding: '2px 6px', borderRadius: 3, cursor: readOnly ? 'default' : 'pointer', background: 'transparent', color: r.eng_role === 'assistant' ? 'var(--c-st-warm)' : 'var(--c-fg)' }}
+                                style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, letterSpacing: '0.04em', padding: 0, borderRadius: 3, cursor: readOnly ? 'default' : 'pointer', background: 'transparent', color: r.eng_role === 'assistant' ? 'var(--c-st-warm)' : 'var(--c-fg)' }}
                               >
                                 {r.eng_role === 'assistant' ? '2ND' : '1ST'}
                               </button>
@@ -2556,7 +2571,7 @@ export function WorkOrderPopup({
                                 />
                               )}
                             </div>
-                            <div style={{ ...cellS, padding: '2px 3px' }}>
+                            <div style={{ ...cellIn, paddingTop: 2, paddingBottom: 2 }}>
                               <input
                                 list="wo-eng-roster"
                                 value={r.eng_name || ''}
@@ -2565,8 +2580,8 @@ export function WorkOrderPopup({
                                 className="c-tin" style={{ fontSize: 10, color: 'var(--c-fg)' }}
                               />
                             </div>
-                            <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} className="c-tin c-tin-mono" /></div>
-                            <div style={cellS}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} className="c-tin c-tin-mono" /></div>
+                            <div style={cellIn}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} className="c-tin c-tin-mono" /></div>
+                            <div style={cellIn}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} className="c-tin c-tin-mono" /></div>
                             <div style={{ ...cellS, color: 'var(--c-fg-2)', fontSize: 10 }}>{engHrs != null ? `${engHrs}h` : '—'}</div>
                             <div style={cellS} />
                             <div style={cellS}>
@@ -2711,17 +2726,18 @@ export function WorkOrderPopup({
             <SectionHeader carved title="Rentals" />
             <div style={{ borderRadius: 6, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', background: 'var(--c-wash)', minWidth: isMobile ? 540 : undefined }}>
-                {['Qty', 'Item', 'Supplier', "Date(s) Used", 'Rate', 'Charge', ''].map(h => <div key={h} style={thS}>{h}</div>)}
+                {([['Qty'], ['Item'], ['Supplier'], ["Date(s) Used"], ['Rate', 'right'], ['Charge', 'right'], ['']] as [string, string?][])
+                  .map(([h, align], i) => <div key={i} style={align === 'right' ? thR : thS}>{h}</div>)}
               </div>
               {rentRows.map((r, idx) => (
                 <div key={r.id} className={idx % 2 === 1 ? 'c-trow-alt' : ''} style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', minWidth: isMobile ? 540 : undefined }}>
-                  <div style={cellS}><input value={r.qty} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, qty: e.target.value } : x))} className="c-tin c-tin-mono" /></div>
-                  <div style={cellS}><input value={r.item} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, item: e.target.value } : x))} className="c-tin" /></div>
-                  <div style={cellS}><input value={r.supplier} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, supplier: e.target.value } : x))} className="c-tin" /></div>
-                  <div style={cellS}><input value={r.dates_used} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, dates_used: e.target.value } : x))} className="c-tin" /></div>
-                  <div style={cellS}><input value={r.rate} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, rate: e.target.value } : x))} className="c-tin c-tin-mono" /></div>
-                  <div style={cellS}><input value={r.charge} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, charge: e.target.value } : x))} placeholder="$0.00" className="c-tin c-tin-mono" /></div>
-                  <div style={{ ...cellS, padding: '6px 4px' }}>
+                  <div style={cellIn}><input value={r.qty} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, qty: e.target.value } : x))} className="c-tin c-tin-mono" /></div>
+                  <div style={cellIn}><input value={r.item} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, item: e.target.value } : x))} className="c-tin" /></div>
+                  <div style={cellIn}><input value={r.supplier} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, supplier: e.target.value } : x))} className="c-tin" /></div>
+                  <div style={cellIn}><input value={r.dates_used} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, dates_used: e.target.value } : x))} className="c-tin" /></div>
+                  <div style={cellIn}><input value={r.rate} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, rate: e.target.value } : x))} className="c-tin c-tin-mono" style={{ textAlign: 'right' }} /></div>
+                  <div style={cellIn}><input value={r.charge} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, charge: e.target.value } : x))} placeholder="$0.00" className="c-tin c-tin-mono" style={{ textAlign: 'right' }} /></div>
+                  <div style={{ ...cellS, paddingTop: 6, paddingBottom: 6, justifyContent: 'center' }}>
                     {!readOnly && <button type="button" onClick={() => setRentRows(p => p.filter(x => x.id !== r.id))} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>}
                   </div>
                 </div>
@@ -2801,12 +2817,12 @@ export function WorkOrderPopup({
                             {['Cash', 'Zelle', 'Credit Card', 'Debit Card', 'Check', 'Other'].map(t => <option key={t} value={t}>{t}</option>)}
                           </select>
                         </div>
-                        <div style={cellS}><input value={p.amount} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x))} onBlur={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: formatCurrency(e.target.value) } : x))} placeholder="0.00" className="c-tin c-tin-mono" /></div>
-                        <div style={cellS}><input value={p.memo} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))} placeholder="memo" className="c-tin" /></div>
+                        <div style={cellIn}><input value={p.amount} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x))} onBlur={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: formatCurrency(e.target.value) } : x))} placeholder="0.00" className="c-tin c-tin-mono" /></div>
+                        <div style={cellIn}><input value={p.memo} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))} placeholder="memo" className="c-tin" /></div>
                         {needsLast4 && (
-                          <div style={cellS}><input value={p.last_four} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) } : x))} placeholder="last 4" maxLength={4} className="c-tin c-tin-mono" /></div>
+                          <div style={cellIn}><input value={p.last_four} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) } : x))} placeholder="last 4" maxLength={4} className="c-tin c-tin-mono" /></div>
                         )}
-                        <div style={{ ...cellS, padding: '6px 4px' }}>
+                        <div style={{ ...cellS, paddingTop: 6, paddingBottom: 6, justifyContent: 'center' }}>
                           {!readOnly && <button type="button" onClick={() => setPayRows(p2 => p2.filter(x => x.id !== p.id))} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>}
                         </div>
                       </div>

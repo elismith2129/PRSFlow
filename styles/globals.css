@@ -1381,7 +1381,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-tin {
   width: 100%; min-width: 0; box-sizing: border-box;
   background: transparent; border: none; outline: none; box-shadow: none;
-  padding: 3px 5px; border-radius: 6px;
+  padding: 3px 6px; border-radius: 6px;
   font-family: inherit; font-size: 11px; line-height: 1.4;
   color: var(--c-fg);
   transition: background .12s ease;
@@ -1391,7 +1391,9 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    resting state must stay transparent — that is the whole rule. */
 .c-tin:not(.c-input):not(.c-well):not(.c-area):not(.c-x) {
   background: transparent; border: none; box-shadow: none;
-  border-radius: 6px; padding: 3px 5px; height: auto;
+  /* 6px matches TCELL_X in WorkOrderPopup — headers, text cells and inputs all
+     start on the same vertical line. If one moves, move both. */
+  border-radius: 6px; padding: 3px 6px; height: auto;
 }
 .c-tin:hover:not(:disabled):not(.c-input):not(.c-well):not(.c-area):not(.c-x) { background: var(--c-wash); }
 .c-tin:focus:not(.c-input):not(.c-well):not(.c-area):not(.c-x) { background: var(--c-wash2); }
