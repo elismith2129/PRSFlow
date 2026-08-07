@@ -1283,23 +1283,23 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-sheet button:disabled, .c-panel button:disabled { opacity: 0.5; cursor: default; }
 
 
-.c-sheet input:not([type="file"]):not(.c-input),
-.c-sheet select,
-.c-sheet textarea:not(.c-textarea),
-.c-panel input:not([type="file"]):not(.c-input),
-.c-panel select,
-.c-panel textarea:not(.c-textarea) {
+.c-sheet input:not([type="file"]):not(.c-input):not(.c-tin),
+.c-sheet select:not(.c-tin),
+.c-sheet textarea:not(.c-textarea):not(.c-tin),
+.c-panel input:not([type="file"]):not(.c-input):not(.c-tin),
+.c-panel select:not(.c-tin),
+.c-panel textarea:not(.c-textarea):not(.c-tin) {
   border-radius: 14px; padding: 10px 14px; width: 100%;
   background: var(--c-bg); color: var(--c-fg);
   font-family: inherit; font-size: 13px; box-sizing: border-box;
   box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .34), inset -3px -3px 9px rgba(255, 255, 255, .03);
 }
-[data-theme="light"] .c-sheet input:not([type="file"]):not(.c-input),
-[data-theme="light"] .c-sheet select,
-[data-theme="light"] .c-sheet textarea:not(.c-textarea),
-[data-theme="light"] .c-panel input:not([type="file"]):not(.c-input),
-[data-theme="light"] .c-panel select,
-[data-theme="light"] .c-panel textarea:not(.c-textarea) {
+[data-theme="light"] .c-sheet input:not([type="file"]):not(.c-input):not(.c-tin),
+[data-theme="light"] .c-sheet select:not(.c-tin),
+[data-theme="light"] .c-sheet textarea:not(.c-textarea):not(.c-tin),
+[data-theme="light"] .c-panel input:not([type="file"]):not(.c-input):not(.c-tin),
+[data-theme="light"] .c-panel select:not(.c-tin),
+[data-theme="light"] .c-panel textarea:not(.c-textarea):not(.c-tin) {
   box-shadow: inset 3px 3px 8px rgba(42, 39, 34, .07), inset -3px -3px 8px rgba(255, 255, 255, .65);
 }
 .c-sheet input:focus, .c-sheet select:focus, .c-sheet textarea:focus,
@@ -1386,8 +1386,15 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   color: var(--c-fg);
   transition: background .12s ease;
 }
-.c-tin:hover:not(:disabled) { background: var(--c-wash); }
-.c-tin:focus { background: var(--c-wash2); }
+/* Written with padding :not()s so they outrank the scoped sheet defaults
+   (.c-sheet input… is (0,3,1)) even if that exclusion list is ever edited. The
+   resting state must stay transparent — that is the whole rule. */
+.c-tin:not(.c-input):not(.c-well):not(.c-area):not(.c-x) {
+  background: transparent; border: none; box-shadow: none;
+  border-radius: 6px; padding: 3px 5px; height: auto;
+}
+.c-tin:hover:not(:disabled):not(.c-input):not(.c-well):not(.c-area):not(.c-x) { background: var(--c-wash); }
+.c-tin:focus:not(.c-input):not(.c-well):not(.c-area):not(.c-x) { background: var(--c-wash2); }
 .c-tin::placeholder { color: var(--c-fg); opacity: .3; }
 .c-tin:disabled { opacity: .4; }
 /* Mono for times and numbers. NOT `.c-mono` — that class carries its own
