@@ -2659,3 +2659,116 @@ that "Billing" means Net 30 · confirm exact WFN menu paths for company code 4DA
 into P01 · confirm the Time Card Exceptions dashboard is enabled in our instance · legal review
 before go-live on final pay, WPV coverage, the notices list, and the missed punch ladder against
 the handbook.
+
+### August 6, 2026 — Carved redesign: calendar frozen, Work Order migrated (sign-off)
+
+Long session, one branch (`redesign/carved`), ~45 commits. Two surfaces finished — the
+calendar is **frozen** by ruling, the Work Order popup is migrated end to end. One
+production hotfix cherry-picked to `main` (the only thing that has left the branch).
+
+**The single most expensive lesson of the session — CSS specificity, three times.**
+`globals.css` carries scoped defaults for sheets and panels:
+`.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)`.
+Six `:not()` clauses make that **(0,7,1)**. Three separate features were written against
+it and lost silently:
+
+1. **Segmented controls.** `.c-seg button` is (0,1,1). Every option rendered with the
+   sheet's own raised pill styling — Eli's "bubbles in bubbles" — and the housing was
+   invisible behind them. `.c-seg button.c-on.c-fill-booked` (0,3,1) also lost, which is
+   why status colours on the status selector were requested three times and appeared to
+   be ignored. They were being computed correctly and overpainted.
+2. **Wells.** `.c-sheet input:not([type="file"]):not(.c-input)` (0,3,1) beat `.c-well input`
+   (0,2,1), so every input inside a well got its own carved box — a well inside a well,
+   10px of padding on top of the well's 14. That is what shaved the first character off
+   the email field.
+3. **Bare table cells.** `.c-tin` (0,1,0) lost to the same input rule, so the "remove all
+   bubbles" commit changed the markup correctly and had no visible effect at all.
+
+**Rule going forward: any new recipe that targets an element inside `.c-sheet`/`.c-panel`
+must either be added to that rule's `:not()` exclusion list or be written to outrank
+(0,7,1) deliberately.** Both mechanisms are now in place for seg, well and `.c-tin`, with
+the specificity arithmetic written in the CSS as a comment. A first attempt at the `.c-tin`
+override was (0,4,0), which still loses to (0,4,1) on element count — it would have shipped
+looking fixed and broken again on the next edit. **Check the arithmetic, don't estimate it.**
+
+**Rejected: growing calendar rows to fit stacked sessions.** Two or three sessions in one
+room on one day were splitting a fixed cell, collapsing the card to its footer strip. The
+first fix grew the row. Eli rejected it: a doubled row is permanent damage to the grid's
+rhythm, paid every day of the year, to solve something occasional that never exceeds three.
+Rows stay fixed; stacked cards shed content from the bottom up instead — footer first,
+then the client line, then the times. The COD bar *shrinks to a 4px sliver* rather than
+leaving, because the red edge is the signal and the method is one hover away. That trade
+is what buys the times line back on a two-up cell.
+
+**Rejected: per-cell wells in data tables.** Wells were applied to studio-time cells, then
+removed one commit later under a new ruling (spec §8 TABLE EXEMPTION). A well costs ~12px
+of horizontal room per cell, which a form can afford and a 14-column table cannot — it
+showed up immediately as "6:00 P" and truncated staff names. **Inside a data table the grid
+is the container; cells are bare, delineation is the zebra, and the edit affordance is a
+wash on hover/focus.** Applies to studio time, rentals, payments and equipment condition.
+
+**One session card, four surfaces.** The calendar grid, day view, studio view and the
+dashboard room grid each had their own copy of the card and had already drifted — different
+fonts on the client line, staff stacked in one place and inline in another, invoice shown
+in two of four. Now `components/calendar/SessionCard.tsx`. Two byte-identical copies of
+`fmtTime` and `initials` collapsed into it as well.
+
+**Status colour is one decision in one place.** The dashboard was choosing fill with
+`status === 'tentative' ? amber : green`, so tech, tour, open hours **and cancelled** all
+fell down the green branch. `sessionFillClass()` in the card module is now the only place
+that decision is made. `--c-st-tech` (orchid `#b5a3ef`) was added so tech, tour and open
+hours are three distinct statuses — **this makes seven status colours where spec §3 lists
+six.**
+
+**Sticky month rail (§10b).** Segments derive from the same `days` array the grid renders
+from, so an infinite-scroll re-anchor re-renders them for free. Deliberate: O-10 (the
+long-bar payload incident, three failed attempts) happened because a feature derived
+position from `scrollLeft`, which survives a re-anchor while the grid's origin moves. The
+tint alternates on the **absolute month number**, not array index — index parity flips on
+every re-anchor across a boundary and the tint would blink while scrolling.
+
+**`overflow: hidden` kills sticky, learned twice.** The rail's month name didn't stick
+because each segment clipped its overflow, making it the scroll container for its sticky
+child. Same trap that made CSS sticky impossible for the long-bar chip payload. Sticky is
+already clamped to its containing block, so the clip was never needed — that clamping *is*
+the push-out at the month boundary.
+
+**Light-theme regression, and why dark-first recipes are dangerous here.** Every well on
+the WO rendered as a white bordered input in light mode. Cause: `[data-theme="light"]
+[style*="position: fixed"] input { background:#f8fafc !important; border:1px solid #cbd5e1
+!important }`. The WO popup's root carries inline `position: fixed`, so it captured every
+input inside it, `!important`, light only. Not deleted — `/admin`, `/wo-hub`, `/tasks`,
+`/clients`, the runner pages, `DailyOpsModal` and `LocationStrip` all still render
+un-migrated fixed modals that need it. Scoped to exclude carved classes instead, with a
+note saying it can go when the last of those migrates. **Three of its six selectors were
+`[style*="position:fixed"]` with no space — React writes inline styles through the CSSOM
+and the browser serialises the attribute *with* a space, so they could never match. Dead
+code, deleted.** A scripted sweep for carved recipes that paint a shadow but have no
+light-side rule found two more (`.c-control:active`, `.c-row.c-selected`).
+
+**`.c-mono` carries `font-size: 12.5px`.** Not just a typeface. Both halves of the card
+footer wore it, so both rendered at 12.5 regardless of the band's own font-size — which is
+why two attempts to shrink that text did nothing. A guard now pins `.c-mono` inside the
+footer to `font-size: inherit`.
+
+**Runner had no sign out.** The PIN login mints a real Supabase session, but `/runner/*`
+sits outside the nav by design, and `Nav.tsx` was the only place in the app that called
+`signOut`. A phone signed into the Runner PWA was signed in permanently — `/login` redirects
+already-authenticated users to `/`, so there was no route out. Added to the Runner Hub
+landing and **cherry-picked to `main` as `4b74ae2`** — the only commit from this branch that
+has gone to production. Worth a pass over the runner subtree for other things that assume
+someone else's chrome is present.
+
+**Also landed:** WO print was blank since `2e67ec0` un-portaled the popup (print CSS
+required `body > [data-wo-portal]`) — fixed with visibility-based isolation, then the print
+flatten rule was changed from a hand-written class list to a prefix match, because the list
+went stale the moment the WO body migrated. Continuous horizontal calendar zoom (trackpad
+pinch) replaced Week/2 Wks/Month, which were only ever three fixed column widths. Row
+height dropped from a five-step ladder to two modes — four steps were useless because
+'Fit' was floored at one card's height and so never actually squeezed. IdWell pattern
+(§8): short identifier fields share a row with their label inside the well.
+
+**Owed at merge:** `public/sop.html` → `VERSIONS` staff-facing notes for v1.6.0. Spec §12
+fences that file off for the duration of the redesign, so it is deliberately not updated
+per-session — but it must be written before this branch merges, or staff get a new-looking
+app with no explanation.

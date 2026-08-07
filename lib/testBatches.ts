@@ -55,6 +55,106 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'carved-cal-wo-2026-08-06',
+    title: 'New look — calendar and work orders',
+    version: 'v1.6.0 (preview branch)',
+    date: 'Aug 6, 2026',
+    intro:
+      'The calendar and the work order have both been rebuilt to match the new look. Nothing about how they WORK has changed — so if something stops saving, or a number comes out wrong, that is a real bug and worth shouting about. Admin, the WO list and the runner still look the old way; that is expected. Please do every item TWICE — once in light mode and once in dark (sun/moon icon, top right).',
+    items: [
+      {
+        id: 'cal-card-full', area: 'Calendar', device: 'desktop',
+        what: 'A normal session card shows the artist, the client, the times, and a bottom strip with the invoice number and staff initials',
+        how: 'Open the calendar on a day with a booked session. Read the card top to bottom. Report anything cut off mid-word, or any field you expected and cannot see.',
+      },
+      {
+        id: 'cal-cod-bar', area: 'Calendar', device: 'desktop',
+        what: 'COD sessions have a red bar across the bottom of the card; billing sessions have nothing',
+        how: 'Find a COD session and a billing session. The COD one should have a red strip at the very bottom naming the payment method. The billing one should have no payment marking at all. Report a red bar on a billing session immediately.',
+      },
+      {
+        id: 'cal-block-no-cod', area: 'Calendar', device: 'desktop',
+        what: 'Tech work, tour and open-hours blocks have no red bar',
+        how: 'Find a Tech Work, Tour or Open Hours block on the calendar. It must have no red strip and no payment text. A red bar there would mean money to collect that does not exist.',
+      },
+      {
+        id: 'cal-status-colours', area: 'Calendar', device: 'desktop',
+        what: 'Each status is its own colour',
+        how: 'Check one of each you can find: Confirmed = green, Tentative = amber, Cancelled = red, Tour = light blue, Tech Work = light purple, Open Hours = grey. Report any two that look the same, and especially anything green that is not confirmed.',
+      },
+      {
+        id: 'dash-matches-cal', area: 'Dashboard', device: 'desktop',
+        what: 'The room cards on the dashboard look the same as the calendar cards',
+        how: 'Open the dashboard, note a booked room card, then open the calendar and find the same session. Apart from the room name at the top of the dashboard card, they should be identical — same colour, same layout, same strip at the bottom.',
+      },
+      {
+        id: 'cal-two-sessions', area: 'Calendar', device: 'desktop',
+        what: 'Two sessions in one room on one day both stay readable and the row does not get taller',
+        how: 'Find (or make) a day where one room has two sessions. Both cards should share the normal row height, both should still show the name and times, and the row should be the same height as every other row. Report a row that has grown taller than its neighbours.',
+      },
+      {
+        id: 'cal-pinch-zoom', area: 'Calendar', device: 'desktop',
+        what: 'Pinching on the trackpad spreads the days apart and squeezes them together',
+        how: 'On the calendar, pinch out and in on the trackpad. Days should get wider and narrower smoothly. The leftmost day should stay put rather than the grid sliding sideways. Report drifting.',
+      },
+      {
+        id: 'cal-month-rail', area: 'Calendar', device: 'desktop',
+        what: 'The month name stays stuck to the left edge while you scroll through that month',
+        how: 'Scroll the calendar sideways across a month boundary. The month name in the thin band at the top should stay pinned at the left, then get pushed off by the next month. Report it scrolling away immediately.',
+      },
+      {
+        id: 'wo-open-save', area: 'Work order', device: 'desktop',
+        what: 'A work order opens, edits and saves normally',
+        how: 'Open a work order from the calendar. Change something small — a note, a rate. Press Close & Save. Re-open it and confirm the change stuck. This is the most important item on the list.',
+      },
+      {
+        id: 'wo-studio-table', area: 'Work order', device: 'desktop',
+        what: 'The studio time table lines up and nothing is cut off',
+        how: 'Look at the Studio Time table. Every column heading should sit directly above its values. Times should read in full ("10:00 AM", not "10:00 A"). Staff names should not be chopped. Report any column where the heading and the values do not line up.',
+      },
+      {
+        id: 'wo-table-typing', area: 'Work order', device: 'desktop',
+        what: 'Typing in a table cell works and the cell highlights while you are in it',
+        how: 'Click into a rate or a time in the Studio Time table. The cell should shade slightly while hovered and a shade more while you are typing in it. At rest it should be plain text with no box around it. Report any resting cell that has a box or bubble.',
+      },
+      {
+        id: 'wo-meta-row', area: 'Work order', device: 'desktop',
+        what: 'Invoice #, PO # and Food sit on one line and all work',
+        how: 'Near the top left, find the row with Inv #, PO # and Food. Type in each. Switch Food to Yes — a dollar box should appear beside it. Type a number, switch back to No, then to Yes again. The number should still be there.',
+      },
+      {
+        id: 'wo-status-colour', area: 'Work order', device: 'desktop',
+        what: 'The status buttons sit in one rounded housing and the selected one fills with its colour',
+        how: 'At the top of the work order, click through Confirmed, Tentative and Cancelled. They should all sit inside a single rounded strip, and the selected one should press IN and fill with its own colour (green, amber, red). Report separate floating buttons.',
+      },
+      {
+        id: 'wo-buttons', area: 'Work order', device: 'desktop',
+        what: 'Close & Save is at the top right; Export PDF, Print and Delete are at the bottom',
+        how: 'Look at the top right of the work order — it should have Cancel and a large white Close & Save. Scroll to the bottom — Export PDF, Print and Delete should be there. Report either one appearing in both places.',
+      },
+      {
+        id: 'wo-print', area: 'Work order', device: 'desktop',
+        what: 'Printing a work order produces a plain document, not a screenshot of the app',
+        how: 'Open a work order and press Export PDF. In the print preview: the page should not be blank, there should be no coloured pills or shadows, and Open/Completed should not appear anywhere. Report a blank preview immediately.',
+      },
+      {
+        id: 'wo-block-buttons', area: 'Work order', device: 'desktop',
+        what: 'Tech work, tour and open-hours blocks have no Complete WO and no Export PDF',
+        how: 'Open a Tech Work, Tour or Open Hours block from the calendar. The footer should have no Complete WO button and no Export PDF — there is no work order to complete or print.',
+      },
+      {
+        id: 'runner-signout', area: 'Runner', device: 'phone',
+        what: 'You can sign out of the runner app',
+        how: 'Open the Runner app on a phone. On the studio-picker screen, scroll to the bottom — there should be a Sign out button under the four studios. Press it. You should land on the login screen.',
+      },
+      {
+        id: 'light-mode-wo', area: 'Work order', device: 'desktop',
+        what: 'In light mode, no field is a white box with a border',
+        how: 'Switch to light mode (sun icon, top right) and open a work order. Every field should look pressed INTO the page, the same shape as in dark mode. Report any field that looks like a plain white box with a grey outline.',
+      },
+    ],
+  },
+  {
     id: 'carved-redesign-2026-07-30',
     title: 'New look — dashboard, daily ops, login',
     version: 'v1.6.0 (preview branch)',

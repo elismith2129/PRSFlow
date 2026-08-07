@@ -19,7 +19,24 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
-## v1.6.0 — UNRELEASED (branch `redesign/carved`) — Jul 30 – Aug 1, 2026
+## v1.6.1 — HOTFIX to `main` — Aug 6, 2026
+
+**Runner sign out.** `app/runner/page.tsx`. The PIN login mints a real Supabase session, but
+`/runner/*` sits outside the nav by design and `Nav.tsx` was the **only** place in the app
+that called `supabase.auth.signOut()`. A phone signed into the Runner PWA was signed in
+permanently: the installed app starts at `/runner`, and `/login` redirects already-authenticated
+users to `/`, so there was no route out. Sign Out now sits under the studio cards on the
+Runner Hub landing — reachable from anywhere in the subtree via the ← on a studio hub.
+
+Cherry-picked from `redesign/carved` (`84a2ceb`) to `main` as `4b74ae2`. **The only commit
+from the redesign branch that has gone to production.**
+
+**Migrations:** none. **Watch-out:** this only surfaced because Eli got stuck on his own
+phone. The runner subtree is worth auditing for other things that assume nav chrome exists.
+
+---
+
+## v1.6.0 — UNRELEASED (branch `redesign/carved`) — Jul 30 – Aug 6, 2026
 
 **"Carved" design system: real token + primitive layer replacing the light-mode patch layer. Dashboard, nav, login and Daily Ops migrated. Nothing merged to `main`.**
 
@@ -34,9 +51,37 @@ Spec: `docs/PRSFLO-DESIGN-SPEC.md` + `prsflo-final-mock.html` (the mock is the v
 - **31 legacy light-mode override rules deleted** as their markup migrated — the four dashboard `data-panel` gradients, `data-room-cell`, `data-session-active`, `data-studio-card`, four `data-studio-index` gradients, four nav rules, three login rules, `data-ops-modal`, two `data-ops-col`, two `data-session-card`, `data-checklist-section`.
 - **Scrollbars and native widget chrome** were still painting legacy `--border` (`#2a2e3d` / `#cbd5e1` — both desaturated blue), which read as a stray blue bar down every scrolling surface once the ground went warm. Retargeted to carved ink with a transparent track. `select`/`input[type=date]` got a light `color-scheme` so the OS stops drawing dark native panels on light paper.
 
+### Aug 6 — calendar frozen, Work Order migrated
+
+- **Calendar is FROZEN by ruling.** Grid, cards, COD strips, per-day staffing, long-bar payload, hover card, month rail. No further calendar work.
+- **One session card, four surfaces** — `components/calendar/SessionCard.tsx`. Calendar grid, day view, studio view and the dashboard room grid each had their own copy and had already drifted (different fonts on the client line, staff stacked vs inline, invoice shown in two of four). Byte-identical copies of `fmtTime`/`initials` folded in.
+- **Card anatomy (spec §10b):** payload → footer band (invoice# left, staff right) → COD strip. Billing renders **no** payment element; silence is the billing signal. Tour/Tech/Open Hours render none either — they're occupancy, not billable work.
+- **Content ladder is by HEIGHT, never width.** A narrow column ellipsises; it never hides (F-18/F-19). Stacked sessions split a fixed cell, so a short card sheds footer → client line → times, and the COD bar shrinks to a 4px sliver rather than leaving.
+- **`sessionFillClass()` is the only status→colour decision in the app.** The dashboard was using `status === 'tentative' ? amber : green`, sending tech, tour, open hours **and cancelled** down the green branch.
+- **`--c-st-tech` added** (orchid `#b5a3ef`). Tech, tour and open hours are now three distinct statuses. **This makes seven status colours where spec §3 lists six — the spec needs updating.**
+- **Continuous horizontal zoom** replaces Week / 2 Wks / Month (three fixed column widths wearing names). Trackpad pinch, `[`/`]`, and a `− 14d +` control; persisted to `localStorage['prsflo-cal-colzoom']`. **Pinching anywhere on the calendar page no longer zooms the browser** — that's the trade.
+- **Row height is two modes, not a ladder.** 'Fit' and the 80px step looked identical because the fit calculation was floored at one card's height and never actually squeezed. Now `Card` (fixed) and `All rooms` (divide the viewport, no floor).
+- **Sticky month rail** — segments derive from the same `days` array the grid renders from, so an infinite-scroll re-anchor re-renders them for free. Tint alternates on the **absolute month number**, not array index.
+- **Work Order popup migrated end to end** — shell, header, footer, body, meta, client panel, all four tables.
+- **IdWell (spec §8):** short identifier fields carry their label inside the well and share rows. Invoice #, PO # and Food went from three full-width rows to one line; Booking Notes absorbed the height.
+- **Segmented controls (spec §8):** one raised housing, options transparent inside it, selected pressed + filled. Status selector fills with its own status colour. Applied to status, session type, food, client COD/Billing, and three pairs in the batch panel.
+- **TABLE EXEMPTION (spec §8):** no wells or carving inside data tables. Bare transparent inputs, zebra rows, wash on hover/focus, one `TCELL_X = 6` inset shared by headers, text cells and inputs. Money columns right-align header *and* value.
+- **WO print** was blank since `2e67ec0` un-portaled the popup (the CSS required `body > [data-wo-portal]`) — now isolated by visibility, which works at any depth. The flatten rule matches on the `c-` prefix instead of a hand-written class list that went stale the moment the body migrated.
+- **Entered-value weight raised to 500** app-wide on the WO (`.c-tin`, `.c-well` children, `.c-input`, `.c-area`, computed cells). Placeholders stay 400 — that difference is now what separates a value from a hint. 500 not 600 because DM Mono only ships 400/500.
+
+**`[style*=` substring-matcher count (spec §11 metric): 32 → 30.** Three dead
+`[style*="position:fixed"]` selectors deleted — React writes inline styles through the CSSOM
+and the browser serialises the attribute *with* a space, so the no-space variants could never
+match anything this app renders.
+
 **Migrations:** none. This is presentation only — no schema, no queries, no handlers.
 
 **Watch-outs:**
+- **SPECIFICITY — the single most expensive thing in this branch.** `.c-sheet button:not(…)×6` is **(0,7,1)** and `.c-sheet input:not([type="file"]):not(.c-input)` is **(0,3,1)**. Three separate features were written against them and lost silently: segmented options rendered as individual raised pills ("bubbles in bubbles") and never received their status fills; inputs inside wells got a second carved box with its own padding, which clipped the first character of the email field; and bare table cells had no effect at all. **Any new recipe targeting an element inside `.c-sheet`/`.c-panel` must either be added to that rule's `:not()` exclusion list or be written to deliberately outrank it — and the arithmetic must be checked, not estimated.** A first attempt at the `.c-tin` override was (0,4,0), which still loses to (0,4,1) on element count.
+- **`.c-mono` sets `font-size: 12.5px`, not just a typeface.** Anything wearing it renders at 12.5 regardless of its container's font-size. This silently oversized the card footer through two attempted fixes. A guard now pins it to `inherit` inside `.c-ev-foot`.
+- **`overflow: hidden` on an ancestor kills a sticky descendant** — the clipping box becomes its scroll container, so it gets zero sticky range. Cost the month rail one commit, and it is the reason CSS sticky could never have worked for the long-bar chip payload. Sticky is already clamped to its containing block; a clip is not needed for push-out behaviour.
+- **`[data-theme="light"] [style*="position: fixed"] input {…!important}` is still live** and still needed by `/admin`, `/wo-hub`, `/tasks`, `/clients`, the runner pages, `DailyOpsModal` and `LocationStrip`. It is scoped to exclude carved classes. **Delete it when the last of those migrates, not before.**
+- **A carved recipe that paints a shadow needs an explicit light-side rule.** Dark-first recipes get captured by the legacy light overrides. Scripted check: every `.c-` rule with a non-`none` `box-shadow` must have a matching `[data-theme="light"]` rule. Two were found this way (`.c-control:active`, `.c-row.c-selected`).
 - **`.c-sheet` gives raw `<button>`/`<input>`/`<textarea>` carved defaults.** This is a deliberate compromise for ~38 one-off controls inside migrated modals, and it is *not* the pattern being retired: the old layer matched inline-style **substrings across the whole document**; these are component-scoped element selectors visible from the markup. **Prefer primitives in new code.** Those controls had their inline `background` stripped so the scoped rules win without `!important` — don't re-add inline backgrounds there.
 - **The `[style*=` metric recommended earlier was wrong.** 38 of the 54 occurrences are inside `@media print` (the WO print stylesheet) and have nothing to do with theming. **Track the legacy override layer instead: `[data-theme="light"]` selectors that do NOT contain `.c-` — 27 remaining as of Aug 1, down from ~66.**
 - **`DailyOpsModal` lost its required `color` prop** and `TwoCheckbox` lost its optional one — per-studio colour is retired. `LocationStrip`'s `SectionLabel` still *accepts* `orange` but **ignores it**; clean up or restore deliberately.
