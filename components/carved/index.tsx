@@ -21,7 +21,7 @@ import React from 'react'
    Deliberately NOT the same mapping as the legacy StatusBadge: there, `open`
    and `uncontacted` were both grey. Here `uncontacted` is harbor (it's a live
    lead state) and `open`/`tech` are driftglass (they're inert). */
-export type CarvedStatus = 'hot' | 'warm' | 'cold' | 'booked' | 'uncon' | 'dead'
+export type CarvedStatus = 'hot' | 'warm' | 'cold' | 'booked' | 'uncon' | 'tech' | 'dead'
 
 const STATUS_ALIASES: Record<string, CarvedStatus> = {
   hot: 'hot',
@@ -39,9 +39,9 @@ const STATUS_ALIASES: Record<string, CarvedStatus> = {
   uncontacted: 'uncon',
   uncon: 'uncon',
   tour: 'uncon',
+  tech: 'tech',
   dead: 'dead',
   dnb: 'dead',
-  tech: 'dead',
   open: 'dead',
   open_hours: 'dead',
 }

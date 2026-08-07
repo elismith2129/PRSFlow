@@ -93,7 +93,8 @@
   --c-st-cold:   #5fc9e8;             /* lagoon       — cold lead */
   --c-st-booked: #43dfae;             /* sea green    — booked / confirmed / live room */
   --c-st-uncon:  #7fb2e5;             /* harbor       — uncontacted / tour */
-  --c-st-dead:   #cfd6d4;             /* driftglass   — DNB / tech / open hours */
+  --c-st-tech:   #b5a3ef;             /* orchid       — tech work ONLY */
+  --c-st-dead:   #cfd6d4;             /* driftglass   — DNB / open hours */
 
   /* Muted ink steps. The spec works in opacity, which is right for whole elements
      but useless when only the text colour should drop — these give the legacy
@@ -1147,12 +1148,14 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-fill-cold   { background: var(--c-st-cold); }
 .c-fill-booked { background: var(--c-st-booked); }
 .c-fill-uncon  { background: var(--c-st-uncon); }
+.c-fill-tech   { background: var(--c-st-tech); }
 .c-fill-dead   { background: var(--c-st-dead); }
 
 /* Dark register — calendar chips become alpha fills so they sit in the room. */
 :root:not([data-theme="light"]) .c-ev.c-fill-booked { background: rgba(67, 223, 174, .72); }
 :root:not([data-theme="light"]) .c-ev.c-fill-warm   { background: rgba(255, 169, 77, .68); }
 :root:not([data-theme="light"]) .c-ev.c-fill-uncon  { background: rgba(127, 178, 229, .68); }
+:root:not([data-theme="light"]) .c-ev.c-fill-tech   { background: rgba(181, 163, 239, .62); }
 :root:not([data-theme="light"]) .c-ev.c-fill-dead   { background: rgba(204, 209, 207, .5); }
 :root:not([data-theme="light"]) .c-ev.c-fill-hot    { background: rgba(255, 90, 77, .7); }
 :root:not([data-theme="light"]) .c-ev.c-fill-cold   { background: rgba(95, 201, 232, .68); }
@@ -1446,6 +1449,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-seg > button.c-on.c-fill-warm:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)   { background: var(--c-st-warm);   color: var(--c-chip-ink); }
 .c-seg > button.c-on.c-fill-cold:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)   { background: var(--c-st-cold);   color: var(--c-chip-ink); }
 .c-seg > button.c-on.c-fill-uncon:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)  { background: var(--c-st-uncon);  color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-tech:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)   { background: var(--c-st-tech);   color: var(--c-chip-ink); }
 .c-seg > button.c-on.c-fill-dead:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)   { background: var(--c-st-dead);   color: var(--c-chip-ink); }
 .c-seg > button.c-on.c-fill-hot:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)    { background: var(--c-st-hot);    color: var(--c-hot-text); }
 /* TINY — the housing variant for segments that sit inside an already-raised
