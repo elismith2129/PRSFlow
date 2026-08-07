@@ -1604,7 +1604,9 @@ export function WorkOrderPopup({
   // here and headers, text cells and input cells all move together.
   const TCELL_X = 6
   const cellS: React.CSSProperties = {
-    padding: `3px ${TCELL_X}px`, fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)',
+    // 500 matches .c-tin — a computed cell (Hrs, OT Chg) and a typed cell must
+    // carry the same weight or the row reads as two different kinds of data.
+    padding: `3px ${TCELL_X}px`, fontSize: 11, fontFamily: 'Inter', fontWeight: 500, color: 'var(--c-fg)',
     display: 'flex', alignItems: 'center', minWidth: 0,
   }
   // A cell whose child is a .c-tin input: no inset of its own, because the input
@@ -2500,7 +2502,7 @@ export function WorkOrderPopup({
                         </div>
                         {/* Delete row — confirm pops open to the LEFT of the ×, next
                             to the cursor (the × is at the far-right edge). */}
-                        <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto', position: 'relative' }}>
+                        <div style={{ ...cellS, justifyContent: 'center', pointerEvents: 'auto', position: 'relative' }}>
                           {!readOnly && (
                             <>
                               <button type="button" onClick={() => setConfirmDeleteRowId(confirmDeleteRowId === r.id ? null : r.id)} style={{ fontSize: 13, fontFamily: 'Inter', color: confirmDeleteRowId === r.id ? 'var(--c-st-hot)' : 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
@@ -2589,16 +2591,16 @@ export function WorkOrderPopup({
                             </div>
                             <div style={cellS} />
                             <div style={cellS} />
-                            <div style={cellS} />
-                            <div style={{ ...cellS, color: engCharge != null ? 'var(--c-fg)' : 'var(--c-fg-2)', fontWeight: engCharge != null ? 600 : 400 }}>
+                            <div style={{ ...cellS, justifyContent: 'flex-end' }} />
+                            <div className="c-tnum" style={{ ...cellS, justifyContent: 'flex-end', color: engCharge != null ? 'var(--c-fg)' : 'var(--c-fg-2)', fontWeight: engCharge != null ? 600 : 400 }}>
                               {engCharge != null ? `$${engCharge.toFixed(2)}` : '—'}
                             </div>
                             {/* Eng lock */}
-                            <div style={{ ...cellS, justifyContent: 'center', padding: '3px 4px', pointerEvents: 'auto' }}>
+                            <div style={{ ...cellS, justifyContent: 'center', pointerEvents: 'auto' }}>
                               <button type="button" onClick={() => handleToggleLock(r.id, r.admin_locked)} style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, padding: '2px 5px', borderRadius: 3, cursor: 'pointer', whiteSpace: 'nowrap', background: r.admin_locked ? 'var(--c-st-booked)' : 'var(--c-wash)', color: r.admin_locked ? 'var(--c-bg)' : 'var(--c-fg-3)' }}>{r.admin_locked ? '🔒' : '✓'}</button>
                             </div>
                             {/* Eng delete × */}
-                            <div style={{ ...cellS, justifyContent: 'center', padding: '3px 2px', pointerEvents: 'auto' }}>
+                            <div style={{ ...cellS, justifyContent: 'center', pointerEvents: 'auto' }}>
                               {!readOnly && <button type="button" onClick={() => setConfirmClearEngId(r.id)} style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>}
                             </div>
                           </div>

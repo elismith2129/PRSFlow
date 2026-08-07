@@ -742,7 +742,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   display: block; width: 100%;
   border-radius: 14px; padding: 0 14px; height: 40px;
   background: var(--c-bg); color: var(--c-fg);
-  font-family: inherit; font-size: 13.5px;
+  font-family: inherit; font-size: 13.5px; font-weight: 500;
 }
 .c-input::placeholder { color: var(--c-fg); opacity: 0.35; }
 /* Focus is a depth change, not an outline (Law 1). */
@@ -1351,7 +1351,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-well > textarea:not(.c-textarea),
 .c-well > select {
   width: 100%; height: 100%; min-width: 0;
-  font-family: inherit; font-size: 13.5px; line-height: 1.4;
+  font-family: inherit; font-size: 13.5px; font-weight: 500; line-height: 1.4;
   background: none; color: var(--c-fg);
   border: none; outline: none; box-shadow: none;
   padding: 0; margin: 0; border-radius: 0;
@@ -1382,7 +1382,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   width: 100%; min-width: 0; box-sizing: border-box;
   background: transparent; border: none; outline: none; box-shadow: none;
   padding: 3px 6px; border-radius: 6px;
-  font-family: inherit; font-size: 11px; line-height: 1.4;
+  font-family: inherit; font-size: 11px; font-weight: 500; line-height: 1.4;
   color: var(--c-fg);
   transition: background .12s ease;
 }
@@ -1397,7 +1397,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 }
 .c-tin:hover:not(:disabled):not(.c-input):not(.c-well):not(.c-area):not(.c-x) { background: var(--c-wash); }
 .c-tin:focus:not(.c-input):not(.c-well):not(.c-area):not(.c-x) { background: var(--c-wash2); }
-.c-tin::placeholder { color: var(--c-fg); opacity: .3; }
+.c-tin::placeholder { color: var(--c-fg); opacity: .3; font-weight: 400; }
 .c-tin:disabled { opacity: .4; }
 /* Mono for times and numbers. NOT `.c-mono` — that class carries its own
    `font-size: 12.5px`, which is the trap that oversized the card footer. */
@@ -1427,7 +1427,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   display: block; width: 100%; box-sizing: border-box;
   background: var(--c-bg); border-radius: 14px;
   padding: 11px 14px; min-height: 110px;
-  font-family: inherit; font-size: 13px; line-height: 1.5;
+  font-family: inherit; font-size: 13px; font-weight: 500; line-height: 1.5;
   color: var(--c-fg); resize: vertical;
   border: none; outline: none;
   box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .34), inset -3px -3px 9px rgba(255, 255, 255, .03);
