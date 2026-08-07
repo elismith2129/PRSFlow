@@ -439,7 +439,7 @@ export function ClientPanel({
                     onFocus={() => setShowArtistDD(true)}
                     onBlur={() => setTimeout(() => setShowArtistDD(false), 150)}
                     placeholder="—"
-                    style={{ width: '100%', background: 'var(--c-bg)', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                    style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13.5, padding: '2px 0', lineHeight: 1.5 }}
                   />
                   {showArtistDD && !readOnly && (clientArtists.filter(a => !value.artist || a.toLowerCase().includes(value.artist.toLowerCase())).length > 0 || value.artist.trim().length >= 2) && (
                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--c-bg)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
@@ -461,8 +461,8 @@ export function ClientPanel({
 
                 {/* A&R */}
                 {(() => {
-                  const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 10, padding: '1px 0' }
-                  const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, background: 'transparent', color, fontFamily: 'Inter', fontSize: 9, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' })
+                  const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0' }
+                  const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, background: 'transparent', color, fontFamily: 'Inter', fontSize: 10, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' })
                   const anrPh = anrPhone.replace(/\D/g, '')
                   return (
                     <div style={{ marginBottom: 10 }}>
@@ -473,7 +473,7 @@ export function ClientPanel({
                           onFocus={() => setShowAnrDD(true)}
                           onBlur={() => { setTimeout(() => setShowAnrDD(false), 150); set('ordered_by', anrQuery) }}
                           placeholder="—"
-                          style={{ width: '100%', background: 'var(--c-bg)', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                          style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13.5, padding: '2px 0', lineHeight: 1.5 }}
                         />
                         {showAnrDD && !readOnly && (labelContacts.filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase())).length > 0 || anrQuery.trim().length >= 2) && (
                           <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--c-bg)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
@@ -513,8 +513,8 @@ export function ClientPanel({
 
                 {/* Admin */}
                 {(() => {
-                  const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 10, padding: '1px 0' }
-                  const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, background: 'transparent', color, fontFamily: 'Inter', fontSize: 9, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' })
+                  const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0' }
+                  const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, background: 'transparent', color, fontFamily: 'Inter', fontSize: 10, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' })
                   const adminPh = adminPhone.replace(/\D/g, '')
                   return (
                     <div style={{ marginBottom: 8 }}>
@@ -525,7 +525,7 @@ export function ClientPanel({
                           onFocus={() => setShowAdminDD(true)}
                           onBlur={() => setTimeout(() => setShowAdminDD(false), 150)}
                           placeholder="—"
-                          style={{ width: '100%', background: 'var(--c-bg)', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0', lineHeight: 1.5 }}
+                          style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13.5, padding: '2px 0', lineHeight: 1.5 }}
                         />
                         {showAdminDD && !readOnly && (labelAdminContacts.filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase())).length > 0 || adminQuery.trim().length >= 2) && (
                           <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--c-bg)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>

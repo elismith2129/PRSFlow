@@ -1925,7 +1925,12 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   background: var(--c-wash2);
 }
 
-/* Table zebra stays a flat band. */
+/* Table zebra stays a flat band — retuned for the soft surfaces (bands sit on
+   --c-srf now, not the page ground) and given rounded ends so rows have a
+   defined left/right edge instead of running flush into the panel. */
+:root { --c-surface-band: #1e1d1a; }
+[data-theme="light"] { --c-surface-band: #f3f0e9; }
+.c-trow-alt { border-radius: 8px; }
 .c-table-row:nth-child(odd), [data-theme="light"] .c-table-row:nth-child(odd) { box-shadow: none; }
 
 /* Flo's inner surface rides on the panel surface now. */
