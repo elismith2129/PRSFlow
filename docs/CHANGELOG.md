@@ -19,6 +19,39 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.6.2 — HOTFIX to `main` — Aug 6, 2026
+
+**New-inquiry email alert.** `lib/sendMail.ts` (new) + `app/api/inquiry/route.ts` +
+`app/api/send-campaign/route.ts`. The inquiry form used to live on Squarespace and emailed
+the team, so a new lead arrived as a phone notification. Moving it into PRSFlo removed that
+— the lead lands in the CRM and nothing tells anyone. Every web inquiry now also emails
+`info@paramountrecording.com`, with `reply_to` set to the customer.
+
+Plain `fetch` to the Resend REST API — no npm dependency. The verified sender was a private
+const inside `/api/send-campaign`; it is now `MAIL_FROM_DEFAULT` in `lib/sendMail.ts` and the
+campaign route imports it.
+
+Cherry-picked from `redesign/carved` (`2061487`) to `main` as `95dfe98`.
+
+**Migrations:** none.
+
+**Env:** `RESEND_API_KEY` (required — **was never actually set in Vercel until now**, so
+email campaigns had never worked either). `MAIL_FROM` and `INQUIRY_ALERT_TO` are optional
+overrides; both default in code.
+
+**Watch-outs:**
+- **The send is after the insert and its result is deliberately ignored.** A lead that saved
+  without an email is a missed notification; a lead lost because mail was down is a lost
+  customer. Do not make the mail result gate the response.
+- **It is `await`ed, not fire-and-forget.** A serverless function can be frozen the moment it
+  returns, so a dangling promise may never run.
+- `sendMail` returns `{ok:false}` rather than throwing when `RESEND_API_KEY` is absent, so
+  local dev and preview deployments keep working with mail simply skipped.
+- Resend requires the sending domain to be **verified**, which is a DNS step outside this
+  repo. An unverified domain fails with 403.
+
+---
+
 ## v1.6.1 — HOTFIX to `main` — Aug 6, 2026
 
 **Runner sign out.** `app/runner/page.tsx`. The PIN login mints a real Supabase session, but
@@ -68,6 +101,9 @@ Spec: `docs/PRSFLO-DESIGN-SPEC.md` + `prsflo-final-mock.html` (the mock is the v
 - **TABLE EXEMPTION (spec §8):** no wells or carving inside data tables. Bare transparent inputs, zebra rows, wash on hover/focus, one `TCELL_X = 6` inset shared by headers, text cells and inputs. Money columns right-align header *and* value.
 - **WO print** was blank since `2e67ec0` un-portaled the popup (the CSS required `body > [data-wo-portal]`) — now isolated by visibility, which works at any depth. The flatten rule matches on the `c-` prefix instead of a hand-written class list that went stale the moment the body migrated.
 - **Entered-value weight raised to 500** app-wide on the WO (`.c-tin`, `.c-well` children, `.c-input`, `.c-area`, computed cells). Placeholders stay 400 — that difference is now what separates a value from a hint. 500 not 600 because DM Mono only ships 400/500.
+
+- **Default theme is now DARK.** The pre-paint script in `app/layout.tsx` sets `light` only when explicitly saved; `Nav.tsx`'s mount effect matches. **These two must always agree or the page paints one theme and flips on hydration.** Existing preferences are kept; only fresh devices change. PWA `theme_color` in both manifests and in metadata moved off the legacy `#0d0f14` to `#1b1a17` — it was flashing the old ground on every app launch.
+- **Welcome splash fixed.** It was never unmigrated — a legacy rule painted `[data-splash]` and `[data-auth-hold]` with the retired blue→rose gradient `!important`, so light mode showed the old app's colours full-screen on the way into the new one. The AuthGuard hold moved from `var(--bg)` (transparent in light, which is why the override existed) to `var(--c-bg)`, and the rule was **deleted** — last consumer migrated. Legacy light rules: 23 → 21.
 
 **`[style*=` substring-matcher count (spec §11 metric): 32 → 30.** Three dead
 `[style*="position:fixed"]` selectors deleted — React writes inline styles through the CSSOM

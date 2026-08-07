@@ -143,6 +143,26 @@ export const TEST_BATCHES: TestBatch[] = [
         how: 'Open a Tech Work, Tour or Open Hours block from the calendar. The footer should have no Complete WO button and no Export PDF — there is no work order to complete or print.',
       },
       {
+        id: 'theme-default-dark', area: 'Whole app', device: 'desktop',
+        what: 'A device that has never been used opens in dark mode',
+        how: 'Open the app in a private/incognito window. It should be dark. Then in your normal window, if you had picked light before, it should still be light — your choice is not overridden.',
+      },
+      {
+        id: 'splash-light', area: 'Login', device: 'desktop',
+        what: 'The welcome screen after login matches the app, in both themes',
+        how: 'Switch to light mode, sign out, sign back in. The full-screen welcome should be the same warm paper colour as the app. Report any blue or pink tint — that is the old design showing through.',
+      },
+      {
+        id: 'inquiry-email', area: 'Inquiry', device: 'desktop',
+        what: 'A new web inquiry emails info@paramountrecording.com',
+        how: 'Open the public inquiry form and submit a test with your own name. Within a minute an email titled "New inquiry — [name]" should arrive at info@. Check spam if not. Then confirm the same lead is in the CRM under Needs Action — BOTH must happen.',
+      },
+      {
+        id: 'inquiry-reply', area: 'Inquiry', device: 'desktop',
+        what: 'Replying to that email goes to the customer, not to ourselves',
+        how: 'Open the inquiry email and press Reply. The To field should be the address the person typed into the form, not info@paramountrecording.com.',
+      },
+      {
         id: 'runner-signout', area: 'Runner', device: 'phone',
         what: 'You can sign out of the runner app',
         how: 'Open the Runner app on a phone. On the studio-picker screen, scroll to the bottom — there should be a Sign out button under the four studios. Press it. You should land on the login screen.',

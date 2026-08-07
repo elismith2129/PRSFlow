@@ -2818,3 +2818,59 @@ height dropped from a five-step ladder to two modes — four steps were useless 
 fences that file off for the duration of the redesign, so it is deliberately not updated
 per-session — but it must be written before this branch merges, or staff get a new-looking
 app with no explanation.
+
+### August 6, 2026 (cont.) — dark by default, splash fix, inquiry email alert
+
+Addendum to the sign-off above; same session, three more pieces plus one production
+hotfix.
+
+**Default theme flipped to DARK.** The pre-paint script in `app/layout.tsx` now sets
+`data-theme="light"` only when the user has explicitly saved it, instead of setting light
+unless `dark` was saved. `Nav.tsx`'s mount effect flipped to match — **those two must always
+agree, or the page paints one theme and flips on hydration.** Anyone who has already toggled
+keeps their preference; only fresh devices change. Also caught: `theme_color` in both PWA
+manifests and in `app/layout.tsx` metadata was still the legacy `#0d0f14` blue-black, so
+every launch of the installed app flashed the old ground before the new one painted. Both
+on `#1b1a17`.
+
+**The splash was never unmigrated — it was being overridden.** A legacy rule painted both
+`[data-splash]` and `[data-auth-hold]` with `linear-gradient(135deg,#dbeafe,#ffe4e6)
+!important` — the retired blue→rose page background. In light mode the login splash showed
+the OLD app's colours full-screen on the way into the new one. The rule existed because the
+AuthGuard hold used `var(--bg)`, which is **transparent** in light and so needed something
+opaque behind it. Hold moved to `var(--c-bg)` (opaque in both registers) and the override
+was **deleted** — last consumer migrated. Two more legacy light rules gone; 21 left.
+
+**Inquiry email alert (v1.6.2, cherry-picked to `main` as `95dfe98`).** The inquiry form used
+to live on Squarespace and emailed the team, so a new lead arrived as a phone notification.
+Moving it into PRSFlo removed that — the lead lands in the CRM and nothing tells anyone.
+`lib/sendMail.ts` (plain `fetch` to Resend, no npm dependency) + a send from
+`/api/inquiry` to `info@paramountrecording.com`.
+
+Design decisions worth keeping:
+- **The send is after the insert and its result is ignored.** A lead that saved without an
+  email is a missed notification; a lead lost because the mail provider was down is a lost
+  customer. `sendMail` swallows and logs its own failures.
+- **It is `await`ed, not fire-and-forget.** A serverless function can be frozen the instant
+  it returns a response, so a dangling promise may simply never run.
+- **`reply_to` is the customer**, so staff hitting Reply reach them rather than the shared
+  inbox.
+- The verified sender was a private const inside `/api/send-campaign`; hoisted to
+  `MAIL_FROM_DEFAULT` in `lib/sendMail.ts` so there is one place to change it.
+
+**Operational finding: the Resend setup had never been completed.** `/api/send-campaign` has
+existed for some time and reads `RESEND_API_KEY`, which led me to state that Resend was
+"already wired up and the domain already verified". **That was inferred from the code
+existing, not from evidence it had ever worked.** In fact `RESEND_API_KEY` was never added
+to Vercel and the domain had been filled in but never submitted for verification — so the
+email-campaigns feature has never sent anything either. Now: domain verified, key in Vercel
+(Production + Preview), inquiry alerts live.
+
+**Diagnostic lesson, worth more than the feature.** When the first test failed I listed the
+causes in the right order — "is it deployed?" was first — then abandoned that line the moment
+Eli said "we're definitely deployed" and sent him into Resend to check accounts and DNS. The
+code was never on `main` at all; `lib/sendMail.ts` did not exist in production. **A one-second
+`git cat-file -e origin/main:<file>` would have settled it before any of that.** Verify the
+cheap mechanical thing yourself instead of accepting a reasonable-sounding answer to it —
+especially when the person answering is reporting on a branch model with two deployment
+targets.
