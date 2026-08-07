@@ -199,16 +199,40 @@ html[data-theme="light"] {
    force the staffing toggle's accent tint to solid blue in light mode; the toggle
    is now a carved pressed/filled control that reads the same in both registers. */
 
-/* (FIX 5) Inputs inside modals (fixed-overlay descendants) get a faint fill + a
-   visible slate border so they stand out from the white modal card in light mode. */
-[data-theme="light"] [style*="position:fixed"] input,
-[data-theme="light"] [style*="position:fixed"] textarea,
-[data-theme="light"] [style*="position:fixed"] select,
-[data-theme="light"] [style*="position: fixed"] input,
-[data-theme="light"] [style*="position: fixed"] textarea,
-[data-theme="light"] [style*="position: fixed"] select {
+/* (FIX 5) Inputs inside LEGACY modals (fixed-overlay descendants) get a faint
+   fill + a slate border so they stand out from the white modal card in light.
+   Still live: /admin, /wo-hub, /tasks, /clients, the runner pages, DailyOpsModal
+   and LocationStrip all render un-migrated fixed modals. It can be deleted when
+   the last of those migrates — not before.
+
+   CARVED SURFACES ARE EXCLUDED. The WO popup's root carries inline
+   `position: fixed`, so this rule captured every input inside it and painted it
+   #f8fafc with a 1px slate border — !important, light-only. That is the entire
+   light-theme regression: a Law-1 border and a white fill on every well.
+
+   The three no-space variants (`[style*="position:fixed"]`) are DELETED as dead
+   code: React writes inline styles through the CSSOM, and the browser serialises
+   the style attribute as `position: fixed` WITH a space. They could never match
+   anything this app renders. */
+[data-theme="light"] [style*="position: fixed"] input:not(.c-input):not(.c-area):not(.c-cellwell),
+[data-theme="light"] [style*="position: fixed"] textarea:not(.c-textarea):not(.c-area):not(.c-cellwell),
+[data-theme="light"] [style*="position: fixed"] select:not(.c-cellwell) {
   background: #f8fafc !important;
   border: 1px solid #cbd5e1 !important;
+}
+/* Bare controls inside a well can't be excluded by class — a caller drops a
+   plain <input> in and the well IS the box. They're excluded by outranking
+   instead: the rule above is (0,5,1) !important, so this is written to (0,6,1)
+   !important. The `:not()` padding is load-bearing arithmetic, not decoration.
+   Complex `:not(.c-well > *)` would have been tidier, but an unsupported
+   complex :not() invalidates the ENTIRE rule it sits in, which would silently
+   strip the legacy modal styling those un-migrated surfaces still need. */
+[data-theme="light"] .c-well > input:not([type="file"]):not(.c-input):not(.c-x):not(.c-btn),
+[data-theme="light"] .c-well > textarea:not(.c-textarea):not(.c-area):not(.c-x):not(.c-btn),
+[data-theme="light"] .c-well > select:not(.c-cellwell):not(.c-x):not(.c-btn):not(.c-soft) {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* (FIX 2/3) Finarrow-style gradient on the booking / new-lead modal cards in light
@@ -335,9 +359,12 @@ input:not(.c-input), textarea:not(.c-input), select:not(.c-input) {
 /* (FIX 1) In light mode the dark inset shadow reads as a distracting box outline —
    remove it on all inputs. `.c-input` excluded for the same reason as above: this
    rule is !important and would flatten the carved input in light mode. */
-[data-theme="light"] input:not(.c-input),
-[data-theme="light"] textarea:not(.c-input),
-[data-theme="light"] select:not(.c-input) {
+/* Kills leftover legacy shadows in light. `.c-area` and `.c-cellwell` join
+   `.c-input` on the exclusion list — this rule was flattening the carved inset
+   off the notes box and the studio-time cells in light mode only. */
+[data-theme="light"] input:not(.c-input):not(.c-area):not(.c-cellwell),
+[data-theme="light"] textarea:not(.c-input):not(.c-area):not(.c-cellwell),
+[data-theme="light"] select:not(.c-input):not(.c-cellwell) {
   box-shadow: none !important;
 }
 
@@ -685,6 +712,11 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   transform: translateY(1px);
   box-shadow: inset 3px 3px 7px rgba(0, 0, 0, .28);
 }
+/* Light needs its own press. A 28% black inset is a smudge on paper, not a
+   press — found by the F-25 sweep for dark-first recipes with no light rule. */
+[data-theme="light"] .c-control:active {
+  box-shadow: inset 3px 3px 7px rgba(42, 39, 34, .14);
+}
 
 /* ── Button (primary) ───────────────────────────────────────────────────── */
 .c-btn {
@@ -823,6 +855,9 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 }
 /* The primary identifier in a list row (lead name, client name). */
 .c-row-name { font-size: 15.5px; font-weight: 700; line-height: 1.35; }
+[data-theme="light"] .c-row.c-selected {
+  box-shadow: inset 3px 3px 7px rgba(42, 39, 34, .11);
+}
 .c-row.c-selected {
   box-shadow: inset 3px 3px 8px rgba(0, 0, 0, .22);
   background: var(--c-wash2);
@@ -1328,6 +1363,26 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-well > select { appearance: none; -webkit-appearance: none; cursor: pointer; }
 .c-well > select option { background: var(--c-bg); color: var(--c-fg); }
 .c-well .c-ico { opacity: .4; font-size: 13px; flex-shrink: 0; }
+
+/* ── CELL WELL (§10/F-25 §5) — the well recipe at table scale, for the
+   studio-time From/To/Rate/OT inputs. Same construction as .c-well: carved in,
+   no border, never white. Only the geometry shrinks (radius 10, height 28) so a
+   dense row still reads as a row.
+   Written for BOTH registers explicitly — dark-first recipes with no light-side
+   rule are exactly what let the legacy light overrides take these cells. */
+.c-cellwell {
+  width: 100%; box-sizing: border-box;
+  background: var(--c-bg); border-radius: 10px; height: 28px; padding: 0 8px;
+  font-family: inherit; font-size: 11px; line-height: 1.4;
+  color: var(--c-fg); border: none; outline: none;
+  box-shadow: inset 2px 2px 6px rgba(0, 0, 0, .3), inset -2px -2px 6px rgba(255, 255, 255, .025);
+}
+[data-theme="light"] .c-cellwell {
+  background: var(--c-bg);
+  box-shadow: inset 2px 2px 5px rgba(42, 39, 34, .06), inset -2px -2px 5px rgba(255, 255, 255, .6);
+}
+.c-cellwell::placeholder { color: var(--c-fg); opacity: .3; }
+.c-cellwell:focus { outline: none; }
 
 /* ── AREA — ported from the reference `.area`. A textarea IS the well; it is
    never nested inside one. Nesting gave the inner textarea `height: 100%`

@@ -1597,12 +1597,10 @@ export function WorkOrderPopup({
 
   // ── Styles ────────────────────────────────────────────────────────────────
 
-  const inp: React.CSSProperties = {
-    background: 'transparent', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11,
-    padding: '1px 0', outline: 'none', width: '100%', lineHeight: 1.4,
-  }
+  // (`inp` deleted — every consumer was a table-cell control and now uses
+  //  the `c-cellwell` recipe, which exists in BOTH registers.)
   const cellS: React.CSSProperties = {
-    padding: '4px 8px', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)',
+    padding: '3px 4px', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)',
     display: 'flex', alignItems: 'center',
   }
   const thS: React.CSSProperties = {
@@ -2095,23 +2093,23 @@ export function WorkOrderPopup({
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>Studio</span>
-                      <input value={seed.studio} onChange={e => setSeed(s => ({ ...s, studio: e.target.value }))} style={inp} />
+                      <input value={seed.studio} onChange={e => setSeed(s => ({ ...s, studio: e.target.value }))} className="c-cellwell" />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>Start date</span>
-                      <input type="date" value={seed.start} onChange={e => setSeed(s => ({ ...s, start: e.target.value }))} style={inp} />
+                      <input type="date" value={seed.start} onChange={e => setSeed(s => ({ ...s, start: e.target.value }))} className="c-cellwell" />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>End date</span>
-                      <input type="date" value={seed.end} onChange={e => setSeed(s => ({ ...s, end: e.target.value }))} style={inp} />
+                      <input type="date" value={seed.end} onChange={e => setSeed(s => ({ ...s, end: e.target.value }))} className="c-cellwell" />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>From</span>
-                      <TimeInput value={seed.from} onChange={v => setSeed(s => ({ ...s, from: v }))} style={inp} />
+                      <TimeInput value={seed.from} onChange={v => setSeed(s => ({ ...s, from: v }))} className="c-cellwell" />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>To</span>
-                      <TimeInput value={seed.to} onChange={v => setSeed(s => ({ ...s, to: v }))} style={inp} />
+                      <TimeInput value={seed.to} onChange={v => setSeed(s => ({ ...s, to: v }))} className="c-cellwell" />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span style={metaLabel}>Rate</span>
@@ -2121,7 +2119,7 @@ export function WorkOrderPopup({
                             <button key={rt} type="button" onClick={() => setSeed(s => ({ ...s, rateType: rt }))} style={{ padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: seed.rateType === rt ? 'var(--c-fg)' : 'transparent', color: seed.rateType === rt ? 'var(--c-bg)' : 'var(--c-fg-2)' }}>{rt === 'day' ? 'Day' : 'Hr'}</button>
                           ))}
                         </div>
-                        <input value={seed.rate} onChange={e => setSeed(s => ({ ...s, rate: e.target.value }))} style={{ ...inp, width: 64 }} />
+                        <input value={seed.rate} onChange={e => setSeed(s => ({ ...s, rate: e.target.value }))} className="c-cellwell" style={{ width: 64 }} />
                       </div>
                     </div>
                   </div>
@@ -2148,11 +2146,11 @@ export function WorkOrderPopup({
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: '0 1 220px' }}>
                           <span style={metaLabel}>{seed.engRole === 'assistant' ? 'Assistant name' : 'Engineer name'}</span>
-                          <input list="wo-eng-roster" value={seed.engName} onChange={e => setSeed(s => ({ ...s, engName: e.target.value }))} style={inp} />
+                          <input list="wo-eng-roster" value={seed.engName} onChange={e => setSeed(s => ({ ...s, engName: e.target.value }))} className="c-cellwell" />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, width: 80 }}>
                           <span style={metaLabel}>Rate</span>
-                          <input value={seed.engRate} onChange={e => setSeed(s => ({ ...s, engRate: e.target.value }))} style={inp} />
+                          <input value={seed.engRate} onChange={e => setSeed(s => ({ ...s, engRate: e.target.value }))} className="c-cellwell" />
                         </div>
                       </>
                     )}
@@ -2365,7 +2363,7 @@ export function WorkOrderPopup({
                               const [loc, room] = e.target.value.split('|')
                               updateStRow(r.id, { location: loc === (booking.location || '') ? '' : loc, studio: room })
                             }}
-                            style={{ ...inp, padding: '2px 2px', fontSize: 10 }}
+                            className="c-cellwell" style={{ padding: '2px 2px', fontSize: 10 }}
                           >
                             {!STUDIO_LOCATIONS.some(l => l.name === (r.location || booking.location)) && (
                               <option value={`${r.location || booking.location || ''}|${toStudioLetter(r.studio)}`}>{toStudioLetter(r.studio) || '—'}</option>
@@ -2436,8 +2434,8 @@ export function WorkOrderPopup({
                           </>
                         )}
                         {/* From / To */}
-                        <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} style={inp} /></div>
-                        <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} style={inp} /></div>
+                        <div style={cellS}><TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} className="c-cellwell" /></div>
+                        <div style={cellS}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} className="c-cellwell" /></div>
                         {/* Total Hrs — always auto-calc */}
                         <div style={{ ...cellS, color: 'var(--c-fg-2)', fontSize: 10 }}>{rowHrs != null ? `${rowHrs}h` : '—'}</div>
                         {/* Rate Type toggle */}
@@ -2448,20 +2446,20 @@ export function WorkOrderPopup({
                         {/* Rate */}
                         <div style={cellS}>
                           {isDayRow
-                            ? <input value={r.rate_daily} onChange={e => updateStRow(r.id, { rate_daily: e.target.value })} style={inp} placeholder="$0/day" />
-                            : <input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} style={inp} placeholder="$0/hr" />
+                            ? <input value={r.rate_daily} onChange={e => updateStRow(r.id, { rate_daily: e.target.value })} className="c-cellwell" placeholder="$0/day" />
+                            : <input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} className="c-cellwell" placeholder="$0/hr" />
                           }
                         </div>
                         {/* OT Hrs — day: auto display; hourly: editable */}
                         <div style={cellS}>
                           {isDayRow
                             ? <span style={{ fontSize: 10, color: 'var(--c-fg-2)' }}>{otHrsNum > 0 ? `${otHrsNum}h` : '—'}</span>
-                            : <input value={r.ot_hours ?? ''} onChange={e => updateStRow(r.id, { ot_hours: e.target.value })} style={inp} placeholder="0" />
+                            : <input value={r.ot_hours ?? ''} onChange={e => updateStRow(r.id, { ot_hours: e.target.value })} className="c-cellwell" placeholder="0" />
                           }
                         </div>
                         {/* OT Rate — editable (auto-populated but overridable) */}
                         <div style={cellS}>
-                          <input value={r.ot_rate ?? ''} onChange={e => updateStRow(r.id, { ot_rate: e.target.value })} style={inp} placeholder="$0" />
+                          <input value={r.ot_rate ?? ''} onChange={e => updateStRow(r.id, { ot_rate: e.target.value })} className="c-cellwell" placeholder="$0" />
                         </div>
                         {/* OT Charge — computed read-only */}
                         <div style={{ ...cellS, color: (r.ot_charge ?? 0) > 0 ? 'var(--c-fg)' : 'var(--c-fg-2)', fontSize: 10 }}>
@@ -2563,15 +2561,15 @@ export function WorkOrderPopup({
                                 value={r.eng_name || ''}
                                 onChange={e => updateStRow(r.id, { eng_name: e.target.value })}
                                 placeholder={engName || (r.eng_role === 'assistant' ? 'Assistant…' : 'Engineer…')}
-                                style={{ ...inp, fontSize: 10, color: 'var(--c-fg)' }}
+                                className="c-cellwell" style={{ fontSize: 10, color: 'var(--c-fg)' }}
                               />
                             </div>
-                            <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} style={inp} /></div>
-                            <div style={cellS}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} style={inp} /></div>
+                            <div style={cellS}><TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} className="c-cellwell" /></div>
+                            <div style={cellS}><TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} className="c-cellwell" /></div>
                             <div style={{ ...cellS, color: 'var(--c-fg-2)', fontSize: 10 }}>{engHrs != null ? `${engHrs}h` : '—'}</div>
                             <div style={cellS} />
                             <div style={cellS}>
-                              <input value={r.eng_rate || engRateDisplay} onChange={e => updateStRow(r.id, { eng_rate: e.target.value })} style={{ ...inp, width: 64 }} />
+                              <input value={r.eng_rate || engRateDisplay} onChange={e => updateStRow(r.id, { eng_rate: e.target.value })} className="c-cellwell" style={{ width: 64 }} />
                             </div>
                             <div style={cellS} />
                             <div style={cellS} />
@@ -2713,12 +2711,12 @@ export function WorkOrderPopup({
               </div>
               {rentRows.map((r, idx) => (
                 <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', minWidth: isMobile ? 540 : undefined }}>
-                  <div style={cellS}><input value={r.qty} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, qty: e.target.value } : x))} style={inp} /></div>
-                  <div style={cellS}><input value={r.item} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, item: e.target.value } : x))} style={inp} /></div>
-                  <div style={cellS}><input value={r.supplier} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, supplier: e.target.value } : x))} style={inp} /></div>
-                  <div style={cellS}><input value={r.dates_used} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, dates_used: e.target.value } : x))} style={inp} /></div>
-                  <div style={cellS}><input value={r.rate} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, rate: e.target.value } : x))} style={inp} /></div>
-                  <div style={cellS}><input value={r.charge} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, charge: e.target.value } : x))} placeholder="$0.00" style={inp} /></div>
+                  <div style={cellS}><input value={r.qty} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, qty: e.target.value } : x))} className="c-cellwell" /></div>
+                  <div style={cellS}><input value={r.item} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, item: e.target.value } : x))} className="c-cellwell" /></div>
+                  <div style={cellS}><input value={r.supplier} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, supplier: e.target.value } : x))} className="c-cellwell" /></div>
+                  <div style={cellS}><input value={r.dates_used} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, dates_used: e.target.value } : x))} className="c-cellwell" /></div>
+                  <div style={cellS}><input value={r.rate} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, rate: e.target.value } : x))} className="c-cellwell" /></div>
+                  <div style={cellS}><input value={r.charge} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, charge: e.target.value } : x))} placeholder="$0.00" className="c-cellwell" /></div>
                   <div style={{ ...cellS, padding: '6px 4px' }}>
                     {!readOnly && <button type="button" onClick={() => setRentRows(p => p.filter(x => x.id !== r.id))} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>}
                   </div>
@@ -2756,7 +2754,7 @@ export function WorkOrderPopup({
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
                     <div style={metaLabel}>Print Name</div>
-                    <input value={wo.print_name} onChange={e => setWo(w => w ? { ...w, print_name: e.target.value } : w)} style={{ ...inp }} />
+                    <input value={wo.print_name} onChange={e => setWo(w => w ? { ...w, print_name: e.target.value } : w)} className="c-cellwell" />
                   </div>
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -2794,15 +2792,15 @@ export function WorkOrderPopup({
                     return (
                       <div key={p.id} style={{ display: 'grid', gridTemplateColumns: needsLast4 ? '130px 80px 1fr 70px 24px' : '130px 80px 1fr 24px', alignItems: 'center' }}>
                         <div style={cellS}>
-                          <select value={p.payment_type} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, payment_type: e.target.value, last_four: '' } : x))} style={{ ...inp, background: 'transparent', cursor: 'pointer' }}>
+                          <select value={p.payment_type} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, payment_type: e.target.value, last_four: '' } : x))} className="c-cellwell" style={{ background: 'transparent', cursor: 'pointer' }}>
                             <option value="">— type —</option>
                             {['Cash', 'Zelle', 'Credit Card', 'Debit Card', 'Check', 'Other'].map(t => <option key={t} value={t}>{t}</option>)}
                           </select>
                         </div>
-                        <div style={cellS}><input value={p.amount} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x))} onBlur={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: formatCurrency(e.target.value) } : x))} placeholder="0.00" style={inp} /></div>
-                        <div style={cellS}><input value={p.memo} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))} placeholder="memo" style={inp} /></div>
+                        <div style={cellS}><input value={p.amount} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x))} onBlur={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: formatCurrency(e.target.value) } : x))} placeholder="0.00" className="c-cellwell" /></div>
+                        <div style={cellS}><input value={p.memo} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))} placeholder="memo" className="c-cellwell" /></div>
                         {needsLast4 && (
-                          <div style={cellS}><input value={p.last_four} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) } : x))} placeholder="last 4" maxLength={4} style={inp} /></div>
+                          <div style={cellS}><input value={p.last_four} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) } : x))} placeholder="last 4" maxLength={4} className="c-cellwell" /></div>
                         )}
                         <div style={{ ...cellS, padding: '6px 4px' }}>
                           {!readOnly && <button type="button" onClick={() => setPayRows(p2 => p2.filter(x => x.id !== p.id))} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>}
