@@ -1975,10 +1975,11 @@ const parsedLoc0 = parseLocation(lead.location || '')
     setTimeout(() => setSavedField(null), 600)
   }
 
-  // Soft skin (§7c): field holders are flat wash fills — no inset carving.
+  // Soft skin (§7c): this select lives INSIDE a .c-well — the well is the box,
+  // so the control paints nothing (wash-on-wash was a bubble in a bubble).
   const selStyle: React.CSSProperties = {
-    background: 'var(--c-wash)', color: 'var(--c-fg)', padding: '8px 14px', fontFamily: 'Inter',
-    fontSize: 12, outline: 'none', borderRadius: 99, cursor: 'pointer', flex: 1, minWidth: 0,
+    background: 'transparent', color: 'var(--c-fg)', padding: '8px 0', fontFamily: 'Inter',
+    fontSize: 12, outline: 'none', cursor: 'pointer', flex: 1, minWidth: 0,
   }
 
   // NOTE: registration is an EDIT-mode action only — the new-lead modal has no

@@ -1931,4 +1931,40 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* Flo's inner surface rides on the panel surface now. */
 .c-ringwrap .c-flo-inner { background: var(--c-srf); }
 
+/* Bare fields caught by the sheet/panel catch-alls: flat wash, no carve. */
+.c-sheet input:not([type="file"]):not(.c-input):not(.c-tin),
+.c-sheet select:not(.c-tin),
+.c-sheet textarea:not(.c-textarea):not(.c-tin),
+.c-panel input:not([type="file"]):not(.c-input):not(.c-tin),
+.c-panel select:not(.c-tin),
+.c-panel textarea:not(.c-textarea):not(.c-tin) {
+  background: var(--c-wash);
+  box-shadow: none;
+}
+[data-theme="light"] .c-sheet input:not([type="file"]):not(.c-input):not(.c-tin),
+[data-theme="light"] .c-sheet select:not(.c-tin),
+[data-theme="light"] .c-sheet textarea:not(.c-textarea):not(.c-tin),
+[data-theme="light"] .c-panel input:not([type="file"]):not(.c-input):not(.c-tin),
+[data-theme="light"] .c-panel select:not(.c-tin),
+[data-theme="light"] .c-panel textarea:not(.c-textarea):not(.c-tin) {
+  box-shadow: none;
+}
+
+/* NO BUBBLES IN BUBBLES: a control inside a well is BARE — the well is the box.
+   These come AFTER the catch-alls above and carry the extra :not() so they
+   outrank them (the documented specificity war, re-fought for the soft skin). */
+.c-well > input:not([type="file"]):not(.c-input):not(.c-tin),
+.c-well > textarea:not(.c-textarea):not(.c-tin),
+.c-well > select:not(.c-tin),
+.c-artist-sub .c-aw input:not(.c-input):not(.c-tin),
+[data-theme="light"] .c-well > input:not([type="file"]):not(.c-input):not(.c-tin),
+[data-theme="light"] .c-well > textarea:not(.c-textarea):not(.c-tin),
+[data-theme="light"] .c-well > select:not(.c-tin),
+[data-theme="light"] .c-artist-sub .c-aw input:not(.c-input):not(.c-tin) {
+  background: none;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+}
+
 /* ═══ END SOFT SKIN ═════════════════════════════════════════════════════════ */
