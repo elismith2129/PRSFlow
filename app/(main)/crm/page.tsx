@@ -735,7 +735,7 @@ export default function CRMPage() {
                       Select a lead to view details
                     </div>
                   ) : (
-                    <div style={{ overflowY: 'auto', flex: 1, padding: '14px 16px 16px' }}>
+                    <div style={{ overflowY: 'auto', flex: 1, padding: '6px 14px 12px' }}>
                       <LeadDetail
                         key={selected.id}
                         lead={selected}
@@ -2099,9 +2099,9 @@ const parsedLoc0 = parseLocation(lead.location || '')
   return (
     <div>
       {/* ═══ Zone 1 (transparent — lets the panel gradient show through) — identity + contact ═══════════ */}
-      <div style={{ background: 'transparent', padding: isMobile ? '2px 0 4px' : '2px 0 6px' }}>
+      <div style={{ background: 'transparent', padding: isMobile ? '2px 0 4px' : '0 0 4px' }}>
       {/* ─── Status strip ─────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
         <div ref={statusPillRef} style={{ position: 'relative', flexShrink: 0 }}>
           <button
             type="button"
@@ -2183,7 +2183,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
             {lead.billing !== 'COD' ? (
               <>
                 <div style={{ display: 'inline-grid', minWidth: '3ch', position: 'relative' }}>
-                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 19, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
                     {local.label || 'Label'}
                   </span>
                   <input
@@ -2193,7 +2193,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     onKeyDown={enterBlur}
                     onBlur={e => { setFocusedInput(null); setShowLabelDD(false); save('label', e.target.value) }}
                     placeholder="Label"
-                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'label' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'label' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif", fontSize: 19, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
                   />
                   {showLabelDD && labelSuggestions.length > 0 && (
                     <div style={{ ...ddStyle, right: 'auto', width: 'max-content', minWidth: 220, maxWidth: 320 }}>
@@ -2203,9 +2203,9 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     </div>
                   )}
                 </div>
-                <span style={{ color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: '-0.025em', lineHeight: 1.05, flexShrink: 0 }}> — </span>
+                <span style={{ color: 'var(--c-fg-3)', fontFamily: "'Archivo Black', sans-serif", fontSize: 19, letterSpacing: '-0.025em', lineHeight: 1.05, flexShrink: 0 }}> — </span>
                 <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
-                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 19, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
                     {local.artist_name || 'Artist'}
                   </span>
                   <input
@@ -2215,14 +2215,14 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     onKeyDown={enterBlur}
                     onBlur={e => { setFocusedInput(null); save('artist_name', e.target.value) }}
                     placeholder="Artist"
-                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'artist_name' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'artist_name' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif", fontSize: 19, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
                   />
                 </div>
               </>
             ) : (
               <>
                 <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
-                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 19, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
                     {fnameVal || 'First'}
                   </span>
                   <input
@@ -2232,11 +2232,11 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
                     onBlur={() => { setFocusedInput(null); save('fname', fnameVal.trim()) }}
                     placeholder="First"
-                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: leadNameColor(lead), fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'fname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: leadNameColor(lead), fontFamily: "'Archivo Black', sans-serif", fontSize: 19, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
                   />
                 </div>
                 <div style={{ display: 'inline-grid', minWidth: '3ch' }}>
-                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
+                  <span aria-hidden style={{ visibility: 'hidden', gridArea: '1/1', fontFamily: "'Archivo Black', sans-serif", fontSize: 19, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, whiteSpace: 'pre' }}>
                     {lnameVal || 'Last'}
                   </span>
                   <input
@@ -2246,7 +2246,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                     onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLElement).blur() }}
                     onBlur={() => { setFocusedInput(null); save('lname', lnameVal.trim()) }}
                     placeholder="Last"
-                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'lname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: leadNameColor(lead), fontFamily: "'Archivo Black', sans-serif", fontSize: 22, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
+                    style={{ gridArea: '1/1', width: 0, minWidth: '100%', background: focusedInput === 'lname' ? 'var(--c-wash)' : 'transparent', outline: 'none', color: leadNameColor(lead), fontFamily: "'Archivo Black', sans-serif", fontSize: 19, letterSpacing: '-0.025em', lineHeight: 1.05, padding: 0, borderRadius: 6 }}
                   />
                 </div>
               </>
@@ -2407,7 +2407,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
 
       <div className="c-band">
         <div className="c-band-head">Contact</div>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
           <div className="c-well">
             <input
               ref={emailRef}
@@ -2450,7 +2450,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
       {/* minmax(0,1fr) + modest gap per §2b: content can never push the sibling
           column out of the panel (the 48px gap + fixed 1fr did exactly that). */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '6px 14px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div>
             <div style={fieldLabelStyle}>Location · Studio</div>
             <div className="c-well" style={{ maxWidth: isMobile ? '100%' : 220 }}>
@@ -2496,7 +2496,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div>
             <div style={fieldLabelStyle}>Quote / Rate</div>
             <div className="c-well">
@@ -2563,7 +2563,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
           chosen here seeds every studio-time row in the Work Order, so staff
           don't have to be typed onto each line by hand. Replaced the old
           "Engineer Needed" boolean, which nothing outside the CRM ever read. */}
-      <div style={{ marginTop: 8 }}>
+      <div style={{ marginTop: 6 }}>
         <div style={fieldLabelStyle}>Staffing</div>
         <StaffPicker
           listId={`lead-staff-${lead.id}`}

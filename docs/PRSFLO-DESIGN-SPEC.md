@@ -456,7 +456,9 @@ Tasks = §2.6–2.8, §12.9–11).
 
 ### 14a. Side nav (replaces the top nav app-wide)
 
-212px fixed left rail, wash fill, full height. Structure top→bottom: wordmark →
+176px fixed left rail (RULING 2026-08-07: slimmed from the mock's 212px under the
+§2b density law — less real estate; link padding/font trimmed to match), wash fill,
+full height. Structure top→bottom: wordmark →
 ungrouped trio (Dashboard, Calendar, Daily Ops) → BUSINESS group (CRM, WO Hub, Tasks,
 Flags) → STUDIO group (Mic Inventory, Runner Hub, Nadine's) → HR group (Punches,
 Hiring, Training) → foot pinned to bottom (Admin, SOP, DEV dimmed). Group labels are
