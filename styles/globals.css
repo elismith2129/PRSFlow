@@ -900,7 +900,69 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
               inset -5px -5px 14px rgba(255, 255, 255, .7);
 }
 
-/* ── Nav ────────────────────────────────────────────────────────────────── */
+/* ── Side nav rail (spec §14a, ported from docs/design-refs/dashboard-final.html) ──
+   The rail replaces the top nav as the app frame. Wash fill, full height,
+   sticky. Active item = filled pill (ivory-on-charcoal dark / ink-on-paper
+   light — same treatment as every selected control). Badges are functional
+   counts only: hot = needs-you-now, warm = attention, dim wash = neutral. */
+.c-frame { display: flex; min-height: 100vh; }
+@media (max-width: 768px) { .c-frame { flex-direction: column; } }
+.c-rail {
+  width: 212px; flex-shrink: 0; padding: 18px 12px 16px 16px;
+  display: flex; flex-direction: column; gap: 2px;
+  background: var(--c-wash);
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  z-index: 99999; /* the frame stays above modals, as the top nav did */
+}
+.c-rail-wm { padding: 2px 10px 14px; }
+.c-rail-grp {
+  margin-top: 13px; padding: 0 10px 5px;
+  font-size: 9.5px; font-weight: 800; letter-spacing: .11em;
+  text-transform: uppercase; opacity: .45;
+}
+.c-rail-link {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 7.5px 12px; border-radius: 12px;
+  font-size: 13px; font-weight: 600; font-family: inherit; text-align: left;
+  color: var(--c-fg); opacity: .6; text-decoration: none; cursor: pointer;
+  background: none;
+  transition: opacity .16s ease, background .16s ease;
+}
+.c-rail-link:hover { opacity: .85; background: var(--c-wash); }
+.c-rail-link.c-on {
+  opacity: 1; background: var(--c-ivory); color: #1b1a17;
+  box-shadow: 2px 2px 7px rgba(0, 0, 0, .35);
+}
+[data-theme="light"] .c-rail-link.c-on { background: var(--c-fg); color: var(--c-bg); }
+.c-rail-ic { width: 16px; text-align: center; opacity: .75; flex-shrink: 0; font-size: 13px; }
+.c-rail-badge {
+  margin-left: auto; min-width: 19px; height: 17px; border-radius: 99px; padding: 0 6px;
+  font-size: 9.5px; font-weight: 800;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.c-rail-badge.c-hot { background: var(--c-st-hot); color: var(--c-hot-text); }
+.c-rail-badge.c-warm { background: var(--c-st-warm); color: var(--c-chip-ink); }
+.c-rail-badge.c-dim { background: var(--c-wash2); }
+.c-rail-foot { margin-top: auto; padding-top: 12px; }
+
+/* Mobile: 52px top bar + the rail as a slide-in drawer over a dimmed backdrop. */
+.c-mobilebar {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 52px; padding: 0 12px;
+  position: sticky; top: 0; z-index: 99999; background: var(--c-bg);
+}
+.c-rail-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, .4); z-index: 99998; }
+.c-rail.c-drawer {
+  position: fixed; top: 0; left: 0; bottom: 0; height: 100dvh;
+  background: var(--c-bg); /* solid — the wash is translucent and would show the backdrop through it */
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
+  animation: railIn .2s ease;
+}
+[data-theme="light"] .c-rail.c-drawer { box-shadow: 0 18px 40px rgba(42, 39, 34, .18); }
+@keyframes railIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@media (prefers-reduced-motion: reduce) { .c-rail.c-drawer { animation: none; } }
+
+/* ── Nav (LEGACY top bar — replaced by the rail; dies with Nav.tsx) ─────── */
 /* The bar is just ground — no border, no gradient, no accent-tinted shadow
    (Law 1 + §7). Separation from the content comes from the carved panels below
    it having their own depth, not from a rule across the top. */

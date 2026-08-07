@@ -13,10 +13,14 @@ export default function MainLayout({
   return (
     <AuthGuard>
       <WebInquiryProvider>
-        <NavGate />
-        <main className="page-main" style={{ padding: '24px 32px' }}>
-          {children}
-        </main>
+        {/* §14 frame: side rail left, content right (column-stacked on mobile,
+            where NavGate renders a top bar instead — see .c-frame media query). */}
+        <div className="c-frame">
+          <NavGate />
+          <main className="page-main" style={{ flex: 1, minWidth: 0, padding: '24px 32px' }}>
+            {children}
+          </main>
+        </div>
         {/* Site-wide Web Inquiry toasts — mounted at layout level so they appear
             on every internal page, independent of page content. */}
         <WebInquiryToaster />
