@@ -648,7 +648,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-panel {
   background: var(--c-bg);
   border-radius: 40px;
-  padding: 17px;
+  padding: 12px; /* was 17 — §2b density */
   box-shadow: inset 5px 5px 15px rgba(0, 0, 0, .4),
               inset -5px -5px 15px rgba(255, 255, 255, .03);
 }

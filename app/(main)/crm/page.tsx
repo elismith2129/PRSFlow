@@ -735,7 +735,7 @@ export default function CRMPage() {
                       Select a lead to view details
                     </div>
                   ) : (
-                    <div style={{ overflowY: 'auto', flex: 1, padding: '6px 14px 12px' }}>
+                    <div style={{ overflowY: 'auto', flex: 1, padding: '4px 10px 8px' }}>
                       <LeadDetail
                         key={selected.id}
                         lead={selected}
@@ -2482,7 +2482,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 type="date"
                 value={local.session_date || ''}
                 onChange={e => { update('session_date', e.target.value); save('session_date', e.target.value) }}
-                style={{ ...iStyle('session_date'), cursor: 'pointer', paddingLeft: 0, width: 'auto', flex: 1, minWidth: 0 }}
+                style={{ ...iStyle('session_date'), cursor: 'pointer', paddingLeft: 0, width: 92, flex: 'none' }}
               />
               <span style={{ color: 'var(--c-fg-3)', fontSize: 11, flexShrink: 0 }}>–</span>
               <input
@@ -2491,7 +2491,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 min={local.session_date || undefined}
                 title="Optional — set only when the client wants more than one day"
                 onChange={e => { update('session_end_date', e.target.value); save('session_end_date', e.target.value || null) }}
-                style={{ ...iStyle('session_end_date'), cursor: 'pointer', paddingLeft: 0, opacity: local.session_end_date ? 1 : 0.6, width: 'auto', flex: 1, minWidth: 0 }}
+                style={{ ...iStyle('session_end_date'), cursor: 'pointer', paddingLeft: 0, opacity: local.session_end_date ? 1 : 0.6, width: 92, flex: 'none' }}
               />
             </div>
           </div>

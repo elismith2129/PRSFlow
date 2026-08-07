@@ -17,7 +17,7 @@ export default function MainLayout({
             where NavGate renders a top bar instead — see .c-frame media query). */}
         <div className="c-frame">
           <NavGate />
-          <main className="page-main" style={{ flex: 1, minWidth: 0, padding: '24px 32px' }}>
+          <main className="page-main" style={{ flex: 1, minWidth: 0, padding: '14px 20px 20px' }}>
             {children}
           </main>
         </div>
