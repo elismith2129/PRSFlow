@@ -945,7 +945,10 @@ export default function DashboardPage() {
             content. Day nav (‹ date ›) is kept — it's functionality the mock
             simply didn't draw. Loc-count chips dropped: the studio cards in
             the command row carry the counts now. */}
-        <div className="c-panel" style={isMobile ? { order: 1 } : undefined}>
+        {/* Explicit placement: this pane precedes the console in the JSX, and
+            auto-placement was seating it in the WIDE left column — console
+            belongs left (1.35fr), sessions right. */}
+        <div className="c-panel" style={isMobile ? { order: 1 } : { gridColumn: '2', gridRow: '1' }}>
           <SectionHeader carved title="Today's sessions" />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, margin: '-4px 0 10px' }}>
             <SoftButton onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() - 1); return n })}>‹</SoftButton>
@@ -1017,7 +1020,7 @@ export default function DashboardPage() {
             2026-08-07). Flo + My Day are STATIC placeholders until the HR layer
             ships; Tasks is live (dashboard_tasks). Staff grid + Flags indicator
             sit under the console in this column. */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, ...(isMobile ? { order: 2 } : null) }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, ...(isMobile ? { order: 2 } : { gridColumn: '1', gridRow: '1' }) }}>
         <div className="c-panel">
 
           {/* THE FLO BOX — the app's single AI mouthpiece. Flat, ringed, and the
