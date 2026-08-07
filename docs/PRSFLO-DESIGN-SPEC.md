@@ -362,6 +362,13 @@ All fields render at 60px column width and up (no tiers, ellipsis allowed). Hove
 carries the long tail: full staff names, WO# + INV#, payment pill, status pill. No rates
 or amounts anywhere on calendar or hover.
 
+**Month orientation (RULING 2026-08-03):** a sticky month rail sits above the day header —
+each month a segment as wide as its days, name in Archivo pinned `position:sticky; left`
+so it stays at the viewport's left edge while its days are visible and is pushed out by
+the next month's label at the boundary. Alternating months additionally get a whisper of
+ground tint on their columns, and month boundaries keep the heavier tick. Reference:
+docs/design-refs/calendar-month-orientation.html (option A).
+
 ## 13. TV display mode (`/display/[room-slug]`) — design decisions, build later
 
 Roadmap project (after calendar module ships), decisions locked now:

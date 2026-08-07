@@ -1025,6 +1025,20 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   opacity: .4; margin-top: 10px;
 }
 
+/* ── MONTH RAIL (§10b) — ported from docs/design-refs/calendar-month-orientation.html
+   option A (`.mrail` / `.mseg` / `.mname`). Chrome, not status: ink and wash
+   only, no colour. The tint is deliberately at the reference's level — you
+   should sense the month change, not see a stripe. */
+.c-monthname {
+  font-family: 'Archivo Black', sans-serif; font-weight: 400;
+  font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--c-fg-2);
+  padding: 4px 10px; white-space: nowrap;
+  /* The name scrolls under nothing — it IS the topmost thing in its segment —
+     but it must paint over its neighbour's tint as it slides. */
+  background: inherit;
+}
+
 /* ── Calendar grid (§10 GRID EXEMPTION, ruling 2026-08-01) ────────────────
    The calendar is EXEMPT from Law 1. Position is information on this surface and
    the grid that encodes it is functional, not decorative — 11 studios at density
@@ -1032,8 +1046,12 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    the superseded §10 and is replaced here.
    Separator: --c-fg at 12% light / 16% dark. Day ticks are painted by the row's
    inline repeating-linear-gradient (needs colW, which only the component knows). */
-:root { --c-grid-line: rgba(217, 214, 205, .16); --c-grid-tick: rgba(217, 214, 205, .09); --c-grid-tick-strong: rgba(217, 214, 205, .2); }
-[data-theme="light"] { --c-grid-line: rgba(42, 39, 34, .12); --c-grid-tick: rgba(42, 39, 34, .07); --c-grid-tick-strong: rgba(42, 39, 34, .18); }
+:root { --c-grid-line: rgba(217, 214, 205, .16); --c-grid-tick: rgba(217, 214, 205, .09); --c-grid-tick-strong: rgba(217, 214, 205, .2);
+        /* Alternating-month ground. Barely-there by design — you should sense the
+           month change the way you sense a paper-stock change, not see a stripe. */
+        --c-month-tint: rgba(217, 214, 205, .045); }
+[data-theme="light"] { --c-grid-line: rgba(42, 39, 34, .12); --c-grid-tick: rgba(42, 39, 34, .07); --c-grid-tick-strong: rgba(42, 39, 34, .18);
+        --c-month-tint: rgba(42, 39, 34, .04); }
 
 /* NO border-bottom here. It ran edge to edge, straight through the sticky room-
    label column, so the labels read as cells in the grid rather than as the rail

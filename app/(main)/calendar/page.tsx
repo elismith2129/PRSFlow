@@ -78,6 +78,9 @@ const clampColZoom = (w: number) => Math.min(COL_ZOOM_MAX, Math.max(COL_ZOOM_MIN
 // Mobile has no pinch (the whole page zooms instead), so it keeps fit-to-width
 // with a floor.
 const COL_FLOOR_MOBILE = 76
+// Height of the month rail. The day header sticks BELOW it, so this has to be a
+// constant both can read — a mismatch overlaps the two sticky rows.
+const MONTH_RAIL_H = 22
 const BUFFER_WEEKS = 2 // weeks of buffer rendered on each side for endless horizontal scroll
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -1315,6 +1318,32 @@ function CalendarPageInner() {
     // rendered window equals the fetched range, so this filter is a no-op there.
     const winStart = fmt(gridRenderStart)
     const winEnd = fmt(addDays(gridRenderStart, DAYS - 1))
+
+    // ── MONTH RAIL (§10b) ────────────────────────────────────────────────────
+    // Segments are derived from `days` — the exact array the header and grid
+    // render from, which is itself rebuilt from gridRenderStart on every
+    // infinite-scroll re-anchor. That is deliberate: the scrollX desync bug
+    // (O-10) happened because a feature derived a position from scrollLeft,
+    // which survives a re-anchor while the grid's origin moves underneath it.
+    // Anything measured in DAYS re-renders correctly for free; anything measured
+    // in scroll pixels does not. Do not "optimise" this into a scroll listener.
+    const monthSegs: { key: string; label: string; count: number; alt: boolean }[] = []
+    days.forEach(d => {
+      const key = `${d.getFullYear()}-${d.getMonth()}`
+      const last = monthSegs[monthSegs.length - 1]
+      if (last && last.key === key) { last.count++; return }
+      monthSegs.push({
+        key,
+        label: `${d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()} ${d.getFullYear()}`,
+        count: 1,
+        // Parity of the absolute month number, not of the array index — index
+        // parity flips every time the window re-anchors across a boundary, which
+        // would make the tint blink as you scroll.
+        alt: (d.getFullYear() * 12 + d.getMonth()) % 2 === 1,
+      })
+    })
+    const monthTint = (d: Date) =>
+      (d.getFullYear() * 12 + d.getMonth()) % 2 === 1 ? 'var(--c-month-tint)' : 'transparent'
     return (
       <div
         ref={gridRef}
@@ -1322,9 +1351,46 @@ function CalendarPageInner() {
         style={{ flex: 1, overflow: 'auto', minHeight: 0, borderRadius: 6, WebkitOverflowScrolling: 'touch' }}
       >
         <div style={{ minWidth: labelW + DAYS * colW }}>
+        {/* MONTH RAIL — one segment per month, each exactly as wide as its days.
+            The name is position:sticky inside its own segment, so it pins to the
+            viewport's left edge while any of that month's days are visible and
+            is then pushed out by the next segment: the contact-list header
+            mechanic. Offset by labelW the same way the day ticks are. */}
+        <div style={{
+          display: 'flex', position: 'sticky', top: 0, zIndex: 12,
+          height: MONTH_RAIL_H, background: 'var(--c-bg)',
+        }}>
+          {/* Spacer under the sticky room-label column, so the rail starts where
+              the grid starts rather than under the labels. */}
+          <div style={{
+            width: labelW, flexShrink: 0, position: 'sticky', left: 0, zIndex: 13,
+            background: 'var(--c-bg)',
+          }} />
+          {monthSegs.map(m => (
+            <div
+              key={m.key}
+              style={{
+                width: m.count * colW, flexShrink: 0, display: 'flex', alignItems: 'center',
+                background: m.alt ? 'var(--c-month-tint)' : 'transparent',
+                boxShadow: 'inset -2px 0 0 var(--c-grid-tick-strong)',
+                overflow: 'hidden',
+              }}
+            >
+              <span
+                className="c-monthname"
+                // `left` is the label column: the rail scrolls under it, so
+                // pinning at 0 would park month names beneath the room labels.
+                style={{ position: 'sticky', left: labelW + 8 }}
+              >
+                {m.label}
+              </span>
+            </div>
+          ))}
+        </div>
+
         {/* Day header row */}
         <div style={{
-          display: 'flex', position: 'sticky', top: 0, zIndex: 10,
+          display: 'flex', position: 'sticky', top: MONTH_RAIL_H, zIndex: 10,
           background: 'var(--c-bg)', }}>
           <div style={{ width: labelW, flexShrink: 0, position: 'sticky', left: 0, zIndex: 11, background: 'var(--c-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <span style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 600, color: 'var(--c-fg-3)', letterSpacing: '0.05em' }}>
@@ -1343,7 +1409,7 @@ function CalendarPageInner() {
             return (
               <div key={fmt(d)} style={{
                 flex: 1, minWidth: colW, textAlign: 'center', padding: '2px 2px',
-                background: wknd ? 'rgba(255,255,255,0.015)' : 'transparent',
+                background: wknd ? 'rgba(255,255,255,0.015)' : monthTint(d),
                 boxShadow: shadow,
                 position: 'relative',
               }}>
@@ -1474,7 +1540,7 @@ function CalendarPageInner() {
                             style={{
                               position: 'absolute', top: 0, bottom: 0,
                               left: `${(i / DAYS) * 100}%`, width: `${(1 / DAYS) * 100}%`,
-                              background: isWeekend(d) ? 'rgba(255,255,255,0.012)' : 'transparent',
+                              background: isWeekend(d) ? 'rgba(255,255,255,0.012)' : monthTint(d),
                               boxShadow: cellIsMonthStart
                                 ? 'inset 2px 0 0 var(--c-wash2)'
                                 : cellIsWeekStart ? 'inset 2px 0 0 rgba(255,255,255,0.12)' : 'none',
