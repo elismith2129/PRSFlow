@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { MAIL_FROM_DEFAULT as FROM_ADDRESS } from '@/lib/sendMail'
 import { createClient } from '@supabase/supabase-js'
 
-const FROM_ADDRESS = 'Paramount Recording Studios <info@paramountrecording.com>'
+
 
 interface Recipient {
   email: string
