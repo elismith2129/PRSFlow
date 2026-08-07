@@ -105,6 +105,10 @@
   /* Semantic aliases — components reference these, never a raw slot. */
   --c-ivory:    #d5d0c2;              /* dark-mode SMALL accents only (spec Law 5) */
   --c-hot-text: #fff4f2;              /* text on --c-st-hot fills; all others use --c-chip-ink */
+
+  /* Flo ring/halo ink (spec §14c) — bare RGB triplet, consumed via
+     rgba(var(--c-flo-ink), a). The Flo box is the ONLY glow in the app. */
+  --c-flo-ink: 213, 208, 194;         /* ivory in dark */
 }
 
 [data-theme="light"] {
@@ -115,6 +119,7 @@
   --c-wash2: rgba(42, 39, 34, .095);
   --c-fg-2:  rgba(42, 39, 34, .72);
   --c-fg-3:  rgba(42, 39, 34, .45);
+  --c-flo-ink: 42, 39, 34;            /* dark ink in light mode */
   /* --c-chip-ink, the status palette and the aliases are theme-independent. */
 }
 
