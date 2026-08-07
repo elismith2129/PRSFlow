@@ -1325,6 +1325,9 @@ function CalendarPageInner() {
     // infinite-scroll re-anchor. That is deliberate: the scrollX desync bug
     // (O-10) happened because a feature derived a position from scrollLeft,
     // which survives a re-anchor while the grid's origin moves underneath it.
+    // O-10 is the long-bar payload incident — three failed attempts at sliding
+    // the payload with the scroll position, written up in docs/PROJECT_LOG.md;
+    // search the log for O-10 before reworking anything on this axis.
     // Anything measured in DAYS re-renders correctly for free; anything measured
     // in scroll pixels does not. Do not "optimise" this into a scroll listener.
     const monthSegs: { key: string; label: string; count: number; alt: boolean }[] = []
@@ -1373,7 +1376,16 @@ function CalendarPageInner() {
                 width: m.count * colW, flexShrink: 0, display: 'flex', alignItems: 'center',
                 background: m.alt ? 'var(--c-month-tint)' : 'transparent',
                 boxShadow: 'inset -2px 0 0 var(--c-grid-tick-strong)',
-                overflow: 'hidden',
+                // NO `overflow: hidden` HERE. An ancestor with a clipping
+                // overflow becomes the scroll container for a sticky descendant,
+                // and since this box doesn't scroll, the name gets zero sticky
+                // range and just scrolls away — which is exactly what happened.
+                // (Same trap as the long-bar chip payload: chips clip, so CSS
+                // sticky could never have worked there either.)
+                // Clipping isn't needed anyway: a sticky element is already
+                // clamped to its containing block, so the name stops at this
+                // segment's right edge on its own. That IS the push-out.
+                position: 'relative',
               }}
             >
               <span
@@ -1392,11 +1404,10 @@ function CalendarPageInner() {
         <div style={{
           display: 'flex', position: 'sticky', top: MONTH_RAIL_H, zIndex: 10,
           background: 'var(--c-bg)', }}>
-          <div style={{ width: labelW, flexShrink: 0, position: 'sticky', left: 0, zIndex: 11, background: 'var(--c-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 600, color: 'var(--c-fg-3)', letterSpacing: '0.05em' }}>
-              {startDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
-            </span>
-          </div>
+          {/* Empty corner. It used to print the month abbreviation; the month
+              rail above is the single authority on month position now, so that
+              was redundant chrome saying the same thing twice. */}
+          <div style={{ width: labelW, flexShrink: 0, position: 'sticky', left: 0, zIndex: 11, background: 'var(--c-bg)' }} />
           {days.map((d, i) => {
             const todayFlag = isToday(d)
             const wknd = isWeekend(d)
