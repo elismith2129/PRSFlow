@@ -1828,3 +1828,107 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   .c-control { transition: none; }
   .c-control:hover, .c-control:active { transform: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SOFT SKIN — RULING 2026-08-07 (spec §7c). SUPERSEDES the carved recipes.
+   Chosen from docs/design-refs/dashboard-flat-skins.html option C.
+   One block, at the END on purpose: equal-specificity cascade beats every
+   carved rule above, so the whole app flips here and can flip back by
+   deleting this block. Carved rules above are dead law kept for history.
+   Law 1 (no lines) still stands; the Flo ring stays (glow = AI).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* DARK — surfaces lift slightly off the ground */
+  --c-srf:    #242320;
+  --c-softsh: 0 2px 5px rgba(0, 0, 0, .25), 0 8px 22px rgba(0, 0, 0, .22);
+  --c-ctlsh:  0 1px 4px rgba(0, 0, 0, .3);
+}
+[data-theme="light"] {
+  --c-srf:    #ffffff;
+  --c-softsh: 0 1px 3px rgba(42, 39, 34, .08), 0 5px 16px rgba(42, 39, 34, .07);
+  --c-ctlsh:  0 1px 3px rgba(42, 39, 34, .15);
+}
+
+/* Containers: flat raised surfaces. */
+.c-panel, .c-pipe, .c-stud, .c-flagmini,
+[data-panel="admin-sidebar"] {
+  background: var(--c-srf);
+  box-shadow: var(--c-softsh);
+}
+[data-theme="light"] .c-panel, [data-theme="light"] .c-pipe,
+[data-theme="light"] .c-stud, [data-theme="light"] .c-flagmini,
+[data-theme="light"] [data-panel="admin-sidebar"] {
+  background: var(--c-srf);
+  box-shadow: var(--c-softsh);
+}
+/* Floating containers (modals/sheets/hovercards) get extra distance. */
+.c-sheet, .c-modal, .c-hovercard {
+  background: var(--c-srf);
+  box-shadow: var(--c-softsh), 0 18px 50px rgba(0, 0, 0, .3);
+}
+[data-theme="light"] .c-sheet, [data-theme="light"] .c-modal, [data-theme="light"] .c-hovercard {
+  background: var(--c-srf);
+  box-shadow: var(--c-softsh), 0 18px 50px rgba(42, 39, 34, .16);
+}
+
+/* Second-level holders: flat wash fills, no depth. Focus stays a fill change. */
+.c-inset2, .c-well, .c-area, .c-field-inline, .c-aw,
+.c-panel textarea:not(.c-textarea):not(.c-tin) {
+  background: var(--c-wash);
+  box-shadow: none;
+}
+[data-theme="light"] .c-inset2, [data-theme="light"] .c-well,
+[data-theme="light"] .c-area, [data-theme="light"] .c-field-inline,
+[data-theme="light"] .c-aw,
+[data-theme="light"] .c-panel textarea:not(.c-textarea):not(.c-tin) {
+  background: var(--c-wash);
+  box-shadow: none;
+}
+.c-input { background: var(--c-wash); box-shadow: none; }
+.c-input:focus { background: var(--c-wash2); }
+.c-well:focus-within, .c-field-inline:focus-within { background: var(--c-wash2); }
+
+/* Status pools keep their alpha fills — shadowless. */
+.c-pool, [data-theme="light"] .c-pool { box-shadow: none; }
+
+/* Selected states are fills, not carves. */
+.c-row.c-selected, [data-theme="light"] .c-row.c-selected {
+  background: var(--c-wash2); box-shadow: none;
+}
+.c-pressed, [data-theme="light"] .c-pressed { box-shadow: none; }
+.c-seg > button.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action),
+[data-theme="light"] .c-seg > button.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) {
+  box-shadow: none;
+}
+.c-myday-bx, [data-theme="light"] .c-myday-bx { background: var(--c-wash2); box-shadow: none; }
+.c-myday-item.c-done .c-myday-bx { background: var(--c-st-booked); }
+
+/* Controls: raised meaning, flat treatment — small drop shadow; press is a
+   nudge + fill, never an inner shadow. */
+.c-raised, .c-raised-chip, .c-raised-primary, .c-mini, .c-pill, .c-seg,
+.c-anchor, .c-returning, .c-datechip {
+  box-shadow: var(--c-ctlsh);
+}
+[data-theme="light"] .c-raised, [data-theme="light"] .c-raised-chip,
+[data-theme="light"] .c-raised-primary, [data-theme="light"] .c-mini,
+[data-theme="light"] .c-pill, [data-theme="light"] .c-seg,
+[data-theme="light"] .c-anchor, [data-theme="light"] .c-returning,
+[data-theme="light"] .c-datechip {
+  box-shadow: var(--c-ctlsh);
+}
+.c-seg.c-seg-tiny, [data-theme="light"] .c-seg.c-seg-tiny { box-shadow: none; }
+.c-control:active, .c-mini:active,
+[data-theme="light"] .c-control:active,
+.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):active {
+  box-shadow: none;
+  background: var(--c-wash2);
+}
+
+/* Table zebra stays a flat band. */
+.c-table-row:nth-child(odd), [data-theme="light"] .c-table-row:nth-child(odd) { box-shadow: none; }
+
+/* Flo's inner surface rides on the panel surface now. */
+.c-ringwrap .c-flo-inner { background: var(--c-srf); }
+
+/* ═══ END SOFT SKIN ═════════════════════════════════════════════════════════ */

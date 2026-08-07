@@ -1975,10 +1975,10 @@ const parsedLoc0 = parseLocation(lead.location || '')
     setTimeout(() => setSavedField(null), 600)
   }
 
+  // Soft skin (§7c): field holders are flat wash fills — no inset carving.
   const selStyle: React.CSSProperties = {
-    background: 'var(--c-bg)', color: 'var(--c-fg)', padding: '8px 14px', fontFamily: 'Inter',
+    background: 'var(--c-wash)', color: 'var(--c-fg)', padding: '8px 14px', fontFamily: 'Inter',
     fontSize: 12, outline: 'none', borderRadius: 99, cursor: 'pointer', flex: 1, minWidth: 0,
-    boxShadow: 'inset 3px 3px 9px rgba(0,0,0,.34), inset -3px -3px 9px rgba(255,255,255,.03)',
   }
 
   // NOTE: registration is an EDIT-mode action only — the new-lead modal has no
@@ -2857,7 +2857,7 @@ function ConfirmClientModal({ lead, onClose, onCreated, markBooked = true }: {
 
   const overlay: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'rgba(0,0,0,.55)' }
   const fL: React.CSSProperties = { fontSize: 10, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 5, display: 'block' as const }
-  const inp: React.CSSProperties = { width: '100%', background: 'var(--c-bg)', borderRadius: 99, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12, padding: '10px 16px', outline: 'none', boxSizing: 'border-box' as const, boxShadow: 'inset 3px 3px 9px rgba(0,0,0,.34), inset -3px -3px 9px rgba(255,255,255,.03)' }
+  const inp: React.CSSProperties = { width: '100%', background: 'var(--c-wash)', borderRadius: 99, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12, padding: '10px 16px', outline: 'none', boxSizing: 'border-box' as const }
 
   return (
     <div style={overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -3354,7 +3354,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
   // Carved input: capsule, carved IN, focus is a depth change. Callers that spread
   // this (`{...inputStyle}`) still work; the depth comes from the class below, so
   // anything spreading it must ALSO carry className="c-input c-inset2".
-  const inputStyle: React.CSSProperties = { width: '100%', background: 'var(--c-bg)', color: 'var(--c-fg)', padding: '10px 16px', borderRadius: 99, fontFamily: 'Inter', fontSize: 12, outline: 'none', boxShadow: 'inset 3px 3px 9px rgba(0,0,0,.34), inset -3px -3px 9px rgba(255,255,255,.03)' }
+  const inputStyle: React.CSSProperties = { width: '100%', background: 'var(--c-wash)', color: 'var(--c-fg)', padding: '10px 16px', borderRadius: 99, fontFamily: 'Inter', fontSize: 12, outline: 'none' }
   const labelS: React.CSSProperties = { fontSize: 10, fontWeight: 800, color: 'var(--c-fg-3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 5, display: 'block' }
 
   const modeToggle = (

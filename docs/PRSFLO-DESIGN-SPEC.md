@@ -292,6 +292,28 @@ controls; hover may lift 1–2px. Respect `prefers-reduced-motion`.
 
 ---
 
+## 7c. SOFT SKIN (RULING 2026-08-07 — SUPERSEDES §7's carved recipes app-wide)
+
+Eli lived with carved and found the depth distracting. Reference:
+`docs/design-refs/dashboard-flat-skins.html`, option **C · Soft** — chosen over
+wash (A) and hairline (B). The carved recipes are RETIRED everywhere:
+
+- **Containers are flat raised surfaces:** `--c-srf` (light `#ffffff` / dark
+  `#242320`) with the faint drop shadow `--c-softsh`. No inset carving anywhere.
+- **Second-level holders** (wells, inputs, textareas, list/task rows, empty room
+  cards) are flat `--c-wash` fills; focus stays a fill change (`--c-wash2`).
+- **Controls** keep their raised MEANING with a flat treatment: small drop shadow
+  `--c-ctlsh`; press = translateY(1px) + wash2 fill — no inset press.
+- **Selected states are fills, not carves** (selected row = wash2; selected
+  segment = ink/ivory fill, shadowless; status-filled segments keep §8's rule).
+- **Status pools** keep their alpha fills, shadowless.
+- Law 1 (no lines) STILL STANDS. Law 2's carve-in/raise-out language is
+  superseded by this section. §7's recipe block is dead law kept for history.
+- The Flo ring + halo (§14c) are untouched — glow = AI, in every skin.
+- **Implementation:** one `SOFT SKIN` override block at the END of globals.css
+  (cascade beats the carved rules above it) — reviewable, reversible. New
+  surfaces should target the soft values directly.
+
 ## 8. Primitives to build (consume tokens only — zero inline styles)
 
 `Button` (raised; primary = ink fill light / ivory dark; press-in on active),

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-skin="carved">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Command-row dashboard: carved vs 3 flat skins</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  SKIN EXPLORATION (2026-08-07) — same command-row dashboard, four skins:
+  · CARVED — the current system (reference)
+  · A WASH — flat tone-on-tone: panels are wash fills, zero shadows, zero lines
+  · B HAIRLINE — flat + 1px hairlines return as the separator
+  · C SOFT — flat surfaces lifted with a faint drop shadow (classic card UI)
+  Layout, type, palette and the Flo ring are IDENTICAL in all four — only the
+  depth treatment changes. The Flo glow stays in every skin (glow = AI).
+  Mock polarity: light on :root, dark via data-theme="dark".
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626;
+  --st-hot:#ff5a4d; --hot-text:#fff4f2;
+  --st-warm:#ffa94d; --st-booked:#43dfae; --st-uncon:#7fb2e5;
+  --ivory:#d5d0c2; --flo-ink:42,39,34;
+  --line:rgba(42,39,34,.14);
+  --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --flo-ink:213,208,194;
+  --line:rgba(217,214,205,.15);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);
+  font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;
+  transition:background .2s,color .2s}
+button{font:inherit;color:var(--fg);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+
+.frame{display:flex;min-height:100vh}
+.rail{width:176px;flex-shrink:0;padding:14px 8px 12px 10px;display:flex;flex-direction:column;
+  gap:2px;background:var(--wash)}
+.rail .wm{font-family:'Archivo Black',sans-serif;letter-spacing:-.02em;font-size:15px;padding:2px 10px 10px}
+.rail .wm .flo{opacity:.45}
+.rail a{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:11px;
+  font-size:12.5px;font-weight:600;color:var(--fg);opacity:.55;text-decoration:none;cursor:pointer}
+.rail a.on{opacity:1;background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .rail a.on{background:var(--ivory);color:#1b1a17}
+.main{flex:1;min-width:0;padding:14px 20px 20px}
+
+.hbar{display:flex;align-items:center;gap:16px;padding:2px 4px 14px}
+.hbar h1{font-family:'Archivo Black',sans-serif;font-size:26px;letter-spacing:-.03em;line-height:1.05}
+.hbar .grow{flex:1}
+.datechip{background:var(--wash2);border-radius:99px;padding:9px 16px;
+  font-family:'Archivo Black',sans-serif;font-size:14px;text-align:center;flex-shrink:0}
+[data-theme="light"] .datechip{background:var(--fg);color:var(--bg)}
+.datechip small{display:block;font-size:9.5px;opacity:.6;font-family:system-ui;font-weight:800;letter-spacing:.1em}
+
+/* ═══ DEPTH RECIPES — the only thing the skins change ═══ */
+.pane,.pipe,.stud,.flagmini{background:var(--bg);border-radius:20px}
+.pane{padding:12px;overflow:hidden}
+.pipe{display:flex;flex-direction:column;gap:8px;padding:14px 16px;cursor:pointer}
+.stud{display:flex;flex-direction:column;gap:2px;padding:11px 13px;border-radius:16px;cursor:pointer}
+.flagmini{display:flex;align-items:center;gap:11px;padding:9px 13px;border-radius:14px;cursor:pointer}
+.trow{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:11px;font-size:12px;
+  background:var(--bg);margin-bottom:5px}
+.trow .tx{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bx{width:14px;height:14px;border-radius:5px;flex-shrink:0}
+.room{background:var(--wash);border-radius:13px;min-height:60px;padding:7px 10px;
+  position:relative;display:flex;flex-direction:column}
+
+/* CARVED (reference) */
+[data-skin="carved"] .pane,[data-skin="carved"] .pipe,[data-skin="carved"] .stud,[data-skin="carved"] .flagmini{
+  box-shadow:inset 5px 5px 14px rgba(0,0,0,.35), inset -5px -5px 14px rgba(255,255,255,.03)}
+[data-theme="light"][data-skin="carved"] .pane,[data-theme="light"][data-skin="carved"] .pipe,
+[data-theme="light"][data-skin="carved"] .stud,[data-theme="light"][data-skin="carved"] .flagmini{
+  box-shadow:inset 5px 5px 14px rgba(42,39,34,.08), inset -5px -5px 14px rgba(255,255,255,.7)}
+[data-skin="carved"] .trow{box-shadow:inset 3px 3px 9px rgba(0,0,0,.34), inset -3px -3px 9px rgba(255,255,255,.03)}
+[data-theme="light"][data-skin="carved"] .trow{box-shadow:inset 3px 3px 8px rgba(42,39,34,.07), inset -3px -3px 8px rgba(255,255,255,.65)}
+[data-skin="carved"] .bx{box-shadow:inset 2px 2px 5px rgba(0,0,0,.35)}
+[data-theme="light"][data-skin="carved"] .bx{box-shadow:inset 2px 2px 5px rgba(42,39,34,.2)}
+
+/* A — WASH: flat tone-on-tone. No shadows, no lines; grouping is fill contrast. */
+[data-skin="wash"] .pane,[data-skin="wash"] .pipe,[data-skin="wash"] .stud,[data-skin="wash"] .flagmini{
+  background:var(--wash);box-shadow:none}
+[data-skin="wash"] .trow{background:var(--wash2);box-shadow:none}
+[data-skin="wash"] .bx{background:var(--wash2)}
+[data-skin="wash"] .room{background:var(--wash2)}
+[data-skin="wash"] .lozenge{background:var(--wash2)}
+
+/* B — HAIRLINE: flat + 1px lines return as the separator. */
+[data-skin="line"] .pane,[data-skin="line"] .pipe,[data-skin="line"] .stud,[data-skin="line"] .flagmini{
+  background:transparent;box-shadow:none;border:1px solid var(--line)}
+[data-skin="line"] .trow{background:transparent;box-shadow:none;border:1px solid var(--line)}
+[data-skin="line"] .bx{border:1px solid var(--line)}
+[data-skin="line"] .room{background:transparent;border:1px solid var(--line)}
+[data-skin="line"] .room.book,[data-skin="line"] .room.tent{border-color:transparent}
+
+/* C — SOFT: flat raised surfaces + faint drop shadow (classic cards). */
+[data-skin="soft"] .pane,[data-skin="soft"] .pipe,[data-skin="soft"] .stud,[data-skin="soft"] .flagmini{
+  background:var(--srf);box-shadow:var(--softsh)}
+[data-skin="soft"] .trow{background:var(--wash);box-shadow:none}
+[data-skin="soft"] .bx{background:var(--wash2)}
+[data-skin="soft"] .room{background:var(--wash)}
+
+/* ═══ everything below is skin-independent ═══ */
+.lozenge{display:flex;align-items:baseline;justify-content:space-between;border-radius:99px;
+  padding:7px 14px;margin-bottom:10px;font-size:10px;font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase;background:var(--wash2)}
+[data-theme="light"] .lozenge{background:var(--fg);color:var(--bg)}
+
+.ringwrap{position:relative;border-radius:15px;overflow:hidden;padding:1.5px;margin-bottom:8px;
+  box-shadow:0 0 16px 3px rgba(var(--flo-ink),.045)}
+.ringwrap::before{content:"";position:absolute;inset:-120%;
+  background:conic-gradient(rgba(var(--flo-ink),.06) 0deg, rgba(var(--flo-ink),.32) 90deg,
+    rgba(var(--flo-ink),.06) 200deg, rgba(var(--flo-ink),.06) 360deg);
+  animation:flospin 8s linear infinite}
+@keyframes flospin{to{transform:rotate(360deg)}}
+.ringwrap .inner{position:relative;border-radius:13.5px;background:var(--bg);padding:10px 12px}
+[data-skin="soft"] .ringwrap .inner{background:var(--srf)}
+[data-skin="wash"] .ringwrap .inner{background:var(--bg)}
+.flohead{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.flohead .fname{font-family:'Archivo Black',sans-serif;font-size:13px}
+.flohead .ftag{font-size:7.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45}
+.fb .b{display:flex;gap:8px;align-items:baseline;font-size:12px;line-height:1.45;margin-bottom:4px}
+.fb .b .dot{position:relative;top:-1px;width:7px;height:7px}
+.fb .b.alert{color:var(--st-hot);font-weight:600}
+.fb .syn{font-size:11px;opacity:.55;font-style:italic;margin-top:3px}
+.fb .askflo{margin-top:7px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.4}
+
+.twoup{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.subhead{display:flex;align-items:center;justify-content:space-between;padding:8px 3px 4px}
+.subhead b{font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.4}
+.item{display:flex;align-items:center;gap:8px;padding:4px 3px;font-size:12px}
+.item.done .bx{background:var(--st-booked);border:none;box-shadow:none;position:relative}
+.item.done .bx::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;font-size:9px;font-weight:800;color:var(--chip-ink)}
+.item.done .tx{text-decoration:line-through;opacity:.45}
+.tx{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ct{font-family:ui-monospace,Menlo,monospace;font-size:9px;opacity:.5;flex-shrink:0}
+.due{background:var(--st-hot);color:var(--hot-text);border-radius:99px;padding:2px 7px;
+  font-size:7px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;flex-shrink:0}
+.prog{font-family:ui-monospace,Menlo,monospace;font-size:10px;
+  background:rgba(255,169,77,.2);color:var(--st-warm);border-radius:99px;padding:2px 8px}
+.more{font-size:10px;opacity:.5;padding:0 3px 4px}
+.addrow{margin-top:4px;background:var(--wash2);border-radius:10px;padding:5px;text-align:center;
+  font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.55;cursor:pointer}
+
+.pipe .toprow{display:flex;align-items:center;gap:14px}
+.pipe .num{font-family:'Archivo Black',sans-serif;font-size:44px;letter-spacing:-.02em;line-height:1}
+.pipe .body{flex:1;min-width:0}
+.pipe .name{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;opacity:.55}
+.pipe .sub{font-size:11px;opacity:.6;margin-top:2px}
+.pipe .go{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.4;flex-shrink:0;align-self:flex-start}
+.inqbar{display:flex;align-items:center;gap:9px;background:var(--st-hot);color:var(--hot-text);
+  border-radius:12px;padding:8px 12px;font-size:11.5px;font-weight:800;letter-spacing:.05em;
+  text-transform:uppercase}
+.inqbar .newpulse{background:var(--hot-text)}
+.newpulse{width:9px;height:9px;border-radius:50%;flex-shrink:0;background:#f0ede4;
+  animation:np 1.6s ease-in-out infinite}
+[data-theme="light"] .newpulse{background:rgba(42,39,34,.85)}
+@keyframes np{0%,100%{opacity:.25}50%{opacity:1}}
+
+.stud .code{font-family:'Archivo Black',sans-serif;font-size:15px;letter-spacing:-.01em}
+.stud .vn{font-size:8px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.4}
+.stud .cnt{display:flex;align-items:baseline;gap:6px;margin-top:5px}
+.stud .n{font-family:'Archivo Black',sans-serif;font-size:22px;line-height:1}
+.stud .u{font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.45}
+.stud .live{margin-left:auto;font-size:7.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  background:rgba(67,223,174,.2);color:var(--st-booked);border-radius:99px;padding:2px 7px}
+.stud.off .n{opacity:.35}
+
+.flagmini .num{font-family:'Archivo Black',sans-serif;font-size:20px;line-height:1}
+.flagmini .body{flex:1;min-width:0}
+.flagmini .name{font-size:8.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.5}
+.flagmini .sub{font-size:10.5px;opacity:.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flagmini .go{font-size:8.5px;font-weight:800;text-transform:uppercase;opacity:.4;flex-shrink:0}
+
+.dgrid table{border-collapse:separate;border-spacing:2px}
+.dgrid .who{font-size:10px;font-weight:600;text-align:left;padding-right:7px;white-space:nowrap}
+.dgrid td.sq{width:10px;height:10px;border-radius:3px;background:var(--wash2)}
+.dgrid td.g{background:var(--st-booked)}
+.dgrid td.r{background:var(--st-hot)}
+.dgrid .bk{font-size:8px;font-weight:800;color:var(--st-hot);white-space:nowrap;padding-left:5px}
+
+.room .rn{font-size:8px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;opacity:.45;white-space:nowrap}
+.room.book{background:rgba(67,223,174,.18)}
+.room.book .rn{color:var(--st-booked);opacity:1}
+.room.tent{background:rgba(255,169,77,.16)}
+.room.tent .rn{color:var(--st-warm);opacity:1}
+.room .artist{font-family:'Archivo Black',sans-serif;font-size:12px;margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.room .meta{font-size:9px;opacity:.65}
+.room .eng{position:absolute;right:8px;bottom:5px;font-family:ui-monospace,Menlo,monospace;font-size:8px;opacity:.5}
+.room.empty{opacity:.6}
+.rooms{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+.ctlbar{position:fixed;right:16px;bottom:14px;z-index:50;display:flex;gap:8px}
+.ctl{background:var(--fg);color:var(--bg);border-radius:99px;padding:8px 15px;font-size:9.5px;
+  font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+  box-shadow:3px 3px 10px rgba(0,0,0,.4)}
+[data-theme="dark"] .ctl{background:var(--ivory);color:#1b1a17}
+.ctl.dim{opacity:.55}
+.optlbl{position:fixed;left:16px;bottom:14px;z-index:50;font-size:10px;font-weight:800;
+  letter-spacing:.1em;text-transform:uppercase;opacity:.5}
+</style>
+</head>
+<body>
+
+<div class="ctlbar">
+  <button class="ctl" id="sCarved" onclick="setSkin('carved')">Carved</button>
+  <button class="ctl dim" id="sWash" onclick="setSkin('wash')">A · wash</button>
+  <button class="ctl dim" id="sLine" onclick="setSkin('line')">B · hairline</button>
+  <button class="ctl dim" id="sSoft" onclick="setSkin('soft')">C · soft</button>
+  <button class="ctl" id="themeBtn" onclick="flip()">View light</button>
+</div>
+<div class="optlbl" id="optlbl">Carved — current system (reference)</div>
+
+<div class="frame">
+<nav class="rail">
+  <span class="wm">PRS<span class="flo">FLO</span></span>
+  <a class="on">▦ Dashboard</a><a>▤ Calendar</a><a>◔ Daily Ops</a>
+  <a>◎ CRM</a><a>▽ WO Hub</a><a>✓ Tasks</a><a>⚑ Flags</a>
+</nav>
+
+<main class="main">
+  <div class="hbar">
+    <div>
+      <span class="label" style="display:block;margin-bottom:3px">Good evening Eli</span>
+      <h1>Paramount Recording Studios</h1>
+    </div>
+    <div class="grow"></div>
+    <div class="datechip">FRI, AUG 7<small>6:46 PM</small></div>
+  </div>
+
+  <!-- command row -->
+  <div style="display:grid;grid-template-columns:1.35fr 1fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+    <div class="pipe">
+      <div class="toprow"><span class="num">5</span>
+        <div class="body"><div class="name">Pipeline</div>
+        <div class="sub">3 hot · 1 warm · 1 uncontacted</div></div>
+        <span class="go">CRM →</span></div>
+      <div class="inqbar"><span class="newpulse"></span>2 new inquiries — go get 'em</div>
+    </div>
+    <div class="stud"><span class="code">PRS</span><span class="vn">Paramount</span>
+      <span class="cnt"><span class="n">3</span><span class="u">sessions</span><span class="live">2 live</span></span></div>
+    <div class="stud"><span class="code">ARS</span><span class="vn">Ameraycan</span>
+      <span class="cnt"><span class="n">1</span><span class="u">session</span><span class="live">1 live</span></span></div>
+    <div class="stud"><span class="code">ERS</span><span class="vn">Encore</span>
+      <span class="cnt"><span class="n">1</span><span class="u">session</span></span></div>
+    <div class="stud off"><span class="code">TRK</span><span class="vn">Track</span>
+      <span class="cnt"><span class="n">0</span><span class="u">sessions</span></span></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1.35fr 1fr;gap:12px;align-items:start">
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="pane">
+        <div class="ringwrap"><div class="inner fb">
+          <div class="flohead">
+            <svg width="20" height="20" viewBox="0 0 200 200" fill="none" style="flex-shrink:0">
+              <path d="M 14 100 Q 70 -10, 113 100 T 186 100" stroke="currentColor" stroke-width="11" fill="none" stroke-linecap="round" opacity=".35"/>
+              <path d="M 14 100 Q 70 30, 113 100 T 186 100" stroke="currentColor" stroke-width="11" fill="none" stroke-linecap="round" opacity=".6"/>
+              <path d="M 14 100 Q 70 70, 113 100 T 186 100" stroke="currentColor" stroke-width="11" fill="none" stroke-linecap="round"/>
+            </svg>
+            <span class="fname">Flo</span><span class="ftag">· Your briefing · Aug 7</span>
+          </div>
+          <div class="b alert"><span class="dot" style="background:var(--st-hot)"></span>Aaron missed the AR follow-up queue again — 3-day backlog</div>
+          <div class="b"><span class="dot" style="background:var(--st-warm)"></span>COD outstanding: 2 accounts · nothing over 31 days</div>
+          <div class="b"><span class="dot" style="background:var(--st-booked)"></span>Fernando cleared all five duties yesterday</div>
+          <div class="syn">Quiet day overall — one thing needs you: Aaron's AR backlog.</div>
+          <div class="askflo">Ask Flo →</div>
+        </div></div>
+
+        <div class="twoup">
+          <div>
+            <div class="subhead"><b>My day — duties</b><span class="prog">2 of 4</span></div>
+            <div class="item done"><span class="bx"></span><span class="tx">Morning briefing reviewed</span></div>
+            <div class="item done"><span class="bx"></span><span class="tx">Approve pending WOs</span><span class="ct">2 appr.</span></div>
+            <div class="item"><span class="bx"></span><span class="tx">Review staff grid</span></div>
+            <div class="item"><span class="bx"></span><span class="tx">Sign vendor invoices</span><span class="due">Due today</span></div>
+          </div>
+          <div>
+            <div class="subhead"><b>My tasks · 8</b><span style="font-size:8.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;opacity:.4">All →</span></div>
+            <div class="trow"><span class="dot" style="background:var(--st-warm)"></span><span class="tx">Vendor invoices need approval</span></div>
+            <div class="trow"><span class="dot" style="background:var(--wash2)"></span><span class="tx">Call SIR re: rental return</span></div>
+            <div class="trow"><span class="dot" style="background:var(--wash2)"></span><span class="tx">Review Q3 rate sheet</span></div>
+            <div class="trow"><span class="dot" style="background:var(--wash2)"></span><span class="tx">Book piano tuning — St. A</span></div>
+            <div class="more">+ 4 more →</div>
+            <div class="addrow">+ add task</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:12px;align-items:end">
+        <div class="pane">
+          <div class="lozenge">Staff — 14 days<span style="opacity:.5">HR →</span></div>
+          <div class="dgrid"><table>
+            <tr><td class="who">Fernando</td><td class="sq g"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td></td></tr>
+            <tr><td class="who">Aaron</td><td class="sq g"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq r"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq r"></td><td class="sq r"></td><td class="bk">3d</td></tr>
+            <tr><td class="who">Quinn</td><td class="sq g"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td></td></tr>
+            <tr><td class="who">Sierra</td><td class="sq g"></td><td class="sq r"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td></td></tr>
+          </table></div>
+        </div>
+        <div class="flagmini"><span class="num">2</span>
+          <div class="body"><div class="name">Flags</div><div class="sub">HVAC noise — Studio A</div></div>
+          <span class="go">+ add &nbsp; All →</span></div>
+      </div>
+    </div>
+
+    <div class="pane">
+      <div class="lozenge">Today's sessions</div>
+      <div style="display:flex;justify-content:flex-end;margin:-4px 0 10px">
+        <span class="mono" style="font-size:11px;opacity:.6">‹ &nbsp;Fri, Aug 7&nbsp; ›</span>
+      </div>
+      <div class="rooms">
+        <div class="room book"><span class="rn">PRS · A</span><div class="artist">Sable West</div><div class="meta">12P–8P</div><span class="eng">1ST-MR</span></div>
+        <div class="room book"><span class="rn">PRS · B</span><div class="artist">Kestrel Music</div><div class="meta">2P–11P</div><span class="eng">1ST-XD</span></div>
+        <div class="room empty"><span class="rn">PRS · C</span></div>
+        <div class="room empty"><span class="rn">PRS · E</span></div>
+        <div class="room tent"><span class="rn">PRS · X</span><div class="artist">Iris Vale</div><div class="meta">Hold · 6P–12A</div></div>
+        <div class="room empty"><span class="rn">PRS · Nadine's</span></div>
+        <div class="room book"><span class="rn">ARS · A</span><div class="artist">Harbor Records</div><div class="meta">6P–2A</div><span class="eng">1ST-KV</span></div>
+        <div class="room empty"><span class="rn">ARS · B</span></div>
+        <div class="room tent"><span class="rn">ERS · A</span><div class="artist">Nova Beats</div><div class="meta">Hold · 12P–8P</div></div>
+        <div class="room empty"><span class="rn">ERS · B</span></div>
+        <div class="room empty"><span class="rn">TRK · N</span></div>
+        <div class="room empty"><span class="rn">TRK · S</span></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+</div>
+
+<script>
+var LBL={carved:'Carved — current system (reference)',
+         wash:'A · Wash — flat tone-on-tone, no shadows, no lines',
+         line:'B · Hairline — flat, 1px lines return as the separator',
+         soft:'C · Soft — flat surfaces with a faint drop shadow'};
+function setSkin(s){
+  document.documentElement.setAttribute('data-skin',s);
+  document.getElementById('optlbl').textContent = LBL[s];
+  var ids={carved:'sCarved',wash:'sWash',line:'sLine',soft:'sSoft'};
+  for (var k in ids){ document.getElementById(ids[k]).classList.toggle('dim', k!==s); }
+}
+function flip(){
+  var h=document.documentElement;
+  var next=h.getAttribute('data-theme')==='light'?'dark':'light';
+  h.setAttribute('data-theme',next);
+  document.getElementById('themeBtn').textContent = next==='light'?'View dark':'View light';
+}
+</script>
+</body>
+</html>
