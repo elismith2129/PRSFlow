@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Dashboard indicators: 3 options</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  DASHBOARD INDICATOR OPTIONS (2026-08-07) — follows the "console" ruling:
+  the dashboard holds what you ACT ON here (briefing, My Day, my tasks);
+  Needs Action + Flags demote from lists to INDICATORS that route you out.
+  New-inquiry pulse stays loud on the Needs Action indicator in every option.
+  Everything is capped — nothing on the page can grow or rearrange.
+
+  OPTION A — indicators stacked in the middle column, staff grid pinned bottom.
+  OPTION B — indicators as a full-width strip under the header; middle = staff grid.
+  OPTION C — indicators INSIDE the console pane (bottom); middle = staff grid.
+
+  Mock polarity: light on :root, dark via data-theme="dark". App inverts.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626;
+  --st-hot:#ff5a4d; --hot-text:#fff4f2;
+  --st-warm:#ffa94d; --st-cold:#5fc9e8; --st-booked:#43dfae;
+  --st-uncon:#7fb2e5; --st-dead:#cfd6d4;
+  --ivory:#d5d0c2; --flo-ink:42,39,34;
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --flo-ink:213,208,194;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);
+  font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;
+  transition:background .2s,color .2s}
+button{font:inherit;color:var(--fg);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+
+.frame{display:flex;min-height:100vh}
+.rail{width:176px;flex-shrink:0;padding:14px 8px 12px 10px;display:flex;flex-direction:column;
+  gap:2px;background:var(--wash)}
+.rail .wm{font-family:'Archivo Black',sans-serif;letter-spacing:-.02em;font-size:15px;padding:2px 10px 10px}
+.rail .wm .flo{opacity:.45}
+.rail a{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:11px;
+  font-size:12.5px;font-weight:600;color:var(--fg);opacity:.55;text-decoration:none;cursor:pointer}
+.rail a.on{opacity:1;background:var(--fg);color:var(--bg);box-shadow:2px 2px 7px rgba(0,0,0,.35)}
+[data-theme="dark"] .rail a.on{background:var(--ivory);color:#1b1a17}
+.main{flex:1;min-width:0;padding:14px 20px 20px}
+
+.hbar{display:flex;align-items:center;gap:16px;padding:2px 4px 14px}
+.hbar h1{font-family:'Archivo Black',sans-serif;font-size:26px;letter-spacing:-.03em;line-height:1.05}
+.hbar .grow{flex:1}
+.datechip{background:var(--wash2);border-radius:99px;padding:9px 16px;
+  font-family:'Archivo Black',sans-serif;font-size:14px;text-align:center;flex-shrink:0}
+[data-theme="light"] .datechip{background:var(--fg);color:var(--bg)}
+.datechip small{display:block;font-size:9.5px;opacity:.6;font-family:system-ui;font-weight:800;letter-spacing:.1em}
+
+.cols{display:grid;grid-template-columns:1.05fr 1fr 1fr;grid-template-rows:auto 1fr;gap:12px;align-items:start}
+.pane{background:var(--bg);border-radius:20px;overflow:hidden;padding:12px;
+  box-shadow:inset 5px 5px 14px rgba(0,0,0,.35), inset -5px -5px 14px rgba(255,255,255,.03)}
+[data-theme="light"] .pane{box-shadow:inset 5px 5px 14px rgba(42,39,34,.08), inset -5px -5px 14px rgba(255,255,255,.7)}
+.lozenge{display:flex;align-items:baseline;justify-content:space-between;border-radius:99px;
+  padding:7px 14px;margin-bottom:10px;font-size:10px;font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase;background:var(--wash2)}
+[data-theme="light"] .lozenge{background:var(--fg);color:var(--bg)}
+
+/* FLO */
+.ringwrap{position:relative;border-radius:15px;overflow:hidden;padding:1.5px;margin-bottom:6px;
+  box-shadow:0 0 16px 3px rgba(var(--flo-ink),.045)}
+.ringwrap::before{content:"";position:absolute;inset:-120%;
+  background:conic-gradient(rgba(var(--flo-ink),.06) 0deg, rgba(var(--flo-ink),.32) 90deg,
+    rgba(var(--flo-ink),.06) 200deg, rgba(var(--flo-ink),.06) 360deg);
+  animation:flospin 8s linear infinite}
+@keyframes flospin{to{transform:rotate(360deg)}}
+.ringwrap .inner{position:relative;border-radius:13.5px;background:var(--bg);padding:10px 12px}
+.flohead{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.flohead .fname{font-family:'Archivo Black',sans-serif;font-size:13px}
+.flohead .ftag{font-size:7.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45}
+.fb .b{display:flex;gap:8px;align-items:baseline;font-size:12px;line-height:1.45;margin-bottom:4px}
+.fb .b .dot{position:relative;top:-1px;width:7px;height:7px}
+.fb .b.alert{color:var(--st-hot);font-weight:600}
+.fb .syn{font-size:11px;opacity:.55;font-style:italic;margin-top:3px}
+.fb .askflo{margin-top:7px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.4}
+
+.subhead{display:flex;align-items:center;justify-content:space-between;padding:8px 3px 4px}
+.subhead b{font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.4}
+.item{display:flex;align-items:center;gap:9px;padding:4px 3px;font-size:12.5px}
+.bx{width:15px;height:15px;border-radius:6px;flex-shrink:0;box-shadow:inset 2px 2px 5px rgba(0,0,0,.35)}
+[data-theme="light"] .bx{box-shadow:inset 2px 2px 5px rgba(42,39,34,.2)}
+.item.done .bx{background:var(--st-booked);box-shadow:none;position:relative}
+.item.done .bx::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;font-size:9px;font-weight:800;color:var(--chip-ink)}
+.item.done .tx{text-decoration:line-through;opacity:.45}
+.tx{flex:1;min-width:0}
+.ct{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;opacity:.5;flex-shrink:0}
+.due{background:var(--st-hot);color:var(--hot-text);border-radius:99px;padding:2px 7px;
+  font-size:7.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;flex-shrink:0}
+.prog{font-family:ui-monospace,Menlo,monospace;font-size:10px;
+  background:rgba(255,169,77,.2);color:var(--st-warm);border-radius:99px;padding:2px 8px}
+.trow{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:12px;font-size:12.5px;
+  background:var(--bg);margin-bottom:6px;
+  box-shadow:inset 3px 3px 9px rgba(0,0,0,.34), inset -3px -3px 9px rgba(255,255,255,.03)}
+[data-theme="light"] .trow{box-shadow:inset 3px 3px 8px rgba(42,39,34,.07), inset -3px -3px 8px rgba(255,255,255,.65)}
+.more{font-size:10.5px;opacity:.5;padding:0 3px 4px}
+.addrow{margin-top:4px;background:var(--wash2);border-radius:10px;padding:6px;text-align:center;
+  font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.55;cursor:pointer}
+
+/* ===== THE INDICATORS ===== */
+.ind{display:flex;align-items:center;gap:13px;padding:12px 14px;border-radius:18px;cursor:pointer;
+  background:var(--bg);
+  box-shadow:inset 5px 5px 14px rgba(0,0,0,.35), inset -5px -5px 14px rgba(255,255,255,.03)}
+[data-theme="light"] .ind{box-shadow:inset 5px 5px 14px rgba(42,39,34,.08), inset -5px -5px 14px rgba(255,255,255,.7)}
+.ind .num{font-family:'Archivo Black',sans-serif;font-size:30px;letter-spacing:-.02em;line-height:1}
+.ind .body{flex:1;min-width:0}
+.ind .name{font-size:9px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.5}
+.ind .sub{font-size:11px;opacity:.65;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ind .sub.inq{opacity:1;display:flex;align-items:center;gap:6px;font-weight:600}
+.ind .go{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.4;flex-shrink:0}
+.ind.mini{padding:9px 12px;border-radius:14px}
+.ind.mini .num{font-size:22px}
+.newpulse{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#f0ede4;
+  animation:np 1.6s ease-in-out infinite}
+[data-theme="light"] .newpulse{background:rgba(42,39,34,.85)}
+@keyframes np{0%,100%{opacity:.25}50%{opacity:1}}
+
+/* staff grid */
+.dgrid table{border-collapse:separate;border-spacing:2px}
+.dgrid .who{font-size:10px;font-weight:600;text-align:left;padding-right:7px;white-space:nowrap}
+.dgrid td.sq{width:10px;height:10px;border-radius:3px;background:var(--wash2)}
+.dgrid td.g{background:var(--st-booked)}
+.dgrid td.r{background:var(--st-hot)}
+.dgrid .bk{font-size:8px;font-weight:800;color:var(--st-hot);white-space:nowrap;padding-left:5px}
+
+/* sessions */
+.loccount{display:flex;gap:5px;flex-wrap:wrap}
+.loccount span{font-size:7.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:99px;padding:2.5px 7px;background:var(--wash2);opacity:.7}
+.loccount span.live{background:rgba(67,223,174,.2);color:var(--st-booked);opacity:1}
+.rooms{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.room{background:var(--wash);border-radius:13px;min-height:64px;padding:7px 10px;
+  position:relative;display:flex;flex-direction:column}
+.room .rn{font-size:8px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;opacity:.45;white-space:nowrap}
+.room.book{background:rgba(67,223,174,.18)}
+.room.book .rn{color:var(--st-booked);opacity:1}
+.room.tent{background:rgba(255,169,77,.16)}
+.room.tent .rn{color:var(--st-warm);opacity:1}
+.room .artist{font-family:'Archivo Black',sans-serif;font-size:12px;margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.room .meta{font-size:9px;opacity:.65}
+.room .eng{position:absolute;right:8px;bottom:5px;font-family:ui-monospace,Menlo,monospace;font-size:8px;opacity:.5}
+.room.empty{opacity:.5}
+
+/* option B strip */
+.strip{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+
+.ctlbar{position:fixed;right:16px;bottom:14px;z-index:50;display:flex;gap:8px}
+.ctl{background:var(--fg);color:var(--bg);border-radius:99px;padding:8px 15px;font-size:9.5px;
+  font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+  box-shadow:3px 3px 10px rgba(0,0,0,.4)}
+[data-theme="dark"] .ctl{background:var(--ivory);color:#1b1a17}
+.ctl.dim{opacity:.55}
+.optlbl{position:fixed;left:16px;bottom:14px;z-index:50;font-size:10px;font-weight:800;
+  letter-spacing:.1em;text-transform:uppercase;opacity:.5}
+</style>
+</head>
+<body>
+
+<div class="ctlbar">
+  <button class="ctl" id="oA" onclick="setOpt('A')">A · middle</button>
+  <button class="ctl dim" id="oB" onclick="setOpt('B')">B · strip</button>
+  <button class="ctl dim" id="oC" onclick="setOpt('C')">C · in console</button>
+  <button class="ctl" id="themeBtn" onclick="flip()">View light</button>
+</div>
+<div class="optlbl" id="optlbl">Option A — indicators in the middle column</div>
+
+<div class="frame">
+<nav class="rail">
+  <span class="wm">PRS<span class="flo">FLO</span></span>
+  <a class="on">▦ Dashboard</a><a>▤ Calendar</a><a>◔ Daily Ops</a>
+  <a>◎ CRM</a><a>▽ WO Hub</a><a>✓ Tasks</a><a>⚑ Flags</a>
+</nav>
+
+<main class="main">
+  <div class="hbar">
+    <div>
+      <span class="label" style="display:block;margin-bottom:3px">Good evening Eli</span>
+      <h1>Paramount Recording Studios</h1>
+    </div>
+    <div class="grow"></div>
+    <div class="datechip">FRI, AUG 7<small>6:46 PM</small></div>
+  </div>
+
+  <!-- OPTION B strip (hidden unless B) -->
+  <div class="strip" id="stripB" style="display:none">
+    <div class="ind">
+      <span class="num">5</span>
+      <div class="body">
+        <div class="name">Needs action</div>
+        <div class="sub inq"><span class="newpulse"></span>2 new inquiries</div>
+      </div>
+      <span class="go">CRM →</span>
+    </div>
+    <div class="ind">
+      <span class="num">2</span>
+      <div class="body">
+        <div class="name">Flags</div>
+        <div class="sub">latest: HVAC noise — Studio A</div>
+      </div>
+      <span class="go">All → &nbsp;·&nbsp; + add</span>
+    </div>
+  </div>
+
+  <div class="cols">
+
+    <!-- LEFT: console -->
+    <div class="pane" style="grid-column:1;grid-row:1">
+      <div class="ringwrap"><div class="inner fb">
+        <div class="flohead">
+          <svg width="20" height="20" viewBox="0 0 200 200" fill="none" style="flex-shrink:0">
+            <path d="M 14 100 Q 70 -10, 113 100 T 186 100" stroke="currentColor" stroke-width="11" fill="none" stroke-linecap="round" opacity=".35"/>
+            <path d="M 14 100 Q 70 30, 113 100 T 186 100" stroke="currentColor" stroke-width="11" fill="none" stroke-linecap="round" opacity=".6"/>
+            <path d="M 14 100 Q 70 70, 113 100 T 186 100" stroke="currentColor" stroke-width="11" fill="none" stroke-linecap="round"/>
+          </svg>
+          <span class="fname">Flo</span><span class="ftag">· Your briefing · Aug 7</span>
+        </div>
+        <div class="b alert"><span class="dot" style="background:var(--st-hot)"></span>Aaron missed the AR follow-up queue again — 3-day backlog</div>
+        <div class="b"><span class="dot" style="background:var(--st-warm)"></span>COD outstanding: 2 accounts · nothing over 31 days</div>
+        <div class="b"><span class="dot" style="background:var(--st-booked)"></span>Fernando cleared all five duties yesterday</div>
+        <div class="syn">Quiet day overall — one thing needs you: Aaron's AR backlog.</div>
+        <div class="askflo">Ask Flo →</div>
+      </div></div>
+
+      <div class="subhead"><b>My day — duties</b><span class="prog">2 of 4</span></div>
+      <div class="item done"><span class="bx"></span><span class="tx">Morning briefing reviewed</span></div>
+      <div class="item done"><span class="bx"></span><span class="tx">Approve pending WOs</span><span class="ct">2 approved</span></div>
+      <div class="item"><span class="bx"></span><span class="tx">Review staff grid</span></div>
+      <div class="item"><span class="bx"></span><span class="tx">Sign vendor invoices</span><span class="due">Due today</span></div>
+
+      <div class="subhead"><b>My tasks · 8</b><span style="font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;opacity:.4">Show all →</span></div>
+      <div class="trow"><span class="dot" style="background:var(--st-warm)"></span>Vendor invoices need approval for payment</div>
+      <div class="trow"><span class="dot" style="background:var(--wash2)"></span>Call SIR re: rental return</div>
+      <div class="trow"><span class="dot" style="background:var(--wash2)"></span>Review Q3 rate sheet draft</div>
+      <div class="trow"><span class="dot" style="background:var(--wash2)"></span>Sign off on merch samples</div>
+      <div class="trow"><span class="dot" style="background:var(--wash2)"></span>Approve backup restore test</div>
+      <div class="trow"><span class="dot" style="background:var(--wash2)"></span>Book piano tuning — Studio A</div>
+      <div class="more">+ 2 more →</div>
+      <div class="addrow">+ add task</div>
+
+      <!-- OPTION C: indicators inside the console (hidden unless C) -->
+      <div id="consInd" style="display:none;margin-top:10px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="ind mini">
+            <span class="num">5</span>
+            <div class="body">
+              <div class="name">Needs action</div>
+              <div class="sub inq"><span class="newpulse"></span>2 new</div>
+            </div>
+            <span class="go">CRM →</span>
+          </div>
+          <div class="ind mini">
+            <span class="num">2</span>
+            <div class="body">
+              <div class="name">Flags</div>
+              <div class="sub">HVAC — St. A</div>
+            </div>
+            <span class="go">All →</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MIDDLE -->
+    <div style="grid-column:2;grid-row:1;display:flex;flex-direction:column;gap:12px" id="midTop">
+      <!-- OPTION A: indicator blocks (hidden in B/C) -->
+      <div class="ind" id="indNA">
+        <span class="num">5</span>
+        <div class="body">
+          <div class="name">Needs action</div>
+          <div class="sub inq"><span class="newpulse"></span>2 new inquiries</div>
+        </div>
+        <span class="go">CRM →</span>
+      </div>
+      <div class="ind" id="indFl">
+        <span class="num">2</span>
+        <div class="body">
+          <div class="name">Flags</div>
+          <div class="sub">latest: HVAC noise — Studio A</div>
+        </div>
+        <span class="go">All → &nbsp;·&nbsp; + add</span>
+      </div>
+    </div>
+
+    <div class="pane" style="grid-column:2;grid-row:2;align-self:end">
+      <div class="lozenge">Staff — 14 days<span style="opacity:.5">HR →</span></div>
+      <div class="dgrid">
+        <table>
+          <tr><td class="who">Fernando</td><td class="sq g"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td></td></tr>
+          <tr><td class="who">Aaron</td><td class="sq g"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq r"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq r"></td><td class="sq r"></td><td class="bk">3d</td></tr>
+          <tr><td class="who">Quinn</td><td class="sq g"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td></td></tr>
+          <tr><td class="who">Sierra</td><td class="sq g"></td><td class="sq r"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- RIGHT: sessions -->
+    <div class="pane" style="grid-column:3;grid-row:1 / span 2">
+      <div class="lozenge">Today's sessions</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:-4px 0 10px">
+        <span class="loccount">
+          <span class="live">PRS 1</span><span class="live">ARS 1</span><span class="live">ERS 1</span><span>TRK 0</span>
+        </span>
+        <span class="mono" style="font-size:11px;opacity:.6">‹ &nbsp;Fri, Aug 7&nbsp; ›</span>
+      </div>
+      <div class="rooms">
+        <div class="room empty"><span class="rn">PRS · A</span></div>
+        <div class="room book"><span class="rn">PRS · B</span><div class="artist">Kestrel Music</div><div class="meta">2P–11P</div><span class="eng">1ST-XD</span></div>
+        <div class="room empty"><span class="rn">PRS · C</span></div>
+        <div class="room empty"><span class="rn">PRS · E</span></div>
+        <div class="room empty"><span class="rn">PRS · X</span></div>
+        <div class="room empty"><span class="rn">PRS · Nadine's</span></div>
+        <div class="room book"><span class="rn">ARS · A</span><div class="artist">Harbor Records</div><div class="meta">6P–2A</div><span class="eng">1ST-KV</span></div>
+        <div class="room empty"><span class="rn">ARS · B</span></div>
+        <div class="room tent"><span class="rn">ERS · A</span><div class="artist">Nova Beats</div><div class="meta">Hold · 12P–8P</div></div>
+        <div class="room empty"><span class="rn">ERS · B</span></div>
+        <div class="room empty"><span class="rn">TRK · N</span></div>
+        <div class="room empty"><span class="rn">TRK · S</span></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+</div>
+
+<script>
+function flip(){
+  var h=document.documentElement;
+  var next=h.getAttribute('data-theme')==='light'?'dark':'light';
+  h.setAttribute('data-theme',next);
+  document.getElementById('themeBtn').textContent = next==='light'?'View dark':'View light';
+}
+var LBL={A:'Option A — indicators in the middle column',
+         B:'Option B — indicator strip under the header',
+         C:'Option C — indicators inside the console'};
+function setOpt(o){
+  document.getElementById('stripB').style.display = o==='B'?'':'none';
+  document.getElementById('indNA').style.display = o==='A'?'':'none';
+  document.getElementById('indFl').style.display = o==='A'?'':'none';
+  document.getElementById('midTop').style.display = o==='A'?'':'none';
+  document.getElementById('consInd').style.display = o==='C'?'':'none';
+  ['A','B','C'].forEach(function(k){
+    document.getElementById('o'+k).classList.toggle('dim', k!==o);
+  });
+  document.getElementById('optlbl').textContent = LBL[o];
+}
+setOpt('A');
+</script>
+</body>
+</html>

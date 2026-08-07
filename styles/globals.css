@@ -956,6 +956,70 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   padding: 6px 10px; font-size: 10.5px; color: var(--c-st-hot); font-weight: 600;
 }
 
+/* ── COMMAND ROW (§14b, ruling 2026-08-07 — dashboard-console-v2-options.html
+   option A). Pipeline indicator + studio cards, ported with polarity flip. */
+.c-pipe {
+  display: flex; flex-direction: column; gap: 8px; padding: 14px 16px;
+  border-radius: 20px; cursor: pointer; background: var(--c-bg);
+  box-shadow: inset 5px 5px 14px rgba(0, 0, 0, .35), inset -5px -5px 14px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-pipe {
+  box-shadow: inset 5px 5px 14px rgba(42, 39, 34, .08), inset -5px -5px 14px rgba(255, 255, 255, .7);
+}
+.c-pipe .c-pipe-num { font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 400; font-size: 44px; letter-spacing: -.02em; line-height: 1; }
+.c-pipe .c-pipe-name { font-size: 10px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; opacity: .55; }
+.c-pipe .c-pipe-sub { font-size: 11px; opacity: .6; margin-top: 2px; }
+.c-pipe .c-pipe-go { font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; opacity: .4; flex-shrink: 0; align-self: flex-start; }
+/* THE LOUD BAR — solid hot + pulse dot, only when unacked inquiries exist.
+   Sanctioned: hot = needs-you-now (§14a badge law / §5 hot-as-critical). */
+.c-inqbar {
+  display: flex; align-items: center; gap: 9px;
+  background: var(--c-st-hot); color: var(--c-hot-text);
+  border-radius: 12px; padding: 8px 12px;
+  font-size: 11.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+}
+.c-inqbar .c-newpulse { background: var(--c-hot-text); }
+.c-inqbar.c-quiet {
+  background: var(--c-wash); color: var(--c-fg); opacity: .5;
+  font-weight: 600; text-transform: none; letter-spacing: 0;
+}
+
+.c-stud {
+  display: flex; flex-direction: column; gap: 2px; padding: 11px 13px;
+  border-radius: 16px; cursor: pointer; background: var(--c-bg);
+  box-shadow: inset 4px 4px 12px rgba(0, 0, 0, .35), inset -4px -4px 12px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-stud {
+  box-shadow: inset 4px 4px 12px rgba(42, 39, 34, .08), inset -4px -4px 12px rgba(255, 255, 255, .7);
+}
+.c-stud .c-stud-code { font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 400; font-size: 15px; letter-spacing: -.01em; }
+.c-stud .c-stud-vn { font-size: 8px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; opacity: .4; }
+.c-stud .c-stud-cnt { display: flex; align-items: baseline; gap: 6px; margin-top: 5px; }
+.c-stud .c-stud-n { font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 400; font-size: 22px; line-height: 1; }
+.c-stud .c-stud-u { font-size: 8.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; opacity: .45; }
+.c-stud .c-stud-live {
+  margin-left: auto; font-size: 7.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  background: rgba(67, 223, 174, .2); color: var(--c-st-booked); border-radius: 99px; padding: 2px 7px;
+}
+.c-stud.c-off .c-stud-n { opacity: .35; }
+
+.c-flagmini {
+  display: flex; align-items: center; gap: 11px; padding: 9px 13px;
+  border-radius: 14px; cursor: pointer; background: var(--c-bg);
+  box-shadow: inset 4px 4px 12px rgba(0, 0, 0, .35), inset -4px -4px 12px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-flagmini {
+  box-shadow: inset 4px 4px 12px rgba(42, 39, 34, .08), inset -4px -4px 12px rgba(255, 255, 255, .7);
+}
+.c-flagmini .c-fm-num { font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 400; font-size: 20px; line-height: 1; }
+.c-flagmini .c-fm-name { font-size: 8.5px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; opacity: .5; }
+.c-flagmini .c-fm-sub { font-size: 10.5px; opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.c-flagmini .c-fm-go { font-size: 8.5px; font-weight: 800; text-transform: uppercase; opacity: .4; flex-shrink: 0; cursor: pointer; }
+
+/* My Day | My Tasks side by side (two stacked lists bury the bottom one). */
+.c-twoup { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+@media (max-width: 768px) { .c-twoup { grid-template-columns: 1fr; } }
+
 /* Location counts in the sessions pane header (the old location strip is retired). */
 .c-loccount { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
 .c-loccount span {

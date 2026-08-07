@@ -476,14 +476,30 @@ Solo padded header: greeting micro-label over "Paramount Recording Studios" (Arc
 28px), then flex-grow, view-as toggle (segmented housing per §8), datechip anchor.
 Nothing else lives in the header.
 
-Thirds grid `1.05fr 1fr 1fr`:
-- **LEFT — THE CONSOLE (one pane):** Flo box (briefing) → My Day duties (progress pill,
-  Due-today pill, backlog callout when behind) → Tasks (staff tabs + add row).
-  Flags pane sits below the console, separate.
-- **MIDDLE:** Needs Action (leads, new-lead pulse) + staff 14-day grid (Eli view only).
-- **RIGHT:** Today's Sessions — location counts as chips in the pane header (the old
-  location strip is retired), rooms 2-wide, room-card DNA from the existing dashboard
-  ruling (status pool fills, Archivo artist, mono eng initials).
+**LAYOUT SUPERSEDED (RULING 2026-08-07 — "COMMAND ROW", Eli picked option A of
+`docs/design-refs/dashboard-console-v2-options.html`; that file is the reference):**
+
+- **COMMAND ROW (full-width strip under the header):** the PIPELINE block +
+  the four studio cards.
+  - **Pipeline** (renamed from Needs Action — it is an INDICATOR, not a list; you
+    deal with leads in the CRM): big Archivo count of leads needing action, sub-line
+    `N hot · N warm · N uncontacted`, "CRM →". Below it, THE LOUD BAR: a solid
+    `--c-st-hot` bar with the pulse dot — `N NEW INQUIRIES` — unmissable, present
+    only when unacked web inquiries exist (quiet wash line otherwise). Sanctioned
+    under hot-as-needs-you-now. The name list is gone from the dashboard.
+  - **Studio cards** (the daily-ops cards return): PRS/ARS/ERS/TRK, venue name,
+    big session count for the viewed day, "N live" chip when confirmed sessions
+    exist. Route to Daily Ops.
+- **BELOW, two columns `1.35fr 1fr`:**
+  - LEFT: THE CONSOLE — Flo box on top, then **My Day and My Tasks SIDE BY SIDE**
+    (two stacked to-do lists bury the bottom one — ruling). Tasks are personal
+    (name-tabs shelved; roster logic kept in lib/tasks, unrendered; assign lives
+    in the add modal), capped (never grows the pane). Under the console: staff
+    14-day grid + a compact Flags indicator (count + latest, "All →" to /flags,
+    "+ add" keeps quick reporting).
+  - RIGHT: Today's Sessions — rooms 2-wide, 12 rooms, day nav kept. The header
+    loc-count chips are DROPPED (the studio cards now carry the counts).
+- Everything is capped; nothing on the page can grow or rearrange.
 
 **Rooms are 12, in this order:** PRS A, B, C, E, X, Nadine's → ARS A, B → ERS A, B →
 TRK N, S. Nadine's is PRS's sixth room.

@@ -155,7 +155,7 @@ export default function DashboardPage() {
   // Real-time Web Inquiry notifications: unaddressed inquiry lead IDs pulse below.
   // leadsVersion bumps on any realtime leads INSERT/UPDATE so Needs Action re-fetches
   // live (see the load effect dep below) — no page refresh needed.
-  const { isUnacked, leadsVersion } = useWebInquiries()
+  const { isUnacked, leadsVersion, count: inquiryCount } = useWebInquiries()
   const ownOnly = isOwnOnlyRole(profile?.role)
   // Everyone with a profile can assign tasks to anyone (own-only tiers included).
   const canAssign = !!profile
@@ -221,9 +221,7 @@ export default function DashboardPage() {
   const isEli = profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com'
   function switchViewAs(v: 'eli' | 'fernando') {
     setViewAs(v)
-    // Follow with the matching task tab when it exists for this role.
-    const tabs = visibleTabsForRole(profile?.role)
-    if (tabs.some(t => t.key === v)) setActiveTaskTab(v)
+    // (Task-tab follow removed with the name tabs — the panel is personal now.)
   }
   // Step 8: booked room-grid cards open the Work Order directly (BookingForm deleted).
   const [dashEditBooking, setDashEditBooking] = useState<Booking | null>(null)
@@ -261,18 +259,21 @@ export default function DashboardPage() {
   const greetingName = profile?.display_name ? ` ${profile.display_name}` : ''
   const clockDate = clockNow.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   const clockTime = clockNow.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-  const needsActionLeads = leads
-    .filter(l => {
-      if (l.needs_contact === false) return false
-      const uncontacted = l.status === 'uncontacted' || (!l.last_contact && l.status !== 'booked' && l.status !== 'dead')
-      const hot = l.status === 'hot' && isKhuDue(l) && !isParked(l)
-      const warm = l.status === 'warm' && isKhuDue(l) && !isParked(l)
-      const incomplete = (l.status === 'hot' || l.status === 'warm' || l.status === 'uncontacted')
-        && (!l.fname || !l.lname || !l.email || !l.phone || (!l.quote && !l.rate_daily))
-      return uncontacted || hot || warm || incomplete
-    })
-    .sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime())
-    .slice(0, 6)
+  // PIPELINE (ruling 2026-08-07): the needs-action list is demoted to an
+  // INDICATOR — full count + heat breakdown, no names (you deal with leads in
+  // the CRM). Same predicate as the CRM Needs Action bucket, un-capped.
+  const pipelineLeads = leads.filter(l => {
+    if (l.needs_contact === false) return false
+    const uncontacted = l.status === 'uncontacted' || (!l.last_contact && l.status !== 'booked' && l.status !== 'dead')
+    const hot = l.status === 'hot' && isKhuDue(l) && !isParked(l)
+    const warm = l.status === 'warm' && isKhuDue(l) && !isParked(l)
+    const incomplete = (l.status === 'hot' || l.status === 'warm' || l.status === 'uncontacted')
+      && (!l.fname || !l.lname || !l.email || !l.phone || (!l.quote && !l.rate_daily))
+    return uncontacted || hot || warm || incomplete
+  })
+  const pipeHot = pipelineLeads.filter(l => l.status === 'hot').length
+  const pipeWarm = pipelineLeads.filter(l => l.status === 'warm').length
+  const pipeUncon = pipelineLeads.filter(l => l.status === 'uncontacted').length
   useEffect(() => {
     async function load() {
       const d = new Date(calDate)
@@ -281,7 +282,7 @@ export default function DashboardPage() {
       const [{ data: leadsData }, { data: bookingsData }, { data: flagsData }] = await Promise.all([
         supabase.from('leads').select('*').order('created_at', { ascending: false }),
         supabase.from('bookings').select('*').lte('start_date', today).gte('end_date', today).order('from_time', { ascending: true }),
-        supabase.from('flags').select('*').in('status', ['pending', 'acknowledged']).is('deleted_at', null).order('created_at', { ascending: false }).limit(4),
+        supabase.from('flags').select('*').in('status', ['pending', 'acknowledged']).is('deleted_at', null).order('created_at', { ascending: false }),
       ])
       setLeads(leadsData || [])
       setBookings(bookingsData || [])
@@ -377,29 +378,24 @@ export default function DashboardPage() {
     setTabReady(true)
   }, [profileLoading, profile, allProfiles])
 
+  // PERSONAL LIST (Eli ruling 2026-08-07): the dashboard task panel is each
+  // person's OWN to-do list — the per-person name tabs are shelved (not a good
+  // system in practice). The tab/roster logic in lib/tasks is KEPT (the /tasks
+  // page and the assign-on-create dropdown still use it); the dashboard just
+  // stops rendering tabs and always fetches the viewer's own tasks.
   useEffect(() => {
-    // Hold the first fetch until the default tab is settled, so a restricted user
-    // (asst_manager / tech) never momentarily loads another tab's tasks.
     if (profileLoading || !tabReady) return
     async function load() {
       setTasksLoading(true)
-      if (ownOnly && profile?.id) {
-        setTasks(await fetchMyTasks(profile.id))
-      } else {
-        setTasks(await fetchTasks(idsForTab(activeTaskTab, allProfiles)))
-      }
+      setTasks(profile?.id ? await fetchMyTasks(profile.id) : [])
       setTasksLoading(false)
     }
     load()
-  }, [activeTaskTab, allProfiles, profileLoading, tabReady, ownOnly, profile?.id])
+  }, [profileLoading, tabReady, profile?.id])
 
   async function reloadTasks() {
     setTasksLoading(true)
-    if (ownOnly && profile?.id) {
-      setTasks(await fetchMyTasks(profile.id))
-    } else {
-      setTasks(await fetchTasks(idsForTab(activeTaskTab, allProfiles)))
-    }
+    setTasks(profile?.id ? await fetchMyTasks(profile.id) : [])
     setTasksLoading(false)
   }
 
@@ -498,9 +494,9 @@ export default function DashboardPage() {
   }
 
   function openAddTask() {
-    // owner/manager/billing default to the active tab's option; own-only tiers
-    // (asst_manager/tech/runner) default to "" = "Me" (self), and can pick anyone.
-    setNewTaskAssignTo(canAssign ? (ownOnly ? '' : activeTaskTab) : '')
+    // Personal list: default the assign dropdown to "Me" for everyone; picking
+    // someone else sends the task to THEIR list (the assign logic is kept).
+    setNewTaskAssignTo('')
     setAddingTask(true)
   }
 
@@ -896,81 +892,67 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* THIRDS (§14b): LEFT = the console (Flo → My Day → Tasks) + Flags below;
-          MIDDLE = Needs Action + staff grid (Eli view only); RIGHT = Today's
-          Sessions. Positions are explicit grid placements so the JSX order can
-          stay stable; mobile is a single column reordered Sessions → Console →
-          Needs Action → Flags. Packing law: panes hug content. */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.05fr 1fr 1fr', gap: 12, alignItems: 'start' }}>
-
-        {/* MIDDLE — NEEDS ACTION */}
-        <div className="c-panel" style={isMobile ? { order: 3 } : { gridColumn: '2', gridRow: '1' }}>
-          <SectionHeader
-            carved
-            title="Needs action"
-            action={{ label: 'View all in CRM →', onClick: () => router.push('/crm') }}
-          />
-          <div>
-            {loading ? (
-              <div className="c-sub" style={{ padding: '12px 4px' }}>Loading…</div>
-            ) : needsActionLeads.length === 0 ? (
-              <div className="c-sub" style={{ padding: '12px 4px' }}>✓ All clear</div>
-            ) : (
-              needsActionLeads.map(l => {
-                const reason =
-                  l.status === 'hot' ? 'Follow up now' :
-                  l.status === 'warm' ? 'Follow up due' :
-                  l.status === 'uncontacted' ? 'Never contacted' :
-                  'Needs attention'
-                // New unaddressed Web Inquiry → the §9 pulse dot in the leading
-                // position (clears when the lead's status moves off 'uncontacted').
-                // Replaces the old box-shadow row pulse + corner NEW badge: §9 makes
-                // .c-newpulse the only animated element in the app, and the accent
-                // colour the badge used no longer exists.
-                const isNewInquiry = isUnacked(l.id)
-                return (
-                  <Row key={l.id} onClick={() => router.push(`/crm?lead=${l.id}`)}>
-                    {isNewInquiry && <NewLeadPulse />}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700 }}>{l.fname} {l.lname}</div>
-                      <div className="c-sub" style={{ fontSize: 11.5 }}>{reason}</div>
-                    </div>
-                    <StatusBadge carved status={l.status} />
-                  </Row>
-                )
-              })
-            )}
-          </div>
-          {/* Footer: new lead — opens the CRM New Lead modal via ?newLead=1 */}
-          <div style={{ marginTop: 8 }}>
-            <SoftButton onClick={() => router.push('/crm?newLead=1')} className="c-block">
-              + new lead
-            </SoftButton>
-          </div>
-        </div>
-
-        {/* RIGHT — TODAY'S SESSIONS (§14b): loc counts as chips in the pane
-            header (the old location strip is retired), rooms 2-wide, pane hugs
-            its content. Day nav (‹ date ›) is kept — it's functionality the
-            mock simply didn't draw. */}
-        <div className="c-panel" style={isMobile ? { order: 1 } : { gridColumn: '3', gridRow: '1 / span 2' }}>
-          <SectionHeader carved title="Today's sessions" />
-          {/* Chips + day nav get their own slim row — sharing the lozenge's row
-              squeezed the title into a blob at console widths. */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '-4px 0 10px' }}>
-            <span className="c-loccount" style={{ justifyContent: 'flex-start' }}>
-              {LOC_CHIPS.map(lc => {
-                const n = bookings.filter(b => b.location === lc.venue).length
-                return <span key={lc.code} className={n > 0 ? 'c-live' : undefined}>{lc.code} {n}</span>
-              })}
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-              <SoftButton onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() - 1); return n })}>‹</SoftButton>
-              <div className="c-mono" style={{ whiteSpace: 'nowrap', opacity: 0.6 }}>
-                {calDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-              </div>
-              <SoftButton onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() + 1); return n })}>›</SoftButton>
+      {/* COMMAND ROW (§14b, ruling 2026-08-07 — reference:
+          docs/design-refs/dashboard-console-v2-options.html option A):
+          Pipeline indicator + the four studio cards. The scan-in-two-seconds
+          row: who needs me, what's running. */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1.35fr 1fr 1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div className="c-pipe" style={isMobile ? { gridColumn: '1 / -1' } : undefined} onClick={() => router.push('/crm')}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <span className="c-pipe-num">{loading ? '–' : pipelineLeads.length}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="c-pipe-name">Pipeline</div>
+              <div className="c-pipe-sub">{pipeHot} hot · {pipeWarm} warm · {pipeUncon} uncontacted</div>
             </div>
+            <span className="c-pipe-go">CRM →</span>
+          </div>
+          {/* THE LOUD BAR — only when unacked web inquiries exist. */}
+          {inquiryCount > 0 ? (
+            <div className="c-inqbar">
+              <NewLeadPulse />
+              {inquiryCount} new inquir{inquiryCount === 1 ? 'y' : 'ies'}
+            </div>
+          ) : (
+            <div className="c-inqbar c-quiet">No new inquiries</div>
+          )}
+        </div>
+        {LOC_CHIPS.map(lc => {
+          const vs = bookings.filter(b => b.location === lc.venue)
+          const live = vs.filter(b => b.status === 'confirmed').length
+          return (
+            <div key={lc.code} className={`c-stud${vs.length === 0 ? ' c-off' : ''}`} onClick={() => router.push('/daily-ops')}>
+              <span className="c-stud-code">{lc.code}</span>
+              <span className="c-stud-vn">{lc.venue}</span>
+              <span className="c-stud-cnt">
+                <span className="c-stud-n">{vs.length}</span>
+                <span className="c-stud-u">session{vs.length === 1 ? '' : 's'}</span>
+                {live > 0 && <span className="c-stud-live">{live} live</span>}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* BELOW: two columns — the console (Flo → My Day | My Tasks) with the
+          staff grid + Flags indicator under it, and Today's Sessions right. */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.35fr 1fr', gap: 12, alignItems: 'start' }}>
+
+        {/* (The Needs Action list is retired — the Pipeline indicator in the
+            command row replaced it, ruling 2026-08-07. Leads are worked in the
+            CRM; "+ new lead" lives there.) */}
+
+        {/* RIGHT — TODAY'S SESSIONS (§14b): rooms 2-wide, pane hugs its
+            content. Day nav (‹ date ›) is kept — it's functionality the mock
+            simply didn't draw. Loc-count chips dropped: the studio cards in
+            the command row carry the counts now. */}
+        <div className="c-panel" style={isMobile ? { order: 1 } : undefined}>
+          <SectionHeader carved title="Today's sessions" />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, margin: '-4px 0 10px' }}>
+            <SoftButton onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() - 1); return n })}>‹</SoftButton>
+            <div className="c-mono" style={{ whiteSpace: 'nowrap', opacity: 0.6 }}>
+              {calDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+            </div>
+            <SoftButton onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() + 1); return n })}>›</SoftButton>
           </div>
           {loading ? (
             <div className="c-sub" style={{ padding: '12px 4px' }}>Loading…</div>
@@ -1030,10 +1012,13 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* LEFT — THE CONSOLE (§14b/§14c): Flo briefing → My Day duties → Tasks,
-            one pane. Flo + My Day are STATIC placeholders until the HR layer
-            ships; Tasks is live (dashboard_tasks). */}
-        <div className="c-panel" style={isMobile ? { order: 2 } : { gridColumn: '1', gridRow: '1' }}>
+        {/* LEFT — THE CONSOLE (§14b/§14c): Flo on top, then My Day and My Tasks
+            SIDE BY SIDE (two stacked to-do lists bury the bottom one — ruling
+            2026-08-07). Flo + My Day are STATIC placeholders until the HR layer
+            ships; Tasks is live (dashboard_tasks). Staff grid + Flags indicator
+            sit under the console in this column. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, ...(isMobile ? { order: 2 } : null) }}>
+        <div className="c-panel">
 
           {/* THE FLO BOX — the app's single AI mouthpiece. Flat, ringed, and the
               only glow in the system. "Ask Flo →" is a dead door for now. */}
@@ -1055,6 +1040,8 @@ export default function DashboardPage() {
             <div className="c-askflo">Ask Flo →</div>
           </div></div>
 
+          <div className="c-twoup">
+          <div>
           {/* MY DAY — duties (static stub; HR-SPEC §2). Duties ≠ tasks: fixed
               per role, reset daily. Never merge them into the task list. */}
           <div className="c-subhead">
@@ -1072,34 +1059,17 @@ export default function DashboardPage() {
           {MYDAY_STATIC[viewAs].backlog && (
             <div className="c-myday-backlog">{MYDAY_STATIC[viewAs].backlog}</div>
           )}
+          </div>
 
-          {/* TASKS — to-dos (live) */}
+          <div>
+          {/* MY TASKS — the viewer's own to-dos (name tabs shelved, ruling
+              2026-08-07; assigning to others still happens in the add modal). */}
           <div className="c-subhead">
-            <b>Tasks — to-dos{tasks.length > 0 ? ` · ${tasks.length}` : ''}</b>
+            <b>My tasks{tasks.length > 0 ? ` · ${tasks.length}` : ''}</b>
             <a onClick={() => router.push('/tasks')} style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', opacity: 0.4, cursor: 'pointer', color: 'var(--c-fg)' }}>
               Show all →
             </a>
           </div>
-          {/* Tab row (owner/manager/billing) OR a single "My Tasks" label (own-only tiers) */}
-          {ownOnly ? (
-            <div className="c-label" style={{ marginBottom: 13 }}>My Tasks</div>
-          ) : (
-            // Grid, not flex-wrap: with 6 tabs a wrapping flex row left a ragged
-            // last line with one orphan pill. Equal columns fill each row and the
-            // pills stay the same width regardless of label length.
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 13 }}>
-              {visibleTabs.map(tab => (
-                <SoftButton
-                  key={tab.key}
-                  on={activeTaskTab === tab.key}
-                  onClick={() => setActiveTaskTab(tab.key)}
-                  className="c-soft-sm"
-                >
-                  {tab.label}
-                </SoftButton>
-              ))}
-            </div>
-          )}
           {/* Task list */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9, minHeight: 60 }}>
             {tasksLoading ? (
@@ -1107,7 +1077,7 @@ export default function DashboardPage() {
             ) : tasks.length === 0 ? (
               <div className="c-sub" style={{ padding: '4px' }}>No tasks</div>
             ) : (
-              tasks.slice(0, 9).map(task => (
+              tasks.slice(0, 5).map(task => (
                 <div
                   key={task.id}
                   onClick={() => handleOpenTask(task)}
@@ -1142,13 +1112,13 @@ export default function DashboardPage() {
                 </div>
               ))
             )}
-            {!tasksLoading && tasks.length > 9 && (
+            {!tasksLoading && tasks.length > 5 && (
               <div
                 onClick={() => router.push('/tasks')}
                 className="c-sub"
                 style={{ fontSize: 11, padding: '2px 4px', cursor: 'pointer' }}
               >
-                + {tasks.length - 9} more
+                + {tasks.length - 5} more →
               </div>
             )}
           </div>
@@ -1156,95 +1126,49 @@ export default function DashboardPage() {
           <div style={{ marginTop: 8 }}>
             <SoftButton onClick={openAddTask} className="c-block">+ add task</SoftButton>
           </div>
-        </div>
-
-      {/* LEFT, BELOW THE CONSOLE — FLAGS (separate pane per §14b) */}
-      <div className="c-panel" style={isMobile ? { order: 4 } : { gridColumn: '1', gridRow: '2' }}>
-        <SectionHeader
-          carved
-          title="Flags"
-          count={flags.filter(f => f.status === 'pending').length > 0 ? flags.filter(f => f.status === 'pending').length : undefined}
-          action={{ label: 'View all flags →', onClick: () => router.push('/admin?section=flags_log') }}
-        />
-        {flagsLoading ? (
-          <div className="c-sub" style={{ padding: '12px 4px' }}>Loading…</div>
-        ) : flags.length === 0 ? (
-          <div className="c-sub" style={{ padding: '12px 4px' }}>No open flags</div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
-            {flags.map(flag => {
-              const CATEGORY_LABELS: Record<string, string> = {
-                facility_general: 'Facility / General',
-                gear_equipment: 'Gear / Equipment',
-                client_billing: 'Client / Billing',
-              }
-              const catLabel = flag.category ? CATEGORY_LABELS[flag.category] : null
-              return (
-                <div
-                  key={flag.id}
-                  onClick={() => handleOpenFlag(flag)}
-                  className="c-inset2"
-                  style={{ padding: '12px 14px', borderRadius: 18, cursor: 'pointer' }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
-                      {/* Studio + category were bordered chips; carved uses plain
-                          tracked-out labels — colour belongs to status only. */}
-                      <span className="c-label" style={{ opacity: 0.7 }}>{flag.studio}</span>
-                      {catLabel && <span className="c-label" style={{ fontSize: 9 }}>{catLabel}</span>}
-                    </div>
-                    <StatusBadge carved status={flag.status} />
-                  </div>
-                  {flag.runner_note && (
-                    <div style={{ fontSize: 12.5, lineHeight: 1.4, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                      {flag.runner_note}
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, gap: 8 }}>
-                    {flag.source_label ? (
-                      <div className="c-sub" style={{ fontSize: 11, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
-                        {flag.source_label}
-                      </div>
-                    ) : (
-                      <div style={{ flex: 1 }} />
-                    )}
-                    <div className="c-mono" style={{ fontSize: 11, opacity: 0.5, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      {new Date(flag.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
           </div>
-        )}
-        {/* Footer: add flag — opens the full modal */}
-        <div style={{ marginTop: 8 }}>
-          <SoftButton onClick={() => setAddingFlag(true)} className="c-block">+ add flag</SoftButton>
-        </div>
-      </div>
+          </div>{/* /c-twoup */}
+        </div>{/* /console pane */}
 
-      {/* MIDDLE, BELOW NEEDS ACTION — STAFF 14-DAY GRID (§2.7 HR-SPEC). STATIC
-          placeholder until punch data exists; Eli's view only, desktop only. */}
-      {isEli && viewAs === 'eli' && !isMobile && (
-        <div className="c-panel" style={{ gridColumn: '2', gridRow: '2' }}>
-          <SectionHeader carved title="Staff — 14 days" action={{ label: 'HR →', onClick: () => router.push('/punches') }} />
-          <div className="c-dgrid">
-            <table>
-              <tbody>
-                {DGRID_STATIC.map(row => (
-                  <tr key={row.who}>
-                    <td className="c-who">{row.who}</td>
-                    {row.days.split('').map((d, i) => (
-                      <td key={i} className={`c-sq${d === 'g' ? ' c-g' : d === 'r' ? ' c-r' : ''}`} />
+        {/* Under the console: staff 14-day grid (static stub, Eli view only)
+            + the Flags indicator (count + latest; "+ add" keeps quick
+            reporting; the card grid moved to /flags). */}
+        <div style={{ display: 'grid', gridTemplateColumns: (isEli && viewAs === 'eli' && !isMobile) ? '1.3fr 1fr' : '1fr', gap: 12, alignItems: 'end' }}>
+          {isEli && viewAs === 'eli' && !isMobile && (
+            <div className="c-panel">
+              <SectionHeader carved title="Staff — 14 days" action={{ label: 'HR →', onClick: () => router.push('/punches') }} />
+              <div className="c-dgrid">
+                <table>
+                  <tbody>
+                    {DGRID_STATIC.map(row => (
+                      <tr key={row.who}>
+                        <td className="c-who">{row.who}</td>
+                        {row.days.split('').map((d, i) => (
+                          <td key={i} className={`c-sq${d === 'g' ? ' c-g' : d === 'r' ? ' c-r' : ''}`} />
+                        ))}
+                        <td className="c-bk">{row.bk || ''}</td>
+                      </tr>
                     ))}
-                    <td className="c-bk">{row.bk || ''}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          <div className="c-flagmini" onClick={() => router.push('/flags')}>
+            <span className="c-fm-num">{flagsLoading ? '–' : flags.length}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="c-fm-name">Flags</div>
+              <div className="c-fm-sub">{flags[0]?.runner_note || 'No open flags'}</div>
+            </div>
+            <span className="c-fm-go" onClick={e => { e.stopPropagation(); setAddingFlag(true) }}>+ add</span>
+            <span className="c-fm-go">All →</span>
           </div>
         </div>
-      )}
+        </div>{/* /left stack */}
+
+      {/* (The full Flags card grid moved to /flags; the staff grid lives under
+          the console. Both replaced by the left-stack row above — ruling
+          2026-08-07, command-row layout.) */}
 
       </div>
 
