@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Side Nav + Dashboard v7</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  DASHBOARD v7 — Eli's console spec:
+  · Solo padded header: title + clock/date only
+  · Thirds: LEFT = THE CONSOLE (Immediate Attention briefing → My Day → Tasks, one box)
+    + Flags below · MIDDLE = Needs Action (+ staff grid, Eli) · RIGHT = sessions ≈1/3
+  · The console's briefing slot is the future AI surface (yesterday, today, trends, suggestions)
+  · Location strip folded into sessions header as count chips
+  · Rooms: PRS A,B,C,E,X,Nadine's → ARS → ERS → TRK
+  LAW: every pane hugs its content. Mock polarity; app polarity inverts.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626;
+  --st-hot:#ff5a4d; --hot-text:#fff4f2;
+  --st-warm:#ffa94d; --st-cold:#5fc9e8; --st-booked:#43dfae;
+  --st-uncon:#7fb2e5; --st-dead:#cfd6d4;
+  --ivory:#d5d0c2;
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);
+  font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;
+  transition:background .2s,color .2s}
+button,input{font:inherit;color:var(--fg);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.sub{font-size:12.5px;opacity:.6}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+
+.frame{display:flex;min-height:100vh}
+.rail{width:212px;flex-shrink:0;padding:18px 12px 16px 16px;display:flex;flex-direction:column;
+  gap:2px;background:var(--wash)}
+.rail .wm{font-family:'Archivo Black',sans-serif;letter-spacing:-.02em;font-size:16px;padding:2px 10px 14px}
+.rail .wm .flo{opacity:.45}
+.rail .grp{margin-top:13px;padding:0 10px 5px}
+.rail a{display:flex;align-items:center;gap:10px;padding:7.5px 12px;border-radius:12px;
+  font-size:13px;font-weight:600;color:var(--fg);opacity:.6;text-decoration:none;cursor:pointer}
+.rail a:hover{opacity:.85;background:var(--wash)}
+.rail a.on{opacity:1;background:var(--fg);color:var(--bg);box-shadow:2px 2px 7px rgba(0,0,0,.35)}
+[data-theme="dark"] .rail a.on{background:var(--ivory);color:#1b1a17}
+.rail a .ic{width:16px;text-align:center;opacity:.75;flex-shrink:0;font-size:13px}
+.rail .badge{margin-left:auto;min-width:19px;height:17px;border-radius:99px;padding:0 6px;
+  font-size:9.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
+.badge.hot{background:var(--st-hot);color:var(--hot-text)}
+.badge.warm{background:var(--st-warm);color:var(--chip-ink)}
+.badge.dim{background:var(--wash2)}
+.rail .foot{margin-top:auto;padding-top:12px}
+
+.main{flex:1;min-width:0;padding:22px 26px 40px}
+
+/* SOLO HEADER — title + clock, padded, nothing else */
+.hbar{display:flex;align-items:center;gap:16px;padding:6px 4px 20px}
+.hbar .greetlabel{display:block;margin-bottom:3px}
+.hbar h1{font-family:'Archivo Black',sans-serif;font-size:28px;letter-spacing:-.03em;line-height:1.05}
+.hbar .grow{flex:1}
+.datechip{background:var(--fg);color:var(--bg);border-radius:15px;padding:9px 17px;
+  font-family:'Archivo Black',sans-serif;font-size:14px;text-align:center;flex-shrink:0;
+  box-shadow:2px 2px 7px rgba(0,0,0,.3)}
+.datechip small{display:block;font-size:9.5px;opacity:.6;font-family:system-ui;font-weight:800;letter-spacing:.1em}
+.viewas{display:inline-flex;background:var(--bg);border-radius:99px;padding:4px;gap:2px;flex-shrink:0;
+  box-shadow:3px 3px 8px rgba(0,0,0,.4)}
+[data-theme="light"] .viewas{box-shadow:3px 3px 8px rgba(42,39,34,.14), -3px -3px 8px rgba(255,255,255,.7)}
+.viewas button{border-radius:99px;padding:5px 12px;font-size:9.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;opacity:.5}
+.viewas button.on{opacity:1;background:var(--fg);color:var(--bg);box-shadow:inset 2px 2px 5px rgba(0,0,0,.35)}
+[data-theme="dark"] .viewas button.on{background:var(--ivory);color:#1b1a17}
+
+/* THIRDS */
+.cols{display:grid;grid-template-columns:1.05fr 1fr 1fr;gap:12px;align-items:start}
+.stack{display:flex;flex-direction:column;gap:12px}
+.pane{background:var(--bg);border-radius:20px;overflow:hidden;
+  box-shadow:inset 5px 5px 14px rgba(0,0,0,.35), inset -5px -5px 14px rgba(255,255,255,.03)}
+[data-theme="light"] .pane{box-shadow:inset 5px 5px 14px rgba(42,39,34,.08), inset -5px -5px 14px rgba(255,255,255,.7)}
+.ph{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 15px}
+.ph b{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.ph a{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  opacity:.4;text-decoration:none;color:var(--fg);cursor:pointer}
+.subhead{display:flex;align-items:center;justify-content:space-between;padding:10px 15px 5px}
+.subhead b{font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.4}
+
+/* ============ THE CONSOLE — briefing → my day → tasks, one box ============ */
+.console .brf{padding:2px 15px 4px}
+.console .brf .b{display:flex;gap:9px;align-items:baseline;font-size:12.5px;line-height:1.5;margin-bottom:5px}
+.console .brf .b .dot{position:relative;top:-1px;width:7px;height:7px}
+.console .brf .b.alert{color:var(--st-hot);font-weight:600}
+.console .synopsis{padding:2px 15px 10px;font-size:11.5px;opacity:.5;font-style:italic}
+.console .divider{height:1px;margin:2px 0 0}
+.myday .item{display:flex;align-items:center;gap:10px;padding:7px 15px;font-size:13px}
+.myday .bx{width:16px;height:16px;border-radius:6px;flex-shrink:0;
+  box-shadow:inset 2px 2px 5px rgba(0,0,0,.35)}
+[data-theme="light"] .myday .bx{box-shadow:inset 2px 2px 5px rgba(42,39,34,.2)}
+.myday .item.done .bx{background:var(--st-booked);box-shadow:none;position:relative}
+.myday .item.done .bx::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;font-size:10px;font-weight:800;color:var(--chip-ink)}
+.myday .item.done .tx{text-decoration:line-through;opacity:.45}
+.myday .tx{flex:1;min-width:0}
+.myday .ct{font-family:ui-monospace,Menlo,monospace;font-size:10px;opacity:.5;flex-shrink:0}
+.myday .due{background:var(--st-hot);color:var(--hot-text);border-radius:99px;padding:2px 8px;
+  font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;flex-shrink:0}
+.myday .prog{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;
+  background:rgba(255,169,77,.2);color:var(--st-warm);border-radius:99px;padding:2px 9px}
+.myday .backlog{background:rgba(255,90,77,.15);border-radius:11px;margin:4px 12px 8px;
+  padding:7px 11px;font-size:11px;color:var(--st-hot);font-weight:600}
+.stafftabs{display:flex;gap:4px;padding:2px 13px 4px;flex-wrap:wrap}
+.stafftabs button{border-radius:99px;padding:2.5px 9px;font-size:8px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;opacity:.45;background:var(--wash)}
+.stafftabs button.on{opacity:1;background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .stafftabs button.on{background:var(--ivory);color:#1b1a17}
+.addrow{margin:5px 13px 12px;background:var(--wash2);border-radius:10px;padding:6px;
+  text-align:center;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  opacity:.55;cursor:pointer}
+.mini{padding:7.5px 15px;display:flex;gap:9px;align-items:center;font-size:12.5px}
+
+/* needs action + staff grid (middle) */
+.lead{padding:8px 15px;display:flex;align-items:center;gap:9px}
+.lead .nm{flex:1;min-width:0}
+.lead .nm b{font-size:13px;font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lead .nm span{font-size:11px;opacity:.5}
+.st{border-radius:99px;padding:3px 9px;font-size:8.5px;font-weight:800;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--chip-ink);flex-shrink:0}
+.newpulse{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#f0ede4;
+  animation:np 1.6s ease-in-out infinite}
+[data-theme="light"] .newpulse{background:rgba(42,39,34,.85)}
+@keyframes np{0%,100%{opacity:.25}50%{opacity:1}}
+.dgrid{padding:2px 14px 12px}
+.dgrid table{border-collapse:separate;border-spacing:2px}
+.dgrid .who{font-size:10.5px;font-weight:600;text-align:left;padding-right:7px;white-space:nowrap}
+.dgrid td.sq{width:11px;height:11px;border-radius:3px;background:var(--wash2)}
+.dgrid td.g{background:var(--st-booked)}
+.dgrid td.r{background:var(--st-hot)}
+.dgrid .bk{font-size:8px;font-weight:800;color:var(--st-hot);white-space:nowrap;padding-left:5px}
+
+/* sessions (right third) — loc counts in header, rooms 2-wide */
+.loccount{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.loccount span{font-size:7.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:99px;padding:2.5px 7px;background:var(--wash2);opacity:.7}
+.loccount span.live{background:rgba(67,223,174,.2);color:var(--st-booked);opacity:1}
+.rooms{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:2px 13px 13px}
+.room{background:var(--wash);border-radius:13px;min-height:76px;padding:8px 11px;
+  position:relative;display:flex;flex-direction:column}
+.room .rn{font-size:8px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;opacity:.45;white-space:nowrap}
+.room.book{background:rgba(67,223,174,.18)}
+.room.book .rn{color:var(--st-booked);opacity:1}
+.room.tent{background:rgba(255,169,77,.16)}
+.room.tent .rn{color:var(--st-warm);opacity:1}
+.room .artist{font-family:'Archivo Black',sans-serif;font-size:12.5px;margin-top:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.room .meta{font-size:9.5px;opacity:.65;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.room .eng{position:absolute;right:8px;bottom:6px;font-family:ui-monospace,Menlo,monospace;font-size:8px;opacity:.5}
+.room.empty{opacity:.5}
+
+.themebtn{position:fixed;right:16px;bottom:14px;z-index:50;background:var(--fg);color:var(--bg);
+  border-radius:99px;padding:8px 15px;font-size:9.5px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;cursor:pointer;box-shadow:3px 3px 10px rgba(0,0,0,.4)}
+[data-theme="dark"] .themebtn{background:var(--ivory);color:#1b1a17}
+@media (max-width:1150px){.cols{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<button class="themebtn" id="themeBtn" onclick="flip()">View light</button>
+
+<div class="frame">
+
+<nav class="rail">
+  <span class="wm">PRS<span class="flo">FLO</span></span>
+  <a class="on"><span class="ic">▦</span>Dashboard</a>
+  <a><span class="ic">▤</span>Calendar</a>
+  <a><span class="ic">◔</span>Daily Ops</a>
+  <div class="grp label">Business</div>
+  <a><span class="ic">◎</span>CRM<span class="badge warm">6</span></a>
+  <a><span class="ic">▽</span>WO Hub<span class="badge dim">12</span></a>
+  <a><span class="ic">✓</span>Tasks<span class="badge dim">1</span></a>
+  <a><span class="ic">⚑</span>Flags<span class="badge warm">2</span></a>
+  <div class="grp label">Studio</div>
+  <a><span class="ic">◌</span>Mic Inventory</a>
+  <a><span class="ic">▷</span>Runner Hub</a>
+  <a><span class="ic">♫</span>Nadine's</a>
+  <div class="grp label">HR</div>
+  <a><span class="ic">◷</span>Punches<span class="badge hot">3</span></a>
+  <a><span class="ic">✎</span>Hiring<span class="badge hot">1</span></a>
+  <a><span class="ic">✦</span>Training</a>
+  <div class="foot">
+    <a><span class="ic">⚙</span>Admin</a>
+    <a><span class="ic">✧</span>SOP</a>
+    <a style="opacity:.35"><span class="ic">∴</span>DEV</a>
+  </div>
+</nav>
+
+<main class="main">
+
+  <!-- SOLO HEADER -->
+  <div class="hbar">
+    <div>
+      <span class="label greetlabel" id="greetlabel">Good evening Eli</span>
+      <h1>Paramount Recording Studios</h1>
+    </div>
+    <div class="grow"></div>
+    <div class="viewas">
+      <button class="on" id="vEli" onclick="setView('eli')">Eli</button>
+      <button id="vFer" onclick="setView('fernando')">Fernando</button>
+    </div>
+    <div class="datechip">WED, AUG 5<small>6:46 PM</small></div>
+  </div>
+
+  <div class="cols">
+
+    <!-- LEFT THIRD: THE CONSOLE (briefing → my day → tasks), flags below -->
+    <div class="stack">
+      <div class="pane console myday">
+        <div class="ph"><b style="color:var(--st-hot)">Immediate attention</b><span class="label" style="font-size:8px;opacity:.35">AI briefing · yesterday</span></div>
+        <div class="brf" id="bullets">
+          <div class="b alert"><span class="dot" style="background:var(--st-hot)"></span>Aaron missed the AR follow-up queue again — 3-day backlog</div>
+          <div class="b"><span class="dot" style="background:var(--st-warm)"></span>COD outstanding: 2 accounts · nothing over 31 days</div>
+          <div class="b"><span class="dot" style="background:var(--st-booked)"></span>Fernando cleared all five duties yesterday</div>
+        </div>
+        <div class="synopsis" id="synopsis">Quiet day overall — one thing needs you: Aaron's AR backlog.</div>
+
+        <div class="subhead"><b>My day — duties</b><span class="prog" id="mydayprog">2 of 4</span></div>
+        <div id="mydayEli">
+          <div class="item done"><span class="bx"></span><span class="tx">Morning briefing reviewed</span></div>
+          <div class="item done"><span class="bx"></span><span class="tx">Approve pending WOs</span><span class="ct">2 approved</span></div>
+          <div class="item"><span class="bx"></span><span class="tx">Review staff grid</span></div>
+          <div class="item"><span class="bx"></span><span class="tx">Sign vendor invoices</span><span class="due">Due today</span></div>
+        </div>
+        <div id="mydayFer" style="display:none">
+          <div class="item done"><span class="bx"></span><span class="tx">Review yesterday's timecards</span><span class="ct">4 cleared</span></div>
+          <div class="item done"><span class="bx"></span><span class="tx">Clear punch queue</span><span class="ct">2 done</span></div>
+          <div class="item done"><span class="bx"></span><span class="tx">Confirm today's staffing</span></div>
+          <div class="item"><span class="bx"></span><span class="tx">Log missed punches</span></div>
+          <div class="item"><span class="bx"></span><span class="tx">Onboarding items due</span><span class="due">I-9 due Fri</span></div>
+          <div class="backlog">Timecard review: 2-day backlog — clear today to reset the streak</div>
+        </div>
+
+        <div class="subhead"><b>Tasks — to-dos</b></div>
+        <div class="stafftabs">
+          <button class="on" id="tabViewer">Eli</button><button>Adam-Mike</button><button>Fernando</button>
+          <button>Aaron</button><button>Asst</button><button>Tech</button>
+        </div>
+        <div class="item"><span class="bx"></span><span class="tx">Vendor invoices need approval for payment</span></div>
+        <div class="item"><span class="bx"></span><span class="tx">Call SIR re: rental return</span></div>
+        <div class="addrow">+ add task</div>
+      </div>
+
+      <div class="pane">
+        <div class="ph"><b>Flags <span class="badge warm" style="min-width:18px;height:16px;border-radius:99px;padding:0 5px;font-size:9px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;margin-left:2px">2</span></b><a>All →</a></div>
+        <div class="mini"><span class="dot" style="background:var(--st-warm)"></span>HVAC noise — Studio A</div>
+        <div class="mini" style="padding-bottom:12px"><span class="dot" style="background:var(--st-warm)"></span>Mic 04 missing clip</div>
+      </div>
+    </div>
+
+    <!-- MIDDLE THIRD: needs action, staff grid (Eli) -->
+    <div class="stack">
+      <div class="pane">
+        <div class="ph"><b>Needs action</b><a>CRM →</a></div>
+        <div class="lead"><span class="newpulse"></span><div class="nm"><b>Marina Olszak</b><span>New · never contacted</span></div><span class="st" style="background:var(--st-uncon)">Uncon</span></div>
+        <div class="lead"><div class="nm"><b>Sesen Tsegab</b><span>Follow up now</span></div><span class="st" style="background:var(--st-hot);color:var(--hot-text)">Hot</span></div>
+        <div class="lead"><div class="nm"><b>Austin Bessey</b><span>Follow up now</span></div><span class="st" style="background:var(--st-hot);color:var(--hot-text)">Hot</span></div>
+        <div class="lead"><div class="nm"><b>Pete Perez</b><span>Missing quote</span></div><span class="st" style="background:var(--st-hot);color:var(--hot-text)">Hot</span></div>
+        <div class="lead"><div class="nm"><b>Skyler Lexx</b><span>Follow up due</span></div><span class="st" style="background:var(--st-warm)">Warm</span></div>
+        <div class="addrow">+ new lead</div>
+      </div>
+      <div class="pane" id="paneGrid">
+        <div class="ph" style="padding-bottom:5px"><b>Staff — 14 days</b><a>HR →</a></div>
+        <div class="dgrid">
+          <table>
+            <tr><td class="who">Fernando</td><td class="sq g"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td></td></tr>
+            <tr><td class="who">Aaron</td><td class="sq g"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq r"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq r"></td><td class="sq r"></td><td class="bk">3d</td></tr>
+            <tr><td class="who">Quinn</td><td class="sq g"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td></td></tr>
+            <tr><td class="who">Sierra</td><td class="sq g"></td><td class="sq r"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td class="sq g"></td><td></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT THIRD: sessions -->
+    <div class="pane">
+      <div class="ph"><b>Today's sessions</b>
+        <span class="loccount">
+          <span class="live">PRS 1</span><span class="live">ARS 1</span><span class="live">ERS 1</span><span class="live">TRK 1</span>
+        </span>
+      </div>
+      <div class="rooms">
+        <div class="room empty"><span class="rn">PRS · A</span></div>
+        <div class="room book"><span class="rn">PRS · B</span><div class="artist">Kestrel Music</div><div class="meta">2P–11P</div><span class="eng">1ST-XD</span></div>
+        <div class="room empty"><span class="rn">PRS · C</span></div>
+        <div class="room empty"><span class="rn">PRS · E</span></div>
+        <div class="room empty"><span class="rn">PRS · X</span></div>
+        <div class="room empty"><span class="rn">PRS · Nadine's</span></div>
+        <div class="room book"><span class="rn">ARS · A</span><div class="artist">Harbor Records</div><div class="meta">6P–2A</div><span class="eng">1ST-KV</span></div>
+        <div class="room empty"><span class="rn">ARS · B</span></div>
+        <div class="room tent"><span class="rn">ERS · A</span><div class="artist">Nova Beats</div><div class="meta">Hold · 12P–8P</div></div>
+        <div class="room empty"><span class="rn">ERS · B</span></div>
+        <div class="room book"><span class="rn">TRK · N</span><div class="artist">Camper</div><div class="meta">DJ Camper</div></div>
+        <div class="room empty"><span class="rn">TRK · S</span></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+</div>
+
+<script>
+function flip(){
+  var h=document.documentElement;
+  var next=h.getAttribute('data-theme')==='light'?'dark':'light';
+  h.setAttribute('data-theme',next);
+  document.getElementById('themeBtn').textContent = next==='light'?'View dark':'View light';
+}
+function setView(v){
+  var eli = v==='eli';
+  document.getElementById('paneGrid').style.display = eli?'':'none';
+  document.getElementById('mydayEli').style.display = eli?'':'none';
+  document.getElementById('mydayFer').style.display = eli?'none':'';
+  document.getElementById('mydayprog').textContent = eli?'2 of 4':'3 of 5';
+  document.getElementById('vEli').classList.toggle('on',eli);
+  document.getElementById('vFer').classList.toggle('on',!eli);
+  document.getElementById('greetlabel').textContent = eli?'Good evening Eli':'Good evening Fernando';
+  document.getElementById('tabViewer').textContent = eli?'Eli':'Fernando';
+  document.getElementById('bullets').innerHTML = eli
+   ? '<div class="b alert"><span class="dot" style="background:var(--st-hot)"></span>Aaron missed the AR follow-up queue again — 3-day backlog</div>'
+    +'<div class="b"><span class="dot" style="background:var(--st-warm)"></span>COD outstanding: 2 accounts · nothing over 31 days</div>'
+    +'<div class="b"><span class="dot" style="background:var(--st-booked)"></span>Fernando cleared all five duties yesterday</div>'
+   : '<div class="b alert"><span class="dot" style="background:var(--st-hot)"></span>3 punch requests waiting in your queue</div>'
+    +'<div class="b"><span class="dot" style="background:var(--st-warm)"></span>Onboarding: I-9 due Friday</div>'
+    +'<div class="b"><span class="dot" style="background:var(--st-booked)"></span>Tonight: Kestrel in PRS B, Harbor in ARS A</div>';
+  document.getElementById('synopsis').textContent = eli
+   ? 'Quiet day overall — one thing needs you: Aaron’s AR backlog.'
+   : 'Steady day — clear the punch queue first, the rest can wait.';
+}
+</script>
+</body>
+</html>

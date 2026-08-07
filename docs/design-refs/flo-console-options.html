@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — The Flo Box: 3 Console Options</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  THE FLO BOX — the AI briefing as a branded object inside the console.
+  Three treatments, console only (dashboard layout unchanged, v7 stands).
+  Flo = the one element allowed to look unlike everything else, because it speaks.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626;
+  --st-hot:#ff5a4d; --hot-text:#fff4f2;
+  --st-warm:#ffa94d; --st-booked:#43dfae; --st-uncon:#7fb2e5;
+  --ivory:#d5d0c2;
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);
+  font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;
+  max-width:1560px;margin:0 auto;padding:0 24px 90px;transition:background .2s,color .2s}
+button{font:inherit;color:var(--fg);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,Menlo,monospace}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.sub{font-size:12.5px;opacity:.6}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
+.board{display:flex;align-items:center;gap:14px;padding:22px 0 18px}
+.board h1{font-size:22px;letter-spacing:-.03em}
+.actbtn{background:var(--fg);color:var(--bg);border-radius:99px;padding:9px 19px;
+  font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+  box-shadow:3px 3px 9px rgba(0,0,0,.35)}
+.row3{display:grid;grid-template-columns:repeat(3,minmax(360px,1fr));gap:24px;align-items:start}
+@media(max-width:1250px){.row3{grid-template-columns:1fr;max-width:480px;margin:0 auto}}
+.opt h2{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.45;margin-bottom:6px}
+.opt .why{font-size:12.5px;opacity:.6;margin-bottom:14px;min-height:76px}
+
+/* console shell (identical all three) */
+.pane{background:var(--bg);border-radius:20px;overflow:hidden;
+  box-shadow:inset 5px 5px 14px rgba(0,0,0,.35), inset -5px -5px 14px rgba(255,255,255,.03)}
+[data-theme="light"] .pane{box-shadow:inset 5px 5px 14px rgba(42,39,34,.08), inset -5px -5px 14px rgba(255,255,255,.7)}
+.subhead{display:flex;align-items:center;justify-content:space-between;padding:11px 15px 5px}
+.subhead b{font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.4}
+.item{display:flex;align-items:center;gap:10px;padding:7px 15px;font-size:13px}
+.bx{width:16px;height:16px;border-radius:6px;flex-shrink:0;
+  box-shadow:inset 2px 2px 5px rgba(0,0,0,.35)}
+[data-theme="light"] .bx{box-shadow:inset 2px 2px 5px rgba(42,39,34,.2)}
+.item.done .bx{background:var(--st-booked);box-shadow:none;position:relative}
+.item.done .bx::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;font-size:10px;font-weight:800;color:var(--chip-ink)}
+.item.done .tx{text-decoration:line-through;opacity:.45}
+.tx{flex:1;min-width:0}
+.ct{font-family:ui-monospace,Menlo,monospace;font-size:10px;opacity:.5;flex-shrink:0}
+.due{background:var(--st-hot);color:var(--hot-text);border-radius:99px;padding:2px 8px;
+  font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;flex-shrink:0}
+.prog{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;
+  background:rgba(255,169,77,.2);color:var(--st-warm);border-radius:99px;padding:2px 9px}
+.stafftabs{display:flex;gap:4px;padding:2px 13px 4px;flex-wrap:wrap}
+.stafftabs button{border-radius:99px;padding:2.5px 9px;font-size:8px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;opacity:.45;background:var(--wash)}
+.stafftabs button.on{opacity:1;background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .stafftabs button.on{background:var(--ivory);color:#1b1a17}
+.addrow{margin:5px 13px 12px;background:var(--wash2);border-radius:10px;padding:6px;
+  text-align:center;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  opacity:.55;cursor:pointer}
+
+/* shared Flo bits */
+.flohead{display:flex;align-items:center;gap:8px}
+.flohead .wave{flex-shrink:0}
+.flohead .fname{font-family:'Archivo Black',sans-serif;font-size:14px;letter-spacing:-.01em}
+.flohead .ftag{font-size:7.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45}
+.flob .b{display:flex;gap:9px;align-items:baseline;font-size:12.5px;line-height:1.5;margin-bottom:5px}
+.flob .b .dot{position:relative;top:-1px}
+.flob .b.alert{color:var(--st-hot);font-weight:600}
+.flob .syn{font-size:11.5px;opacity:.55;font-style:italic;margin-top:4px}
+.askflo{margin-top:9px;font-size:9px;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;opacity:.4;cursor:pointer}
+
+/* ============ A — CARVED POOL ============ */
+.floA{margin:12px 12px 4px;border-radius:15px;padding:12px 14px;background:var(--bg);
+  box-shadow:inset 4px 4px 10px rgba(0,0,0,.45), inset -3px -3px 9px rgba(255,255,255,.04)}
+[data-theme="light"] .floA{box-shadow:inset 4px 4px 10px rgba(42,39,34,.13), inset -3px -3px 9px rgba(255,255,255,.85)}
+.floA .flohead{margin-bottom:9px}
+
+/* ============ B — THE BREATHING HALO (the one glow in the app) ============ */
+.floB{margin:12px 12px 4px;border-radius:15px;padding:12px 14px;background:var(--bg);
+  box-shadow:inset 3px 3px 8px rgba(0,0,0,.35), inset -2px -2px 7px rgba(255,255,255,.03),
+    0 0 0 1.5px rgba(213,208,194,.14), 0 0 14px 2px rgba(213,208,194,.07);
+  animation:flobreathe 4.5s ease-in-out infinite alternate}
+[data-theme="light"] .floB{box-shadow:inset 3px 3px 8px rgba(42,39,34,.08), inset -2px -2px 7px rgba(255,255,255,.7),
+    0 0 0 1.5px rgba(42,39,34,.1), 0 0 14px 2px rgba(42,39,34,.05)}
+@keyframes flobreathe{
+  from{box-shadow:inset 3px 3px 8px rgba(0,0,0,.35), inset -2px -2px 7px rgba(255,255,255,.03),
+    0 0 0 1.5px rgba(213,208,194,.1), 0 0 10px 1px rgba(213,208,194,.04)}
+  to{box-shadow:inset 3px 3px 8px rgba(0,0,0,.35), inset -2px -2px 7px rgba(255,255,255,.03),
+    0 0 0 1.5px rgba(213,208,194,.22), 0 0 18px 4px rgba(213,208,194,.12)}}
+@media (prefers-reduced-motion: reduce){.floB{animation:none}}
+.floB .flohead{margin-bottom:9px}
+.floB .wavepulse{animation:wavep 4.5s ease-in-out infinite alternate}
+@keyframes wavep{from{opacity:.55}to{opacity:1}}
+
+/* ============ C — INVERTED PLATE ============ */
+.floC{margin:12px 12px 4px;border-radius:15px;padding:12px 14px;
+  background:var(--fg);color:var(--bg);box-shadow:2px 3px 9px rgba(0,0,0,.4)}
+[data-theme="dark"] .floC{background:var(--ivory);color:#1b1a17}
+.floC .b.alert{color:#b3261e}
+[data-theme="dark"] .floC .b.alert{color:#b3261e}
+.floC .flohead{margin-bottom:9px}
+.floC .syn{opacity:.6}
+.floC .askflo{opacity:.5}
+</style>
+</head>
+<body>
+
+<div class="board">
+  <div style="flex:1">
+    <h1 class="arch">The Flo Box — 3 Options</h1>
+    <p class="sub" style="margin-top:6px;max-width:800px">The AI briefing as a branded object at
+    the top of the console. Same console below in all three; only Flo's treatment changes.
+    Flo is the one element in PRSFlo allowed to look unlike everything else — because it's the
+    one element that speaks.</p>
+  </div>
+  <button class="actbtn" id="themeBtn" onclick="flip()">View light</button>
+</div>
+
+<div class="row3">
+
+<!-- A -->
+<div class="opt">
+  <h2>A — Carved Pool</h2>
+  <p class="why">Flo is a deeper recess inside the console — carved further into the material
+  than anything else, like a dish formed to hold the words. Purest system: no glow, no
+  inversion, just depth. Quietest of the three; Flo whispers.</p>
+  <div class="pane">
+    <div class="floA flob">
+      <div class="flohead">
+        <svg class="wave" width="22" height="14" viewBox="0 0 22 14" fill="none"><path d="M1 7c2.6-5.2 5.2-5.2 7.8 0s5.2 5.2 7.8 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 10.5c2.2-3.6 4.4-3.6 6.6 0s4.4 3.6 6.6 0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".45"/></svg>
+        <span class="fname">Flo</span><span class="ftag">· Your briefing · Aug 5</span>
+      </div>
+      <div class="b alert"><span class="dot" style="background:var(--st-hot)"></span>Aaron missed the AR follow-up queue again — 3-day backlog</div>
+      <div class="b"><span class="dot" style="background:var(--st-warm)"></span>COD outstanding: 2 accounts · nothing over 31 days</div>
+      <div class="b"><span class="dot" style="background:var(--st-booked)"></span>Fernando cleared all five duties yesterday</div>
+      <div class="syn">Quiet day overall — one thing needs you: Aaron's AR backlog.</div>
+      <div class="askflo">Ask Flo →</div>
+    </div>
+    <div class="subhead"><b>My day — duties</b><span class="prog">2 of 4</span></div>
+    <div class="item done"><span class="bx"></span><span class="tx">Morning briefing reviewed</span></div>
+    <div class="item done"><span class="bx"></span><span class="tx">Approve pending WOs</span><span class="ct">2 approved</span></div>
+    <div class="item"><span class="bx"></span><span class="tx">Review staff grid</span></div>
+    <div class="item"><span class="bx"></span><span class="tx">Sign vendor invoices</span><span class="due">Due today</span></div>
+    <div class="subhead"><b>Tasks — to-dos</b></div>
+    <div class="stafftabs"><button class="on">Eli</button><button>Adam-Mike</button><button>Fernando</button><button>Aaron</button></div>
+    <div class="item"><span class="bx"></span><span class="tx">Vendor invoices need approval</span></div>
+    <div class="item"><span class="bx"></span><span class="tx">Call SIR re: rental return</span></div>
+    <div class="addrow">+ add task</div>
+  </div>
+</div>
+
+<!-- B -->
+<div class="opt">
+  <h2>B — The Breathing Halo</h2>
+  <p class="why">The one glow in the entire app, reserved for Flo — a faint monochrome halo that
+  breathes on a slow cycle, like Siri idling. Glow now MEANS "AI presence" and nothing else.
+  The wave breathes with it. Most alive; unmistakably a different kind of thing.</p>
+  <div class="pane">
+    <div class="floB flob">
+      <div class="flohead">
+        <svg class="wave wavepulse" width="22" height="14" viewBox="0 0 22 14" fill="none"><path d="M1 7c2.6-5.2 5.2-5.2 7.8 0s5.2 5.2 7.8 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 10.5c2.2-3.6 4.4-3.6 6.6 0s4.4 3.6 6.6 0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".45"/></svg>
+        <span class="fname">Flo</span><span class="ftag">· Your briefing · Aug 5</span>
+      </div>
+      <div class="b alert"><span class="dot" style="background:var(--st-hot)"></span>Aaron missed the AR follow-up queue again — 3-day backlog</div>
+      <div class="b"><span class="dot" style="background:var(--st-warm)"></span>COD outstanding: 2 accounts · nothing over 31 days</div>
+      <div class="b"><span class="dot" style="background:var(--st-booked)"></span>Fernando cleared all five duties yesterday</div>
+      <div class="syn">Quiet day overall — one thing needs you: Aaron's AR backlog.</div>
+      <div class="askflo">Ask Flo →</div>
+    </div>
+    <div class="subhead"><b>My day — duties</b><span class="prog">2 of 4</span></div>
+    <div class="item done"><span class="bx"></span><span class="tx">Morning briefing reviewed</span></div>
+    <div class="item done"><span class="bx"></span><span class="tx">Approve pending WOs</span><span class="ct">2 approved</span></div>
+    <div class="item"><span class="bx"></span><span class="tx">Review staff grid</span></div>
+    <div class="item"><span class="bx"></span><span class="tx">Sign vendor invoices</span><span class="due">Due today</span></div>
+    <div class="subhead"><b>Tasks — to-dos</b></div>
+    <div class="stafftabs"><button class="on">Eli</button><button>Adam-Mike</button><button>Fernando</button><button>Aaron</button></div>
+    <div class="item"><span class="bx"></span><span class="tx">Vendor invoices need approval</span></div>
+    <div class="item"><span class="bx"></span><span class="tx">Call SIR re: rental return</span></div>
+    <div class="addrow">+ add task</div>
+  </div>
+</div>
+
+<!-- C -->
+<div class="opt">
+  <h2>C — Inverted Plate</h2>
+  <p class="why">Flo speaks in the page's inverse — an ink plate in light mode, an ivory plate in
+  dark. The strongest-contrast object on the whole dashboard, like a printed telegram laid on
+  the desk. No motion, no glow; pure authority. Boldest and most Paramount.</p>
+  <div class="pane">
+    <div class="floC flob">
+      <div class="flohead">
+        <svg class="wave" width="22" height="14" viewBox="0 0 22 14" fill="none"><path d="M1 7c2.6-5.2 5.2-5.2 7.8 0s5.2 5.2 7.8 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 10.5c2.2-3.6 4.4-3.6 6.6 0s4.4 3.6 6.6 0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".45"/></svg>
+        <span class="fname">Flo</span><span class="ftag">· Your briefing · Aug 5</span>
+      </div>
+      <div class="b alert"><span class="dot" style="background:#b3261e"></span>Aaron missed the AR follow-up queue again — 3-day backlog</div>
+      <div class="b"><span class="dot" style="background:var(--st-warm)"></span>COD outstanding: 2 accounts · nothing over 31 days</div>
+      <div class="b"><span class="dot" style="background:var(--st-booked)"></span>Fernando cleared all five duties yesterday</div>
+      <div class="syn">Quiet day overall — one thing needs you: Aaron's AR backlog.</div>
+      <div class="askflo">Ask Flo →</div>
+    </div>
+    <div class="subhead"><b>My day — duties</b><span class="prog">2 of 4</span></div>
+    <div class="item done"><span class="bx"></span><span class="tx">Morning briefing reviewed</span></div>
+    <div class="item done"><span class="bx"></span><span class="tx">Approve pending WOs</span><span class="ct">2 approved</span></div>
+    <div class="item"><span class="bx"></span><span class="tx">Review staff grid</span></div>
+    <div class="item"><span class="bx"></span><span class="tx">Sign vendor invoices</span><span class="due">Due today</span></div>
+    <div class="subhead"><b>Tasks — to-dos</b></div>
+    <div class="stafftabs"><button class="on">Eli</button><button>Adam-Mike</button><button>Fernando</button><button>Aaron</button></div>
+    <div class="item"><span class="bx"></span><span class="tx">Vendor invoices need approval</span></div>
+    <div class="item"><span class="bx"></span><span class="tx">Call SIR re: rental return</span></div>
+    <div class="addrow">+ add task</div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function flip(){
+  var h=document.documentElement;
+  var next=h.getAttribute('data-theme')==='light'?'dark':'light';
+  h.setAttribute('data-theme',next);
+  document.getElementById('themeBtn').textContent = next==='light'?'View dark':'View light';
+}
+</script>
+</body>
+</html>

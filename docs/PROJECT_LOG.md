@@ -2660,6 +2660,52 @@ into P01 · confirm the Time Card Exceptions dashboard is enabled in our instanc
 before go-live on final pay, WPV coverage, the notices list, and the missed punch ladder against
 the handbook.
 
+### August 6, 2026 — Design session sign-off: dashboard + side nav + Flo designed; F/O relay retired (design-only session)
+
+Design-session sign-off, scoped accordingly: no app code shipped, so no CHANGELOG
+version, no SOP release note, no test batch (nothing testable), no migrations. The
+deliverables are docs + reference mockups; this entry is the record.
+
+**What was decided and why:**
+
+- **Dashboard + side nav design is COMPLETE.** Reference law:
+  `docs/design-refs/dashboard-final.html`; spec ruling **§14** (rail structure,
+  console layout, 12-room order with Nadine's as PRS's 6th room, Flo box recipe,
+  packing law). Reached over seven mockup rounds (v1–v7 in design-refs); Eli
+  designed the console architecture himself — Flo briefing → My Day duties → Tasks
+  in ONE pane, first thing you see is immediate attention from yesterday.
+- **The Flo box: Aurora motion, dialed.** Bake-off history: round 1
+  (comet/aurora/twin-orbit/quick-breath), round 2 (living-wave/heartbeat/
+  passing-light/ripple/ember). Aurora won, then dialed 30% subtler (peak .32,
+  base .06, halo .045, 8s). Rejected: comet (too tracked by the eye next to a
+  work list), all round-2 options. **New app-wide law: glow = AI presence,
+  exclusively** — Flo's ring/halo is the only glow permitted (spec §7 exception);
+  the moment anything else glows, the signal dies. Flo's surface is FLAT (no
+  carving either theme) — a presence outlined in light, not a hole — because
+  Eli read the carved version as "a deep pool" in light mode.
+- **Rejected during dashboard rounds (do not re-litigate):** stretching small
+  info into large boxes (twice called "worst one yet" — became the packing law:
+  panes hug content, layout is packing not inflating); calendar/sessions in the
+  middle column (scanning breaks — sessions live RIGHT); big My Day center pane.
+- **WORKING MODE CHANGED — the F/O two-chat relay is RETIRED (2026-08-06).**
+  Both chats (design/Fable, implementation/Opus) had grown too large, and Cowork
+  gives one session direct repo file access, removing the reason for the split.
+  Going forward ONE chat designs + builds; **Eli still runs all git** via
+  copy-paste one-liners (the 2026-07-30 sandbox-git corruption rule stands).
+  Entry point for the incoming session: **`docs/BUILD-HANDOFF.md`**. A drafted
+  F-27 message was never sent and is void.
+- **Scope correction recorded:** runner hub, WO hub, mic inventory, flags, tasks,
+  daily ops are BUILT and working — they need layout redesign + reskin only
+  (Eli explicitly opened their layouts for rethinking, superseding the
+  "restyle-only" default for these pages). HR pages (Punches/Hiring/Training)
+  are design + build from nothing per HR-SPEC. Build order: §14 frame first,
+  then existing pages one at a time, then HR. Calendar stays frozen.
+
+**Files:** `docs/BUILD-HANDOFF.md` (new entry point), `docs/PRSFLO-DESIGN-SPEC.md`
+(§14 added; §7/§12 amended), `docs/design-refs/` (dashboard-final.html,
+dashboard-sidenav-v1–v7, flo-console-options/final, flo-motion-options(-2),
+flo-aurora-final, DESIGN-SESSION-HANDOFF.md superseded-header).
+
 ### August 6, 2026 — Carved redesign: calendar frozen, Work Order migrated (sign-off)
 
 Long session, one branch (`redesign/carved`), ~45 commits. Two surfaces finished — the

@@ -257,6 +257,9 @@ Light source is top-left, always, both themes. Content (text, chips) never recei
 **No fog.** Eli evaluated fog/glow at four levels and chose zero. Do not add glows,
 outer halos, or blur-based atmosphere. (Grain/vignette/breath experiments were also
 not adopted — only the new-lead pulse below carries motion.)
+**ONE exception (RULING 2026-08-05): the Flo box (§14).** Glow means AI presence,
+app-wide. Flo's ring + halo are the only glow in the system — which is exactly why
+nothing else may glow: the signal only works if it's exclusive.
 
 Geometry: panels/cards 40px; room cards 26px; calendar rows 26px; list rows and
 section-header lozenges 99px (capsules); inputs 99px; buttons/pills 99px; calendar
@@ -406,14 +409,97 @@ Roadmap project (after calendar module ships), decisions locked now:
 ## 12. What NOT to do
 
 - No accent colour, ever. No lime, no teal — they're retired.
-- No borders/outlines/dividers (Law 1). No fog/glow/halos (§7).
-- No new blinking/pulsing elements beyond `.newpulse`.
+- No borders/outlines/dividers (Law 1). No fog/glow/halos (§7) — except the Flo box (§14),
+  the single sanctioned glow.
+- No new blinking/pulsing elements beyond `.newpulse` and the Flo Aurora ring (§14).
 - No touching `public/sop.html`, no `git add -A`, nothing to `main` until Eli says.
   (This overrides the older standing CC-prompt rule that ended prompts with
   `git add -A && git commit && git push` — that rule predates multiple chats sharing
   this repo. Stage by name, always.)
 - No wordmark/`Nav.tsx` changes without Eli's explicit go (§4).
 - No layout redesigns anywhere — this project restyles existing layouts. Layout is
-  Eli's, surface is yours.
+  Eli's, surface is yours. (The dashboard + side nav are the sanctioned exception:
+  Eli designed that layout himself across seven mockup rounds — §14 IS the layout.)
 - Do not migrate the whole app before the style guide and the single proof surface
   are approved on preview URLs.
+
+---
+
+## 14. Dashboard, side nav & the Flo box (RULING 2026-08-05)
+
+**Reference law: `docs/design-refs/dashboard-final.html`.** Approved after seven mockup
+rounds; Eli designed the console architecture himself. Copy values from the file, never
+from this prose. HR context lives in `docs/HR-SPEC.md` (side nav = §2.5a; My Day vs
+Tasks = §2.6–2.8, §12.9–11).
+
+### 14a. Side nav (replaces the top nav app-wide)
+
+212px fixed left rail, wash fill, full height. Structure top→bottom: wordmark →
+ungrouped trio (Dashboard, Calendar, Daily Ops) → BUSINESS group (CRM, WO Hub, Tasks,
+Flags) → STUDIO group (Mic Inventory, Runner Hub, Nadine's) → HR group (Punches,
+Hiring, Training) → foot pinned to bottom (Admin, SOP, DEV dimmed). Group labels are
+the standard uppercase micro-label. Active item = filled pill (ink-on-paper light /
+ivory-on-charcoal dark, raised shadow) — the same treatment as every selected control.
+Badges are functional counts only, right-aligned: hot = needs-you-now (red),
+warm = attention (orange), dim wash = neutral count. No badge without a real count
+behind it. The wordmark renders per §4 (component, never re-implemented).
+Existing routes keep working — the rail replaces `Nav.tsx`'s tab row as the app frame;
+mobile behavior TBD in implementation (propose, don't invent silently).
+
+### 14b. Dashboard — the console layout
+
+Solo padded header: greeting micro-label over "Paramount Recording Studios" (Archivo,
+28px), then flex-grow, view-as toggle (segmented housing per §8), datechip anchor.
+Nothing else lives in the header.
+
+Thirds grid `1.05fr 1fr 1fr`:
+- **LEFT — THE CONSOLE (one pane):** Flo box (briefing) → My Day duties (progress pill,
+  Due-today pill, backlog callout when behind) → Tasks (staff tabs + add row).
+  Flags pane sits below the console, separate.
+- **MIDDLE:** Needs Action (leads, new-lead pulse) + staff 14-day grid (Eli view only).
+- **RIGHT:** Today's Sessions — location counts as chips in the pane header (the old
+  location strip is retired), rooms 2-wide, room-card DNA from the existing dashboard
+  ruling (status pool fills, Archivo artist, mono eng initials).
+
+**Rooms are 12, in this order:** PRS A, B, C, E, X, Nadine's → ARS A, B → ERS A, B →
+TRK N, S. Nadine's is PRS's sixth room.
+
+View-as (Eli/Fernando) swaps: greeting, briefing bullets + synopsis, My Day contents,
+default task tab, and hides the staff grid for non-Eli. My Day ≠ Tasks: duties are
+fixed per role and reset daily; tasks are add-able to-dos. Never merge them.
+
+**Packing law (app-wide, born here):** every pane hugs its content — blocks are their
+honest size, layout is packing, not inflating. Never stretch a small piece of
+information to fill a big box. If a column ends short, it ends short.
+
+### 14c. The Flo box — the AI surface
+
+Flo is the branded AI assistant; this box opens the console and is the app's single
+AI mouthpiece (briefings now, chat/actions later — "Ask Flo →" is the door).
+
+Recipe (copy from dashboard-final.html):
+- **Flat surface. No inset carving in either theme.** Flo is a presence outlined in
+  light, never a hole in the material. This is deliberate contrast with Law 2 —
+  and permitted only here.
+- `--flo-ink` token: `42,39,34` light / `213,208,194` dark (bare RGB triplet, consumed
+  via `rgba(var(--flo-ink), a)`).
+- Ring: `.ringwrap` (radius 15px, `overflow:hidden`, `padding:1.5px`, faint halo
+  `0 0 16px 3px rgba(var(--flo-ink),.045)`) + spinning `::before` (`inset:-120%`,
+  conic-gradient Aurora band: `.06 → .32 @90deg → .06 @200deg`, `8s linear infinite`)
+  + `.inner` painting `var(--bg)` back at radius 13.5px, leaving the 1.5px live edge.
+- Header: wave SVG mark + "Flo" (Archivo 14px) + micro-tag "· Your briefing · {date}".
+- Body: status-dotted bullets (dots use §5 status colours; alert line takes hot ink),
+  italic one-line synopsis, "Ask Flo →" affordance.
+- `prefers-reduced-motion`: animation off, static ring stays.
+
+**Glow = AI, exclusively.** The ring + halo are the only glow in the app (§7 exception).
+No other element may ever glow, breathe, or orbit — the moment something else glows,
+Flo stops meaning anything. (Motion candidates comet/twin-orbit/heartbeat/ripple/ember
+were evaluated and rejected; Aurora at the dialed values won. Faster/brighter variants
+exist in design-refs history if a "Flo is actively thinking" state is wanted later.)
+
+### 14d. Sequencing
+
+The rail + dashboard land FIRST, as the new app frame. The un-migrated pages (admin,
+WO hub, runner, /tasks, SOP) are deliberately parked until this frame exists — do not
+restyle them inside the old top-nav frame.

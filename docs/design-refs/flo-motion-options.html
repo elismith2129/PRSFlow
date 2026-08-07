@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Flo Motion: 4 Options</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  FLO MOTION OPTIONS — the ring in motion. Monochrome ink only; flat surface (no carving).
+  Technique: rotating conic-gradient layer behind a bg-filled inner, leaving a live border.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --st-hot:#ff5a4d; --st-warm:#ffa94d; --st-booked:#43dfae;
+  --flo-ink:42,39,34;
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --flo-ink:213,208,194;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);
+  font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;
+  max-width:1240px;margin:0 auto;padding:0 24px 90px;transition:background .2s,color .2s}
+button{font:inherit;color:var(--fg);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.sub{font-size:12.5px;opacity:.6}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
+.board{display:flex;align-items:center;gap:14px;padding:22px 0 18px}
+.board h1{font-size:20px;letter-spacing:-.03em}
+.actbtn{background:var(--fg);color:var(--bg);border-radius:99px;padding:9px 19px;
+  font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+  box-shadow:3px 3px 9px rgba(0,0,0,.35)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+@media(max-width:1000px){.grid{grid-template-columns:1fr}}
+.opt h2{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.45;margin-bottom:6px}
+.opt .why{font-size:12.5px;opacity:.6;margin-bottom:12px;min-height:40px}
+
+/* shared flo content */
+.flohead{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.flohead .fname{font-family:'Archivo Black',sans-serif;font-size:14px;letter-spacing:-.01em}
+.flohead .ftag{font-size:7.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45}
+.fb .b{display:flex;gap:9px;align-items:baseline;font-size:12.5px;line-height:1.5;margin-bottom:5px}
+.fb .b .dot{position:relative;top:-1px}
+.fb .b.alert{color:var(--st-hot);font-weight:600}
+.fb .syn{font-size:11.5px;opacity:.55;font-style:italic;margin-top:4px}
+.fb .ask{margin-top:9px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.4}
+
+/* orbit machinery: .ringwrap holds the spinning conic layer; .inner paints bg back leaving 1.5px */
+.ringwrap{position:relative;border-radius:15px;overflow:hidden;padding:1.5px}
+.ringwrap::before{content:"";position:absolute;inset:-120%;
+  animation:spin var(--spd,3.5s) linear infinite}
+.inner{position:relative;border-radius:13.5px;background:var(--bg);padding:12px 14px}
+@media (prefers-reduced-motion: reduce){.ringwrap::before{animation:none}}
+
+/* A — COMET: one bright arc orbiting */
+.cometA::before{background:conic-gradient(
+  rgba(var(--flo-ink),.14) 0deg, rgba(var(--flo-ink),.14) 285deg,
+  rgba(var(--flo-ink),.85) 320deg, rgba(var(--flo-ink),.14) 355deg)}
+.cometA{--spd:3.2s;box-shadow:0 0 14px 2px rgba(var(--flo-ink),.07)}
+
+/* B — AURORA: wide soft arc, slower, dreamy */
+.auroraB::before{background:conic-gradient(
+  rgba(var(--flo-ink),.08) 0deg, rgba(var(--flo-ink),.45) 90deg,
+  rgba(var(--flo-ink),.08) 200deg, rgba(var(--flo-ink),.08) 360deg)}
+.auroraB{--spd:6.5s;box-shadow:0 0 16px 3px rgba(var(--flo-ink),.06)}
+
+/* C — TWIN ORBIT: two opposing arcs */
+.twinC::before{background:conic-gradient(
+  rgba(var(--flo-ink),.12) 0deg, rgba(var(--flo-ink),.7) 30deg, rgba(var(--flo-ink),.12) 70deg,
+  rgba(var(--flo-ink),.12) 180deg, rgba(var(--flo-ink),.7) 210deg, rgba(var(--flo-ink),.12) 250deg,
+  rgba(var(--flo-ink),.12) 360deg)}
+.twinC{--spd:4.2s;box-shadow:0 0 14px 2px rgba(var(--flo-ink),.07)}
+
+/* D — QUICK BREATH: no orbit, the halo at double tempo */
+.breathD{border-radius:15px;padding:12px 14px;background:var(--bg);
+  box-shadow:0 0 0 1.5px rgba(var(--flo-ink),.16), 0 0 14px 2px rgba(var(--flo-ink),.07);
+  animation:qb 2.1s ease-in-out infinite alternate}
+@keyframes qb{
+  from{box-shadow:0 0 0 1.5px rgba(var(--flo-ink),.1), 0 0 8px 1px rgba(var(--flo-ink),.03)}
+  to{box-shadow:0 0 0 1.5px rgba(var(--flo-ink),.3), 0 0 20px 5px rgba(var(--flo-ink),.14)}}
+@media (prefers-reduced-motion: reduce){.breathD{animation:none}}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+.wavea{animation:wp 2.2s ease-in-out infinite alternate}
+@keyframes wp{from{opacity:.5}to{opacity:1}}
+</style>
+</head>
+<body>
+
+<div class="board">
+  <div style="flex:1">
+    <h1 class="arch">Flo Motion — 4 Options</h1>
+    <p class="sub" style="margin-top:6px;max-width:760px">The ring in motion. All monochrome ink,
+    flat surface, both themes. Watch each for ~10 seconds — the right one should feel alive
+    without ever pulling your eye while you're reading the bullets.</p>
+  </div>
+  <button class="actbtn" id="themeBtn" onclick="flip()">View light</button>
+</div>
+
+<div class="grid">
+
+<div class="opt">
+  <h2>A — Comet</h2>
+  <p class="why">One bright arc orbiting at a steady clip over a faint static ring — the classic
+  "assistant is present" motion. Crisp, purposeful.</p>
+  <div class="ringwrap cometA"><div class="inner fb">
+    <div class="flohead">
+      <svg class="wavea" width="22" height="14" viewBox="0 0 22 14" fill="none"><path d="M1 7c2.6-5.2 5.2-5.2 7.8 0s5.2 5.2 7.8 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 10.5c2.2-3.6 4.4-3.6 6.6 0s4.4 3.6 6.6 0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".45"/></svg>
+      <span class="fname">Flo</span><span class="ftag">· Your briefing · Aug 5</span>
+    </div>
+    <div class="b alert"><span class="dot" style="background:var(--st-hot)"></span>Aaron missed the AR follow-up queue again — 3-day backlog</div>
+    <div class="b"><span class="dot" style="background:var(--st-warm)"></span>COD outstanding: 2 accounts · nothing over 31 days</div>
+    <div class="b"><span class="dot" style="background:var(--st-booked)"></span>Fernando cleared all five duties yesterday</div>
+    <div class="syn">Quiet day overall — one thing needs you: Aaron's AR backlog.</div>
+    <div class="ask">Ask Flo →</div>
+  </div></div>
+</div>
+
+<div class="opt">
+  <h2>B — Aurora</h2>
+  <p class="why">A wide, soft band of light drifting around slowly — less spinner, more northern
+  lights. The subtlest motion; you sense it more than see it.</p>
+  <div class="ringwrap auroraB"><div class="inner fb">
+    <div class="flohead">
+      <svg class="wavea" width="22" height="14" viewBox="0 0 22 14" fill="none"><path d="M1 7c2.6-5.2 5.2-5.2 7.8 0s5.2 5.2 7.8 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 10.5c2.2-3.6 4.4-3.6 6.6 0s4.4 3.6 6.6 0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".45"/></svg>
+      <span class="fname">Flo</span><span class="ftag">· Your briefing · Aug 5</span>
+    </div>
+    <div class="b alert"><span class="dot" style="background:var(--st-hot)"></span>Aaron missed the AR follow-up queue again — 3-day backlog</div>
+    <div class="b"><span class="dot" style="background:var(--st-warm)"></span>COD outstanding: 2 accounts · nothing over 31 days</div>
+    <div class="b"><span class="dot" style="background:var(--st-booked)"></span>Fernando cleared all five duties yesterday</div>
+    <div class="syn">Quiet day overall — one thing needs you: Aaron's AR backlog.</div>
+    <div class="ask">Ask Flo →</div>
+  </div></div>
+</div>
+
+<div class="opt">
+  <h2>C — Twin Orbit</h2>
+  <p class="why">Two arcs chasing each other on opposite sides — balanced, symmetrical, a touch
+  more mechanical. Reads like a system at work.</p>
+  <div class="ringwrap twinC"><div class="inner fb">
+    <div class="flohead">
+      <svg class="wavea" width="22" height="14" viewBox="0 0 22 14" fill="none"><path d="M1 7c2.6-5.2 5.2-5.2 7.8 0s5.2 5.2 7.8 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 10.5c2.2-3.6 4.4-3.6 6.6 0s4.4 3.6 6.6 0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".45"/></svg>
+      <span class="fname">Flo</span><span class="ftag">· Your briefing · Aug 5</span>
+    </div>
+    <div class="b alert"><span class="dot" style="background:var(--st-hot)"></span>Aaron missed the AR follow-up queue again — 3-day backlog</div>
+    <div class="b"><span class="dot" style="background:var(--st-warm)"></span>COD outstanding: 2 accounts · nothing over 31 days</div>
+    <div class="b"><span class="dot" style="background:var(--st-booked)"></span>Fernando cleared all five duties yesterday</div>
+    <div class="syn">Quiet day overall — one thing needs you: Aaron's AR backlog.</div>
+    <div class="ask">Ask Flo →</div>
+  </div></div>
+</div>
+
+<div class="opt">
+  <h2>D — Quick Breath</h2>
+  <p class="why">No orbit — the original breathing halo at double tempo. More energy than the
+  final recipe, zero travel. The fallback if orbits prove too busy in the real console.</p>
+  <div class="breathD fb">
+    <div class="flohead">
+      <svg class="wavea" width="22" height="14" viewBox="0 0 22 14" fill="none"><path d="M1 7c2.6-5.2 5.2-5.2 7.8 0s5.2 5.2 7.8 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 10.5c2.2-3.6 4.4-3.6 6.6 0s4.4 3.6 6.6 0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".45"/></svg>
+      <span class="fname">Flo</span><span class="ftag">· Your briefing · Aug 5</span>
+    </div>
+    <div class="b alert"><span class="dot" style="background:var(--st-hot)"></span>Aaron missed the AR follow-up queue again — 3-day backlog</div>
+    <div class="b"><span class="dot" style="background:var(--st-warm)"></span>COD outstanding: 2 accounts · nothing over 31 days</div>
+    <div class="b"><span class="dot" style="background:var(--st-booked)"></span>Fernando cleared all five duties yesterday</div>
+    <div class="syn">Quiet day overall — one thing needs you: Aaron's AR backlog.</div>
+    <div class="ask">Ask Flo →</div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function flip(){
+  var h=document.documentElement;
+  var next=h.getAttribute('data-theme')==='light'?'dark':'light';
+  h.setAttribute('data-theme',next);
+  document.getElementById('themeBtn').textContent = next==='light'?'View dark':'View light';
+}
+</script>
+</body>
+</html>
