@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { Wordmark } from '@/components/layout/Wordmark'
+import { PRSFloIcon } from '@/components/PRSFloIcon'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useClientsVersion } from '@/hooks/useClientsVersion'
 import { Sun, Moon } from 'lucide-react'
@@ -135,7 +136,8 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
   const railBody = (
     <>
       <div className="c-rail-wm">
-        <Link href="/" style={{ textDecoration: 'none' }} onClick={() => setMenuOpen(false)}>
+        <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => setMenuOpen(false)}>
+          <PRSFloIcon size={26} />
           <Wordmark size={16} />
         </Link>
       </div>
@@ -175,7 +177,8 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
     return (
       <>
         <div className="c-mobilebar" style={hideStyle}>
-          <Link href="/" style={{ textDecoration: 'none' }}>
+          <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <PRSFloIcon size={26} />
             <Wordmark size={16} />
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>

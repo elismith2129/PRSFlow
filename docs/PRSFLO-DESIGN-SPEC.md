@@ -511,7 +511,9 @@ Recipe (copy from dashboard-final.html):
   `0 0 16px 3px rgba(var(--flo-ink),.045)`) + spinning `::before` (`inset:-120%`,
   conic-gradient Aurora band: `.06 → .32 @90deg → .06 @200deg`, `8s linear infinite`)
   + `.inner` painting `var(--bg)` back at radius 13.5px, leaving the 1.5px live edge.
-- Header: wave SVG mark + "Flo" (Archivo 14px) + micro-tag "· Your briefing · {date}".
+- Header: the PRSFlo wave mark + "Flo" (Archivo 14px) + micro-tag "· Your briefing ·
+  {date}". (RULING 2026-08-07: Flo's mark IS `components/PRSFloIcon.tsx` — the brand
+  icon, not the mock's placeholder squiggle. One mark, brand and AI.)
 - Body: status-dotted bullets (dots use §5 status colours; alert line takes hot ink),
   italic one-line synopsis, "Ask Flo →" affordance.
 - `prefers-reduced-motion`: animation off, static ring stays.

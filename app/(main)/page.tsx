@@ -1039,10 +1039,9 @@ export default function DashboardPage() {
               only glow in the system. "Ask Flo →" is a dead door for now. */}
           <div className="c-ringwrap"><div className="c-flo-inner">
             <div className="c-flohead">
-              <svg width="22" height="14" viewBox="0 0 22 14" fill="none" style={{ flexShrink: 0 }}>
-                <path d="M1 7c2.6-5.2 5.2-5.2 7.8 0s5.2 5.2 7.8 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                <path d="M3 10.5c2.2-3.6 4.4-3.6 6.6 0s4.4 3.6 6.6 0" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity=".45" />
-              </svg>
+              {/* The real PRSFlo wave mark — Eli's ruling 2026-08-07: the brand
+                  icon is also Flo's mark (replaces the mock's placeholder squiggle). */}
+              <PRSFloIcon size={22} />
               <span className="c-fname">Flo</span>
               <span className="c-ftag">· Your briefing · {clockNow.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
             </div>
