@@ -2253,7 +2253,9 @@ const parsedLoc0 = parseLocation(lead.location || '')
               </>
             )}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
+          {/* One ROW, not a stack — the stacked pair made the COD hero taller
+              than the billing one for no reason (§2b density). */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
             {/* Start Booking — restored July 28, 2026. It was swapped out for the
                 temporary Confirm-Client flow back when there was no booking form
                 to send anyone to; the Work Order is that destination now. */}
@@ -2343,27 +2345,25 @@ const parsedLoc0 = parseLocation(lead.location || '')
             <span className="c-sep">·</span>
             <span className="c-age">{touchAge(latestTouch.created_at)} since contact</span>
           </>)}
-        </div>
-
-        {/* ─── aka well (COD only) ─────────────────────────
-            Reference .artist-sub: an "aka" micro-label beside a compact well
-            (height 28, radius 10, its own shallower inset — NOT the 40px field
-            well). Copied from docs/design-refs/lead-profile-final.html. */}
-        {lead.billing === 'COD' && (
-          <span className="c-artist-sub">
-            <span className="c-label" style={{ margin: 0 }}>aka</span>
-            <span className="c-aw">
-              <input
-                value={local.artist_name || ''}
-                onChange={e => update('artist_name', e.target.value)}
-                onFocus={() => setFocusedInput('artist_name')}
-                onKeyDown={enterBlur}
-                onBlur={e => { setFocusedInput(null); save('artist_name', e.target.value) }}
-                placeholder="Artist name"
-              />
+          {/* aka rides ON the meta line (COD only) — its own row was a whole
+              line spent on one small field (§2b: the COD card must pack as
+              tight as the billing card). */}
+          {lead.billing === 'COD' && (
+            <span className="c-artist-sub" style={{ marginTop: 0 }}>
+              <span className="c-label" style={{ margin: 0 }}>aka</span>
+              <span className="c-aw">
+                <input
+                  value={local.artist_name || ''}
+                  onChange={e => update('artist_name', e.target.value)}
+                  onFocus={() => setFocusedInput('artist_name')}
+                  onKeyDown={enterBlur}
+                  onBlur={e => { setFocusedInput(null); save('artist_name', e.target.value) }}
+                  placeholder="Artist name"
+                />
+              </span>
             </span>
-          </span>
-        )}
+          )}
+        </div>
 
         {/* Row 2 (Label/Billing only): A&R name line */}
         {lead.billing !== 'COD' && (
@@ -2597,8 +2597,11 @@ const parsedLoc0 = parseLocation(lead.location || '')
       />
       </div>
 
-      {/* ─── Activity Log ──────────────────────────────── */}
-      <details className="c-fold">
+      {/* ─── Bottom row: Activity · Tags · Delete on ONE line (Eli ruling
+          2026-08-07 — everything in view, no scrolling; the folds expand
+          downward in place when opened). */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginTop: 6 }}>
+      <details className="c-fold" style={{ flex: 1, minWidth: 0, marginTop: 0 }}>
       <summary>Activity · {activityLog.length + 1}</summary>
       <div className="c-fold-body" style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         {activityLog.map((entry, i) => (
@@ -2622,7 +2625,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
       </details>
 
       {/* ─── Tags ──────────────────────────────── */}
-      <details className="c-fold" open={tagsOpen} onToggle={e => setTagsOpen((e.currentTarget as HTMLDetailsElement).open)}>
+      <details className="c-fold" style={{ flex: 1, minWidth: 0, marginTop: 0 }} open={tagsOpen} onToggle={e => setTagsOpen((e.currentTarget as HTMLDetailsElement).open)}>
         <summary>Tags{localTags.length > 0 ? ` · ${localTags.length}` : ''}</summary>
         {(
           <div className="c-fold-body">
@@ -2680,13 +2683,12 @@ const parsedLoc0 = parseLocation(lead.location || '')
         )}
       </details>
 
-      {/* Footer — destructive action, right-aligned. Hot is sanctioned here by the
-          §5 ruling that --c-st-hot is dual-purpose: temperature AND critical. */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: 8 }}>
-        <button className="c-danger" onClick={() => setShowDeleteConfirm(true)}>
-          Delete lead
-        </button>
-      </div>
+      {/* Delete — destructive, far right of the bottom row. Hot is sanctioned
+          by the §5 ruling that --c-st-hot is dual-purpose: temp AND critical. */}
+      <button className="c-danger" onClick={() => setShowDeleteConfirm(true)} style={{ flexShrink: 0, marginLeft: 'auto' }}>
+        Delete lead
+      </button>
+      </div>{/* /bottom row */}
 
       {showDeleteConfirm && (
         <div onClick={() => setShowDeleteConfirm(false)} className="c-modal-backdrop" style={{ zIndex: 2000 }}>
