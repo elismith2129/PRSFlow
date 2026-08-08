@@ -2308,7 +2308,7 @@ export function WorkOrderPopup({
                 </div>
               )
             })()}
-            <div style={{ borderRadius: 6, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
+            <div style={{ borderRadius: 10, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
               {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock | Del */}
               <div style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px', background: 'var(--c-wash)', minWidth: isMobile ? 880 : undefined }}>
                 {/* `right` marks the money columns — header and value share an
@@ -2611,7 +2611,7 @@ export function WorkOrderPopup({
             {/* hidden file input for note photos */}
             <input ref={equipNoteFileRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={e => { const f = e.target.files?.[0]; if (f) uploadEquipNotePhoto(f) }} />
-            <div style={{ borderRadius: 6, overflowX: 'auto' }}>
+            <div style={{ borderRadius: 10, overflowX: 'auto', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
               <div style={{ minWidth: `${130 + Math.max(sessionDates.length, 1) * 90}px` }}>
                 {/* Header — equipment name cell sticky */}
                 <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, background: 'var(--c-wash)' }}>
@@ -2693,7 +2693,7 @@ export function WorkOrderPopup({
           {/* RENTALS */}
           <div style={isMobile ? mCard : undefined}>
             <SectionHeader carved title="Rentals" />
-            <div style={{ borderRadius: 6, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
+            <div style={{ borderRadius: 10, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', background: 'var(--c-wash)', minWidth: isMobile ? 540 : undefined }}>
                 {([['Qty'], ['Item'], ['Supplier'], ["Date(s) Used"], ['Rate', 'right'], ['Charge', 'right'], ['']] as [string, string?][])
                   .map(([h, align], i) => <div key={i} style={align === 'right' ? thR : thS}>{h}</div>)}
@@ -2775,7 +2775,7 @@ export function WorkOrderPopup({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, ...(isMobile ? mCard : {}) }}>
               <div>
                 <SectionHeader carved title="Payments" />
-                <div style={{ borderRadius: 6, overflow: 'hidden' }}>
+                <div style={{ borderRadius: 10, overflow: 'hidden', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
                   {payRows.map((p, idx) => {
                     const needsLast4 = p.payment_type === 'Credit Card' || p.payment_type === 'Debit Card'
                     return (
@@ -2803,7 +2803,7 @@ export function WorkOrderPopup({
                 </div>
               </div>
               {/* Totals block */}
-              <div style={{ borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{ borderRadius: 10, overflow: 'hidden', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
                 {[
                   { label: 'Studio Total', value: stTotal, color: 'var(--c-fg)', bold: false },
                   ...(engTotal > 0 ? [{ label: 'Eng Total', value: engTotal, color: 'var(--c-fg)', bold: false }] : []),

@@ -2597,11 +2597,11 @@ const parsedLoc0 = parseLocation(lead.location || '')
       />
       </div>
 
-      {/* ─── Bottom row: Activity · Tags · Delete on ONE line (Eli ruling
-          2026-08-07 — everything in view, no scrolling; the folds expand
-          downward in place when opened). */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginTop: 6 }}>
-      <details className="c-fold" style={{ flex: 1, minWidth: 0, marginTop: 0 }}>
+      {/* ─── Activity + Tags: STACKED full-width folds (Eli 2026-08-07 rev 2 —
+          side-by-side opened wrong; the summaries just need to be VISIBLE
+          without scrolling, and the compaction already buys that. Scrolling
+          once a fold is open is fine). */}
+      <details className="c-fold" style={{ marginTop: 4 }}>
       <summary>Activity · {activityLog.length + 1}</summary>
       <div className="c-fold-body" style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         {activityLog.map((entry, i) => (
@@ -2625,7 +2625,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
       </details>
 
       {/* ─── Tags ──────────────────────────────── */}
-      <details className="c-fold" style={{ flex: 1, minWidth: 0, marginTop: 0 }} open={tagsOpen} onToggle={e => setTagsOpen((e.currentTarget as HTMLDetailsElement).open)}>
+      <details className="c-fold" style={{ marginTop: 2 }} open={tagsOpen} onToggle={e => setTagsOpen((e.currentTarget as HTMLDetailsElement).open)}>
         <summary>Tags{localTags.length > 0 ? ` · ${localTags.length}` : ''}</summary>
         {(
           <div className="c-fold-body">
@@ -2683,12 +2683,13 @@ const parsedLoc0 = parseLocation(lead.location || '')
         )}
       </details>
 
-      {/* Delete — destructive, far right of the bottom row. Hot is sanctioned
-          by the §5 ruling that --c-st-hot is dual-purpose: temp AND critical. */}
-      <button className="c-danger" onClick={() => setShowDeleteConfirm(true)} style={{ flexShrink: 0, marginLeft: 'auto' }}>
-        Delete lead
-      </button>
-      </div>{/* /bottom row */}
+      {/* Delete — destructive, right-aligned footer. Hot is sanctioned by the
+          §5 ruling that --c-st-hot is dual-purpose: temp AND critical. */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+        <button className="c-danger" onClick={() => setShowDeleteConfirm(true)}>
+          Delete lead
+        </button>
+      </div>
 
       {showDeleteConfirm && (
         <div onClick={() => setShowDeleteConfirm(false)} className="c-modal-backdrop" style={{ zIndex: 2000 }}>
