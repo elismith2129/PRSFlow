@@ -252,11 +252,16 @@ values
   -- ---- MANAGER · weekly ----------------------------------------------------
   -- Office stock is the MANAGER's, not billing's — Aaron explicitly deleted it
   -- from his procedures doc. Do not move it back.
+  -- Both are `cumulative`, not `point` (RULING 2026-08-10, applied by migration
+  -- 20260810130000): Eli must be able to do them on any day, so a late
+  -- completion has to CLEAR the miss rather than leave it red forever. They stay
+  -- weekly so "expected Wed" / "expected Tue+Fri" still drives the grid and the
+  -- briefing. Kept in step here so replaying this seed cannot revert them.
   ('mgr_office_stock', 'manager', 'Office stock',
-   'weekly', array[3], 'point', '[]'::jsonb, '[]'::jsonb, 90),          -- Wed
+   'weekly', array[3], 'cumulative', '[]'::jsonb, '[]'::jsonb, 90),     -- Wed
 
   ('mgr_valley_checks', 'manager', 'Valley checks (ARS · ERS · TRK)',
-   'weekly', array[2, 5], 'point', '[]'::jsonb, '[]'::jsonb, 100),      -- Tue + Fri
+   'weekly', array[2, 5], 'cumulative', '[]'::jsonb, '[]'::jsonb, 100), -- Tue + Fri
 
   -- ---- BILLING · daily -----------------------------------------------------
   ('bil_ramp_transactions', 'billing',
