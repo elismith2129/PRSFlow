@@ -58,6 +58,13 @@ export type MyDayDuty = {
    * the briefing still key off due_days, so skipping a week still goes red.
    */
   always_available: boolean
+  /**
+   * When the duty was created. Bounds the backlog scan: a duty cannot have been
+   * missed on days before it existed. Without this, the morning My Day goes live
+   * every cumulative duty reports a full 30-day backlog and the first briefing
+   * anyone ever sees is a wall of red for work nobody was asked to do.
+   */
+  created_at: string | null
 }
 
 export type MyDayEntry = {
@@ -114,6 +121,10 @@ export const QUEUE_STEPS: Record<QueueRefType, string[]> = {
 const C_HOT = 'var(--c-st-hot)'
 const C_WARM = 'var(--c-st-warm)'
 const C_BOOKED = 'var(--c-st-booked)'
+// Driftglass — the system's neutral. The lookahead tier is not a problem and
+// must not read like one: warm is lead-temp/tentative only (spec §5 ruling
+// 2026-07-31), and a heads-up in orange would train people to ignore orange.
+const C_NEUTRAL = 'var(--c-st-dead)'
 
 // ─── Date helpers (thin wrappers over lib/time — no new date math) ───────────
 
@@ -169,6 +180,19 @@ export function isDutyShownOn(duty: MyDayDuty, iso: string): boolean {
   return duty.always_available || isDutyDueOn(duty, iso)
 }
 
+/**
+ * Did this duty exist on `iso`?
+ *
+ * Used by every RETROSPECTIVE judgement — was it missed, is there a backlog, is
+ * that grid square red — and by none of the forward-looking ones, where a duty
+ * created this morning is legitimately due this morning. Without it, the day My
+ * Day ships everyone is retroactively guilty of work that didn't exist yet.
+ */
+export function dutyExistedOn(duty: MyDayDuty, iso: string): boolean {
+  if (!duty.created_at) return true
+  return duty.created_at.slice(0, 10) <= iso
+}
+
 // ─── Duty fetching ───────────────────────────────────────────────────────────
 
 /** Row → typed duty. jsonb comes back parsed; guard shape anyway. */
@@ -186,6 +210,7 @@ function toDuty(r: any): MyDayDuty {
     sort_order: r.sort_order ?? 0,
     is_active: r.is_active !== false,
     always_available: r.always_available === true,
+    created_at: r.created_at ?? null,
   }
 }
 
@@ -268,9 +293,15 @@ export function computeBacklog(
     }
   }
 
+  // A duty cannot be late for days that predate it. On the morning My Day ships,
+  // this is the difference between "nothing due yet" and every cumulative duty
+  // claiming a month of misses.
+  const bornOn = duty.created_at ? duty.created_at.slice(0, 10) : null
+
   const dates: string[] = []
   for (let i = 1; i <= BACKLOG_LOOKBACK_DAYS; i++) {
     const d = shiftDate(asOf, -i)
+    if (bornOn && d < bornOn) break
     if (!isDutyDueOn(duty, d)) continue
     if (covered.has(d)) break // hit the last time it was done — stop scanning
     dates.push(d)
@@ -734,7 +765,9 @@ export async function fetchStaffGrid(days = 14): Promise<GridRow[]> {
     const mine = duties.filter(d => d.role === role)
     const days = window
       .map(date => {
-        const due = mine.filter(d => isDutyDueOn(d, date))
+        // dutyExistedOn: the grid looks 14 days back, so without it the two
+        // weeks before My Day launched would render as solid red.
+        const due = mine.filter(d => dutyExistedOn(d, date) && isDutyDueOn(d, date))
         if (due.length === 0) return 'n'
         const allDone = due.every(d =>
           entries.some(e => e.duty_id === d.id && e.date === date && e.completed_at),
@@ -796,6 +829,11 @@ export function composeBriefing(input: BriefingInput): Briefing {
 
   const bullets: FloBullet[] = []
   const redTexts: string[] = []
+  // Duty ids already shouted about in the RED tier. Tracked by ID, not by
+  // matching label text — red lines run their labels through lowerFirst, so a
+  // substring check against the original label silently never matched and the
+  // lookahead repeated everything the alert had just said.
+  const redDutyIds = new Set<string>()
 
   // ── RED — backlogs at/over the flag threshold, then yesterday's misses ──
   for (const role of roles) {
@@ -809,6 +847,7 @@ export function composeBriefing(input: BriefingInput): Briefing {
     for (const f of flagged) {
       const t = `${nameFor(role)} missed ${lowerFirst(f.duty.label)} — covering ${f.bl.days + 1} days`
       redTexts.push(t)
+      redDutyIds.add(f.duty.id)
       bullets.push({ color: C_HOT, alert: true, text: t })
     }
 
@@ -817,9 +856,11 @@ export function composeBriefing(input: BriefingInput): Briefing {
     const missed = mine.filter(
       d =>
         !flaggedIds.has(d.id) &&
+        dutyExistedOn(d, yesterday) &&
         isDutyDueOn(d, yesterday) &&
         !entries.some(e => e.duty_id === d.id && e.date === yesterday && e.completed_at),
     )
+    for (const m of missed) redDutyIds.add(m.id)
     if (missed.length === 1) {
       const t = `${nameFor(role)} missed ${lowerFirst(missed[0].label)} yesterday`
       redTexts.push(t)
@@ -858,7 +899,7 @@ export function composeBriefing(input: BriefingInput): Briefing {
   // ── GREEN — cleared yesterday ──
   for (const role of roles) {
     const mine = duties.filter(d => d.role === role)
-    const due = mine.filter(d => isDutyDueOn(d, yesterday))
+    const due = mine.filter(d => dutyExistedOn(d, yesterday) && isDutyDueOn(d, yesterday))
     if (due.length === 0) continue
     const allDone = due.every(d =>
       entries.some(e => e.duty_id === d.id && e.date === yesterday && e.completed_at),
@@ -874,9 +915,39 @@ export function composeBriefing(input: BriefingInput): Briefing {
     }
   }
 
+  // ── LOOKAHEAD — "tomorrow" heads-up (RULING 2026-08-10) ──
+  //
+  // Day-dependent duties (valley checks Tue/Fri, office stock Wed, tenant rent
+  // on the 25th) appear on the card ONLY on their own day, so Friday's work
+  // never clutters Monday's list. The cost of that is no warning — you meet the
+  // duty the morning it's due. This tier buys the warning back for one line in
+  // the briefing, which is the one place a "not today" item can sit without
+  // being mistaken for today's work.
+  //
+  // Daily duties are deliberately excluded: "tomorrow: ADP timecards" every
+  // single morning is precisely the noise this ruling exists to prevent.
+  const tomorrow = shiftDate(today, 1)
+  const lookahead: string[] = []
+  for (const role of roles) {
+    for (const d of duties.filter(x => x.role === role)) {
+      if (d.cadence === 'daily') continue
+      if (!isDutyDueOn(d, tomorrow)) continue
+      // Already shouting about it as a backlog — don't also whisper about it.
+      if (redDutyIds.has(d.id)) continue
+      lookahead.push(roles.length > 1 ? `${d.label} (${nameFor(role)})` : d.label)
+    }
+  }
+  if (lookahead.length > 0) {
+    bullets.push({ color: C_NEUTRAL, text: `Tomorrow: ${lookahead.join(' · ')}` })
+  }
+
   // ── Synopsis — one line, template-based ──
   let synopsis: string
-  if (redTexts.length === 0 && bullets.length === 0) {
+  // Counted, not `bullets.length === 0`: a green "cleared everything" line or a
+  // lookahead heads-up must still read as All clear. Only genuine pressure
+  // (the amber tier) downgrades it.
+  const amberCount = bullets.filter(b => b.color === C_WARM).length
+  if (redTexts.length === 0 && amberCount === 0) {
     synopsis = 'All clear.'
   } else if (redTexts.length === 0) {
     synopsis = 'Nothing slipped — a few things are building, none urgent.'

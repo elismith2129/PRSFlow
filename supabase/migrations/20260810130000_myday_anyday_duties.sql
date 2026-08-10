@@ -39,10 +39,17 @@ alter table myday_duties
 comment on column myday_duties.always_available is
   'Render this duty on the card every day, not only on its due_days. Set for the manager''s valley checks and office stock (RULING 2026-08-10) so they can be done any day while still being EXPECTED on their due days — the grid and briefing keep using due_days. Does not affect when the duty counts as due.';
 
--- Valley checks + office stock: tickable any day, late completion clears the miss.
+-- Valley checks + office stock: late completion clears the miss.
+--
+-- ⚠ This originally also set always_available = true. That was REVERSED hours
+-- later by 20260810140000 (Eli: day-dependent duties must not clutter other
+-- days; the heads-up belongs in the Flo briefing). The write is removed here
+-- rather than only reverted there, because replaying this file would otherwise
+-- silently turn the flag back on weeks from now. dtype stays cumulative — that
+-- part of the ruling stands, and it is what makes a missed Tuesday visible on
+-- Friday instead of vanishing.
 update myday_duties
-   set dtype            = 'cumulative',
-       always_available = true
+   set dtype = 'cumulative'
  where duty_key in ('mgr_valley_checks', 'mgr_office_stock');
 
 -- REPLAY SAFETY: 20260810120000's seed uses ON CONFLICT DO UPDATE and sets

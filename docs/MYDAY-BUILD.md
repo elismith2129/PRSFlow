@@ -84,6 +84,31 @@ template-based ("Quiet day — one thing needs you: X" / "All clear."). Dots use
 status colours per spec §5. Per-viewer: Eli gets cross-role; manager/billing get
 their own. This REPLACES `FLO_STATIC` in `app/(main)/page.tsx`.
 
+**(4) LOOKAHEAD — added by RULING 2026-08-10.** A single neutral line,
+`Tomorrow: Valley checks · Office stock`, last in the list.
+
+Why it exists: day-dependent duties (valley checks Tue/Fri, office stock Wed,
+tenant rent the 25th) render on the card **only on their own day** — Eli's
+ruling, because "I don't want Friday's task cluttering Monday's list," and a
+card that pads itself with other days' work is the failure HR-SPEC §2.2 rule 2
+warns about. The cost is that you meet a weekly duty the morning it lands. This
+tier buys the warning back in the one place a not-today item can sit without
+being mistaken for today's work.
+
+Rules: **daily duties are excluded** (a nightly "tomorrow: ADP timecards" is
+exactly the noise the ruling prevents); a duty already named in the RED tier is
+skipped rather than mentioned twice; the dot is `--c-st-dead` (driftglass), NOT
+warm — warm is lead-temp/tentative only (spec §5, ruling 2026-07-31), and a
+routine heads-up in orange teaches people to ignore orange. A lookahead line
+never downgrades the synopsis from "All clear."
+
+*(Superseded approach, for the record: `myday_duties.always_available` was added
+on 2026-08-10 to show these duties every day so they could be ticked late, then
+reversed the same day by this ruling. The column survives, unused —
+migrations `20260810130000` / `20260810140000`. `dtype` stays `cumulative`:
+that is the tracking, not the scheduling, and it is what makes a missed Tuesday
+surface on Friday as "covering 2 days.")*
+
 ## 6. Surfaces
 
 1. **Dashboard My Day card** — replace `MYDAY_STATIC`: viewer's role card (owner
