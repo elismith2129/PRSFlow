@@ -1972,4 +1972,14 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   border-radius: 0;
 }
 
+/* Always-visible cell fields (Eli 2026-08-07): an empty rentals/payments row
+   read as one long blank bar — nothing said "five fields live here". These
+   inputs keep a persistent wash2 chip in every state so the criteria to fill
+   are obvious; hover/focus don't dim it back to transparent. */
+.c-tin.c-tin-show,
+.c-tin.c-tin-show:hover:not(:disabled),
+.c-tin.c-tin-show:focus {
+  background: var(--c-wash2);
+}
+
 /* ═══ END SOFT SKIN ═════════════════════════════════════════════════════════ */

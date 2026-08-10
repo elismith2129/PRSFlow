@@ -349,6 +349,11 @@ Construction: header = capsule lozenge as now; rows delineated by alternating wa
 (no rules); editable cells are transparent inputs, mono where numeric/time, that show a
 wash fill on hover/focus only; column widths follow content (times must fit "10:00 PM"
 uncut); tiny controls (Day/Hr segment, ✓, ×) stay as-is. Same both themes.
+**AMENDMENT (2026-08-07): data-entry tables whose rows start EMPTY (rentals,
+payments) use `.c-tin-show` — a persistent wash2 chip on every input, all
+states — because a blank transparent row reads as one long bar and nothing
+says "five fields live here." Tables that render existing records (studio
+time) keep the hover/focus-only rule.**
 
 **`IdWell` (RULING 2026-08-02):** short identifier fields (invoice #, PO #, WO #, and any
 field whose content is ~a handful of characters) render as wells with the label INSIDE as

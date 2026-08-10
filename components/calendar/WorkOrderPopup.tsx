@@ -2700,12 +2700,12 @@ export function WorkOrderPopup({
               </div>
               {rentRows.map((r, idx) => (
                 <div key={r.id} className={idx % 2 === 1 ? 'c-trow-alt' : ''} style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', minWidth: isMobile ? 540 : undefined }}>
-                  <div style={cellIn}><input value={r.qty} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, qty: e.target.value } : x))} className="c-tin c-tin-mono" /></div>
-                  <div style={cellIn}><input value={r.item} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, item: e.target.value } : x))} className="c-tin" /></div>
-                  <div style={cellIn}><input value={r.supplier} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, supplier: e.target.value } : x))} className="c-tin" /></div>
-                  <div style={cellIn}><input value={r.dates_used} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, dates_used: e.target.value } : x))} className="c-tin" /></div>
-                  <div style={cellIn}><input value={r.rate} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, rate: e.target.value } : x))} className="c-tin c-tin-mono" style={{ textAlign: 'right' }} /></div>
-                  <div style={cellIn}><input value={r.charge} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, charge: e.target.value } : x))} placeholder="$0.00" className="c-tin c-tin-mono" style={{ textAlign: 'right' }} /></div>
+                  <div style={cellIn}><input value={r.qty} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, qty: e.target.value } : x))} placeholder="—" className="c-tin c-tin-mono c-tin-show" /></div>
+                  <div style={cellIn}><input value={r.item} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, item: e.target.value } : x))} placeholder="Item" className="c-tin c-tin-show" /></div>
+                  <div style={cellIn}><input value={r.supplier} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, supplier: e.target.value } : x))} placeholder="Supplier" className="c-tin c-tin-show" /></div>
+                  <div style={cellIn}><input value={r.dates_used} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, dates_used: e.target.value } : x))} placeholder="Dates" className="c-tin c-tin-show" /></div>
+                  <div style={cellIn}><input value={r.rate} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, rate: e.target.value } : x))} placeholder="—" className="c-tin c-tin-mono c-tin-show" style={{ textAlign: 'right' }} /></div>
+                  <div style={cellIn}><input value={r.charge} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, charge: e.target.value } : x))} placeholder="$0.00" className="c-tin c-tin-mono c-tin-show" style={{ textAlign: 'right' }} /></div>
                   <div style={{ ...cellS, paddingTop: 6, paddingBottom: 6, justifyContent: 'center' }}>
                     {!readOnly && <button type="button" onClick={() => setRentRows(p => p.filter(x => x.id !== r.id))} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>}
                   </div>
@@ -2781,15 +2781,15 @@ export function WorkOrderPopup({
                     return (
                       <div key={p.id} className={idx % 2 === 1 ? 'c-trow-alt' : ''} style={{ display: 'grid', gridTemplateColumns: needsLast4 ? '130px 80px 1fr 70px 24px' : '130px 80px 1fr 24px', alignItems: 'center' }}>
                         <div style={cellS}>
-                          <select value={p.payment_type} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, payment_type: e.target.value, last_four: '' } : x))} className="c-tin" style={{ background: 'transparent', cursor: 'pointer' }}>
+                          <select value={p.payment_type} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, payment_type: e.target.value, last_four: '' } : x))} className="c-tin c-tin-show" style={{ cursor: 'pointer' }}>
                             <option value="">— type —</option>
                             {['Cash', 'Zelle', 'Credit Card', 'Debit Card', 'Check', 'Other'].map(t => <option key={t} value={t}>{t}</option>)}
                           </select>
                         </div>
-                        <div style={cellIn}><input value={p.amount} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x))} onBlur={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: formatCurrency(e.target.value) } : x))} placeholder="0.00" className="c-tin c-tin-mono" /></div>
-                        <div style={cellIn}><input value={p.memo} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))} placeholder="memo" className="c-tin" /></div>
+                        <div style={cellIn}><input value={p.amount} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x))} onBlur={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: formatCurrency(e.target.value) } : x))} placeholder="0.00" className="c-tin c-tin-mono c-tin-show" /></div>
+                        <div style={cellIn}><input value={p.memo} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))} placeholder="memo" className="c-tin c-tin-show" /></div>
                         {needsLast4 && (
-                          <div style={cellIn}><input value={p.last_four} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) } : x))} placeholder="last 4" maxLength={4} className="c-tin c-tin-mono" /></div>
+                          <div style={cellIn}><input value={p.last_four} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) } : x))} placeholder="last 4" maxLength={4} className="c-tin c-tin-mono c-tin-show" /></div>
                         )}
                         <div style={{ ...cellS, paddingTop: 6, paddingBottom: 6, justifyContent: 'center' }}>
                           {!readOnly && <button type="button" onClick={() => setPayRows(p2 => p2.filter(x => x.id !== p.id))} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>}
