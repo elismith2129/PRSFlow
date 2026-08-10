@@ -1592,8 +1592,12 @@ function CalendarPageInner() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
+  // maxHeight, not height: the fixed height dated from the top-nav frame and
+  // forced the grid to stretch past its last row, leaving a black slab of dead
+  // ground below TRACK. Cap = fills tall content, hugs short content.
+  // (44px ≈ the rail-era page-main padding.)
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 52px - 48px)', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 44px)', overflow: 'hidden' }}>
 
       {/* Work-order creation warning — booking saved, but its WO failed to create (non-blocking) */}
       {woWarning && (
