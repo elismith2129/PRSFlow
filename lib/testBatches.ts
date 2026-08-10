@@ -55,6 +55,66 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'soft-rail-dash-2026-08-10',
+    title: 'New look — side menu, dashboard, softer style',
+    version: 'v1.7.0 (preview branch)',
+    date: 'Aug 10, 2026',
+    intro:
+      'Big visual update: the menu moved from the top to the LEFT side, the dashboard is rebuilt, and the whole app has a softer, flatter look. How things WORK has not changed — if something stops saving or a number is wrong, shout. The "My Day" checklist and the Flo briefing on the dashboard are PREVIEW content — the items in them are not real yet. Do every item in light AND dark mode (toggle is at the bottom of the left menu now).',
+    items: [
+      {
+        id: 'rail-links', area: 'Menu', device: 'desktop',
+        what: 'Every item in the left menu opens a page (some say "Coming soon" — that is expected for Daily Ops, Punches, Hiring, Training)',
+        how: 'Click every item in the left menu top to bottom. Report any that error, or land somewhere that looks broken rather than a page or a "Coming soon" card.',
+      },
+      {
+        id: 'rail-mobile', area: 'Menu', device: 'phone',
+        what: 'On a phone there is a top bar with a ≡ button that slides the menu in from the left',
+        how: 'Open the app on your phone. Tap ≡ top right. The menu should slide in; tapping a link should close it and go there. Report if the menu will not open or will not close.',
+      },
+      {
+        id: 'dash-pipeline', area: 'Dashboard', device: 'desktop',
+        what: 'The big PIPELINE number matches how many leads need action in the CRM, and clicking it opens the CRM',
+        how: 'Note the Pipeline number on the dashboard, then open CRM → Needs Action and compare the count. Click the Pipeline block — it should land you in the CRM.',
+      },
+      {
+        id: 'dash-inqbar', area: 'Dashboard', device: 'desktop',
+        what: 'A new web inquiry makes a red pulsing "NEW INQUIRY" bar appear in the Pipeline block without refreshing',
+        how: 'Have someone submit the public inquiry form while you watch the dashboard. The red bar should appear on its own. Open the lead in the CRM; the bar should clear once the lead is moved off uncontacted.',
+      },
+      {
+        id: 'dash-studios', area: 'Dashboard', device: 'desktop',
+        what: 'The four studio cards (PRS/ARS/ERS/TRK) show the right session counts for today',
+        how: 'Compare each card’s number against the calendar for today. Flip the little ‹ › day arrows in Today’s Sessions — the room grid changes day; the studio cards follow the same viewed day.',
+      },
+      {
+        id: 'dash-tasks-personal', area: 'Dashboard', device: 'desktop',
+        what: 'My Tasks shows only YOUR tasks; adding a task assigned to someone else makes it appear on THEIR dashboard, not yours',
+        how: 'Log in as yourself and read the My Tasks list — everything should be assigned to you. Add a task assigned to a teammate, then check with them (or log in as them) that it shows on their dashboard.',
+      },
+      {
+        id: 'dash-rooms', area: 'Dashboard', device: 'desktop',
+        what: 'Booked room cards open the Work Order; empty rooms start a new booking; the PRS · Nadine’s card does nothing',
+        how: 'Click a booked room card (should open the WO), an empty one (should open the calendar’s new-booking flow for that room and day), and Nadine’s (should do nothing — it is display-only for now).',
+      },
+      {
+        id: 'soft-wo', area: 'Work Order', device: 'desktop',
+        what: 'The WO popup looks softer (no sunken/embossed fields) and an empty rentals or payments row shows obvious separate boxes to fill in',
+        how: 'Open any WO. Add a rentals row and a payment row without typing — each should show clearly separated field chips (Qty / Item / Supplier… and type / amount / memo). Report any field you cannot tell is a field.',
+      },
+      {
+        id: 'soft-crm', area: 'CRM', device: 'desktop',
+        what: 'A lead profile fits on one screen — status, contact, session, notes, Activity, Tags and Delete all visible without scrolling',
+        how: 'Open a normal lead (not one with a novel in the notes). Everything from the status pill to the Delete button should be in view. Shrink the window narrower — the session fields should stack instead of clipping.',
+      },
+      {
+        id: 'cal-no-slab', area: 'Calendar', device: 'desktop',
+        what: 'The calendar ends right after the TRACK rows — no big black empty area beneath',
+        how: 'Open the calendar and scroll the grid to the bottom. The page should end at the last studio row. Report any large dead space below it.',
+      },
+    ],
+  },
+  {
     id: 'carved-cal-wo-2026-08-06',
     title: 'New look — calendar and work orders',
     version: 'v1.6.0 (preview branch)',

@@ -2874,3 +2874,43 @@ code was never on `main` at all; `lib/sendMail.ts` did not exist in production. 
 cheap mechanical thing yourself instead of accepting a reasonable-sounding answer to it —
 especially when the person answering is reporting on a branch model with two deployment
 targets.
+
+### August 7–10, 2026 — Phase A built: rail + command-row dashboard; carved retired for SOFT (build session)
+
+**What shipped (all `redesign/carved`, v1.7.0 UNRELEASED — see CHANGELOG for mechanics):**
+the §14 frame (rail app-wide, placeholders, console dashboard), the §2b density law, and —
+the big one — the **soft skin replacing carved app-wide** (§7c).
+
+**Why the layout changed twice in one session.** The §14 console shipped per the approved
+mock, then Eli used it and re-ruled: Needs Action names aren't actionable on the dashboard
+(you work leads in the CRM), so it demoted to the PIPELINE indicator; the four studio cards
+returned; My Day + My Tasks went side-by-side because two stacked to-do lists bury the
+bottom one; the staff name-tabs on tasks were shelved ("not a good system") for a personal
+list — the roster logic stays in `lib/tasks.ts`, unrendered, don't delete it. Mock-first
+worked both times (`dashboard-console-v2-options.html` option A; `dashboard-flat-skins.html`
+option C).
+
+**Why carved died.** Eli lived with it and found the depth distracting at density. Three
+flat skins were mocked against carved; SOFT won (flat raised surfaces + faint drop shadow).
+Implementation is ONE override block at the END of globals.css — deliberately reversible,
+and deliberately not a `data-skin` toggle (Eli decided by looking; a permanent toggle is
+maintenance for a decision already made). **Rejected:** wash (A — things float) and
+hairline (B — repeals the no-lines law entirely).
+
+**Decisions rejected / deferred:**
+- Nadine's as a bookable room — no data model for it; card is display-only until then.
+- Flags/Tasks/WO-Hub rail badges — need shared version-channel hooks (useClientsVersion
+  pattern) to respect the one-channel-per-table rule; CRM reg badge only for now.
+- SOP `VERSIONS` entry — deliberately NOT written this session: the branch is unreleased,
+  and that file is staff-facing per RELEASE. Write it when this merges.
+- Side-by-side Activity/Tags folds on the lead profile — tried, reverted same session
+  (tag chips stacked vertically in the half-width column, folds opened wrong). Stacked, tight, summaries in view.
+
+**Corrections to earlier entries:** the two sandbox-git incidents repeated in miniature —
+even read-only `git status` from the sandbox drops an `index.lock` it can't delete. This
+session switched to `git --no-optional-locks` for ALL read-only git; future sessions should
+do the same from the first command.
+
+**Operational note:** the WO regressions remain the standing top priority per memory/HR-SPEC
+queue rules; nothing in this session touched WO logic (surface only — atomic RPC paths
+untouched).

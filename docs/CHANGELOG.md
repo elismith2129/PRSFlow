@@ -19,6 +19,50 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.7.0 — UNRELEASED (branch `redesign/carved`) — Aug 7–10, 2026
+
+**The §14 frame + the SOFT skin.** One working session (Cowork, single chat — the F/O
+relay is retired per BUILD-HANDOFF). Six pieces:
+
+1. **Side nav rail replaces the top nav app-wide** (`components/layout/Rail.tsx`, slimmed
+   to 176px; `NavGate` now renders it; `app/(main)/layout.tsx` wraps everything in
+   `.c-frame`). Mobile = 52px top bar + hamburger drawer. Theme toggle + Sign Out live in
+   the rail foot. `Nav.tsx` is dead but not deleted.
+2. **Placeholder pages** so every rail link resolves: `/daily-ops`, `/punches`, `/hiring`,
+   `/training` (`PlaceholderPage.tsx`); `/flags` + `/mic-inventory` are thin hosts for the
+   existing admin sections.
+3. **Command-row dashboard** (`app/(main)/page.tsx` rebuilt): PIPELINE indicator (count +
+   heat breakdown + solid-hot pulsing "N NEW INQUIRIES" bar) + 4 studio cards with session
+   counts · console = Flo box (static briefing, Aurora ring — the app's only glow) → My Day
+   (static stub) side-by-side with My Tasks (LIVE, personal — name tabs shelved, logic kept
+   in `lib/tasks.ts`) · staff 14-day grid (static stub) + Flags indicator · 12-room
+   sessions pane (incl. PRS · Nadine's, display-only). **LocationStrip retired** — its
+   drawer (ops approvals) is only in Admin until the Phase B Daily Ops page.
+4. **Density law (spec §2b):** compact primitives site-wide (wells 32px, rows one-line,
+   trimmed paddings), CRM lead rows single-line with metadata right, lead profile fits one
+   viewport, page gutter/panel padding trimmed.
+5. **SOFT SKIN replaces carved (spec §7c):** one override block at the END of
+   `globals.css` — surfaces are flat raised (`--c-srf` + `--c-softsh`), holders are wash
+   fills, no inset anywhere. **Delete that block and carved returns.** Flo ring untouched.
+6. Polish: WO tables get wash gutters + `.c-tin-show` persistent field chips on
+   rentals/payments; client card fields bare + bigger; COD lead card packs like billing;
+   session grid auto-stacks on narrow panels; calendar `height` → `maxHeight` (kills the
+   dead black slab below the last row — stale top-nav math).
+
+**Migrations:** none. **Watch-outs:** (a) the soft block must stay LAST in `globals.css` —
+anything appended after it can re-fight the input-in-well specificity war (see the "NO
+BUBBLES IN BUBBLES" comment); (b) dashboard My Day / Flo briefing / staff grid are FAKE
+static content until the HR layer — don't let staff read them as real; (c) `--bg`-era
+`.c-nav*` CSS and `Nav.tsx` are dead law awaiting deletion; (d) `useIsMobile` is
+desktop-first, so phones paint the desktop rail for one frame.
+
+**Files:** `styles/globals.css`, `components/layout/{Rail,NavGate,PlaceholderPage}.tsx`,
+`app/(main)/{layout,page}.tsx`, `app/(main)/{daily-ops,punches,hiring,training,flags,mic-inventory}/page.tsx`,
+`app/(main)/{crm,calendar}/page.tsx`, `components/calendar/WorkOrderPopup.tsx`,
+`components/shared/ClientPanel.tsx`, `docs/PRSFLO-DESIGN-SPEC.md`, mocks in `docs/design-refs/`.
+
+---
+
 ## v1.6.2 — HOTFIX to `main` — Aug 6, 2026
 
 **New-inquiry email alert.** `lib/sendMail.ts` (new) + `app/api/inquiry/route.ts` +
