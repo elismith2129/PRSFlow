@@ -2448,9 +2448,10 @@ const parsedLoc0 = parseLocation(lead.location || '')
       <div className="c-band">
       <div className="c-band-head">Session</div>
       {/* ─── Session & Quote ─────────────────────────────── */}
-      {/* minmax(0,1fr) + modest gap per §2b: content can never push the sibling
-          column out of the panel (the 48px gap + fixed 1fr did exactly that). */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '6px 14px' }}>
+      {/* auto-fit columns: two-up when the panel affords it, stacked when it
+          doesn't — fixed-width date inputs were overflowing their well into
+          the neighbouring column on narrower screens. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: '6px 14px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div>
             <div style={fieldLabelStyle}>Location · Studio</div>
@@ -2478,7 +2479,6 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 booking's end_date from it when present. */}
             <div style={fieldLabelStyle}>Session Date{local.session_end_date ? 's' : ''}</div>
             <div className="c-well">
-              <span className="c-ico">▦</span>
               <input
                 type="date"
                 value={local.session_date || ''}

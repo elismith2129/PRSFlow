@@ -1888,6 +1888,8 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-input { background: var(--c-wash); box-shadow: none; }
 .c-input:focus { background: var(--c-wash2); }
 .c-well:focus-within, .c-field-inline:focus-within { background: var(--c-wash2); }
+/* Guard: well contents may never bleed into a neighbour, whatever the width. */
+.c-well { overflow: hidden; }
 
 /* Status pools keep their alpha fills — shadowless. */
 .c-pool, [data-theme="light"] .c-pool { box-shadow: none; }
