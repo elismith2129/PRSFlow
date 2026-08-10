@@ -71,6 +71,10 @@ mock-first working method — see Phase B.
 
 ## BUILD ORDER (agreed with Eli)
 
+> **INSERTED 2026-08-10: the next build is MY DAY (operational duties layer) —
+> read `docs/MYDAY-BUILD.md`.** Eli pulled it ahead of Phase B; Phase A (the §14
+> frame) is BUILT and the soft skin (spec §7c) replaced carved app-wide.
+
 **Phase A — the frame first.** Build §14: rail replaces top nav app-wide, new
 dashboard, Flo box (static briefing content, "Ask Flo →" dead for now; My Day duties
 static/stub — no backend yet; Tasks wired to the real `dashboard_tasks` system).

@@ -2914,3 +2914,24 @@ do the same from the first command.
 **Operational note:** the WO regressions remain the standing top priority per memory/HR-SPEC
 queue rules; nothing in this session touched WO logic (surface only — atomic RPC paths
 untouched).
+
+### August 10, 2026 (cont.) — My Day scoped: full operational duties layer (brief written, build handed to next session)
+
+Eli re-scoped My Day from HR compliance to the FULL daily-ops layer for manager +
+billing (ruling recorded in HR-SPEC §2 banner; build brief = docs/MYDAY-BUILD.md).
+Aaron is leaving — "billing" is deliberately a ROLE card, so his successor inherits it.
+Inputs: FD Daily Notes Template.pdf + Billing Coordinator Procedures (EDITED BY AARON).
+**Fernando's verbal explanation of his checklist (kept verbatim as source material):**
+daily per-studio check-in (opener/closer, sessions, yesterday's Slack, check-in;
+office stock list Wednesdays); general to-dos incl. clock-in and runner timecards in
+ADP; deliverables (schedule, QC emails when running); Valley checks Tue+Fri (Valley =
+ARS/ERS/TRK); calendar look-ahead; balances to collect; sessions needing work orders;
+session leads/updates progress tracking; holds list and booked list (each with per-
+session steps — email/calendar/QB/staff for holds; calendar/QB/WO for booked); open
+hours (log/calendar); free-space shift notes. Design insight that shaped the brief:
+his sheet is three things — DUTIES (checkable, cadenced), QUEUES (computable from app
+data — these also feed the Flo briefing, no AI), SCRATCHPAD (leave free). Aaron's doc
+review notes honored: office stock is NOT billing's (he deleted it — stays with
+manager); session-info collection falls to billing when eng/asst leave it blank.
+**Rejected:** building this in the same session (Eli at Fable usage limit — brief
+written here, execution handed to a fresh Opus session per the model-split decision).

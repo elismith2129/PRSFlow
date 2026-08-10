@@ -43,6 +43,14 @@ They share `user_profiles` and nothing else. No foreign keys between the two dom
 
 ## 2. My Day — a new surface, separate from Tasks
 
+> **SCOPE BROADENED (RULING 2026-08-10):** My Day is the FULL daily operations
+> layer for the manager and billing roles — duties + computed queues + shift
+> notes — not only HR compliance. Timecards are one duty inside it; hiring and
+> training stay out (occasional, §6–7 as planned). Build entry point:
+> **`docs/MYDAY-BUILD.md`** (duty templates sourced from FD Daily Notes +
+> the Billing Coordinator Procedures doc). "Billing" is a role — Aaron is
+> departing and his successor inherits the card untouched.
+
 ### 2.1 Why separate
 
 The existing task list merged two different things:
