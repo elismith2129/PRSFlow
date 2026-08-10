@@ -2448,10 +2448,11 @@ const parsedLoc0 = parseLocation(lead.location || '')
       <div className="c-band">
       <div className="c-band-head">Session</div>
       {/* ─── Session & Quote ─────────────────────────────── */}
-      {/* auto-fit columns: two-up when the panel affords it, stacked when it
-          doesn't — fixed-width date inputs were overflowing their well into
-          the neighbouring column on narrower screens. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: '6px 14px' }}>
+      {/* ALWAYS two-up (Eli 2026-08-10: auto-fit stacked everything vertically
+          at real panel widths — the dead-space pattern again). Overflow safety
+          now comes from the well's overflow guard + fixed input widths, not
+          from stacking. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '6px 14px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div>
             <div style={fieldLabelStyle}>Location · Studio</div>
@@ -2545,20 +2546,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
           </div>
         </div>
       </div>
-      {/* Reference .calcline — the derived total, mono and muted. Reads straight
-          off the session fields; it is a RESULT, so it sits bare on the band
-          rather than in a well. */}
-      {(() => {
-        const hrs = calcLeadHours(local.session_start, local.session_end)
-        const rate = detailRateType === 'hourly' ? (local.quote || '') : (local.rate_daily || '')
-        if (!hrs && !rate) return null
-        const total = hrs && rate ? fmtMoney(String(hrs * Number(String(rate).replace(/[^0-9.]/g, '') || 0))) : '—'
-        return (
-          <div className="c-calcline">
-            {hrs ? `${hrs}h` : '—'} × {rate || '—'} = {detailRateType === 'hourly' ? total : (rate || '—')}
-          </div>
-        )
-      })()}
+      {/* (calc line removed — Eli 2026-08-10: noise under the times.) */}
 
       {/* Staffing — Eng / Asst / No Staff plus an optional person. Whatever is
           chosen here seeds every studio-time row in the Work Order, so staff
