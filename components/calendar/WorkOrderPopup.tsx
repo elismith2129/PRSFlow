@@ -14,6 +14,7 @@ import { ClientPanel, type ClientPanelValue } from '@/components/shared/ClientPa
 import { seedStudioTimeRows } from '@/lib/seedStudioTimeRows'
 import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter, getLocalToday } from '@/lib/time'
 import { formatCurrency, stripCurrency } from '@/lib/format'
+import { computeWoTotals } from '@/lib/woTotals'
 import { dbResult } from '@/lib/db'
 import { STUDIO_LOCATIONS } from '@/lib/studios'
 
@@ -1581,18 +1582,22 @@ export function WorkOrderPopup({
 
   // ── Derived totals ─────────────────────────────────────────────────────────
 
-  const stTotal = stRows.reduce((s, r) => s + (r.charge ?? 0) + (r.ot_charge ?? 0), 0)
-  const engTotal = stRows.reduce((s, r) => {
-    const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any)?.engineer_rate || ''
-    const rate = parseFloat(engRateDisplay.replace(/[^0-9.]/g, '')) || 0
-    if (!rate) return s
-    const engHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time) ?? r.eng_hours ?? 0
-    return s + (engHrs > 0 ? parseFloat((engHrs * rate).toFixed(2)) : 0)
-  }, 0)
-  const rentTotal = rentRows.reduce((s, r) => s + (parseFloat(r.charge) || 0), 0)
-  const grandTotal = stTotal + engTotal + rentTotal
-  const totalPaid = payRows.reduce((s, r) => s + (stripCurrency(r.amount) ?? 0), 0)
-  const balanceDue = grandTotal - totalPaid
+  // Money math lives in lib/woTotals (extracted 2026-08-10) so My Day's balances
+  // queue computes a balance the same way this screen displays one. Behaviour is
+  // unchanged — same fallback chain, same rounding.
+  const engRateFallback = liveForm?.engineer_rate || (booking as any)?.engineer_rate || ''
+  const woTotals = computeWoTotals({
+    studioRows: stRows,
+    rentalRows: rentRows,
+    paymentRows: payRows,
+    fallbackEngRate: engRateFallback,
+  })
+  const stTotal = woTotals.studio
+  const engTotal = woTotals.engineer
+  const rentTotal = woTotals.rentals
+  const grandTotal = woTotals.grand
+  const totalPaid = woTotals.paid
+  const balanceDue = woTotals.balance
   const sessionDates = Array.from(new Set(stRows.map(r => r.date).filter(Boolean))).sort()
 
   // ── Styles ────────────────────────────────────────────────────────────────
