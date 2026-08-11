@@ -8,6 +8,7 @@ import { calcHours, getLocalToday } from '@/lib/time'
 import { dbResult } from '@/lib/db'
 import { useStaffPools } from '@/components/shared/StaffPicker'
 import { formatCurrency, stripCurrency } from '@/lib/format'
+import { findMissingTimes } from '@/lib/woValidation'
 
 const STUDIO_META: Record<string, { label: string; abbr: string }> = {
   paramount: { label: 'Paramount', abbr: 'PRS' },
@@ -765,6 +766,9 @@ export default function RunnerWOPage() {
   )
 
   const isCompleted = wo?.status === 'completed'
+  // Rows missing session or staff times. Derived, not state — it must track the
+  // rows as they're typed rather than go stale behind them.
+  const missingTimes = findMissingTimes(stRows)
   const isCOD = (booking?.payment_type ?? wo?.payment_status ?? '').toString().toUpperCase() === 'COD'
 
   return (
@@ -1536,6 +1540,30 @@ export default function RunnerWOPage() {
 
       {/* Footer — Cancel | Save */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: 'var(--bg)', borderTop: '1px solid var(--border)' }}>
+        {/* MISSING TIMES WARNING (RULING 2026-08-10).
+            WARNS, does not block — this page's only action is Save, and a runner
+            mid-session often genuinely has no end time yet. Blocking Save would
+            cost them everything else they'd typed. The hard stop lives on the
+            admin side, where Complete WO refuses (lib/woValidation, same rule
+            both places so the two can't disagree about what "done" means).
+            Recomputed from live rows, so it clears itself as they fill them in. */}
+        {missingTimes.length > 0 && (
+          <div
+            role="alert"
+            style={{
+              background: 'rgba(239,68,68,0.13)', color: 'var(--hot)',
+              borderRadius: 10, padding: '9px 11px', marginBottom: 8,
+              fontSize: 11, lineHeight: 1.45, fontFamily: 'Inter', fontWeight: 600,
+            }}
+          >
+            {missingTimes.length === 1
+              ? 'One row is missing times — please fill it in:'
+              : `${missingTimes.length} rows are missing times — please fill them in:`}
+            <div style={{ marginTop: 3, fontWeight: 500, opacity: 0.9 }}>
+              {missingTimes.map(p => `${p.where} (${p.fields.join(', ')})`).join(' · ')}
+            </div>
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={() => router.push(`/runner/${studio}`)}

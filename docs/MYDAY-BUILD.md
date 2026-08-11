@@ -124,6 +124,26 @@ surface on Friday as "covering 2 days.")*
    rail placement: top group, after Dashboard ("My Day") — confirm with Eli.
    Do NOT name it Daily Ops (name is taken — HR-SPEC §2.5a).
 
+   > **DEFERRED 2026-08-10 — do not build this without asking Eli first.**
+   > A richer model was proposed and explicitly cut the same day: the full page
+   > would own the work, sub-steps would roll up so a multi-step duty completed
+   > itself, and an override with a required reason would cover edge cases —
+   > the reasoning being that a checkbox standing for four things gets ticked
+   > without the four things happening. Eli's call: *"let's skip this and just
+   > make it checkboxes on the dashboard. no logic. i got too much to build to
+   > sort through bugs and special case scenarios here."*
+   >
+   > **Current shipped behaviour: the dashboard card is plain checkboxes, no
+   > roll-up, no auto-completion, no override.** `sub_items` is populated in the
+   > seed and rendered nowhere. The lazy-tick risk is accepted, knowingly.
+   >
+   > Already built and idle, available whenever this is picked up: every queue
+   > in §3 (`fetchNeedsWoQueue`, `fetchBalancesQueue`, `fetchHoldsQueue`,
+   > `fetchBookedQueue`, `fetchOpenHoursQueue`), the step-tick storage
+   > (`myday_queue_steps` + `setQueueStep`), and the scratchpad
+   > (`myday_notes` + `fetchNotes`/`saveNotes`). None of it is wired to a
+   > surface; none of it costs anything sitting there.
+
 ## 7. Build order (commit-sized; tsc clean before every hand-off line)
 
 1. Migration + seed (§4) — Eli runs SQL before any dependent push.
