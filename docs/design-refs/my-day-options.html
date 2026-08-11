@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — /my-day layout options</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  /MY-DAY — LAYOUT OPTIONS (drawn 2026-08-10, for Eli to pick)
+
+  Three takes on the full My Day workspace. Content is identical in all three;
+  only the arrangement differs. Pick one (tweaks expected), then it gets built.
+
+  SCOPE, as ruled 2026-08-10: plain checkboxes. No roll-up from sub-steps, no
+  auto-completion, no override flow. Sub-items render as a reference list under
+  a duty, NOT as separate ticks — showing them without wiring them is the
+  compromise that keeps a multi-step duty honest without building the logic.
+
+  CADENCE — confirmed behaviour: daily duties show every day; weekly only on
+  their weekday(s); monthly only on their date. Quarterly does not exist yet.
+  ⚠ THE OPEN QUESTION: an overdue weekly/monthly duty is currently INVISIBLE
+  until its next due date. Each option therefore includes an OVERDUE band at the
+  top — that band is the thing to say yes or no to, not just the layout.
+
+  Soft skin (spec §7c): flat --srf surfaces + --softsh. No carving, no borders
+  (Law 1). Density law §2b: compact, ~10 rows visible, nothing scrolls that
+  shouldn't. Mock polarity is INVERTED vs the app (mock dark = data-theme=dark).
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626;
+  --st-hot:#ff5a4d; --hot-text:#fff4f2;
+  --st-warm:#ffa94d; --st-cold:#5fc9e8; --st-booked:#43dfae;
+  --st-uncon:#7fb2e5; --st-dead:#cfd6d4;
+  --ivory:#d5d0c2; --flo-ink:42,39,34;
+  --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+  --ctlsh:0 1px 2px rgba(42,39,34,.10);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --flo-ink:213,208,194; --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  --ctlsh:0 1px 3px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);
+  font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+
+/* ── chrome (mock only) ─────────────────────────────────────────────── */
+.bar{position:sticky;top:0;z-index:9;display:flex;align-items:center;gap:8px;
+  padding:10px 20px;background:var(--bg);box-shadow:0 1px 0 var(--wash)}
+.bar .ctl{padding:5px 12px;border-radius:99px;background:var(--wash);
+  font-size:11.5px;font-weight:700;box-shadow:var(--ctlsh)}
+.bar .ctl.on{background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .bar .ctl.on{background:var(--ivory);color:#1b1a17}
+.bar .grow{flex:1}
+.optlbl{padding:2px 20px 12px;font-size:12px;opacity:.55}
+
+.frame{display:flex;min-height:100vh}
+.rail{width:176px;flex-shrink:0;padding:14px 8px 12px 10px;display:flex;flex-direction:column;
+  gap:2px;background:var(--wash)}
+.rail .wm{font-family:'Archivo Black',sans-serif;letter-spacing:-.02em;font-size:15px;padding:2px 10px 10px}
+.rail .wm .flo{opacity:.45}
+.rail a{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:11px;
+  font-size:12.5px;font-weight:600;opacity:.55}
+.rail a.on{opacity:1;background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .rail a.on{background:var(--ivory);color:#1b1a17}
+.rail .grp{margin-top:11px;padding:0 10px 4px}
+.main{flex:1;min-width:0;padding:14px 20px 28px;max-width:1180px}
+
+.hbar{display:flex;align-items:center;gap:16px;padding:2px 4px 14px}
+.hbar h1{font-family:'Archivo Black',sans-serif;font-size:26px;letter-spacing:-.03em;line-height:1.05}
+.grow{flex:1}
+.seg{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);
+  box-shadow:var(--ctlsh)}
+.seg button{padding:4px 12px;border-radius:99px;font-size:11.5px;font-weight:700;opacity:.6}
+.seg button.on{opacity:1;background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .seg button.on{background:var(--ivory);color:#1b1a17}
+.datechip{padding:6px 13px;border-radius:99px;background:var(--wash2);
+  font-family:'Archivo Black',sans-serif;font-size:11px;letter-spacing:.04em}
+.datechip small{display:block;font-family:ui-monospace,monospace;font-size:9.5px;opacity:.6;letter-spacing:0}
+
+/* ── shared pieces ──────────────────────────────────────────────────── */
+.pane{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:12px}
+.lozenge{display:flex;align-items:baseline;justify-content:space-between;border-radius:99px;
+  padding:7px 14px;margin-bottom:9px;font-size:10px;font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase;background:var(--wash2)}
+:root .lozenge{background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .lozenge{background:var(--wash2);color:var(--fg)}
+.lozenge .ct{font-family:ui-monospace,monospace;font-size:10px;opacity:.7;letter-spacing:0}
+
+.duty{display:flex;align-items:flex-start;gap:9px;padding:6px 10px;border-radius:10px;margin-bottom:2px}
+.duty:hover{background:var(--wash)}
+.bx{width:15px;height:15px;border-radius:5px;background:var(--wash2);flex-shrink:0;margin-top:2px;
+  display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1}
+.duty.done .bx{background:var(--st-booked);color:var(--chip-ink)}
+.duty.done .tx{opacity:.42;text-decoration:line-through}
+.tx{font-size:12.5px;flex:1;min-width:0}
+.steps{font-size:10.5px;opacity:.5;margin-top:1px;line-height:1.45}
+.cap{width:56px;padding:2px 7px;border-radius:7px;background:var(--wash2);
+  font-family:ui-monospace,monospace;font-size:10px;text-align:right;flex-shrink:0}
+.due{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  opacity:.45;flex-shrink:0;margin-top:3px}
+.prog{font-family:ui-monospace,monospace;font-size:10.5px;opacity:.55;flex-shrink:0}
+
+/* the overdue band — the thing to approve or reject */
+.od{background:color-mix(in srgb,var(--st-hot) 13%,transparent);border-radius:14px;
+  padding:9px 12px;margin-bottom:12px}
+.od .hd{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--st-hot);margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.od .duty:hover{background:transparent}
+.od .scope{font-size:10px;opacity:.6;font-family:ui-monospace,monospace}
+
+/* queues */
+.q{margin-bottom:3px;border-radius:11px;background:var(--wash);padding:8px 10px}
+.qhd{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700}
+.qhd .n{font-family:ui-monospace,monospace;font-size:11px;padding:1px 7px;border-radius:99px;
+  background:var(--wash2);flex-shrink:0}
+.qhd .amt{margin-left:auto;font-family:ui-monospace,monospace;font-size:11px;opacity:.6}
+.qrow{display:flex;align-items:center;gap:8px;padding:5px 2px 1px;font-size:11.5px}
+.qrow .who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.8}
+.step{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--wash2);
+  opacity:.55;flex-shrink:0}
+.step.on{background:var(--st-booked);color:var(--chip-ink);opacity:1}
+.notes{width:100%;min-height:64px;border-radius:11px;background:var(--wash);padding:9px 11px;
+  font:400 12px/1.55 inherit;color:var(--fg);resize:vertical;outline:none;border:none}
+
+.view{display:none}.view.on{display:block}
+.two{display:grid;grid-template-columns:1.25fr 1fr;gap:12px;align-items:start}
+.stack{display:flex;flex-direction:column;gap:12px}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <button class="ctl on" id="bA" onclick="show('A')">A · Sectioned</button>
+  <button class="ctl" id="bB" onclick="show('B')">B · Workbench</button>
+  <button class="ctl" id="bC" onclick="show('C')">C · Single worklist</button>
+  <span class="grow"></span>
+  <button class="ctl" onclick="flip()" id="themeBtn">View light</button>
+</div>
+<div class="optlbl" id="optlbl">A · Sectioned — duties by cadence, queues below. Closest to the spec's Today / This week / This month.</div>
+
+<div class="frame">
+<nav class="rail">
+  <span class="wm">PRS<span class="flo">FLO</span></span>
+  <a>▦ Dashboard</a><a class="on">◑ My Day</a><a>▤ Calendar</a><a>◔ Daily Ops</a>
+  <div class="grp label">Business</div>
+  <a>◎ CRM</a><a>▽ WO Hub</a><a>✓ Tasks</a><a>⚑ Flags</a>
+</nav>
+
+<main class="main">
+  <div class="hbar">
+    <div>
+      <span class="label" style="display:block;margin-bottom:3px">Monday, August 10</span>
+      <h1>My Day</h1>
+    </div>
+    <div class="grow"></div>
+    <span class="seg"><button class="on">Fernando</button><button>Aaron</button></span>
+    <div class="datechip">MON, AUG 10<small>9:12 AM</small></div>
+  </div>
+
+  <!-- ══════════════════════════ A · SECTIONED ══════════════════════════ -->
+  <div class="view on" id="A">
+    <div class="od">
+      <div class="hd"><span class="dot" style="background:var(--st-hot)"></span>Overdue — 2</div>
+      <div class="duty"><span class="bx"></span><span class="tx">Valley checks (ARS · ERS · TRK)
+        <div class="scope">was due Fri Aug 7 · covering 2 days</div></span></div>
+      <div class="duty"><span class="bx"></span><span class="tx">Office stock
+        <div class="scope">was due Wed Aug 5 · covering 2 days</div></span></div>
+    </div>
+
+    <div class="two">
+      <div class="stack">
+        <div class="pane">
+          <div class="lozenge">Today <span class="ct">3 / 8</span></div>
+          <div class="duty done"><span class="bx">✓</span><span class="tx">Studio check-in — Paramount (PRS)
+            <div class="steps">Opener/closer confirmed · Today's sessions reviewed · Yesterday's Slack read · Check-in done</div></span></div>
+          <div class="duty done"><span class="bx">✓</span><span class="tx">Studio check-in — Ameraycan (ARS)
+            <div class="steps">Opener/closer · Sessions reviewed · Slack read · Check-in done</div></span></div>
+          <div class="duty"><span class="bx"></span><span class="tx">Studio check-in — Encore (ERS)
+            <div class="steps">Opener/closer · Sessions reviewed · Slack read · Check-in done · Mustard's start time</div></span></div>
+          <div class="duty"><span class="bx"></span><span class="tx">Studio check-in — Track (TRK)
+            <div class="steps">Opener/closer · Sessions reviewed · Slack read · Check-in done · Cleaning shift</div></span></div>
+          <div class="duty done"><span class="bx">✓</span><span class="tx">ADP runner timecards</span><input class="cap mono" value="4"></div>
+          <div class="duty"><span class="bx"></span><span class="tx">Deliverables / schedule</span></div>
+          <div class="duty"><span class="bx"></span><span class="tx">Calendar look-ahead</span></div>
+          <div class="duty"><span class="bx"></span><span class="tx">Staff tasks review</span></div>
+        </div>
+
+        <div class="pane">
+          <div class="lozenge">This week <span class="ct">0 / 2</span></div>
+          <div class="duty"><span class="bx"></span><span class="tx">Valley checks (ARS · ERS · TRK)</span><span class="due">Tue · Fri</span></div>
+          <div class="duty"><span class="bx"></span><span class="tx">Office stock</span><span class="due">Wed</span></div>
+        </div>
+
+        <div class="pane">
+          <div class="lozenge">Shift notes</div>
+          <span class="label" style="display:block;margin-bottom:5px">Session notes</span>
+          <textarea class="notes" placeholder="Anything the next shift needs to know…"></textarea>
+          <span class="label" style="display:block;margin:9px 0 5px">Studio notes</span>
+          <textarea class="notes" placeholder="Rooms, gear, maintenance…"></textarea>
+        </div>
+      </div>
+
+      <div class="pane">
+        <div class="lozenge">Queues <span class="ct">live</span></div>
+        <div class="q"><div class="qhd"><span class="n">3</span>Sessions needing WOs</div>
+          <div class="qrow"><span class="who">Aug 10 · PRS B · Kestrel</span></div>
+          <div class="qrow"><span class="who">Aug 10 · ARS A · Harbor / Vantage</span></div>
+          <div class="qrow"><span class="who">Aug 11 · ERS B · Mustard</span></div></div>
+        <div class="q"><div class="qhd"><span class="n">4</span>Balances outstanding<span class="amt">$12,400</span></div>
+          <div class="qrow"><span class="who">INV-2214 · Vantage Records</span><span class="mono" style="opacity:.6">$5,200</span></div>
+          <div class="qrow"><span class="who">INV-2209 · Kestrel</span><span class="mono" style="opacity:.6">$3,850</span></div></div>
+        <div class="q"><div class="qhd"><span class="n">2</span>Holds</div>
+          <div class="qrow"><span class="who">Aug 14 · TRK N · Sable</span>
+            <span class="step on">Email</span><span class="step">Cal</span><span class="step">QB</span><span class="step">Staff</span></div>
+          <div class="qrow"><span class="who">Aug 19 · PRS A · Lantern</span>
+            <span class="step">Email</span><span class="step">Cal</span><span class="step">QB</span><span class="step">Staff</span></div></div>
+        <div class="q"><div class="qhd"><span class="n">5</span>Booked pipeline</div>
+          <div class="qrow"><span class="who">Aug 12 · PRS C · Meridian</span>
+            <span class="step on">Cal</span><span class="step on">QB</span><span class="step">WO</span></div></div>
+        <div class="q"><div class="qhd"><span class="n">1</span>Open hours</div>
+          <div class="qrow"><span class="who">Aug 13 · ERS A</span>
+            <span class="step">Log</span><span class="step">Cal</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ B · WORKBENCH ══════════════════════════ -->
+  <div class="view" id="B">
+    <div class="od">
+      <div class="hd"><span class="dot" style="background:var(--st-hot)"></span>Overdue — 2</div>
+      <div class="duty"><span class="bx"></span><span class="tx">Valley checks <span class="scope">· due Fri Aug 7 · covering 2 days</span></span></div>
+      <div class="duty"><span class="bx"></span><span class="tx">Office stock <span class="scope">· due Wed Aug 5 · covering 2 days</span></span></div>
+    </div>
+
+    <div class="two">
+      <div class="pane">
+        <div class="lozenge">Duties <span class="ct">3 / 10</span></div>
+        <span class="label" style="display:block;padding:4px 10px 3px">Today</span>
+        <div class="duty done"><span class="bx">✓</span><span class="tx">Studio check-in — Paramount (PRS)
+          <div class="steps">Opener/closer · Sessions reviewed · Slack read · Check-in done</div></span></div>
+        <div class="duty done"><span class="bx">✓</span><span class="tx">Studio check-in — Ameraycan (ARS)</span></div>
+        <div class="duty"><span class="bx"></span><span class="tx">Studio check-in — Encore (ERS)
+          <div class="steps">…plus Mustard's start time</div></span></div>
+        <div class="duty"><span class="bx"></span><span class="tx">Studio check-in — Track (TRK)
+          <div class="steps">…plus cleaning shift</div></span></div>
+        <div class="duty done"><span class="bx">✓</span><span class="tx">ADP runner timecards</span><input class="cap mono" value="4"></div>
+        <div class="duty"><span class="bx"></span><span class="tx">Deliverables / schedule</span></div>
+        <div class="duty"><span class="bx"></span><span class="tx">Calendar look-ahead</span></div>
+        <div class="duty"><span class="bx"></span><span class="tx">Staff tasks review</span></div>
+        <span class="label" style="display:block;padding:10px 10px 3px">This week</span>
+        <div class="duty"><span class="bx"></span><span class="tx">Valley checks</span><span class="due">Tue · Fri</span></div>
+        <div class="duty"><span class="bx"></span><span class="tx">Office stock</span><span class="due">Wed</span></div>
+      </div>
+
+      <div class="stack">
+        <div class="pane">
+          <div class="lozenge">Needs a work order <span class="ct">3</span></div>
+          <div class="qrow"><span class="who">Aug 10 · PRS B · Kestrel</span><span class="step">Create</span></div>
+          <div class="qrow"><span class="who">Aug 10 · ARS A · Harbor / Vantage</span><span class="step">Create</span></div>
+          <div class="qrow"><span class="who">Aug 11 · ERS B · Mustard</span><span class="step">Create</span></div>
+        </div>
+        <div class="pane">
+          <div class="lozenge">Balances <span class="ct">$12,400</span></div>
+          <div class="qrow"><span class="who">INV-2214 · Vantage Records</span><span class="mono" style="opacity:.6">$5,200</span></div>
+          <div class="qrow"><span class="who">INV-2209 · Kestrel</span><span class="mono" style="opacity:.6">$3,850</span></div>
+          <div class="qrow"><span class="who">INV-2201 · Sable</span><span class="mono" style="opacity:.6">$2,150</span></div>
+          <div class="qrow"><span class="who">INV-2198 · Lantern</span><span class="mono" style="opacity:.6">$1,200</span></div>
+        </div>
+        <div class="pane">
+          <div class="lozenge">Holds <span class="ct">2</span></div>
+          <div class="qrow"><span class="who">Aug 14 · TRK N · Sable</span>
+            <span class="step on">Email</span><span class="step">Cal</span><span class="step">QB</span><span class="step">Staff</span></div>
+          <div class="qrow"><span class="who">Aug 19 · PRS A · Lantern</span>
+            <span class="step">Email</span><span class="step">Cal</span><span class="step">QB</span><span class="step">Staff</span></div>
+        </div>
+        <div class="pane">
+          <div class="lozenge">Shift notes</div>
+          <textarea class="notes" placeholder="Session notes…"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════ C · SINGLE WORKLIST ═══════════════════════ -->
+  <div class="view" id="C">
+    <div class="pane" style="padding:14px 16px">
+      <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:10px">
+        <span class="arch" style="font-size:30px;letter-spacing:-.02em">7</span>
+        <div><div style="font-size:13px;font-weight:700">things left today</div>
+          <div style="font-size:11.5px;opacity:.55">5 duties · 3 sessions need WOs · 2 overdue</div></div>
+      </div>
+
+      <div class="od" style="margin-bottom:10px">
+        <div class="hd"><span class="dot" style="background:var(--st-hot)"></span>Overdue</div>
+        <div class="duty"><span class="bx"></span><span class="tx">Valley checks <span class="scope">· 2 days</span></span></div>
+        <div class="duty"><span class="bx"></span><span class="tx">Office stock <span class="scope">· 2 days</span></span></div>
+      </div>
+
+      <div class="duty"><span class="bx"></span><span class="tx">Studio check-in — Encore (ERS)
+        <div class="steps">Opener/closer · Sessions reviewed · Slack read · Check-in done · Mustard's start time</div></span></div>
+      <div class="duty"><span class="bx"></span><span class="tx">Studio check-in — Track (TRK)
+        <div class="steps">Opener/closer · Sessions reviewed · Slack read · Check-in done · Cleaning shift</div></span></div>
+      <div class="duty"><span class="bx"></span><span class="tx">Deliverables / schedule</span></div>
+      <div class="duty"><span class="bx"></span><span class="tx">Calendar look-ahead</span></div>
+      <div class="duty"><span class="bx"></span><span class="tx">Staff tasks review</span></div>
+
+      <div style="margin-top:12px">
+        <div class="q"><div class="qhd"><span class="n">3</span>Sessions needing WOs</div>
+          <div class="qrow"><span class="who">Aug 10 · PRS B · Kestrel</span><span class="step">Create</span></div>
+          <div class="qrow"><span class="who">Aug 10 · ARS A · Harbor / Vantage</span><span class="step">Create</span></div>
+          <div class="qrow"><span class="who">Aug 11 · ERS B · Mustard</span><span class="step">Create</span></div></div>
+        <div class="q"><div class="qhd"><span class="n">4</span>Balances outstanding<span class="amt">$12,400</span></div></div>
+        <div class="q"><div class="qhd"><span class="n">2</span>Holds</div></div>
+        <div class="q"><div class="qhd"><span class="n">5</span>Booked pipeline</div></div>
+      </div>
+    </div>
+
+    <div class="pane" style="margin-top:12px">
+      <div class="lozenge">Done today <span class="ct">3</span></div>
+      <div class="duty done"><span class="bx">✓</span><span class="tx">Studio check-in — Paramount (PRS)</span></div>
+      <div class="duty done"><span class="bx">✓</span><span class="tx">Studio check-in — Ameraycan (ARS)</span></div>
+      <div class="duty done"><span class="bx">✓</span><span class="tx">ADP runner timecards</span><span class="mono" style="opacity:.5;font-size:10.5px">4 cleared</span></div>
+    </div>
+
+    <div class="pane" style="margin-top:12px">
+      <div class="lozenge">Shift notes</div>
+      <textarea class="notes" placeholder="Session notes…"></textarea>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<script>
+var LBL={
+  A:"A · Sectioned — duties grouped by cadence (Today / This week), queues in their own column. Closest to the spec's three-section shape; most scannable, tallest.",
+  B:"B · Workbench — one duty list on the left, each queue as its own pane on the right. Queues get room to breathe; balances and WOs are readable at a glance.",
+  C:"C · Single worklist — one 'what's left' list merging duties and queue counts, with completed work moved below. Shortest and most phone-like; hides structure."
+};
+function show(v){
+  ['A','B','C'].forEach(function(k){
+    document.getElementById(k).classList.toggle('on',k===v);
+    document.getElementById('b'+k).classList.toggle('on',k===v);
+  });
+  document.getElementById('optlbl').textContent=LBL[v];
+}
+function flip(){
+  var h=document.documentElement;
+  var n=h.getAttribute('data-theme')==='light'?'dark':'light';
+  h.setAttribute('data-theme',n);
+  document.getElementById('themeBtn').textContent=n==='light'?'View dark':'View light';
+}
+</script>
+</body>
+</html>

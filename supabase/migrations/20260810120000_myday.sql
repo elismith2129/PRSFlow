@@ -280,12 +280,13 @@ values
    '[{"key":"invoices_updated","label":"Invoices updated"}]'::jsonb,
    '[]'::jsonb, 30),
 
-  -- Point, not cumulative: this is about TODAY's confirmed sessions. Sessions
-  -- that slipped through are caught by the needs-WO queue (MYDAY-BUILD §3),
-  -- which is where the backlog actually lives — a counter here would double-count.
-  ('bil_create_wos', 'billing',
-   'Create WOs for today''s confirmed sessions',
-   'daily', null, 'point', '[]'::jsonb, '[]'::jsonb, 40),
+  -- (REMOVED 2026-08-10: 'bil_create_wos' — "Create WOs for today's confirmed
+  --  sessions". The procedures doc it came from describes the pre-PRSFlo
+  --  workflow; work orders have been created automatically at booking-save
+  --  since 2026-06-30 (lib/createWorkOrder.ts), so the duty was a checkbox that
+  --  was always already true. Retired on the live DB by migration
+  --  20260810150000; deleted from this seed so a fresh database never creates
+  --  it. The needs-a-WO queue survives as an exception report.)
 
   -- The three-number duty the captures/captured deviation exists for.
   -- Typed by hand in Phase 1; computed when the QBO integration lands (HR-SPEC §4).
