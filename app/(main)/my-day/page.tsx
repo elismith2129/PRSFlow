@@ -33,11 +33,11 @@ import { formatCurrency } from '@/lib/format'
 import {
   fetchDuties, fetchEntries, buildDutyViews, progressLabel, backlogScopeLabel,
   completeDuty, uncompleteDuty, setDutyCaptured,
-  fetchNeedsWoQueue, fetchBalancesQueue, fetchHoldsQueue, fetchBookedQueue,
+  fetchBalancesQueue, fetchHoldsQueue, fetchBookedQueue,
   fetchQueueSteps, setQueueStep, fetchNotes, saveNotes, fetchStaffGrid,
   fetchBillingBrief, shortDayLabel, QUEUE_STEPS,
   type MyDayRole, type MyDayDuty, type MyDayEntry, type DutyView,
-  type NeedsWoItem, type BalanceItem, type QueueBookingItem, type BillingBrief,
+  type BalanceItem, type QueueBookingItem, type BillingBrief,
 } from '@/lib/myday'
 
 type ViewAs = MyDayRole
@@ -59,7 +59,6 @@ export default function MyDayPage() {
 
   const [duties, setDuties] = useState<MyDayDuty[]>([])
   const [entries, setEntries] = useState<MyDayEntry[]>([])
-  const [needsWo, setNeedsWo] = useState<NeedsWoItem[]>([])
   const [balances, setBalances] = useState<BalanceItem[]>([])
   const [holds, setHolds] = useState<QueueBookingItem[]>([])
   const [booked, setBooked] = useState<QueueBookingItem[]>([])
@@ -85,19 +84,22 @@ export default function MyDayPage() {
     })
 
     // Queues differ by role — each person gets the ones they act on, not all of
-    // them. Manager: holds + booked pipeline. Billing: WOs + money + holds.
+    // them. Manager: holds + booked pipeline. Billing: money + holds.
     const [h, bk] = await Promise.all([fetchHoldsQueue(), fetchBookedQueue()])
     setHolds(h)
     setBooked(bk)
 
     if (role === 'billing') {
-      const [nw, bal] = await Promise.all([fetchNeedsWoQueue(), fetchBalancesQueue()])
-      setNeedsWo(nw)
-      setBalances(bal)
+      // No needs-a-work-order pane. Work orders are created automatically at
+      // booking-save, so in normal operation this is ALWAYS empty — a pane that
+      // is permanently zero is furniture, and Aaron would learn to skip past
+      // that whole column. When it isn't empty something has broken (a failed
+      // create), and a broken thing belongs in the briefing where it gets
+      // noticed, not in a list nobody reads. composeBriefing already raises it.
+      setBalances(await fetchBalancesQueue())
       setBrief(null)
     } else {
       setBrief(await fetchBillingBrief(today))
-      setNeedsWo([])
       setBalances([])
     }
 
@@ -250,20 +252,6 @@ export default function MyDayPage() {
               <div style={{ fontSize: 10.5, opacity: 0.5, marginTop: 8, padding: '0 3px', lineHeight: 1.5 }}>
                 * Payments recorded in PRSFlo only — anything zeroed straight into QuickBooks isn&apos;t counted yet.
               </div>
-            </div>
-          )}
-
-          {/* Billing only. An exception report, not a work list: work orders are
-              created automatically at booking-save, so this should normally be
-              empty — it appears when something slipped through. */}
-          {role === 'billing' && needsWo.length > 0 && (
-            <div className="c-panel">
-              <div className="c-lozenge"><b>Needs a work order</b><span className="c-ct">{needsWo.length}</span></div>
-              {needsWo.map(n => (
-                <div key={n.bookingId} className="c-qrow">
-                  <span className="c-who">{shortDayLabel(n.date)} · {n.studio} · {n.artist || n.client}</span>
-                </div>
-              ))}
             </div>
           )}
 
