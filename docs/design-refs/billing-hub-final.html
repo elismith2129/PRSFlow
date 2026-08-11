@@ -131,6 +131,10 @@ button,input{font:inherit;color:var(--fg);background:none;border:none}
 .p-need{background:var(--st-warm)} .p-appr{background:var(--st-uncon)}
 .p-po{background:var(--st-cold)} .p-sent{background:var(--st-dead)}
 .p-paid{background:var(--st-booked)} .p-bal{background:var(--st-hot);color:var(--hot-text)}
+/* Closed is DEAD/driftglass — deliberately the quietest thing on the page. It
+   is neither a problem nor an achievement; it is out of play. */
+.p-closed{background:var(--st-dead)}
+.reason{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;opacity:.45;flex-shrink:0}
 
 .row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:11px;font-size:12px}
 .row:hover{background:var(--wash)}
@@ -220,6 +224,13 @@ var BUCKETS=[
   {key:'sent', label:'Sent & open',    pill:'p-sent'},
   {key:'cod',  label:'COD with balance',pill:'p-bal'},
   {key:'paid', label:'Paid',           pill:'p-paid'},
+  // CLOSED — written off + voided (RULING 2026-08-11, Eli: "just make a bucket
+  // to toss em into so we can reference and move them out of the normal
+  // pipelines"). ONE bucket, but the REASON is recorded per row: written off
+  // means money was owed and collection was abandoned (bad debt); voided means
+  // the invoice should never have existed (a correction). Same drawer, different
+  // meaning to an accountant — collapsing them would lose that permanently.
+  {key:'closed',label:'Closed',        pill:'p-closed'},
 ];
 function P(b){for(var i=0;i<BUCKETS.length;i++)if(BUCKETS[i].key===b)return BUCKETS[i];return BUCKETS[0]}
 
@@ -247,12 +258,20 @@ var DATA=[
   {wo:'WO-1172',b:'paid',c:'Mustard',s:'Jul 27 · ERS B',amt:0,age:'—',wod:1,inv:1},
   {wo:'WO-1170',b:'paid',c:'Harbor',s:'Jul 25 · PRS C',amt:0,age:'—',wod:1,inv:1},
   {wo:'WO-1167',b:'paid',c:'Lantern',s:'Jul 21 · TRK N',amt:0,age:'—',wod:1,inv:1},
-  {wo:'WO-1164',b:'paid',c:'Meridian',s:'Jul 18 · PRS A',amt:0,age:'—',wod:1,inv:1}
+  {wo:'WO-1164',b:'paid',c:'Meridian',s:'Jul 18 · PRS A',amt:0,age:'—',wod:1,inv:1},
+  {wo:'WO-1141',b:'closed',c:'Northgate Music',s:'Jun 12 · PRS B',amt:2400,age:'60d',wod:1,inv:1,reason:'Written off'},
+  {wo:'WO-1133',b:'closed',c:'Sable',s:'Jun 3 · ERS A',amt:0,age:'—',wod:1,inv:0,reason:'Voided'}
 ];
 
 var PER_PAGE=10, tab='need', page=1;
 
 function money(n){return n===0?'—':'$'+n.toLocaleString('en-US')}
+
+/** Everything still in play. Closed invoices are excluded from the summary
+ *  numbers, from aging and from "All" — leaving them in would mean written-off
+ *  debt kept counting as outstanding forever, which is exactly what taking them
+ *  out of the pipeline is for. They remain fully searchable. */
+function active(){ return DATA.filter(function(d){return d.b!=='closed'}) }
 
 function matches(d,q){
   var hay=(d.wo+' '+d.c+' '+d.s+' '+P(d.b).label).toLowerCase();
@@ -268,8 +287,10 @@ function render(){
   // SEARCH OVERRIDES THE TAB. Searching within a bucket would reproduce the
   // folder-hunting this page exists to kill — you look for a client, not for a
   // client-in-a-folder.
+  // Search still spans EVERYTHING, closed included — the whole point of the
+  // bucket is that you can still find these.
   var list = searching ? DATA.filter(function(d){return matches(d,q)})
-                       : DATA.filter(function(d){return d.b===tab});
+                       : (tab==='all' ? active() : DATA.filter(function(d){return d.b===tab}));
 
   var pages=Math.max(1,Math.ceil(list.length/PER_PAGE));
   if(page>pages)page=1;
@@ -288,6 +309,7 @@ function render(){
         +'<span class="inv">'+d.wo+'</span>'
         +'<span class="who"><b>'+d.c+'</b> <span>· '+d.s+'</span></span>'
         + (searching?'<span class="inbucket">'+p.label+'</span>':'')
+        + (d.reason?'<span class="reason">'+d.reason+'</span>':'')
         +'<span class="pill '+p.pill+'">'+p.label+'</span>'
         +'<span class="doc'+(d.wod?' on':'')+'">WO '+(d.wod?'✓':'—')+'</span>'
         +'<span class="doc'+(d.inv?' on':'')+'">INV '+(d.inv?'✓':'—')+'</span>'
@@ -317,7 +339,7 @@ function renderTabs(){
     var n=DATA.filter(function(d){return d.b===b.key}).length;
     return '<span class="tab'+(b.key===tab?' on':'')+'" onclick="goTab(\''+b.key+'\')">'
       +b.label+' <span class="n">'+n+'</span></span>';
-  }).join('') + '<span class="tab'+(tab==='all'?' on':'')+'" onclick="goTab(\'all\')">All <span class="n">'+DATA.length+'</span></span>';
+  }).join('') + '<span class="tab'+(tab==='all'?' on':'')+'" onclick="goTab(\'all\')">All <span class="n">'+active().length+'</span></span>';
 }
 
 function goTab(t){
@@ -334,6 +356,7 @@ function goTab(t){
       var p=P(d.b);
       return '<div class="row'+(d.od?' od':'')+'"><span class="inv">'+d.wo+'</span>'
         +'<span class="who"><b>'+d.c+'</b> <span>· '+d.s+'</span></span>'
+        + (d.reason?'<span class="reason">'+d.reason+'</span>':'')
         +'<span class="pill '+p.pill+'">'+p.label+'</span>'
         +'<span class="doc'+(d.wod?' on':'')+'">WO '+(d.wod?'✓':'—')+'</span>'
         +'<span class="doc'+(d.inv?' on':'')+'">INV '+(d.inv?'✓':'—')+'</span>'
