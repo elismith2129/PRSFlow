@@ -281,6 +281,28 @@ This applies to all new tables going forward. Existing tables are unaffected unt
 ## 2. Future Considerations
 *Things to think about when we get to a specific chunk. Don't build now, but don't forget.*
 
+### 🚨 GO-LIVE BLOCKER — the backup covers the database, not the files (raised Aug 11, 2026)
+
+`scripts/backup.mjs` copies **17 database tables** to Google Drive nightly. It never
+touches **Supabase Storage**. So today there is NO backup of:
+`checklist-photos` (runner NA photos, dashboard-task photos, flag photos) ·
+`client-ids` (customer ID scans) · expense receipts · WO signature images.
+
+**Why it happened, honestly:** the script was written to answer "what if we lose the
+database", and storage was never in scope. Nobody revisited it when private buckets were
+added in July. The irony is that the database ALSO has Supabase PITR behind it, so the
+protected thing got a second copy and the unprotected thing got none.
+
+**Eli's ruling (Aug 11, 2026): everything must be backed up before go-live.** Not
+optional, not deferred. Also a hard prerequisite for the AR work — `docs/AR-SCOPING.md`
+proposes replacing the Dropbox invoice archive, and Dropbox is currently doing backup duty
+as well as filing duty. Replacing only the filing half would leave the sole copy of the
+studio's financial documents unprotected.
+
+Scope when built: enumerate every bucket via the storage API, download and upload
+alongside the table dumps, keep the same 7-day rotation, and fail loudly (the current
+script only `exit(1)`s on a Drive upload failure).
+
 ### Chunk 6 — Calendar (in progress)
 - **Calendar is live at `/calendar`.** Week/2-week view with all 11 studio rooms visible by default. Lane assignment for overlapping same-day bookings. Block always reserves click zone at the bottom to add new bookings.
 - **Booking form** supports: client search, session type, status, payment type (COD/Billing), engineer + assistant (search or free-text), rate hourly/daily toggle, notes.

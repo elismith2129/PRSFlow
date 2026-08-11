@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Billing hub (FINAL)</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  BILLING HUB — APPROVED LAYOUT (Eli picked option A, 2026-08-11)
+  Supersedes billing-hub-options.html, which stays for history.
+  Replaces /wo-hub AND the Dropbox folder system.
+
+  ELI'S AMENDMENTS TO OPTION A (all applied here):
+    1. SEARCH ACROSS ALL BUCKETS — "these lists can get long." The search box is
+       deliberately NOT scoped to the open tab: you search for a client, not for
+       a client-in-a-folder, and having to guess the bucket first is the exact
+       Dropbox problem this replaces. Searching switches the view to results and
+       shows which bucket each hit lives in.
+    2. PAGINATION AT 10.
+    3. B's COLOUR CODING carried in — every row gets its status pill.
+
+  SEARCH + TABS TOGETHER — the resolution: tabs filter, search overrides. Typing
+  ignores the active tab entirely; clearing the box returns you to it. Anything
+  else (search-within-tab) reproduces the folder-hunting it exists to kill.
+
+  THE IDEA: the Dropbox folders are a status field maintained by hand. Six
+  folders, six states. Turn them into states on the work order and the filing
+  disappears — the window you already look at becomes the app.
+
+  COMPLETE IS NOT AN END. work_orders.status is open|completed today, and
+  completing is a dead end: the money conversation leaves for QuickBooks. Here,
+  completing PROMOTES the WO into the invoice track.
+
+    COD      →  With balance  →  Paid
+    Billing  →  Needs approval  →  Approved  →  [Awaiting PO]  →  Sent  →  Paid
+
+  DOCUMENTS: upload only the QuickBooks invoice PDF. PRSFlo already renders the
+  WO as a PDF (window.print + @media print in WorkOrderPopup), so it staples the
+  two on demand. Scan-and-combine is deleted, not digitised.
+
+  AUTOMATIC vs MANUAL — the honest split:
+    · COD buckets are DERIVED (lib/woTotals.ts already computes the balance).
+    · Billing buckets are MANUAL until QuickBooks is connected. Nothing here can
+      know a cheque cleared three weeks ago; pretending otherwise produces a
+      confidently wrong AR screen.
+
+  STATUS COLOURS are spec §5 tokens, no new palette:
+    needs approval → warm · awaiting PO → cold · sent → dead (neutral, in flight)
+    paid → booked · balance owed / 31+ days → hot (hot is dual-purpose: critical)
+
+  ⚠ PREREQUISITE: this makes PRSFlo the only copy of the studio's financial
+  documents, and scripts/backup.mjs does NOT back up Supabase storage.
+  See PROJECT_LOG §2 GO-LIVE BLOCKER. Do not ship before that is fixed.
+
+  Soft skin (§7c). No borders (Law 1). Mock polarity INVERTED vs the app.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626;
+  --st-hot:#ff5a4d; --hot-text:#fff4f2;
+  --st-warm:#ffa94d; --st-cold:#5fc9e8; --st-booked:#43dfae;
+  --st-uncon:#7fb2e5; --st-dead:#cfd6d4;
+  --ivory:#d5d0c2; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+  --ctlsh:0 1px 2px rgba(42,39,34,.10);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  --ctlsh:0 1px 3px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:var(--fg);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.grow{flex:1}
+
+.bar{position:sticky;top:0;z-index:9;display:flex;align-items:center;gap:8px;padding:10px 20px;background:var(--bg);box-shadow:0 1px 0 var(--wash)}
+.bar .ctl{padding:5px 12px;border-radius:99px;background:var(--wash);font-size:11.5px;font-weight:700;box-shadow:var(--ctlsh);cursor:pointer}
+
+.frame{display:flex;min-height:100vh}
+.rail{width:176px;flex-shrink:0;padding:14px 8px 12px 10px;display:flex;flex-direction:column;gap:2px;background:var(--wash)}
+.rail .wm{font-family:'Archivo Black',sans-serif;letter-spacing:-.02em;font-size:15px;padding:2px 10px 10px}
+.rail .wm .flo{opacity:.45}
+.rail a{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:11px;font-size:12.5px;font-weight:600;opacity:.55}
+.rail a.on{opacity:1;background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .rail a.on{background:var(--ivory);color:#1b1a17}
+.rail .grp{margin-top:11px;padding:0 10px 4px}
+.main{flex:1;min-width:0;padding:14px 20px 28px;max-width:1180px}
+
+.hbar{display:flex;align-items:center;gap:16px;padding:2px 4px 14px}
+.hbar h1{font-family:'Archivo Black',sans-serif;font-size:26px;letter-spacing:-.03em;line-height:1.05}
+
+.pane{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:12px}
+.lozenge{display:flex;align-items:baseline;justify-content:space-between;border-radius:99px;padding:7px 14px;margin-bottom:9px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;background:var(--wash2)}
+:root .lozenge{background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .lozenge{background:var(--wash2);color:var(--fg)}
+.lozenge .ct{font-family:ui-monospace,monospace;font-size:10px;opacity:.7;letter-spacing:0}
+
+.sum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--srf);box-shadow:var(--softsh);border-radius:14px;padding:10px 12px}
+.stat .n{font-family:'Archivo Black',sans-serif;font-size:20px;letter-spacing:-.02em}
+.stat .k{font-size:10px;opacity:.55;margin-top:1px}
+.stat.alert .n{color:var(--st-hot)}
+
+/* SEARCH — spans every bucket. Sits ABOVE the tabs on purpose: it outranks them. */
+.searchrow{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.search{flex:1;display:flex;align-items:center;gap:8px;background:var(--wash);border-radius:99px;padding:8px 14px}
+.search:focus-within{background:var(--wash2)}
+.search input{flex:1;outline:none;font-size:12.5px}
+.search .ic{opacity:.4;font-size:12px}
+.search .clr{opacity:.45;font-size:11px;font-weight:700;cursor:pointer}
+.search .clr:hover{opacity:.9}
+
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tab{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;background:var(--wash);font-size:12px;font-weight:700;box-shadow:var(--ctlsh);cursor:pointer}
+.tab.on{background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .tab.on{background:var(--ivory);color:#1b1a17}
+.tab .n{font-family:ui-monospace,monospace;font-size:10.5px;opacity:.65}
+.tab.on .n{opacity:.75}
+.tabs.dim{opacity:.35;pointer-events:none}
+
+/* status pill — solid fill + chip ink (spec §5). Carried over from option B. */
+.pill{display:inline-flex;align-items:center;border-radius:99px;padding:2px 9px;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--chip-ink);flex-shrink:0;white-space:nowrap}
+.p-need{background:var(--st-warm)} .p-appr{background:var(--st-uncon)}
+.p-po{background:var(--st-cold)} .p-sent{background:var(--st-dead)}
+.p-paid{background:var(--st-booked)} .p-bal{background:var(--st-hot);color:var(--hot-text)}
+
+.row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:11px;font-size:12px}
+.row:hover{background:var(--wash)}
+.row .inv{font-family:ui-monospace,monospace;font-size:11px;opacity:.6;width:66px;flex-shrink:0}
+.row .who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .who b{font-weight:700}
+.row .who span{opacity:.5;font-size:11px}
+.row .amt{font-family:ui-monospace,monospace;font-size:11.5px;flex-shrink:0;width:74px;text-align:right}
+.row .age{font-family:ui-monospace,monospace;font-size:10px;opacity:.45;width:44px;text-align:right;flex-shrink:0}
+.row.od .amt{color:var(--st-hot);font-weight:700}
+.doc{font-size:9px;font-weight:700;opacity:.4;flex-shrink:0;width:42px}
+.doc.on{opacity:.8}
+.act{font-size:9.5px;font-weight:700;padding:3px 10px;border-radius:99px;background:var(--wash2);opacity:.75;flex-shrink:0;cursor:pointer}
+.act:hover{opacity:1}
+/* Which bucket a search hit lives in — only rendered in results. */
+.inbucket{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.4;flex-shrink:0}
+
+.pager{display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:9px 6px 2px;font-size:11px}
+.pager .pg{padding:3px 9px;border-radius:99px;background:var(--wash2);font-size:10.5px;font-weight:700;cursor:pointer;opacity:.7}
+.pager .pg.on{background:var(--fg);color:var(--bg);opacity:1}
+[data-theme="dark"] .pager .pg.on{background:var(--ivory);color:#1b1a17}
+.pager .info{margin-right:auto;opacity:.45;font-family:ui-monospace,monospace;font-size:10.5px}
+.note{font-size:11px;opacity:.5;padding:9px 4px 0;line-height:1.5}
+.empty{padding:18px 10px;font-size:12px;opacity:.5;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span style="font-size:12px;opacity:.55">Billing hub — search, tabs and pagination are LIVE in this mock. Try searching "vantage" or "kestrel".</span>
+  <span class="grow"></span>
+  <button class="ctl" onclick="flip()" id="themeBtn">View light</button>
+</div>
+
+<div class="frame">
+<nav class="rail">
+  <span class="wm">PRS<span class="flo">FLO</span></span>
+  <a>▦ Dashboard</a><a>◑ My Day</a><a>▤ Calendar</a><a>◔ Daily Ops</a>
+  <div class="grp label">Business</div>
+  <a>◎ CRM</a><a class="on">▽ Billing</a><a>✓ Tasks</a><a>⚑ Flags</a>
+</nav>
+
+<main class="main">
+  <div class="hbar">
+    <div>
+      <span class="label" style="display:block;margin-bottom:3px">Work orders &amp; invoices</span>
+      <h1>Billing</h1>
+    </div>
+    <div class="grow"></div>
+  </div>
+
+  <div class="sum">
+    <div class="stat"><div class="n">$20,850</div><div class="k">Outstanding</div></div>
+    <div class="stat"><div class="n">$38,150</div><div class="k">Received this month</div></div>
+    <!-- "Waiting on approval", not "Waiting on you" (Eli, 2026-08-11). Two
+         reasons: the stat should name the STATE, not assume who is reading it;
+         and Aaron and Fernando open this page too, for whom "you" is simply
+         wrong. Same instinct as the labels-from-the-roster rule elsewhere. -->
+    <div class="stat"><div class="n">3</div><div class="k">Waiting on approval</div></div>
+    <div class="stat alert"><div class="n">1</div><div class="k">Over 31 days</div></div>
+  </div>
+
+  <div class="searchrow">
+    <div class="search">
+      <span class="ic">⌕</span>
+      <input id="q" placeholder="Search every bucket — client, artist, invoice #, WO #, room…" oninput="render()">
+      <span class="clr" id="clr" style="display:none" onclick="clearQ()">clear ✕</span>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="pane">
+    <div class="lozenge"><b id="hdTitle">Needs approval</b><span class="ct" id="hdCount"></span></div>
+    <div id="rows"></div>
+    <div class="pager" id="pager"></div>
+    <div class="note" id="note">WO ✓ = the work order PDF PRSFlo already generates. INV = the QuickBooks invoice you upload. With both present, one button staples them — no scanning, no combining.</div>
+  </div>
+</main>
+</div>
+
+<script>
+// ─── Demo data ───────────────────────────────────────────────────────────────
+var BUCKETS=[
+  {key:'need', label:'Needs approval', pill:'p-need'},
+  {key:'po',   label:'Awaiting PO',    pill:'p-po'},
+  {key:'sent', label:'Sent & open',    pill:'p-sent'},
+  {key:'cod',  label:'COD with balance',pill:'p-bal'},
+  {key:'paid', label:'Paid',           pill:'p-paid'},
+];
+function P(b){for(var i=0;i<BUCKETS.length;i++)if(BUCKETS[i].key===b)return BUCKETS[i];return BUCKETS[0]}
+
+var DATA=[
+  {wo:'WO-1188',b:'need',c:'Vantage Records',s:'Kestrel · Aug 8 · PRS B',amt:5200,age:'3d',wod:1,inv:0},
+  {wo:'WO-1186',b:'need',c:'Interscope',s:'Meridian · Aug 7 · ARS A',amt:2650,age:'4d',wod:1,inv:1},
+  {wo:'WO-1185',b:'need',c:'Sable',s:'Aug 6 · TRK N',amt:1200,age:'5d',wod:1,inv:0},
+  {wo:'WO-1181',b:'po',c:'Def Jam',s:'Harbor · Aug 1 · PRS A',amt:4100,age:'10d',wod:1,inv:1},
+  {wo:'WO-1174',b:'po',c:'Interscope Japan',s:'Lantern · Jul 28 · ERS B',amt:3300,age:'14d',wod:1,inv:1},
+  {wo:'WO-1169',b:'sent',c:'Vantage Records',s:'Jul 22 · sent 18d ago',amt:2150,age:'18d',wod:1,inv:1},
+  {wo:'WO-1152',b:'sent',c:'Kestrel',s:'Jul 9 · sent 33d ago',amt:1800,age:'33d',wod:1,inv:1,od:1},
+  {wo:'WO-1166',b:'sent',c:'Mustard',s:'Jul 19 · sent 21d ago',amt:900,age:'21d',wod:1,inv:1},
+  {wo:'WO-1163',b:'sent',c:'Def Jam',s:'Jul 17 · sent 24d ago',amt:600,age:'24d',wod:1,inv:1},
+  {wo:'WO-1160',b:'sent',c:'Harbor',s:'Jul 15 · sent 26d ago',amt:450,age:'26d',wod:1,inv:1},
+  {wo:'WO-1158',b:'sent',c:'Lantern',s:'Jul 14 · sent 27d ago',amt:300,age:'27d',wod:1,inv:1},
+  {wo:'WO-1191',b:'cod',c:'Mustard',s:'Aug 10 · ERS A',amt:450,age:'1d',wod:1,inv:0,od:1},
+  {wo:'WO-1189',b:'cod',c:'Private — J. Okafor',s:'Aug 9 · PRS C',amt:300,age:'2d',wod:1,inv:0,od:1},
+  {wo:'WO-1190',b:'paid',c:'Harbor',s:'Aug 9 · COD',amt:0,age:'—',wod:1,inv:1},
+  {wo:'WO-1187',b:'paid',c:'Meridian',s:'Aug 7 · ARS B',amt:0,age:'—',wod:1,inv:1},
+  {wo:'WO-1184',b:'paid',c:'Vantage Records',s:'Aug 5 · PRS A',amt:0,age:'—',wod:1,inv:1},
+  {wo:'WO-1182',b:'paid',c:'Kestrel',s:'Aug 3 · TRK S',amt:0,age:'—',wod:1,inv:1},
+  {wo:'WO-1180',b:'paid',c:'Sable',s:'Aug 1 · ERS A',amt:0,age:'—',wod:1,inv:1},
+  {wo:'WO-1178',b:'paid',c:'Interscope',s:'Jul 30 · PRS B',amt:0,age:'—',wod:1,inv:1},
+  {wo:'WO-1176',b:'paid',c:'Def Jam',s:'Jul 29 · ARS A',amt:0,age:'—',wod:1,inv:1},
+  {wo:'WO-1172',b:'paid',c:'Mustard',s:'Jul 27 · ERS B',amt:0,age:'—',wod:1,inv:1},
+  {wo:'WO-1170',b:'paid',c:'Harbor',s:'Jul 25 · PRS C',amt:0,age:'—',wod:1,inv:1},
+  {wo:'WO-1167',b:'paid',c:'Lantern',s:'Jul 21 · TRK N',amt:0,age:'—',wod:1,inv:1},
+  {wo:'WO-1164',b:'paid',c:'Meridian',s:'Jul 18 · PRS A',amt:0,age:'—',wod:1,inv:1}
+];
+
+var PER_PAGE=10, tab='need', page=1;
+
+function money(n){return n===0?'—':'$'+n.toLocaleString('en-US')}
+
+function matches(d,q){
+  var hay=(d.wo+' '+d.c+' '+d.s+' '+P(d.b).label).toLowerCase();
+  return hay.indexOf(q)>-1;
+}
+
+function render(){
+  var q=document.getElementById('q').value.trim().toLowerCase();
+  var searching=q.length>0;
+  document.getElementById('clr').style.display=searching?'inline':'none';
+  document.getElementById('tabs').className='tabs'+(searching?' dim':'');
+
+  // SEARCH OVERRIDES THE TAB. Searching within a bucket would reproduce the
+  // folder-hunting this page exists to kill — you look for a client, not for a
+  // client-in-a-folder.
+  var list = searching ? DATA.filter(function(d){return matches(d,q)})
+                       : DATA.filter(function(d){return d.b===tab});
+
+  var pages=Math.max(1,Math.ceil(list.length/PER_PAGE));
+  if(page>pages)page=1;
+  var slice=list.slice((page-1)*PER_PAGE,page*PER_PAGE);
+
+  document.getElementById('hdTitle').textContent = searching ? 'Search results' : P(tab).label;
+  var owed=list.reduce(function(s,d){return s+d.amt},0);
+  document.getElementById('hdCount').textContent =
+    list.length+(owed>0?' · $'+owed.toLocaleString('en-US'):'');
+
+  document.getElementById('rows').innerHTML = slice.length===0
+    ? '<div class="empty">Nothing here.</div>'
+    : slice.map(function(d){
+      var p=P(d.b);
+      return '<div class="row'+(d.od?' od':'')+'">'
+        +'<span class="inv">'+d.wo+'</span>'
+        +'<span class="who"><b>'+d.c+'</b> <span>· '+d.s+'</span></span>'
+        + (searching?'<span class="inbucket">'+p.label+'</span>':'')
+        +'<span class="pill '+p.pill+'">'+p.label+'</span>'
+        +'<span class="doc'+(d.wod?' on':'')+'">WO '+(d.wod?'✓':'—')+'</span>'
+        +'<span class="doc'+(d.inv?' on':'')+'">INV '+(d.inv?'✓':'—')+'</span>'
+        +'<span class="amt">'+money(d.amt)+'</span>'
+        +'<span class="age">'+d.age+'</span>'
+        + (d.b==='need'?'<button class="act">Approve</button>':'')
+        +'</div>';
+    }).join('');
+
+  // Pagination at 10.
+  var pg='';
+  if(pages>1){
+    pg+='<span class="info">'+((page-1)*PER_PAGE+1)+'–'+Math.min(page*PER_PAGE,list.length)+' of '+list.length+'</span>';
+    for(var i=1;i<=pages;i++) pg+='<span class="pg'+(i===page?' on':'')+'" onclick="goPage('+i+')">'+i+'</span>';
+  } else if(list.length>0){
+    pg='<span class="info">'+list.length+' of '+list.length+'</span>';
+  }
+  document.getElementById('pager').innerHTML=pg;
+
+  document.getElementById('note').textContent = searching
+    ? 'Searching every bucket, not just the open tab — each result shows which bucket it lives in. Clear the search to go back to the tabs.'
+    : 'WO ✓ = the work order PDF PRSFlo already generates. INV = the QuickBooks invoice you upload. With both present, one button staples them — no scanning, no combining.';
+}
+
+function renderTabs(){
+  document.getElementById('tabs').innerHTML = BUCKETS.map(function(b){
+    var n=DATA.filter(function(d){return d.b===b.key}).length;
+    return '<span class="tab'+(b.key===tab?' on':'')+'" onclick="goTab(\''+b.key+'\')">'
+      +b.label+' <span class="n">'+n+'</span></span>';
+  }).join('') + '<span class="tab'+(tab==='all'?' on':'')+'" onclick="goTab(\'all\')">All <span class="n">'+DATA.length+'</span></span>';
+}
+
+function goTab(t){
+  tab=t; page=1;
+  if(t==='all'){ DATA.__all=1 }
+  renderTabs();
+  // "All" is just an unfiltered list.
+  if(t==='all'){
+    var q=document.getElementById('q');
+    q.value=''; render();
+    var list=DATA;
+    document.getElementById('hdTitle').textContent='All invoices';
+    document.getElementById('rows').innerHTML=list.slice(0,PER_PAGE).map(function(d){
+      var p=P(d.b);
+      return '<div class="row'+(d.od?' od':'')+'"><span class="inv">'+d.wo+'</span>'
+        +'<span class="who"><b>'+d.c+'</b> <span>· '+d.s+'</span></span>'
+        +'<span class="pill '+p.pill+'">'+p.label+'</span>'
+        +'<span class="doc'+(d.wod?' on':'')+'">WO '+(d.wod?'✓':'—')+'</span>'
+        +'<span class="doc'+(d.inv?' on':'')+'">INV '+(d.inv?'✓':'—')+'</span>'
+        +'<span class="amt">'+money(d.amt)+'</span><span class="age">'+d.age+'</span></div>';
+    }).join('');
+    var pages=Math.ceil(DATA.length/PER_PAGE),pg='<span class="info">1–'+PER_PAGE+' of '+DATA.length+'</span>';
+    for(var i=1;i<=pages;i++)pg+='<span class="pg'+(i===1?' on':'')+'">'+i+'</span>';
+    document.getElementById('pager').innerHTML=pg;
+    document.getElementById('hdCount').textContent=DATA.length;
+    return;
+  }
+  render();
+}
+function goPage(p){page=p;render()}
+function clearQ(){document.getElementById('q').value='';page=1;render()}
+function flip(){
+  var h=document.documentElement;
+  var n=h.getAttribute('data-theme')==='light'?'dark':'light';
+  h.setAttribute('data-theme',n);
+  document.getElementById('themeBtn').textContent=n==='light'?'View dark':'View light';
+}
+renderTabs();render();
+</script>
+</body>
+</html>

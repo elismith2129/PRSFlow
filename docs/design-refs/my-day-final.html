@@ -125,11 +125,13 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
 .due{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
   opacity:.45;flex-shrink:0;margin-top:3px}
 
-.od{background:color-mix(in srgb,var(--st-hot) 13%,transparent);border-radius:14px;
-  padding:9px 12px;margin-bottom:12px}
-.od .hd{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
-  color:var(--st-hot);margin-bottom:5px;display:flex;align-items:center;gap:6px}
-.od .duty:hover{background:transparent}
+/* OVERDUE, in place. No separate band: an item that moves to the top of the
+   page tells you something is late and then makes you hunt for it. It stays
+   exactly where it lives and just says so. */
+.duty.late{background:color-mix(in srgb,var(--st-hot) 11%,transparent)}
+.duty.late .bx{background:color-mix(in srgb,var(--st-hot) 30%,transparent)}
+.late-tag{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--st-hot);flex-shrink:0;margin-top:3px}
 .scope{font-size:10px;opacity:.6;font-family:ui-monospace,monospace}
 
 .qrow{display:flex;align-items:center;gap:8px;padding:5px 6px;font-size:11.5px;border-radius:8px}
@@ -198,12 +200,6 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
 
   <!-- ═══════════════════════ FERNANDO · MANAGER ═══════════════════════ -->
   <div class="role on" id="F">
-    <div class="od">
-      <div class="hd"><span class="dot" style="background:var(--st-hot)"></span>Overdue — 2</div>
-      <div class="duty"><span class="bx"></span><span class="tx">Valley checks (ARS · ERS · TRK) <span class="scope">· due Fri Aug 7 · covering 2 days</span></span></div>
-      <div class="duty"><span class="bx"></span><span class="tx">Office stock <span class="scope">· due Wed Aug 5 · covering 2 days</span></span></div>
-    </div>
-
     <div class="two">
       <div class="pane">
         <div class="lozenge">Duties <span class="ct">3 / 9</span></div>
@@ -219,7 +215,7 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
         <div class="duty"><span class="bx"></span><span class="tx">Deliverables / schedule</span></div>
         <div class="duty"><span class="bx"></span><span class="tx">Staff tasks review</span></div>
         <span class="label" style="display:block;padding:10px 10px 3px">This week</span>
-        <div class="duty"><span class="bx"></span><span class="tx">Valley checks</span><span class="due">Tue · Fri</span></div>
+        <div class="duty late"><span class="bx"></span><span class="tx">Valley checks <span class="scope">· covering 2 days</span></span><span class="late-tag">Overdue</span></div>
         <div class="duty"><span class="bx"></span><span class="tx">Office stock</span><span class="due">Wed</span></div>
         <div class="bnote">Calendar look-ahead was cut 2026-08-10. Staff tasks review and ADP timecards stay.</div>
       </div>
@@ -262,11 +258,6 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
 
   <!-- ═══════════════════════ AARON · BILLING ═══════════════════════════ -->
   <div class="role" id="A">
-    <div class="od">
-      <div class="hd"><span class="dot" style="background:var(--st-hot)"></span>Overdue — 1</div>
-      <div class="duty"><span class="bx"></span><span class="tx">COD invoicing + outstanding follow-up <span class="scope">· covering 3 days</span></span></div>
-    </div>
-
     <div class="two">
       <div class="pane">
         <div class="lozenge">Duties <span class="ct">2 / 7</span></div>
@@ -282,7 +273,7 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
         <div class="duty"><span class="bx"></span><span class="tx">Ramp weekly report</span></div>
         <div class="duty"><span class="bx"></span><span class="tx">Open / sent-invoice follow-up list</span></div>
         <span class="label" style="display:block;padding:10px 10px 3px">This month</span>
-        <div class="duty" style="opacity:.45"><span class="bx"></span><span class="tx">Create tenant rent invoices</span><span class="due">25th</span></div>
+        <div class="duty late"><span class="bx"></span><span class="tx">Create tenant rent invoices <span class="scope">· was due Aug 25</span></span><span class="late-tag">36 days late · ASAP</span></div>
       </div>
 
       <div class="stack">

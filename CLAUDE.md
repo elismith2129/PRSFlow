@@ -37,9 +37,28 @@ Rules:
 - **`clients` has a SHARED channel — `hooks/useClientsVersion.ts`. Never open another one.** One module-level `clients-shared` channel exposes a version counter; consumers do `useEffect(() => { load() }, [load, clientsVersion])`. Consumers: `RegistrationBanner`, `RegistrationsView`, `ClientsPageInner`, Nav reg badge. This is the generalized form of the `leadsVersion` pattern — reach for it any time a third surface needs the same table.
 - Tables must be in the supabase_realtime publication with REPLICA IDENTITY FULL before subscriptions will fire — see supabase/realtime-publication.sql for the pattern
 
-## End-of-session wrap-up (do all four)
+## End-of-session wrap-up (do all six)
 
-When Eli says to update logs / wrap up / push everything, ALL of these happen together — they're one ritual, not four optional chores:
+When Eli says to update logs / wrap up / push everything, ALL of these happen together — they're one ritual, not six optional chores:
+
+**0. TELL ELI TO RUN A MANUAL BACKUP on `redesign/carved`** — Actions → Daily Backup →
+Run workflow → **switch the branch dropdown to `redesign/carved`** (it defaults to `main`).
+This is FIRST because it is the only one that protects data rather than describing it.
+
+**Why this is needed at all:** a scheduled workflow ALWAYS runs from the default branch.
+So the nightly 8am cron executes `main`'s copy of `scripts/backup.mjs` — which as of
+2026-08-11 is still the old version: 17 hardcoded tables, and **no Supabase Storage at
+all**. The rewritten script (every table discovered from the API, every bucket mirrored)
+lives on `redesign/carved` and cannot run on a schedule from there. Running the workflow
+manually against the branch is the stopgap.
+
+**This is a stopgap and it depends on someone remembering.** The real fix is merging
+`scripts/backup.mjs` to `main` on its own — it is a standalone Node script with no imports
+from the app, so it cannot affect anything staff see, and the "nothing to `main` until
+staff testing is finished" rule is about the redesign, not about this. Until that happens,
+every day without a manual run is a day where new client ID scans, runner photos, flag
+photos, receipts and the ~15 newer tables have no backup anywhere. Remove this step the
+moment the script is on `main`.
 
 1. **`docs/PROJECT_LOG.md`** — dated session entry. Record *why*, not just what; note decisions rejected and the reason (that's what stops a future session re-litigating them). Correct any earlier entry this session proved wrong.
 2. **`docs/CHANGELOG.md`** — a **developer-facing** entry per **version**, newest first. Must state **migrations**, **watch-outs** (the thing that will bite the next person) and files touched. This is the handoff document: it answers "what changed in vX and what do I need to know", which PROJECT_LOG can't because it's organised by session.
