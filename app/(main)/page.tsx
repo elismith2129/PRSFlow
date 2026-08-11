@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase, Lead, Booking, DashboardTask, DashboardTaskComment, Flag, FlagComment, UserProfile } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
@@ -15,6 +15,19 @@ import { PRSFloIcon } from '@/components/PRSFloIcon'
 import { useWebInquiries } from '@/components/notifications/WebInquiryProvider'
 import { SignedImage } from '@/components/shared/SignedImage'
 import { fmtTimestamp } from '@/lib/format'
+import { getLocalToday } from '@/lib/time'
+import {
+  loadMyDayDashboard, fetchStaffGrid, completeDuty, uncompleteDuty, setDutyCaptured,
+  backlogScopeLabel, BACKLOG_FLAG_THRESHOLD,
+  type MyDayRole, type MyDayDashboard, type GridRow, type DutyView,
+} from '@/lib/myday'
+
+/**
+ * Dashboard view-as (§14b + RULING 2026-08-10). 'eli' is OVERSIGHT, not a
+ * person's duty card — the briefing goes cross-role and the staff grid appears.
+ * 'fernando' and 'aaron' map to the manager and billing duty cards.
+ */
+type ViewAs = 'eli' | 'fernando' | 'aaron'
 
 // Needs Action predicates — mirror the CRM (app/(main)/crm/page.tsx) bucket logic
 // so the dashboard surfaces the same leads as the CRM Needs Action tab.
@@ -87,61 +100,11 @@ const LOC_CHIPS = [
   { code: 'TRK', venue: 'Track' },
 ]
 
-// ─── STATIC console content (§14c/§14b) ──────────────────────────────────────
-// The Flo briefing, My Day duties and staff grid are PLACEHOLDERS copied from
-// docs/design-refs/dashboard-final.html — they go live with the HR layer
-// (docs/HR-SPEC.md). "Ask Flo →" is a dead affordance for now, by design.
-type FloBullet = { color: string; alert?: boolean; text: string }
-const FLO_STATIC: Record<'eli' | 'fernando', { bullets: FloBullet[]; synopsis: string }> = {
-  eli: {
-    bullets: [
-      { color: 'var(--c-st-hot)', alert: true, text: 'Aaron missed the AR follow-up queue again — 3-day backlog' },
-      { color: 'var(--c-st-warm)', text: 'COD outstanding: 2 accounts · nothing over 31 days' },
-      { color: 'var(--c-st-booked)', text: 'Fernando cleared all five duties yesterday' },
-    ],
-    synopsis: 'Quiet day overall — one thing needs you: Aaron’s AR backlog.',
-  },
-  fernando: {
-    bullets: [
-      { color: 'var(--c-st-hot)', alert: true, text: '3 punch requests waiting in your queue' },
-      { color: 'var(--c-st-warm)', text: 'Onboarding: I-9 due Friday' },
-      { color: 'var(--c-st-booked)', text: 'Tonight: Kestrel in PRS B, Harbor in ARS A' },
-    ],
-    synopsis: 'Steady day — clear the punch queue first, the rest can wait.',
-  },
-}
-type MyDayItem = { text: string; done?: boolean; ct?: string; due?: string }
-const MYDAY_STATIC: Record<'eli' | 'fernando', { prog: string; items: MyDayItem[]; backlog?: string }> = {
-  eli: {
-    prog: '2 of 4',
-    items: [
-      { text: 'Morning briefing reviewed', done: true },
-      { text: 'Approve pending WOs', done: true, ct: '2 approved' },
-      { text: 'Review staff grid' },
-      { text: 'Sign vendor invoices', due: 'Due today' },
-    ],
-  },
-  fernando: {
-    prog: '3 of 5',
-    items: [
-      { text: "Review yesterday's timecards", done: true, ct: '4 cleared' },
-      { text: 'Clear punch queue', done: true, ct: '2 done' },
-      { text: "Confirm today's staffing", done: true },
-      { text: 'Log missed punches' },
-      { text: 'Onboarding items due', due: 'I-9 due Fri' },
-    ],
-    backlog: 'Timecard review: 2-day backlog — clear today to reset the streak',
-  },
-}
-// Static 14-day staff grid (g = clear day, r = missed, n = non-working).
-const DGRID_STATIC: { who: string; days: string; bk?: string }[] = [
-  { who: 'Fernando', days: 'ggnggggngggggg' },
-  { who: 'Aaron', days: 'ggnggrgnggggrr', bk: '3d' },
-  { who: 'Quinn', days: 'ggnggggngggggg' },
-  { who: 'Sierra', days: 'grnggggngggggg' },
-]
-
-
+// (The FLO_STATIC / MYDAY_STATIC / DGRID_STATIC placeholders that used to live
+// here — copied from docs/design-refs/dashboard-final.html — were deleted on
+// 2026-08-10 when the console went live against real data. The briefing now
+// comes from composeBriefing, the duty card from myday_duties/myday_entries,
+// and the staff grid from fetchStaffGrid, all in lib/myday.ts.)
 
 // Canonical formatter (lib/format). Local alias keeps existing call sites.
 const fmtTime = fmtTimestamp
@@ -217,11 +180,95 @@ export default function DashboardPage() {
   // §14b view-as toggle — Eli previews Fernando's console (greeting, briefing,
   // My Day, default task tab, staff-grid visibility). Only Eli sees the toggle;
   // everyone else gets their own view with no preview control.
-  const [viewAs, setViewAs] = useState<'eli' | 'fernando'>('eli')
+  const [viewAs, setViewAs] = useState<ViewAs>('eli')
   const isEli = profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com'
-  function switchViewAs(v: 'eli' | 'fernando') {
+  function switchViewAs(v: ViewAs) {
     setViewAs(v)
     // (Task-tab follow removed with the name tabs — the panel is personal now.)
+  }
+
+  // ── MY DAY (docs/MYDAY-BUILD.md) ───────────────────────────────────────────
+  // Replaces the FLO_STATIC / MYDAY_STATIC / DGRID_STATIC placeholders.
+  //
+  // The view-as toggle now carries three options (RULING 2026-08-10): Fernando
+  // and Aaron each show their real duty card; 'eli' is OVERSIGHT — the briefing
+  // spans both roles and the staff grid shows, but there is no duty card,
+  // because duties are scoped to manager + billing (MYDAY-BUILD §0) and Eli has
+  // nothing of his own to tick.
+  const myDayRole: MyDayRole | null =
+    viewAs === 'fernando' ? 'manager' : viewAs === 'aaron' ? 'billing' : null
+
+  const [myDay, setMyDay] = useState<MyDayDashboard | null>(null)
+  const [gridRows, setGridRows] = useState<GridRow[]>([])
+  const [savingDuty, setSavingDuty] = useState<string | null>(null)
+
+  const loadMyDay = useCallback(async () => {
+    // Grid first: it resolves the display names, and the briefing needs them to
+    // say "Fernando missed…" rather than "The manager missed…".
+    const grid = await fetchStaffGrid(14)
+    setGridRows(grid)
+    const dash = await loadMyDayDashboard({
+      // With no card of his own, Eli's console still needs a role to render
+      // duties FOR; 'manager' is the arbitrary pick and is never displayed
+      // when myDayRole is null. The briefing is what he actually reads.
+      role: myDayRole ?? 'manager',
+      viewer: myDayRole ?? 'owner',
+      names: {
+        manager: grid.find(g => g.role === 'manager')?.who,
+        billing: grid.find(g => g.role === 'billing')?.who,
+      },
+    })
+    setMyDay(dash)
+  }, [myDayRole])
+
+  useEffect(() => { loadMyDay() }, [loadMyDay])
+
+  // Realtime — the standing rule: every fetch pairs with a subscription.
+  // One channel for all four tables; My Day is a single logical surface and
+  // four channels would just be four round-trips to the same reload.
+  useEffect(() => {
+    const ch = supabase
+      .channel('myday-dashboard')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'myday_entries' }, () => loadMyDay())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'myday_duties' }, () => loadMyDay())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'myday_queue_steps' }, () => loadMyDay())
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [loadMyDay])
+
+  // Tick a duty. Optimism is deliberately avoided — realtime brings the row
+  // back in well under a second, and a card that flickers between states is
+  // worse than one that takes a beat.
+  async function toggleDuty(view: DutyView) {
+    if (!myDay || savingDuty) return
+    setSavingDuty(view.duty.id)
+    const date = getLocalToday()
+    if (view.done) {
+      await uncompleteDuty(view.duty.id, date)
+    } else {
+      await completeDuty({
+        duty: view.duty,
+        date,
+        completedBy: profile?.id ?? null,
+        subState: view.entry?.sub_state,
+        captured: view.entry?.captured,
+        entries: myDay.entries,
+      })
+    }
+    await loadMyDay()
+    setSavingDuty(null)
+  }
+
+  // Captured numbers (Aaron's COD figures, Fernando's exceptions cleared).
+  // These are typed in Phase 1 and computed once QuickBooks is connected
+  // (HR-SPEC §4 / docs/AR-SCOPING.md) — the storage shape does not change when
+  // that happens, so this input keeps working either way.
+  async function saveCapture(view: DutyView, key: string, raw: string) {
+    const next = { ...(view.entry?.captured ?? {}) }
+    if (raw.trim() === '') delete next[key]
+    else next[key] = Number(raw)
+    await setDutyCaptured(view.duty.id, getLocalToday(), next)
+    await loadMyDay()
   }
   // Step 8: booked room-grid cards open the Work Order directly (BookingForm deleted).
   const [dashEditBooking, setDashEditBooking] = useState<Booking | null>(null)
@@ -871,7 +918,9 @@ export default function DashboardPage() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '2px 4px 14px', flexWrap: isMobile ? 'wrap' : undefined }}>
         <div>
           <span className="c-label" style={{ display: 'block', marginBottom: 3 }}>
-            {greeting}{viewAs === 'fernando' ? ' Fernando' : greetingName}
+            {greeting}{myDayRole
+              ? ` ${gridRows.find(g => g.role === myDayRole)?.who ?? ''}`
+              : greetingName}
           </span>
           <h1 className="c-arch" style={{ fontSize: isMobile ? 20 : 26, letterSpacing: '-0.03em', lineHeight: 1.05 }}>
             Paramount Recording Studios
@@ -881,7 +930,14 @@ export default function DashboardPage() {
         {isEli && !isMobile && (
           <span className="c-seg" style={{ flexShrink: 0 }}>
             <button className={viewAs === 'eli' ? 'c-on' : ''} onClick={() => switchViewAs('eli')}>Eli</button>
-            <button className={viewAs === 'fernando' ? 'c-on' : ''} onClick={() => switchViewAs('fernando')}>Fernando</button>
+            {/* Labels follow the roster, so Aaron's successor inherits the
+                button without a code change — billing is a ROLE (MYDAY-BUILD §0). */}
+            <button className={viewAs === 'fernando' ? 'c-on' : ''} onClick={() => switchViewAs('fernando')}>
+              {gridRows.find(g => g.role === 'manager')?.who ?? 'Manager'}
+            </button>
+            <button className={viewAs === 'aaron' ? 'c-on' : ''} onClick={() => switchViewAs('aaron')}>
+              {gridRows.find(g => g.role === 'billing')?.who ?? 'Billing'}
+            </button>
           </span>
         )}
         {!isMobile && (
@@ -1017,9 +1073,9 @@ export default function DashboardPage() {
 
         {/* LEFT — THE CONSOLE (§14b/§14c): Flo on top, then My Day and My Tasks
             SIDE BY SIDE (two stacked to-do lists bury the bottom one — ruling
-            2026-08-07). Flo + My Day are STATIC placeholders until the HR layer
-            ships; Tasks is live (dashboard_tasks). Staff grid + Flags indicator
-            sit under the console in this column. */}
+            2026-08-07). Flo, My Day and the staff grid went LIVE on 2026-08-10
+            (lib/myday.ts); Tasks is live (dashboard_tasks). Staff grid + Flags
+            indicator sit under the console in this column. */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, ...(isMobile ? { order: 2 } : { gridColumn: '1', gridRow: '1' }) }}>
         <div className="c-panel">
 
@@ -1033,36 +1089,83 @@ export default function DashboardPage() {
               <span className="c-fname">Flo</span>
               <span className="c-ftag">· Your briefing · {clockNow.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
             </div>
-            {FLO_STATIC[viewAs].bullets.map((b, i) => (
+            {/* Computed from real duties + queues (lib/myday composeBriefing).
+                No AI yet — template sentences over true numbers. */}
+            {(myDay?.briefing.bullets ?? []).map((b, i) => (
               <div key={i} className={`c-flob${b.alert ? ' c-alert' : ''}`}>
                 <span className="c-flodot" style={{ background: b.color }} />
                 {b.text}
               </div>
             ))}
-            <div className="c-flosyn">{FLO_STATIC[viewAs].synopsis}</div>
+            <div className="c-flosyn">{myDay?.briefing.synopsis ?? '…'}</div>
             <div className="c-askflo">Ask Flo →</div>
           </div></div>
 
-          <div className="c-twoup">
-          <div>
-          {/* MY DAY — duties (static stub; HR-SPEC §2). Duties ≠ tasks: fixed
-              per role, reset daily. Never merge them into the task list. */}
-          <div className="c-subhead">
-            <b>My day — duties</b>
-            <span className="c-myday-prog">{MYDAY_STATIC[viewAs].prog}</span>
-          </div>
-          {MYDAY_STATIC[viewAs].items.map((it, i) => (
-            <div key={i} className={`c-myday-item${it.done ? ' c-done' : ''}`}>
-              <span className="c-myday-bx" />
-              <span className="c-myday-tx">{it.text}</span>
-              {it.ct && <span className="c-myday-ct">{it.ct}</span>}
-              {it.due && <span className="c-myday-due">{it.due}</span>}
-            </div>
-          ))}
-          {MYDAY_STATIC[viewAs].backlog && (
-            <div className="c-myday-backlog">{MYDAY_STATIC[viewAs].backlog}</div>
-          )}
-          </div>
+          {/* MY DAY — real duties (docs/MYDAY-BUILD.md). Duties ≠ tasks: fixed
+              per role, reset daily. Never merge them into the task list.
+              Hidden entirely when viewing as Eli — oversight has no duty card,
+              and an empty pane would violate the packing law (§14b). My tasks
+              takes the full width in that case. */}
+          <div className={myDayRole ? 'c-twoup' : undefined}>
+          {myDayRole && (() => {
+            const shown = (myDay?.views ?? []).filter(v => v.isShown)
+            const worstBacklog = Math.max(0, ...shown.map(v => v.backlogDays))
+            return (
+              <div>
+                <div className="c-subhead">
+                  <b>My day — duties</b>
+                  <span className="c-myday-prog">{myDay?.progress ?? '—'}</span>
+                </div>
+
+                {shown.length === 0 && (
+                  <div className="c-myday-item"><span className="c-myday-tx" style={{ opacity: 0.5 }}>Nothing due today.</span></div>
+                )}
+
+                {shown.map(v => {
+                  const scope = v.backlogDays > 0 && myDay
+                    ? backlogScopeLabel(v.duty, myDay.entries, getLocalToday())
+                    : null
+                  return (
+                    <div
+                      key={v.duty.id}
+                      className={`c-myday-item${v.done ? ' c-done' : ''}`}
+                      onClick={() => toggleDuty(v)}
+                      style={{ cursor: savingDuty ? 'default' : 'pointer', opacity: savingDuty === v.duty.id ? 0.5 : 1 }}
+                    >
+                      <span className="c-myday-bx" />
+                      <span className="c-myday-tx">{v.duty.label}</span>
+
+                      {/* Captured numbers appear once the duty is ticked — asking
+                          for a count before the work is done is asking for a guess. */}
+                      {v.done && v.duty.captures.map(f => (
+                        <input
+                          key={f.key}
+                          type="number"
+                          defaultValue={v.entry?.captured?.[f.key] ?? ''}
+                          placeholder={f.label}
+                          title={f.label}
+                          onClick={e => e.stopPropagation()}
+                          onBlur={e => saveCapture(v, f.key, e.target.value)}
+                          className="c-tin c-tin-show c-tin-mono"
+                          style={{ width: 58, fontSize: 10 }}
+                        />
+                      ))}
+
+                      {/* Not due today, but on the card anyway (always_available). */}
+                      {!v.isDue && !v.done && <span className="c-myday-due">Not due today</span>}
+                      {scope && <span className="c-myday-due">{scope}</span>}
+                    </div>
+                  )
+                })}
+
+                {worstBacklog >= BACKLOG_FLAG_THRESHOLD && (
+                  <div className="c-myday-backlog">
+                    {worstBacklog} days behind — clear it today to reset the streak
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           <div>
           {/* MY TASKS — the viewer's own to-dos (name tabs shelved, ruling
@@ -1133,7 +1236,7 @@ export default function DashboardPage() {
           </div>{/* /c-twoup */}
         </div>{/* /console pane */}
 
-        {/* Under the console: staff 14-day grid (static stub, Eli view only)
+        {/* Under the console: staff 14-day grid (live, Eli view only)
             + the Flags indicator (count + latest; "+ add" keeps quick
             reporting; the card grid moved to /flags). */}
         <div style={{ display: 'grid', gridTemplateColumns: (isEli && viewAs === 'eli' && !isMobile) ? '1.3fr 1fr' : '1fr', gap: 12, alignItems: 'end' }}>
@@ -1143,13 +1246,17 @@ export default function DashboardPage() {
               <div className="c-dgrid">
                 <table>
                   <tbody>
-                    {DGRID_STATIC.map(row => (
-                      <tr key={row.who}>
+                    {/* Live from myday_entries. Green = every duty that was DUE
+                        that day got done; red = one or more missed; blank =
+                        nothing was due, or the duty didn't exist yet. Today is
+                        never red — a day in progress isn't a failure. */}
+                    {gridRows.map(row => (
+                      <tr key={row.role}>
                         <td className="c-who">{row.who}</td>
                         {row.days.split('').map((d, i) => (
                           <td key={i} className={`c-sq${d === 'g' ? ' c-g' : d === 'r' ? ' c-r' : ''}`} />
                         ))}
-                        <td className="c-bk">{row.bk || ''}</td>
+                        <td className="c-bk">{row.backlog || ''}</td>
                       </tr>
                     ))}
                   </tbody>
