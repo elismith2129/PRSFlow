@@ -145,11 +145,25 @@ export const STICKY_CADENCES: DutyCadence[] = ['monthly']
  */
 const STICKY_LOOKBACK_DAYS = 400
 
-/** Step checklists for the queues that carry them (MYDAY-BUILD §3). */
+/**
+ * MANUAL steps per queue — only things PRSFlo cannot determine for itself
+ * (RULING 2026-08-10). Everything it can see is a derived light instead.
+ *
+ * What was removed and why:
+ *   · Calendar — every row in these queues IS a booking, so the light could
+ *     never be off. Eli confirmed the case it might have caught (closed deals
+ *     not yet scheduled) is already the Holds queue.
+ *   · WO — "I don't want there to be a work order button… if it's on the cal,
+ *     there's a work order created." Matches CLAUDE.md: the Work Order IS the
+ *     booking. A separate tick re-teaches the split we're removing.
+ *   · Staff — derived from studio_time_rows.eng_name (see QueueBookingItem).
+ *   · Holds lost ALL steps: "it's all happening in text and email. no need to
+ *     create more work." A checkbox nobody maintains goes stale and then lies.
+ */
 export const QUEUE_STEPS: Record<QueueRefType, string[]> = {
-  hold: ['Email', 'Calendar', 'QB', 'Staff'],
-  booked: ['Calendar', 'QB', 'WO'],
-  open_hours: ['Log', 'Calendar'],
+  hold: [],
+  booked: ['QB'],
+  open_hours: [],
 }
 
 // Status-colour tokens (design spec §5). Colour is status and nothing else.
@@ -556,6 +570,114 @@ export type QueueBookingItem = {
   client: string
   artist: string | null
   steps: Record<string, boolean>
+  /**
+   * Is anyone actually on this session? DERIVED (RULING 2026-08-10) — a light,
+   * never a checkbox, because the app can see the answer and nobody should be
+   * able to tick it falsely.
+   *
+   * Read from `studio_time_rows.eng_name`, NOT `bookings.engineer_name`. Per
+   * CLAUDE.md staffing lives ONLY in the Studio Time table; the booking columns
+   * are a projection written back out of it, so they can be stale or seeded
+   * while no real name is on any line.
+   */
+  staffed: boolean
+}
+
+/**
+ * Which of these bookings have a real name on a studio-time row.
+ *
+ * Two hops, because studio_time_rows key off the work order rather than the
+ * booking: bookings → work_orders.booking_id → studio_time_rows.work_order_id.
+ */
+async function fetchStaffedBookingIds(bookingIds: string[]): Promise<Set<string>> {
+  const out = new Set<string>()
+  if (bookingIds.length === 0) return out
+
+  const { data: wos, error: woErr } = await supabase
+    .from('work_orders')
+    .select('id, booking_id')
+    .in('booking_id', bookingIds)
+  if (!dbResult('Loading work orders for staffing', woErr)) return out
+  if (!wos || wos.length === 0) return out
+
+  const { data: rows, error } = await supabase
+    .from('studio_time_rows')
+    .select('work_order_id, eng_name')
+    .in('work_order_id', wos.map(w => w.id))
+  if (!dbResult('Loading staffing', error)) return out
+
+  const staffedWoIds = new Set(
+    (rows ?? []).filter(r => (r.eng_name ?? '').trim() !== '').map(r => r.work_order_id),
+  )
+  for (const w of wos) {
+    if (w.booking_id && staffedWoIds.has(w.id)) out.add(w.booking_id)
+  }
+  return out
+}
+
+export type BillingBrief = {
+  balancesOutstanding: number
+  balancesCount: number
+  paymentsReceived: number
+  /** Phase 1: typed by billing into the COD duty's captures. Null when untyped. */
+  codOutstanding: number | null
+  pastDue31: number | null
+  periodLabel: string
+}
+
+/**
+ * The manager's read-only peek at billing (RULING 2026-08-10).
+ *
+ * Eli oversees the billing period but "I don't want his world cluttered with
+ * billing stuff" — so this is four numbers and no actions. It is NOT a summary
+ * for the billing role: for them it isn't a summary, it's the job, and they
+ * already have the queues.
+ *
+ * ⚠ `paymentsReceived` counts payments RECORDED IN PRSFLO. Anything zeroed
+ * straight into QuickBooks never touches payment_rows and will not appear here.
+ * Until the QBO integration lands (docs/AR-SCOPING.md) treat it as a floor, not
+ * a total, and label it as such wherever it is displayed.
+ */
+export async function fetchBillingBrief(today = getLocalToday()): Promise<BillingBrief> {
+  const monthStart = today.slice(0, 8) + '01'
+
+  const balances = await fetchBalancesQueue()
+
+  const { data: pays, error } = await supabase
+    .from('payment_rows')
+    .select('amount, recorded_at')
+    .gte('recorded_at', monthStart)
+  dbResult('Loading payments received', error)
+
+  const paymentsReceived = (pays ?? []).reduce((s, p) => {
+    const n = typeof p.amount === 'number' ? p.amount : stripCurrencyish(p.amount)
+    return s + n
+  }, 0)
+
+  // COD figures are typed by billing on their card until QBO can compute them.
+  const duties = await fetchDuties('billing')
+  const entries = await fetchEntries(
+    duties.map(d => d.id),
+    shiftDate(today, -BACKLOG_LOOKBACK_DAYS),
+    today,
+  )
+
+  const d = new Date(today + 'T12:00:00')
+  return {
+    balancesOutstanding: balances.reduce((s, b) => s + b.balance, 0),
+    balancesCount: balances.length,
+    paymentsReceived,
+    codOutstanding: latestCapture(duties, entries, 'bil_cod_followup', 'cod_outstanding', today),
+    pastDue31: latestCapture(duties, entries, 'bil_cod_followup', 'past_due_31', today),
+    periodLabel: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+  }
+}
+
+/** Money coercion for the one place that reads payment_rows directly. */
+function stripCurrencyish(v: unknown): number {
+  if (v === null || v === undefined) return 0
+  const n = parseFloat(String(v).replace(/[$,]/g, ''))
+  return isNaN(n) ? 0 : n
 }
 
 /**
@@ -699,7 +821,11 @@ async function fetchBookingQueue(
   if (!dbResult('Loading My Day queue', error)) return []
   if (!bookings || bookings.length === 0) return []
 
-  const steps = await fetchQueueSteps(refType, bookings.map(b => b.id))
+  const ids = bookings.map(b => b.id)
+  const [steps, staffed] = await Promise.all([
+    fetchQueueSteps(refType, ids),
+    fetchStaffedBookingIds(ids),
+  ])
 
   return bookings.map(b => ({
     bookingId: b.id,
@@ -709,6 +835,7 @@ async function fetchBookingQueue(
     client: b.label || b.client_name || 'Unknown',
     artist: b.artist ?? null,
     steps: steps.get(b.id) ?? {},
+    staffed: staffed.has(b.id),
   }))
 }
 

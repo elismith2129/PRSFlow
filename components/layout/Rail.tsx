@@ -23,6 +23,9 @@ type RailItem = { href: string; label: string; ic: string; dim?: boolean }
 
 const TOP: RailItem[] = [
   { href: '/', label: 'Dashboard', ic: '▦' },
+  // My Day sits directly under Dashboard (MYDAY-BUILD §6.3). NOT "Daily Ops" —
+  // that name is taken by the session/room view (HR-SPEC §2.5a).
+  { href: '/my-day', label: 'My Day', ic: '◑' },
   { href: '/calendar', label: 'Calendar', ic: '▤' },
   { href: '/daily-ops', label: 'Daily Ops', ic: '◔' },
 ]
@@ -67,6 +70,14 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
   const filterItems = (items: RailItem[]) => items.filter(item => {
     if (profile?.role === 'tech' && item.href === '/crm') return false
     if (item.href === '/nadines' && !isEli) return false
+    // My Day exists for the two role cards it was built around (MYDAY-BUILD §0)
+    // plus Eli, who oversees both. Nobody else has duties, so the page would be
+    // an empty room.
+    if (item.href === '/my-day'
+      && !isEli
+      && profile?.role !== 'manager'
+      && profile?.role !== 'billing'
+      && profile?.role !== 'owner') return false
     return true
   })
 

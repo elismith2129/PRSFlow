@@ -1823,6 +1823,72 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 [data-theme="light"] .c-newpulse { background: rgba(42, 39, 34, .85); }
 @keyframes c-newpulse { 0%, 100% { opacity: .25 } 50% { opacity: 1 } }
 
+/* ── /MY-DAY WORKSPACE (docs/design-refs/my-day-final.html, ruling 2026-08-10)
+   Ported from the approved Workbench mock. Sits BEFORE the soft-skin block so
+   that block's cascade still governs surfaces (spec §7c).
+   Reuses .c-myday-* for duty rows — this is only what the page adds. */
+
+/* Count on a lozenge. Mono because it's a number, quiet because the label leads. */
+.c-ct {
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 10px; opacity: .7; letter-spacing: 0; flex-shrink: 0;
+}
+
+/* Sub-steps under a duty: REFERENCE TEXT, never ticks. The no-logic ruling
+   means one checkbox per duty, but a multi-step duty shouldn't be a black box. */
+.c-myday-sub { font-size: 10.5px; opacity: .5; margin-top: 1px; line-height: 1.45; }
+
+/* Inline overdue. No band at the top of the page: relocating a late item tells
+   you something is late and then makes you hunt for it. It stays where it lives
+   and says so. Fill, not border — Law 1. Hot is the sanctioned critical colour. */
+.c-myday-item.c-late { background: rgba(255, 90, 77, .11); border-radius: 9px; padding: 4px 7px; }
+.c-mdlate {
+  font-size: 8px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--c-st-hot); flex-shrink: 0;
+}
+.c-mdscope { font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px; opacity: .55; }
+
+/* Queue row. */
+.c-qrow {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 6px; font-size: 11.5px; border-radius: 8px;
+}
+.c-qrow:hover { background: var(--c-wash); }
+.c-who { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .85; }
+
+/* MANUAL step — a pill, because it is pressable. Only for what PRSFlo cannot
+   determine for itself (ruling 2026-08-10). */
+.c-mdstep {
+  font-size: 9.5px; font-weight: 700; padding: 2px 8px; border-radius: 99px;
+  background: var(--c-wash2); color: var(--c-fg); opacity: .55;
+  flex-shrink: 0; cursor: pointer; border: none;
+}
+.c-mdstep.c-on { background: var(--c-st-booked); color: var(--c-chip-ink); opacity: 1; }
+
+/* DERIVED indicator — a light, not a control. No pill, no cursor: nothing to
+   press and nothing to fake. Quieter than a step so the eye goes to whatever
+   still needs a human. */
+.c-mdind {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9.5px; font-weight: 700; opacity: .4; flex-shrink: 0; padding: 2px;
+}
+.c-mdind i {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; opacity: .4; flex-shrink: 0;
+}
+.c-mdind.c-on { opacity: .8; }
+.c-mdind.c-on i { background: var(--c-st-booked); opacity: 1; }
+
+/* Billing brief stat block — read-only, manager's peek. */
+.c-mdstat { background: var(--c-wash); border-radius: 12px; padding: 9px 11px; }
+
+.c-mdnotes {
+  width: 100%; min-height: 60px; border-radius: 11px; background: var(--c-wash);
+  padding: 9px 11px; font-family: 'Inter', sans-serif; font-size: 12px; line-height: 1.55;
+  color: var(--c-fg); resize: vertical; outline: none; border: none; box-sizing: border-box;
+}
+.c-mdnotes:focus { background: var(--c-wash2); }
+
 @media (prefers-reduced-motion: reduce) {
   .c-newpulse { animation: none; opacity: 1; }
   .c-control { transition: none; }
