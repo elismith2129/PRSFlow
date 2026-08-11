@@ -314,6 +314,13 @@ export function computeBacklog(
 ): { days: number; from: string | null; dates: string[] } {
   if (duty.dtype !== 'cumulative') return { days: 0, from: null, dates: [] }
 
+  // Sticky cadences are tracked by computeOverdueSince, not by a tally. Two
+  // reasons: the 30-day scan below can only ever reach one prior occurrence of a
+  // monthly duty, so the count would be arbitrary; and "covering 2 days" is the
+  // wrong sentence for something that needed doing on the 25th and didn't
+  // happen. Those escalate instead (RULING 2026-08-10).
+  if (STICKY_CADENCES.includes(duty.cadence)) return { days: 0, from: null, dates: [] }
+
   const mine = entries.filter(e => e.duty_id === duty.id && e.completed_at)
   // A completion on date D covering back to `covers_from` clears [covers_from..D].
   const covered = new Set<string>()
