@@ -243,8 +243,10 @@ values
   ('mgr_deliverables', 'manager', 'Deliverables / schedule',
    'daily', null, 'point', '[]'::jsonb, '[]'::jsonb, 60),
 
-  ('mgr_calendar_lookahead', 'manager', 'Calendar look-ahead',
-   'daily', null, 'point', '[]'::jsonb, '[]'::jsonb, 70),
+  -- (REMOVED 2026-08-10: 'mgr_calendar_lookahead' — "Calendar look-ahead".
+  --  Paper-era leftover from the FD Daily Notes Template; cut by Eli in the
+  --  second pass over the manager card. Retired on the live DB by migration
+  --  20260810160000, deleted here so a fresh database never creates it.)
 
   ('mgr_staff_tasks_review', 'manager', 'Staff tasks review',
    'daily', null, 'point', '[]'::jsonb, '[]'::jsonb, 80),

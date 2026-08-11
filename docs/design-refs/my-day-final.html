@@ -26,6 +26,19 @@
   revised (Eli: "he's really just responsible for booking, the CRM, and the
   operational duties"). Shown here as-is so it can be edited against something.
 
+  INDICATOR vs CHECKBOX (RULING 2026-08-10) — the rule for every queue:
+    · If PRSFlo can determine it, it is an INDICATOR (.ind) — a light, not a
+      control. Nothing to press, nothing to fake.
+    · If PRSFlo cannot know it, it stays a manual STEP (.step) — a pill.
+  Applied: Cal and Staff are lights; QB and Email are pills.
+  NO "WO" LIGHT. Eli: "I don't want there to be a work order button as I wanna
+  move away from the idea that the calendar and work order are different things.
+  If it's on the cal, there's a work order created." This matches the standing
+  architecture rule in CLAUDE.md — the Work Order IS the booking.
+  STAFF lights from studio_time_rows.eng_name — a name actually on a studio-time
+  row of the work order, NOT bookings.engineer_name. Per CLAUDE.md staffing lives
+  ONLY in the Studio Time table; the booking columns are a projection of it.
+
   Soft skin (§7c): flat --srf + --softsh, no carving, no borders (Law 1).
   Density law §2b. Mock polarity is INVERTED vs the app.
 -->
@@ -117,9 +130,22 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
 .qrow{display:flex;align-items:center;gap:8px;padding:5px 6px;font-size:11.5px;border-radius:8px}
 .qrow:hover{background:var(--wash)}
 .qrow .who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.85}
+/* MANUAL step — a pill, looks pressable, because it is. Only for things PRSFlo
+   cannot know for itself. After the 2026-08-10 ruling that is QB, and Email. */
 .step{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--wash2);
-  opacity:.55;flex-shrink:0}
+  opacity:.55;flex-shrink:0;cursor:pointer}
 .step.on{background:var(--st-booked);color:var(--chip-ink);opacity:1}
+
+/* DERIVED indicator — a light, not a control. No pill, no cursor: nothing to
+   press and nothing to fake. Cal / WO / Staff are all facts the app can check
+   (the booking exists, a work_orders row exists, staff are assigned), so they
+   turn themselves green. Deliberately quieter than a step so the eye goes to
+   the thing that still needs a human. */
+.ind{display:inline-flex;align-items:center;gap:4px;font-size:9.5px;font-weight:700;
+  opacity:.4;flex-shrink:0;padding:2px 2px}
+.ind .d{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.4}
+.ind.on{opacity:.8}
+.ind.on .d{background:var(--st-booked);opacity:1}
 .notes{width:100%;min-height:60px;border-radius:11px;background:var(--wash);padding:9px 11px;
   font:400 12px/1.55 inherit;color:var(--fg);resize:vertical;outline:none;border:none}
 
@@ -175,7 +201,7 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
 
     <div class="two">
       <div class="pane">
-        <div class="lozenge">Duties <span class="ct">3 / 10</span></div>
+        <div class="lozenge">Duties <span class="ct">3 / 9</span></div>
         <span class="label" style="display:block;padding:4px 10px 3px">Today</span>
         <div class="duty done"><span class="bx">✓</span><span class="tx">Studio check-in — Paramount (PRS)
           <div class="steps">Opener/closer · Sessions reviewed · Slack read · Check-in done</div></span></div>
@@ -186,12 +212,11 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
           <div class="steps">…plus cleaning shift</div></span></div>
         <div class="duty done"><span class="bx">✓</span><span class="tx">ADP runner timecards</span><input class="cap mono" value="4"></div>
         <div class="duty"><span class="bx"></span><span class="tx">Deliverables / schedule</span></div>
-        <div class="duty"><span class="bx"></span><span class="tx">Calendar look-ahead</span></div>
         <div class="duty"><span class="bx"></span><span class="tx">Staff tasks review</span></div>
         <span class="label" style="display:block;padding:10px 10px 3px">This week</span>
         <div class="duty"><span class="bx"></span><span class="tx">Valley checks</span><span class="due">Tue · Fri</span></div>
         <div class="duty"><span class="bx"></span><span class="tx">Office stock</span><span class="due">Wed</span></div>
-        <div class="bnote">⚠ This list is the old paper-era one and is being revised.</div>
+        <div class="bnote">Calendar look-ahead was cut 2026-08-10. Staff tasks review and ADP timecards stay.</div>
       </div>
 
       <div class="stack">
@@ -210,17 +235,17 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
         <div class="pane">
           <div class="lozenge">Holds <span class="ct">2</span></div>
           <div class="qrow"><span class="who">Aug 14 · TRK N · Sable</span>
-            <span class="step on">Email</span><span class="step">Cal</span><span class="step">QB</span><span class="step">Staff</span></div>
+            <span class="ind on"><i class="d"></i>Cal</span><span class="ind on"><i class="d"></i>Staff</span><span class="step on">Email</span><span class="step">QB</span></div>
           <div class="qrow"><span class="who">Aug 19 · PRS A · Lantern</span>
-            <span class="step">Email</span><span class="step">Cal</span><span class="step">QB</span><span class="step">Staff</span></div>
+            <span class="ind on"><i class="d"></i>Cal</span><span class="ind"><i class="d"></i>Staff</span><span class="step">Email</span><span class="step">QB</span></div>
         </div>
 
         <div class="pane">
           <div class="lozenge">Booked pipeline <span class="ct">5</span></div>
           <div class="qrow"><span class="who">Aug 12 · PRS C · Meridian</span>
-            <span class="step on">Cal</span><span class="step on">QB</span><span class="step">WO</span></div>
+            <span class="ind on"><i class="d"></i>Cal</span><span class="step on">QB</span></div>
           <div class="qrow"><span class="who">Aug 15 · ARS B · Harbor</span>
-            <span class="step on">Cal</span><span class="step">QB</span><span class="step">WO</span></div>
+            <span class="ind on"><i class="d"></i>Cal</span><span class="step">QB</span></div>
         </div>
 
         <div class="pane">
@@ -274,9 +299,9 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
         <div class="pane">
           <div class="lozenge">Holds <span class="ct">2</span></div>
           <div class="qrow"><span class="who">Aug 14 · TRK N · Sable</span>
-            <span class="step on">Email</span><span class="step">Cal</span><span class="step">QB</span><span class="step">Staff</span></div>
+            <span class="ind on"><i class="d"></i>Cal</span><span class="ind on"><i class="d"></i>Staff</span><span class="step on">Email</span><span class="step">QB</span></div>
           <div class="qrow"><span class="who">Aug 19 · PRS A · Lantern</span>
-            <span class="step">Email</span><span class="step">Cal</span><span class="step">QB</span><span class="step">Staff</span></div>
+            <span class="ind on"><i class="d"></i>Cal</span><span class="ind"><i class="d"></i>Staff</span><span class="step">Email</span><span class="step">QB</span></div>
         </div>
         <div class="pane">
           <div class="lozenge">Shift notes</div>
