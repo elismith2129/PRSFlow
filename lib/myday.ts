@@ -95,6 +95,14 @@ export type DutyView = {
   backlogDays: number
   /** Earliest uncovered due-date, for the "covering N days (Mon 8/3, Tue 8/4)" line. */
   backlogFrom: string | null
+  /**
+   * STICKY cadences only (monthly): the due date this blew past and still
+   * hasn't been done. Non-null means render it red with an ASAP treatment — it
+   * is not a tally, it is a thing that needed doing and didn't happen.
+   */
+  overdueSince: string | null
+  /** Whole days past that date. 0 when not overdue. */
+  overdueDays: number
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -109,6 +117,33 @@ export const BACKLOG_LOOKBACK_DAYS = 30
 
 /** HR-SPEC §2.3 — the "where are we really" signal. */
 export const BACKLOG_FLAG_THRESHOLD = 3
+
+/**
+ * Cadences that STICK: they stay on the card past their due date until done,
+ * and escalate rather than accumulate a backlog count (RULING 2026-08-10).
+ *
+ * Eli: "for the items that are monthly or quarterly, those types of things,
+ * they don't happen often — we can't miss those… if they miss it the next day
+ * it's red, or there's an indication: hey, this needs to happen ASAP."
+ *
+ * Daily and weekly duties recur often enough that "covering 2 days" is the
+ * honest summary and the next occurrence comes round quickly. A monthly duty is
+ * different: miss the 25th and the next chance is four weeks away, so it cannot
+ * be allowed to scroll out of sight. Tenant rent invoicing is money — it must
+ * nag, not tally.
+ *
+ * Quarterly is deliberately NOT here yet: the cadence CHECK constraint only
+ * allows daily|weekly|monthly, and a real quarterly duty needs a month+day
+ * due_days shape rather than day-of-month. Add both together when one exists.
+ */
+export const STICKY_CADENCES: DutyCadence[] = ['monthly']
+
+/**
+ * How far back a sticky duty looks for the OLDEST occurrence it still owes.
+ * Just over a year, so several consecutively missed months are all found rather
+ * than the scan stopping at the most recent one and understating the lateness.
+ */
+const STICKY_LOOKBACK_DAYS = 400
 
 /** Step checklists for the queues that carry them (MYDAY-BUILD §3). */
 export const QUEUE_STEPS: Record<QueueRefType, string[]> = {
@@ -310,6 +345,53 @@ export function computeBacklog(
   return { days: dates.length, from: dates[0] ?? null, dates }
 }
 
+/**
+ * For a STICKY duty (monthly), the due date it blew past and still hasn't done.
+ * Null when it's not sticky, not yet due, or already done.
+ *
+ * "Done" is any completion dated on or after that due date — a monthly duty
+ * finished three days late still counts as finished, it just stayed red until
+ * someone did it.
+ */
+export function computeOverdueSince(
+  duty: MyDayDuty,
+  entries: MyDayEntry[],
+  asOf: string,
+): string | null {
+  if (!STICKY_CADENCES.includes(duty.cadence)) return null
+  const bornOn = duty.created_at ? duty.created_at.slice(0, 10) : null
+
+  // Last time it was done at all. A completion clears that occurrence and every
+  // earlier one — you don't retroactively invoice three separate Augusts.
+  const lastDone = entries
+    .filter(e => e.duty_id === duty.id && e.completed_at)
+    .map(e => e.date)
+    .sort()
+    .pop() ?? null
+
+  // The OLDEST due date still owed, not the most recent. If both August and
+  // September were missed, this reports August — so "36 days late" is the
+  // number shown rather than a comfortable-looking "5 days". Understating the
+  // lateness on a duty that only comes round monthly is how it stays missed.
+  // Strictly before today: due today is due, not late.
+  for (let i = STICKY_LOOKBACK_DAYS; i >= 1; i--) {
+    const d = shiftDate(asOf, -i)
+    if (bornOn && d < bornOn) continue
+    if (lastDone && d <= lastDone) continue
+    if (isDutyDueOn(duty, d)) return d
+  }
+  return null
+}
+
+/** Whole days a sticky duty has been overdue. 0 when it isn't. */
+export function overdueDays(overdueSince: string | null, asOf: string): number {
+  if (!overdueSince) return 0
+  return Math.round(
+    (new Date(asOf + 'T12:00:00').getTime() -
+      new Date(overdueSince + 'T12:00:00').getTime()) / 86400000,
+  )
+}
+
 /** Duties + their entry for `date`, with backlog resolved. Ready to render. */
 export function buildDutyViews(
   duties: MyDayDuty[],
@@ -319,14 +401,20 @@ export function buildDutyViews(
   return duties.map(duty => {
     const entry = entries.find(e => e.duty_id === duty.id && e.date === date) ?? null
     const bl = computeBacklog(duty, entries, date)
+    const overdueSince = computeOverdueSince(duty, entries, date)
     return {
       duty,
       entry,
       isDue: isDutyDueOn(duty, date),
-      isShown: isDutyShownOn(duty, date),
+      // A sticky duty that was missed STAYS on the card. This is the whole
+      // point: a monthly item that scrolled away on the 26th would not be seen
+      // again until the following month.
+      isShown: isDutyShownOn(duty, date) || overdueSince !== null,
       done: !!entry?.completed_at,
       backlogDays: bl.days,
       backlogFrom: bl.from,
+      overdueSince,
+      overdueDays: overdueDays(overdueSince, date),
     }
   })
 }
@@ -848,6 +936,19 @@ export function composeBriefing(input: BriefingInput): Briefing {
       const t = `${nameFor(role)} missed ${lowerFirst(f.duty.label)} — covering ${f.bl.days + 1} days`
       redTexts.push(t)
       redDutyIds.add(f.duty.id)
+      bullets.push({ color: C_HOT, alert: true, text: t })
+    }
+
+    // Sticky duties that blew their date — loudest thing on the board. These
+    // recur monthly, so "missed" means nothing happens for another four weeks
+    // unless someone acts. Listed before backlogs for that reason.
+    for (const d of mine) {
+      const since = computeOverdueSince(d, entries, today)
+      if (!since) continue
+      const days = overdueDays(since, today)
+      const t = `${nameFor(role)}: ${d.label} was due ${shortDayLabel(since)} — ${days} day${days === 1 ? '' : 's'} late, needs doing ASAP`
+      redTexts.push(t)
+      redDutyIds.add(d.id)
       bullets.push({ color: C_HOT, alert: true, text: t })
     }
 

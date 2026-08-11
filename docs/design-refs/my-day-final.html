@@ -30,7 +30,12 @@
     · If PRSFlo can determine it, it is an INDICATOR (.ind) — a light, not a
       control. Nothing to press, nothing to fake.
     · If PRSFlo cannot know it, it stays a manual STEP (.step) — a pill.
-  Applied: Cal and Staff are lights; QB and Email are pills.
+  Applied: Staff is a light; QB and Email are pills.
+  NO "CAL" LIGHT either (2026-08-10, second pass). Both queues are built FROM
+  bookings, so "is it on the calendar" is what put the row there — the light
+  could never be off. Eli confirmed the gap it might have covered (closed deals
+  not yet scheduled) is already the Holds queue, so there is nothing left for it
+  to say. A light that is always green is decoration.
   NO "WO" LIGHT. Eli: "I don't want there to be a work order button as I wanna
   move away from the idea that the calendar and work order are different things.
   If it's on the cal, there's a work order created." This matches the standing
@@ -185,8 +190,8 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
     </div>
     <div class="grow"></div>
     <span class="seg">
-      <button class="on" id="tF" onclick="role('F')">Fernando</button>
-      <button id="tA" onclick="role('A')">Aaron</button>
+      <button class="on" id="tF" onclick="showRole('F')">Fernando</button>
+      <button id="tA" onclick="showRole('A')">Aaron</button>
     </span>
     <div class="datechip">MON, AUG 10<small>9:12 AM</small></div>
   </div>
@@ -234,18 +239,16 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
 
         <div class="pane">
           <div class="lozenge">Holds <span class="ct">2</span></div>
-          <div class="qrow"><span class="who">Aug 14 · TRK N · Sable</span>
-            <span class="ind on"><i class="d"></i>Cal</span><span class="ind on"><i class="d"></i>Staff</span><span class="step on">Email</span><span class="step">QB</span></div>
-          <div class="qrow"><span class="who">Aug 19 · PRS A · Lantern</span>
-            <span class="ind on"><i class="d"></i>Cal</span><span class="ind"><i class="d"></i>Staff</span><span class="step">Email</span><span class="step">QB</span></div>
+          <div class="qrow"><span class="who">Aug 14 · TRK N · Sable</span></div>
+          <div class="qrow"><span class="who">Aug 19 · PRS A · Lantern</span></div>
         </div>
 
         <div class="pane">
           <div class="lozenge">Booked pipeline <span class="ct">5</span></div>
           <div class="qrow"><span class="who">Aug 12 · PRS C · Meridian</span>
-            <span class="ind on"><i class="d"></i>Cal</span><span class="step on">QB</span></div>
+            <span class="ind on"><i class="d"></i>Staff</span><span class="step on">QB</span></div>
           <div class="qrow"><span class="who">Aug 15 · ARS B · Harbor</span>
-            <span class="ind on"><i class="d"></i>Cal</span><span class="step">QB</span></div>
+            <span class="ind"><i class="d"></i>Staff</span><span class="step">QB</span></div>
         </div>
 
         <div class="pane">
@@ -298,10 +301,8 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
         </div>
         <div class="pane">
           <div class="lozenge">Holds <span class="ct">2</span></div>
-          <div class="qrow"><span class="who">Aug 14 · TRK N · Sable</span>
-            <span class="ind on"><i class="d"></i>Cal</span><span class="ind on"><i class="d"></i>Staff</span><span class="step on">Email</span><span class="step">QB</span></div>
-          <div class="qrow"><span class="who">Aug 19 · PRS A · Lantern</span>
-            <span class="ind on"><i class="d"></i>Cal</span><span class="ind"><i class="d"></i>Staff</span><span class="step">Email</span><span class="step">QB</span></div>
+          <div class="qrow"><span class="who">Aug 14 · TRK N · Sable</span></div>
+          <div class="qrow"><span class="who">Aug 19 · PRS A · Lantern</span></div>
         </div>
         <div class="pane">
           <div class="lozenge">Shift notes</div>
@@ -315,7 +316,11 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
 </div>
 
 <script>
-function role(r){
+// NOT named role(): an inline onclick resolves names against the ELEMENT first,
+// and every button has a built-in `role` property (ARIA reflection), so
+// onclick="role('A')" read the button's own role instead of this function and
+// threw. Any handler name that collides with a DOM property will do this.
+function showRole(r){
   ['F','A'].forEach(function(k){
     document.getElementById(k).classList.toggle('on',k===r);
     document.getElementById('t'+k).classList.toggle('on',k===r);
