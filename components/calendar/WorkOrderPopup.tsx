@@ -15,6 +15,7 @@ import { seedStudioTimeRows } from '@/lib/seedStudioTimeRows'
 import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter, getLocalToday } from '@/lib/time'
 import { formatCurrency, stripCurrency } from '@/lib/format'
 import { computeWoTotals } from '@/lib/woTotals'
+import { findMissingTimes, missingTimesMessage } from '@/lib/woValidation'
 import { dbResult } from '@/lib/db'
 import { STUDIO_LOCATIONS } from '@/lib/studios'
 
@@ -340,6 +341,11 @@ export function WorkOrderPopup({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [completing, setCompleting] = useState(false)
+  // Rows blocking Complete because they're missing times (RULING 2026-08-10).
+  // Cleared on the next Complete attempt, not on edit — the banner should stay
+  // put while you go and fix the rows it just named.
+  const [timeErrorRows, setTimeErrorRows] = useState<Set<string>>(new Set())
+  const [timeErrorMsg, setTimeErrorMsg] = useState<string | null>(null)
   const [showEngRows, setShowEngRows] = useState(false)
   // Seed panel (bulk row generation — see docs/WO-SPEC.md §6)
   const [seedOpen, setSeedOpen] = useState(false)
@@ -1158,8 +1164,15 @@ export function WorkOrderPopup({
       eng_hours: null,
       eng_rate: '',
       eng_charge: null,
-      eng_from_time: '',
-      eng_to_time: '',
+      // Staff times MIRROR the session times on creation (RULING 2026-08-10).
+      // They stay editable for the genuine cases where an engineer's shift
+      // differs, and the follow-unless-set-independently rule above keeps them
+      // in step until someone deliberately changes one. These used to start
+      // blank, which is how rows reached billing with no staff hours at all —
+      // the seed path (lib/seedStudioTimeRows) always filled them, so only rows
+      // added by hand after WO creation had the gap.
+      eng_from_time: fromTime,
+      eng_to_time: toTime,
       admin_checked: false,
       admin_locked: false,
       eng_visible: true,
@@ -1365,8 +1378,24 @@ export function WorkOrderPopup({
 
   async function handleComplete() {
     if (!woIdRef.current || !wo) return
+
+    const reopening = wo.status === 'completed'
+
+    // Gate COMPLETING only. Re-opening a WO must never be blocked — that would
+    // strand a bad WO in the completed state with no way back to fix it.
+    if (!reopening) {
+      const problems = findMissingTimes(stRows)
+      if (problems.length > 0) {
+        setTimeErrorRows(new Set(problems.map(p => p.rowId)))
+        setTimeErrorMsg(missingTimesMessage(problems))
+        return
+      }
+    }
+    setTimeErrorRows(new Set())
+    setTimeErrorMsg(null)
+
     setCompleting(true)
-    const newStatus = wo.status === 'completed' ? 'open' : 'completed'
+    const newStatus = reopening ? 'open' : 'completed'
     const now = new Date().toISOString()
     await supabase.from('work_orders').update({
       status: newStatus,
@@ -2342,8 +2371,17 @@ export function WorkOrderPopup({
                   const rowHrs = r.total_hours ?? calcHours(r.from_time, r.to_time)
                   const otHrsNum = parseFloat(r.ot_hours ?? '0') || 0
 
+                  // Missing-times highlight. A tint, not a border — Law 1. Hot is
+                  // sanctioned for critical/missing-info (spec §5, ruling 2026-07-31).
+                  const hasTimeError = timeErrorRows.has(r.id)
                   return (
-                    <div key={r.id}>
+                    <div
+                      key={r.id}
+                      style={hasTimeError ? {
+                        background: 'color-mix(in srgb, var(--c-st-hot) 12%, transparent)',
+                        borderRadius: 8,
+                      } : undefined}
+                    >
                       {!isEngOnly && <div className={zebra} style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px', background: r.admin_locked ? 'var(--c-wash)' : undefined }}>
                         {/* Studio */}
                         <div style={cellS}>
@@ -2860,6 +2898,29 @@ export function WorkOrderPopup({
           </>)}
 
         </div>{/* end body */}
+
+        {/* ── MISSING TIMES BANNER (RULING 2026-08-10) ──────────────────────
+            Sits directly above the footer rather than at the top of the body:
+            the click that triggers it is down here, and on a long WO a
+            top-of-page error would appear somewhere you aren't looking.
+            Fill, not border — Law 1. Hot is the sanctioned critical colour. */}
+        {timeErrorMsg && (
+          <div
+            data-no-print=""
+            role="alert"
+            style={{
+              flexShrink: 0,
+              background: 'color-mix(in srgb, var(--c-st-hot) 16%, transparent)',
+              color: 'var(--c-fg)',
+              fontFamily: 'Inter',
+              fontSize: 11,
+              lineHeight: 1.5,
+              padding: isMobile ? '10px 16px' : '10px 22px',
+            }}
+          >
+            {timeErrorMsg}
+          </div>
+        )}
 
         {/* ── FOOTER ───────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 8 : 10, padding: isMobile ? '12px 16px calc(12px + env(safe-area-inset-bottom)) 16px' : '14px 22px', flexShrink: 0, background: 'var(--c-bg)' }}>
