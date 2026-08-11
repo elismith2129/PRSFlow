@@ -421,10 +421,14 @@ async function main() {
 
         const bucketFolderId = await findOrCreateFolder(drive, bucket, mirrorId);
         const have = await listExistingNames(drive, bucketFolderId);
+        // Per-bucket tallies. The running totals are cumulative across every
+        // bucket, so reporting them on a per-bucket line read as nonsense —
+        // the second bucket claimed "34 already present" when it held one file.
+        let bCopied = 0, bSkipped = 0;
 
         for (const obj of objects) {
           const name = flatName(obj.path);
-          if (have.has(name)) { skipped++; continue; }
+          if (have.has(name)) { skipped++; bSkipped++; continue; }
           if (obj.size && obj.size > MAX_FILE_BYTES) {
             failed++;
             errors.push({ kind: 'file', name: `${bucket}/${obj.path}`, error: `skipped — ${obj.size} bytes exceeds the ${MAX_FILE_BYTES} byte limit` });
@@ -434,14 +438,14 @@ async function main() {
           try {
             const body = await downloadObject(bucket, obj.path);
             await uploadFile(drive, { name, parentId: bucketFolderId, mimeType: obj.mimeType, body });
-            copied++;
+            copied++; bCopied++;
           } catch (err) {
             failed++;
             errors.push({ kind: 'file', name: `${bucket}/${obj.path}`, error: err.message });
             console.error(`✗ ${bucket}/${obj.path}: ${err.message}`);
           }
         }
-        console.log(`✓ ${bucket}: mirrored (${copied} new so far, ${skipped} already present)`);
+        console.log(`✓ ${bucket}: mirrored (${bCopied} new, ${bSkipped} already present)`);
       }
     } catch (err) {
       failed++;
