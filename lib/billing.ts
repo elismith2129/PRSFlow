@@ -44,7 +44,7 @@ export type ClosedReason = 'written_off' | 'voided'
 
 /** The tabs on the hub. `cod_balance`/`cod_paid` are derived, never stored. */
 export type BucketKey =
-  | 'needs_approval' | 'awaiting_po' | 'sent' | 'cod_balance' | 'paid' | 'closed'
+  | 'needs_approval' | 'approved' | 'awaiting_po' | 'sent' | 'cod_balance' | 'paid' | 'closed'
 
 export type Bucket = { key: BucketKey; label: string; pill: string }
 
@@ -54,6 +54,14 @@ export type Bucket = { key: BucketKey; label: string; pill: string }
  */
 export const BUCKETS: Bucket[] = [
   { key: 'needs_approval', label: 'Needs approval',    pill: 'c-fill-warm' },
+  // Approved gets its OWN tab (RULING 2026-08-11). An earlier version folded it
+  // into Needs approval to save a tab — wrong, and Eli's question caught it:
+  // billing would have gone to a tab called "Needs approval" to find the
+  // invoices that were already approved and waiting to be sent. The two states
+  // have different owners and different actions (an owner approves; billing
+  // sends), which is what earns a queue. Fewer tabs is not worth a tab whose
+  // name lies about half its contents.
+  { key: 'approved',       label: 'Ready to send',     pill: 'c-fill-uncon' },
   { key: 'awaiting_po',    label: 'Awaiting PO',       pill: 'c-fill-cold' },
   { key: 'sent',           label: 'Sent & open',       pill: 'c-fill-dead' },
   { key: 'cod_balance',    label: 'COD with balance',  pill: 'c-fill-hot' },
@@ -138,10 +146,9 @@ function deriveBucket(
   if (state === 'paid') return 'paid'
   if (state === 'sent') return 'sent'
   if (state === 'awaiting_po') return 'awaiting_po'
-  // 'needs_approval', 'approved', or NULL-but-completed all sit with the work
-  // waiting on a person. `approved` has no tab of its own: once you've approved
-  // it the next question is whether it's gone out, and it appears under Needs
-  // approval until it does. Splitting them would add a tab nobody acts in.
+  if (state === 'approved') return 'approved'
+  // needs_approval, or NULL on a completed billing WO — either way it is
+  // waiting on an owner and has not been signed off.
   return 'needs_approval'
 }
 
