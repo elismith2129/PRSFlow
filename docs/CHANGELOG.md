@@ -19,6 +19,74 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.8.0 — UNRELEASED (branch `redesign/carved`) — Aug 10, 2026
+
+**MY DAY — the operational duties layer goes live.** Built from `docs/MYDAY-BUILD.md`.
+Replaces the `FLO_STATIC` / `MYDAY_STATIC` / `DGRID_STATIC` placeholders the v1.7.0 frame
+shipped with. Also two extractions from the work-order screen that were prerequisites.
+
+**Migrations — run by hand, in order:**
+
+| File | What |
+|---|---|
+| `20260810120000_myday.sql` | The four tables + seed: `myday_duties`, `myday_entries`, `myday_queue_steps`, `myday_notes`. RLS, explicit GRANTs, replica identity, publication. |
+| `20260810130000_myday_anyday_duties.sql` | Adds `always_available`; valley checks + office stock → `cumulative`. |
+| `20260810140000_myday_day_scoped_duties.sql` | Reverses `always_available` for those two (same day). |
+| `20260810150000_myday_retire_create_wos.sql` | Retires `bil_create_wos`. |
+| `20260810160000_myday_retire_calendar_lookahead.sql` | Retires `mgr_calendar_lookahead`. |
+| `20260810170000_myday_srs_roundup.sql` | Adds the monthly SRS round-up for billing. |
+
+**What shipped**
+
+1. **`lib/myday.ts`** — duty fetch/complete, backlog, the five computed queues, the
+   14-day grid, and `composeBriefing` (template sentences over real numbers, **no AI**).
+2. **Dashboard** — My Day card, Flo briefing and staff grid all live. View-as gained a
+   third option: `eli | fernando | aaron`, where **`eli` is oversight and has no duty
+   card** (duties are scoped to manager + billing). Toggle labels come from the roster.
+3. **`/my-day`** — the Workbench page (`docs/design-refs/my-day-final.html`). Rail entry
+   under Dashboard, gated to owner/manager/billing.
+4. **`lib/woTotals.ts`** — WO money math extracted from `WorkOrderPopup`'s derived-totals
+   block so the balances queue can reuse it. Behaviour-preserving.
+5. **`lib/woValidation.ts`** — session + staff times required before **Complete WO**
+   (admin, blocks) and warned about on the runner WO page (**warns, never blocks**).
+   Staff times now mirror session times on newly added rows.
+
+**WATCH-OUTS**
+
+- **Seed migrations rewrite themselves on every run.** `20260810120000` upserts with
+  `ON CONFLICT DO UPDATE`, so any hand-tweak to a seeded duty MUST also be written back
+  into that file or a future replay silently reverts it. This bit twice in one session.
+  `is_active` is deliberately excluded from the update list — that is what makes
+  "retired" survive a replay.
+- **Retire duties, never delete them.** `myday_entries` FK to `myday_duties`; a delete
+  cascades the completion history away. Set `is_active = false`.
+- **`captured` is jsonb, not the specced `captured_count numeric`** — the billing COD duty
+  captures three figures. Single-capture duties are a one-key object.
+- **Monthly duties are STICKY** (`STICKY_CADENCES` in `lib/myday.ts`): they stay on the
+  card past their due date and escalate, and they **skip the backlog tally** — the 30-day
+  scan can only reach one prior monthly occurrence, so the count was arbitrary.
+- **Every retrospective judgement is bounded by `duty.created_at`** (`dutyExistedOn`).
+  Without it, day one of My Day reports a month of misses for everyone.
+- **`fetchBillingBrief().paymentsReceived` counts PRSFlo payments only.** Anything zeroed
+  straight into QuickBooks never touches `payment_rows`. The UI carries a footnote saying
+  so; remove it only when QBO lands.
+- **Staffing derives from `studio_time_rows.eng_name`, not `bookings.engineer_name`** —
+  the booking columns are a projection and can be seeded while no real name is on a line.
+- **Do not name an inline-`onclick` handler after a DOM property.** A mock's toggle named
+  `role()` silently read the button's ARIA `role` instead. Cost 20 minutes.
+
+**Files:** `lib/myday.ts` · `lib/woTotals.ts` · `lib/woValidation.ts` ·
+`app/(main)/my-day/page.tsx` · `app/(main)/page.tsx` · `app/runner/[studio]/wo/[id]/page.tsx` ·
+`components/calendar/WorkOrderPopup.tsx` · `components/layout/Rail.tsx` · `styles/globals.css` ·
+`docs/MYDAY-BUILD.md` · `docs/AR-SCOPING.md` (new) · `docs/design-refs/my-day-options.html`,
+`my-day-final.html` (new) · six migrations above.
+
+**Known-not-done:** `quarterly` cadence (needs a month+day `due_days` shape — add with the
+first real quarterly duty). Backup does not cover Supabase storage — see
+`docs/AR-SCOPING.md` §6, a prerequisite for the AR work.
+
+---
+
 ## v1.7.0 — UNRELEASED (branch `redesign/carved`) — Aug 7–10, 2026
 
 **The §14 frame + the SOFT skin.** One working session (Cowork, single chat — the F/O

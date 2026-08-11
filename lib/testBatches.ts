@@ -55,6 +55,91 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'my-day-2026-08-10',
+    title: 'My Day — your daily checklist',
+    version: 'v1.8.0 (preview branch)',
+    date: 'Aug 10, 2026',
+    intro:
+      'New: a daily checklist of the things your role is responsible for. It shows on the dashboard (short list) and on a new "My Day" page in the left menu (the full version, with holds, balances and shift notes). The Flo box at the top of the dashboard now writes a real briefing from it instead of the made-up example text. Only Fernando, Aaron and Eli have this. Ticking things is safe — nothing is sent anywhere and you can untick.',
+    items: [
+      {
+        id: 'md-dash-list', area: 'Dashboard', device: 'desktop',
+        what: 'The "My day — duties" box on the dashboard lists real duties, not the old example ones',
+        how: 'Open the dashboard. The My Day box should list your actual duties (studio check-ins, timecards, and so on). If you still see "Morning briefing reviewed" or "Sign vendor invoices", that is the OLD placeholder text — report it.',
+      },
+      {
+        id: 'md-tick', area: 'Dashboard', device: 'desktop',
+        what: 'Ticking a duty sticks after a refresh',
+        how: 'Click a duty so it goes green and crosses out. Refresh the page. It should still be ticked. Click it again to untick, refresh again, and it should stay unticked.',
+      },
+      {
+        id: 'md-count', area: 'Dashboard', device: 'desktop',
+        what: 'The little count next to "My day — duties" matches what you ticked',
+        how: 'Note the count (like "2 of 8"). Tick one more duty. The first number should go up by one straight away.',
+      },
+      {
+        id: 'md-number', area: 'Dashboard', device: 'desktop',
+        what: 'Duties that ask for a number show a small box once ticked, and it saves',
+        how: 'Tick "ADP runner timecards" (Fernando) or "Approve Ramp transactions" (Aaron). A small number box appears. Type a number, click elsewhere, then refresh. The number should still be there.',
+      },
+      {
+        id: 'md-page', area: 'My Day page', device: 'desktop',
+        what: 'The "My Day" item in the left menu opens the full page',
+        how: 'Click "My Day" in the left menu, just under Dashboard. You should get a page headed My Day with your duties on the left and holds, notes and other boxes on the right.',
+      },
+      {
+        id: 'md-sync', area: 'My Day page', device: 'desktop',
+        what: 'Ticking on one screen shows on the other without refreshing',
+        how: 'Open the dashboard in one browser tab and My Day in another. Tick a duty on the My Day page, then look at the dashboard tab WITHOUT refreshing it. It should tick itself within a few seconds.',
+      },
+      {
+        id: 'md-weekly', area: 'My Day page', device: 'desktop',
+        what: 'Weekly duties only appear on their own day',
+        how: 'Fernando: Valley checks should ONLY appear on Tuesdays and Fridays, Office stock ONLY on Wednesdays. On any other day they should not be in the list at all. Report if they show up on the wrong day.',
+      },
+      {
+        id: 'md-notes', area: 'My Day page', device: 'desktop',
+        what: 'Shift notes save on their own',
+        how: 'Type something into Session notes on the My Day page. Wait about two seconds, then refresh. Your text should still be there. You should not have to press save.',
+      },
+      {
+        id: 'md-billing-peek', area: 'My Day page', device: 'desktop',
+        what: 'Fernando sees a read-only billing summary; Aaron does not',
+        how: 'On My Day as Fernando (or use the Manager/Billing switch if you are Eli), there should be a "Billing — this period" box with four numbers and no buttons. Switch to Billing — that box should be replaced by a Balances list. Report if the numbers look obviously wrong.',
+      },
+      {
+        id: 'md-flo', area: 'Dashboard', device: 'desktop',
+        what: 'The Flo briefing describes real things, not the old sample sentences',
+        how: 'Read the Flo box at the top of the dashboard. It should mention real counts. If it still says "Aaron missed the AR follow-up queue again" or mentions Kestrel and Harbor, that is the OLD example text — report it.',
+      },
+      {
+        id: 'md-grid', area: 'Dashboard', device: 'desktop',
+        what: 'The 14-day staff grid is not a wall of red',
+        how: 'Eli only. Look at the "Staff — 14 days" grid. Because this is brand new, most squares should be blank or green — NOT a block of red. A wall of red means it is counting days before My Day existed. Report it.',
+      },
+      {
+        id: 'md-wo-times', area: 'Work orders', device: 'desktop',
+        what: 'A work order will not complete while a time is blank',
+        how: 'Open any work order. Clear the To time on a studio time row. Click Complete WO. It should refuse, show a red message naming the row, and tint that row. Put the time back and Complete should work normally.',
+      },
+      {
+        id: 'md-wo-runner', area: 'Runner', device: 'phone',
+        what: 'The runner is warned about blank times but can still save',
+        how: 'On your phone, open a work order from the runner hub. Clear a From or To time. A red message should appear above the buttons naming the row. Save should STILL work — report it if Save is blocked.',
+      },
+      {
+        id: 'md-wo-totals', area: 'Work orders', device: 'desktop',
+        what: 'Work order totals are unchanged',
+        how: 'IMPORTANT — this is the regression check. Open a work order that has an engineer and a rental. Check Studio Total, Engineer Total, Rentals, Grand Total and Balance Due are the same figures you would expect. The code behind these moved; the numbers should not have.',
+      },
+      {
+        id: 'md-themes', area: 'My Day page', device: 'desktop',
+        what: 'The My Day page looks right in both light and dark mode',
+        how: 'On the My Day page, switch theme with the sun/moon at the bottom of the left menu. Check nothing is unreadable, invisible, or a strange colour in either mode.',
+      },
+    ],
+  },
+  {
     id: 'soft-rail-dash-2026-08-10',
     title: 'New look — side menu, dashboard, softer style',
     version: 'v1.7.0 (preview branch)',

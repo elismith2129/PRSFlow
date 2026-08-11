@@ -2935,3 +2935,105 @@ review notes honored: office stock is NOT billing's (he deleted it — stays wit
 manager); session-info collection falls to billing when eng/asst leave it blank.
 **Rejected:** building this in the same session (Eli at Fable usage limit — brief
 written here, execution handed to a fresh Opus session per the model-split decision).
+
+### August 10, 2026 (cont. 2) — My Day BUILT: migration, library, dashboard, /my-day workspace
+
+Execution of `docs/MYDAY-BUILD.md` in a fresh Cowork session. Shipped: the four-table
+migration + seed, `lib/myday.ts`, the dashboard card + Flo briefing wired to real data,
+the live 14-day staff grid, and the `/my-day` Workbench page. Also `lib/woTotals.ts`
+and `lib/woValidation.ts`, both of which fell out of the work rather than being planned.
+
+**Why the WO files exist.** MYDAY-BUILD §3 defines a balance as "studio + rentals + eng
+total > payments sum — reuse the WO total math, never re-derive locally." That math was
+not extractable: it lived inline in `WorkOrderPopup.tsx`'s derived-totals block. Rather
+than write a second copy (the #1 audited defect class), it was lifted to
+`lib/woTotals.ts` and the popup now imports it. Behaviour-preserving — same fallback
+chain, same rounding, proved by unit test.
+
+**Rulings made this session, in the order they happened.** Each reversed or narrowed the
+one before it; the sequence matters more than any single ruling:
+
+1. **Captured numbers widened to jsonb.** §4 specced `captured_count numeric`, but §2's
+   billing COD duty captures THREE figures (outstanding · chased · 31+). One slot could
+   not hold them. *Rejected:* splitting COD into three duties — it fragments one real
+   action into three ticks and lengthens the card, which HR-SPEC §2.2 rule 2 warns about.
+2. **Valley checks + office stock made `cumulative` and `always_available`** so they could
+   be ticked any day. **Reversed hours later** (`20260810140000`): "I don't want Friday's
+   task cluttering Monday's list." `dtype` stayed cumulative — that is the tracking, not
+   the scheduling. The `always_available` COLUMN survives, unused; `isDutyShownOn` vs
+   `isDutyDueOn` in `lib/myday.ts` is the modelling it left behind, and that split is
+   worth keeping.
+3. **Flo gained a LOOKAHEAD tier** — one neutral line, `Tomorrow: Valley checks`. It buys
+   back the warning that day-scoping costs. Daily duties are excluded: a nightly
+   "tomorrow: ADP timecards" is exactly the noise the ruling exists to prevent. Dot is
+   `--c-st-dead`, NOT warm — warm is lead-temp/tentative only, and a routine heads-up in
+   orange teaches people to ignore orange.
+4. **The full-page auto-completion model was proposed and CUT.** Sub-steps would roll up,
+   an override with a required reason would cover edge cases. Eli: "no logic. i got too
+   much to build to sort through bugs and special case scenarios here." *The lazy-tick
+   risk is accepted knowingly* — `sub_items` renders as grey reference text, one checkbox.
+5. **Duties retired as paper-era fiction.** `bil_create_wos` (work orders have been
+   automatic since June 30 — a checkbox always already true) and `mgr_calendar_lookahead`.
+   Both source documents described the pre-PRSFlo workflow. Retired via `is_active=false`,
+   never deleted, so completion history survives.
+6. **INDICATOR vs CHECKBOX — the rule worth keeping.** If PRSFlo can determine it, it is a
+   derived light; only what the app cannot know stays a pill. Consequences: no WO light
+   ("I want to move away from the idea that the calendar and work order are different
+   things" — matches the standing rule that the Work Order IS the booking); no Cal light
+   (both queues are built FROM bookings, so it could never be off); Staff derives from
+   `studio_time_rows.eng_name`, NOT `bookings.engineer_name`, because staffing lives only
+   in the Studio Time table. **Holds lost all steps** — "it's all happening in text and
+   email, no need to create more work." A checkbox nobody maintains goes stale and lies.
+7. **Monthly duties STICK and ESCALATE** rather than accruing a backlog count. They stay on
+   the card past their due date and go red with an ASAP tag. When several months are
+   missed the OLDEST is reported — saying "5 days late" when August's invoices were 36
+   days late is how a thing stays missed. Weekly/daily keep the backlog tally.
+8. **Overdue shows IN PLACE.** An Overdue band was drawn and rejected: relocating a late
+   item tells you something is late and then makes you hunt for it.
+9. **needs-a-work-order pane removed from `/my-day`.** Eli: "we'll never have to make a
+   WO." Correct — in normal operation it is always empty, and a permanently-zero pane
+   teaches people to skip that column. When it is non-empty something BROKE, and that
+   belongs in the briefing (`composeBriefing` already raises it), not a queue.
+
+**Bugs caught by testing that would otherwise have shipped:**
+- **Launch day would have been a wall of red.** Every cumulative duty would have reported
+  a full 30-day backlog the morning My Day went live, because nothing had ever been
+  ticked. `dutyExistedOn` now bounds every retrospective judgement by `created_at` —
+  applies to the briefing and the 14-day grid too, which would have shown two solid weeks
+  of red.
+- **The Flo lookahead repeated what the alert had just said.** Dedup compared against text
+  that had already been through `lowerFirst`, so it never matched. Now keyed on duty id.
+- **The mock's role toggle silently did nothing.** The handler was named `role()`, and
+  every button has a built-in `role` property (ARIA reflection) — an inline `onclick`
+  resolves against the element before the page, so it read the button's role and threw.
+- **Monthly duties would have shown a meaningless backlog** — the 30-day scan can only
+  reach one prior occurrence of a monthly duty, so "covering 2 days" was arbitrary.
+  Sticky cadences now skip the tally entirely.
+
+**Two things surfaced that are NOT built and matter:**
+- **The nightly backup does not cover uploaded files.** `scripts/backup.mjs` copies 17
+  tables; it never touches Supabase storage. Discovered while scoping AR (see below) —
+  Eli wants to replace the Dropbox invoice archive entirely, which would leave the only
+  copy of financial documents unbacked. Also true today of client ID scans and checklist
+  photos. **Prerequisite for the AR work, not a nice-to-have.**
+- **AR / accounts receivable was scoped, not built** — `docs/AR-SCOPING.md`. Eli's Dropbox
+  folder taxonomy (COD paid / COD with balance; billing needing approval / approved
+  awaiting PO / sent open / sent paid) is a hand-maintained state machine, and the
+  scan-and-combine step only exists because the WO used to be paper. Interim architecture
+  agreed: **PRSFlo owns the workflow and the documents, QuickBooks keeps owning the
+  money** — which dissolves the two-sets-of-books risk, because they track different
+  things. COD buckets are derivable from existing payment data; billing buckets stay
+  manual until QBO. *Still open:* who owns truth long-term, written-off/voided states,
+  and whether the existing archive is imported or PRSFlo starts clean.
+
+**Rejected this session:** wiring the times check into the runner as a BLOCK (that page's
+only action is Save, and a session in progress legitimately has no end time — it warns
+instead); adding a `quarterly` cadence (nothing quarterly exists yet, and it needs a
+month+day `due_days` shape rather than day-of-month — add both together); building the
+merged studio-and-rooms dashboard card now (Eli's spitball; deferred deliberately so the
+decision comes from living with `/my-day` for a week rather than from a mock).
+
+**Process note:** an early drift was caught by Eli — the WO times work was started off the
+back of a side-observation while My Day was mid-build. Flagged, parked, then done with his
+explicit go-ahead. Worth repeating: state the connection to the current chunk before
+opening a file in another subsystem.

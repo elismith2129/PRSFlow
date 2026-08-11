@@ -641,6 +641,33 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.8.0', date:'Aug 10, 2026',
+    headline:'My Day — your daily checklist, on the dashboard and its own page',
+    desc:'The things your role is responsible for every day now live in PRSFlo instead of on paper. There is a short checklist on your dashboard, and a fuller "My Day" page in the left menu with your holds, balances and shift notes. Fernando, Aaron and Eli only.',
+    changes:[
+      'A "My day — duties" list on your dashboard. Tick things off as you do them.',
+      'A new My Day page in the left menu, under Dashboard, with more detail — holds, balances, and a place for shift notes that saves itself as you type.',
+      'A few duties ask for a number when you tick them (timecard exceptions cleared, Ramp transactions, COD accounts). The box appears after you tick.',
+      'Weekly and monthly jobs only appear on the day they are due, so Friday\'s work never clutters Monday\'s list.',
+      'The Flo box at the top of your dashboard now writes a real summary from all of this, instead of the example text it has been showing.',
+      'Anything monthly that gets missed — like tenant rent invoices — stays on your list and turns red until it is done, rather than disappearing until next month.',
+      'Two duties were removed because the app now does them for you: creating work orders (they are made automatically when a session goes on the calendar) and the daily calendar look-ahead.',
+      'New for billing: a reminder on the 1st of each month to round up SRS bookings for payment.',
+      'Work orders now need a start and end time on every row before they can be completed. If one is blank you get a message and the row is highlighted. Runners get the same warning but can still save.'
+    ],
+    affects:'Your list is fixed by your role — you cannot add to it, and it resets each morning. Ticking is safe and you can untick. If your list has something on it that is not really your job any more, say so and it can be removed in a couple of minutes. If a work order will not complete, look for the red message above the buttons — it names the row that is missing a time.',
+    dev:[
+      '<b>My Day — the operational duties layer.</b> Four tables (<code>myday_duties</code>, <code>myday_entries</code>, <code>myday_queue_steps</code>, <code>myday_notes</code>) plus <code>lib/myday.ts</code>: duty fetch/complete, backlog, five COMPUTED queues, the 14-day grid, and <code>composeBriefing</code> — template sentences over real numbers, <b>no AI</b>. Live on the dashboard card, the Flo box and the staff grid (all three placeholders deleted), and on the new <code>/my-day</code> Workbench page.',
+      '<b>Two role cards, manager + billing.</b> Billing is a ROLE, not a person — a successor inherits the card untouched. Dashboard view-as gained a third option where <code>eli</code> is oversight and has <b>no duty card of his own</b>.',
+      '<b>Rulings that shape it:</b> plain checkboxes — no roll-up from sub-steps, no auto-completion, no override (the lazy-tick risk is knowingly accepted). Day-scoped duties show only on their day, with a Flo lookahead the day before. Overdue shows IN PLACE, never relocated to a band. Monthly duties STICK and escalate rather than tally, and report the OLDEST missed occurrence so lateness is not understated. <b>Indicator vs checkbox:</b> if the app can determine it, it is a derived light; only what it cannot know stays a pill — which is why there is no WO light (the Work Order IS the booking) and no Cal light (the queues are built from bookings).',
+      '<b>Two extractions from the work-order screen.</b> <code>lib/woTotals.ts</code> — the money math, lifted out of <code>WorkOrderPopup</code> so the balances queue reuses it instead of re-deriving (behaviour-preserving). <code>lib/woValidation.ts</code> — session + staff times required before Complete WO; blocks on admin, warns only on the runner, one file so the two cannot disagree.',
+      '<b>Watch-out:</b> the seed migration upserts with <code>ON CONFLICT DO UPDATE</code>, so any hand-tweak to a seeded duty must also be written back into that file or a replay silently reverts it. <code>is_active</code> is excluded from the update list on purpose — that is what makes "retired" survive.',
+      '<b>Watch-out:</b> retire duties with <code>is_active=false</code>, never DELETE — <code>myday_entries</code> cascades and the completion history goes with it.',
+      '<b>Watch-out:</b> every retrospective judgement is bounded by <code>duty.created_at</code>. Without it, day one reports a month of misses for everybody.',
+      '<b>Watch-out:</b> the billing brief\'s "payments received" counts PRSFlo payments only — anything zeroed straight into QuickBooks never touches <code>payment_rows</code>. The UI says so; remove the note when QBO lands.'
+    ]
+  },
+  {
     ver:'v1.5.1', date:'Jul 30, 2026',
     headline:'Runner work orders open properly on multi-day sessions',
     desc:'If a session ran over more than one day, or moved between rooms, tapping it on the runner sometimes said "Work order not yet created — contact office" even though the work order existed. That is fixed.',
