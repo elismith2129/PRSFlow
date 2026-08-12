@@ -1941,8 +1941,14 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    not that row has a flag, which is what makes the column scannable. */
 .c-brow, .c-browhd {
   display: grid;
-  grid-template-columns: 76px minmax(0, 1fr) 124px 210px 84px 46px 120px;
+  grid-template-columns: 76px minmax(0, 1fr) 124px 210px 84px 46px 120px 26px;
   align-items: center; gap: 10px;
+}
+/* AGE IS ONLY MEANINGFUL ONCE SOMETHING HAS BEEN SENT (Eli, 2026-08-11). On
+   In progress, Needs review and Upcoming it is a column of dashes, so the
+   column is dropped rather than filled with nothing. */
+.c-bage-off .c-brow, .c-bage-off .c-browhd {
+  grid-template-columns: 76px minmax(0, 1fr) 124px 210px 84px 120px 26px;
 }
 .c-brow { padding: 9px 10px; border-radius: 11px; font-size: 12px; }
 .c-brow:hover { background: var(--c-wash); }
@@ -1959,6 +1965,17 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-bage { font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px; opacity: .45; text-align: right; }
 .c-bflagcell { display: flex; justify-content: flex-end; min-width: 0; }
 .c-bactcell { display: flex; justify-content: flex-end; gap: 6px; }
+/* The ⋯ overflow gets its OWN column at the far right edge (fix, 2026-08-11).
+   It used to share the action cell, so on a row with no button it drifted into
+   the middle of the gap and on a row with one it crowded the primary. A control
+   that means "everything else" belongs at the end, in the same place on every
+   row, out of the flow. */
+.c-bmorecell { display: flex; justify-content: flex-end; }
+.c-bmore {
+  font-size: 12px; line-height: 1; padding: 4px 2px; border: none; background: none;
+  color: var(--c-fg); opacity: .3; cursor: pointer;
+}
+.c-bmore:hover { opacity: .9; }
 /* Past due: the amount goes hot. Hot is dual-purpose for critical (spec §5). */
 .c-brow.c-od .c-bamt { color: var(--c-st-hot); font-weight: 700; }
 

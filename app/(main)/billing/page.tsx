@@ -50,7 +50,7 @@ import { formatCurrency } from '@/lib/format'
 import {
   fetchInvoices, searchRows, rowsInBucket, bucketCounts, paginate,
   pageCount, summarise, isPastDue, bucketLabel, tabsFor, hasCodAlert, nextAction,
-  approveInvoice, recordPoNumber, markSent, markPaid, closeInvoice, reopenInvoice,
+  approveInvoice, markSent, markPaid, closeInvoice, reopenInvoice,
   uploadInvoiceDoc, signedInvoiceUrl, downloadInvoiceDoc, unsendInvoice,
   BILLING_LIGHTS, COD_LIGHTS, PAGE_SIZE,
   type InvoiceRow, type BucketKey, type ClosedReason, type Pipeline,
@@ -72,8 +72,6 @@ export default function BillingPage() {
   const [page, setPage] = useState(1)
   const [busy, setBusy] = useState<string | null>(null)
   const [closing, setClosing] = useState<InvoiceRow | null>(null)
-  const [poFor, setPoFor] = useState<InvoiceRow | null>(null)
-  const [poValue, setPoValue] = useState('')
   const [moreFor, setMoreFor] = useState<InvoiceRow | null>(null)
   const [openBooking, setOpenBooking] = useState<Booking | null>(null)
   // THE PACKAGE: the work order and the invoice in one window, opened by
@@ -123,6 +121,9 @@ export default function BillingPage() {
   const pageRows = paginate(visible, safePage)
   const owed = visible.reduce((s, r) => s + Math.max(0, r.balance), 0)
   const upcomingCount = counts.upcoming ?? 0
+  // Age counts days since SENT, so on In progress / Needs review / Upcoming it
+  // is a column of dashes. Dropped there rather than filled with nothing.
+  const showAge = searching || ['awaiting', 'paid', 'closed'].includes(activeBucket)
 
   useEffect(() => { setPage(1) }, [tab, query, pipeline, showUpcoming])
 
@@ -202,7 +203,6 @@ export default function BillingPage() {
       case 'Mark paid':       return run(row.workOrderId, () => markPaid(row))
       case 'Attach invoice':  uploadFor.current = row; fileInput.current?.click(); return
       case 'Approve':         return run(row.workOrderId, () => approveInvoice(row, profile?.id ?? null))
-      case 'Add PO':          setPoFor(row); setPoValue(row.poNumber ?? ''); return
       // SEND IS ONE PRESS (Eli, 2026-08-11): "you hit the send button and it
       // downloads, and now it says it's sent." No confirmation step — you have
       // already looked at the package to get here, so a dialogue asking whether
@@ -300,7 +300,7 @@ export default function BillingPage() {
         ))}
       </div>
 
-      <div className="c-panel">
+      <div className={`c-panel${showAge ? "" : " c-bage-off"}`}>
         <div className="c-lozenge">
           <b>{searching ? 'Search results' : showUpcoming ? 'Upcoming sessions' : bucketLabel(tab)}</b>
           <span className="c-ct">
@@ -315,8 +315,9 @@ export default function BillingPage() {
             <span className="c-r">Flag</span>
             <span>Progress</span>
             <span className="c-r">Balance</span>
-            <span className="c-r">Age</span>
+            {showAge && <span className="c-r">Age</span>}
             <span className="c-r">Next</span>
+            <span />
           </div>
         )}
 
@@ -332,6 +333,7 @@ export default function BillingPage() {
             searching={searching}
             isOwner={isOwner}
             busy={busy === r.workOrderId}
+            showAge={showAge}
             onAct={() => act(r)}
             onMore={() => setMoreFor(r)}
             onOpen={() => openRow(r)}
@@ -400,42 +402,6 @@ export default function BillingPage() {
         />
       )}
 
-      {poFor && (
-        <PoModal
-          row={poFor}
-          value={poValue}
-          onChange={setPoValue}
-          onCancel={() => setPoFor(null)}
-          onConfirm={async () => {
-            const r = poFor
-            const v = poValue.trim()
-            setPoFor(null)
-            if (v) await run(r.workOrderId, () => recordPoNumber(r, v))
-          }}
-        />
-      )}
-
-      {pkg && (
-        <PackageModal
-          row={pkg.row}
-          booking={pkg.booking}
-          onClose={() => { setPkg(null); load() }}
-        />
-      )}
-
-      {moreFor && (
-        <MoreModal
-          row={moreFor}
-          onCancel={() => setMoreFor(null)}
-          onOpenDoc={() => { openDoc(moreFor); setMoreFor(null) }}
-          onClose={() => { const r = moreFor; setMoreFor(null); setClosing(r) }}
-          onUnsend={() => {
-            const r = moreFor
-            setMoreFor(null)
-            run(r.workOrderId, () => unsendInvoice(r))
-          }}
-        />
-      )}
     </div>
   )
 }
@@ -465,7 +431,7 @@ function Lights({ row }: { row: InvoiceRow }) {
 }
 
 function Row({
-  row, searching, isOwner, busy, dragOver, onAct, onMore, onOpen,
+  row, searching, isOwner, busy, dragOver, showAge, onAct, onMore, onOpen,
   onDragOver, onDragLeave, onDrop,
 }: {
   row: InvoiceRow
@@ -473,6 +439,7 @@ function Row({
   isOwner: boolean
   busy: boolean
   dragOver: boolean
+  showAge: boolean
   onAct: () => void
   onMore: () => void
   onOpen: () => void
@@ -550,7 +517,7 @@ function Row({
       <span>{showLights && <Lights row={row} />}</span>
 
       <span className="c-bamt">{row.balance > 0 ? formatCurrency(String(row.balance)) : '—'}</span>
-      <span className="c-bage">{row.ageDays != null ? `${row.ageDays}d` : '—'}</span>
+      {showAge && <span className="c-bage">{row.ageDays != null ? `${row.ageDays}d` : '—'}</span>}
 
       {/* ONE ACTION PER ROW: whatever comes next. A row with five buttons is a
           row nobody reads.
@@ -563,10 +530,12 @@ function Row({
           writing an invoice off are both rare and both deliberate, so they live
           together in a menu that names them in full. */}
       <span className="c-bactcell">
-        {hasMore && (
-          <button className="c-bact c-bmuted" onClick={onMore} title="More — open the invoice, write it off, void it">⋯</button>
-        )}
         {label && canAct && <button className="c-bact" onClick={onAct}>{label}</button>}
+      </span>
+      <span className="c-bmorecell">
+        {hasMore && (
+          <button className="c-bmore" onClick={onMore} title="More — open the invoice, write it off, void it">⋯</button>
+        )}
       </span>
     </div>
   )
@@ -707,35 +676,3 @@ function CloseModal({ row, onCancel, onConfirm }: {
   )
 }
 
-function PoModal({ row, value, onChange, onCancel, onConfirm }: {
-  row: InvoiceRow
-  value: string
-  onChange: (v: string) => void
-  onCancel: () => void
-  onConfirm: () => void
-}) {
-  return (
-    <div className="c-bmodal-wrap" onClick={onCancel}>
-      <div className="c-bmodal" onClick={e => e.stopPropagation()}>
-        <div className="c-lozenge"><b>PO number</b></div>
-        <div style={{ fontSize: 12.5, marginBottom: 10 }}>{row.client}</div>
-        <input
-          className="c-input"
-          value={value}
-          autoFocus
-          placeholder="PO number from the client…"
-          onChange={e => onChange(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') onConfirm() }}
-          style={{ width: '100%', marginBottom: 10 }}
-        />
-        <div style={{ fontSize: 11, opacity: 0.55, marginBottom: 12, lineHeight: 1.5 }}>
-          Saving this clears the Awaiting-PO flag — it is derived from the number,
-          so there is nothing else to press. If this client never needs one, set
-          PO req&apos;d to No on the work order instead.
-        </div>
-        <button className="c-bact c-bblock" onClick={onConfirm}>Save PO</button>
-        <button className="c-bact c-bmuted c-bblock" onClick={onCancel}>Cancel</button>
-      </div>
-    </div>
-  )
-}

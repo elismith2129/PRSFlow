@@ -609,7 +609,11 @@ export function nextAction(row: InvoiceRow): string | null {
   if (row.step === 1) return 'Attach invoice'
   if (row.isCod) return null
   if (row.step === 2) return 'Approve'
-  if (row.awaitingPo) return 'Add PO'
+  // AWAITING PO SHOWS NO BUTTON (ruling 2026-08-11). The PO is typed on the
+  // work order — Eli: "adding a PO is done on the WO. One place, easily
+  // understood." An Add-PO button here would be a second door to the same
+  // field, and two doors to one field is how the two of them drift.
+  if (row.awaitingPo) return null
   return 'Send'
 }
 
