@@ -197,6 +197,11 @@ export default function MyDayPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.25fr 1fr', gap: 12, alignItems: 'start' }}>
 
+        {/* ── LEFT COLUMN: duties, then shift notes underneath ─────────────
+            One wrapper so both stay in the same grid cell. Without it the notes
+            pane became a THIRD grid child and jumped to the right column. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
         {/* ── DUTIES ──────────────────────────────────────────────────────── */}
         <div className="c-panel">
           <div className="c-lozenge">
@@ -231,6 +236,29 @@ export default function MyDayPage() {
             )
           })}
         </div>
+
+        {/* SHIFT NOTES sit under the duties, not in the right-hand stack
+            (Eli, 2026-08-11) — they are part of working your own day, so they
+            belong with the list you are working, not with the queues. */}
+        <div className="c-panel">
+            <div className="c-lozenge"><b>Shift notes</b></div>
+            <span className="c-label" style={{ display: 'block', marginBottom: 5 }}>Session notes</span>
+            <textarea
+              value={notes.session_notes}
+              onChange={e => setNotes(n => ({ ...n, session_notes: e.target.value }))}
+              placeholder="Anything the next shift needs to know…"
+              className="c-mdnotes"
+            />
+            <span className="c-label" style={{ display: 'block', margin: '9px 0 5px' }}>Studio notes</span>
+            <textarea
+              value={notes.studio_notes}
+              onChange={e => setNotes(n => ({ ...n, studio_notes: e.target.value }))}
+              placeholder="Rooms, gear, maintenance…"
+              className="c-mdnotes"
+            />
+          </div>
+
+        </div>{/* /left column */}
 
         {/* ── RIGHT STACK ─────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -305,23 +333,6 @@ export default function MyDayPage() {
             </div>
           )}
 
-          <div className="c-panel">
-            <div className="c-lozenge"><b>Shift notes</b></div>
-            <span className="c-label" style={{ display: 'block', marginBottom: 5 }}>Session notes</span>
-            <textarea
-              value={notes.session_notes}
-              onChange={e => setNotes(n => ({ ...n, session_notes: e.target.value }))}
-              placeholder="Anything the next shift needs to know…"
-              className="c-mdnotes"
-            />
-            <span className="c-label" style={{ display: 'block', margin: '9px 0 5px' }}>Studio notes</span>
-            <textarea
-              value={notes.studio_notes}
-              onChange={e => setNotes(n => ({ ...n, studio_notes: e.target.value }))}
-              placeholder="Rooms, gear, maintenance…"
-              className="c-mdnotes"
-            />
-          </div>
         </div>
       </div>
     </div>
