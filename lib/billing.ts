@@ -33,6 +33,7 @@ import { supabase } from '@/lib/supabase'
 import { dbResult } from '@/lib/db'
 import { computeWoTotals } from '@/lib/woTotals'
 import { getLocalToday } from '@/lib/time'
+import { bookingShouldHaveWorkOrder } from '@/lib/createWorkOrder'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -183,16 +184,29 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // this at compile time, and a `+`-concatenated string is not a literal to
     // TypeScript — every column then types as an error object. Do not "tidy"
     // this onto several lines with concatenation.
-    .select('id, booking_id, invoice_number, wo_number, client, label, artist, session_date, payment_status, po_number, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path')
+    .select('id, booking_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path')
     .order('session_date', { ascending: false })
   if (!dbResult('Loading invoices', error)) return []
   if (!wos || wos.length === 0) return []
 
   // Everything billing touches, INCLUDING work orders still open — the "To
   // review" tab is their morning queue, and the whole point of the hub is that
-  // the job happens on one screen. Blocks (tour/tech/open hours) never get a
-  // work order in the first place, so nothing needs excluding here.
-  const relevant = wos
+  // the job happens on one screen.
+  //
+  // BLOCKS ARE EXCLUDED (Eli, 2026-08-11). Tour, Tech and Open Hours are
+  // calendar events, not sessions: nothing is charged, so nothing is ever
+  // invoiced. An earlier comment here claimed they "never get a work order in
+  // the first place" — wrong. bookingShouldHaveWorkOrder stops them being
+  // CREATED, but flipping a session to a block leaves its WO row behind
+  // (dormant, by design — see handleBlockSave), and pre-gate rows exist too.
+  // So they must be filtered on read.
+  //
+  // Filtered through the SAME gate the WO creator uses rather than a second
+  // status list, so the two can never drift apart. Cancelled is excluded by the
+  // same call, which is also right: a cancelled session has nothing to bill.
+  const relevant = wos.filter(w =>
+    bookingShouldHaveWorkOrder({ status: (w.session_status ?? '') as any }),
+  )
   if (relevant.length === 0) return []
 
   const ids = relevant.map(w => w.id)

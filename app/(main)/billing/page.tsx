@@ -403,9 +403,15 @@ function Row({
         {row.bucket === 'approved' && <button className="c-bact" onClick={onSend}>Mark sent</button>}
         {row.bucket === 'awaiting_po' && <button className="c-bact" onClick={onPo}>Add PO</button>}
         {row.bucket === 'sent' && <button className="c-bact" onClick={onPaid}>Mark paid</button>}
-        {row.bucket === 'closed'
-          ? <button className="c-bact" onClick={onReopen}>Reopen</button>
-          : <button className="c-bact c-bmuted" onClick={onClose}>Close</button>}
+        {/* "Close invoice" = write off or void. It ONLY appears once there is
+            an invoice to close. Offering it on a work order billing has not
+            even reviewed yet was meaningless (and read like "close this
+            window" — Eli, 2026-08-11). Spelled out in full for the same
+            reason. */}
+        {row.bucket === 'closed' && <button className="c-bact" onClick={onReopen}>Reopen</button>}
+        {row.bucket !== 'closed' && row.bucket !== 'to_review' && row.bucket !== 'needs_invoice' && (
+          <button className="c-bact c-bmuted" onClick={onClose}>Close invoice</button>
+        )}
       </span>
     </div>
   )
