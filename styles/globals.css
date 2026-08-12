@@ -1975,6 +1975,11 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-bpg.c-on { background: var(--c-ivory); color: #1b1a17; opacity: 1; }
 [data-theme="light"] .c-bpg.c-on { background: var(--c-fg); color: var(--c-bg); }
 
+/* Drop target for the QuickBooks PDF. A tint, not a border — Law 1. */
+.c-brow.c-drop { background: rgba(67, 223, 174, .16); border-radius: 11px; }
+.c-bhint { font-size: 10px; opacity: .5; font-style: italic; flex-shrink: 0; text-align: right; width: 150px; }
+.c-brow.c-drop .c-bhint { opacity: .9; font-style: normal; font-weight: 700; }
+
 .c-bnote { font-size: 11px; opacity: .5; padding: 9px 4px 0; line-height: 1.5; }
 .c-bempty { padding: 18px 10px; font-size: 12px; opacity: .5; text-align: center; }
 

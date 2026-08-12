@@ -27,7 +27,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase, type Booking } from '@/lib/supabase'
+import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { formatCurrency } from '@/lib/format'
@@ -52,14 +53,16 @@ export default function BillingPage() {
 
   const [rows, setRows] = useState<InvoiceRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<Tab>('needs_approval')
+  const [tab, setTab] = useState<Tab>('to_review')
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const [busy, setBusy] = useState<string | null>(null)
   const [closing, setClosing] = useState<InvoiceRow | null>(null)
   const [poFor, setPoFor] = useState<InvoiceRow | null>(null)
   const [poValue, setPoValue] = useState('')
-  const uploadFor = useRef<string | null>(null)
+  const [openBooking, setOpenBooking] = useState<Booking | null>(null)
+  const [dragOver, setDragOver] = useState<string | null>(null)
+  const uploadFor = useRef<InvoiceRow | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
   // ── Load ───────────────────────────────────────────────────────────────────
@@ -115,10 +118,33 @@ export default function BillingPage() {
 
   async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    const woId = uploadFor.current
+    const row = uploadFor.current
     e.target.value = '' // let the same file be picked again after a failure
-    if (!file || !woId) return
-    await run(woId, () => uploadInvoiceDoc(woId, file))
+    if (!file || !row) return
+    await run(row.workOrderId, () => uploadInvoiceDoc(row, file))
+  }
+
+  /**
+   * DROP THE QUICKBOOKS PDF STRAIGHT ONTO THE ROW (ruling 2026-08-11).
+   *
+   * The whole point: attaching and filing become one gesture. Billing exports
+   * from QuickBooks, drags it here, and the work order routes itself — Needs
+   * approval for a billing client, or back to its computed COD bucket. No
+   * scanning, no combining, no remembering which folder.
+   */
+  async function onDropFile(row: InvoiceRow, e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(null)
+    const file = e.dataTransfer.files?.[0]
+    if (!file) return
+    await run(row.workOrderId, () => uploadInvoiceDoc(row, file))
+  }
+
+  /** Open the work order itself — billing reviews it before completing. */
+  async function openWorkOrder(row: InvoiceRow) {
+    if (!row.bookingId) return
+    const { data } = await supabase.from('bookings').select('*').eq('id', row.bookingId).limit(1)
+    if (data?.[0]) setOpenBooking(data[0] as Booking)
   }
 
   async function openDoc(row: InvoiceRow) {
@@ -207,8 +233,13 @@ export default function BillingPage() {
             onClose={() => setClosing(r)}
             onReopen={() => run(r.workOrderId, () => reopenInvoice(r))}
             onPo={() => { setPoFor(r); setPoValue(r.poNumber ?? '') }}
-            onUpload={() => { uploadFor.current = r.workOrderId; fileInput.current?.click() }}
+            onUpload={() => { uploadFor.current = r; fileInput.current?.click() }}
             onOpenDoc={() => openDoc(r)}
+            onOpenWo={() => openWorkOrder(r)}
+            dragOver={dragOver === r.workOrderId}
+            onDragOver={e => { e.preventDefault(); setDragOver(r.workOrderId) }}
+            onDragLeave={() => setDragOver(null)}
+            onDrop={e => onDropFile(r, e)}
           />
         ))}
 
@@ -233,6 +264,13 @@ export default function BillingPage() {
 
       {/* The file picker is hidden; the row buttons drive it. */}
       <input ref={fileInput} type="file" accept="application/pdf,image/*" style={{ display: 'none' }} onChange={onPickFile} />
+
+      {openBooking && (
+        <WorkOrderPopup
+          booking={openBooking}
+          onClose={() => { setOpenBooking(null); load() }}
+        />
+      )}
 
       {closing && (
         <CloseModal
@@ -276,13 +314,15 @@ function Stat({ n, k, alert }: { n: string | number; k: string; alert?: boolean 
 }
 
 function Row({
-  row, searching, isOwner, busy,
-  onApprove, onSend, onPaid, onClose, onReopen, onPo, onUpload, onOpenDoc,
+  row, searching, isOwner, busy, dragOver,
+  onApprove, onSend, onPaid, onClose, onReopen, onPo, onUpload, onOpenDoc, onOpenWo,
+  onDragOver, onDragLeave, onDrop,
 }: {
   row: InvoiceRow
   searching: boolean
   isOwner: boolean
   busy: boolean
+  dragOver: boolean
   onApprove: () => void
   onSend: () => void
   onPaid: () => void
@@ -291,12 +331,25 @@ function Row({
   onPo: () => void
   onUpload: () => void
   onOpenDoc: () => void
+  onOpenWo: () => void
+  onDragOver: (e: React.DragEvent) => void
+  onDragLeave: () => void
+  onDrop: (e: React.DragEvent) => void
 }) {
   const pill = BUCKETS.find(b => b.key === row.bucket)?.pill ?? 'c-fill-dead'
   const overdue = isPastDue(row)
+  // Every row accepts a dropped PDF — replacing an invoice is legitimate — but
+  // only one waiting on its invoice ADVANCES on drop (handled in lib/billing).
+  const wantsInvoice = row.bucket === 'needs_invoice'
 
   return (
-    <div className={`c-brow${overdue ? ' c-od' : ''}`} style={{ opacity: busy ? 0.5 : 1 }}>
+    <div
+      className={`c-brow${overdue ? ' c-od' : ''}${dragOver ? ' c-drop' : ''}`}
+      style={{ opacity: busy ? 0.5 : 1 }}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
       <span className="c-binv">{row.woNumber || row.invoiceNumber || '—'}</span>
       <span className="c-bwho">
         <b>{row.client}</b>
@@ -328,12 +381,22 @@ function Row({
         INV {row.hasInvoiceDoc ? '✓' : '+'}
       </span>
 
-      <span className="c-bamt">{row.balance > 0 ? formatCurrency(String(row.balance)) : '—'}</span>
+      {wantsInvoice
+        ? <span className="c-bhint">{dragOver ? 'Release to attach' : 'Drop the QuickBooks PDF here'}</span>
+        : <span className="c-bamt">{row.balance > 0 ? formatCurrency(String(row.balance)) : '—'}</span>}
       <span className="c-bage">{row.ageDays != null ? `${row.ageDays}d` : '—'}</span>
 
       {/* One action per row: whatever comes next for THIS bucket. A row with
           five buttons is a row nobody reads. */}
       <span className="c-bacts">
+        {row.bucket === 'to_review' && (
+          <button className="c-bact" onClick={onOpenWo}>Open WO</button>
+        )}
+        {wantsInvoice && (
+          <button className="c-bact" onClick={onUpload}>
+            {dragOver ? 'Drop it' : 'Attach invoice'}
+          </button>
+        )}
         {row.bucket === 'needs_approval' && isOwner && (
           <button className="c-bact" onClick={onApprove}>Approve</button>
         )}

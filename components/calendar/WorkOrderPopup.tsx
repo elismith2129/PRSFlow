@@ -1403,25 +1403,25 @@ export function WorkOrderPopup({
       admin_approved_at: newStatus === 'completed' ? now : null,
     }).eq('id', woIdRef.current)
 
-    // COMPLETING HANDS THE WORK ORDER TO BILLING (ruling 2026-08-11).
+    // COMPLETING STARTS THE BILLING PROCESS (ruling 2026-08-11).
     //
     // Completing used to be a dead end: the WO closed and the money
-    // conversation left for QuickBooks and never came back. It should START the
-    // invoice's life. So a completed BILLING work order enters the pipeline at
-    // "Needs approval" and appears in /billing.
+    // conversation left for QuickBooks and never came back. In Eli's actual
+    // workflow this is the gate — billing reviews the runner's work order,
+    // completes it, and only then goes to QuickBooks for the invoice.
     //
-    // COD work orders are deliberately skipped — their bucket is computed from
-    // charges vs payments, and stamping a state on them would create a second
-    // source of truth that can disagree with the totals on this very screen.
-    // enterInvoicePipeline also refuses to overwrite an invoice already in
-    // flight, so re-completing a WO cannot drag a sent invoice back.
+    // Lands in "Needs invoice", NOT "Needs approval". Nothing reaches an
+    // owner's queue until the invoice PDF is attached. Applies to COD and
+    // Billing alike: "this starts the billing process regardless."
+    //
+    // enterInvoicePipeline refuses to touch a work order whose invoice is
+    // already in flight, so re-completing cannot drag a sent invoice back.
     //
     // Non-blocking on purpose: if this fails the WO is still completed, and
     // billing's own screen can pick it up. Failing the completion because a
     // downstream stamp did not stick would be the tail wagging the dog.
     if (!completeErr && newStatus === 'completed') {
-      const isCod = (wo.payment_status ?? '').toUpperCase() === 'COD'
-      await enterInvoicePipeline(woIdRef.current, isCod)
+      await enterInvoicePipeline(woIdRef.current)
     }
 
     setWo(prev => prev ? { ...prev, status: newStatus } : prev)

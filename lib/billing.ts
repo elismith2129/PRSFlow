@@ -38,12 +38,13 @@ import { getLocalToday } from '@/lib/time'
 
 /** Stored states. COD work orders carry NULL — their bucket is computed. */
 export type InvoiceState =
-  | 'needs_approval' | 'approved' | 'awaiting_po' | 'sent' | 'paid' | 'closed'
+  | 'needs_invoice' | 'needs_approval' | 'approved' | 'awaiting_po' | 'sent' | 'paid' | 'closed'
 
 export type ClosedReason = 'written_off' | 'voided'
 
 /** The tabs on the hub. `cod_balance`/`cod_paid` are derived, never stored. */
 export type BucketKey =
+  | 'to_review' | 'needs_invoice'
   | 'needs_approval' | 'approved' | 'awaiting_po' | 'sent' | 'cod_balance' | 'paid' | 'closed'
 
 export type Bucket = { key: BucketKey; label: string; pill: string }
@@ -53,6 +54,15 @@ export type Bucket = { key: BucketKey; label: string; pill: string }
  * what needs you → what's stuck → what's out → COD → done → out of play.
  */
 export const BUCKETS: Bucket[] = [
+  // BILLING'S MORNING, in order (RULING 2026-08-11). The first two tabs are the
+  // stage the original build was missing entirely — it sent a completed work
+  // order straight into Eli's approval queue with nothing attached.
+  //   To review    — the runner filled it in last night; billing checks it and
+  //                  hits Complete Work Order. Not an invoice yet.
+  //   Needs invoice— completed and reviewed; waiting on the QuickBooks PDF.
+  //                  Dropping that PDF here is what routes it onward.
+  { key: 'to_review',      label: 'To review',         pill: 'c-fill-uncon' },
+  { key: 'needs_invoice',  label: 'Needs invoice',     pill: 'c-fill-warm' },
   { key: 'needs_approval', label: 'Needs approval',    pill: 'c-fill-warm' },
   // Approved gets its OWN tab (RULING 2026-08-11). An earlier version folded it
   // into Needs approval to save a tab — wrong, and Eli's question caught it:
@@ -134,8 +144,15 @@ function deriveBucket(
   isCod: boolean,
   balance: number,
   grand: number,
+  woStatus: string,
 ): BucketKey {
   if (state === 'closed') return 'closed'
+  // Not completed yet = billing has not reviewed it. This is the runner's
+  // submission waiting for a human, whatever the payment type.
+  if (state === null && woStatus !== 'completed') return 'to_review'
+  // Completed but no invoice attached — for COD and Billing alike. Completing
+  // starts the billing process; the invoice drop is the next act.
+  if (state === 'needs_invoice') return 'needs_invoice'
   if (isCod) {
     // An unbilled COD work order (nothing entered yet) is not "paid" — it has
     // nothing owed because it has nothing on it. Treating $0-of-$0 as settled
@@ -171,12 +188,11 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
   if (!dbResult('Loading invoices', error)) return []
   if (!wos || wos.length === 0) return []
 
-  // Only work orders that have entered the invoice track, or COD work orders
-  // that are finished. A WO still being filled in during the session is not an
-  // invoice yet and must not appear in a billing queue.
-  const relevant = wos.filter(w =>
-    w.invoice_state !== null || w.status === 'completed',
-  )
+  // Everything billing touches, INCLUDING work orders still open — the "To
+  // review" tab is their morning queue, and the whole point of the hub is that
+  // the job happens on one screen. Blocks (tour/tech/open hours) never get a
+  // work order in the first place, so nothing needs excluding here.
+  const relevant = wos
   if (relevant.length === 0) return []
 
   const ids = relevant.map(w => w.id)
@@ -221,7 +237,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       artist: w.artist ?? null,
       sessionDate: w.session_date ?? null,
       isCod,
-      bucket: deriveBucket(state, isCod, totals.balance, totals.grand),
+      bucket: deriveBucket(state, isCod, totals.balance, totals.grand, w.status ?? ''),
       state,
       closedReason: (w.invoice_closed_reason ?? null) as ClosedReason | null,
       balance: totals.balance,
@@ -451,18 +467,26 @@ export async function reopenInvoice(row: InvoiceRow): Promise<boolean> {
 }
 
 /**
- * Put a completed work order into the invoice pipeline.
+ * Completing a work order starts the billing process.
  *
- * Called when a WO is completed. COD work orders are deliberately left with a
- * NULL state — they land in a computed bucket and need no stamp.
+ * It lands in `needs_invoice` — NOT `needs_approval`. Eli's workflow: billing
+ * reviews the runner's work order and completes it, THEN goes to QuickBooks,
+ * updates the invoice and exports a PDF. Only once that PDF is attached does
+ * anything reach an owner's queue. An earlier version skipped this stage and
+ * would have put unreviewed, un-invoiced sessions straight in front of Eli.
+ *
+ * COD goes through it too — "this starts the billing process regardless of COD
+ * or billing." COD returns to a computed bucket on attach, not here.
+ *
+ * `.is('invoice_state', null)` means re-completing a work order cannot drag an
+ * invoice already in flight back to the start.
  */
-export async function enterInvoicePipeline(workOrderId: string, isCod: boolean): Promise<boolean> {
-  if (isCod) return true
+export async function enterInvoicePipeline(workOrderId: string): Promise<boolean> {
   const { error } = await supabase
     .from('work_orders')
-    .update({ invoice_state: 'needs_approval' })
+    .update({ invoice_state: 'needs_invoice' })
     .eq('id', workOrderId)
-    .is('invoice_state', null) // never overwrite an invoice already in flight
+    .is('invoice_state', null)
   return dbResult('Sending work order to billing', error)
 }
 
@@ -475,17 +499,31 @@ export async function enterInvoicePipeline(workOrderId: string, isCod: boolean):
  * combine step is deleted rather than digitised — that step only ever existed
  * because the work order used to be paper.
  */
-export async function uploadInvoiceDoc(workOrderId: string, file: File): Promise<boolean> {
+export async function uploadInvoiceDoc(row: InvoiceRow, file: File): Promise<boolean> {
   const ext = file.name.split('.').pop() || 'pdf'
-  const path = `${workOrderId}/${Date.now()}.${ext}`
+  const path = `${row.workOrderId}/${Date.now()}.${ext}`
 
   const { error: upErr } = await supabase.storage
     .from(INVOICES_BUCKET)
     .upload(path, file, { upsert: false, contentType: file.type || undefined })
   if (!dbResult('Uploading invoice', upErr)) return false
 
+  // THE DROP IS THE TRIGGER (RULING 2026-08-11). Attaching the invoice both
+  // staples the document and routes the work order — one gesture instead of
+  // upload-then-remember-to-file, which is the step that used to go missing in
+  // Dropbox. Only advances a work order that was waiting on its invoice;
+  // replacing the PDF on an already-approved invoice must not reset it.
+  const advance = row.state === 'needs_invoice'
+  const next = row.isCod
+    // COD returns to a COMPUTED bucket — balance owed or paid — because whether
+    // COD money arrived is answered by the payments, never by a stamp.
+    ? { invoice_state: null }
+    : { invoice_state: 'needs_approval' as InvoiceState }
+
   const { error } = await supabase
-    .from('work_orders').update({ invoice_doc_path: path }).eq('id', workOrderId)
+    .from('work_orders')
+    .update({ invoice_doc_path: path, ...(advance ? next : {}) })
+    .eq('id', row.workOrderId)
   return dbResult('Attaching invoice', error)
 }
 
