@@ -1041,7 +1041,18 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    sticky. Active item = filled pill (ivory-on-charcoal dark / ink-on-paper
    light — same treatment as every selected control). Badges are functional
    counts only: hot = needs-you-now, warm = attention, dim wash = neutral. */
-.c-frame { display: flex; min-height: 100vh; }
+/* The frame paints the page colour (fix 2026-08-11).
+   `<html>` still carries the RETIRED glassmorphism gradient (blue→pink) in light
+   mode, with `body` transparent so it shows through. Every carved page sets
+   --c-bg on its own .c-root, but that only covers the content box — so a SHORT
+   page (My Day, Billing) leaked the old gradient below the fold while a tall one
+   (the dashboard) happened to hide it. Painting it here covers the whole
+   internal app regardless of page height, and is one rule rather than a patch
+   per page. The gradient itself is dead law (spec §3: light mode is warm paper,
+   the accent/glass system is retired) and should eventually be deleted — but
+   that lives on `html`, which the login/inquiry/runner surfaces share, so it
+   goes when those are migrated, not now. */
+.c-frame { display: flex; min-height: 100vh; background: var(--c-bg); }
 @media (max-width: 768px) { .c-frame { flex-direction: column; } }
 .c-rail {
   /* Slimmed from the mock's 212px (Eli ruling 2026-08-07 — less real estate). */

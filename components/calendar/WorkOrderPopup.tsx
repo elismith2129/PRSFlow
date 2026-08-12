@@ -16,6 +16,7 @@ import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter
 import { formatCurrency, stripCurrency } from '@/lib/format'
 import { computeWoTotals } from '@/lib/woTotals'
 import { findMissingTimes, missingTimesMessage } from '@/lib/woValidation'
+import { enterInvoicePipeline } from '@/lib/billing'
 import { dbResult } from '@/lib/db'
 import { STUDIO_LOCATIONS } from '@/lib/studios'
 
@@ -1397,10 +1398,32 @@ export function WorkOrderPopup({
     setCompleting(true)
     const newStatus = reopening ? 'open' : 'completed'
     const now = new Date().toISOString()
-    await supabase.from('work_orders').update({
+    const { error: completeErr } = await supabase.from('work_orders').update({
       status: newStatus,
       admin_approved_at: newStatus === 'completed' ? now : null,
     }).eq('id', woIdRef.current)
+
+    // COMPLETING HANDS THE WORK ORDER TO BILLING (ruling 2026-08-11).
+    //
+    // Completing used to be a dead end: the WO closed and the money
+    // conversation left for QuickBooks and never came back. It should START the
+    // invoice's life. So a completed BILLING work order enters the pipeline at
+    // "Needs approval" and appears in /billing.
+    //
+    // COD work orders are deliberately skipped — their bucket is computed from
+    // charges vs payments, and stamping a state on them would create a second
+    // source of truth that can disagree with the totals on this very screen.
+    // enterInvoicePipeline also refuses to overwrite an invoice already in
+    // flight, so re-completing a WO cannot drag a sent invoice back.
+    //
+    // Non-blocking on purpose: if this fails the WO is still completed, and
+    // billing's own screen can pick it up. Failing the completion because a
+    // downstream stamp did not stick would be the tail wagging the dog.
+    if (!completeErr && newStatus === 'completed') {
+      const isCod = (wo.payment_status ?? '').toUpperCase() === 'COD'
+      await enterInvoicePipeline(woIdRef.current, isCod)
+    }
+
     setWo(prev => prev ? { ...prev, status: newStatus } : prev)
     onStatusChange?.(newStatus)
     setCompleting(false)
