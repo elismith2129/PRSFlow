@@ -31,7 +31,11 @@ const TOP: RailItem[] = [
 ]
 const BUSINESS: RailItem[] = [
   { href: '/crm', label: 'CRM', ic: '◎' },
-  { href: '/wo-hub', label: 'WO Hub', ic: '▽' },
+  // Billing replaces WO Hub (ruling 2026-08-11). It is no longer a list of work
+  // orders — it is where invoices live, and it also replaces the Dropbox folder
+  // system. /wo-hub still exists and still works; it is simply no longer in the
+  // nav, so nothing breaks for anyone with it bookmarked.
+  { href: '/billing', label: 'Billing', ic: '▽' },
   { href: '/tasks', label: 'Tasks', ic: '✓' },
   { href: '/flags', label: 'Flags', ic: '⚑' },
 ]
