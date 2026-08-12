@@ -2063,6 +2063,25 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   border-radius: 18px; padding: 14px; width: 100%; max-width: 420px;
 }
 
+/* THE PACKAGE WINDOW — the work order and the invoice in one place, so you can
+   see what the client is about to receive before sending it. Wide and tall by
+   design: this is a reading surface, not a dialogue. */
+.c-bpkg {
+  background: var(--c-srf, var(--c-bg)); box-shadow: var(--c-softsh);
+  border-radius: 18px; width: 100%; max-width: 1120px; height: 90vh;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.c-bpkghd {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 14px; flex-shrink: 0;
+}
+.c-bpkgbody { flex: 1; min-height: 0; overflow: auto; padding: 0 14px 14px; }
+
+@media (max-width: 768px) {
+  .c-bmodal-wrap { padding: 0; }
+  .c-bpkg { max-width: none; height: 100dvh; border-radius: 0; }
+}
+
 @media (max-width: 768px) {
   /* The locked grid is a desktop instrument — seven columns on a phone would
      be seven slivers. On mobile the row folds back to a wrapping line, and the

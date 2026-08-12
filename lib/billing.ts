@@ -585,20 +585,32 @@ export function isPastDue(row: InvoiceRow): boolean {
  * What the button on the row should say — one action, always the next one.
  *
  * Same law as the lights: PRSFlo works out where the package is, so the person
- * never has to decide which of six things to do. Null means nothing is owed
- * from anyone.
+ * never has to decide which of six things to do.
+ *
+ * NULL MEANS "GO LOOK AT IT" (ruling 2026-08-11). There is no Open-WO button
+ * any more — DOUBLE-CLICKING THE ROW opens the work order, and once an invoice
+ * is attached it opens the package: both documents in one window. Eli: "you
+ * double click a work order to review it… once the invoice is attached, when
+ * you double click the row you get to see both combined."
+ *
+ * That is the right split. Opening a record to read it is navigation, not an
+ * action, and giving it a button put a control on nearly every row that did the
+ * same thing as clicking the row — which then crowded out the one control that
+ * actually advanced anything.
  */
 export function nextAction(row: InvoiceRow): string | null {
   if (row.bucket === 'closed') return 'Reopen'
   if (row.bucket === 'paid') return null
   if (row.bucket === 'awaiting') return 'Mark paid'
-  if (row.bucket === 'balance') return 'Open WO'
-  if (row.step === 0) return 'Open WO'
+  // A COD balance is collected and recorded ON the work order, so the row's job
+  // is to surface it — double-click does the rest.
+  if (row.bucket === 'balance') return null
+  if (row.step === 0) return null
   if (row.step === 1) return 'Attach invoice'
-  if (row.isCod) return 'Open WO'
+  if (row.isCod) return null
   if (row.step === 2) return 'Approve'
   if (row.awaitingPo) return 'Add PO'
-  return 'Send package'
+  return 'Send'
 }
 
 // ─── Transitions ─────────────────────────────────────────────────────────────
@@ -656,6 +668,23 @@ export async function markSent(row: InvoiceRow): Promise<boolean> {
     .update({ invoice_state: 'sent', invoice_sent_at: new Date().toISOString() })
     .eq('id', row.workOrderId)
   return dbResult('Marking invoice sent', error)
+}
+
+/**
+ * Undo a send. Exists because Send is ONE PRESS with no confirmation (Eli's
+ * call, 2026-08-11) — which is right for the common case, since you have just
+ * looked at the package to get there. But one press that moves a row out of
+ * your queue and starts a 31-day clock needs a way back, or the first misclick
+ * becomes a permanent lie about when the client was billed. Clearing sent_at
+ * matters as much as the state: a stale timestamp would age an invoice that was
+ * never actually sent.
+ */
+export async function unsendInvoice(row: InvoiceRow): Promise<boolean> {
+  const { error } = await supabase
+    .from('work_orders')
+    .update({ invoice_state: 'approved', invoice_sent_at: null })
+    .eq('id', row.workOrderId)
+  return dbResult('Moving the invoice back', error)
 }
 
 /**

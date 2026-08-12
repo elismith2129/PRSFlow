@@ -34,8 +34,11 @@
 //     footer row in a paginated list falls onto page 3.
 //   · APPROVAL IS OWNERS ONLY. The button is hidden for everyone else, and a
 //     Postgres trigger enforces it regardless of what the UI does.
-//   · SEND IS TWO FILES for now, in a modal, because the work order prints from
-//     its own screen. See lib/billing's downloadInvoiceDoc.
+//   · DOUBLE-CLICK THE ROW to open it. No Open-WO button — opening a record to
+//     read it is navigation, not an action. Before the invoice it opens the
+//     work order; after, it opens the PACKAGE (both documents, one window).
+//   · SEND IS ONE PRESS: downloads the invoice and marks it sent. No dialogue,
+//     because you have just looked at the package. The undo is in the ⋯ menu.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -48,7 +51,7 @@ import {
   fetchInvoices, searchRows, rowsInBucket, bucketCounts, paginate,
   pageCount, summarise, isPastDue, bucketLabel, tabsFor, hasCodAlert, nextAction,
   approveInvoice, recordPoNumber, markSent, markPaid, closeInvoice, reopenInvoice,
-  uploadInvoiceDoc, signedInvoiceUrl, downloadInvoiceDoc,
+  uploadInvoiceDoc, signedInvoiceUrl, downloadInvoiceDoc, unsendInvoice,
   BILLING_LIGHTS, COD_LIGHTS, PAGE_SIZE,
   type InvoiceRow, type BucketKey, type ClosedReason, type Pipeline,
 } from '@/lib/billing'
@@ -71,8 +74,11 @@ export default function BillingPage() {
   const [closing, setClosing] = useState<InvoiceRow | null>(null)
   const [poFor, setPoFor] = useState<InvoiceRow | null>(null)
   const [poValue, setPoValue] = useState('')
-  const [sending, setSending] = useState<InvoiceRow | null>(null)
+  const [moreFor, setMoreFor] = useState<InvoiceRow | null>(null)
   const [openBooking, setOpenBooking] = useState<Booking | null>(null)
+  // THE PACKAGE: the work order and the invoice in one window, opened by
+  // double-clicking the row once an invoice exists.
+  const [pkg, setPkg] = useState<{ row: InvoiceRow; booking: Booking } | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
   const uploadFor = useRef<InvoiceRow | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
@@ -162,11 +168,25 @@ export default function BillingPage() {
     await run(row.workOrderId, () => uploadInvoiceDoc(row, file))
   }
 
-  /** Open the work order itself — billing reviews it before completing. */
-  async function openWorkOrder(row: InvoiceRow) {
+  /**
+   * DOUBLE-CLICK OPENS THE ROW (ruling 2026-08-11) — and what it opens depends
+   * on how far along the package is:
+   *
+   *   no invoice yet → the work order, to review and complete
+   *   invoice on file → the PACKAGE: work order and invoice side by side, so
+   *                     you see what the client is actually going to receive
+   *                     before you send it.
+   *
+   * Opening a record to read it is navigation, not an action, which is why it
+   * stopped being a button.
+   */
+  async function openRow(row: InvoiceRow) {
     if (!row.bookingId) return
     const { data } = await supabase.from('bookings').select('*').eq('id', row.bookingId).limit(1)
-    if (data?.[0]) setOpenBooking(data[0] as Booking)
+    const booking = data?.[0] as Booking | undefined
+    if (!booking) return
+    if (row.hasInvoiceDoc) setPkg({ row, booking })
+    else setOpenBooking(booking)
   }
 
   async function openDoc(row: InvoiceRow) {
@@ -180,11 +200,21 @@ export default function BillingPage() {
     switch (label) {
       case 'Reopen':          return run(row.workOrderId, () => reopenInvoice(row))
       case 'Mark paid':       return run(row.workOrderId, () => markPaid(row))
-      case 'Open WO':         return openWorkOrder(row)
       case 'Attach invoice':  uploadFor.current = row; fileInput.current?.click(); return
       case 'Approve':         return run(row.workOrderId, () => approveInvoice(row, profile?.id ?? null))
       case 'Add PO':          setPoFor(row); setPoValue(row.poNumber ?? ''); return
-      case 'Send package':    setSending(row); return
+      // SEND IS ONE PRESS (Eli, 2026-08-11): "you hit the send button and it
+      // downloads, and now it says it's sent." No confirmation step — you have
+      // already looked at the package to get here, so a dialogue asking whether
+      // you meant it would be asking about something you just read.
+      //
+      // The work order half of the package is printed from the package window
+      // itself; this downloads the invoice and starts the 31-day clock. The
+      // undo lives in the row's ⋯ menu.
+      case 'Send':            return run(row.workOrderId, async () => {
+        await downloadInvoiceDoc(row)
+        return markSent(row)
+      })
       default:                return
     }
   }
@@ -303,8 +333,8 @@ export default function BillingPage() {
             isOwner={isOwner}
             busy={busy === r.workOrderId}
             onAct={() => act(r)}
-            onClose={() => setClosing(r)}
-            onOpenDoc={() => openDoc(r)}
+            onMore={() => setMoreFor(r)}
+            onOpen={() => openRow(r)}
             dragOver={dragOver === r.workOrderId}
             onDragOver={e => { e.preventDefault(); setDragOver(r.workOrderId) }}
             onDragLeave={() => setDragOver(null)}
@@ -385,16 +415,24 @@ export default function BillingPage() {
         />
       )}
 
-      {sending && (
-        <SendModal
-          row={sending}
-          onCancel={() => setSending(null)}
-          onInvoice={() => downloadInvoiceDoc(sending)}
-          onWorkOrder={() => { const r = sending; setSending(null); openWorkOrder(r) }}
-          onSent={async () => {
-            const r = sending
-            setSending(null)
-            await run(r.workOrderId, () => markSent(r))
+      {pkg && (
+        <PackageModal
+          row={pkg.row}
+          booking={pkg.booking}
+          onClose={() => { setPkg(null); load() }}
+        />
+      )}
+
+      {moreFor && (
+        <MoreModal
+          row={moreFor}
+          onCancel={() => setMoreFor(null)}
+          onOpenDoc={() => { openDoc(moreFor); setMoreFor(null) }}
+          onClose={() => { const r = moreFor; setMoreFor(null); setClosing(r) }}
+          onUnsend={() => {
+            const r = moreFor
+            setMoreFor(null)
+            run(r.workOrderId, () => unsendInvoice(r))
           }}
         />
       )}
@@ -427,7 +465,7 @@ function Lights({ row }: { row: InvoiceRow }) {
 }
 
 function Row({
-  row, searching, isOwner, busy, dragOver, onAct, onClose, onOpenDoc,
+  row, searching, isOwner, busy, dragOver, onAct, onMore, onOpen,
   onDragOver, onDragLeave, onDrop,
 }: {
   row: InvoiceRow
@@ -436,8 +474,8 @@ function Row({
   busy: boolean
   dragOver: boolean
   onAct: () => void
-  onClose: () => void
-  onOpenDoc: () => void
+  onMore: () => void
+  onOpen: () => void
   onDragOver: (e: React.DragEvent) => void
   onDragLeave: () => void
   onDrop: (e: React.DragEvent) => void
@@ -453,11 +491,19 @@ function Row({
   // Lights only where the assembly line is still running. On a sent, paid or
   // closed row every light is green and says nothing.
   const showLights = ['progress', 'review', 'balance', 'upcoming'].includes(row.bucket)
+  // The overflow only exists when there is something in it: an invoice to open,
+  // or an invoice real enough to be written off.
+  const canClose = row.step >= 2 && row.bucket !== 'closed' && row.bucket !== 'paid'
+  const hasMore = row.hasInvoiceDoc || canClose
 
   return (
     <div
       className={`c-brow${overdue ? ' c-od' : ''}${dragOver ? ' c-drop' : ''}`}
-      style={{ opacity: busy ? 0.5 : 1 }}
+      style={{ opacity: busy ? 0.5 : 1, cursor: row.bookingId ? 'pointer' : 'default' }}
+      // Double-click, not single: a single click would fire every time someone
+      // reached for the button at the end of the row.
+      onDoubleClick={onOpen}
+      title={row.hasInvoiceDoc ? 'Double-click to see the package' : 'Double-click to open the work order'}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
@@ -492,6 +538,12 @@ function Row({
           <span className="c-bflag c-soon">Not started</span>
         ) : wantsInvoice ? (
           <span className="c-bhint">{dragOver ? 'Release to attach' : 'Drop invoice here'}</span>
+        ) : row.hasInvoiceDoc && !showLights ? (
+          // Sent, paid and closed rows show no lights, so without this there is
+          // no sign at all that the invoice is stapled on. Same cell the "Drop
+          // invoice here" hint used to occupy — the question and its answer end
+          // up in the same place.
+          <span className="c-bflag c-soon">Invoice on file</span>
         ) : null}
       </span>
 
@@ -501,17 +553,18 @@ function Row({
       <span className="c-bage">{row.ageDays != null ? `${row.ageDays}d` : '—'}</span>
 
       {/* ONE ACTION PER ROW: whatever comes next. A row with five buttons is a
-          row nobody reads. The invoice link and Close sit behind it because
-          they are the exceptions, not the flow. */}
+          row nobody reads.
+
+          THE RARE ACTIONS GO BEHIND "⋯" (fix, 2026-08-11). They were two naked
+          controls on the row — an "INV" that meant nothing, and a "✕" sitting
+          directly beside the invoice you had just attached, which reads as
+          "delete this". A destructive-looking glyph next to a thing you just
+          created is the worst possible guess to invite. Opening the PDF and
+          writing an invoice off are both rare and both deliberate, so they live
+          together in a menu that names them in full. */}
       <span className="c-bactcell">
-        {row.hasInvoiceDoc && (
-          <button className="c-bact c-bmuted" onClick={onOpenDoc} title="Open the attached invoice">INV</button>
-        )}
-        {/* "Close invoice" = write off or void. It ONLY appears once there is an
-            invoice to close — offering it on a work order nobody has reviewed
-            was meaningless, and read like "close this window" (Eli). */}
-        {row.step >= 2 && row.bucket !== 'closed' && row.bucket !== 'paid' && (
-          <button className="c-bact c-bmuted" onClick={onClose} title="Write off or void">✕</button>
+        {hasMore && (
+          <button className="c-bact c-bmuted" onClick={onMore} title="More — open the invoice, write it off, void it">⋯</button>
         )}
         {label && canAct && <button className="c-bact" onClick={onAct}>{label}</button>}
       </span>
@@ -520,36 +573,104 @@ function Row({
 }
 
 /**
- * SENDING IS TWO FILES, and therefore a modal (ruling 2026-08-11).
- *
- * Eli: "I'm ok with two files for now." A merged package needs a PDF library
- * plus the work order rendered to a real file; today the work order prints from
- * its own screen. So the three things behind "Send package" — download the
- * invoice, print the work order, start the aging clock — are shown as three
- * things. One button doing all three would surprise you exactly once and then be
- * distrusted forever.
+ * The overflow. Both actions are spelled out in full, because the version that
+ * used a "✕" beside a freshly-attached invoice invited exactly the wrong guess.
+ * "Close" here means close the INVOICE — write it off or void it — and the
+ * modal it opens says so again before anything happens.
  */
-function SendModal({ row, onCancel, onInvoice, onWorkOrder, onSent }: {
+function MoreModal({ row, onCancel, onOpenDoc, onClose, onUnsend }: {
   row: InvoiceRow
   onCancel: () => void
-  onInvoice: () => void
-  onWorkOrder: () => void
-  onSent: () => void
+  onOpenDoc: () => void
+  onClose: () => void
+  onUnsend: () => void
 }) {
+  const canClose = row.step >= 2 && row.bucket !== 'closed' && row.bucket !== 'paid'
   return (
     <div className="c-bmodal-wrap" onClick={onCancel}>
       <div className="c-bmodal" onClick={e => e.stopPropagation()}>
-        <div className="c-lozenge"><b>Send the package</b></div>
-        <div style={{ fontSize: 12.5, marginBottom: 4 }}>{row.client}</div>
-        <div style={{ fontSize: 11.5, opacity: 0.6, marginBottom: 12 }}>
-          {formatCurrency(String(row.total))}
-          {row.poNumber ? ` · PO ${row.poNumber}` : row.noPoNeeded ? ' · no PO required' : ''}
-          {' · '}Two files for now — grab both, email them, then mark it sent.
-        </div>
-        <button className="c-bact c-bblock" onClick={onInvoice}>1 · Download the invoice PDF</button>
-        <button className="c-bact c-bblock" onClick={onWorkOrder}>2 · Open the work order to print</button>
-        <button className="c-bact c-bblock" onClick={onSent}>3 · Mark sent — starts the 31-day clock</button>
+        <div className="c-lozenge"><b>{row.woNumber || 'Work order'}</b></div>
+        <div style={{ fontSize: 12.5, marginBottom: 12 }}>{row.client}</div>
+        {row.hasInvoiceDoc && (
+          <button className="c-bact c-bblock" onClick={onOpenDoc}>Open the attached invoice PDF</button>
+        )}
+        {/* THE UNDO FOR SEND. Send is one press with no confirmation, which is
+            right — but one press that starts a 31-day clock needs a way back,
+            or the first misclick becomes a permanent lie about when the client
+            was billed. */}
+        {row.bucket === 'awaiting' && (
+          <button className="c-bact c-bblock" onClick={onUnsend}>
+            Not sent after all — put it back in In progress
+          </button>
+        )}
+        {canClose && (
+          <button className="c-bact c-bblock" onClick={onClose}>
+            Close this invoice — write it off or void it
+          </button>
+        )}
         <button className="c-bact c-bmuted c-bblock" onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * THE PACKAGE — what the client is about to receive, in one window.
+ *
+ * Eli, 2026-08-11: "once the invoice is attached, when you double click the row
+ * you get to see both combined. See what the actual package looks like."
+ *
+ * Not a merged PDF — that still needs a PDF library and the work order rendered
+ * to a real file. But the REVIEW problem is not the file format, it is being
+ * able to look at both halves together before sending, and a two-pane window
+ * solves that completely. The work order pane is the real WorkOrderPopup
+ * rendered inline, so it is fully editable and prints from its own button; the
+ * invoice pane is the stored PDF.
+ */
+function PackageModal({ row, booking, onClose }: {
+  row: InvoiceRow
+  booking: Booking
+  onClose: () => void
+}) {
+  const [view, setView] = useState<'wo' | 'inv'>('wo')
+  const [url, setUrl] = useState<string | null>(null)
+
+  // Signed on demand, not on open: the URL is short-lived, and most visits to
+  // this window are to read the work order.
+  useEffect(() => {
+    if (view !== 'inv' || url) return
+    let alive = true
+    signedInvoiceUrl(row.workOrderId).then(u => { if (alive) setUrl(u) })
+    return () => { alive = false }
+  }, [view, url, row.workOrderId])
+
+  return (
+    <div className="c-bmodal-wrap" onClick={onClose}>
+      <div className="c-bpkg" onClick={e => e.stopPropagation()}>
+        <div className="c-bpkghd">
+          <div style={{ minWidth: 0 }}>
+            <span className="c-label" style={{ display: 'block', marginBottom: 2 }}>
+              {row.woNumber || 'Work order'}
+              {row.poNumber ? ` · PO ${row.poNumber}` : row.noPoNeeded ? ' · no PO required' : ''}
+            </span>
+            <b style={{ fontSize: 14 }}>{row.client}</b>
+            <span style={{ opacity: 0.5, fontSize: 12 }}> · {formatCurrency(String(row.total))}</span>
+          </div>
+          <div style={{ flex: 1 }} />
+          <div className="c-seg">
+            <button className={view === 'wo' ? 'c-on' : ''} onClick={() => setView('wo')}>Work order</button>
+            <button className={view === 'inv' ? 'c-on' : ''} onClick={() => setView('inv')}>Invoice</button>
+          </div>
+          <button className="c-bact c-bmuted" onClick={onClose}>Close</button>
+        </div>
+
+        <div className="c-bpkgbody">
+          {view === 'wo'
+            ? <WorkOrderPopup booking={booking} inline onClose={onClose} />
+            : url
+              ? <iframe src={url} title="Invoice" style={{ width: '100%', height: '100%', border: 'none', borderRadius: 12, background: '#fff' }} />
+              : <div className="c-bempty">Loading the invoice…</div>}
+        </div>
       </div>
     </div>
   )
