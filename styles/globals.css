@@ -1980,6 +1980,13 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-bhint { font-size: 10px; opacity: .5; font-style: italic; flex-shrink: 0; text-align: right; width: 150px; }
 .c-brow.c-drop .c-bhint { opacity: .9; font-style: normal; font-weight: 700; }
 
+/* Edited after invoicing. Hot = critical (spec §5): the cost of missing this
+   is the client finding the discrepancy first. */
+.c-bdrift {
+  font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--c-st-hot); flex-shrink: 0; cursor: help;
+}
+
 .c-bnote { font-size: 11px; opacity: .5; padding: 9px 4px 0; line-height: 1.5; }
 .c-bempty { padding: 18px 10px; font-size: 12px; opacity: .5; text-align: center; }
 

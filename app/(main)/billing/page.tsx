@@ -33,7 +33,7 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { formatCurrency } from '@/lib/format'
 import {
-  fetchInvoices, activeRows, searchRows, rowsInBucket, bucketCounts, paginate,
+  fetchInvoices, searchRows, rowsInBucket, bucketCounts, paginate,
   pageCount, summarise, isPastDue, bucketLabel,
   approveInvoice, recordPoNumber, markSent, markPaid, closeInvoice, reopenInvoice,
   uploadInvoiceDoc, signedInvoiceUrl,
@@ -41,8 +41,12 @@ import {
   type InvoiceRow, type BucketKey, type ClosedReason,
 } from '@/lib/billing'
 
-/** 'all' is a view, not a bucket — it means every ACTIVE row. */
-type Tab = BucketKey | 'all'
+/**
+ * No 'all' tab (ruling 2026-08-11). Search already spans every bucket including
+ * closed, so All was a worse version of typing a name — and the ninth tab was
+ * the one that made the row feel crowded.
+ */
+type Tab = BucketKey
 
 export default function BillingPage() {
   const { profile, loading: profileLoading } = useUserProfile()
@@ -53,7 +57,7 @@ export default function BillingPage() {
 
   const [rows, setRows] = useState<InvoiceRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<Tab>('to_review')
+  const [tab, setTab] = useState<Tab>('open')
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const [busy, setBusy] = useState<string | null>(null)
@@ -96,7 +100,6 @@ export default function BillingPage() {
   // Closed bucket is that those invoices stay findable.
   const visible = useMemo(() => {
     if (searching) return searchRows(rows, query)
-    if (tab === 'all') return activeRows(rows)
     return rowsInBucket(rows, tab)
   }, [rows, tab, query, searching])
 
@@ -201,15 +204,11 @@ export default function BillingPage() {
             {b.label} <span className="c-bn">{counts[b.key] ?? 0}</span>
           </span>
         ))}
-        {/* All = every ACTIVE row. Closed is deliberately not in it. */}
-        <span className={`c-btab${tab === 'all' ? ' c-on' : ''}`} onClick={() => setTab('all')}>
-          All <span className="c-bn">{activeRows(rows).length}</span>
-        </span>
       </div>
 
       <div className="c-panel">
         <div className="c-lozenge">
-          <b>{searching ? 'Search results' : tab === 'all' ? 'All invoices' : bucketLabel(tab as BucketKey)}</b>
+          <b>{searching ? 'Search results' : bucketLabel(tab)}</b>
           <span className="c-ct">
             {visible.length}{owed > 0 ? ` · ${formatCurrency(String(owed))}` : ''}
           </span>
@@ -365,6 +364,18 @@ function Row({
         <span className="c-breason">{row.closedReason === 'written_off' ? 'Written off' : 'Voided'}</span>
       )}
 
+      {/* Future sessions in the Open tab. Marked rather than hidden — billing
+          can still open and adjust them, they just are not work yet. */}
+      {row.bucket === 'open' && !row.ended && <span className="c-breason">Upcoming</span>}
+
+      {/* DRIFT: edited after the invoice went out. Hot, because the alternative
+          to seeing this here is hearing it from the client. */}
+      {row.invoiceDrift && (
+        <span className="c-bdrift" title={`Invoiced ${formatCurrency(String(row.invoicedTotal ?? 0))}, now ${formatCurrency(String(row.total))}`}>
+          Changed since invoiced
+        </span>
+      )}
+
       <span className={`c-bpill ${pill}`}>
         {overdue ? '31+ days' : bucketLabel(row.bucket)}
       </span>
@@ -389,7 +400,7 @@ function Row({
       {/* One action per row: whatever comes next for THIS bucket. A row with
           five buttons is a row nobody reads. */}
       <span className="c-bacts">
-        {row.bucket === 'to_review' && (
+        {row.bucket === 'open' && (
           <button className="c-bact" onClick={onOpenWo}>Open WO</button>
         )}
         {wantsInvoice && (
@@ -409,7 +420,7 @@ function Row({
             window" — Eli, 2026-08-11). Spelled out in full for the same
             reason. */}
         {row.bucket === 'closed' && <button className="c-bact" onClick={onReopen}>Reopen</button>}
-        {row.bucket !== 'closed' && row.bucket !== 'to_review' && row.bucket !== 'needs_invoice' && (
+        {row.bucket !== 'closed' && row.bucket !== 'open' && row.bucket !== 'needs_invoice' && (
           <button className="c-bact c-bmuted" onClick={onClose}>Close invoice</button>
         )}
       </span>

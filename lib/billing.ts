@@ -45,7 +45,7 @@ export type ClosedReason = 'written_off' | 'voided'
 
 /** The tabs on the hub. `cod_balance`/`cod_paid` are derived, never stored. */
 export type BucketKey =
-  | 'to_review' | 'needs_invoice'
+  | 'open' | 'needs_invoice'
   | 'needs_approval' | 'approved' | 'awaiting_po' | 'sent' | 'cod_balance' | 'paid' | 'closed'
 
 export type Bucket = { key: BucketKey; label: string; pill: string }
@@ -55,14 +55,22 @@ export type Bucket = { key: BucketKey; label: string; pill: string }
  * what needs you → what's stuck → what's out → COD → done → out of play.
  */
 export const BUCKETS: Bucket[] = [
-  // BILLING'S MORNING, in order (RULING 2026-08-11). The first two tabs are the
-  // stage the original build was missing entirely — it sent a completed work
-  // order straight into Eli's approval queue with nothing attached.
-  //   To review    — the runner filled it in last night; billing checks it and
-  //                  hits Complete Work Order. Not an invoice yet.
-  //   Needs invoice— completed and reviewed; waiting on the QuickBooks PDF.
-  //                  Dropping that PDF here is what routes it onward.
-  { key: 'to_review',      label: 'To review',         pill: 'c-fill-uncon' },
+  // OPEN — every work order not yet completed: tentative, future, tonight's and
+  // last night's (RULING 2026-08-11, superseding the narrower "To review").
+  //
+  // Eli: "anything related to work orders can be viewed from the billing page…
+  // the billing coordinator has full control over all work orders and can see
+  // all of them." They extend or cancel days, adjust rates, add rentals and
+  // damages, then complete when ready.
+  //
+  // This also KILLS the need for a runner submit step. An earlier design had the
+  // runner press Submit to hand the work order over; a button can be forgotten,
+  // and when it is, the work order silently never reaches billing. Showing every
+  // open work order means nothing is waiting on anyone to remember.
+  //
+  // Sorted ended-first (see sortOpen) so last night's work is at the top and
+  // future sessions sit below rather than in the way.
+  { key: 'open',           label: 'Open',              pill: 'c-fill-uncon' },
   { key: 'needs_invoice',  label: 'Needs invoice',     pill: 'c-fill-warm' },
   { key: 'needs_approval', label: 'Needs approval',    pill: 'c-fill-warm' },
   // Approved gets its OWN tab (RULING 2026-08-11). An earlier version folded it
@@ -106,6 +114,16 @@ export type InvoiceRow = {
   poNumber: string | null
   hasInvoiceDoc: boolean
   approvedAt: string | null
+  /** The total at the moment the invoice was attached. Null = never invoiced. */
+  invoicedTotal: number | null
+  /**
+   * The work order has been edited since it was invoiced, so what PRSFlo says
+   * is owed no longer matches what the client was billed. The single most
+   * expensive thing to find out from the client rather than from the app.
+   */
+  invoiceDrift: boolean
+  /** True when the session's last date has passed — drives the Open sort. */
+  ended: boolean
 }
 
 export type BillingSummary = {
@@ -148,9 +166,9 @@ function deriveBucket(
   woStatus: string,
 ): BucketKey {
   if (state === 'closed') return 'closed'
-  // Not completed yet = billing has not reviewed it. This is the runner's
-  // submission waiting for a human, whatever the payment type.
-  if (state === null && woStatus !== 'completed') return 'to_review'
+  // Not completed = still billing's to work on, whatever the payment type and
+  // whenever the session is.
+  if (state === null && woStatus !== 'completed') return 'open'
   // Completed but no invoice attached — for COD and Billing alike. Completing
   // starts the billing process; the invoice drop is the next act.
   if (state === 'needs_invoice') return 'needs_invoice'
@@ -184,7 +202,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // this at compile time, and a `+`-concatenated string is not a literal to
     // TypeScript — every column then types as an error object. Do not "tidy"
     // this onto several lines with concatenation.
-    .select('id, booking_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path')
+    .select('id, booking_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total')
     .order('session_date', { ascending: false })
   if (!dbResult('Loading invoices', error)) return []
   if (!wos || wos.length === 0) return []
@@ -202,10 +220,18 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
   // So they must be filtered on read.
   //
   // Filtered through the SAME gate the WO creator uses rather than a second
-  // status list, so the two can never drift apart. Cancelled is excluded by the
-  // same call, which is also right: a cancelled session has nothing to bill.
+  // status list, so the two can never drift apart.
+  //
+  // BUT ONLY BEFORE THE PIPELINE (ruling 2026-08-11). That gate also excludes
+  // CANCELLED, and blanket-applying it would mean cancelling a session made an
+  // already-sent invoice VANISH from AR while the client still owed the money.
+  // Once a work order has an invoice_state it stays visible whatever happens to
+  // the booking, so it can be voided properly through the Closed bucket, with a
+  // reason on the record. Tentative is the same story in reverse: invisible
+  // until it matters, never disappearing once it does.
   const relevant = wos.filter(w =>
-    bookingShouldHaveWorkOrder({ status: (w.session_status ?? '') as any }),
+    w.invoice_state !== null
+    || bookingShouldHaveWorkOrder({ status: (w.session_status ?? '') as any }),
   )
   if (relevant.length === 0) return []
 
@@ -213,7 +239,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
   const [st, rent, pay] = await Promise.all([
     supabase
       .from('studio_time_rows')
-      .select('work_order_id, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate')
+      .select('work_order_id, date, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate')
       .in('work_order_id', ids),
     supabase.from('rental_rows').select('work_order_id, charge').in('work_order_id', ids),
     supabase.from('payment_rows').select('work_order_id, amount').in('work_order_id', ids),
@@ -233,12 +259,31 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
   const rentBy = group(rent.data as any[])
   const payBy = group(pay.data as any[])
 
+  const today = getLocalToday()
+
   return relevant.map(w => {
+    const stRows = stBy.get(w.id) ?? []
     const totals = computeWoTotals({
-      studioRows: stBy.get(w.id) ?? [],
+      studioRows: stRows,
       rentalRows: rentBy.get(w.id) ?? [],
       paymentRows: payBy.get(w.id) ?? [],
     })
+
+    // THE SESSION'S LAST DAY comes from the work order's own dated rows, not
+    // from the booking. The rows are what actually happened: a session that
+    // ended early has its unused row deleted, one that ran long has a row
+    // added, and either way this follows without anyone updating a second
+    // field. Undated rows are ignored rather than treated as today.
+    const dates = stRows.map((r: any) => r.date).filter(Boolean).sort()
+    const lastDate: string | null = dates.length ? dates[dates.length - 1] : null
+    const ended = lastDate !== null && lastDate < today
+
+    // DRIFT: the work order has been edited since the invoice was raised, so
+    // what PRSFlo says is owed no longer matches what the client was billed.
+    // Rounded to the cent before comparing — floating-point noise is not drift.
+    const invoicedTotal = w.invoice_total != null ? Number(w.invoice_total) : null
+    const invoiceDrift = invoicedTotal !== null
+      && Math.round(totals.grand * 100) !== Math.round(invoicedTotal * 100)
     const isCod = (w.payment_status ?? '').toUpperCase() === 'COD'
     const state = (w.invoice_state ?? null) as InvoiceState | null
 
@@ -262,6 +307,9 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       poNumber: w.po_number ?? null,
       hasInvoiceDoc: !!w.invoice_doc_path,
       approvedAt: w.invoice_approved_at ?? null,
+      invoicedTotal,
+      invoiceDrift,
+      ended,
     }
   })
 }
@@ -300,7 +348,31 @@ export function searchRows(rows: InvoiceRow[], query: string): InvoiceRow[] {
 }
 
 export function rowsInBucket(rows: InvoiceRow[], bucket: BucketKey): InvoiceRow[] {
-  return rows.filter(r => r.bucket === bucket)
+  const inBucket = rows.filter(r => r.bucket === bucket)
+  return bucket === 'open' ? sortOpen(inBucket) : inBucket
+}
+
+/**
+ * The Open tab, ordered so it reads as a queue rather than a list.
+ *
+ * Ended sessions first (billing's actual work: last night's, and anything they
+ * have not got to), then everything still to come. Within each group, most
+ * recent first — a session from last week matters more than one from tonight
+ * that has not happened. Future sessions are reference, not work, so they sit
+ * below rather than in the way.
+ */
+export function sortOpen(rows: InvoiceRow[]): InvoiceRow[] {
+  return [...rows].sort((a, b) => {
+    if (a.ended !== b.ended) return a.ended ? -1 : 1
+    // THE TWO GROUPS SORT IN OPPOSITE DIRECTIONS, deliberately.
+    //   Ended   → newest first. Last night is the work; a session from three
+    //             weeks ago has already been chased or is a known problem.
+    //   Upcoming→ SOONEST first. Tomorrow matters more than September, and
+    //             sorting these newest-first buried next week under next month.
+    return a.ended
+      ? (b.sessionDate ?? '').localeCompare(a.sessionDate ?? '')
+      : (a.sessionDate ?? '').localeCompare(b.sessionDate ?? '')
+  })
 }
 
 export function bucketCounts(rows: InvoiceRow[]): Record<string, number> {
@@ -528,6 +600,10 @@ export async function uploadInvoiceDoc(row: InvoiceRow, file: File): Promise<boo
   // Dropbox. Only advances a work order that was waiting on its invoice;
   // replacing the PDF on an already-approved invoice must not reset it.
   const advance = row.state === 'needs_invoice'
+  // SNAPSHOT WHAT THE CLIENT WAS BILLED. Any later edit to hours, rentals or
+  // damages then shows as drift instead of silently disagreeing with the PDF
+  // that already went out.
+  const snapshot = { invoice_total: row.total }
   const next = row.isCod
     // COD returns to a COMPUTED bucket — balance owed or paid — because whether
     // COD money arrived is answered by the payments, never by a stamp.
@@ -536,7 +612,7 @@ export async function uploadInvoiceDoc(row: InvoiceRow, file: File): Promise<boo
 
   const { error } = await supabase
     .from('work_orders')
-    .update({ invoice_doc_path: path, ...(advance ? next : {}) })
+    .update({ invoice_doc_path: path, ...snapshot, ...(advance ? next : {}) })
     .eq('id', row.workOrderId)
   return dbResult('Attaching invoice', error)
 }
