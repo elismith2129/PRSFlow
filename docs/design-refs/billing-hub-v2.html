@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Billing hub v2 (two pipelines)</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  BILLING HUB v2 — nine tabs collapse to a toggle + four (2026-08-11)
+  Supersedes billing-hub-final.html. TOGGLE, TABS and the UPCOMING sub-view are
+  all LIVE in this mock — click them.
+
+  WHY v1 NEEDED NINE TABS, AND WHY IT DOESN'T:
+  Eli: "open, needs invoice can be combined with status info on the line items…
+  an open WO is not ready to be finished, a finished WO is not ready to be
+  approved until it has an invoice, a combined WO and invoice isn't ready to
+  send until approved."
+  Exactly right. Those were never four PLACES — they are one package being
+  assembled, and v1 modelled each rung of the ladder as its own room. Every
+  serious AR tool (Bill.com, Ramp, Stripe, Xero) separates by WHO IS WAITING,
+  not by which step it is on, and puts the steps on the row as a completeness
+  indicator. Few destinations, rich rows.
+
+  TWO PIPELINES, NOT ONE (Eli, 2026-08-11) — the other reason v1 bloated:
+    · BILLING: assemble → approve → send → chase → paid. Days to weeks.
+    · COD:     money is already in → check it is accurate → done. Minutes.
+      "The majority of COD do not go through a billing process, they are just
+      checked for accuracy, approved and then they are done."
+  Forcing both through one set of tabs is what made nine feel necessary. They
+  share a work order and nothing else, so they get a toggle.
+
+  COD BALANCE DUE LEADS ITS SIDE. "Rare occasions that collection was not made
+  in error, so COD with balance exists, not a lot but very important these
+  surface as the most important bin." Rare-but-critical sorted by frequency ends
+  up at the bottom, so it goes first — and the COD side of the TOGGLE carries a
+  hot dot whenever any balance exists, so it is visible from the Billing side
+  without going to look. A rare problem you must go looking for is a rare
+  problem you find late.
+
+  UPCOMING IS A PINNED SUB-VIEW, NOT A ROW. Eli: "be careful, we may have a lot
+  of WOs and any footer row might get super buried." Right — a footer row inside
+  a paginated list falls onto page 3. It sits BELOW the pager instead, always
+  visible, and clicking it SWITCHES the list rather than expanding beneath it:
+  ten paginated rows followed by twelve un-paginated ones would make "page 2"
+  mean two different things.
+
+  THE THREE LIGHTS: WO → INV → APPR, in order, each derived. Same law as the
+  rest of the app — if PRSFlo can determine it, it is a light; only what it
+  cannot know is a button. COD shows two (WO → INV): no approval, no send.
+
+  Soft skin (§7c). No borders (Law 1). Mock polarity INVERTED vs the app.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626;
+  --st-hot:#ff5a4d; --hot-text:#fff4f2;
+  --st-warm:#ffa94d; --st-cold:#5fc9e8; --st-booked:#43dfae;
+  --st-uncon:#7fb2e5; --st-dead:#cfd6d4;
+  --ivory:#d5d0c2; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+  --ctlsh:0 1px 2px rgba(42,39,34,.10);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  --ctlsh:0 1px 3px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:var(--fg);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.grow{flex:1}
+
+.bar{position:sticky;top:0;z-index:9;display:flex;align-items:center;gap:8px;padding:10px 20px;background:var(--bg);box-shadow:0 1px 0 var(--wash)}
+.bar .ctl{padding:5px 12px;border-radius:99px;background:var(--wash);font-size:11.5px;font-weight:700;box-shadow:var(--ctlsh);cursor:pointer}
+
+.frame{display:flex;min-height:100vh}
+.rail{width:176px;flex-shrink:0;padding:14px 8px 12px 10px;display:flex;flex-direction:column;gap:2px;background:var(--wash)}
+.rail .wm{font-family:'Archivo Black',sans-serif;letter-spacing:-.02em;font-size:15px;padding:2px 10px 10px}
+.rail .wm .flo{opacity:.45}
+.rail a{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:11px;font-size:12.5px;font-weight:600;opacity:.55}
+.rail a.on{opacity:1;background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .rail a.on{background:var(--ivory);color:#1b1a17}
+.rail .grp{margin-top:11px;padding:0 10px 4px}
+.main{flex:1;min-width:0;padding:14px 20px 28px;max-width:1180px}
+
+.hbar{display:flex;align-items:center;gap:16px;padding:2px 4px 14px}
+.hbar h1{font-family:'Archivo Black',sans-serif;font-size:26px;letter-spacing:-.03em;line-height:1.05}
+
+/* THE TOGGLE — two pipelines, not two filters. */
+.seg{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);box-shadow:var(--ctlsh)}
+.seg button{display:flex;align-items:center;gap:6px;padding:5px 16px;border-radius:99px;font-size:12px;font-weight:700;opacity:.6;cursor:pointer}
+.seg button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .seg button.on{background:var(--fg);color:var(--bg)}
+/* Hot dot on COD whenever a balance exists — visible from the Billing side. */
+.segdot{width:7px;height:7px;border-radius:50%;background:var(--st-hot);flex-shrink:0}
+
+.pane{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:12px}
+.lozenge{display:flex;align-items:baseline;justify-content:space-between;border-radius:99px;padding:7px 14px;margin-bottom:9px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;background:var(--wash2)}
+:root .lozenge{background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .lozenge{background:var(--wash2);color:var(--fg)}
+.lozenge .ct{font-family:ui-monospace,monospace;font-size:10px;opacity:.7;letter-spacing:0}
+
+.sum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--srf);box-shadow:var(--softsh);border-radius:14px;padding:10px 12px;cursor:pointer}
+.stat:hover{outline:2px solid var(--wash2)}
+.stat .n{font-family:'Archivo Black',sans-serif;font-size:20px;letter-spacing:-.02em}
+.stat .k{font-size:10px;opacity:.55;margin-top:1px}
+.stat.alert .n{color:var(--st-hot)}
+
+.searchrow{display:flex;align-items:center;gap:8px;background:var(--wash);border-radius:99px;padding:8px 14px;margin-bottom:10px}
+.searchrow input{flex:1;outline:none;font-size:12.5px}
+
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tab{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;background:var(--wash);font-size:12px;font-weight:700;box-shadow:var(--ctlsh);cursor:pointer}
+.tab.on{background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .tab.on{background:var(--fg);color:var(--bg)}
+.tab .n{font-family:ui-monospace,monospace;font-size:10.5px;opacity:.65}
+.tab.hot .n{color:var(--st-hot);opacity:1}
+
+/* LOCKED GRID (Eli, 2026-08-11): "these status areas are all over the place…
+   they need to be locked into a grid so they show in the same place."
+   Right — flags were inline, so a row with an Awaiting-PO tag pushed its lights
+   sideways and nothing lined up down the column. Fixed template instead of
+   flex, so lights / flag / amount / age / action always land in the same place
+   whether or not a row has a flag. */
+.row{display:grid;
+  grid-template-columns:76px minmax(0,1fr) 124px 210px 84px 46px 120px;
+  align-items:center;gap:10px;padding:9px 10px;border-radius:11px;font-size:12px}
+.row:hover{background:var(--wash)}
+.row .inv{font-family:ui-monospace,monospace;font-size:11px;opacity:.6}
+.row .who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .who span{opacity:.5;font-size:11px}
+.row .amt{font-family:ui-monospace,monospace;font-size:11.5px;text-align:right}
+.row .age{font-family:ui-monospace,monospace;font-size:10px;opacity:.45;text-align:right}
+.row.od .amt{color:var(--st-hot);font-weight:700}
+.row .flagcell{display:flex;justify-content:flex-end}
+.row .actcell{display:flex;justify-content:flex-end;gap:6px}
+/* Header strip so the columns are readable as columns. */
+.rowhd{display:grid;grid-template-columns:76px minmax(0,1fr) 124px 210px 84px 46px 120px;
+  align-items:center;gap:10px;padding:2px 10px 6px;font-size:9px;font-weight:800;
+  letter-spacing:.09em;text-transform:uppercase;opacity:.35}
+.rowhd .r{text-align:right}
+
+/* THE THREE LIGHTS — the assembly line, on the row instead of in the nav. */
+.lights{display:flex;align-items:center;gap:3px;flex-shrink:0}
+.lights{display:flex;align-items:center;gap:2px;justify-content:flex-start}
+.lt{display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:800;letter-spacing:.03em;
+  text-transform:uppercase;opacity:.28;padding:2px 5px;border-radius:99px;white-space:nowrap}
+.lt i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.45}
+.lt.done{opacity:.85}
+.lt.done i{background:var(--st-booked);opacity:1}
+/* The step being waited on: the only one that reads as live. */
+.lt.next{opacity:1;background:var(--wash2)}
+.lt.next i{background:var(--st-warm);opacity:1}
+.arrow{opacity:.2;font-size:9px;flex-shrink:0}
+
+.flag{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;flex-shrink:0}
+.flag.po{color:var(--st-cold)} .flag.drift{color:var(--st-hot)} .flag.soon{opacity:.4}
+/* The drag target is invisible unless you are told about it. */
+.flag.drop{opacity:.4;font-weight:700;text-transform:none;letter-spacing:0;font-size:9.5px;font-style:italic}
+
+.act{font-size:9.5px;font-weight:700;padding:4px 11px;border-radius:99px;background:var(--wash2);opacity:.85;flex-shrink:0;cursor:pointer}
+.act:hover{opacity:1}
+.act.ghost{background:transparent;opacity:.4}
+
+.pager{display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:9px 6px 2px;font-size:11px}
+.pager .info{margin-right:auto;opacity:.45;font-family:ui-monospace,monospace;font-size:10.5px}
+.pg{padding:3px 9px;border-radius:99px;background:var(--wash2);font-size:10.5px;font-weight:700;cursor:pointer;opacity:.7}
+.pg.on{background:var(--ivory);color:#1b1a17;opacity:1}
+[data-theme="light"] .pg.on{background:var(--fg);color:var(--bg)}
+
+/* UPCOMING — pinned BELOW the pager so it can never fall onto page 3. */
+.upcoming{display:flex;align-items:center;gap:8px;margin-top:8px;padding:9px 12px;border-radius:12px;
+  background:var(--wash);font-size:11.5px;font-weight:700;cursor:pointer;opacity:.75}
+.upcoming:hover{opacity:1;background:var(--wash2)}
+.upcoming .n{font-family:ui-monospace,monospace;opacity:.6}
+.upcoming .go{margin-left:auto;opacity:.5}
+
+.empty{padding:18px 10px;font-size:12px;opacity:.5;text-align:center}
+.note{font-size:11px;opacity:.5;padding:9px 4px 0;line-height:1.5}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span style="font-size:12px;opacity:.55">Billing v2 — toggle, tabs and the upcoming sub-view are all live. Try COD.</span>
+  <span class="grow"></span>
+  <button class="ctl" onclick="flip()" id="themeBtn">View light</button>
+</div>
+
+<div class="frame">
+<nav class="rail">
+  <span class="wm">PRS<span class="flo">FLO</span></span>
+  <a>▦ Dashboard</a><a>◑ My Day</a><a>▤ Calendar</a><a>◔ Daily Ops</a>
+  <div class="grp label">Business</div>
+  <a>◎ CRM</a><a class="on">▽ Billing</a><a>✓ Tasks</a><a>⚑ Flags</a>
+</nav>
+
+<main class="main">
+  <div class="hbar">
+    <div>
+      <span class="label" style="display:block;margin-bottom:3px">Work orders &amp; invoices</span>
+      <h1>Billing</h1>
+    </div>
+    <div class="grow"></div>
+    <span class="seg">
+      <button class="on" id="pBilling" onclick="setPipe('billing')">Billing</button>
+      <button id="pCod" onclick="setPipe('cod')">COD <i class="segdot" id="codDot"></i></button>
+    </span>
+  </div>
+
+  <div class="sum" id="sum"></div>
+
+  <div class="searchrow">
+    <span style="opacity:.4;font-size:12px">⌕</span>
+    <input placeholder="Search everything — client, artist, invoice #, WO #, PO…">
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="pane">
+    <div class="lozenge"><b id="hd"></b><span class="ct" id="hdct"></span></div>
+    <div class="rowhd">
+      <span>WO</span><span>Client &amp; session</span><span class="r">Flag</span>
+      <span>Progress</span><span class="r">Balance</span><span class="r">Age</span><span class="r">Next</span>
+    </div>
+    <div id="rows"></div>
+    <div class="pager" id="pager"></div>
+    <div id="upcoming"></div>
+    <div class="note" id="note"></div>
+  </div>
+</main>
+</div>
+
+<script>
+// ─── Demo data ───────────────────────────────────────────────────────────────
+// step: 0 = WO not finished · 1 = finished, needs invoice · 2 = invoiced, needs
+// approval · 3 = approved, ready to send. COD stops at 2.
+var DATA=[
+  // BILLING — in progress
+  {p:'billing',b:'progress',wo:'WO-1188',c:'Vantage Records',s:'Kestrel · Aug 10 · PRS B',step:1,amt:5200,age:'1d'},
+  {p:'billing',b:'progress',wo:'WO-1186',c:'Interscope',s:'Meridian · Aug 9 · ARS A',step:2,amt:2650,age:'2d'},
+  {p:'billing',b:'progress',wo:'WO-1185',c:'Sable',s:'Aug 8 · TRK N',step:3,amt:1200,age:'3d'},
+  {p:'billing',b:'progress',wo:'WO-1183',c:'Def Jam',s:'Harbor · Aug 8 · PRS A',step:3,amt:4100,age:'3d',flag:'po'},
+  {p:'billing',b:'progress',wo:'WO-1182',c:'Lantern',s:'Aug 7 · ERS B',step:0,amt:0,age:'4d'},
+  {p:'billing',b:'progress',wo:'WO-1179',c:'Mustard',s:'Aug 6 · ERS A',step:1,amt:900,age:'5d'},
+  // BILLING — upcoming (pinned sub-view, never in the paginated list)
+  {p:'billing',b:'upcoming',wo:'WO-1201',c:'Kestrel',s:'Aug 14 · PRS B',step:0,amt:0,age:'—'},
+  {p:'billing',b:'upcoming',wo:'WO-1203',c:'Vantage Records',s:'Aug 19 · ARS A',step:0,amt:0,age:'—'},
+  {p:'billing',b:'upcoming',wo:'WO-1210',c:'Interscope Japan',s:'Sep 02 · ERS B',step:0,amt:0,age:'—'},
+  // BILLING — awaiting payment
+  {p:'billing',b:'awaiting',wo:'WO-1169',c:'Vantage Records',s:'Jul 22 · sent 18d ago',step:4,amt:2150,age:'18d'},
+  {p:'billing',b:'awaiting',wo:'WO-1152',c:'Kestrel',s:'Jul 09 · sent 33d ago',step:4,amt:1800,age:'33d',od:1},
+  {p:'billing',b:'awaiting',wo:'WO-1166',c:'Mustard',s:'Jul 19 · sent 21d ago',step:4,amt:900,age:'21d',flag:'drift'},
+  {p:'billing',b:'paid',wo:'WO-1164',c:'Meridian',s:'Jul 18 · PRS A',step:5,amt:0,age:'—'},
+  {p:'billing',b:'paid',wo:'WO-1160',c:'Harbor',s:'Jul 15 · ARS B',step:5,amt:0,age:'—'},
+  {p:'billing',b:'closed',wo:'WO-1141',c:'Northgate Music',s:'Jun 12 · PRS B',step:5,amt:2400,age:'60d',reason:'Written off'},
+  // COD — balance due FIRST: rare, and the only way COD goes wrong
+  {p:'cod',b:'balance',wo:'WO-1191',c:'Mustard',s:'Aug 10 · ERS A',step:2,amt:450,age:'1d',od:1},
+  {p:'cod',b:'balance',wo:'WO-1177',c:'Private — J. Okafor',s:'Aug 04 · PRS C',step:2,amt:300,age:'7d',od:1},
+  // COD — needs review (money is in; check it, attach the invoice, done)
+  {p:'cod',b:'review',wo:'WO-1190',c:'Harbor',s:'Aug 10 · PRS C',step:1,amt:0,age:'1d'},
+  {p:'cod',b:'review',wo:'WO-1189',c:'Sable',s:'Aug 09 · TRK S',step:0,amt:0,age:'2d'},
+  {p:'cod',b:'review',wo:'WO-1187',c:'Kestrel',s:'Aug 09 · ARS B',step:1,amt:0,age:'2d'},
+  {p:'cod',b:'upcoming',wo:'WO-1205',c:'Walk-in TBC',s:'Aug 13 · PRS X',step:0,amt:0,age:'—'},
+  {p:'cod',b:'paid',wo:'WO-1184',c:'Meridian',s:'Aug 05 · PRS A',step:2,amt:0,age:'—'},
+  {p:'cod',b:'paid',wo:'WO-1180',c:'Lantern',s:'Aug 01 · ERS A',step:2,amt:0,age:'—'},
+  {p:'cod',b:'paid',wo:'WO-1176',c:'Def Jam',s:'Jul 29 · ARS A',step:2,amt:0,age:'—'}
+];
+
+var TABS={
+  billing:[
+    {k:'progress', l:'In progress'},
+    {k:'awaiting', l:'Awaiting payment'},
+    {k:'paid',     l:'Paid'},
+    {k:'closed',   l:'Closed'}
+  ],
+  // Balance due LEADS. Rare but critical; sorted by frequency it would be last.
+  cod:[
+    {k:'balance', l:'Balance due', hot:1},
+    {k:'review',  l:'Needs review'},
+    {k:'paid',    l:'Paid'}
+  ]
+};
+
+var pipe='billing', tab='progress', showUpcoming=false, page=1, PER=10;
+
+function money(n){return n===0?'—':'$'+n.toLocaleString('en-US')}
+function rowsFor(p,b){return DATA.filter(function(d){return d.p===p&&d.b===b})}
+
+/** The assembly line, as lights. COD has no approval step. */
+function lights(d,isCod){
+  // Labels name the STEP, not the document (Eli: "how do we know when a WO
+  // hasn't been approved? I only see green WO lights"). "WO" described the
+  // artifact and said nothing about its state; "Reviewed" reads as not-yet when
+  // it is amber. That is the whole answer to how billing spots last night's
+  // unreviewed work orders in the morning.
+  var steps = isCod ? [['REVIEWED',1],['INVOICED',2]]
+                    : [['REVIEWED',1],['INVOICED',2],['APPROVED',3]];
+  var out='<span class="lights">';
+  steps.forEach(function(st,i){
+    var done = d.step>=st[1];
+    var next = d.step===st[1]-1;
+    out+='<span class="lt'+(done?' done':'')+(next?' next':'')+'"><i></i>'+st[0]+'</span>';
+    if(i<steps.length-1) out+='<span class="arrow">›</span>';
+  });
+  return out+'</span>';
+}
+
+function nextAction(d,isCod){
+  if(d.b==='closed') return 'Reopen';
+  if(d.b==='paid') return null;
+  if(d.b==='awaiting') return 'Mark paid';
+  if(d.b==='balance') return 'Record payment';
+  if(d.step===0) return 'Open WO';
+  if(d.step===1) return 'Attach invoice';
+  if(isCod) return 'Done';
+  if(d.step===2) return 'Approve';
+  // SEND downloads the package (work order + invoice, two files for now — a
+  // single merged PDF needs a PDF library and the WO rendered to a real file,
+  // deferred 2026-08-11) and moves the row to Awaiting payment in one press.
+  if(d.flag==='po') return 'Add PO';
+  return 'Send package';
+}
+
+function render(){
+  var isCod = pipe==='cod';
+  document.getElementById('pBilling').classList.toggle('on',!isCod);
+  document.getElementById('pCod').classList.toggle('on',isCod);
+  // The dot only exists while a COD balance does.
+  document.getElementById('codDot').style.display = rowsFor('cod','balance').length ? 'block':'none';
+
+  // Summary — click a figure to filter. The numbers ARE the filters.
+  var sums = isCod
+    ? [['$750','Balance due',1],['$14,200','Collected this month',0],['3','Needs review',0],['2','Balances open',1]]
+    : [['$20,850','Outstanding',0],['$38,150','Received this month',0],['1','Waiting on approval',0],['1','Over 31 days',1]];
+  document.getElementById('sum').innerHTML = sums.map(function(s){
+    return '<div class="stat'+(s[2]?' alert':'')+'"><div class="n">'+s[0]+'</div><div class="k">'+s[1]+'</div></div>';
+  }).join('');
+
+  document.getElementById('tabs').innerHTML = TABS[pipe].map(function(t){
+    var n=rowsFor(pipe,t.k).length;
+    return '<span class="tab'+(t.k===tab&&!showUpcoming?' on':'')+(t.hot&&n?' hot':'')+'" onclick="setTab(\''+t.k+'\')">'
+      +t.l+' <span class="n">'+n+'</span></span>';
+  }).join('');
+
+  var list = showUpcoming ? rowsFor(pipe,'upcoming') : rowsFor(pipe,tab);
+  var pages = Math.max(1,Math.ceil(list.length/PER));
+  if(page>pages) page=1;
+  var slice = list.slice((page-1)*PER,page*PER);
+
+  document.getElementById('hd').textContent = showUpcoming ? 'Upcoming sessions'
+    : (TABS[pipe].find(function(t){return t.k===tab})||{}).l||'';
+  var owed = list.reduce(function(s,d){return s+d.amt},0);
+  document.getElementById('hdct').textContent = list.length + (owed>0?' · $'+owed.toLocaleString('en-US'):'');
+
+  document.getElementById('rows').innerHTML = slice.length===0
+    ? '<div class="empty">Nothing here.</div>'
+    : slice.map(function(d){
+      var act = nextAction(d,isCod);
+      var showLights = d.b==='progress'||d.b==='review'||d.b==='upcoming'||d.b==='balance';
+      return '<div class="row'+(d.od?' od':'')+'">'
+        +'<span class="inv">'+d.wo+'</span>'
+        +'<span class="who"><b>'+d.c+'</b> <span>· '+d.s+'</span></span>'
+        +'<span class="flagcell">'
+          + (d.flag==='po'?'<span class="flag po">Awaiting PO</span>':'')
+          + (d.flag==='drift'?'<span class="flag drift">Changed since invoiced</span>':'')
+          + (d.reason?'<span class="flag soon">'+d.reason+'</span>':'')
+          + (d.b==='upcoming'?'<span class="flag soon">Not started</span>':'')
+          + (d.step===1&&d.b!=='upcoming'?'<span class="flag drop">Drop invoice here</span>':'')
+        +'</span>'
+        + '<span class="lightcell">'+(showLights?lights(d,isCod):'')+'</span>'
+        +'<span class="amt">'+money(d.amt)+'</span>'
+        +'<span class="age">'+d.age+'</span>'
+        +'<span class="actcell">'+(act?'<button class="act">'+act+'</button>':'')+'</span>'
+        +'</div>';
+    }).join('');
+
+  var pg='';
+  if(list.length>0){
+    pg='<span class="info">'+((page-1)*PER+1)+'–'+Math.min(page*PER,list.length)+' of '+list.length+'</span>';
+    for(var i=1;i<=pages;i++) pg+='<span class="pg'+(i===page?' on':'')+'" onclick="goPage('+i+')">'+i+'</span>';
+  }
+  document.getElementById('pager').innerHTML=pg;
+
+  // PINNED below the pager — never a row inside the list, so it cannot end up
+  // on page 3. Clicking SWITCHES the list rather than expanding under it.
+  var up = rowsFor(pipe,'upcoming').length;
+  document.getElementById('upcoming').innerHTML =
+    showUpcoming
+      ? '<div class="upcoming" onclick="toggleUpcoming()">← Back to '+((TABS[pipe].find(function(t){return t.k===tab})||{}).l||'')+'<span class="go">›</span></div>'
+      : (up ? '<div class="upcoming" onclick="toggleUpcoming()">Upcoming sessions <span class="n">'+up+'</span> — not started yet<span class="go">→</span></div>' : '');
+
+  document.getElementById('note').textContent = showUpcoming
+    ? 'Sessions that have not happened yet. Fully editable — extend, cancel days, adjust rates — they just are not work yet.'
+    : (isCod
+      ? 'COD is paid at the top of the session. Check the work order is accurate, drop the QuickBooks invoice on it, done. A balance means collection was missed — the only way COD goes wrong.'
+      : 'Reviewed → Invoiced → Approved. Each light is derived; the button is whatever comes next. Drop a QuickBooks PDF straight onto a row to attach it. A billing package waits on a PO unless the WO has a PO number or is marked No PO needed.');
+}
+
+function setPipe(p){pipe=p;tab=TABS[p][0].k;showUpcoming=false;page=1;render()}
+function setTab(t){tab=t;showUpcoming=false;page=1;render()}
+function toggleUpcoming(){showUpcoming=!showUpcoming;page=1;render()}
+function goPage(p){page=p;render()}
+function flip(){
+  var h=document.documentElement;
+  var n=h.getAttribute('data-theme')==='light'?'dark':'light';
+  h.setAttribute('data-theme',n);
+  document.getElementById('themeBtn').textContent=n==='light'?'View dark':'View light';
+}
+render();
+</script>
+</body>
+</html>

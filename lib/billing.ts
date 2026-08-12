@@ -1,5 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// lib/billing — the invoice lifecycle (docs/design-refs/billing-hub-final.html).
+// lib/billing — the invoice lifecycle (docs/design-refs/billing-hub-v2.html).
+//
+// v2 SUPERSEDES billing-hub-final.html, which is stale. Do not port from it.
 //
 // Replaces the Dropbox folder system. Those folders — COD paid / COD with
 // balance / needing approval / approved-awaiting-PO / sent & open / sent & paid
@@ -33,6 +35,7 @@ import { supabase } from '@/lib/supabase'
 import { dbResult } from '@/lib/db'
 import { computeWoTotals } from '@/lib/woTotals'
 import { getLocalToday } from '@/lib/time'
+import { formatCurrency } from '@/lib/format'
 import { bookingShouldHaveWorkOrder } from '@/lib/createWorkOrder'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -43,54 +46,100 @@ export type InvoiceState =
 
 export type ClosedReason = 'written_off' | 'voided'
 
-/** The tabs on the hub. `cod_balance`/`cod_paid` are derived, never stored. */
-export type BucketKey =
-  | 'open' | 'needs_invoice'
-  | 'needs_approval' | 'approved' | 'awaiting_po' | 'sent' | 'cod_balance' | 'paid' | 'closed'
-
-export type Bucket = { key: BucketKey; label: string; pill: string }
+/**
+ * TWO PIPELINES, NOT ONE (RULING 2026-08-11) — v2, superseding the nine-tab
+ * single pipeline.
+ *
+ *   · BILLING: assemble → approve → send → chase → paid. Days to weeks.
+ *   · COD:     money is already in → check it is accurate → done. Minutes.
+ *
+ * Eli: "the majority of COD do not go through a billing process, they are just
+ * checked for accuracy, approved and then they are done." Forcing both through
+ * one set of tabs is what made nine tabs feel necessary. They share a work order
+ * and nothing else, so they get a toggle.
+ */
+export type Pipeline = 'billing' | 'cod'
 
 /**
- * Tab order matches the mock, which follows the order work moves through:
- * what needs you → what's stuck → what's out → COD → done → out of play.
+ * The tabs. Four for billing, three for COD, plus `upcoming` — which is NOT a
+ * tab but a pinned sub-view below the pager (see the page).
+ *
+ * The four steps v1 modelled as PLACES (open → needs invoice → needs approval →
+ * approved) were never four places. They are one package being assembled, so
+ * they collapse into `progress` and become three lights on the row. Every
+ * serious AR tool separates by WHO IS WAITING, not by which rung of the ladder
+ * something is on.
  */
-export const BUCKETS: Bucket[] = [
-  // OPEN — every work order not yet completed: tentative, future, tonight's and
-  // last night's (RULING 2026-08-11, superseding the narrower "To review").
-  //
-  // Eli: "anything related to work orders can be viewed from the billing page…
-  // the billing coordinator has full control over all work orders and can see
-  // all of them." They extend or cancel days, adjust rates, add rentals and
-  // damages, then complete when ready.
-  //
-  // This also KILLS the need for a runner submit step. An earlier design had the
-  // runner press Submit to hand the work order over; a button can be forgotten,
-  // and when it is, the work order silently never reaches billing. Showing every
-  // open work order means nothing is waiting on anyone to remember.
-  //
-  // Sorted ended-first (see sortOpen) so last night's work is at the top and
-  // future sessions sit below rather than in the way.
-  { key: 'open',           label: 'Open',              pill: 'c-fill-uncon' },
-  { key: 'needs_invoice',  label: 'Needs invoice',     pill: 'c-fill-warm' },
-  { key: 'needs_approval', label: 'Needs approval',    pill: 'c-fill-warm' },
-  // Approved gets its OWN tab (RULING 2026-08-11). An earlier version folded it
-  // into Needs approval to save a tab — wrong, and Eli's question caught it:
-  // billing would have gone to a tab called "Needs approval" to find the
-  // invoices that were already approved and waiting to be sent. The two states
-  // have different owners and different actions (an owner approves; billing
-  // sends), which is what earns a queue. Fewer tabs is not worth a tab whose
-  // name lies about half its contents.
-  { key: 'approved',       label: 'Ready to send',     pill: 'c-fill-uncon' },
-  { key: 'awaiting_po',    label: 'Awaiting PO',       pill: 'c-fill-cold' },
-  { key: 'sent',           label: 'Sent & open',       pill: 'c-fill-dead' },
-  { key: 'cod_balance',    label: 'COD with balance',  pill: 'c-fill-hot' },
-  { key: 'paid',           label: 'Paid',              pill: 'c-fill-booked' },
-  { key: 'closed',         label: 'Closed',            pill: 'c-fill-dead' },
+export type BucketKey =
+  // Billing
+  | 'progress'   // being assembled: reviewed → invoiced → approved
+  | 'awaiting'   // sent, waiting on the client's money
+  | 'paid'
+  | 'closed'     // written off / voided — the archive for BOTH pipelines
+  // COD
+  | 'balance'    // collection was missed. Rare, critical, leads its side.
+  | 'review'     // money is in; check the WO and attach the invoice
+  // Shared sub-view
+  | 'upcoming'   // hasn't happened yet — not work, just visible
+
+export type Bucket = { key: BucketKey; label: string; pill: string; hot?: boolean }
+
+export const BILLING_TABS: Bucket[] = [
+  { key: 'progress', label: 'In progress',      pill: 'c-fill-warm' },
+  { key: 'awaiting', label: 'Awaiting payment', pill: 'c-fill-uncon' },
+  { key: 'paid',     label: 'Paid',             pill: 'c-fill-booked' },
+  { key: 'closed',   label: 'Closed',           pill: 'c-fill-dead' },
+]
+
+export const COD_TABS: Bucket[] = [
+  // BALANCE DUE LEADS ITS SIDE. Eli: "rare occasions that collection was not
+  // made in error, so COD with balance exists — not a lot, but very important
+  // these surface as the most important bin." Rare-but-critical sorted by
+  // frequency ends up at the bottom, which is where you find it late.
+  { key: 'balance', label: 'Balance due',  pill: 'c-fill-hot', hot: true },
+  { key: 'review',  label: 'Needs review', pill: 'c-fill-warm' },
+  { key: 'paid',    label: 'Paid',         pill: 'c-fill-booked' },
+]
+
+export function tabsFor(pipeline: Pipeline): Bucket[] {
+  return pipeline === 'cod' ? COD_TABS : BILLING_TABS
+}
+
+const ALL_BUCKETS: Bucket[] = [
+  ...BILLING_TABS, ...COD_TABS,
+  { key: 'upcoming', label: 'Upcoming', pill: 'c-fill-dead' },
 ]
 
 export function bucketLabel(key: BucketKey): string {
-  return BUCKETS.find(b => b.key === key)?.label ?? key
+  return ALL_BUCKETS.find(b => b.key === key)?.label ?? key
 }
+
+/**
+ * THE ASSEMBLY LINE, as a number. This is what the three lights on the row read
+ * from, and it is the answer to "how does billing spot last night's unreviewed
+ * work orders in the morning" — anything at step 0–1 is theirs.
+ *
+ *   0  the work order is still open. Nobody has checked it.
+ *   1  REVIEWED — billing completed it. Waiting on the QuickBooks invoice.
+ *   2  INVOICED — the PDF is attached. Billing: waiting on an owner.
+ *                 COD: that is the end of the line.
+ *   3  APPROVED — an owner signed it off. Ready to send (or waiting on a PO).
+ *   4  SENT      — out with the client, aging.
+ *   5  PAID
+ *
+ * The labels name the STATE, not the artifact. An earlier version labelled the
+ * first light "WO", which described a document and said nothing about whether
+ * anyone had looked at it.
+ */
+export type Step = 0 | 1 | 2 | 3 | 4 | 5
+
+export const BILLING_LIGHTS: Array<{ label: string; at: Step }> = [
+  { label: 'Reviewed', at: 1 }, { label: 'Invoiced', at: 2 }, { label: 'Approved', at: 3 },
+]
+/** COD has no approval and nothing to send, so it shows two. */
+export const COD_LIGHTS: Array<{ label: string; at: Step }> = [
+  { label: 'Reviewed', at: 1 }, { label: 'Invoiced', at: 2 },
+]
 
 export type InvoiceRow = {
   workOrderId: string
@@ -101,7 +150,10 @@ export type InvoiceRow = {
   artist: string | null
   sessionDate: string | null
   isCod: boolean
+  pipeline: Pipeline
   bucket: BucketKey
+  /** Position on the assembly line. Drives the lights and the next action. */
+  step: Step
   state: InvoiceState | null
   closedReason: ClosedReason | null
   /** Owed on this invoice. 0 once settled. */
@@ -112,6 +164,14 @@ export type InvoiceRow = {
   ageDays: number | null
   sentAt: string | null
   poNumber: string | null
+  /** Set on the WORK ORDER — this package can go out without a PO. */
+  noPoNeeded: boolean
+  /**
+   * Approved, but it cannot be sent: the client wants a PO number on it and
+   * none has been recorded. DERIVED, never stored (it was a state in v1) —
+   * typing the PO on the work order clears it with no second act.
+   */
+  awaitingPo: boolean
   hasInvoiceDoc: boolean
   approvedAt: string | null
   /** The total at the moment the invoice was attached. Null = never invoiced. */
@@ -126,11 +186,16 @@ export type InvoiceRow = {
   ended: boolean
 }
 
-export type BillingSummary = {
-  outstanding: number
-  receivedThisMonth: number
-  waitingApproval: number
-  overThirtyOne: number
+/**
+ * The four figures across the top. Each is a bucket you can click, so a number
+ * is never a dead end — the numbers ARE the filters.
+ */
+export type SummaryStat = {
+  value: string
+  label: string
+  alert?: boolean
+  /** Clicking jumps here. Null when the figure has no single home. */
+  goto: BucketKey | null
 }
 
 /** Aging threshold. 31+ days past SENT is the figure Eli's AR review uses. */
@@ -151,41 +216,73 @@ function daysSince(iso: string | null): number | null {
 }
 
 /**
- * Which bucket a work order belongs in.
+ * How far along the assembly line a work order is.
  *
- * `closed` wins over everything — that is the point of it: written-off and
- * voided invoices leave every other pipeline entirely (see activeRows).
- * Otherwise a stored state decides for billing, and the arithmetic decides for
- * COD.
+ * Derived from the stored state plus whether the invoice document is actually
+ * attached — because the document IS the evidence for step 2, and a state that
+ * says "invoiced" with no file would be a lie the lights then repeated.
  */
-function deriveBucket(
+export function deriveStep(
   state: InvoiceState | null,
   isCod: boolean,
-  balance: number,
-  grand: number,
+  hasDoc: boolean,
   woStatus: string,
-): BucketKey {
-  if (state === 'closed') return 'closed'
-  // Not completed = still billing's to work on, whatever the payment type and
-  // whenever the session is.
-  if (state === null && woStatus !== 'completed') return 'open'
-  // Completed but no invoice attached — for COD and Billing alike. Completing
-  // starts the billing process; the invoice drop is the next act.
-  if (state === 'needs_invoice') return 'needs_invoice'
+): Step {
   if (isCod) {
-    // An unbilled COD work order (nothing entered yet) is not "paid" — it has
-    // nothing owed because it has nothing on it. Treating $0-of-$0 as settled
-    // would quietly park real work in the Paid tab on the day it was created.
-    if (grand <= 0) return 'cod_balance'
-    return balance > 0 ? 'cod_balance' : 'cod_paid' as BucketKey
+    // COD has two rungs and no approval: reviewed, then invoiced. Whether the
+    // money arrived is answered by the payments, never by a stamp.
+    if (hasDoc) return 2
+    return woStatus === 'completed' || state !== null ? 1 : 0
   }
-  if (state === 'paid') return 'paid'
-  if (state === 'sent') return 'sent'
-  if (state === 'awaiting_po') return 'awaiting_po'
-  if (state === 'approved') return 'approved'
-  // needs_approval, or NULL on a completed billing WO — either way it is
-  // waiting on an owner and has not been signed off.
-  return 'needs_approval'
+  if (state === 'paid') return 5
+  if (state === 'sent') return 4
+  if (state === 'approved' || state === 'awaiting_po') return 3
+  if (state === 'needs_approval' || hasDoc) return 2
+  if (state === 'needs_invoice' || woStatus === 'completed') return 1
+  return 0
+}
+
+/**
+ * Which bucket a work order belongs in — v2: two pipelines, four/three tabs.
+ *
+ * `closed` wins over everything: written-off and voided invoices leave every
+ * pipeline entirely (see activeRows) and land in ONE archive regardless of
+ * payment type. A voided COD invoice under a COD-only Closed tab would be an
+ * archive nobody would ever think to open.
+ *
+ * `upcoming` is second, and it is deliberately narrow — only a work order
+ * nobody has touched (step 0) whose last day has not passed. A session that is
+ * mid-run has not ended, but the moment billing completes it, it is work.
+ */
+export function deriveBucket(args: {
+  state: InvoiceState | null
+  isCod: boolean
+  step: Step
+  balance: number
+  grand: number
+  ended: boolean
+}): BucketKey {
+  const { state, isCod, step, balance, grand, ended } = args
+  if (state === 'closed') return 'closed'
+  if (!ended && step === 0) return 'upcoming'
+
+  if (isCod) {
+    // BALANCE DUE beats everything else on the COD side, at any step. Money
+    // that was supposed to be collected at the top of the session and wasn't is
+    // the only way COD goes wrong, and it must never be reachable only by
+    // paging past settled sessions.
+    //
+    // A work order with nothing on it (grand <= 0) is NOT a balance — there is
+    // nothing owed because nothing has been entered. It needs reviewing.
+    if (grand > 0 && balance > 0) return 'balance'
+    return step >= 2 && grand > 0 ? 'paid' : 'review'
+  }
+
+  if (step >= 5) return 'paid'
+  if (step === 4) return 'awaiting'
+  // Steps 0–3 are one package being assembled. Which rung it is on shows as
+  // lights on the row, not as four different tabs.
+  return 'progress'
 }
 
 /**
@@ -202,7 +299,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // this at compile time, and a `+`-concatenated string is not a literal to
     // TypeScript — every column then types as an error object. Do not "tidy"
     // this onto several lines with concatenation.
-    .select('id, booking_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total')
+    .select('id, booking_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total')
     .order('session_date', { ascending: false })
   if (!dbResult('Loading invoices', error)) return []
   if (!wos || wos.length === 0) return []
@@ -286,6 +383,10 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       && Math.round(totals.grand * 100) !== Math.round(invoicedTotal * 100)
     const isCod = (w.payment_status ?? '').toUpperCase() === 'COD'
     const state = (w.invoice_state ?? null) as InvoiceState | null
+    const hasDoc = !!w.invoice_doc_path
+    const step = deriveStep(state, isCod, hasDoc, w.status ?? '')
+    const poNumber = (w.po_number ?? '').trim() || null
+    const noPoNeeded = !!(w as any).no_po_needed
 
     return {
       workOrderId: w.id,
@@ -296,7 +397,11 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       artist: w.artist ?? null,
       sessionDate: w.session_date ?? null,
       isCod,
-      bucket: deriveBucket(state, isCod, totals.balance, totals.grand, w.status ?? ''),
+      pipeline: (isCod ? 'cod' : 'billing') as Pipeline,
+      bucket: deriveBucket({
+        state, isCod, step, balance: totals.balance, grand: totals.grand, ended,
+      }),
+      step,
       state,
       closedReason: (w.invoice_closed_reason ?? null) as ClosedReason | null,
       balance: totals.balance,
@@ -304,8 +409,13 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       paid: totals.paid,
       ageDays: daysSince(w.invoice_sent_at ?? null),
       sentAt: w.invoice_sent_at ?? null,
-      poNumber: w.po_number ?? null,
-      hasInvoiceDoc: !!w.invoice_doc_path,
+      poNumber,
+      noPoNeeded,
+      // AWAITING PO, entirely from the work order (ruling 2026-08-11). Only
+      // billing, only once approved — before that the PO is not what is holding
+      // anything up, and flagging it early would make it noise on every row.
+      awaitingPo: !isCod && step === 3 && !poNumber && !noPoNeeded,
+      hasInvoiceDoc: hasDoc,
       approvedAt: w.invoice_approved_at ?? null,
       invoicedTotal,
       invoiceDrift,
@@ -347,39 +457,60 @@ export function searchRows(rows: InvoiceRow[], query: string): InvoiceRow[] {
   )
 }
 
-export function rowsInBucket(rows: InvoiceRow[], bucket: BucketKey): InvoiceRow[] {
-  const inBucket = rows.filter(r => r.bucket === bucket)
-  return bucket === 'open' ? sortOpen(inBucket) : inBucket
+/**
+ * The rows in one tab of one pipeline, sorted as a queue.
+ *
+ * The pipeline filter is what lets `paid` be a tab on both sides without the
+ * two lists bleeding into each other. `closed` is the exception — one archive
+ * for both, so it ignores the pipeline.
+ */
+export function rowsInBucket(
+  rows: InvoiceRow[], bucket: BucketKey, pipeline: Pipeline,
+): InvoiceRow[] {
+  const inBucket = rows.filter(r =>
+    r.bucket === bucket && (bucket === 'closed' || r.pipeline === pipeline),
+  )
+  return sortBucket(inBucket, bucket)
 }
 
 /**
- * The Open tab, ordered so it reads as a queue rather than a list.
+ * Ordered so each tab reads as a queue rather than a list.
  *
- * Ended sessions first (billing's actual work: last night's, and anything they
- * have not got to), then everything still to come. Within each group, most
- * recent first — a session from last week matters more than one from tonight
- * that has not happened. Future sessions are reference, not work, so they sit
- * below rather than in the way.
+ *   Upcoming → SOONEST first. Tomorrow matters more than September, and
+ *              newest-first buried next week under next month.
+ *   Awaiting → OLDEST sent first. The chase list is led by the debt that has
+ *              been out longest, which is the one about to become a problem.
+ *   Everything else → most recent session first. Last night is the work.
  */
-export function sortOpen(rows: InvoiceRow[]): InvoiceRow[] {
+export function sortBucket(rows: InvoiceRow[], bucket: BucketKey): InvoiceRow[] {
   return [...rows].sort((a, b) => {
-    if (a.ended !== b.ended) return a.ended ? -1 : 1
-    // THE TWO GROUPS SORT IN OPPOSITE DIRECTIONS, deliberately.
-    //   Ended   → newest first. Last night is the work; a session from three
-    //             weeks ago has already been chased or is a known problem.
-    //   Upcoming→ SOONEST first. Tomorrow matters more than September, and
-    //             sorting these newest-first buried next week under next month.
-    return a.ended
-      ? (b.sessionDate ?? '').localeCompare(a.sessionDate ?? '')
-      : (a.sessionDate ?? '').localeCompare(b.sessionDate ?? '')
+    if (bucket === 'upcoming') {
+      return (a.sessionDate ?? '').localeCompare(b.sessionDate ?? '')
+    }
+    if (bucket === 'awaiting') {
+      return (b.ageDays ?? 0) - (a.ageDays ?? 0)
+    }
+    return (b.sessionDate ?? '').localeCompare(a.sessionDate ?? '')
   })
 }
 
-export function bucketCounts(rows: InvoiceRow[]): Record<string, number> {
+export function bucketCounts(rows: InvoiceRow[], pipeline: Pipeline): Record<string, number> {
   const out: Record<string, number> = {}
-  for (const b of BUCKETS) out[b.key] = 0
-  for (const r of rows) out[r.bucket] = (out[r.bucket] ?? 0) + 1
+  for (const b of [...tabsFor(pipeline), { key: 'upcoming' as BucketKey }]) out[b.key] = 0
+  for (const r of rows) {
+    if (r.bucket !== 'closed' && r.pipeline !== pipeline) continue
+    out[r.bucket] = (out[r.bucket] ?? 0) + 1
+  }
   return out
+}
+
+/**
+ * Does the COD side need looking at right now? Drives the hot dot on the
+ * toggle, so a missed collection is visible from the Billing side without going
+ * to look. A rare problem you have to go looking for is one you find late.
+ */
+export function hasCodAlert(rows: InvoiceRow[]): boolean {
+  return rows.some(r => r.bucket === 'balance')
 }
 
 export function paginate<T>(rows: T[], page: number): T[] {
@@ -394,71 +525,101 @@ export function pageCount(total: number): number {
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 /**
- * The four figures across the top. Computed from the same rows the tabs use, so
- * a number up there can never disagree with the list below it.
+ * Computed from the same rows the tabs use, so a figure up there can never
+ * disagree with the list below it — and computed PER PIPELINE, because the two
+ * sides are asking different questions. Billing wants to know what is owed and
+ * what is late. COD wants to know what was missed and what still needs a look.
  */
-export function summarise(rows: InvoiceRow[]): BillingSummary {
-  const live = activeRows(rows)
+export function summarise(rows: InvoiceRow[], pipeline: Pipeline): SummaryStat[] {
+  const live = activeRows(rows).filter(r => r.pipeline === pipeline)
   const month = getLocalToday().slice(0, 7) // YYYY-MM
+  const money = (n: number) => formatCurrency(String(n))
 
-  return {
-    // Everything genuinely owed, COD and billing alike.
-    outstanding: live
-      .filter(r => r.bucket !== 'paid')
-      .reduce((s, r) => s + Math.max(0, r.balance), 0),
-    // Payments recorded against invoices settled this month. Like the My Day
-    // brief, this counts what PRSFlo knows — anything zeroed straight into
-    // QuickBooks never touches payment_rows. Label it as such wherever shown.
-    receivedThisMonth: live
-      .filter(r => (r.sentAt ?? '').slice(0, 7) === month || r.bucket === 'paid')
-      .reduce((s, r) => s + r.paid, 0),
-    waitingApproval: live.filter(r => r.bucket === 'needs_approval').length,
-    overThirtyOne: live.filter(
-      r => r.bucket === 'sent' && (r.ageDays ?? 0) >= PAST_DUE_DAYS,
-    ).length,
+  // Payments PRSFlo can see. Anything zeroed straight into QuickBooks never
+  // touches payment_rows, so this is a floor, not the books — hence the label.
+  const collected = live
+    .filter(r => (r.sentAt ?? r.sessionDate ?? '').slice(0, 7) === month)
+    .reduce((s, r) => s + r.paid, 0)
+
+  if (pipeline === 'cod') {
+    const balances = live.filter(r => r.bucket === 'balance')
+    return [
+      {
+        value: money(balances.reduce((s, r) => s + Math.max(0, r.balance), 0)),
+        label: 'Balance due', alert: balances.length > 0, goto: 'balance',
+      },
+      { value: money(collected), label: 'Collected this month', goto: null },
+      {
+        value: String(live.filter(r => r.bucket === 'review').length),
+        label: 'Needs review', goto: 'review',
+      },
+      { value: String(balances.length), label: 'Balances open', alert: balances.length > 0, goto: 'balance' },
+    ]
   }
+
+  const overdue = live.filter(r => isPastDue(r))
+  return [
+    {
+      value: money(live.filter(r => r.bucket !== 'paid').reduce((s, r) => s + Math.max(0, r.balance), 0)),
+      label: 'Outstanding', goto: null,
+    },
+    { value: money(collected), label: 'Received this month', goto: null },
+    {
+      // Step 2 = invoiced, waiting on an owner. This is Eli's own queue.
+      value: String(live.filter(r => r.step === 2 && r.bucket === 'progress').length),
+      label: 'Waiting on approval', goto: 'progress',
+    },
+    {
+      value: String(overdue.length), label: `Over ${PAST_DUE_DAYS} days`,
+      alert: overdue.length > 0, goto: 'awaiting',
+    },
+  ]
 }
 
 /** True when a sent invoice has aged past the review threshold. */
 export function isPastDue(row: InvoiceRow): boolean {
-  return row.bucket === 'sent' && (row.ageDays ?? 0) >= PAST_DUE_DAYS
+  return row.bucket === 'awaiting' && (row.ageDays ?? 0) >= PAST_DUE_DAYS
+}
+
+/**
+ * What the button on the row should say — one action, always the next one.
+ *
+ * Same law as the lights: PRSFlo works out where the package is, so the person
+ * never has to decide which of six things to do. Null means nothing is owed
+ * from anyone.
+ */
+export function nextAction(row: InvoiceRow): string | null {
+  if (row.bucket === 'closed') return 'Reopen'
+  if (row.bucket === 'paid') return null
+  if (row.bucket === 'awaiting') return 'Mark paid'
+  if (row.bucket === 'balance') return 'Open WO'
+  if (row.step === 0) return 'Open WO'
+  if (row.step === 1) return 'Attach invoice'
+  if (row.isCod) return 'Open WO'
+  if (row.step === 2) return 'Approve'
+  if (row.awaitingPo) return 'Add PO'
+  return 'Send package'
 }
 
 // ─── Transitions ─────────────────────────────────────────────────────────────
 
 /**
- * Approve — OWNERS ONLY (Eli + Adam-Mike).
+ * Approve — OWNERS ONLY (Eli + Adam-Mike). Always lands on `approved`.
  *
- * Routes to `awaiting_po` when the client requires a PO and none has been
- * received: approval has already happened, the invoice simply cannot go out
- * yet, and the blocker is the client. That is the folder Eli described, not a
- * step everyone walks through.
+ * v1 branched here into an `awaiting_po` STATE by looking up
+ * `clients.requires_po`. Both are gone (ruling 2026-08-11): awaiting-PO is now
+ * DERIVED from the work order's own PO number and its No-PO-needed flag, which
+ * means typing the PO clears the block with no second act, and no client-level
+ * setting has to be kept true for the hub to be right.
  *
- * The role check below is a courtesy — it produces a clear message instead of a
- * database error. The RULE lives in the `enforce_invoice_approver` trigger, so
- * it holds even if this function is bypassed entirely.
+ * The trigger `enforce_invoice_approver` is what makes owners-only true; this
+ * function just performs the write.
  */
 export async function approveInvoice(row: InvoiceRow, approverId: string | null): Promise<boolean> {
-  let nextState: InvoiceState = 'approved'
-
-  if (!row.poNumber && row.bookingId) {
-    // work_orders has no client_id — the link runs through the booking. Only
-    // looked up at approval time, never per row on load: this is one query on
-    // a click, versus a join on every page render.
-    const { data: bk } = await supabase
-      .from('bookings').select('client_id').eq('id', row.bookingId).limit(1)
-    const clientId = bk?.[0]?.client_id
-    if (clientId) {
-      const { data: cl } = await supabase
-        .from('clients').select('requires_po').eq('id', clientId).limit(1)
-      if (cl?.[0]?.requires_po) nextState = 'awaiting_po'
-    }
-  }
-
   const { error } = await supabase
     .from('work_orders')
     .update({
-      invoice_state: nextState,
+      invoice_state: 'approved',
       invoice_approved_at: new Date().toISOString(),
       invoice_approved_by: approverId,
     })
@@ -467,17 +628,25 @@ export async function approveInvoice(row: InvoiceRow, approverId: string | null)
   return dbResult('Approving invoice', error)
 }
 
-/** Record the PO that was holding an invoice up, and release it. */
+/**
+ * Record the PO. No state change — `awaitingPo` is derived, so writing the
+ * number is the whole act and the flag clears itself on reload.
+ */
 export async function recordPoNumber(row: InvoiceRow, poNumber: string): Promise<boolean> {
   const { error } = await supabase
     .from('work_orders')
-    .update({
-      po_number: poNumber,
-      // Only springs the trap; an invoice parked for another reason is untouched.
-      ...(row.bucket === 'awaiting_po' ? { invoice_state: 'approved' as InvoiceState } : {}),
-    })
+    .update({ po_number: poNumber })
     .eq('id', row.workOrderId)
   return dbResult('Saving PO number', error)
+}
+
+/** This package can go out without a PO. Same field the WO screen writes. */
+export async function setNoPoNeeded(row: InvoiceRow, value: boolean): Promise<boolean> {
+  const { error } = await supabase
+    .from('work_orders')
+    .update({ no_po_needed: value })
+    .eq('id', row.workOrderId)
+  return dbResult('Saving PO requirement', error)
 }
 
 /** Mark as sent. This STARTS THE AGING CLOCK — every past-due figure keys off it. */
@@ -623,14 +792,44 @@ export async function uploadInvoiceDoc(row: InvoiceRow, file: File): Promise<boo
  * to owner/manager/billing, so a privileged server route would add nothing but
  * another place for the rule to drift.
  */
-export async function signedInvoiceUrl(workOrderId: string): Promise<string | null> {
+export async function signedInvoiceUrl(
+  workOrderId: string, download = false,
+): Promise<string | null> {
   const { data: wo } = await supabase
     .from('work_orders').select('invoice_doc_path').eq('id', workOrderId).limit(1)
   const path = wo?.[0]?.invoice_doc_path
   if (!path) return null
 
   const { data, error } = await supabase.storage
-    .from(INVOICES_BUCKET).createSignedUrl(path, SIGNED_URL_TTL)
+    .from(INVOICES_BUCKET).createSignedUrl(path, SIGNED_URL_TTL, { download })
   if (error || !data) return null
   return data.signedUrl
+}
+
+/**
+ * THE SEND PACKAGE — two files, not one merged PDF (ruling 2026-08-11).
+ *
+ * Eli: "I'm ok with two files for now." A genuinely merged package needs a PDF
+ * library plus the work order rendered to a real file; today the work order is
+ * printed from its own screen via window.print(). Two downloads is honest about
+ * that; a button labelled "package" that silently produced one of the two
+ * documents would not be.
+ *
+ * Sending is therefore a small MODAL, not a single click, for a reason worth
+ * keeping: the invoice can be downloaded here, the work order has to be printed
+ * from its own screen, and marking sent starts the aging clock. Three different
+ * things behind one button would surprise you exactly once and then be
+ * distrusted forever.
+ */
+export async function downloadInvoiceDoc(row: InvoiceRow): Promise<boolean> {
+  const url = await signedInvoiceUrl(row.workOrderId, true)
+  if (!url) return dbResult('Downloading invoice', { message: 'No invoice is attached to this work order.' })
+  const a = document.createElement('a')
+  a.href = url
+  a.rel = 'noopener'
+  a.download = `${row.invoiceNumber || row.woNumber || 'invoice'}.pdf`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  return true
 }

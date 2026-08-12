@@ -93,6 +93,14 @@ type WO = {
   label: string
   ordered_by: string
   po_number: string
+  /**
+   * This billing package can be sent WITHOUT a PO (migration 20260811150000).
+   *
+   * Lives on the work order, not the client (ruling 2026-08-11) — a client who
+   * normally requires a PO can waive it on one job, and the exception belongs on
+   * the job. Read by lib/billing's Awaiting-PO derivation, nowhere else.
+   */
+  no_po_needed: boolean
   phone: string
   email: string
   status: string
@@ -201,6 +209,7 @@ function normalizeWO(d: any): WO {
     label: d.label ?? '',
     ordered_by: d.ordered_by ?? '',
     po_number: d.po_number ?? '',
+    no_po_needed: d.no_po_needed ?? false,
     phone: d.phone ?? '',
     email: d.email ?? '',
     status: d.status ?? 'open',
@@ -1504,6 +1513,7 @@ export function WorkOrderPopup({
       label: wo.label || null,
       ordered_by: wo.ordered_by || null,
       po_number: wo.po_number || null,
+      no_po_needed: wo.no_po_needed,
       phone: wo.phone || null,
       email: wo.email || null,
       session_notes: wo.session_notes || null,
@@ -2047,11 +2057,41 @@ export function WorkOrderPopup({
                     <input
                       className="c-mono"
                       value={wo.po_number}
-                      disabled={readOnly}
-                      placeholder="—"
+                      disabled={readOnly || wo.no_po_needed}
+                      placeholder={wo.no_po_needed ? 'Not needed' : '—'}
                       onChange={e => { setDirtyFields(prev => new Set(prev).add('po_number')); setWo(w => w ? { ...w, po_number: e.target.value } : w) }}
                     />
                   </div>
+                  {/* NO PO NEEDED (ruling 2026-08-11). A billing package waits in
+                      Awaiting PO until it has a PO number OR this is set. It sits
+                      beside the PO field because that is the question it answers,
+                      and it is the ONE thing about the PO that PRSFlo cannot work
+                      out for itself.
+
+                      Billing only — a COD session is paid at the top and never
+                      waits on anyone's paperwork, so the control would be noise
+                      on the majority of work orders. */}
+                  {wo.payment_status === 'Billing' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      <span className="c-pfx">PO req&apos;d</span>
+                      <div className="c-seg" style={{ height: 40 }}>
+                        {([[true, 'Yes'], [false, 'No']] as [boolean, string][]).map(([val, lbl]) => (
+                          <button
+                            key={lbl}
+                            type="button"
+                            disabled={readOnly}
+                            className={wo.no_po_needed !== val ? 'c-on' : ''}
+                            onClick={() => {
+                              setDirtyFields(prev => new Set(prev).add('no_po_needed'))
+                              setWo(w => w ? { ...w, no_po_needed: !val } : w)
+                            }}
+                          >
+                            {lbl}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {/* Food budget — a real two-state segment, not one button whose
                       label flips. "Yes" reveals the amount beside it; toggling back
                       to No hides the well but KEEPS the value in state, so an
