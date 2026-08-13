@@ -54,7 +54,7 @@ import {
   fetchInvoices, searchRows, rowsInBucket, bucketCounts, paginate,
   pageCount, summarise, isPastDue, bucketLabel, tabsFor, hasCodAlert, nextAction,
   approveInvoice, markSent, markPaid, closeInvoice, reopenInvoice,
-  uploadInvoiceDoc, signedInvoiceUrl, downloadPackage, pullBack, markDownloaded,
+  uploadInvoiceDoc, signedInvoiceUrl, signedPackageUrl, downloadPackage, pullBack, markDownloaded,
   staleDownloads, pageSizeFor,
   BILLING_LIGHTS, COD_LIGHTS,
   type InvoiceRow, type BucketKey, type ClosedReason, type Pipeline,
@@ -685,17 +685,33 @@ function PackageModal({ row, booking, onClose }: {
   booking: Booking
   onClose: () => void
 }) {
-  const [view, setView] = useState<'wo' | 'inv'>('wo')
-  const [url, setUrl] = useState<string | null>(null)
+  // WHAT ACTUALLY WENT OUT WINS (ruling 2026-08-11). Once a package has been
+  // built, the default view is the STORED FILE — page for page, as the client
+  // received it. Eli: "we need to see what's actually going out — see a bug we
+  // missed, info looks weird to client."
+  //
+  // Re-rendering the live work order instead would show what it says TODAY, and
+  // the moment you go looking is precisely when something is wrong, which is the
+  // worst possible time to be handed a reconstruction. The work order pane is
+  // still there, and still editable — it is just no longer what "the package"
+  // means once one exists.
+  type View = 'sent' | 'wo' | 'inv'
+  const [view, setView] = useState<View>(row.hasPackage ? 'sent' : 'wo')
+  const [urls, setUrls] = useState<{ sent?: string | null; inv?: string | null }>({})
 
-  // Signed on demand, not on open: the URL is short-lived, and most visits to
-  // this window are to read the work order.
+  // Signed on demand — the URLs are short-lived, and most visits open one pane.
   useEffect(() => {
-    if (view !== 'inv' || url) return
     let alive = true
-    signedInvoiceUrl(row.workOrderId).then(u => { if (alive) setUrl(u) })
+    if (view === 'sent' && urls.sent === undefined) {
+      signedPackageUrl(row.workOrderId).then(u => { if (alive) setUrls(p => ({ ...p, sent: u })) })
+    }
+    if (view === 'inv' && urls.inv === undefined) {
+      signedInvoiceUrl(row.workOrderId).then(u => { if (alive) setUrls(p => ({ ...p, inv: u })) })
+    }
     return () => { alive = false }
-  }, [view, url, row.workOrderId])
+  }, [view, urls.sent, urls.inv, row.workOrderId])
+
+  const doc = view === 'sent' ? urls.sent : urls.inv
 
   return (
     <div className="c-bmodal-wrap" onClick={onClose}>
@@ -711,18 +727,34 @@ function PackageModal({ row, booking, onClose }: {
           </div>
           <div style={{ flex: 1 }} />
           <div className="c-seg">
+            {row.hasPackage && (
+              <button className={view === 'sent' ? 'c-on' : ''} onClick={() => setView('sent')}>
+                {row.sentAt ? 'As sent' : 'As built'}
+              </button>
+            )}
             <button className={view === 'wo' ? 'c-on' : ''} onClick={() => setView('wo')}>Work order</button>
             <button className={view === 'inv' ? 'c-on' : ''} onClick={() => setView('inv')}>Invoice</button>
           </div>
           <button className="c-bact c-bmuted" onClick={onClose}>Close</button>
         </div>
 
+        {/* Says plainly which of the two you are looking at, because the whole
+            point is that they can differ. */}
+        {view === 'wo' && row.hasPackage && (
+          <div className="c-bnote" style={{ padding: '0 14px 6px' }}>
+            This is the work order as it stands now — it may differ from the package
+            that went out. {row.invoiceDrift ? 'It does: the total has changed since it was invoiced.' : ''}
+          </div>
+        )}
+
         <div className="c-bpkgbody">
           {view === 'wo'
             ? <WorkOrderPopup booking={booking} inline onClose={onClose} />
-            : url
-              ? <iframe src={url} title="Invoice" style={{ width: '100%', height: '100%', border: 'none', borderRadius: 12, background: '#fff' }} />
-              : <div className="c-bempty">Loading the invoice…</div>}
+            : doc
+              ? <iframe src={doc} title={view === 'sent' ? 'Package' : 'Invoice'} style={{ width: '100%', height: '100%', border: 'none', borderRadius: 12, background: '#fff' }} />
+              : doc === null
+                ? <div className="c-bempty">That file isn&apos;t there any more.</div>
+                : <div className="c-bempty">Loading…</div>}
         </div>
       </div>
     </div>

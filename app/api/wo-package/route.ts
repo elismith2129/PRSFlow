@@ -97,6 +97,31 @@ export async function GET(req: NextRequest) {
 
   const merged = await mergePackage(woPdf, attachment)
 
+  // KEEP WHAT WENT OUT (ruling 2026-08-11). The exact bytes being handed over
+  // are stored, so the package window can later show the ARTIFACT rather than
+  // re-rendering today's work order. Without this, reviewing a sent package
+  // shows you a document that may never have existed.
+  //
+  // Only for the real package — `wo=1` is a convenience export from the work
+  // order screen, not something that goes to a client.
+  //
+  // NON-FATAL on failure: the person asked for a file. Refusing to hand it over
+  // because the archive copy failed would trade the thing they need for the
+  // thing we would like.
+  if (!woOnly) {
+    const path = `${id}/package-${Date.now()}.pdf`
+    const up = await supabaseAdmin.storage
+      .from('invoices')
+      .upload(path, Buffer.from(merged), { contentType: 'application/pdf', upsert: false })
+    if (!up.error) {
+      // Remove the previous snapshot AFTER the new one lands, so a failed
+      // upload never leaves the row pointing at nothing.
+      const old = wo.invoice_package_path
+      await supabaseAdmin.from('work_orders').update({ invoice_package_path: path }).eq('id', id)
+      if (old && old !== path) await supabaseAdmin.storage.from('invoices').remove([old])
+    }
+  }
+
   // Filename billing can recognise in a Downloads folder without opening it.
   const who = String(wo.label || wo.client || 'Work order').replace(/[^\w\- ]+/g, '').trim() || 'Work order'
   const num = wo.invoice_number || wo.wo_number || ''

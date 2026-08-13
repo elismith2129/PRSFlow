@@ -165,6 +165,13 @@ export type InvoiceRow = {
   /** The package was built and downloaded. NOT the same as sent — see below. */
   downloadedAt: string | null
   /**
+   * A stored copy of the merged package EXACTLY as it was last downloaded.
+   * True once anything has actually left — and it is what the package window
+   * shows from then on, so you review the artifact rather than a re-render of
+   * today's work order.
+   */
+  hasPackage: boolean
+  /**
    * Built, downloaded, and still not marked sent after DOWNLOAD_STALE_DAYS.
    * The reminder that makes the two-step send safe: without it, a package can
    * sit finished in someone's Downloads folder and never reach the client.
@@ -330,7 +337,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // this at compile time, and a `+`-concatenated string is not a literal to
     // TypeScript — every column then types as an error object. Do not "tidy"
     // this onto several lines with concatenation.
-    .select('id, booking_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total, invoice_downloaded_at')
+    .select('id, booking_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total, invoice_downloaded_at, invoice_package_path')
     .order('session_date', { ascending: false })
   if (!dbResult('Loading invoices', error)) return []
   if (!wos || wos.length === 0) return []
@@ -472,6 +479,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       paid: totals.paid,
       ageDays: daysSince(w.invoice_sent_at ?? null),
       downloadedAt: w.invoice_downloaded_at ?? null,
+      hasPackage: !!(w as any).invoice_package_path,
       staleDownload:
         step === 3 && !!w.invoice_downloaded_at
         && (daysSince(w.invoice_downloaded_at) ?? 0) >= DOWNLOAD_STALE_DAYS,
@@ -792,14 +800,15 @@ export async function pullBack(row: InvoiceRow): Promise<boolean> {
   // approval carrying the invoice that was wrong in the first place — and it
   // would look complete the whole way, because the Invoiced light would be
   // green. Removing it forces the one act that fixes the actual problem.
-  if (row.hasInvoiceDoc) {
+  {
     const { data: wo } = await supabase
-      .from('work_orders').select('invoice_doc_path').eq('id', row.workOrderId).limit(1)
-    const path = wo?.[0]?.invoice_doc_path
+      .from('work_orders')
+      .select('invoice_doc_path, invoice_package_path').eq('id', row.workOrderId).limit(1)
+    const path = [wo?.[0]?.invoice_doc_path, wo?.[0]?.invoice_package_path].filter(Boolean) as string[]
     // Best effort: a file that fails to delete is orphaned storage, which is
     // untidy. A row still pointing at a stale invoice is wrong. Clearing the
     // pointer matters more than the bytes.
-    if (path) await supabase.storage.from(INVOICES_BUCKET).remove([path])
+    if (path.length) await supabase.storage.from(INVOICES_BUCKET).remove(path)
   }
 
   const { error } = await supabase
@@ -807,6 +816,7 @@ export async function pullBack(row: InvoiceRow): Promise<boolean> {
     .update({
       invoice_state: 'needs_invoice',
       invoice_doc_path: null,
+      invoice_package_path: null,
       invoice_total: null,
       invoice_sent_at: null,
       invoice_downloaded_at: null,
@@ -943,6 +953,21 @@ export async function uploadInvoiceDoc(row: InvoiceRow, file: File): Promise<boo
     .update({ invoice_doc_path: path, ...snapshot, ...(advance ? next : {}) })
     .eq('id', row.workOrderId)
   return dbResult('Attaching invoice', error)
+}
+
+/**
+ * Short-lived URL for the stored PACKAGE — the merged file as it was sent.
+ * This is what the package window opens once anything has gone out.
+ */
+export async function signedPackageUrl(workOrderId: string): Promise<string | null> {
+  const { data: wo } = await supabase
+    .from('work_orders').select('invoice_package_path').eq('id', workOrderId).limit(1)
+  const path = wo?.[0]?.invoice_package_path
+  if (!path) return null
+  const { data, error } = await supabase.storage
+    .from(INVOICES_BUCKET).createSignedUrl(path, SIGNED_URL_TTL)
+  if (error || !data) return null
+  return data.signedUrl
 }
 
 /**
