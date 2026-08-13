@@ -100,28 +100,19 @@ export async function GET(req: NextRequest) {
   const rentalRows = rent.data ?? []
   const paymentRows = pay.data ?? []
 
-  // THE ENGINEER RATE LIVES ON THE BOOKING (fix, 2026-08-13). Rows inherit it
-  // display-side and never store it, so without this the printed document
-  // silently drops engineering cost that the work order screen was showing —
-  // the same bug fixed in lib/billing.fetchInvoices on the same day. All three
-  // surfaces now feed computeWoTotals the identical fallback.
-  let fallbackEngRate: string | null = null
-  if (wo.booking_id) {
-    const { data: bks } = await supabaseAdmin
-      .from('bookings').select('engineer_rate').eq('id', wo.booking_id).limit(1)
-    fallbackEngRate = (bks?.[0] as any)?.engineer_rate ?? null
-  }
-
+  // NO `fallbackEngRate` (2026-08-13). The engineer's rate lives in
+  // `studio_time_rows.eng_rate` and nowhere else — `bookings.engineer_rate` is a
+  // vestigial column from the deleted booking form and nothing writes it. See
+  // the note in lib/billing.fetchInvoices; a fallback here would let a stale
+  // pre-rebuild rate print a charge the work order does not have.
+  //
   // The SAME totals function the work order screen displays. Two implementations
   // of this arithmetic is how a PDF ends up disagreeing with the screen that
   // approved it — see lib/woTotals for why it was extracted in the first place.
-  const totals = computeWoTotals({ studioRows, rentalRows, paymentRows, fallbackEngRate })
+  const totals = computeWoTotals({ studioRows, rentalRows, paymentRows })
 
   // ── Build ─────────────────────────────────────────────────────────────────
-  const woPdf = await renderWorkOrderPdf({
-    wo: { ...wo, engineer_rate: fallbackEngRate },
-    studioRows, rentalRows, paymentRows, totals,
-  })
+  const woPdf = await renderWorkOrderPdf({ wo, studioRows, rentalRows, paymentRows, totals })
 
   let attachment: { bytes: Uint8Array; contentType: string } | null = null
   if (!woOnly && wo.invoice_doc_path) {

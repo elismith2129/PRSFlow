@@ -473,7 +473,8 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
         // computeWoTotals both use — including its clock-over-stored-hours
         // preference. A local copy here is how the document ends up disagreeing
         // with the screen that approved it (CLAUDE.md: money math has one home).
-        const engCharge = engChargeForRow(r, wo.engineer_rate)
+        // No fallback rate: the row's own eng_rate is the only source.
+        const engCharge = engChargeForRow(r)
         const engHrs = calcHours(
           r.eng_from_time || r.from_time || '',
           r.eng_to_time || r.to_time || '',

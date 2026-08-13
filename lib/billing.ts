@@ -371,39 +371,26 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
   if (relevant.length === 0) return []
 
   const ids = relevant.map(w => w.id)
-  // THE ENGINEER RATE FALLBACK IS NOT OPTIONAL (fix, 2026-08-13).
+  // NO `fallbackEngRate` HERE, DELIBERATELY (2026-08-13). `bookings.engineer_rate`
+  // is VESTIGIAL: the booking form is deleted, `buildBookingProjection` does not
+  // write the column, and staffing lives ONLY in the Studio Time table
+  // (CLAUDE.md). The only thing still writing it is the calendar's legacy create
+  // path, from the old form-data shape.
   //
-  // `studio_time_rows.eng_rate` inherits from `bookings.engineer_rate`
-  // DISPLAY-SIDE ONLY — it is deliberately never written to the row (CLAUDE.md).
-  // So a work order can legitimately have staffed rows with a blank eng_rate and
-  // a rate that only exists on the booking.
-  //
-  // The work order screen passes that booking rate into computeWoTotals as
-  // `fallbackEngRate`. This function did not — so on exactly those work orders
-  // the hub's Balance, the AR summary, the `invoice_total` snapshot and the PDF
-  // were all missing the engineering cost that the screen billing had just
-  // reviewed was showing. Billing would approve one number and invoice another,
-  // with nothing anywhere saying they differed.
-  //
-  // One extra bulk query keyed on booking_id. Cheap, and the alternative is two
-  // descriptions of what a session cost.
-  const bookingIds = Array.from(new Set(relevant.map(w => w.booking_id).filter(Boolean))) as string[]
-  const [st, rent, pay, bk] = await Promise.all([
+  // A fallback was briefly added here on the theory that the hub was under-
+  // counting engineering versus the work order screen. It was the wrong fix in
+  // the wrong direction — reading a dead column would let a stale pre-rebuild
+  // rate ADD engineering cost to an invoice that correctly had none. The rows
+  // are the truth; if a row has no eng_rate, there is no engineer charge.
+  const [st, rent, pay] = await Promise.all([
     supabase
       .from('studio_time_rows')
       .select('work_order_id, date, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate')
       .in('work_order_id', ids),
     supabase.from('rental_rows').select('work_order_id, charge').in('work_order_id', ids),
     supabase.from('payment_rows').select('work_order_id, amount').in('work_order_id', ids),
-    bookingIds.length
-      ? supabase.from('bookings').select('id, engineer_rate').in('id', bookingIds)
-      : Promise.resolve({ data: [], error: null } as any),
   ])
-  if (!dbResult('Loading invoice line items', st.error || rent.error || pay.error || bk.error)) return []
-
-  const engRateByBooking = new Map<string, string | null>(
-    ((bk.data ?? []) as any[]).map(b => [b.id as string, (b.engineer_rate ?? null) as string | null]),
-  )
+  if (!dbResult('Loading invoice line items', st.error || rent.error || pay.error)) return []
 
   const group = <T extends { work_order_id: string }>(rows: T[] | null) => {
     const m = new Map<string, T[]>()
@@ -426,9 +413,6 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       studioRows: stRows,
       rentalRows: rentBy.get(w.id) ?? [],
       paymentRows: payBy.get(w.id) ?? [],
-      // Same fallback the work order screen uses, so the hub's figure and the
-      // screen's figure are the same figure.
-      fallbackEngRate: w.booking_id ? engRateByBooking.get(w.booking_id) ?? null : null,
     })
 
     // THE SESSION'S LAST DAY comes from the work order's own dated rows, not

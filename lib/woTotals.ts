@@ -51,9 +51,21 @@ export type WoTotalsInput = {
   rentalRows: TotalsRentalRow[]
   paymentRows: TotalsPaymentRow[]
   /**
-   * Engineer rate to use for rows that carry none of their own — the booking's
-   * `engineer_rate` (or the live form's, on the WO screen). Display-side
-   * inheritance only; it is never written to the row.
+   * Engineer rate for rows carrying none of their own.
+   *
+   * NO CALLER PASSES THIS ANY MORE (2026-08-13), and new code should not start.
+   * It existed to inherit `bookings.engineer_rate`, which is vestigial — the
+   * booking form is deleted and `buildBookingProjection` never writes the
+   * column. The WO screen and the runner WO page were still reading it while
+   * billing, the invoice and the PDF were not, so the screens could show an
+   * engineer charge that nothing downstream would ever bill (three work orders
+   * were in that state, all carrying the retired $55 default).
+   *
+   * Staffing lives ONLY in the Studio Time table (CLAUDE.md). The row's
+   * `eng_rate` is the single source; a row with no rate is not a charge.
+   *
+   * Kept as an optional parameter rather than deleted so the removal is one
+   * reviewable change — drop it once nothing references the name.
    */
   fallbackEngRate?: string | null
 }

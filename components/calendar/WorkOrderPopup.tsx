@@ -1697,14 +1697,23 @@ export function WorkOrderPopup({
   // ── Derived totals ─────────────────────────────────────────────────────────
 
   // Money math lives in lib/woTotals (extracted 2026-08-10) so My Day's balances
-  // queue computes a balance the same way this screen displays one. Behaviour is
-  // unchanged — same fallback chain, same rounding.
-  const engRateFallback = liveForm?.engineer_rate || (booking as any)?.engineer_rate || ''
+  // queue computes a balance the same way this screen displays one.
+  //
+  // NO FALLBACK RATE (2026-08-13). This used to read
+  // `liveForm?.engineer_rate || booking.engineer_rate`. BOTH are dead: the
+  // booking form is deleted, `liveForm` is the leftover form-data shape, and
+  // `buildBookingProjection` never writes `bookings.engineer_rate`. Staffing
+  // lives ONLY in the Studio Time table (CLAUDE.md).
+  //
+  // It was not harmless. Billing, the invoice and the PDF all compute from the
+  // ROWS, so a work order whose row had no rate but whose pre-rebuild booking
+  // still carried the retired $55 default showed an engineer charge on this
+  // screen that nothing downstream would ever bill. Three work orders were in
+  // that state (WO-1001, WO-1002, WO-1008 — all open, none invoiced).
   const woTotals = computeWoTotals({
     studioRows: stRows,
     rentalRows: rentRows,
     paymentRows: payRows,
-    fallbackEngRate: engRateFallback,
   })
   const stTotal = woTotals.studio
   const engTotal = woTotals.engineer
@@ -2478,7 +2487,11 @@ export function WorkOrderPopup({
                   const isEngOnly = r.studio === ''
                   const isDayRow = r.row_rate_type === 'day'
                   const engName = wo?.engineer || liveForm?.engineer_name || booking.engineer_name || ''
-                  const engRateDisplay = r.eng_rate || liveForm?.engineer_rate || (booking as any).engineer_rate || ''
+                  // The ROW's rate, full stop — see the note on woTotals above.
+                  // It used to fall back to the booking's dead engineer_rate,
+                  // which made this cell display a charge that billing and the
+                  // invoice would never produce.
+                  const engRateDisplay = r.eng_rate || ''
                   const engRateNum = parseFloat((engRateDisplay ?? '').replace(/[^0-9.]/g, '')) || 0
                   const engHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
                   const engCharge = engHrs != null && engHrs > 0 && engRateNum > 0 ? parseFloat((engHrs * engRateNum).toFixed(2)) : null

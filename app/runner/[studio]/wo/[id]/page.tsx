@@ -616,7 +616,11 @@ export default function RunnerWOPage() {
           update.ot_charge = otHrsNum > 0 && otRateNum > 0 ? parseFloat((otHrsNum * otRateNum).toFixed(2)) : null
         }
         if (hasEngineer || r.eng_name) {
-          const engRaw = r.eng_rate || booking?.engineer_rate || ''
+          // The ROW's rate only. `bookings.engineer_rate` is vestigial — nothing
+          // writes it since the booking form was deleted, and reading it here
+          // WROTE a charge (eng_charge) computed from a rate the invoice would
+          // never use. Staffing lives only in the Studio Time table.
+          const engRaw = r.eng_rate || ''
           const er = parseFloat(String(engRaw).replace(/[^0-9.]/g, '')) || 0
           const ef = engFromTimeMap[r.id] ?? r.eng_from_time ?? from
           const et = engToTimeMap[r.id] ?? r.eng_to_time ?? to
@@ -733,7 +737,7 @@ export default function RunnerWOPage() {
   }, 0)
 
   const engTotal = stRows.reduce((sum: number, r: any) => {
-    const engRateRaw = r.eng_rate || booking?.engineer_rate || ''
+    const engRateRaw = r.eng_rate || ''
     const rate = parseFloat(String(engRateRaw).replace(/[^0-9.]/g, '')) || 0
     if (!rate) return sum
     const ef = engFromTimeMap[r.id] ?? r.eng_from_time ?? r.from_time ?? ''
@@ -1059,7 +1063,7 @@ export default function RunnerWOPage() {
                         const isDayRow = r.row_rate_type === 'day'
                         const liveFrom = fromTimeMap[r.id] ?? r.from_time ?? ''
                         const liveTo = toTimeMap[r.id] ?? r.to_time ?? ''
-                        const engRateForRow = parseFloat(String(r.eng_rate || booking?.engineer_rate || '').replace(/[^0-9.]/g, '')) || 0
+                        const engRateForRow = parseFloat(String(r.eng_rate || '').replace(/[^0-9.]/g, '')) || 0
                         const engLiveFrom = engFromTimeMap[r.id] ?? r.eng_from_time ?? r.from_time ?? ''
                         const engLiveTo = engToTimeMap[r.id] ?? r.eng_to_time ?? r.to_time ?? ''
                         const engLiveHours = calcHours(engLiveFrom, engLiveTo)
