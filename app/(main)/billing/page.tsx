@@ -394,6 +394,28 @@ export default function BillingPage() {
         <WorkOrderPopup booking={openBooking} onClose={() => { setOpenBooking(null); load() }} />
       )}
 
+      {pkg && (
+        <PackageModal
+          row={pkg.row}
+          booking={pkg.booking}
+          onClose={() => { setPkg(null); load() }}
+        />
+      )}
+
+      {moreFor && (
+        <MoreModal
+          row={moreFor}
+          onCancel={() => setMoreFor(null)}
+          onOpenDoc={() => { openDoc(moreFor); setMoreFor(null) }}
+          onClose={() => { const r = moreFor; setMoreFor(null); setClosing(r) }}
+          onUnsend={() => {
+            const r = moreFor
+            setMoreFor(null)
+            run(r.workOrderId, () => unsendInvoice(r))
+          }}
+        />
+      )}
+
       {closing && (
         <CloseModal
           row={closing}
@@ -509,6 +531,12 @@ function Row({
           <span className="c-bflag c-soon">Not started</span>
         ) : wantsInvoice ? (
           <span className="c-bhint">{dragOver ? 'Release to attach' : 'Drop invoice here'}</span>
+        ) : row.bucket === 'balance' ? (
+          // A COD balance has no button — the money is recorded on the work
+          // order, and a button here would be a second door to that field. But
+          // a row with no button and no explanation reads as broken, so it says
+          // where to go instead.
+          <span className="c-bhint">Record payment on the WO</span>
         ) : row.hasInvoiceDoc && !showLights ? (
           // Sent, paid and closed rows show no lights, so without this there is
           // no sign at all that the invoice is stapled on. Same cell the "Drop
