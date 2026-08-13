@@ -614,7 +614,7 @@ export function nextAction(row: InvoiceRow): string | null {
   // understood." An Add-PO button here would be a second door to the same
   // field, and two doors to one field is how the two of them drift.
   if (row.awaitingPo) return null
-  return 'Send'
+  return 'Download & send'
 }
 
 // ─── Transitions ─────────────────────────────────────────────────────────────
@@ -840,29 +840,47 @@ export async function signedInvoiceUrl(
 }
 
 /**
- * THE SEND PACKAGE — two files, not one merged PDF (ruling 2026-08-11).
+ * DOWNLOAD THE PACKAGE — ONE merged PDF (ruling 2026-08-11, superseding the
+ * two-file compromise).
  *
- * Eli: "I'm ok with two files for now." A genuinely merged package needs a PDF
- * library plus the work order rendered to a real file; today the work order is
- * printed from its own screen via window.print(). Two downloads is honest about
- * that; a button labelled "package" that silently produced one of the two
- * documents would not be.
+ * The work order is drawn server-side in black and white and the invoice's
+ * pages are stapled onto the end, so what lands in Downloads is the single file
+ * billing emails to the label. Built fresh on every call from the live record,
+ * which is why there is no stored work-order PDF to go stale: Eli — "if you
+ * needed to make changes… you hit save and download where it regenerates
+ * another updated one."
  *
- * Sending is therefore a small MODAL, not a single click, for a reason worth
- * keeping: the invoice can be downloaded here, the work order has to be printed
- * from its own screen, and marking sent starts the aging clock. Three different
- * things behind one button would surprise you exactly once and then be
- * distrusted forever.
+ * `woOnly` gets the work order by itself, for the export button on the work
+ * order screen (a session that hasn't reached billing has no invoice yet).
  */
-export async function downloadInvoiceDoc(row: InvoiceRow): Promise<boolean> {
-  const url = await signedInvoiceUrl(row.workOrderId, true)
-  if (!url) return dbResult('Downloading invoice', { message: 'No invoice is attached to this work order.' })
+export async function downloadPackage(workOrderId: string, woOnly = false): Promise<boolean> {
+  // The route verifies this token and the caller's role before reading
+  // anything — a work order id on its own must never be enough.
+  const { data: sess } = await supabase.auth.getSession()
+  const token = sess?.session?.access_token
+  if (!token) return dbResult('Downloading the package', { message: 'Your session expired — sign in again.' })
+
+  const res = await fetch(`/api/wo-package?id=${encodeURIComponent(workOrderId)}${woOnly ? '&wo=1' : ''}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    return dbResult('Downloading the package', { message: body?.error || `Could not build the PDF (${res.status}).` })
+  }
+
+  // Filename comes from the server so it is decided in one place.
+  const disp = res.headers.get('content-disposition') || ''
+  const named = /filename="([^"]+)"/.exec(disp)?.[1] || 'work-order.pdf'
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.rel = 'noopener'
-  a.download = `${row.invoiceNumber || row.woNumber || 'invoice'}.pdf`
+  a.download = named
   document.body.appendChild(a)
   a.click()
   a.remove()
+  // Revoked on the next tick — revoking synchronously races the download in
+  // Safari and produces a zero-byte file.
+  setTimeout(() => URL.revokeObjectURL(url), 10000)
   return true
 }

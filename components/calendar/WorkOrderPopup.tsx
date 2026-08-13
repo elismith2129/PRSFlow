@@ -16,7 +16,7 @@ import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter
 import { formatCurrency, stripCurrency } from '@/lib/format'
 import { computeWoTotals } from '@/lib/woTotals'
 import { findMissingTimes, missingTimesMessage } from '@/lib/woValidation'
-import { enterInvoicePipeline } from '@/lib/billing'
+import { enterInvoicePipeline, downloadPackage } from '@/lib/billing'
 import { dbResult } from '@/lib/db'
 import { STUDIO_LOCATIONS } from '@/lib/studios'
 
@@ -350,6 +350,8 @@ export function WorkOrderPopup({
   ])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [confirmClose, setConfirmClose] = useState(false)
   const [completing, setCompleting] = useState(false)
   // Rows blocking Complete because they're missing times (RULING 2026-08-10).
   // Cleared on the next Complete attempt, not on edit — the banner should stay
@@ -1250,18 +1252,31 @@ export function WorkOrderPopup({
     setConfirmClearEngId(null)
   }
 
-  // ── Print with filename ───────────────────────────────────────────────────
+  // ── Export ────────────────────────────────────────────────────────────────
 
-  function printWithFilename() {
-    const slug = (s: string) => (s || '').trim().replace(/\s+/g, '_')
-    const inv = `_${wo?.invoice_number || 'INV#'}`
-    const name = wo?.payment_status === 'Billing'
-      ? [slug(wo.label), wo.artist ? slug(wo.artist) : ''].filter(Boolean).join('_') + inv
-      : slug(wo?.client ?? '') + inv
-    const prev = document.title
-    document.title = name || prev
-    window.print()
-    document.title = prev
+  /**
+   * SAVE, THEN DOWNLOAD (ruling 2026-08-11). Eli: "you make changes, that saves,
+   * and then you hit save and download where it regenerates another updated
+   * one." Exporting a work order you have edited but not saved would hand a
+   * client a document that disagrees with the record — so the save is part of
+   * the act, not a thing you have to remember first.
+   *
+   * REPLACES window.print() AND THE PRINT STYLESHEET. The browser dialogue gave
+   * you a page to save by hand at whatever margins Chrome felt like, and it
+   * could not be stapled to an invoice. The PDF is now DRAWN, server-side, in
+   * black and white — /api/wo-package, laid out in lib/woPdf.
+   *
+   * Nothing is stored: every export is built from the live record at the moment
+   * you ask, so a stale export cannot exist.
+   */
+  async function exportPdf() {
+    if (!woIdRef.current) return
+    setExporting(true)
+    if (!readOnly) await saveOnly()
+    // `wo=1` — the work order alone. An invoice is only stapled on from the
+    // billing hub, where there is one to staple.
+    await downloadPackage(woIdRef.current, true)
+    setExporting(false)
   }
 
   // ── Per-row admin lock ────────────────────────────────────────────────────
@@ -1471,8 +1486,12 @@ export function WorkOrderPopup({
 
   // ── Save + close ──────────────────────────────────────────────────────────
 
-  async function handleClose() {
-    if (!wo) { onClose(); return }
+  /**
+   * Save and close. `close=false` saves in place — used by the PDF export, which
+   * must never hand out a document that disagrees with the saved record.
+   */
+  async function handleClose(close = true) {
+    if (!wo) { if (close) onClose(); return }
     // Tour/Tech/Open-Hours → save as a simple block, skip the WO body + projection.
     if (BLOCK_STATUSES.includes(wo.session_status)) { await handleBlockSave(); return }
     if (!woIdRef.current) {
@@ -1601,7 +1620,39 @@ export function WorkOrderPopup({
     deletedRowsRef.current = []
     setSaving(false)
     onSaved?.()
-    onClose()
+    if (close) onClose()
+  }
+
+  const saveOnly = () => handleClose(false)
+
+  /**
+   * Has anything been touched? Drives the Close prompt and the greyed-out
+   * Complete button.
+   *
+   * DELIBERATELY FAIL-SAFE: when this says "clean", Close still SAVES rather
+   * than discarding (see handleCloseButton). So a signal this misses costs a
+   * redundant write, never someone's work. Greying a button on an imperfect
+   * detector is a hint; discarding data on one is a bug you find out about from
+   * the person who lost an hour.
+   */
+  function isDirty(): boolean {
+    if (dirtyFields.size > 0) return true
+    if (deletedRowsRef.current.length > 0) return true
+    return JSON.stringify(stRows) !== JSON.stringify(originalStRowsRef.current)
+  }
+
+  /**
+   * CLOSE ONLY ASKS WHEN SOMETHING CHANGED (ruling 2026-08-11).
+   *
+   * Eli: "we will be opening and closing regularly just to check info, view to
+   * approve — so I want a clear path for 'I'm updating this' and one for 'I'm
+   * viewing this'." A prompt on every close would be a tax on the frequent path
+   * to protect the rare one, and a dialogue people see fifty times a week is a
+   * dialogue they dismiss without reading. So: nothing changed, it just closes.
+   */
+  function handleCloseButton() {
+    if (isDirty()) { setConfirmClose(true); return }
+    handleClose()
   }
 
   async function handleCancel() {
@@ -1829,7 +1880,7 @@ export function WorkOrderPopup({
         // button inside it, not the bar).
         ? { position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'var(--c-bg)' }
         : { position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.55)', overflowY: 'auto' }}
-      onClick={inline || isMobile ? undefined : e => { if (e.target === e.currentTarget) handleClose() }}
+      onClick={inline || isMobile ? undefined : e => { if (e.target === e.currentTarget) handleCloseButton() }}
     >
       {isMobile && (
         <style>{`[data-wo-portal] input:not([type="checkbox"]):not([type="radio"]), [data-wo-portal] select, [data-wo-portal] textarea { min-height: 44px; }`}</style>
@@ -1841,7 +1892,7 @@ export function WorkOrderPopup({
           // the height of the Nav and push the footer buttons off-screen.
           ? { display: 'flex', flexDirection: 'column', height: '100%', padding: 0, boxSizing: 'border-box' }
           : { display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '100%', padding: '20px 16px', boxSizing: 'border-box' }}
-        onClick={inline || isMobile ? undefined : e => { if (e.target === e.currentTarget) { readOnly ? onClose() : handleClose() } }}
+        onClick={inline || isMobile ? undefined : e => { if (e.target === e.currentTarget) { readOnly ? onClose() : handleCloseButton() } }}
       >
       <div
         style={isMobile
@@ -1893,12 +1944,12 @@ export function WorkOrderPopup({
                     Cancel
                   </button>
                   <button
-                    onClick={handleClose}
+                    onClick={handleCloseButton}
                     disabled={saving}
                     className="c-btn c-control c-raised-primary"
                     style={{ padding: '10px 22px', cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}
                   >
-                    {saving ? 'Saving…' : 'Close & Save'}
+                    {saving ? 'Saving…' : 'Close'}
                   </button>
                 </>
               ) : (
@@ -2990,14 +3041,15 @@ export function WorkOrderPopup({
           {/* Document + destructive actions live HERE, not in the title bar.
               Nothing to export for a block — no WO body, so the PDF would be a
               header over an empty page. */}
+          {/* PRINT IS GONE (ruling 2026-08-11). It and Export PDF both opened the
+              browser's print dialogue — a page you save by hand, at whatever
+              margins the browser chose, that cannot be stapled to an invoice.
+              One button now, and it produces a real drawn PDF via
+              /api/wo-package. Deleting the print path is also what keeps the
+              work order's layout described in ONE place instead of two. */}
           {!isBlock && (
-            <button onClick={() => printWithFilename()} className="c-soft c-control c-raised" style={{ ...(isMobile ? { display: 'none' } : {}) }}>
-              Export PDF
-            </button>
-          )}
-          {!isBlock && (
-            <button onClick={() => printWithFilename()} className="c-soft c-control c-raised" style={{ ...(isMobile ? { display: 'none' } : {}) }}>
-              Print
+            <button onClick={exportPdf} disabled={exporting} className="c-soft c-control c-raised" style={{ cursor: exporting ? 'default' : 'pointer', ...(isMobile ? { display: 'none' } : {}) }}>
+              {exporting ? 'Building…' : readOnly ? 'Download PDF' : 'Save & download'}
             </button>
           )}
           {/* Delete, moved down from the header. It keeps its two-step confirm —
@@ -3032,19 +3084,51 @@ export function WorkOrderPopup({
           {/* Blocks (Tour / Tech / Open Hours) have no work order to complete —
               they're calendar occupancy, not billable work. The mobile twin of
               this button is already inside the !isBlock branch above. */}
+          {/* COMPLETE WO IS THE "I'M UPDATING THIS" PATH (Eli, 2026-08-11).
+              Before completion it is the primary act. AFTER completion it stays
+              named Complete WO and greys out until you actually change
+              something — "then it just remains complete". It no longer offers
+              Re-open: with the billing hub owning the invoice lifecycle,
+              re-opening a completed work order was an undo for a state nothing
+              reads any more, and it sat one slip away from the button people
+              press to save an edit. */}
           {!isBlock && (
           <button
-            onClick={handleComplete}
-            disabled={completing}
-            className={`c-control ${isCompleted ? 'c-soft c-raised' : 'c-pill c-fill-booked c-raised-chip'}`} style={{ padding: '8px 18px', cursor: completing ? 'default' : 'pointer', opacity: completing ? 0.7 : 1, ...(isMobile ? { display: 'none' } : {}) }}
+            onClick={() => (isCompleted ? saveOnly() : handleComplete())}
+            disabled={completing || saving || (isCompleted && !isDirty())}
+            className={`c-control ${isCompleted ? 'c-soft c-raised' : 'c-pill c-fill-booked c-raised-chip'}`}
+            style={{ padding: '8px 18px', cursor: (completing || (isCompleted && !isDirty())) ? 'default' : 'pointer', opacity: (completing || saving || (isCompleted && !isDirty())) ? 0.4 : 1, ...(isMobile ? { display: 'none' } : {}) }}
+            title={isCompleted && !isDirty() ? 'Nothing has changed' : undefined}
           >
-            {completing ? (isCompleted ? 'Re-opening…' : 'Completing…') : isCompleted ? 'Re-open WO' : 'Complete WO'}
+            {completing ? 'Completing…' : 'Complete WO'}
           </button>
           )}
-          <button onClick={handleClose} disabled={saving} className="c-btn c-control c-raised-primary" style={{ cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '2 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
-            {saving ? 'Saving…' : 'Close & Save'}
+          {/* CLOSE, not "Close & Save" — the two paths are now named for what
+              you came to do (Eli, 2026-08-11). Complete WO is "I'm updating
+              this"; Close is "I'm viewing this". It still saves silently when
+              nothing changed, and asks when something did. */}
+          <button onClick={handleCloseButton} disabled={saving} className="c-btn c-control c-raised-primary" style={{ cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '2 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
+            {saving ? 'Saving…' : 'Close'}
           </button>
           </>
+          )}
+          {/* THE ONLY DIALOGUE ON THIS SCREEN, and it only appears when there
+              is something to lose. Three ways out, all named for the outcome
+              rather than for Yes/No — "Discard" has to say what it discards or
+              nobody reads it in time. */}
+          {confirmClose && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 10005, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+                 onClick={() => setConfirmClose(false)}>
+              <div className="c-panel" style={{ maxWidth: 380, width: '100%' }} onClick={e => e.stopPropagation()}>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>You&apos;ve made changes</div>
+                <div style={{ fontSize: 11.5, opacity: 0.6, marginBottom: 14, lineHeight: 1.5 }}>
+                  Save them to this work order, or throw them away and leave it as it was?
+                </div>
+                <button className="c-bact c-bblock" onClick={() => { setConfirmClose(false); handleClose() }}>Save changes and close</button>
+                <button className="c-bact c-bblock" onClick={() => { setConfirmClose(false); handleCancel() }}>Discard my changes</button>
+                <button className="c-bact c-bmuted c-bblock" onClick={() => setConfirmClose(false)}>Keep editing</button>
+              </div>
+            </div>
           )}
           {readOnly && (
             <button onClick={onClose} className="c-soft c-control c-raised" style={{ ...(isMobile ? { flex: '1 1 0', minHeight: 48, fontSize: 12 } : {}) }}>

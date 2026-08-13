@@ -37,7 +37,8 @@
 //   · DOUBLE-CLICK THE ROW to open it. No Open-WO button — opening a record to
 //     read it is navigation, not an action. Before the invoice it opens the
 //     work order; after, it opens the PACKAGE (both documents, one window).
-//   · SEND IS ONE PRESS: downloads the invoice and marks it sent. No dialogue,
+//   · DOWNLOAD & SEND IS ONE PRESS: builds ONE merged black-and-white PDF (work
+//     order + invoice) and marks it sent. No dialogue,
 //     because you have just looked at the package. The undo is in the ⋯ menu.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ import {
   fetchInvoices, searchRows, rowsInBucket, bucketCounts, paginate,
   pageCount, summarise, isPastDue, bucketLabel, tabsFor, hasCodAlert, nextAction,
   approveInvoice, markSent, markPaid, closeInvoice, reopenInvoice,
-  uploadInvoiceDoc, signedInvoiceUrl, downloadInvoiceDoc, unsendInvoice,
+  uploadInvoiceDoc, signedInvoiceUrl, downloadPackage, unsendInvoice,
   BILLING_LIGHTS, COD_LIGHTS, PAGE_SIZE,
   type InvoiceRow, type BucketKey, type ClosedReason, type Pipeline,
 } from '@/lib/billing'
@@ -208,12 +209,15 @@ export default function BillingPage() {
       // already looked at the package to get here, so a dialogue asking whether
       // you meant it would be asking about something you just read.
       //
-      // The work order half of the package is printed from the package window
-      // itself; this downloads the invoice and starts the 31-day clock. The
-      // undo lives in the row's ⋯ menu.
-      case 'Send':            return run(row.workOrderId, async () => {
-        await downloadInvoiceDoc(row)
-        return markSent(row)
+      // ONE FILE: the work order drawn in black and white with the invoice's
+      // pages stapled on, built fresh from the live record. Then the 31-day
+      // clock starts. The undo lives in the row's ⋯ menu.
+      case 'Download & send': return run(row.workOrderId, async () => {
+        const ok = await downloadPackage(row.workOrderId)
+        // Only move it if the file actually arrived. Marking an invoice sent
+        // when the download failed would put it in the chase queue having never
+        // reached the client — the one lie this page must not tell.
+        return ok ? markSent(row) : false
       })
       default:                return
     }
