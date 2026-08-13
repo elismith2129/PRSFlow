@@ -3166,34 +3166,38 @@ uniquely-anchored replacements, never by cutting between two matched strings.**
 
 ---
 
-### Aug 12, 2026 — Decision: "Create WO" on the billing page creates the BOOKING too
+### Aug 12, 2026 — Decision: the billing page gets a BLANK WORK ORDER PDF, not a create button
 
 **Decided before any code was written. Build it this way.**
 
-Eli wants a Create WO button on `/billing` so the billing pipeline can be used
-before the calendar migration happens. The obvious implementation — insert a
-`work_orders` row directly — breaks two standing rules at once:
+**The requirement was misread first, and the correction matters more than the
+answer.** Eli asked for a "create WO" button on `/billing`, and the first reading
+was that he wanted work orders in the billing pipeline before the calendar
+migration. That produced a design where the button created a `bookings` row and
+its work order through `createWorkOrderForBooking` — architecturally sound, and
+solving a problem he did not have.
 
-- **`work_orders.booking_id` is load-bearing** (create idempotency via its UNIQUE
-  constraint, and how the runner hub finds work orders). A WO with no booking is
-  invisible to the runner and can be duplicated freely.
-- **`createWorkOrderForBooking` is the ONLY code path that inserts a work order.**
-  A second inserter is exactly the check-then-insert race that produced 27
-  duplicates out of 44 back in June.
+What he actually wants is the **paper copy, replaced**: *"just in case we need to
+create one for a client… I just want to avoid having to create a fake session, go
+through the whole process to make the work order, and then remember to delete it
+from the calendar. These are gonna be rare occasions."*
 
-**So Create WO creates a session and its work order, through the existing path.**
-You fill in client, dates and studio; it writes the `bookings` row and calls
-`createWorkOrderForBooking`, same as the calendar does. The button is a shortcut
-into the normal flow, not a second way of making work orders.
+**So: a button that generates a BLANK work order PDF.** Nothing is created,
+nothing is stored, nothing lands on the calendar. `lib/woPdf.ts` already does it —
+feed it an empty record and it draws the same black-and-white form with the
+letterhead, field labels and empty rows. Print it, fill it in by hand.
 
-**Why this is better than the shortcut it replaces**, beyond not breaking anything:
-work orders created this way are ALREADY on the calendar. When the calendar
-migration happens there is nothing to reconcile — no parallel set of orphaned
-work orders to hunt down and attach to sessions that were entered separately.
-The interim tool and the destination produce the same data.
+**Why not the create-a-session version** (recorded here because it was nearly
+built): it puts a fake session on the calendar that somebody then has to remember
+to delete, which is precisely the chore being avoided. It was the right answer to
+"let us use the billing pipeline early" and the wrong answer to "give me a blank
+form". Both rules it was designed to protect still stand and still matter —
+`work_orders.booking_id` is load-bearing, and `createWorkOrderForBooking` is the
+ONLY path that may insert a work order — they simply are not in play here, because
+nothing is inserted at all.
 
-**Watch-out for whoever builds it:** the session it creates must be gated the same
-way the calendar's is (`bookingShouldHaveWorkOrder`) and must carry a real status —
-a Recording/Filming/Event-Playback session, not a block. And `staff_mode` defaults
-matter: see the Studio Time seeding rules in CLAUDE.md before choosing what to
-write, or the seeded rows will get the wrong engineer/assistant role.
+**The fork to watch.** A blank PDF is safe while it is a FORM. If someone works a
+real, paid session on one, that job never gets invoiced, never enters AR and never
+appears in a total unless the work order is entered properly afterwards. If these
+start being filled in for real work rather than handed over as a form, that is the
+signal it needs to become a real session — not before.
