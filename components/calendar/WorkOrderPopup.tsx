@@ -2123,7 +2123,13 @@ export function WorkOrderPopup({
                       Billing only — a COD session is paid at the top and never
                       waits on anyone's paperwork, so the control would be noise
                       on the majority of work orders. */}
-                  {wo.payment_status === 'Billing' && (
+                  {/* ALWAYS BESIDE THE PO FIELD (ruling 2026-08-11). It used
+                      to appear only on billing work orders, which meant the one
+                      control that unblocks approval could be invisible on the
+                      work order you were looking at. Eli wants the habit —
+                      "noting PO or none needed" — and a habit cannot form
+                      around a control that comes and goes. */}
+                  {(
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                       <span className="c-pfx">PO req&apos;d</span>
                       <div className="c-seg" style={{ height: 40 }}>

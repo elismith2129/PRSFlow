@@ -52,7 +52,7 @@ import {
   fetchInvoices, searchRows, rowsInBucket, bucketCounts, paginate,
   pageCount, summarise, isPastDue, bucketLabel, tabsFor, hasCodAlert, nextAction,
   approveInvoice, markSent, markPaid, closeInvoice, reopenInvoice,
-  uploadInvoiceDoc, signedInvoiceUrl, downloadPackage, unsendInvoice,
+  uploadInvoiceDoc, signedInvoiceUrl, downloadPackage, pullBack,
   BILLING_LIGHTS, COD_LIGHTS, PAGE_SIZE,
   type InvoiceRow, type BucketKey, type ClosedReason, type Pipeline,
 } from '@/lib/billing'
@@ -408,10 +408,10 @@ export default function BillingPage() {
           onCancel={() => setMoreFor(null)}
           onOpenDoc={() => { openDoc(moreFor); setMoreFor(null) }}
           onClose={() => { const r = moreFor; setMoreFor(null); setClosing(r) }}
-          onUnsend={() => {
+          onPullBack={() => {
             const r = moreFor
             setMoreFor(null)
-            run(r.workOrderId, () => unsendInvoice(r))
+            run(r.workOrderId, () => pullBack(r))
           }}
         />
       )}
@@ -594,12 +594,12 @@ function Row({
  * "Close" here means close the INVOICE — write it off or void it — and the
  * modal it opens says so again before anything happens.
  */
-function MoreModal({ row, onCancel, onOpenDoc, onClose, onUnsend }: {
+function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack }: {
   row: InvoiceRow
   onCancel: () => void
   onOpenDoc: () => void
   onClose: () => void
-  onUnsend: () => void
+  onPullBack: () => void
 }) {
   const canClose = row.step >= 2 && row.bucket !== 'closed' && row.bucket !== 'paid'
   return (
@@ -610,13 +610,17 @@ function MoreModal({ row, onCancel, onOpenDoc, onClose, onUnsend }: {
         {row.hasInvoiceDoc && (
           <button className="c-bact c-bblock" onClick={onOpenDoc}>Open the attached invoice PDF</button>
         )}
-        {/* THE UNDO FOR SEND. Send is one press with no confirmation, which is
-            right — but one press that starts a 31-day clock needs a way back,
-            or the first misclick becomes a permanent lie about when the client
-            was billed. */}
-        {row.bucket === 'awaiting' && (
-          <button className="c-bact c-bblock" onClick={onUnsend}>
-            Not sent after all — put it back in In progress
+        {/* PULL IT BACK — one control that means "this isn't right, start the
+            end of the process again". It clears the sent stamp, the approval
+            AND the attached invoice, so the row lands back at Needs invoice and
+            the cycle is exactly: fix the WO, attach the corrected invoice,
+            re-approve, re-send.
+            Not two undos to choose between. And it is the only way back out of
+            Awaiting payment, which is what stops a misclicked send becoming a
+            permanent lie about when the client was billed. */}
+        {row.step >= 3 && (
+          <button className="c-bact c-bblock" onClick={onPullBack}>
+            Pull it back — removes the invoice and the approval, back to the start
           </button>
         )}
         {canClose && (

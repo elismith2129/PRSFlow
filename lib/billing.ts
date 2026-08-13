@@ -384,7 +384,21 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     const isCod = (w.payment_status ?? '').toUpperCase() === 'COD'
     const state = (w.invoice_state ?? null) as InvoiceState | null
     const hasDoc = !!w.invoice_doc_path
-    const step = deriveStep(state, isCod, hasDoc, w.status ?? '')
+    let step = deriveStep(state, isCod, hasDoc, w.status ?? '')
+
+    // EDITING AN APPROVED PACKAGE VOIDS THE APPROVAL (ruling 2026-08-11).
+    // An owner approved $1,680 — not "this work order". Change the numbers and
+    // the thing they signed off no longer exists, so it goes back to Needs
+    // approval on its own.
+    //
+    // DERIVED, not written: nothing has to notice the edit and issue an update,
+    // so it cannot be missed by a save path that forgot to call it.
+    //
+    // NOT applied once SENT. That invoice is already with the client, and
+    // silently un-approving it would rewrite history rather than describe it —
+    // the drift flag says what happened, and Pull it back is the deliberate act
+    // that restarts the cycle.
+    if (invoiceDrift && step === 3) step = 2
     const poNumber = (w.po_number ?? '').trim() || null
     const noPoNeeded = !!(w as any).no_po_needed
 
@@ -414,7 +428,13 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       // AWAITING PO, entirely from the work order (ruling 2026-08-11). Only
       // billing, only once approved — before that the PO is not what is holding
       // anything up, and flagging it early would make it noise on every row.
-      awaitingPo: !isCod && step === 3 && !poNumber && !noPoNeeded,
+      // PO IS A PRECONDITION OF APPROVAL, not of sending (ruling 2026-08-11).
+      // Eli: "I want no-PO added to block approval so we get in the habit of
+      // noting PO or none needed on the WO." Right — approval is the moment
+      // someone asserts the package is complete, and a package that cannot
+      // legally be sent is not complete. Blocking at the send step meant you
+      // discovered the gap after an owner had already signed it off.
+      awaitingPo: !isCod && step >= 2 && !poNumber && !noPoNeeded,
       hasInvoiceDoc: hasDoc,
       approvedAt: w.invoice_approved_at ?? null,
       invoicedTotal,
@@ -608,16 +628,11 @@ export function nextAction(row: InvoiceRow): string | null {
   if (row.step === 0) return null
   if (row.step === 1) return 'Attach invoice'
   if (row.isCod) return null
+  // Approve is the gate everything queues behind: reviewed, invoiced and PO
+  // sorted. When the PO is missing the page renders this DISABLED rather than
+  // hiding it — hiding the only button on a row communicates a broken screen,
+  // not a blocker.
   if (row.step === 2) return 'Approve'
-  // Approved. The button is always Download & send — even when a PO is missing,
-  // in which case the page renders it DISABLED rather than hiding it.
-  //
-  // It used to return null here, which was a dead end: an approved invoice
-  // showed no control at all and nothing said why (Eli — "basically I can't do
-  // anything once I've reviewed, invoiced and approved"). Hiding the only
-  // button on a row does not communicate a blocker; it communicates a broken
-  // screen. The PO is still typed on the work order and nowhere else — the
-  // disabled button says so, it does not become a second door to that field.
   return 'Download & send'
 }
 
@@ -687,12 +702,38 @@ export async function markSent(row: InvoiceRow): Promise<boolean> {
  * matters as much as the state: a stale timestamp would age an invoice that was
  * never actually sent.
  */
-export async function unsendInvoice(row: InvoiceRow): Promise<boolean> {
+export async function pullBack(row: InvoiceRow): Promise<boolean> {
+  // STRIP THE INVOICE TOO (ruling 2026-08-11). Eli: "we should strip it and
+  // make it so you can't approve without uploading an invoice — that way they
+  // don't accidentally forget to add the new one."
+  //
+  // Exactly the right instinct, and it reverses my own earlier call. Leaving
+  // the old PDF attached would let a corrected work order sail back through
+  // approval carrying the invoice that was wrong in the first place — and it
+  // would look complete the whole way, because the Invoiced light would be
+  // green. Removing it forces the one act that fixes the actual problem.
+  if (row.hasInvoiceDoc) {
+    const { data: wo } = await supabase
+      .from('work_orders').select('invoice_doc_path').eq('id', row.workOrderId).limit(1)
+    const path = wo?.[0]?.invoice_doc_path
+    // Best effort: a file that fails to delete is orphaned storage, which is
+    // untidy. A row still pointing at a stale invoice is wrong. Clearing the
+    // pointer matters more than the bytes.
+    if (path) await supabase.storage.from(INVOICES_BUCKET).remove([path])
+  }
+
   const { error } = await supabase
     .from('work_orders')
-    .update({ invoice_state: 'approved', invoice_sent_at: null })
+    .update({
+      invoice_state: 'needs_invoice',
+      invoice_doc_path: null,
+      invoice_total: null,
+      invoice_sent_at: null,
+      invoice_approved_at: null,
+      invoice_approved_by: null,
+    })
     .eq('id', row.workOrderId)
-  return dbResult('Moving the invoice back', error)
+  return dbResult('Pulling the invoice back', error)
 }
 
 /**
