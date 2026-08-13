@@ -134,11 +134,19 @@ function table(
   s.text(title.toUpperCase(), M, { size: 7.5, bold: true })
   s.gap(12)
 
+  // GUTTER. Right-aligned cells used to draw to the column's exact right edge,
+  // which is the next column's left edge — so "OT" and "ENGINEER" printed as
+  // "OTENGINEER" (Eli, 2026-08-11). Every cell now keeps a gutter, and the
+  // truncation width matches it so nothing can grow back into the gap.
+  const GUT = 8
+  const cellX = (x: number, c: { w: number; align?: 'right' }) =>
+    c.align === 'right' ? x + c.w - GUT : x
+
   const drawHead = (sh: Sheet) => {
     let x = M
     cols.forEach(c => {
-      sh.text(c.head.toUpperCase(), c.align === 'right' ? x + c.w : x, {
-        size: 6.5, bold: true, align: c.align, width: c.w - 6,
+      sh.text(c.head.toUpperCase(), cellX(x, c), {
+        size: 6.5, bold: true, align: c.align, width: c.w - GUT,
       })
       x += c.w
     })
@@ -153,7 +161,7 @@ function table(
     s.need(15)
     let x = M
     cols.forEach((c, i) => {
-      s.text(r[i] ?? '', c.align === 'right' ? x + c.w : x, { size: 8.5, align: c.align, width: c.w - 6 })
+      s.text(r[i] ?? '', cellX(x, c), { size: 8.5, align: c.align, width: c.w - GUT })
       x += c.w
     })
     s.gap(13)
@@ -204,15 +212,15 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
     s,
     'Studio time',
     [
-      { head: 'Date', w: 66 },
-      { head: 'Room', w: 46 },
-      { head: 'From', w: 54 },
-      { head: 'To', w: 54 },
-      { head: 'Hrs', w: 34, align: 'right' },
-      { head: 'Rate', w: 62, align: 'right' },
+      { head: 'Date', w: 64 },
+      { head: 'Room', w: 40 },
+      { head: 'From', w: 56 },
+      { head: 'To', w: 56 },
+      { head: 'Hrs', w: 36, align: 'right' },
+      { head: 'Rate', w: 52, align: 'right' },
       { head: 'OT', w: 52, align: 'right' },
-      { head: 'Engineer', w: 84 },
-      { head: 'Charge', w: 72, align: 'right' },
+      { head: 'Engineer', w: 90 },
+      { head: 'Charge', w: 78, align: 'right' },
     ],
     studioRows.map(r => [
       r.date || '',

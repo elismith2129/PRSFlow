@@ -1310,20 +1310,20 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 
    Inline backgrounds were stripped from those controls so these rules can win
    without !important. */
-.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action),
-.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) {
+.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore),
+.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) {
   border-radius: 99px; padding: 8px 16px; cursor: pointer;
   background: var(--c-bg); color: var(--c-fg);
   font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
   transition: transform .16s ease, box-shadow .16s ease;
   box-shadow: 2px 2px 7px rgba(0, 0, 0, .38), -1px -1px 3px rgba(255, 255, 255, .03);
 }
-[data-theme="light"] .c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action),
-[data-theme="light"] .c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) {
+[data-theme="light"] .c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore),
+[data-theme="light"] .c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) {
   box-shadow: 2px 2px 6px rgba(42, 39, 34, .09), -2px -2px 6px rgba(255, 255, 255, .7);
 }
-.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):active,
-.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):active {
+.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):active,
+.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):active {
   transform: translateY(1px);
   box-shadow: inset 3px 3px 7px rgba(0, 0, 0, .28);
 }
@@ -1580,7 +1580,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    stops reading as a control. It still wraps. */
 .c-seg-wrap { display: inline-flex; flex-wrap: wrap; max-width: 100%; }
 
-.c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) {
+.c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) {
   border-radius: 99px; padding: 6px 14px;
   font-family: inherit; font-size: 10px; font-weight: 800;
   letter-spacing: .06em; text-transform: uppercase;
@@ -1589,8 +1589,8 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   box-shadow: none; border: none; transform: none;
   white-space: nowrap; transition: opacity .16s ease;
 }
-[data-theme="light"] .c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) { box-shadow: none; }
-.c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):active { transform: none; }
+[data-theme="light"] .c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) { box-shadow: none; }
+.c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):active { transform: none; }
 
 /* SELECTED — filled + pressed IN. */
 .c-seg > button.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) {
@@ -1617,7 +1617,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    housing there. Same :not() chain as above — see the specificity note. */
 .c-seg-tiny { padding: 3px; box-shadow: none; background: var(--c-wash); }
 [data-theme="light"] .c-seg-tiny { box-shadow: none; }
-.c-seg-tiny > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) { padding: 4px 10px; font-size: 9px; }
+.c-seg-tiny > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) { padding: 4px 10px; font-size: 9px; }
 
 /* MINI — small raised control for in-well adornments (Call / Text / ✉). */
 .c-mini {
@@ -1881,6 +1881,12 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-bflag.c-soon { opacity: .4; }
 
 .c-bacts { display: flex; gap: 6px; flex-shrink: 0; }
+/* ROW BUTTONS OPT OUT OF THE CARVED TREATMENT.
+   `.c-panel button:not(...)` gives every button inside a panel the raised,
+   pill-shaped soft-skin look — which is right for a footer action and very
+   wrong for a 9px control at the end of a table row. Download & send and Mark
+   paid rendered as big floating bubbles because `.c-bact` was not in that
+   rule's exclusion list (Eli, 2026-08-11). It is now, along with `.c-bmore`. */
 .c-bact {
   font-size: 9.5px; font-weight: 700; padding: 4px 10px; border-radius: 99px;
   background: var(--c-wash2); color: var(--c-fg); border: none; cursor: pointer; opacity: .8;
@@ -2055,7 +2061,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-seg.c-seg-tiny, [data-theme="light"] .c-seg.c-seg-tiny { box-shadow: none; }
 .c-control:active, .c-mini:active,
 [data-theme="light"] .c-control:active,
-.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):active {
+.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):active {
   box-shadow: none;
   background: var(--c-wash2);
 }
