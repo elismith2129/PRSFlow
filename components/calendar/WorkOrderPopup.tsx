@@ -2007,7 +2007,7 @@ export function WorkOrderPopup({
           {/* BRANDING — hidden on mobile + for block events (letterhead) */}
           <div style={{ textAlign: 'center', paddingBottom: 20, display: (isMobile || isBlock) ? 'none' : 'block' }}>
             <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15, color: 'var(--c-fg)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Paramount Recording Group</div>
-            <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-2)', marginTop: 3 }}>Paramount · Encore · Ameraycan · Wilder · Track · Enterprise</div>
+            <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-2)', marginTop: 3 }}>Paramount · Encore · Ameraycan · Wilder · Track</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
               <span style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-2)' }}>Recording Studios (323) 465-4000</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

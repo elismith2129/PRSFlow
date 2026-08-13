@@ -567,6 +567,26 @@ Flo stops meaning anything. (Motion candidates comet/twin-orbit/heartbeat/ripple
 were evaluated and rejected; Aurora at the dialed values won. Faster/brighter variants
 exist in design-refs history if a "Flo is actively thinking" state is wanted later.)
 
+## 15. Runner hub — DAY CARD (RULING 2026-08-13)
+
+Eli picked **option A · Day card** from `docs/design-refs/runner-hub-options.html`.
+Port from that file. B (job strip) and C (tap-to-sheet) are rejected.
+
+- **The work order's twelve-column table is gone on the phone.** One DAY is one
+  CARD, with a day pager above it. No horizontal scrolling anywhere on `/runner`.
+- **Rates, OT rates and day totals are READ-ONLY text** in a wash block labelled
+  "Billing · set by the office". The runner owns times, staff hours, equipment
+  condition, payments taken at the desk and notes — nothing else is an input.
+  This is the whole reason the phone screen is not the admin screen.
+- The hub keeps today's sessions as cards and the ops tiles; both move to the
+  soft skin, `--c-` tokens, no borders, Archivo for the room name (Syne and DM
+  Serif Display are retired, §4). Tap targets ≥ 44px.
+- **The runner's terminal act is SUBMIT (today's rows → `submitted`), never
+  "Complete WO".** Completing is the admin act that starts the billing pipeline
+  (`enterInvoicePipeline`); it must not appear on a runner surface.
+- Data flow, realtime wiring and features are UNCHANGED — this is layout and
+  surface only. Do not rebuild the logic.
+
 ### 14d. Sequencing
 
 The rail + dashboard land FIRST, as the new app frame. The un-migrated pages (admin,

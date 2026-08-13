@@ -74,7 +74,7 @@ export default async function WOPrintPage({ params }: { params: { id: string } }
         {/* Branding */}
         <div style={{ textAlign: 'center', marginBottom: 16, borderBottom: '2px solid #111', paddingBottom: 12 }}>
           <h1>Paramount Recording Group</h1>
-          <div style={{ fontSize: 9, color: '#555', marginTop: 3 }}>Paramount · Encore · Ameraycan · Wilder · Track · Enterprise</div>
+          <div style={{ fontSize: 9, color: '#555', marginTop: 3 }}>Paramount · Encore · Ameraycan · Wilder · Track</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 10 }}>
             <span>Recording Studios (323) 465-4000</span>
             <span><strong>Invoice #</strong> {wo.invoice_number || '___________'}</span>

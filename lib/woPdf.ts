@@ -185,7 +185,49 @@ class Sheet {
   gap(n: number) { this.y -= n }
 }
 
-type Col = { head: string; w: number; align?: 'right' }
+type Col = {
+  head: string
+  w: number
+  align?: 'right'
+  /**
+   * WRAP INSTEAD OF TRUNCATING, and push the whole row taller (Eli, 2026-08-13).
+   *
+   * Session Info is where song names and session detail for the CLIENT go, so a
+   * cut-off cell loses information the client is meant to read. On screen that
+   * cell truncates and opens a popover — correct there, because the work order
+   * is a popup and must not become a mile long. On paper there is no popover:
+   * "since we're printing it, we can't have anything hidden."
+   *
+   * So the two diverge ON PURPOSE. This is the one place the PDF is allowed to
+   * differ from the screen, and it differs by showing MORE, never less.
+   */
+  wrap?: boolean
+}
+
+/** Break a string into lines that fit `width`, breaking on spaces where it can. */
+function wrapLines(font: PDFFont, str: string, size: number, width: number): string[] {
+  const text = String(str ?? '').trim()
+  if (!text) return []
+  const lines: string[] = []
+  let rest = text
+  // NO LINE LIMIT. There was a six-line cap here for about ten minutes and it
+  // silently ate the end of a long song list — which is the exact failure this
+  // whole change exists to prevent. Eli: "any session info typed into that space
+  // on the studio time row is completely visible on the paper work order,
+  // period." A tall row is a cosmetic problem; a truncated one is a lie.
+  while (rest.length > 0) {
+    if (font.widthOfTextAtSize(rest, size) <= width) { lines.push(rest); break }
+    let cut = rest.length
+    while (cut > 1 && font.widthOfTextAtSize(rest.slice(0, cut), size) > width) cut--
+    const sp = rest.lastIndexOf(' ', cut)
+    // Only break on a space if it is not leaving a stub — a 60-character word
+    // (a URL, a run-on title) has to be broken mid-word or it never fits.
+    if (sp > 4) cut = sp
+    lines.push(rest.slice(0, cut))
+    rest = rest.slice(cut).trimStart()
+  }
+  return lines
+}
 
 /**
  * A labelled band — the micro-caps label over its value, several to a line.
@@ -269,13 +311,37 @@ function table(
   s.onNewPage = sh => { sectionTitle(sh, title); drawHead(sh) }
 
   const drawRow = (r: string[], indent = false) => {
-    s.need(15)
+    const size = indent ? 8 : 8.5
+    const LEAD = 10.5 // baseline-to-baseline inside a wrapped cell
+
+    // Measure the wrapping cells FIRST — the row is as tall as its tallest cell,
+    // and the page break has to know that height before anything is drawn.
+    const wrapped = new Map<number, string[]>()
+    cols.forEach((c, i) => {
+      if (c.wrap) wrapped.set(i, wrapLines(s.font, r[i] ?? '', size, c.w - GUT))
+    })
+    const lineCount = Math.max(1, ...Array.from(wrapped.values(), l => l.length || 1))
+    const height = 13 + (lineCount - 1) * LEAD
+    s.need(height + 2)
+
+    const top = s.y
     let x = M
     cols.forEach((c, i) => {
-      const v = r[i] ?? ''
-      if (v) s.text(v, cellX(x, c), { size: indent ? 8 : 8.5, align: c.align, width: c.w - GUT })
+      if (c.wrap) {
+        // Successive baselines, all inside this row's band.
+        (wrapped.get(i) ?? []).forEach((ln, li) => {
+          s.y = top - li * LEAD
+          s.text(ln, x, { size, width: c.w - GUT })
+        })
+        s.y = top
+      } else {
+        const v = r[i] ?? ''
+        if (v) s.text(v, cellX(x, c), { size, align: c.align, width: c.w - GUT })
+      }
       x += c.w
     })
+
+    s.y = top - (lineCount - 1) * LEAD
     if (ruledRows) s.line(M, RIGHT, HAIR, 0.5, -3.5)
     s.gap(13)
   }
@@ -334,9 +400,30 @@ const COD_TERMS_2 =
   'No Tapes, CDs, DVDs, Thumb Drives, Computer Drives or other Recording Media will be released ' +
   'until payment in full is received.'
 
+/**
+ * INTERNAL FIELDS. These are staff-only and a client receives this document, so
+ * they are STRIPPED from the record before anything is drawn — not merely left
+ * out of the layout (Eli, 2026-08-13: "make sure that the internal note fields
+ * are not gonna land here, period").
+ *
+ * Leaving them out is a promise the layout has to keep every time it is edited.
+ * Deleting them makes it structural: a future session that adds
+ * `wo.booking_notes` to a section renders an empty string, not a leak. Each one
+ * carries `data-no-print` on the work order screen — that is the list this
+ * mirrors. ADD TO BOTH.
+ */
+const INTERNAL_ONLY = [
+  'booking_notes',            // labelled "Internal only" on the screen
+  'needs_attention_notes',    // "never appears on the PDF export…"
+  'needs_attention_photos',
+] as const
+
 /** Build the work order as a standalone PDF. Returns the raw bytes. */
 export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array> {
-  const { wo, studioRows, rentalRows, paymentRows, totals, blank = false } = input
+  const { studioRows, rentalRows, paymentRows, totals, blank = false } = input
+
+  const wo: Record<string, any> = { ...input.wo }
+  for (const key of INTERNAL_ONLY) delete wo[key]
   const doc = await PDFDocument.create()
   const font = await doc.embedFont(StandardFonts.Helvetica)
   const bold = await doc.embedFont(StandardFonts.HelveticaBold)
@@ -347,7 +434,9 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
   // ── Letterhead — the screen's centred branding block ──────────────────────
   s.text('PARAMOUNT RECORDING GROUP', PAGE[0] / 2, { size: 13, bold: true, align: 'center', tracking: 1.1 })
   s.gap(13)
-  s.text('Paramount · Encore · Ameraycan · Wilder · Track · Enterprise', PAGE[0] / 2, {
+  // Enterprise removed 2026-08-13 — the room is no longer ours. Also removed
+  // from the work order screen and the dead print route in the same change.
+  s.text('Paramount · Encore · Ameraycan · Wilder · Track', PAGE[0] / 2, {
     size: 8, align: 'center',
   })
   s.gap(13)
@@ -371,40 +460,50 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
   // ── Who ───────────────────────────────────────────────────────────────────
   // The client panel, flattened. Billing sessions lead with the label; COD
   // sessions lead with the person — the same split the panel makes on screen.
+  // ONE GRID FOR ALL THREE BANDS (fix, 2026-08-13). They used to run on three
+  // different sets of widths, so no label in the second or third band lined up
+  // with the one above it and the whole header read as slightly crooked. Every
+  // field is now a whole number of sixths of the page, so every column edge in
+  // the header is on the same vertical line.
+  const U = W / 6
   const isBilling = !blank && String(wo.payment_status || '').toLowerCase() === 'billing'
   band(s, [
-    { k: isBilling ? 'Label' : 'Client', v: isBilling ? (wo.label || '') : (wo.client || ''), w: 190 },
-    { k: 'Artist', v: wo.artist || '', w: 170 },
-    { k: isBilling ? 'A&R / ordered by' : 'Ordered by', v: wo.ordered_by || '', w: 164 },
+    { k: isBilling ? 'Label' : 'Client', v: isBilling ? (wo.label || '') : (wo.client || ''), w: U * 2 },
+    { k: 'Artist', v: wo.artist || '', w: U * 2 },
+    { k: isBilling ? 'A&R / ordered by' : 'Ordered by', v: wo.ordered_by || '', w: U * 2 },
   ], blank)
   band(s, [
-    { k: 'Email', v: wo.email || '', w: 190 },
-    { k: 'Phone', v: wo.phone || '', w: 170 },
+    { k: 'Email', v: wo.email || '', w: U * 2 },
+    { k: 'Phone', v: wo.phone || '', w: U * 2 },
     {
       k: 'Payment',
       v: blank ? '' : [wo.payment_status || '', wo.cod_method || ''].filter(Boolean).join(' · '),
-      w: 164,
+      w: U * 2,
     },
   ], blank)
 
   // ── The work order's own fields ───────────────────────────────────────────
   band(s, [
-    { k: 'Session type', v: wo.session_type || '', w: 128 },
-    { k: 'Status', v: blank ? '' : (wo.session_status || ''), w: 110 },
-    { k: 'Invoice #', v: wo.invoice_number || '', w: 96 },
+    { k: 'Session type', v: wo.session_type || '', w: U * 2 },
+    { k: 'Status', v: blank ? '' : (wo.session_status || ''), w: U },
+    { k: 'Invoice #', v: wo.invoice_number || '', w: U },
     {
       k: 'PO #',
       v: blank ? '' : (wo.po_number || (wo.no_po_needed ? 'Not required' : '')),
-      w: 106,
+      w: U,
     },
     {
       k: 'Food budget',
       v: blank ? '' : (wo.food_budget ? (wo.food_amount ? money(num(wo.food_amount)) : 'Yes') : 'No'),
-      w: 84,
+      w: U,
     },
   ], blank)
 
-  s.rule(2)
+  // The last of the rule-through-text bugs: at gap 2 the separator landed inside
+  // the cap height of "STUDIO TIME" and struck through it. Same spacing as every
+  // other rule in the document now.
+  s.rule(5)
+  s.gap(7)
 
   // ── Studio time ───────────────────────────────────────────────────────────
   // Same twelve columns as the screen, same order. The lock and delete cells
@@ -418,9 +517,10 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
     { head: 'Studio', w: 38 },
     { head: 'Date', w: 44 },
     // Session info doubles as the STAFF NAME cell on engineer sub-rows, so it
-    // gets every point the money columns can spare — a truncated note is a
-    // shrug, a truncated name is a question.
-    { head: 'Session info', w: 90 },
+    // gets every point the money columns can spare. It WRAPS rather than
+    // truncating (see Col.wrap): this is the client's record of what was worked
+    // on, and a printed page has no popover to open.
+    { head: 'Session info', w: 90, wrap: true },
     { head: 'From', w: 46 },
     { head: 'To', w: 46 },
     { head: 'Hrs', w: 22, align: 'right' },
@@ -573,7 +673,10 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
   }
 
   // ── Totals — the screen's totals block, same six labels, same order ───────
-  s.need(90)
+  // Enough for the whole block plus its rule — the six lines move together or
+  // not at all. At 90 the last line broke off on its own, which put BALANCE DUE
+  // alone on page 2, away from the figures it is the conclusion of.
+  s.need(130)
   s.rule(5)
   s.gap(7)
   const totalLine = (k: string, v: string, big = false) => {
