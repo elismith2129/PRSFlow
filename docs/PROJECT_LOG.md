@@ -3059,3 +3059,107 @@ decision comes from living with `/my-day` for a week rather than from a mock).
 back of a side-observation while My Day was mid-build. Flagged, parked, then done with his
 explicit go-ahead. Worth repeating: state the connection to the current chunk before
 opening a file in another subsystem.
+
+---
+
+### Aug 11–12, 2026 — The Billing Hub, and the work order becomes a document
+
+**What this replaced.** `/wo-hub` and, more importantly, the Dropbox folder system. Those
+folders — COD paid / COD with balance / needing approval / approved-awaiting-PO / sent &
+open / sent & paid — were a status field Eli maintained by hand, in an app that had no idea
+they existed. Here they are derived from the work order, so the filing disappears and the
+window he already looks at becomes the app.
+
+**The one rule everything else hangs off:** PRSFlo owns the workflow and the documents;
+QuickBooks keeps owning the money. That is what dissolves the two-sets-of-books worry —
+the two systems track different things, and nothing here claims to be the accounting.
+
+#### The design mistake worth remembering: nine tabs
+
+v1 shipped with nine tabs, and Eli's question unmade it: *"maybe these tabs combine to one
+with status indicators… the whole point of this app is to seamlessly flow."*
+
+He was right, and the diagnosis matters more than the fix. **Open / Needs invoice / Needs
+approval / Ready to send were never four PLACES.** They are one package being assembled, and
+v1 modelled each rung of the ladder as its own room. Every serious AR tool separates by WHO
+IS WAITING, not by which step something is on, and puts the steps on the row as a
+completeness indicator. Few destinations, rich rows.
+
+The other half of the bloat was forcing two unrelated processes through one set of tabs.
+Billing assembles over days or weeks; COD money is already in and just needs checking —
+*"the majority of COD do not go through a billing process, they are just checked for
+accuracy, approved and then they are done."* They share a work order and nothing else, so
+they got a toggle. Nine tabs became four and three.
+
+#### Rejected, and why
+
+- **A footer row for upcoming sessions.** Rejected — a footer row inside a paginated list
+  falls onto page 3. It became a sub-view pinned BELOW the pager, and clicking it SWITCHES
+  the list rather than expanding under it: ten paginated rows followed by twelve
+  un-paginated ones would make "page 2" mean two different things.
+- **Search within the current tab.** Rejected — you would have to guess the right folder
+  before you could find anything, which is the exact Dropbox problem this page removes.
+  Search spans both pipelines and every bucket, closed included.
+- **A per-client `requires_po` flag** (shipped, then retired the same day). The exception is
+  per-JOB, not per-client: a client who normally needs a PO can waive it once. `no_po_needed`
+  lives on the work order. The column is kept but dormant, commented as such.
+- **An "Add PO" button on the row.** Rejected on Eli's ruling — *"adding a PO is done on the
+  WO. One place, easily understood."* Two doors to one field is how the two drift.
+- **A separate "Open WO" button.** Removed. Opening a record to read it is navigation, not an
+  action, and a button for it appeared on nearly every row doing the same thing as clicking
+  the row — which crowded out the one control that actually advanced something. Double-click
+  opens it.
+- **`Re-open WO`.** Removed from the work order footer. With the hub owning the invoice
+  lifecycle it was an undo for a state nothing reads, and it sat one slip away from the
+  button people press to save an edit.
+- **A merged single PDF, deferred then un-deferred.** Initially two files ("I'm ok with two
+  files for now"). Eli's later reasoning collapsed it: if the ONLY way to get a work order
+  document is the generator, the print stylesheet can be deleted and the layout exists in one
+  place again. His instinct removed the drift risk I had been warning him about.
+
+#### Where I was wrong, twice, and he corrected it
+
+**Download & send as one press.** I argued for it: one button fails noisily and slightly
+(the aging clock is a few days early), two buttons fail silently and badly (someone forgets
+to press Sent and the invoice never enters AR). Eli named the failure I had not weighed:
+*"we've done all the work to prepare the package and it lands in someone's downloads folder
+and never goes out."* And his worst case — it gets sent, stays In progress, someone says
+"hey, I already sent this" — is loud and recoverable, where mine was silent. My design was
+only safer on the assumption that nobody would ever fix it. Split, with a stale-download
+reminder as the net.
+
+**Hiding the button when a package was blocked on a PO.** An approved invoice showed no
+control at all and nothing said why. Hiding the only button on a row does not communicate a
+blocker; it communicates a broken screen. It renders greyed now, with the reason in the flag
+column — and it keeps the label `Approve` rather than relabelling to "Needs PO", which put
+the same fact in two places and made it look like a different control.
+
+#### The archive, built in the wrong order
+
+Eli: *"once a package leaves In progress, it needs to be the actual PDF… we need to see
+what's actually going out."* Correct, and it exposed a hole rather than a display bug: the
+merged PDF was built fresh on every download and thrown away, so the package window could only
+ever re-render what a package would look like TODAY. Edit a rate next month and the
+"package" silently becomes a document that was never sent — and the moment you go looking is
+precisely when something is wrong, which is the worst possible time to be shown a
+reconstruction. Download now stores the exact bytes it served.
+
+**But it shipped before the PDF layout was right**, which Eli caught immediately: the
+snapshot faithfully preserves a document we are about to throw away. Sequencing error, mine.
+The plumbing is independent of the layout and stands; the snapshots do not.
+
+#### Open
+
+**The PDF is a generic invoice, not the work order.** Eli's ruling closes the question of
+what it should be: *"we have two versions — digital WO, and then black and white flat one
+that is exact representation."* Rebuilding `lib/woPdf.ts` section by section against the WO
+screen is the next job, and **every `invoice_package_path` snapshot taken before it ships
+must be wiped** so no test download can pretend to be a record of what a client received.
+
+#### Process note
+
+Two edits to `app/(main)/billing/page.tsx` this session removed more than intended — a
+text-range deletion aimed at the PO modal also took the package window and the ⋯ menu's
+render blocks, which is what produced "nothing happens when I click the three dots." Both
+components still existed; nothing rendered them. **Edit that file with explicit,
+uniquely-anchored replacements, never by cutting between two matched strings.**

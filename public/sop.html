@@ -641,6 +641,35 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.9.0', date:'Aug 12, 2026',
+    headline:'Billing — one page for every work order and invoice. Dropbox folders are gone.',
+    desc:'Everything that used to live in the Dropbox folders — needs approval, awaiting PO, sent, paid — now happens on one Billing page in the left menu. You do not file anything any more. The page works out where each job is from the work order itself.',
+    changes:[
+      'A Billing page replaces the old WO Hub. It has a Billing / COD switch at the top, because the two work completely differently — billing gets invoiced and chased, COD is already paid and just needs checking.',
+      'Every line shows three little lights: Reviewed, Invoiced, Approved. Amber is the one it is waiting on. In the morning, the amber "Reviewed" lines are last night\'s work orders that nobody has looked at yet.',
+      'Double-click any line to open it. Before an invoice is attached that opens the work order; after, it opens the whole package so you can see the work order and the invoice together.',
+      'Drag a QuickBooks invoice PDF straight onto a line to attach it. No uploading, no filing, no remembering which folder.',
+      'Only Eli and Adam-Mike can approve, and nothing can be approved until it has been reviewed, has an invoice attached, and the PO is sorted.',
+      'The PO now lives on the work order, next to the invoice number, with a "PO req\'d — Yes / No" switch beside it. If a client never needs one, set it to No there and the job stops waiting.',
+      'Download and Mark sent are two separate buttons. Download builds the package; Mark sent is you confirming it actually went to the client. Anything downloaded but not marked sent for two days turns red so a finished package cannot sit forgotten in someone\'s downloads.',
+      'Made a mistake? "Pull it back" in the ⋯ menu takes it out of Awaiting payment, removes the invoice and the approval, and puts it back at the start so you can redo it properly.',
+      'Change a work order after it was approved and the approval clears itself — an approval is for a set of numbers, not for the job in general.',
+      'On the work order: Close & Save is now just Close. If you changed nothing it simply closes; if you did, it asks whether to save or discard. Complete WO saves and closes, and greys out when there is nothing to save.',
+      'COD sessions have their own side, and Balance due is first — those are the rare ones where money was not collected, and they matter most.'
+    ],
+    affects:'You never file anything again. If a line has no button, nothing is waiting on you — double-click it to look. If a button is greyed out, the flag beside it says why. The one habit to build: put the PO on the work order, or press No if the client does not use one, because nothing gets approved until that is answered.',
+    dev:[
+      'Two pipelines (Billing / COD) with 4 and 3 tabs, replacing v1\'s nine. Open / Needs invoice / Needs approval / Ready to send were never four places — they are one package being assembled, so they collapse into In progress with three derived lights per row.',
+      'Approval is owners-only in the UI and enforced by a Postgres trigger that fires on any change to invoice_approved_at/_by in either direction, so an approval cannot be stripped either.',
+      'Awaiting-PO is DERIVED from work_orders.po_number / no_po_needed, not stored. clients.requires_po is dormant — the exception is per-job, not per-client.',
+      'Download and Mark sent are separate acts: PRSFlo builds the file, a person emails it. invoice_downloaded_at drives a stale-download alert at 2 days.',
+      '/api/wo-package draws the work order as a black-and-white PDF (lib/woPdf.ts, pdf-lib) and staples the invoice pages on, then stores the exact bytes at invoice_package_path so the package window shows the artifact rather than a re-render.',
+      'window.print() and the ~90-line print stylesheet are deleted — one generator, so the layout is described in one place.',
+      'Editing an approved package voids the approval (derived), but not once sent, where the drift flag plus a deliberate pull-back is the honest path.',
+      'Known gap: the PDF layout is still a generic invoice, not a replica of the work order screen. Rebuild pending; snapshots taken before it ships must be wiped.'
+    ]
+  },
+  {
     ver:'v1.8.0', date:'Aug 10, 2026',
     headline:'My Day — your daily checklist, on the dashboard and its own page',
     desc:'The things your role is responsible for every day now live in PRSFlo instead of on paper. There is a short checklist on your dashboard, and a fuller "My Day" page in the left menu with your holds, balances and shift notes. Fernando, Aaron and Eli only.',

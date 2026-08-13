@@ -19,6 +19,81 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.9.0 — UNRELEASED (branch `redesign/carved`) — Aug 11–12, 2026
+
+**THE BILLING HUB replaces `/wo-hub` AND the Dropbox invoice-filing system**, and the
+work order becomes a real generated PDF. Designed in `docs/design-refs/billing-hub-v2.html`
+(v2 — `billing-hub-final.html` is STALE and carries a banner saying so; do not port from it).
+
+**Migrations — run by hand, in order:**
+
+| File | What |
+|---|---|
+| `20260811120000_billing_hub.sql` | Invoice lifecycle on `work_orders` (`invoice_state`, closed/approved/sent/paid stamps, `invoice_doc_path`), private `invoices` bucket + policies, owners-only `enforce_invoice_approver` trigger |
+| `20260811130000_billing_needs_invoice.sql` | Widens the `invoice_state` CHECK to include `needs_invoice` |
+| `20260811140000_billing_invoiced_total.sql` | `invoice_total` — the snapshot that makes drift detectable |
+| `20260811150000_billing_no_po_needed.sql` | `no_po_needed` on the WORK ORDER. Supersedes `clients.requires_po`, which is now DORMANT (kept, commented, unread) |
+| `20260811160000_billing_downloaded_at.sql` | `invoice_downloaded_at` — download and send became two acts |
+| `20260811170000_billing_package_snapshot.sql` | `invoice_package_path` — the merged PDF exactly as it went out |
+
+**New dependency:** `pdf-lib` (creates AND merges; no headless browser). In `package.json`
+and the lockfile, so Vercel installs it — nothing to run by hand.
+
+### What shipped
+
+- **Two pipelines, not one.** `Billing` (assemble → approve → send → chase → paid) and
+  `COD` (money is in → check it → done) get a toggle. Four tabs / three tabs, replacing v1's
+  nine. COD's side leads with **Balance due**, and the toggle carries a hot dot whenever one
+  exists so a missed collection is visible from the billing side.
+- **Three derived lights per row** — `Reviewed › Invoiced › Approved` (COD shows two).
+  The rungs v1 modelled as four separate tabs are one package being assembled.
+- **Drag a QuickBooks PDF onto a row** to attach it; the work order routes itself.
+- **Approval is owners-only** (UI + Postgres trigger) and is GATED: reviewed + invoiced +
+  PO sorted. A blocked Approve renders greyed with `AWAITING PO` in the flag column.
+- **Awaiting-PO is DERIVED**, from the work order's `po_number` / `no_po_needed`. It was a
+  stored state in v1.
+- **Download and Mark sent are two acts.** PRSFlo builds the file; a person emails it. A
+  package built but not marked sent for 2 days goes hot on the row AND on the tab count.
+- **`/api/wo-package`** draws the work order as a black-and-white PDF (`lib/woPdf.ts`) and
+  staples the invoice's pages on. Accepts an image attachment as a page. Stores the exact
+  bytes it served so the package window can show the ARTIFACT, not a re-render.
+- **`window.print()` and the ~90-line print stylesheet are DELETED.** One generator, so the
+  work order's layout is described in one place.
+- **Work order footer:** `Close & Save` → `Close` (prompts only when something changed);
+  `Complete WO` saves and closes and greys out until there IS a change; `Print` gone;
+  `Export PDF` → `Save & download`. **`Re-open WO` was removed.**
+- **Editing an approved package voids the approval** (derived, not written) — but NOT once
+  sent, where the drift flag plus a deliberate Pull it back is the honest path.
+- Double-click a row to open it. Date range + rooms on the line. 20 per page on In progress.
+
+### Watch-outs
+
+- **The PDF layout is NOT finished.** It is a generic invoice, not a replica of the work
+  order screen. Eli's ruling: two versions only — the digital WO and a flat black-and-white
+  exact representation. **Rebuilding `lib/woPdf.ts` against the WO screen is the next job,
+  and any `invoice_package_path` snapshots taken before it ships must be wiped**, or a test
+  download will masquerade as a record of what a client received.
+- **`lib/woPdf.ts` and the WO screen are two descriptions of one layout.** Row data flows
+  through automatically; a whole NEW SECTION added to the screen will silently not appear in
+  the PDF. Add it in both.
+- Approving cannot be bypassed client-side — the trigger fires on ANY change to
+  `invoice_approved_at`/`_by`, in either direction, so billing cannot strip an approval.
+- `/api/wo-package` verifies the caller's token AND role before the service-role client
+  reads anything. A work order id alone must never be enough.
+- The route needs `SUPABASE_SERVICE_ROLE_KEY` in **Preview** as well as Production.
+- Blocks (Tour/Tech/Open Hours) and tentative/cancelled sessions are filtered out
+  **only before the pipeline** — once a WO has an `invoice_state` it stays visible, so
+  cancelling a session can never make a sent invoice vanish from AR.
+- **Do not do text-range surgery on `app/(main)/billing/page.tsx`.** Two edits this session
+  cut more than intended (the PO removal deleted the package and ⋯ modal render blocks).
+
+**Files:** `lib/billing.ts`, `lib/woPdf.ts`, `lib/woTotals.ts`, `lib/woValidation.ts`,
+`app/(main)/billing/page.tsx`, `app/api/wo-package/route.ts`,
+`components/calendar/WorkOrderPopup.tsx`, `components/layout/Rail.tsx`, `styles/globals.css`,
+`docs/design-refs/billing-hub-v2.html`, `docs/AR-SCOPING.md`.
+
+---
+
 ## v1.8.0 — UNRELEASED (branch `redesign/carved`) — Aug 10, 2026
 
 **MY DAY — the operational duties layer goes live.** Built from `docs/MYDAY-BUILD.md`.

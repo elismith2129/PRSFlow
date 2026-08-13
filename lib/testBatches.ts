@@ -55,6 +55,106 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'billing-2026-08-12',
+    title: 'Billing — the new hub, and the work order buttons',
+    version: 'v1.9.0 (preview branch)',
+    date: 'Aug 12, 2026',
+    intro:
+      'The old WO Hub is gone and Billing has taken its place in the left menu. This is where every work order and invoice now lives — it replaces the Dropbox folders entirely. Nothing you do here emails a client; the furthest anything goes is downloading a PDF to your own computer. NOTE: do NOT use the Download button on a real invoice yet — the PDF layout is still being rebuilt, and pressing Download saves a copy of it.',
+    items: [
+      {
+        id: 'bh-tabs', area: 'Billing',
+        what: 'The Billing page opens on In progress, with a Billing / COD switch at the top right',
+        how: 'Click Billing in the left menu. You should land on a tab called "In progress". Top right, beside the Billing heading, there is a two-part switch: Billing and COD. Click COD — the tabs below should change to Balance due, Needs review, Paid.',
+      },
+      {
+        id: 'bh-lights', area: 'Billing',
+        what: 'Each line shows three lights — Reviewed, Invoiced, Approved — with one amber',
+        how: 'On the In progress tab, look at any line in the Progress column. You should see three small labels in a row. Green means done, amber means that is the step being waited on, grey means not yet. Report it if a line shows no lights at all.',
+      },
+      {
+        id: 'bh-dblclick', area: 'Billing',
+        what: 'Double-clicking a line opens the work order',
+        how: 'Double-click anywhere on a line that has an amber REVIEWED light. The work order should open. Close it again.',
+      },
+      {
+        id: 'bh-meta', area: 'Billing',
+        what: 'Each line shows the real date range and room, not a raw date',
+        how: 'Look at the client column. After the artist name you should see something like "Aug 5–8 · B". Find a session you know ran more than one day and check the range covers all of it. Report anything showing a date like 2026-08-05.',
+      },
+      {
+        id: 'bh-attach', area: 'Billing',
+        what: 'Dragging a PDF onto a line attaches it as the invoice',
+        how: 'Find a line whose flag column says "Drop invoice here". Drag any PDF from your computer onto that line and release. The line should turn green while you hover, and afterwards the INVOICED light should go green.',
+      },
+      {
+        id: 'bh-approve-block', area: 'Billing',
+        what: 'Approve is greyed out until the PO is answered',
+        how: 'On a billing line that has just had an invoice attached, look at the far right. If the flag column says AWAITING PO, the Approve button should be there but greyed and unclickable. Hover it — a message should explain that the PO goes on the work order.',
+      },
+      {
+        id: 'bh-no-po', area: 'Work order', device: 'desktop',
+        what: 'The work order has a "PO req\'d — Yes / No" switch beside the PO number',
+        how: 'Double-click that same line to open the work order. Near the top, beside "Inv #" and "PO #", there should be a small Yes / No switch labelled PO req\'d. Press No, then Complete WO. Back on the Billing page the AWAITING PO flag should be gone and Approve should now be clickable.',
+      },
+      {
+        id: 'bh-approve', area: 'Billing',
+        what: 'Approving moves the line on and turns the third light green',
+        how: 'Click Approve on that line. The APPROVED light should go green and the button should change to Download. (Only Eli and Adam-Mike will see an Approve button at all — if you are anyone else, check that you do NOT see one and report if you do.)',
+      },
+      {
+        id: 'bh-package', area: 'Billing',
+        what: 'Double-clicking an invoiced line opens the package window with tabs',
+        how: 'Double-click a line that has an invoice attached. A wide window should open with a Work order / Invoice switch at the top. Click Invoice — the PDF you attached should appear. Click Work order — the work order should appear. Close it.',
+      },
+      {
+        id: 'bh-more', area: 'Billing',
+        what: 'The ⋯ at the end of a line opens a menu that actually does something',
+        how: 'Find a line with an invoice attached and click the ⋯ at the far right edge. A small menu should open listing "Open the attached invoice PDF" and, further along the process, "Pull it back". If clicking ⋯ does nothing at all, report it.',
+      },
+      {
+        id: 'bh-search', area: 'Billing',
+        what: 'Search finds things in every tab, not just the one you are on',
+        how: 'Type a client name into the search box. Results should appear even for invoices that are Paid or in another tab, and each result should say which bucket it lives in. Clear the search and you should be back where you were.',
+      },
+      {
+        id: 'bh-paging', area: 'Billing',
+        what: 'In progress shows 20 per page, the other tabs show 10',
+        how: 'Look at the bottom left of the list on In progress — it should read something like "1–20 of 24". Switch to Paid and it should count in tens.',
+      },
+      {
+        id: 'bh-buttons-flat', area: 'Billing',
+        what: 'The buttons on the lines are small and flat, not big floating bubbles',
+        how: 'Look at any Approve, Download or Mark paid button on a line. It should be a small flat pill sitting neatly in the last column, level with the rest of the row. Report anything that looks raised, oversized, or floating between two rows.',
+      },
+      {
+        id: 'wo-close-quiet', area: 'Work order', device: 'desktop',
+        what: 'Closing a work order you did not change just closes it',
+        how: 'Open any work order, change nothing, and press Close. It should close immediately with no questions asked.',
+      },
+      {
+        id: 'wo-close-prompt', area: 'Work order', device: 'desktop',
+        what: 'Closing a work order you DID change asks what to do',
+        how: 'Open a work order, change something (a rate, a time, the notes), then press Close. You should be asked: save changes and close / discard my changes / keep editing. Press "Discard my changes", reopen it, and check your change is gone.',
+      },
+      {
+        id: 'wo-complete-grey', area: 'Work order', device: 'desktop',
+        what: 'On a completed work order, Complete WO is greyed until you change something',
+        how: 'Open a work order that has already been completed. The Complete WO button should be greyed out. Change any field — it should become clickable. Press it: it should save AND close in one go, with no follow-up question.',
+      },
+      {
+        id: 'wo-no-print', area: 'Work order', device: 'desktop',
+        what: 'The Print button is gone and Export PDF is now Save & download',
+        how: 'Open any work order and look at the bottom row of buttons. There should be no Print button. Where Export PDF used to be it should now say "Save & download".',
+      },
+      {
+        id: 'bh-nav', area: 'Billing',
+        what: 'The old WO Hub is no longer in the menu',
+        how: 'Look down the left menu. There should be a Billing item and no WO Hub item.',
+      },
+    ],
+  },
+  {
     id: 'my-day-2026-08-10',
     title: 'My Day — your daily checklist',
     version: 'v1.8.0 (preview branch)',
