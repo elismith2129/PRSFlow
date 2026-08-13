@@ -50,12 +50,13 @@ import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { formatCurrency } from '@/lib/format'
+import { toast } from '@/components/ui/Toaster'
 import {
   fetchInvoices, searchRows, rowsInBucket, bucketCounts, paginate,
   pageCount, summarise, isPastDue, bucketLabel, tabsFor, hasCodAlert, nextAction,
   approveInvoice, markSent, markPaid, closeInvoice, reopenInvoice,
   uploadInvoiceDoc, signedInvoiceUrl, signedPackageUrl, downloadPackage, pullBack, markDownloaded,
-  staleDownloads, pageSizeFor,
+  downloadBlankWorkOrder, staleDownloads, pageSizeFor,
   BILLING_LIGHTS, COD_LIGHTS,
   type InvoiceRow, type BucketKey, type ClosedReason, type Pipeline,
 } from '@/lib/billing'
@@ -82,6 +83,9 @@ export default function BillingPage() {
   // double-clicking the row once an invoice exists.
   const [pkg, setPkg] = useState<{ row: InvoiceRow; booking: Booking } | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
+  /** The page-level ⋯ menu. Rare actions that belong to the PAGE, not a row. */
+  const [pageMenu, setPageMenu] = useState(false)
+  const [blankBusy, setBlankBusy] = useState(false)
   const uploadFor = useRef<InvoiceRow | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
@@ -190,10 +194,25 @@ export default function BillingPage() {
    * stopped being a button.
    */
   async function openRow(row: InvoiceRow) {
-    if (!row.bookingId) return
-    const { data } = await supabase.from('bookings').select('*').eq('id', row.bookingId).limit(1)
+    const { data } = row.bookingId
+      ? await supabase.from('bookings').select('*').eq('id', row.bookingId).limit(1)
+      : { data: null }
     const booking = data?.[0] as Booking | undefined
-    if (!booking) return
+    // SAY SOMETHING (fix, 2026-08-13). Both of these used to `return` in
+    // silence, so a work order whose session had been deleted was a row that
+    // simply did not open — indistinguishable from a double-click that missed.
+    // `work_orders.booking_id` is nullable and the work order screen is opened
+    // FROM a booking, so this is reachable, and a row you cannot open is
+    // exactly the row someone needs to look at.
+    if (!booking) {
+      toast(
+        row.bookingId
+          ? 'That session has been deleted, so the work order cannot be opened. The invoice is still here — tell Eli before closing it out.'
+          : 'This work order has no session attached, so there is nothing to open.',
+        'error',
+      )
+      return
+    }
     if (row.hasInvoiceDoc) setPkg({ row, booking })
     else setOpenBooking(booking)
   }
@@ -259,6 +278,20 @@ export default function BillingPage() {
             {codAlert && <i className="c-bsegdot" />}
           </button>
         </div>
+        {/* PAGE-LEVEL "⋯" (2026-08-13). Same control as the row's, one level up:
+            things that belong to the PAGE rather than to an invoice. It is not a
+            header button because a blank work order is rare — Eli: "these are
+            gonna be rare occasions" — and a permanent button next to the
+            pipeline toggle would give a once-a-month action the same weight as
+            the control that changes what the whole screen means. */}
+        <button
+          className="c-bmore"
+          onClick={() => setPageMenu(true)}
+          title="More — blank work order form"
+          style={{ fontSize: 15, padding: '4px 6px' }}
+        >
+          ⋯
+        </button>
       </div>
 
       {/* SUMMARY — AR aging without leaving the page, computed from the same
@@ -423,6 +456,41 @@ export default function BillingPage() {
             run(r.workOrderId, () => pullBack(r))
           }}
         />
+      )}
+
+      {/* THE PAGE MENU. Same shell as the row's ⋯ so there is one "everything
+          else" pattern on this screen, not two. */}
+      {pageMenu && (
+        <div className="c-bmodal-wrap" onClick={() => setPageMenu(false)}>
+          <div className="c-bmodal" onClick={e => e.stopPropagation()}>
+            <div className="c-lozenge"><b>Billing</b></div>
+            {/* A BLANK WORK ORDER PDF, NOT A "CREATE WO" BUTTON (ruling
+                2026-08-12). Nothing is created, nothing is stored, nothing
+                lands on the calendar — it is the paper form, printed from the
+                same generator as a real work order so the two cannot drift.
+                THE FORK TO WATCH: safe while it is a FORM. If these start being
+                filled in for real paid work, that work never enters AR unless
+                the work order is entered properly afterwards — and that is the
+                signal it needs to be a real session instead. */}
+            <button
+              className="c-bact c-bblock"
+              disabled={blankBusy}
+              onClick={async () => {
+                setBlankBusy(true)
+                await downloadBlankWorkOrder()
+                setBlankBusy(false)
+                setPageMenu(false)
+              }}
+            >
+              {blankBusy ? 'Building…' : 'Blank work order — download a printable form'}
+            </button>
+            <div style={{ fontSize: 10.5, opacity: 0.45, lineHeight: 1.5, margin: '2px 2px 10px' }}>
+              An empty work order to print and fill in by hand. It creates nothing
+              and appears nowhere — if the session is real, enter it properly too.
+            </div>
+            <button className="c-bact c-bmuted c-bblock" onClick={() => setPageMenu(false)}>Cancel</button>
+          </div>
+        </div>
       )}
 
       {closing && (

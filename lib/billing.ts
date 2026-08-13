@@ -371,15 +371,39 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
   if (relevant.length === 0) return []
 
   const ids = relevant.map(w => w.id)
-  const [st, rent, pay] = await Promise.all([
+  // THE ENGINEER RATE FALLBACK IS NOT OPTIONAL (fix, 2026-08-13).
+  //
+  // `studio_time_rows.eng_rate` inherits from `bookings.engineer_rate`
+  // DISPLAY-SIDE ONLY — it is deliberately never written to the row (CLAUDE.md).
+  // So a work order can legitimately have staffed rows with a blank eng_rate and
+  // a rate that only exists on the booking.
+  //
+  // The work order screen passes that booking rate into computeWoTotals as
+  // `fallbackEngRate`. This function did not — so on exactly those work orders
+  // the hub's Balance, the AR summary, the `invoice_total` snapshot and the PDF
+  // were all missing the engineering cost that the screen billing had just
+  // reviewed was showing. Billing would approve one number and invoice another,
+  // with nothing anywhere saying they differed.
+  //
+  // One extra bulk query keyed on booking_id. Cheap, and the alternative is two
+  // descriptions of what a session cost.
+  const bookingIds = Array.from(new Set(relevant.map(w => w.booking_id).filter(Boolean))) as string[]
+  const [st, rent, pay, bk] = await Promise.all([
     supabase
       .from('studio_time_rows')
       .select('work_order_id, date, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate')
       .in('work_order_id', ids),
     supabase.from('rental_rows').select('work_order_id, charge').in('work_order_id', ids),
     supabase.from('payment_rows').select('work_order_id, amount').in('work_order_id', ids),
+    bookingIds.length
+      ? supabase.from('bookings').select('id, engineer_rate').in('id', bookingIds)
+      : Promise.resolve({ data: [], error: null } as any),
   ])
-  if (!dbResult('Loading invoice line items', st.error || rent.error || pay.error)) return []
+  if (!dbResult('Loading invoice line items', st.error || rent.error || pay.error || bk.error)) return []
+
+  const engRateByBooking = new Map<string, string | null>(
+    ((bk.data ?? []) as any[]).map(b => [b.id as string, (b.engineer_rate ?? null) as string | null]),
+  )
 
   const group = <T extends { work_order_id: string }>(rows: T[] | null) => {
     const m = new Map<string, T[]>()
@@ -402,6 +426,9 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       studioRows: stRows,
       rentalRows: rentBy.get(w.id) ?? [],
       paymentRows: payBy.get(w.id) ?? [],
+      // Same fallback the work order screen uses, so the hub's figure and the
+      // screen's figure are the same figure.
+      fallbackEngRate: w.booking_id ? engRateByBooking.get(w.booking_id) ?? null : null,
     })
 
     // THE SESSION'S LAST DAY comes from the work order's own dated rows, not
@@ -1005,18 +1032,42 @@ export async function signedInvoiceUrl(
  * order screen (a session that hasn't reached billing has no invoice yet).
  */
 export async function downloadPackage(workOrderId: string, woOnly = false): Promise<boolean> {
+  return fetchPdf(
+    `?id=${encodeURIComponent(workOrderId)}${woOnly ? '&wo=1' : ''}`,
+    'Downloading the package',
+  )
+}
+
+/**
+ * THE BLANK WORK ORDER (ruling 2026-08-12).
+ *
+ * The paper form, replaced. Eli: "just in case we need to create one for a
+ * client… I just want to avoid having to create a fake session, go through the
+ * whole process to make the work order, and then remember to delete it from the
+ * calendar."
+ *
+ * Nothing is created and nothing is stored — this is a download, not a record.
+ * It is drawn by the SAME generator as a real work order, which is what stops
+ * the printed form drifting away from the screen.
+ */
+export async function downloadBlankWorkOrder(): Promise<boolean> {
+  return fetchPdf('?blank=1', 'Building the blank work order')
+}
+
+/** Shared plumbing: ask the route for a PDF, hand it to the browser. */
+async function fetchPdf(query: string, label: string): Promise<boolean> {
   // The route verifies this token and the caller's role before reading
   // anything — a work order id on its own must never be enough.
   const { data: sess } = await supabase.auth.getSession()
   const token = sess?.session?.access_token
-  if (!token) return dbResult('Downloading the package', { message: 'Your session expired — sign in again.' })
+  if (!token) return dbResult(label, { message: 'Your session expired — sign in again.' })
 
-  const res = await fetch(`/api/wo-package?id=${encodeURIComponent(workOrderId)}${woOnly ? '&wo=1' : ''}`, {
+  const res = await fetch(`/api/wo-package${query}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    return dbResult('Downloading the package', { message: body?.error || `Could not build the PDF (${res.status}).` })
+    return dbResult(label, { message: body?.error || `Could not build the PDF (${res.status}).` })
   }
 
   // Filename comes from the server so it is decided in one place.

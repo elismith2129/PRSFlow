@@ -3007,13 +3007,23 @@ export function WorkOrderPopup({
 
           {/* COMPLETE WO — mobile secondary action (the footer is Cancel/Save only
               on mobile; the footer Complete button is hidden there). */}
+          {/* MOBILE TWIN OF THE FOOTER'S COMPLETE BUTTON. It must behave
+              IDENTICALLY to the desktop one (fix, 2026-08-13): it still offered
+              "Re-open WO", which v1.9.0 deliberately removed on desktop when the
+              billing hub took over the invoice lifecycle. Re-opening was an undo
+              for a state nothing reads any more, and here it sat as the single
+              full-width button on the phone — the easiest control on the screen
+              to hit by accident. Now, once completed, it saves and closes and
+              greys out until something actually changes. */}
           {isMobile && !readOnly && (
             <button
-              onClick={handleComplete}
-              disabled={completing}
-              className={`c-control c-block ${isCompleted ? 'c-soft c-raised' : 'c-pill c-fill-booked c-raised-chip'}`} style={{ minHeight: 48, justifyContent: 'center', cursor: completing ? 'default' : 'pointer', opacity: completing ? 0.7 : 1 }}
+              onClick={() => (isCompleted ? handleClose() : handleComplete())}
+              disabled={completing || saving || (isCompleted && !isDirty())}
+              className={`c-control c-block ${isCompleted ? 'c-soft c-raised' : 'c-pill c-fill-booked c-raised-chip'}`}
+              style={{ minHeight: 48, justifyContent: 'center', cursor: (completing || (isCompleted && !isDirty())) ? 'default' : 'pointer', opacity: (completing || saving || (isCompleted && !isDirty())) ? 0.4 : 1 }}
+              title={isCompleted && !isDirty() ? 'Nothing has changed' : undefined}
             >
-              {completing ? (isCompleted ? 'Re-opening…' : 'Completing…') : isCompleted ? 'Re-open WO' : 'Complete WO'}
+              {completing ? 'Completing…' : 'Complete WO'}
             </button>
           )}
           </>)}

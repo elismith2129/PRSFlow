@@ -24,7 +24,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { computeWoTotals } from '@/lib/woTotals'
-import { renderWorkOrderPdf, mergePackage } from '@/lib/woPdf'
+import { renderWorkOrderPdf, renderBlankWorkOrderPdf, mergePackage } from '@/lib/woPdf'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -41,7 +41,8 @@ const ALLOWED = ['owner', 'manager', 'billing', 'asst_manager']
 export async function GET(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id')
   const woOnly = req.nextUrl.searchParams.get('wo') === '1'
-  if (!id) return NextResponse.json({ error: 'Missing id.' }, { status: 400 })
+  const isBlank = req.nextUrl.searchParams.get('blank') === '1'
+  if (!id && !isBlank) return NextResponse.json({ error: 'Missing id.' }, { status: 400 })
 
   // ── Gate ──────────────────────────────────────────────────────────────────
   const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
@@ -58,7 +59,30 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Not allowed.' }, { status: 403 })
   }
 
+  // ── The blank form (ruling 2026-08-12) ────────────────────────────────────
+  // The paper work order, replaced. It reads nothing and writes nothing — no
+  // booking, no work order, no calendar entry, no snapshot. It exits here,
+  // BEFORE any of the loading and archiving below, which is the whole point:
+  // there is no record for it to be a record OF.
+  //
+  // It still passes the gate above. A blank form carries the letterhead and the
+  // COD terms, so it is company paper, not a public asset.
+  if (isBlank) {
+    const bytes = await renderBlankWorkOrderPdf()
+    return new NextResponse(Buffer.from(bytes), {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'attachment; filename="Blank work order.pdf"',
+        'Cache-Control': 'no-store',
+      },
+    })
+  }
+
   // ── Load ──────────────────────────────────────────────────────────────────
+  // Unreachable — the top of the handler already rejects a missing id for every
+  // non-blank request. It is here so `id` narrows to string for the reads below.
+  if (!id) return NextResponse.json({ error: 'Missing id.' }, { status: 400 })
+
   const { data: wos, error } = await supabaseAdmin
     .from('work_orders').select('*').eq('id', id).limit(1)
   if (error || !wos?.[0]) {
@@ -76,13 +100,28 @@ export async function GET(req: NextRequest) {
   const rentalRows = rent.data ?? []
   const paymentRows = pay.data ?? []
 
+  // THE ENGINEER RATE LIVES ON THE BOOKING (fix, 2026-08-13). Rows inherit it
+  // display-side and never store it, so without this the printed document
+  // silently drops engineering cost that the work order screen was showing —
+  // the same bug fixed in lib/billing.fetchInvoices on the same day. All three
+  // surfaces now feed computeWoTotals the identical fallback.
+  let fallbackEngRate: string | null = null
+  if (wo.booking_id) {
+    const { data: bks } = await supabaseAdmin
+      .from('bookings').select('engineer_rate').eq('id', wo.booking_id).limit(1)
+    fallbackEngRate = (bks?.[0] as any)?.engineer_rate ?? null
+  }
+
   // The SAME totals function the work order screen displays. Two implementations
   // of this arithmetic is how a PDF ends up disagreeing with the screen that
   // approved it — see lib/woTotals for why it was extracted in the first place.
-  const totals = computeWoTotals({ studioRows, rentalRows, paymentRows })
+  const totals = computeWoTotals({ studioRows, rentalRows, paymentRows, fallbackEngRate })
 
   // ── Build ─────────────────────────────────────────────────────────────────
-  const woPdf = await renderWorkOrderPdf({ wo, studioRows, rentalRows, paymentRows, totals })
+  const woPdf = await renderWorkOrderPdf({
+    wo: { ...wo, engineer_rate: fallbackEngRate },
+    studioRows, rentalRows, paymentRows, totals,
+  })
 
   let attachment: { bytes: Uint8Array; contentType: string } | null = null
   if (!woOnly && wo.invoice_doc_path) {
