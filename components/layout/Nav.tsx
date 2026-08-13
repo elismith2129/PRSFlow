@@ -15,7 +15,9 @@ const navItems = [
   { href: '/crm', label: 'CRM' },
   { href: '/calendar', label: 'Calendar' },
   { href: '/admin', label: 'Admin' },
-  { href: '/wo-hub', label: 'WO Hub' },
+  // WO Hub retired 2026-08-12 — /billing does the same listing plus the whole
+  // invoice lifecycle. /wo-hub is now a redirect stub, not a page.
+  { href: '/billing', label: 'Billing' },
   { href: '/nadines', label: "Nadine's" },
   { href: '/sop', label: 'SOP' },
   // TEMPORARY: remove when rollout period ends
