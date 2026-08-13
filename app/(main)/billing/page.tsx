@@ -486,6 +486,8 @@ function Row({
   const showLights = ['progress', 'review', 'balance', 'upcoming'].includes(row.bucket)
   // The overflow only exists when there is something in it: an invoice to open,
   // or an invoice real enough to be written off.
+  // Approved but with no PO: the button shows, disabled, rather than vanishing.
+  const blocked = row.awaitingPo
   const canClose = row.step >= 2 && row.bucket !== 'closed' && row.bucket !== 'paid'
   const hasMore = row.hasInvoiceDoc || canClose
 
@@ -562,7 +564,20 @@ function Row({
           writing an invoice off are both rare and both deliberate, so they live
           together in a menu that names them in full. */}
       <span className="c-bactcell">
-        {label && canAct && <button className="c-bact" onClick={onAct}>{label}</button>}
+        {label && canAct && (
+          <button
+            className={`c-bact${blocked ? ' c-bmuted' : ''}`}
+            onClick={blocked ? undefined : onAct}
+            disabled={blocked}
+            // A disabled button in the SAME PLACE as the live one teaches where
+            // the control lives and says why it isn't available. Hiding it
+            // taught nothing and read as a broken row.
+            title={blocked ? 'Add the PO number on the work order — or set PO req’d to No there' : undefined}
+            style={blocked ? { cursor: 'default' } : undefined}
+          >
+            {blocked ? 'Needs PO' : label}
+          </button>
+        )}
       </span>
       <span className="c-bmorecell">
         {hasMore && (

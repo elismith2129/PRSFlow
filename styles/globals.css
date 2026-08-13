@@ -1789,7 +1789,13 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-bage-off .c-brow, .c-bage-off .c-browhd {
   grid-template-columns: 76px minmax(0, 1fr) 124px 210px 84px 120px 26px;
 }
-.c-brow { padding: 9px 10px; border-radius: 11px; font-size: 12px; }
+/* FIXED ROW HEIGHT. A button is taller than a line of text, so rows that had
+   one grew and rows that didn't stayed short — which is why the one Approve in
+   a list read as floating between its neighbours rather than sitting in a
+   column (Eli, 2026-08-11). Locking the height is the vertical half of the
+   locked grid; without it the columns line up and the rows still don't. */
+.c-brow { padding: 4px 10px; min-height: 38px; border-radius: 11px; font-size: 12px; }
+.c-brow .c-bact { line-height: 1.2; }
 .c-brow:hover { background: var(--c-wash); }
 /* Header strip, so the columns are readable AS columns. */
 .c-browhd {

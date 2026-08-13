@@ -609,11 +609,15 @@ export function nextAction(row: InvoiceRow): string | null {
   if (row.step === 1) return 'Attach invoice'
   if (row.isCod) return null
   if (row.step === 2) return 'Approve'
-  // AWAITING PO SHOWS NO BUTTON (ruling 2026-08-11). The PO is typed on the
-  // work order — Eli: "adding a PO is done on the WO. One place, easily
-  // understood." An Add-PO button here would be a second door to the same
-  // field, and two doors to one field is how the two of them drift.
-  if (row.awaitingPo) return null
+  // Approved. The button is always Download & send — even when a PO is missing,
+  // in which case the page renders it DISABLED rather than hiding it.
+  //
+  // It used to return null here, which was a dead end: an approved invoice
+  // showed no control at all and nothing said why (Eli — "basically I can't do
+  // anything once I've reviewed, invoiced and approved"). Hiding the only
+  // button on a row does not communicate a blocker; it communicates a broken
+  // screen. The PO is still typed on the work order and nowhere else — the
+  // disabled button says so, it does not become a second door to that field.
   return 'Download & send'
 }
 

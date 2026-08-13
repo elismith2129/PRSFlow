@@ -1618,6 +1618,7 @@ export function WorkOrderPopup({
 
     originalStRowsRef.current = stRows
     deletedRowsRef.current = []
+    setDirtyFields(new Set())
     setSaving(false)
     onSaved?.()
     if (close) onClose()
@@ -3094,7 +3095,12 @@ export function WorkOrderPopup({
               press to save an edit. */}
           {!isBlock && (
           <button
-            onClick={() => (isCompleted ? saveOnly() : handleComplete())}
+            // SAVES AND CLOSES (fix, 2026-08-11). It used to save in place, so
+            // you then pressed Close and — because dirtyFields was still set —
+            // got asked whether to save the thing you had just saved. Complete
+            // WO is the "I'm done here" button; leaving you in the window
+            // afterwards made it a step rather than a decision.
+            onClick={() => (isCompleted ? handleClose() : handleComplete())}
             disabled={completing || saving || (isCompleted && !isDirty())}
             className={`c-control ${isCompleted ? 'c-soft c-raised' : 'c-pill c-fill-booked c-raised-chip'}`}
             style={{ padding: '8px 18px', cursor: (completing || (isCompleted && !isDirty())) ? 'default' : 'pointer', opacity: (completing || saving || (isCompleted && !isDirty())) ? 0.4 : 1, ...(isMobile ? { display: 'none' } : {}) }}
