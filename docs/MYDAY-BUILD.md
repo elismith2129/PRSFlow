@@ -109,6 +109,19 @@ migrations `20260810130000` / `20260810140000`. `dtype` stays `cumulative`:
 that is the tracking, not the scheduling, and it is what makes a missed Tuesday
 surface on Friday as "covering 2 days.")*
 
+### Day-one / cold-start rules (RULING 2026-08-10, Eli)
+
+- **The static mock script must NEVER reach staff.** `FLO_STATIC` / `MYDAY_STATIC`
+  die in the same release that ships the composer. If the redesign branch merges
+  before My Day lands, the Flo box ships real-data-only (queue counts + today's
+  sessions) — never the placeholder fiction.
+- **No false reds on a fresh system.** Backlog and missed-yesterday computations
+  only count days the duty was LIVE: clamp to `greatest(duty live-from date,
+  system launch date)`. Day one renders zero history-based red, by construction.
+- **Day one leads with queues** — they are true from minute one ("4 sessions need
+  work orders · 2 balances outstanding"), plus the lookahead line; synopsis:
+  "Fresh start — nothing carried over." Reds earn their way in from day two.
+
 ## 6. Surfaces
 
 1. **Dashboard My Day card** — replace `MYDAY_STATIC`: viewer's role card (owner
