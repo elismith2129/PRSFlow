@@ -3163,3 +3163,37 @@ text-range deletion aimed at the PO modal also took the package window and the �
 render blocks, which is what produced "nothing happens when I click the three dots." Both
 components still existed; nothing rendered them. **Edit that file with explicit,
 uniquely-anchored replacements, never by cutting between two matched strings.**
+
+---
+
+### Aug 12, 2026 — Decision: "Create WO" on the billing page creates the BOOKING too
+
+**Decided before any code was written. Build it this way.**
+
+Eli wants a Create WO button on `/billing` so the billing pipeline can be used
+before the calendar migration happens. The obvious implementation — insert a
+`work_orders` row directly — breaks two standing rules at once:
+
+- **`work_orders.booking_id` is load-bearing** (create idempotency via its UNIQUE
+  constraint, and how the runner hub finds work orders). A WO with no booking is
+  invisible to the runner and can be duplicated freely.
+- **`createWorkOrderForBooking` is the ONLY code path that inserts a work order.**
+  A second inserter is exactly the check-then-insert race that produced 27
+  duplicates out of 44 back in June.
+
+**So Create WO creates a session and its work order, through the existing path.**
+You fill in client, dates and studio; it writes the `bookings` row and calls
+`createWorkOrderForBooking`, same as the calendar does. The button is a shortcut
+into the normal flow, not a second way of making work orders.
+
+**Why this is better than the shortcut it replaces**, beyond not breaking anything:
+work orders created this way are ALREADY on the calendar. When the calendar
+migration happens there is nothing to reconcile — no parallel set of orphaned
+work orders to hunt down and attach to sessions that were entered separately.
+The interim tool and the destination produce the same data.
+
+**Watch-out for whoever builds it:** the session it creates must be gated the same
+way the calendar's is (`bookingShouldHaveWorkOrder`) and must carry a real status —
+a Recording/Filming/Event-Playback session, not a block. And `staff_mode` defaults
+matter: see the Studio Time seeding rules in CLAUDE.md before choosing what to
+write, or the seeded rows will get the wrong engineer/assistant role.
