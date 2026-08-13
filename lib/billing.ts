@@ -162,6 +162,14 @@ export type InvoiceRow = {
   paid: number
   /** Days since the invoice was SENT. Null when it hasn't been. */
   ageDays: number | null
+  /** The package was built and downloaded. NOT the same as sent — see below. */
+  downloadedAt: string | null
+  /**
+   * Built, downloaded, and still not marked sent after DOWNLOAD_STALE_DAYS.
+   * The reminder that makes the two-step send safe: without it, a package can
+   * sit finished in someone's Downloads folder and never reach the client.
+   */
+  staleDownload: boolean
   sentAt: string | null
   poNumber: string | null
   /** Set on the WORK ORDER — this package can go out without a PO. */
@@ -202,6 +210,19 @@ export type SummaryStat = {
 export const PAST_DUE_DAYS = 31
 
 export const PAGE_SIZE = 10
+/**
+ * In progress gets 20 (Eli, 2026-08-11). It is the working list — the one you
+ * scan top to bottom every morning — and paging through last night's work in
+ * tens is friction on the path people take daily. The finished lists stay at 10
+ * because you arrive at those looking for one specific thing.
+ */
+export const PROGRESS_PAGE_SIZE = 20
+export function pageSizeFor(bucket: BucketKey): number {
+  return bucket === 'progress' ? PROGRESS_PAGE_SIZE : PAGE_SIZE
+}
+
+/** Downloaded but still not sent after this long — the row goes hot. */
+export const DOWNLOAD_STALE_DAYS = 2
 
 const INVOICES_BUCKET = 'invoices'
 const SIGNED_URL_TTL = 60 * 60 // 1 hour
@@ -299,7 +320,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // this at compile time, and a `+`-concatenated string is not a literal to
     // TypeScript — every column then types as an error object. Do not "tidy"
     // this onto several lines with concatenation.
-    .select('id, booking_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total')
+    .select('id, booking_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total, invoice_downloaded_at')
     .order('session_date', { ascending: false })
   if (!dbResult('Loading invoices', error)) return []
   if (!wos || wos.length === 0) return []
@@ -422,6 +443,10 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       total: totals.grand,
       paid: totals.paid,
       ageDays: daysSince(w.invoice_sent_at ?? null),
+      downloadedAt: w.invoice_downloaded_at ?? null,
+      staleDownload:
+        step === 3 && !!w.invoice_downloaded_at
+        && (daysSince(w.invoice_downloaded_at) ?? 0) >= DOWNLOAD_STALE_DAYS,
       sentAt: w.invoice_sent_at ?? null,
       poNumber,
       noPoNeeded,
@@ -533,13 +558,23 @@ export function hasCodAlert(rows: InvoiceRow[]): boolean {
   return rows.some(r => r.bucket === 'balance')
 }
 
-export function paginate<T>(rows: T[], page: number): T[] {
-  const start = (page - 1) * PAGE_SIZE
-  return rows.slice(start, start + PAGE_SIZE)
+/**
+ * Packages built but never sent. This is the safety net that makes the two-step
+ * send safe rather than merely honest — it is counted on the tab, so a forgotten
+ * package is visible from anywhere on the page instead of only to someone who
+ * happens to scroll past its row.
+ */
+export function staleDownloads(rows: InvoiceRow[]): InvoiceRow[] {
+  return rows.filter(r => r.staleDownload)
 }
 
-export function pageCount(total: number): number {
-  return Math.max(1, Math.ceil(total / PAGE_SIZE))
+export function paginate<T>(rows: T[], page: number, size = PAGE_SIZE): T[] {
+  const start = (page - 1) * size
+  return rows.slice(start, start + size)
+}
+
+export function pageCount(total: number, size = PAGE_SIZE): number {
+  return Math.max(1, Math.ceil(total / size))
 }
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
@@ -633,7 +668,13 @@ export function nextAction(row: InvoiceRow): string | null {
   // hiding it — hiding the only button on a row communicates a broken screen,
   // not a blocker.
   if (row.step === 2) return 'Approve'
-  return 'Download & send'
+  // TWO ACTS, NOT ONE (ruling 2026-08-11). PRSFlo builds the file; a person
+  // emails it. So the button asks for what only they know, in order:
+  //   Download  → build the package
+  //   Mark sent → confirm it actually left
+  // The row stays In progress in between, which is the state that never existed
+  // before and is exactly where a forgotten package used to disappear.
+  return row.downloadedAt ? 'Mark sent' : 'Download'
 }
 
 // ─── Transitions ─────────────────────────────────────────────────────────────
@@ -702,6 +743,15 @@ export async function markSent(row: InvoiceRow): Promise<boolean> {
  * matters as much as the state: a stale timestamp would age an invoice that was
  * never actually sent.
  */
+/** Record that the package was built. Not a claim that anyone sent it. */
+export async function markDownloaded(row: InvoiceRow): Promise<boolean> {
+  const { error } = await supabase
+    .from('work_orders')
+    .update({ invoice_downloaded_at: new Date().toISOString() })
+    .eq('id', row.workOrderId)
+  return dbResult('Recording the download', error)
+}
+
 export async function pullBack(row: InvoiceRow): Promise<boolean> {
   // STRIP THE INVOICE TOO (ruling 2026-08-11). Eli: "we should strip it and
   // make it so you can't approve without uploading an invoice — that way they
@@ -729,6 +779,7 @@ export async function pullBack(row: InvoiceRow): Promise<boolean> {
       invoice_doc_path: null,
       invoice_total: null,
       invoice_sent_at: null,
+      invoice_downloaded_at: null,
       invoice_approved_at: null,
       invoice_approved_by: null,
     })

@@ -29,7 +29,6 @@
 //     included. Searching within the current tab would mean guessing the right
 //     folder before you can find anything: the exact Dropbox problem this page
 //     removes.
-//   · PAGINATION AT 10.
 //   · UPCOMING IS PINNED BELOW THE PAGER, not a footer row inside the list — a
 //     footer row in a paginated list falls onto page 3.
 //   · APPROVAL IS OWNERS ONLY. The button is hidden for everyone else, and a
@@ -37,9 +36,12 @@
 //   · DOUBLE-CLICK THE ROW to open it. No Open-WO button — opening a record to
 //     read it is navigation, not an action. Before the invoice it opens the
 //     work order; after, it opens the PACKAGE (both documents, one window).
-//   · DOWNLOAD & SEND IS ONE PRESS: builds ONE merged black-and-white PDF (work
-//     order + invoice) and marks it sent. No dialogue,
-//     because you have just looked at the package. The undo is in the ⋯ menu.
+//   · DOWNLOAD AND SENT ARE TWO ACTS. PRSFlo builds ONE merged black-and-white
+//     PDF (work order + invoice); a person emails it. So Download records only
+//     that the file was built, and Mark sent is the human confirmation. A
+//     package built but not sent for two days goes hot — that reminder is what
+//     makes the split safe rather than merely honest.
+//   · PAGINATION: 20 on In progress (the daily working list), 10 elsewhere.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -52,8 +54,9 @@ import {
   fetchInvoices, searchRows, rowsInBucket, bucketCounts, paginate,
   pageCount, summarise, isPastDue, bucketLabel, tabsFor, hasCodAlert, nextAction,
   approveInvoice, markSent, markPaid, closeInvoice, reopenInvoice,
-  uploadInvoiceDoc, signedInvoiceUrl, downloadPackage, pullBack,
-  BILLING_LIGHTS, COD_LIGHTS, PAGE_SIZE,
+  uploadInvoiceDoc, signedInvoiceUrl, downloadPackage, pullBack, markDownloaded,
+  staleDownloads, pageSizeFor,
+  BILLING_LIGHTS, COD_LIGHTS,
   type InvoiceRow, type BucketKey, type ClosedReason, type Pipeline,
 } from '@/lib/billing'
 
@@ -110,6 +113,9 @@ export default function BillingPage() {
   const counts = useMemo(() => bucketCounts(rows, pipeline), [rows, pipeline])
   const stats = useMemo(() => summarise(rows, pipeline), [rows, pipeline])
   const codAlert = useMemo(() => hasCodAlert(rows), [rows])
+  // Packages built but never sent. The safety net that makes a two-step send
+  // safe rather than merely honest.
+  const stale = useMemo(() => staleDownloads(rows).length, [rows])
 
   const activeBucket: BucketKey = showUpcoming ? 'upcoming' : tab
   const visible = useMemo(() => {
@@ -117,9 +123,10 @@ export default function BillingPage() {
     return rowsInBucket(rows, activeBucket, pipeline)
   }, [rows, activeBucket, pipeline, query, searching])
 
-  const pages = pageCount(visible.length)
+  const perPage = pageSizeFor(activeBucket)
+  const pages = pageCount(visible.length, perPage)
   const safePage = Math.min(page, pages)
-  const pageRows = paginate(visible, safePage)
+  const pageRows = paginate(visible, safePage, perPage)
   const owed = visible.reduce((s, r) => s + Math.max(0, r.balance), 0)
   const upcomingCount = counts.upcoming ?? 0
   // Age counts days since SENT, so on In progress / Needs review / Upcoming it
@@ -212,13 +219,13 @@ export default function BillingPage() {
       // ONE FILE: the work order drawn in black and white with the invoice's
       // pages stapled on, built fresh from the live record. Then the 31-day
       // clock starts. The undo lives in the row's ⋯ menu.
-      case 'Download & send': return run(row.workOrderId, async () => {
+      // DOWNLOAD builds the file and records only that. It does NOT claim the
+      // invoice was sent — PRSFlo never sends anything, a person emails it.
+      case 'Download':        return run(row.workOrderId, async () => {
         const ok = await downloadPackage(row.workOrderId)
-        // Only move it if the file actually arrived. Marking an invoice sent
-        // when the download failed would put it in the chase queue having never
-        // reached the client — the one lie this page must not tell.
-        return ok ? markSent(row) : false
+        return ok ? markDownloaded(row) : false
       })
+      case 'Mark sent':       return run(row.workOrderId, () => markSent(row))
       default:                return
     }
   }
@@ -296,7 +303,8 @@ export default function BillingPage() {
             {b.label}{' '}
             <span
               className="c-bn"
-              style={b.hot && (counts[b.key] ?? 0) > 0 ? { color: 'var(--c-st-hot)', opacity: 1 } : undefined}
+              style={(b.hot && (counts[b.key] ?? 0) > 0) || (b.key === 'progress' && stale > 0)
+                ? { color: 'var(--c-st-hot)', opacity: 1 } : undefined}
             >
               {counts[b.key] ?? 0}
             </span>
@@ -351,8 +359,8 @@ export default function BillingPage() {
         {visible.length > 0 && (
           <div className="c-bpager">
             <span className="c-binfo">
-              {(safePage - 1) * PAGE_SIZE + 1}–
-              {Math.min(safePage * PAGE_SIZE, visible.length)} of {visible.length}
+              {(safePage - 1) * perPage + 1}–
+              {Math.min(safePage * perPage, visible.length)} of {visible.length}
             </span>
             {pages > 1 && Array.from({ length: pages }, (_, i) => i + 1).map(p => (
               <span key={p} className={`c-bpg${p === safePage ? ' c-on' : ''}`} onClick={() => setPage(p)}>{p}</span>
@@ -408,6 +416,7 @@ export default function BillingPage() {
           onCancel={() => setMoreFor(null)}
           onOpenDoc={() => { openDoc(moreFor); setMoreFor(null) }}
           onClose={() => { const r = moreFor; setMoreFor(null); setClosing(r) }}
+          onRedownload={() => { downloadPackage(moreFor.workOrderId); setMoreFor(null) }}
           onPullBack={() => {
             const r = moreFor
             setMoreFor(null)
@@ -533,6 +542,13 @@ function Row({
           <span className="c-bflag c-soon">Not started</span>
         ) : wantsInvoice ? (
           <span className="c-bhint">{dragOver ? 'Release to attach' : 'Drop invoice here'}</span>
+        ) : row.staleDownload ? (
+          // Downloaded days ago and still not sent. Hot, because the work is
+          // already done and the only thing missing is the one act PRSFlo
+          // cannot see.
+          <span className="c-bdrift" title="The package was built but nobody has confirmed it went out">
+            Built, not sent
+          </span>
         ) : row.bucket === 'balance' ? (
           // A COD balance has no button — the money is recorded on the work
           // order, and a button here would be a second door to that field. But
@@ -594,12 +610,13 @@ function Row({
  * "Close" here means close the INVOICE — write it off or void it — and the
  * modal it opens says so again before anything happens.
  */
-function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack }: {
+function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload }: {
   row: InvoiceRow
   onCancel: () => void
   onOpenDoc: () => void
   onClose: () => void
   onPullBack: () => void
+  onRedownload: () => void
 }) {
   const canClose = row.step >= 2 && row.bucket !== 'closed' && row.bucket !== 'paid'
   return (
@@ -609,6 +626,13 @@ function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack }: {
         <div style={{ fontSize: 12.5, marginBottom: 12 }}>{row.client}</div>
         {row.hasInvoiceDoc && (
           <button className="c-bact c-bblock" onClick={onOpenDoc}>Open the attached invoice PDF</button>
+        )}
+        {/* Build the package again — after a correction, or because the first
+            download went astray. Here rather than on the row: the row's button
+            is whatever comes NEXT, and once you have downloaded, what comes
+            next is confirming it went out. */}
+        {row.step === 3 && row.downloadedAt && (
+          <button className="c-bact c-bblock" onClick={onRedownload}>Download the package again</button>
         )}
         {/* PULL IT BACK — one control that means "this isn't right, start the
             end of the process again". It clears the sent stamp, the approval
