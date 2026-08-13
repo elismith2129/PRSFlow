@@ -516,7 +516,10 @@ function Row({
       <span className="c-bwho">
         <b>{row.client}</b>
         {row.artist ? <span> · {row.artist}</span> : null}
-        {row.sessionDate ? <span> · {row.sessionDate}</span> : null}
+        {/* The real span and the real rooms. A raw 2026-08-05 on a four-day
+            session read as a one-nighter, and nobody scans ISO dates. */}
+        {row.dateRange ? <span> · {row.dateRange}</span> : null}
+        {row.rooms ? <span> · {row.rooms}</span> : null}
         {/* Which bucket a hit lives in — only while searching, since otherwise
             the tab already says it. */}
         {searching ? <span> · {bucketLabel(row.bucket)}</span> : null}
@@ -591,7 +594,13 @@ function Row({
             title={blocked ? 'Add the PO number on the work order — or set PO req’d to No there' : undefined}
             style={blocked ? { cursor: 'default' } : undefined}
           >
-            {blocked ? 'Needs PO' : label}
+            {/* THE LABEL DOES NOT CHANGE WHEN BLOCKED (fix, 2026-08-11). It used
+                to read "Needs PO", which put the reason in two places at once —
+                the flag column already says AWAITING PO — and made the button
+                look like a different control from the one on the row above it.
+                A greyed Approve says "this is the next step and you can't take
+                it yet"; the flag says why. One fact, one place. */}
+            {label}
           </button>
         )}
       </span>

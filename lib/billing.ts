@@ -190,6 +190,14 @@ export type InvoiceRow = {
    * expensive thing to find out from the client rather than from the app.
    */
   invoiceDrift: boolean
+  /**
+   * "Aug 5–8" — the REAL span, from the work order's own dated rows.
+   * `sessionDate` alone made a four-day session look like a one-nighter, which
+   * is the single most misleading thing a billing row can say.
+   */
+  dateRange: string | null
+  /** Rooms actually used, e.g. "B" or "B, A" — again from the rows. */
+  rooms: string | null
   /** True when the session's last date has passed — drives the Open sort. */
   ended: boolean
 }
@@ -223,6 +231,8 @@ export function pageSizeFor(bucket: BucketKey): number {
 
 /** Downloaded but still not sent after this long — the row goes hot. */
 export const DOWNLOAD_STALE_DAYS = 2
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 const INVOICES_BUCKET = 'invoices'
 const SIGNED_URL_TTL = 60 * 60 // 1 hour
@@ -396,6 +406,24 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     const lastDate: string | null = dates.length ? dates[dates.length - 1] : null
     const ended = lastDate !== null && lastDate < today
 
+    // METADATA ON THE LINE (Eli, 2026-08-11). Free: these rows are already
+    // loaded for the totals, so no extra query. Derived from the ROWS, not the
+    // booking, for the same reason `ended` is — the rows are what actually
+    // happened once a session ran long or finished early.
+    const fmt = (d: string) => {
+      const [y, m, day] = d.split('-').map(Number)
+      if (!y || !m || !day) return d
+      return `${MONTHS[m - 1]} ${day}`
+    }
+    const firstDate: string | null = dates.length ? dates[0] : null
+    const dateRange = firstDate
+      ? (firstDate === lastDate ? fmt(firstDate) : `${fmt(firstDate)}–${fmt(lastDate!)}`)
+      : (w.session_date ? fmt(w.session_date) : null)
+    const roomList = Array.from(new Set(
+      stRows.map((r: any) => (r.studio || '').trim()).filter(Boolean),
+    ))
+    const rooms = roomList.length ? roomList.join(', ') : null
+
     // DRIFT: the work order has been edited since the invoice was raised, so
     // what PRSFlo says is owed no longer matches what the client was billed.
     // Rounded to the cent before comparing — floating-point noise is not drift.
@@ -464,6 +492,8 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       approvedAt: w.invoice_approved_at ?? null,
       invoicedTotal,
       invoiceDrift,
+      dateRange,
+      rooms,
       ended,
     }
   })
