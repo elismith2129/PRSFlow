@@ -14,6 +14,7 @@ const STUDIO_META: Record<string, { label: string; abbr: string }> = {
   encore: { label: 'Encore', abbr: 'ERS' },
   track: { label: 'Track', abbr: 'TRS' },
 }
+const STUDIO_ORDER = ['paramount', 'ameraycan', 'encore', 'track'] as const
 
 type WOStatus = { id: string; status: string } | null
 
@@ -41,6 +42,14 @@ export default function StudioDailyOpsPage() {
 
   // Stable today string — local calendar date matching how bookings are stored
   const today = getLocalToday()
+
+  // One-landing merge (2026-08-14): remember this studio so the next launch of
+  // /runner comes straight here, skipping the picker. Same key the picker uses.
+  useEffect(() => {
+    if (STUDIO_META[studio]) {
+      try { localStorage.setItem('prsflo-runner-studio', studio) } catch {}
+    }
+  }, [studio])
 
   const load = useCallback(async () => {
     // ── Today ──────────────────────────────────────────────────────────────
@@ -263,7 +272,7 @@ export default function StudioDailyOpsPage() {
         background: 'var(--c-bg)',
       }}>
         <button
-          onClick={() => router.push('/runner')}
+          onClick={() => router.push('/runner?choose=1')}
           aria-label="Back to studio list"
           className="c-control c-raised"
           style={{
@@ -273,13 +282,39 @@ export default function StudioDailyOpsPage() {
             fontSize: 16, cursor: 'pointer',
           }}
         >←</button>
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <div className="c-arch" style={{ fontSize: 18, letterSpacing: '-0.02em', lineHeight: 1.15 }}>
             {meta.label}
           </div>
           <div style={{ fontSize: 11.5, opacity: 0.5 }}>
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
           </div>
+        </div>
+        {/* Studio switcher (one-landing merge): floating runners move studios
+            in one tap, no picker round-trip. Switching re-remembers. */}
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+          {STUDIO_ORDER.map(k => {
+            const on = k === studio
+            return (
+              <button
+                key={k}
+                onClick={() => { if (!on) router.push(`/runner/${k}`) }}
+                aria-label={STUDIO_META[k].label}
+                style={{
+                  minWidth: 34, minHeight: 30, borderRadius: 99,
+                  padding: '0 7px',
+                  background: on ? 'var(--c-wash2)' : 'transparent',
+                  color: 'var(--c-fg)', opacity: on ? 1 : 0.45,
+                  border: 'none', font: 'inherit',
+                  fontSize: 10, fontWeight: 800, letterSpacing: '0.04em',
+                  cursor: on ? 'default' : 'pointer',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                {STUDIO_META[k].abbr}
+              </button>
+            )
+          })}
         </div>
       </div>
 
