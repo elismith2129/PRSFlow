@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Where the Billing / COD switch lives</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  BILLING / COD SWITCH — placement (2026-08-13).
+
+  DECIDED ALREADY: option A from cod-visibility-options.html — each side of the
+  switch carries its live count, and COD's goes HOT when a balance exists. That
+  is not in question here. Eli: "thing A, but move it to a more noticeable
+  place."
+
+  So the only question is WHERE. Today it sits top-right, beside the title,
+  which is the conventional home for a view control and also the least-read
+  corner of the screen — you land on this page reading left-to-right from the
+  heading, and the switch is the last thing your eye reaches.
+
+  THE THING TO WEIGH: this control is not a filter. It changes what the entire
+  page is ABOUT — different tabs, different columns of meaning, different work.
+  A control with that much authority sitting where a sort-order dropdown usually
+  goes is under-stated by convention rather than by intent.
+
+  A · IT IS THE TITLE      the page is named by the pipeline you are in
+  B · UNDER THE TITLE      full-size, left-aligned, first thing under the heading
+  C · FULL-WIDTH BAND      two big halves, impossible to miss or mis-hit
+  D · FIRST-TIER TABS      pipeline above the bucket tabs, as a tab row
+
+  Counts are live in all four; COD is hot in all four. Soft skin (§7c);
+  headers are text, not bars (§16c). Mock polarity INVERTED vs the app.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --hot-text:#fff4f2;
+  --st-hot:#ff5a4d; --st-warm:#ffa94d; --st-booked:#43dfae;
+  --ivory:#d5d0c2; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+  --ctlsh:0 1px 2px rgba(42,39,34,.10);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  --ctlsh:0 1px 3px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 14px/1.5 system-ui,-apple-system,sans-serif;padding:20px;-webkit-font-smoothing:antialiased}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+h1{font-family:'Archivo Black',sans-serif;font-size:21px;letter-spacing:-.03em}
+.sw{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);margin:12px 8px 16px 0}
+.sw button{padding:6px 14px;border-radius:99px;font:inherit;font-size:12px;font-weight:700;border:none;background:none;color:var(--fg);opacity:.55;cursor:pointer}
+.sw button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .sw button.on{background:var(--fg);color:var(--bg)}
+.why{max-width:1000px;font-size:12.5px;line-height:1.65;opacity:.72;margin-bottom:18px}
+.why b{opacity:1}
+.opt{display:none}.opt.on{display:block}
+.page{max-width:1000px}
+.lab{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45;display:block;margin-bottom:3px}
+.grow{flex:1}
+.dots{opacity:.3;font-size:15px}
+
+/* the pill switch (current form) */
+.seg{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);box-shadow:var(--ctlsh)}
+.seg button{display:flex;align-items:center;gap:7px;padding:5px 16px;border-radius:99px;font:inherit;font-size:12px;font-weight:700;border:none;background:none;color:var(--fg);opacity:.6;cursor:pointer}
+.seg button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .seg button.on{background:var(--fg);color:var(--bg)}
+.segn{font-family:ui-monospace,monospace;font-size:10.5px;opacity:.55}
+.seg button.on .segn{opacity:.7}
+.segn.hot{background:var(--st-hot);color:var(--hot-text);border-radius:99px;padding:1px 7px;opacity:1;font-weight:700}
+
+/* A · the title IS the switch */
+.titlesw{display:flex;align-items:baseline;gap:20px}
+.titlesw .t{font-family:'Archivo Black',sans-serif;font-size:30px;letter-spacing:-.03em;line-height:1.05;opacity:.28;cursor:pointer;display:flex;align-items:baseline;gap:9px}
+.titlesw .t.on{opacity:1}
+.titlesw .t .c{font-family:ui-monospace,monospace;font-size:12px;font-weight:400;opacity:.5}
+.titlesw .t.on .c{opacity:.6}
+.titlesw .t .c.hot{background:var(--st-hot);color:var(--hot-text);border-radius:99px;padding:2px 8px;font-size:11px;font-weight:700;opacity:1}
+
+/* B · big switch under the title */
+.segbig button{padding:9px 26px;font-size:14px}
+.segbig .segn{font-size:11.5px}
+
+/* C · full-width band */
+.band{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;border-radius:16px;background:var(--wash);box-shadow:var(--ctlsh);margin-bottom:12px}
+.band button{display:flex;align-items:center;justify-content:center;gap:10px;padding:13px;border-radius:13px;font:inherit;font-size:14px;font-weight:800;letter-spacing:.04em;border:none;background:none;color:var(--fg);opacity:.5;cursor:pointer}
+.band button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .band button.on{background:var(--fg);color:var(--bg)}
+.band .sub{font-size:10.5px;font-weight:600;opacity:.55;letter-spacing:0}
+.band .hot{background:var(--st-hot);color:var(--hot-text);border-radius:99px;padding:2px 9px;font-size:11px;font-weight:800;letter-spacing:0}
+
+/* D · first-tier tabs */
+.tier{display:flex;gap:24px;padding:0 4px 8px;margin-bottom:10px}
+.tier span{font-size:13px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;opacity:.35;cursor:pointer;display:flex;align-items:center;gap:8px;padding-bottom:7px}
+.tier span.on{opacity:1;box-shadow:inset 0 -2px 0 var(--fg)}
+.tier .c{font-family:ui-monospace,monospace;font-size:10.5px;font-weight:400;opacity:.6}
+.tier .c.hot{background:var(--st-hot);color:var(--hot-text);border-radius:99px;padding:1px 7px;opacity:1;font-weight:700}
+
+.sum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--srf);box-shadow:var(--softsh);border-radius:14px;padding:10px 12px}
+.stat .n{font-family:'Archivo Black',sans-serif;font-size:20px;letter-spacing:-.02em}
+.stat .k{font-size:10px;opacity:.55;margin-top:1px}
+.stat.alert .n{color:var(--st-hot)}
+.search{display:flex;align-items:center;gap:8px;background:var(--wash);border-radius:12px;padding:0 10px;height:32px;margin-bottom:10px;font-size:12.5px;opacity:.5}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tab{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;background:var(--wash);font-size:12px;font-weight:700;box-shadow:var(--ctlsh)}
+.tab.on{background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .tab.on{background:var(--fg);color:var(--bg)}
+.tab .n{font-family:ui-monospace,monospace;font-size:10.5px;opacity:.65}
+.pane{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:12px}
+.hd{display:flex;align-items:baseline;justify-content:space-between;padding:0 3px 7px;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.45}
+.row{display:grid;grid-template-columns:76px minmax(0,1fr) 150px 90px 110px;align-items:center;gap:10px;padding:7px 10px;border-radius:11px;font-size:12px}
+.row .inv{font-family:ui-monospace,monospace;font-size:11px;opacity:.6}
+.row .amt{font-family:ui-monospace,monospace;text-align:right}
+.row .act{justify-self:center}
+.bact{font-size:9.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--wash2);border:none;color:var(--fg);cursor:pointer}
+.lt{display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:800;text-transform:uppercase;opacity:.28;padding:2px 5px;border-radius:99px}
+.lt i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.45}
+.lt.done{opacity:.85}.lt.done i{background:var(--st-booked);opacity:1}
+.lt.next{opacity:1;background:var(--wash2)}.lt.next i{background:var(--st-warm);opacity:1}
+</style>
+</head>
+<body>
+
+<h1>Where the switch lives</h1>
+<div class="sw">
+  <button class="on" onclick="pick('a',this)">A · It is the title</button>
+  <button onclick="pick('b',this)">B · Under the title</button>
+  <button onclick="pick('c',this)">C · Full-width band</button>
+  <button onclick="pick('d',this)">D · First-tier tabs</button>
+</div>
+<div class="sw">
+  <button class="on" onclick="th('dark',this)">Dark</button>
+  <button onclick="th('light',this)">Light</button>
+</div>
+<p class="why" id="why"></p>
+
+<div class="page">
+  <!-- ══ A ══ -->
+  <div class="opt on" id="o-a">
+    <div style="display:flex;align-items:flex-start;gap:16px;padding:2px 4px 16px">
+      <div>
+        <span class="lab">Work orders &amp; invoices</span>
+        <div class="titlesw">
+          <span class="t on">Billing <span class="c">14</span></span>
+          <span class="t">COD <span class="c hot">3</span></span>
+        </div>
+      </div>
+      <div class="grow"></div><span class="dots">⋯</span>
+    </div>
+  </div>
+
+  <!-- ══ B ══ -->
+  <div class="opt" id="o-b">
+    <div style="display:flex;align-items:center;gap:16px;padding:2px 4px 12px">
+      <div><span class="lab">Work orders &amp; invoices</span><h1 style="font-size:26px">Billing</h1></div>
+      <div class="grow"></div><span class="dots">⋯</span>
+    </div>
+    <div style="padding:0 4px 14px">
+      <div class="seg segbig">
+        <button class="on">Billing <span class="segn">14</span></button>
+        <button>COD <span class="segn hot">3</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ C ══ -->
+  <div class="opt" id="o-c">
+    <div style="display:flex;align-items:center;gap:16px;padding:2px 4px 12px">
+      <div><span class="lab">Work orders &amp; invoices</span><h1 style="font-size:26px">Billing</h1></div>
+      <div class="grow"></div><span class="dots">⋯</span>
+    </div>
+    <div class="band">
+      <button class="on">Billing <span class="sub">14 open</span></button>
+      <button>COD <span class="hot">1 balance due</span> <span class="sub">3 to review</span></button>
+    </div>
+  </div>
+
+  <!-- ══ D ══ -->
+  <div class="opt" id="o-d">
+    <div style="display:flex;align-items:center;gap:16px;padding:2px 4px 10px">
+      <div><span class="lab">Work orders &amp; invoices</span><h1 style="font-size:26px">Billing</h1></div>
+      <div class="grow"></div><span class="dots">⋯</span>
+    </div>
+    <div class="tier">
+      <span class="on">Billing <span class="c">14</span></span>
+      <span>COD <span class="c hot">3</span></span>
+    </div>
+  </div>
+
+  <!-- shared page body -->
+  <div class="sum">
+    <div class="stat"><div class="n">$68,921</div><div class="k">Outstanding</div></div>
+    <div class="stat"><div class="n">$24,400</div><div class="k">Received this month</div></div>
+    <div class="stat"><div class="n">4</div><div class="k">Waiting on approval</div></div>
+    <div class="stat alert"><div class="n">2</div><div class="k">Over 31 days</div></div>
+  </div>
+  <div class="search">⌕ Search everything — client, artist, invoice #, WO #, PO…</div>
+  <div class="tabs">
+    <span class="tab on">In progress <span class="n">7</span></span>
+    <span class="tab">Awaiting payment <span class="n">5</span></span>
+    <span class="tab">Paid <span class="n">2</span></span>
+    <span class="tab">Closed <span class="n">0</span></span>
+  </div>
+  <div class="pane">
+    <div class="hd"><b>In progress</b><span class="mono" style="opacity:.7;letter-spacing:0">7</span></div>
+    <div class="row"><span class="inv">WO-1042</span><span>Kendrick Lamar <span style="opacity:.5">· Interscope</span></span><span><span class="lt done"><i></i>Reviewed</span><span class="lt next"><i></i>Invoiced</span></span><span class="amt">$4,840.00</span><span class="act"><button class="bact">Attach invoice</button></span></div>
+    <div class="row"><span class="inv">WO-1041</span><span>Skilla Baby <span style="opacity:.5">· Warner</span></span><span><span class="lt done"><i></i>Reviewed</span><span class="lt done"><i></i>Invoiced</span></span><span class="amt">$1,950.00</span><span class="act"><button class="bact">Approve</button></span></div>
+    <div class="row"><span class="inv">WO-1039</span><span>Nia Rowe <span style="opacity:.5">· 10K Projects</span></span><span><span class="lt done"><i></i>Reviewed</span><span class="lt next"><i></i>Invoiced</span></span><span class="amt">$1,240.00</span><span class="act"><button class="bact">Attach invoice</button></span></div>
+  </div>
+</div>
+
+<script>
+const WHY={
+ a:"<b>A · It is the title.</b> The pipeline names the page, in Archivo at heading scale — the inactive one sits beside it dimmed, with its count. Nothing on the screen is more noticeable than the title, and it is honest: this control decides what the page is ABOUT, so it belongs where the page says what it is. <b>Cost:</b> a heading that is also a control is unusual, and \"Billing\" stops being a fixed landmark — the page appears to rename itself.",
+ b:"<b>B · Under the title.</b> The same pill switch you have, at a larger size, on its own line directly beneath the heading — first thing under the title, left-aligned where reading starts. Smallest change of the four and keeps every existing habit. <b>Cost:</b> the least noticeable of the four; it is still a control among controls, just an earlier one.",
+ c:"<b>C · Full-width band.</b> Two halves across the full width, each a large target carrying its own summary — COD's says what is wrong, not just how many. Impossible to miss and impossible to mis-hit. <b>Cost:</b> the heaviest. It spends a full band of vertical space on navigation before any work appears, and it shouts on a page that is otherwise quiet.",
+ d:"<b>D · First-tier tabs.</b> The pipeline becomes a tab row ABOVE the bucket tabs, so the page reads as a hierarchy: which business, then which bucket. Familiar pattern, no new vocabulary. <b>Cost:</b> two tab rows stacked can read as one confusing eight-tab strip — which is close to the nine-tab problem the two pipelines were invented to solve.",
+}
+function pick(k,el){
+ document.querySelectorAll('.opt').forEach(o=>o.classList.remove('on'))
+ document.getElementById('o-'+k).classList.add('on')
+ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));el.classList.add('on')
+ document.getElementById('why').innerHTML=WHY[k]
+}
+function th(t,el){document.documentElement.setAttribute('data-theme',t)
+ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));el.classList.add('on')}
+document.getElementById('why').innerHTML=WHY.a
+</script>
+</body>
+</html>

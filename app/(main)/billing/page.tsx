@@ -348,9 +348,12 @@ export default function BillingPage() {
       <div className={`c-panel${showAge ? "" : " c-bage-off"}`}>
         <div className="c-lozenge">
           <b>{searching ? 'Search results' : showUpcoming ? 'Upcoming sessions' : bucketLabel(tab)}</b>
-          <span className="c-ct">
-            {visible.length}{owed > 0 ? ` · ${formatCurrency(String(owed))}` : ''}
-          </span>
+          {/* COUNT ONLY (Eli, 2026-08-13: "don't need the balance shown in the
+              top right corner of the list. messy."). The bucket total was a
+              third money figure on a screen that already leads with Outstanding
+              and Received in the summary — and unlike those two it changed
+              meaning with every tab, so it read as noise rather than as a fact. */}
+          <span className="c-ct">{visible.length}</span>
         </div>
 
         {!isMobile && visible.length > 0 && (
