@@ -56,6 +56,7 @@ import {
   pageCount, summarise, isPastDue, bucketLabel, tabsFor, hasCodAlert, nextAction,
   approveInvoice, markSent, markPaid, closeInvoice, reopenInvoice,
   uploadInvoiceDoc, signedInvoiceUrl, signedPackageUrl, downloadPackage, pullBack, markDownloaded,
+  pipelineCount,
   downloadBlankWorkOrder, staleDownloads, pageSizeFor,
   BILLING_LIGHTS, COD_LIGHTS,
   type InvoiceRow, type BucketKey, type ClosedReason, type Pipeline,
@@ -131,7 +132,6 @@ export default function BillingPage() {
   const pages = pageCount(visible.length, perPage)
   const safePage = Math.min(page, pages)
   const pageRows = paginate(visible, safePage, perPage)
-  const owed = visible.reduce((s, r) => s + Math.max(0, r.balance), 0)
   const upcomingCount = counts.upcoming ?? 0
   // Age counts days since SENT, so on In progress / Needs review / Upcoming it
   // is a column of dashes. Dropped there rather than filled with nothing.
@@ -253,31 +253,43 @@ export default function BillingPage() {
 
   return (
     <div className="c-root">
-      {/* HEADER — micro-label over the Archivo title, and the TOGGLE, which is
-          the one control that changes what everything below means. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '2px 4px 14px', flexWrap: 'wrap' }}>
+      {/* HEADER — THE PIPELINE IS THE TITLE (RULING 2026-08-13, spec §17).
+          Eli: "I don't want staff to forget about COD."
+
+          A toggle shows you the side you are ON and says nothing about the side
+          you are not on — and the risk is asymmetric. A forgotten billing
+          invoice is late; a forgotten COD balance is money that was meant to be
+          collected at the desk and never will be, because nobody knows. So both
+          words are always in the heading, and the count beside COD goes hot the
+          moment a balance exists. You cannot read this page without reading
+          "COD".
+
+          This replaces the top-right pill switch, which sat in the conventional
+          home for a view control AND the least-read corner of the screen — a
+          quiet place for the one control that changes what the whole page is
+          about. */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: '2px 4px 14px', flexWrap: 'wrap' }}>
         <div>
           <span className="c-label" style={{ display: 'block', marginBottom: 3 }}>Work orders &amp; invoices</span>
-          <h1 className="c-arch" style={{ fontSize: isMobile ? 20 : 26, letterSpacing: '-0.03em', lineHeight: 1.05 }}>
-            Billing
-          </h1>
+          <div className="c-btitle" style={{ fontSize: isMobile ? 20 : 26 }}>
+            {(['billing', 'cod'] as Pipeline[]).map(p => (
+              <button
+                key={p}
+                className={`c-arch${pipeline === p ? ' c-on' : ''}`}
+                onClick={() => switchPipeline(p)}
+                aria-current={pipeline === p ? 'page' : undefined}
+              >
+                {p === 'billing' ? 'Billing' : 'COD'}
+                {/* Hot only on COD, only when a balance exists. Sanctioned under
+                    hot-as-needs-you-now (§5) — this is money nobody is chasing. */}
+                <span className={`c-btitlen${p === 'cod' && codAlert ? ' c-hot' : ''}`}>
+                  {pipelineCount(rows, p)}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
         <div style={{ flex: 1 }} />
-        <div className="c-seg">
-          <button className={pipeline === 'billing' ? 'c-on' : ''} onClick={() => switchPipeline('billing')}>
-            Billing
-          </button>
-          <button
-            className={pipeline === 'cod' ? 'c-on' : ''}
-            onClick={() => switchPipeline('cod')}
-            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            COD
-            {/* The dot only exists while a COD balance does. A rare problem you
-                have to go looking for is one you find late. */}
-            {codAlert && <i className="c-bsegdot" />}
-          </button>
-        </div>
         {/* PAGE-LEVEL "⋯" (2026-08-13). Same control as the row's, one level up:
             things that belong to the PAGE rather than to an invoice. It is not a
             header button because a blank work order is rare — Eli: "these are

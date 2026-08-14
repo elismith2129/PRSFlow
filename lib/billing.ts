@@ -612,6 +612,18 @@ export function bucketCounts(rows: InvoiceRow[], pipeline: Pipeline): Record<str
  * toggle, so a missed collection is visible from the Billing side without going
  * to look. A rare problem you have to go looking for is one you find late.
  */
+/**
+ * Work outstanding in a pipeline — the number beside its name in the heading
+ * (spec §17). Everything not paid and not closed, because that is what "is
+ * there anything for me over there?" means.
+ *
+ * Deliberately NOT the total row count: a pipeline whose work is all finished
+ * should read 0, not 400. A count that only ever grows is wallpaper.
+ */
+export function pipelineCount(rows: InvoiceRow[], pipeline: Pipeline): number {
+  return activeRows(rows).filter(r => r.pipeline === pipeline && r.bucket !== 'paid').length
+}
+
 export function hasCodAlert(rows: InvoiceRow[]): boolean {
   return rows.some(r => r.bucket === 'balance')
 }

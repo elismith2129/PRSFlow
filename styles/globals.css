@@ -1891,9 +1891,9 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-bup .c-bn { margin-left: 0; }
 .c-bup .c-go { margin-left: auto; opacity: .5; }
 
-/* Hot dot on the COD side of the toggle whenever a balance exists, so a missed
-   collection is visible from the Billing side without going to look. */
-.c-bsegdot { width: 7px; height: 7px; border-radius: 50%; background: var(--c-st-hot); flex-shrink: 0; }
+/* `.c-bsegdot` removed 2026-08-13. It was the hot dot on the COD side of the old
+   top-right pill switch — binary, and silent about ordinary COD work. Superseded
+   by the hot COUNT in the page heading (spec §17), which says how many. */
 
 .c-bpill {
   display: inline-flex; align-items: center; border-radius: 99px; padding: 2px 9px;
@@ -2159,3 +2159,31 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 }
 
 /* ═══ END SOFT SKIN ═════════════════════════════════════════════════════════ */
+/* ── BILLING: the pipeline IS the title (RULING 2026-08-13, spec §17) ───────
+   Both pipelines live in the page heading, so the page cannot be read without
+   reading "COD". The inactive one stays fully legible at low opacity — dimmed
+   is not hidden; that is the entire point of the ruling. */
+.c-btitle { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
+.c-btitle > button {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: inherit; letter-spacing: -0.03em; line-height: 1.05;
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: var(--c-fg); opacity: 0.28;
+  transition: opacity .14s ease;
+}
+.c-btitle > button:hover { opacity: 0.6; }
+.c-btitle > button.c-on, .c-btitle > button.c-on:hover { opacity: 1; }
+/* The count. Mono, quiet — it is a fact about the word beside it, not a badge. */
+.c-btitlen {
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 12px; font-weight: 400; letter-spacing: 0; opacity: 0.5;
+}
+.c-btitle > button.c-on .c-btitlen { opacity: 0.6; }
+/* HOT = money nobody is chasing. Full strength even on the INACTIVE side —
+   that is the case the whole ruling exists for. */
+.c-btitlen.c-hot,
+.c-btitle > button.c-on .c-btitlen.c-hot {
+  background: var(--c-st-hot); color: var(--c-hot-text);
+  border-radius: 99px; padding: 2px 8px;
+  font-size: 11px; font-weight: 700; opacity: 1;
+}

@@ -590,6 +590,33 @@ A studio line and its staff lines are ONE fact and must look like one.
 - Cost accepted: a long work order is taller than it was. If that becomes a
   problem the answer is a shorter row, not a return to zebra.
 
+## 17. Billing / COD — THE PIPELINE IS THE TITLE (RULING 2026-08-13)
+
+Eli: *"I don't want staff to forget about COD."* Reference:
+`docs/design-refs/cod-visibility-options.html` (option A — counts on the switch)
+placed per `docs/design-refs/cod-toggle-placement.html` (option A — it is the
+title). B/C/D rejected in both files.
+
+**The diagnosis:** a toggle shows you the side you are ON and says nothing about
+the side you are not on. The only cross-pipeline signal was a hot dot — binary,
+and silent about ordinary COD work. And the risk is asymmetric: a forgotten
+billing invoice is late; a forgotten COD balance is money that was supposed to be
+collected at the desk and never will be, because nobody knows.
+
+- **The two pipelines ARE the page heading**, rendered in Archivo at title scale.
+  The active one is full strength; the other sits beside it at ~28% opacity.
+  Both are always readable, so the page cannot be read without reading "COD".
+- **Each carries a live count** — work outstanding in that pipeline (everything
+  not paid and not closed). **COD's count goes HOT (`--c-st-hot` fill) whenever a
+  balance due exists**, which is sanctioned under hot-as-needs-you-now (§5).
+- The `⋯` page menu stays at the far right. The old top-right pill switch is
+  removed — it was in the conventional home for a view control and the
+  least-read corner of the screen, which under-stated a control that changes
+  what the entire page is about.
+- **Accepted cost:** the page appears to rename itself, so "Billing" stops being
+  a fixed landmark in the rail-to-heading path. Judged worth it — the rail entry
+  still says Billing, so the landmark survives where navigation actually happens.
+
 ### 16c. TABLE CHROME IS TEXT, NOT BARS (RULING 2026-08-13 — supersedes §16b)
 
 Eli, after seeing §16b built: *"looks like headers and footers are half round and
