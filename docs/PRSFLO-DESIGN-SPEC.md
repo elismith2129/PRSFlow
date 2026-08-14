@@ -720,6 +720,40 @@ Port from that file. B (job strip) and C (tap-to-sheet) are rejected.
 - Data flow, realtime wiring and features are UNCHANGED — this is layout and
   surface only. Do not rebuild the logic.
 
+## 15b. Runner hub — ADDITIONS (RULING 2026-08-14)
+
+Eli picked **option A · Sections** from `docs/design-refs/runner-hub-additions.html`.
+Port from that file. B (tiles) and C (task banner) rejected — B gave "blow the
+parking lot" the same visual weight as the stock list; C buried the punch report
+two taps deep, and same-day reports are the ones that protect the runner.
+
+**Standing context this ruling encodes (Eli, 2026-08-14, verbal):** the hub's
+shape is RIGHT and must not be rebuilt — four studios, pick yours, work
+tonight's sessions and duties. **Nothing is assigned to a runner.** Runners
+rotate between studios; everything is scoped to STUDIO + SHIFT, never to a
+person. Do not reuse the dashboard_tasks person/tab system here.
+
+- **Studio tasks are a SECTION at the very top of the hub** — above sessions —
+  because the opener's first question walking in is "anything waiting for me".
+  A studio with no open tasks skips the section entirely. Each task shows who
+  left it and when; checking it off records done + time. Per-studio, per-nobody.
+- **Punch-miss and the runners manual are the QUIET register** — full-width rows
+  at the bottom, always in the same place, never competing with tonight's work.
+  The manual row ships as a "coming soon" slot; the AI/chat surface later joins
+  or replaces it. Quiet ≠ hidden: one tap, always visible.
+- **The punch form is HR-SPEC §5 verbatim** (date/shift, punch type, correct
+  time, optional note → `punch_correction_requests`, classification by server
+  trigger). It is the legal written confirmation; it goes to the manager queue.
+- **OPEN (Eli to rule): runner identity on the punch form.** Runners share one
+  PIN login, but a punch request belongs to a PERSON (`staff_id`). The mock
+  leads the form with a "who are you" picker. Undecided: roster picker of
+  managed runner profiles vs. free-typed name. Do not build the form until
+  this is answered.
+- The three registers on the hub are now fixed vocabulary: **sections** (tasks,
+  sessions), **tiles** (tonight's duties), **quiet rows** (everything that
+  isn't tonight's work). New hub features must join one of these, not invent
+  a fourth.
+
 ### 14d. Sequencing
 
 The rail + dashboard land FIRST, as the new app frame. The un-migrated pages (admin,
