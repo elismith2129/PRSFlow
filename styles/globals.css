@@ -1327,20 +1327,20 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 
    Inline backgrounds were stripped from those controls so these rules can win
    without !important. */
-.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-eqpill):not(.c-poreq),
-.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-eqpill):not(.c-poreq) {
+.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore),
+.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) {
   border-radius: 99px; padding: 8px 16px; cursor: pointer;
   background: var(--c-bg); color: var(--c-fg);
   font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
   transition: transform .16s ease, box-shadow .16s ease;
   box-shadow: 2px 2px 7px rgba(0, 0, 0, .38), -1px -1px 3px rgba(255, 255, 255, .03);
 }
-[data-theme="light"] .c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-eqpill):not(.c-poreq),
-[data-theme="light"] .c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-eqpill):not(.c-poreq) {
+[data-theme="light"] .c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore),
+[data-theme="light"] .c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) {
   box-shadow: 2px 2px 6px rgba(42, 39, 34, .09), -2px -2px 6px rgba(255, 255, 255, .7);
 }
-.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-eqpill):not(.c-poreq):active,
-.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-eqpill):not(.c-poreq):active {
+.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):active,
+.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):active {
   transform: translateY(1px);
   box-shadow: inset 3px 3px 7px rgba(0, 0, 0, .28);
 }
@@ -1597,7 +1597,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    stops reading as a control. It still wraps. */
 .c-seg-wrap { display: inline-flex; flex-wrap: wrap; max-width: 100%; }
 
-.c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-eqpill):not(.c-poreq) {
+.c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) {
   border-radius: 99px; padding: 6px 14px;
   font-family: inherit; font-size: 10px; font-weight: 800;
   letter-spacing: .06em; text-transform: uppercase;
@@ -1606,8 +1606,8 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   box-shadow: none; border: none; transform: none;
   white-space: nowrap; transition: opacity .16s ease;
 }
-[data-theme="light"] .c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-eqpill):not(.c-poreq) { box-shadow: none; }
-.c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-eqpill):not(.c-poreq):active { transform: none; }
+[data-theme="light"] .c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) { box-shadow: none; }
+.c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):active { transform: none; }
 
 /* SELECTED — filled + pressed IN. */
 .c-seg > button.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) {
@@ -1634,7 +1634,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    housing there. Same :not() chain as above — see the specificity note. */
 .c-seg-tiny { padding: 3px; box-shadow: none; background: var(--c-wash); }
 [data-theme="light"] .c-seg-tiny { box-shadow: none; }
-.c-seg-tiny > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-eqpill):not(.c-poreq) { padding: 4px 10px; font-size: 9px; }
+.c-seg-tiny > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) { padding: 4px 10px; font-size: 9px; }
 
 /* MINI — small raised control for in-well adornments (Call / Text / ✉). */
 .c-mini {
@@ -2096,7 +2096,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-seg.c-seg-tiny, [data-theme="light"] .c-seg.c-seg-tiny { box-shadow: none; }
 .c-control:active, .c-mini:active,
 [data-theme="light"] .c-control:active,
-.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-eqpill):not(.c-poreq):active {
+.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):active {
   box-shadow: none;
   background: var(--c-wash2);
 }
@@ -2193,7 +2193,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    the thing it is about instead of beside it as a separate segment.
    Off = a quiet chip you can read past. On = filled, because a job that needs no
    PO is a fact worth seeing at a glance from across the row. */
-.c-poreq {
+.c-poreq:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin) {
   margin-left: auto; flex-shrink: 0; white-space: nowrap; cursor: pointer;
   border: none; font-family: inherit;
   font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
@@ -2201,20 +2201,20 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   background: var(--c-wash2); color: var(--c-fg); opacity: .45;
   transition: opacity .14s ease, background .14s ease;
 }
-.c-poreq:hover:not(:disabled) { opacity: .8; }
-.c-poreq.c-on, .c-poreq.c-on:hover { opacity: 1; background: var(--c-ivory); color: #1b1a17; }
-[data-theme="light"] .c-poreq.c-on, [data-theme="light"] .c-poreq.c-on:hover { background: var(--c-fg); color: var(--c-bg); }
+.c-poreq:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin):hover:not(:disabled) { opacity: .8; }
+.c-poreq.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin), .c-poreq.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin):hover { opacity: 1; background: var(--c-ivory); color: #1b1a17; }
+[data-theme="light"] .c-poreq.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin), [data-theme="light"] .c-poreq.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin):hover { background: var(--c-fg); color: var(--c-bg); }
 .c-poreq:disabled { cursor: default; }
 
 /* ── Equipment pill — the studio day's third line (spec §18) ────────────────
    One pill per item; tap cycles blank → OK → Not OK → OK → … It never returns
    to blank, because blank means nobody has answered yet and a third tap must
    not be able to destroy that. Colour is status only (§5). */
-.c-eqpill {
+.c-eqpill:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin) {
   display: inline-flex; align-items: center; gap: 5px;
   /* Matched to the mock (Eli preferred that size). The app's first pass looked
      far bigger than this because the sheet's generic <button> defaults were
-     winning — see the :not(.c-eqpill) exclusions above. */
+     winning — see the :not() padding on the rules below. */
   padding: 3px 9px; border-radius: 99px; border: none; cursor: pointer;
   font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 700;
   line-height: 1.5; white-space: nowrap; box-shadow: none;
@@ -2226,10 +2226,10 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-eqpill:focus-visible { outline: none; opacity: 1; }
 .c-eqpill > i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; opacity: .5; }
 .c-eqpill > b { font-weight: 800; opacity: .75; }
-.c-eqpill:hover:not(:disabled) { opacity: .75; }
+.c-eqpill:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin):hover:not(:disabled) { opacity: .75; }
 .c-eqpill:disabled { cursor: default; }
 /* Answered: OK recedes (it is the normal night), Not OK shouts. */
-.c-eqpill.c-ok { opacity: 1; color: var(--c-st-booked); }
+.c-eqpill.c-ok:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin) { opacity: 1; color: var(--c-st-booked); }
 .c-eqpill.c-ok > i { opacity: 1; }
-.c-eqpill.c-bad, .c-eqpill.c-bad:hover { opacity: 1; background: var(--c-st-hot); color: var(--c-hot-text); }
+.c-eqpill.c-bad:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin), .c-eqpill.c-bad:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin):hover { opacity: 1; background: var(--c-st-hot); color: var(--c-hot-text); }
 .c-eqpill.c-bad > i { opacity: 1; }
