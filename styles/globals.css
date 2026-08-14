@@ -2187,3 +2187,21 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   border-radius: 99px; padding: 2px 8px;
   font-size: 11px; font-weight: 700; opacity: 1;
 }
+
+/* ── "Not required" — the PO field answers its own question (spec option A,
+   2026-08-13). Lives INSIDE the .c-well at its right end, so the answer sits on
+   the thing it is about instead of beside it as a separate segment.
+   Off = a quiet chip you can read past. On = filled, because a job that needs no
+   PO is a fact worth seeing at a glance from across the row. */
+.c-poreq {
+  margin-left: auto; flex-shrink: 0; white-space: nowrap; cursor: pointer;
+  border: none; font-family: inherit;
+  font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 99px;
+  background: var(--c-wash2); color: var(--c-fg); opacity: .45;
+  transition: opacity .14s ease, background .14s ease;
+}
+.c-poreq:hover:not(:disabled) { opacity: .8; }
+.c-poreq.c-on, .c-poreq.c-on:hover { opacity: 1; background: var(--c-ivory); color: #1b1a17; }
+[data-theme="light"] .c-poreq.c-on, [data-theme="light"] .c-poreq.c-on:hover { background: var(--c-fg); color: var(--c-bg); }
+.c-poreq:disabled { cursor: default; }
