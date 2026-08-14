@@ -1808,9 +1808,15 @@ export function WorkOrderPopup({
   // carries it. Otherwise the inset would be applied twice and input columns
   // would sit 6px right of text columns — which is what was misaligned.
   const cellIn: React.CSSProperties = { ...cellS, padding: '3px 0' }
+  // COLUMN HEADERS MATCH THE SECTION HEADERS (Eli, 2026-08-13). Same treatment
+  // as `.c-lozenge` now that both are bare text (§16c): Inter 800, 0.1em, upper,
+  // `--c-fg` at 45%. They used to be Archivo at `--c-fg-2`, which read as a
+  // THIRD kind of type on a surface that already has display text and entry
+  // text — and sat close enough to the entry text's weight to blur into it.
+  // A header names a column; it should recede the same way a section name does.
   const thS: React.CSSProperties = {
-    padding: `5px ${TCELL_X}px`, fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400,
-    letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-2)',
+    padding: `5px ${TCELL_X}px`, fontSize: 9, fontFamily: 'Inter, sans-serif', fontWeight: 800,
+    letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg)', opacity: 0.45,
     display: 'flex', alignItems: 'center', minWidth: 0,
   }
   // Right-aligned header, for the money columns whose values are right-aligned.
@@ -2364,83 +2370,66 @@ export function WorkOrderPopup({
                       onChange={e => { setDirtyFields(prev => new Set(prev).add('invoice_number')); setWo(w => w ? { ...w, invoice_number: e.target.value } : w) }}
                     />
                   </div>
-                  <div className="c-well" style={{ flex: '0 1 120px', minWidth: 110 }}>
+                  {/* PO NUMBERS ARE LONG (Eli, 2026-08-13). A label's PO can run
+                      well past ten characters, and this was sized off Inv #,
+                      which never does. It gets the widest basis on the row. */}
+                  <div className="c-well" style={{ flex: '1 1 210px', minWidth: 160 }}>
                     <span className="c-pfx">PO #</span>
                     <input
                       className="c-mono"
                       value={wo.po_number}
                       disabled={readOnly || wo.no_po_needed}
-                      placeholder={wo.no_po_needed ? 'Not needed' : '—'}
+                      placeholder={wo.no_po_needed ? '' : '—'}
                       onChange={e => { setDirtyFields(prev => new Set(prev).add('po_number')); setWo(w => w ? { ...w, po_number: e.target.value } : w) }}
                     />
-                  </div>
-                  {/* NO PO NEEDED (ruling 2026-08-11). A billing package waits in
-                      Awaiting PO until it has a PO number OR this is set. It sits
-                      beside the PO field because that is the question it answers,
-                      and it is the ONE thing about the PO that PRSFlo cannot work
-                      out for itself.
+                    {/* THE FIELD ANSWERS ITS OWN QUESTION (RULING 2026-08-13,
+                        option A). This was a separate "PO req'd Yes/No" segment
+                        with a floating label — a full field's width spent on a
+                        yes/no, sitting beside the field it was about.
 
-                      Billing only — a COD session is paid at the top and never
-                      waits on anyone's paperwork, so the control would be noise
-                      on the majority of work orders. */}
-                  {/* ALWAYS BESIDE THE PO FIELD (ruling 2026-08-11). It used
-                      to appear only on billing work orders, which meant the one
-                      control that unblocks approval could be invisible on the
-                      work order you were looking at. Eli wants the habit —
-                      "noting PO or none needed" — and a habit cannot form
-                      around a control that comes and goes. */}
-                  {(
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                      <span className="c-pfx">PO req&apos;d</span>
-                      <div className="c-seg" style={{ height: 32 }}>
-                        {([[true, 'Yes'], [false, 'No']] as [boolean, string][]).map(([val, lbl]) => (
-                          <button
-                            key={lbl}
-                            type="button"
-                            disabled={readOnly}
-                            className={wo.no_po_needed !== val ? 'c-on' : ''}
-                            onClick={() => {
-                              setDirtyFields(prev => new Set(prev).add('no_po_needed'))
-                              setWo(w => w ? { ...w, no_po_needed: !val } : w)
-                            }}
-                          >
-                            {lbl}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {/* Food budget — a real two-state segment, not one button whose
-                      label flips. "Yes" reveals the amount beside it; toggling back
-                      to No hides the well but KEEPS the value in state, so an
-                      accidental tap doesn't silently wipe a figure. */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                    <span className="c-pfx">Food</span>
-                    <div className="c-seg" style={{ height: 32 }}>
-                      {([[false, 'No'], [true, 'Yes']] as [boolean, string][]).map(([val, lbl]) => (
-                        <button
-                          key={lbl}
-                          type="button"
-                          disabled={readOnly}
-                          className={wo.food_budget === val ? 'c-on' : ''}
-                          onClick={() => { setDirtyFields(prev => new Set(prev).add('food_budget')); setWo(w => w ? { ...w, food_budget: val } : w) }}
-                          style={{ cursor: readOnly ? 'default' : 'pointer' }}
-                        >{lbl}</button>
-                      ))}
-                    </div>
-                    {wo.food_budget && (
-                      <div className="c-well" style={{ width: 108, flexShrink: 0 }}>
-                        <span className="c-pfx">$</span>
-                        <input
-                          className="c-mono"
-                          value={wo.food_amount}
-                          disabled={readOnly}
-                          inputMode="decimal"
-                          placeholder="0"
-                          onChange={e => { setDirtyFields(prev => new Set(prev).add('food_amount')); setWo(w => w ? { ...w, food_amount: e.target.value } : w) }}
-                        />
-                      </div>
-                    )}
+                        The rule it serves is unchanged and still load-bearing:
+                        approval waits in Awaiting PO until there is a PO number
+                        OR this is set. It is the one thing PRSFlo cannot work
+                        out for itself, so it stays visible on EVERY work order
+                        — never behind a disclosure — because Eli wants the
+                        habit of answering it. */}
+                    <button
+                      type="button"
+                      disabled={readOnly}
+                      className={`c-poreq${wo.no_po_needed ? ' c-on' : ''}`}
+                      title={wo.no_po_needed
+                        ? 'This job does not need a PO — approval is not waiting on one'
+                        : 'Mark this job as not needing a PO'}
+                      onClick={() => {
+                        setDirtyFields(prev => new Set(prev).add('no_po_needed'))
+                        setWo(w => w ? { ...w, no_po_needed: !w.no_po_needed } : w)
+                      }}
+                    >
+                      Not required
+                    </button>
+                  </div>
+                  {/* FOOD IS JUST AN AMOUNT (RULING 2026-08-13, option A of
+                      docs/design-refs/wo-po-food-options.html). It was a Yes/No
+                      segment that REVEALED an amount well — two controls for one
+                      number, and the question "is there a food budget?" is
+                      already answered by whether there is a figure in the box.
+                      `food_budget` is still written, derived from the amount, so
+                      nothing downstream changes. */}
+                  <div className="c-well" style={{ flex: '0 1 156px', minWidth: 132 }}>
+                    <span className="c-pfx">Food $</span>
+                    <input
+                      className="c-mono"
+                      value={wo.food_amount}
+                      disabled={readOnly}
+                      inputMode="decimal"
+                      placeholder="none"
+                      onChange={e => {
+                        const v = e.target.value
+                        setDirtyFields(prev => new Set(prev).add('food_amount'))
+                        setDirtyFields(prev => new Set(prev).add('food_budget'))
+                        setWo(w => w ? { ...w, food_amount: v, food_budget: v.trim() !== '' } : w)
+                      }}
+                    />
                   </div>
                 </div>
 
