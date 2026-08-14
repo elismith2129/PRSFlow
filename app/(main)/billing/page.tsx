@@ -798,6 +798,11 @@ function PackageModal({ row, booking, onClose }: {
             <b style={{ fontSize: 14 }}>{row.client}</b>
             <span style={{ opacity: 0.5, fontSize: 12 }}> · {formatCurrency(String(row.total))}</span>
           </div>
+          {/* THE TOGGLE SITS IN THE MIDDLE (Eli, 2026-08-13). It used to be
+              pushed to the right by a spacer, so it crowded the Close button and
+              left the whole left half of the bar empty. Equal flex on both sides
+              centres it against the WINDOW rather than against whatever length
+              the client's name happens to be. */}
           <div style={{ flex: 1 }} />
           <div className="c-seg">
             {row.hasPackage && (
@@ -808,6 +813,7 @@ function PackageModal({ row, booking, onClose }: {
             <button className={view === 'wo' ? 'c-on' : ''} onClick={() => setView('wo')}>Work order</button>
             <button className={view === 'inv' ? 'c-on' : ''} onClick={() => setView('inv')}>Invoice</button>
           </div>
+          <div style={{ flex: 1 }} />
           <button className="c-bact c-bmuted" onClick={onClose}>Close</button>
         </div>
 

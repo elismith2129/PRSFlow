@@ -2005,36 +2005,18 @@ export function WorkOrderPopup({
                 <StatusBadge status={wo.status} />
               </span>
             </div>
-            {/* HEADER ACTIONS — Close & Save only, in the footer's primary
-                treatment. Export PDF, Print and Delete moved to the footer:
-                three destructive-or-terminal actions crowding the title bar made
-                the one action people actually want compete with them. */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {!readOnly ? (
-                <>
-                  <button
-                    onClick={() => handleCancel()}
-                    disabled={saving}
-                    className="c-soft c-control c-raised"
-                    style={{ cursor: saving ? 'default' : 'pointer' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleCloseButton}
-                    disabled={saving}
-                    className="c-btn c-control c-raised-primary"
-                    style={{ padding: '10px 22px', cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}
-                  >
-                    {saving ? 'Saving…' : 'Close'}
-                  </button>
-                </>
-              ) : (
-                <button onClick={onClose} className="c-soft c-control c-raised">
-                  Close
-                </button>
-              )}
-            </div>
+            {/* NO ACTIONS IN THE TITLE BAR (Eli, 2026-08-13: "there are a
+                million buttons up here. the top cancel and close can go").
+                Correct — once the action bar moved to the top, this pair sat
+                directly above a second row containing the same two words, so
+                the screen offered Cancel twice and Close twice. The action bar
+                below is the only place actions live now.
+                Read-only keeps its single Close: there is no action bar then. */}
+            {readOnly && (
+              <button onClick={onClose} className="c-soft c-control c-raised">
+                Close
+              </button>
+            )}
           </div>
         )}
 
@@ -2134,9 +2116,17 @@ export function WorkOrderPopup({
               One button now, and it produces a real drawn PDF via
               /api/wo-package. Deleting the print path is also what keeps the
               work order's layout described in ONE place instead of two. */}
-          {!isBlock && (
+          {/* DOWNLOAD IS A BILLING ACT, NOT A WORK-ORDER ACT (Eli, 2026-08-13:
+              "i just want save, cancel, complete WO"). The PDF still exists —
+              it is on every row of /billing, which is where packages get sent
+              from and the only place they are archived. Keeping it here made a
+              document button compete with the two controls that actually
+              advance the session.
+              READ-ONLY keeps it: with no Save and no Complete, downloading is
+              the only thing that screen can do. */}
+          {!isBlock && readOnly && (
             <button onClick={exportPdf} disabled={exporting} className="c-soft c-control c-raised" style={{ cursor: exporting ? 'default' : 'pointer', ...(isMobile ? { display: 'none' } : {}) }}>
-              {exporting ? 'Building…' : readOnly ? 'Download PDF' : 'Save & download'}
+              {exporting ? 'Building…' : 'Download PDF'}
             </button>
           )}
           {/* Delete, moved down from the header. It keeps its two-step confirm —
@@ -2195,12 +2185,14 @@ export function WorkOrderPopup({
             {completing ? 'Completing…' : 'Complete WO'}
           </button>
           )}
-          {/* CLOSE, not "Close & Save" — the two paths are now named for what
-              you came to do (Eli, 2026-08-11). Complete WO is "I'm updating
-              this"; Close is "I'm viewing this". It still saves silently when
-              nothing changed, and asks when something did. */}
+          {/* SAVE (Eli, 2026-08-13). It was "Close", named on 2026-08-11 for
+              where it takes you rather than what it does — which read fine as a
+              footer button and stopped reading fine the moment the actions moved
+              to the TOP of the sheet, beside Cancel. Behaviour is unchanged: it
+              saves and closes, silently when nothing changed, asking when
+              something did. */}
           <button onClick={handleCloseButton} disabled={saving} className="c-btn c-control c-raised-primary" style={{ cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '2 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
-            {saving ? 'Saving…' : 'Close'}
+            {saving ? 'Saving…' : 'Save'}
           </button>
           </>
           )}
@@ -2216,7 +2208,7 @@ export function WorkOrderPopup({
                 <div style={{ fontSize: 11.5, opacity: 0.6, marginBottom: 14, lineHeight: 1.5 }}>
                   Save them to this work order, or throw them away and leave it as it was?
                 </div>
-                <button className="c-bact c-bblock" onClick={() => { setConfirmClose(false); handleClose() }}>Save changes and close</button>
+                <button className="c-bact c-bblock" onClick={() => { setConfirmClose(false); handleClose() }}>Save and close</button>
                 <button className="c-bact c-bblock" onClick={() => { setConfirmClose(false); handleCancel() }}>Discard my changes</button>
                 <button className="c-bact c-bmuted c-bblock" onClick={() => setConfirmClose(false)}>Keep editing</button>
               </div>
