@@ -2483,7 +2483,7 @@ export function WorkOrderPopup({
 
           {/* SEED — bulk-append studio-time rows for a date range (WO-SPEC §6) */}
           {!readOnly && (
-            <div style={{ borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ borderRadius: 12, overflow: 'hidden' }}>
               <button type="button" onClick={() => setSeedOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--c-wash)', cursor: 'pointer', color: 'var(--c-fg-2)' }}>
                 <span style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>+ Seed — add multiple days</span>
                 <span style={{ fontSize: 10 }}>{seedOpen ? '▲' : '▼'}</span>
@@ -2730,9 +2730,9 @@ export function WorkOrderPopup({
                 </div>
               )
             })()}
-            <div style={{ borderRadius: 10, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
+            <div style={{ borderRadius: 12, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
               {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock | Del */}
-              <div style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px', background: 'var(--c-wash)', minWidth: isMobile ? 880 : undefined }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px', background: 'var(--c-wash)', borderRadius: '12px 12px 0 0', minWidth: isMobile ? 880 : undefined }}>
                 {/* `right` marks the money columns — header and value share an
                     alignment, or the column reads as two ragged edges. */}
                 {([['Studio'], ['Date'], ['Session Info'], ['From'], ['To'], ['Hrs'], ['Type'],
@@ -2741,7 +2741,27 @@ export function WorkOrderPopup({
               </div>
               <div data-st-scroll="" style={{ maxHeight: 420, overflowY: 'auto', minWidth: isMobile ? 880 : undefined }}>
                 {stRows.map((r, rowIdx) => {
-                  const zebra = rowIdx % 2 === 1 ? ' c-trow-alt' : ''
+                  // ── DAY BLOCK (RULING 2026-08-13, spec §16) ──────────────
+                  // A day and every staff line under it sit in ONE wash block,
+                  // with a gap between days. The zebra stripe is retired here:
+                  // it banded by DAY, but the question you ask at a row is "who
+                  // was on this?" — and the staff line answered it from a band
+                  // that said nothing about belonging. A studio line and its
+                  // staff lines are one fact and now look like one.
+                  //
+                  // Grouped by DATE, not by row, so a standalone staff row
+                  // (studio '') joins the day it belongs to rather than
+                  // floating as its own block. Undated rows group together at
+                  // whatever position they hold.
+                  //
+                  // Done as corner radii on the existing per-row wrapper rather
+                  // than by restructuring the loop into nested maps: the row
+                  // body below is ~300 lines of money-bearing markup, and
+                  // re-nesting it to gain the same pixels would be a large
+                  // diff over a small idea.
+                  const dayKey = r.date || '(none)'
+                  const firstOfDay = rowIdx === 0 || (stRows[rowIdx - 1].date || '(none)') !== dayKey
+                  const lastOfDay = rowIdx === stRows.length - 1 || (stRows[rowIdx + 1].date || '(none)') !== dayKey
                   const isEngOnly = r.studio === ''
                   const isDayRow = r.row_rate_type === 'day'
                   const engName = wo?.engineer || liveForm?.engineer_name || booking.engineer_name || ''
@@ -2769,12 +2789,23 @@ export function WorkOrderPopup({
                   return (
                     <div
                       key={r.id}
-                      style={hasTimeError ? {
-                        background: 'color-mix(in srgb, var(--c-st-hot) 12%, transparent)',
-                        borderRadius: 8,
-                      } : undefined}
+                      style={{
+                        // The block's fill. A missing-times row overrides it
+                        // with the hot tint — that has to stay louder than the
+                        // grouping, or the one row you must fix disappears into
+                        // its day.
+                        background: hasTimeError
+                          ? 'color-mix(in srgb, var(--c-st-hot) 12%, transparent)'
+                          : 'var(--c-wash)',
+                        borderTopLeftRadius: firstOfDay ? 12 : 0,
+                        borderTopRightRadius: firstOfDay ? 12 : 0,
+                        borderBottomLeftRadius: lastOfDay ? 12 : 0,
+                        borderBottomRightRadius: lastOfDay ? 12 : 0,
+                        marginBottom: lastOfDay ? 7 : 0,
+                        overflow: 'hidden',
+                      }}
                     >
-                      {!isEngOnly && <div className={zebra} style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px', background: r.admin_locked ? 'var(--c-wash)' : undefined }}>
+                      {!isEngOnly && <div style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px', background: r.admin_locked ? 'var(--c-wash2)' : undefined }}>
                         {/* Studio */}
                         <div style={cellS}>
                           <select
@@ -2939,7 +2970,7 @@ export function WorkOrderPopup({
                       )}
                       {r.eng_visible !== false && (
                         <>
-                          <div className={zebra} style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px' }}>
                             {/* 1ST/2ND role toggle — engineer vs assistant (every session has one OR the other) */}
                             <div style={{ ...cellS, paddingTop: 2, paddingBottom: 2 }}>
                               <button
@@ -3019,7 +3050,7 @@ export function WorkOrderPopup({
                   )
                 })}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: 'var(--c-wash)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: 'var(--c-wash)', borderRadius: '0 0 12px 12px' }}>
                 {!readOnly ? (
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
                   <button type="button" onClick={addStRow} className="c-x" style={{ fontSize: 10, color: 'var(--c-fg-2)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Studio Time</button>
@@ -3046,11 +3077,11 @@ export function WorkOrderPopup({
             {/* hidden file input for note photos */}
             <input ref={equipNoteFileRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={e => { const f = e.target.files?.[0]; if (f) uploadEquipNotePhoto(f) }} />
-            <div style={{ borderRadius: 10, overflowX: 'auto', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
+            <div style={{ borderRadius: 12, overflowX: 'auto', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
               <div style={{ minWidth: `${130 + Math.max(sessionDates.length, 1) * 90}px` }}>
                 {/* Header — equipment name cell sticky */}
-                <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, background: 'var(--c-wash)' }}>
-                  <div style={{ ...thS, position: 'sticky', left: 0, background: 'var(--c-wash)', zIndex: 1 }}>Equipment</div>
+                <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, background: 'var(--c-wash)', borderRadius: '12px 12px 0 0' }}>
+                  <div style={{ ...thS, position: 'sticky', left: 0, background: 'var(--c-wash)', borderTopLeftRadius: 12, zIndex: 1 }}>Equipment</div>
                   {sessionDates.length > 0
                     ? sessionDates.map(d => <div key={d} style={thS}>{fmtDate(d)}</div>)
                     : <div style={thS}>—</div>}
@@ -3128,8 +3159,8 @@ export function WorkOrderPopup({
           {/* RENTALS */}
           <div style={isMobile ? mCard : undefined}>
             <SectionHeader carved title="Rentals" />
-            <div style={{ borderRadius: 10, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', background: 'var(--c-wash)', minWidth: isMobile ? 540 : undefined }}>
+            <div style={{ borderRadius: 12, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', background: 'var(--c-wash)', borderRadius: '12px 12px 0 0', minWidth: isMobile ? 540 : undefined }}>
                 {([['Qty'], ['Item'], ['Supplier'], ["Date(s) Used"], ['Rate', 'right'], ['Charge', 'right'], ['']] as [string, string?][])
                   .map(([h, align], i) => <div key={i} style={align === 'right' ? thR : thS}>{h}</div>)}
               </div>
@@ -3146,7 +3177,7 @@ export function WorkOrderPopup({
                   </div>
                 </div>
               ))}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: 'var(--c-wash)', minWidth: isMobile ? 540 : undefined }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: 'var(--c-wash)', borderRadius: '0 0 12px 12px', minWidth: isMobile ? 540 : undefined }}>
                 {!readOnly ? <button type="button" onClick={() => setRentRows(p => [...p, { id: crypto.randomUUID(), qty: '', item: '', supplier: '', dates_used: '', rate: '', charge: '' }])} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button> : <span />}
                 <span className="c-tnum" style={{ color: 'var(--c-fg)', fontWeight: 700 }}>Total: ${rentTotal.toFixed(2)}</span>
               </div>
@@ -3210,7 +3241,7 @@ export function WorkOrderPopup({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, ...(isMobile ? mCard : {}) }}>
               <div>
                 <SectionHeader carved title="Payments" />
-                <div style={{ borderRadius: 10, overflow: 'hidden', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
+                <div style={{ borderRadius: 12, overflow: 'hidden', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
                   {payRows.map((p, idx) => {
                     const needsLast4 = p.payment_type === 'Credit Card' || p.payment_type === 'Debit Card'
                     return (
@@ -3232,13 +3263,13 @@ export function WorkOrderPopup({
                       </div>
                     )
                   })}
-                  <div style={{ padding: '7px 10px' }}>
+                  <div style={{ padding: '7px 10px', borderRadius: '0 0 12px 12px' }}>
                     {!readOnly && <button type="button" onClick={() => setPayRows(p => [...p, { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '' }])} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0 }}>+ Add payment</button>}
                   </div>
                 </div>
               </div>
               {/* Totals block */}
-              <div style={{ borderRadius: 10, overflow: 'hidden', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
+              <div style={{ borderRadius: 12, overflow: 'hidden', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
                 {[
                   { label: 'Studio Total', value: stTotal, color: 'var(--c-fg)', bold: false },
                   ...(engTotal > 0 ? [{ label: 'Eng Total', value: engTotal, color: 'var(--c-fg)', bold: false }] : []),

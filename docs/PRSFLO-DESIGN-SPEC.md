@@ -567,6 +567,53 @@ Flo stops meaning anything. (Motion candidates comet/twin-orbit/heartbeat/ripple
 were evaluated and rejected; Aurora at the dialed values won. Faster/brighter variants
 exist in design-refs history if a "Flo is actively thinking" state is wanted later.)
 
+## 16. Studio Time — DAY BLOCK (RULING 2026-08-13)
+
+Eli picked **option A · Day block** from `docs/design-refs/studio-time-grouping.html`
+(B spine, C indent, D end-bubble rejected). Applies to the Studio Time table on
+the work order screen.
+
+**The diagnosis, which is the part worth keeping:** the zebra banding grouped by
+DAY, but the question the eye is actually asking at a row is *"who was on this?"*
+— and the staff line answered it from a band that said nothing about belonging.
+A studio line and its staff lines are ONE fact and must look like one.
+
+- **A day and every staff line under it sit in one soft `--c-wash` block**,
+  radius 12, with a gap between days. The gap does the separating the zebra
+  stripe used to, so **`c-trow-alt` zebra is retired from this table**.
+- Grouping is by **date**, not by row: a standalone staff row (studio `''`)
+  joins the block of the day it belongs to. A row with no date sits alone.
+- Still under the TABLE EXEMPTION (§8): grouping comes from FILL and SPACE
+  only. No borders, no per-cell bubbles, no wells, no rules. If you are about
+  to type `border:` to divide days, you have the wrong solution.
+- Per-line totals STAY. (That was option D's trade and Eli did not take it.)
+- Cost accepted: a long work order is taller than it was. If that becomes a
+  problem the answer is a shorter row, not a return to zebra.
+
+### 16b. Table geometry — nothing square at an edge (RULING 2026-08-13)
+
+The day blocks exposed an older violation rather than causing one. §7 already
+ends "Everything rounded; nothing square", but every table on the work order had
+a SQUARE header strip and a SQUARE footer bar sitting inside a rounded container
+— so a curved row ended against a hard corner and the edges read as ragged.
+Eli: *"the ends of each table rows around and then totals, bottoms, headers are
+square… the ends look messy."*
+
+The rule for every data table (studio time, equipment, rentals, payments,
+totals):
+
+- **Radius 12 everywhere in the stack.** Container 12, day blocks 12, and —
+  this is the part that was missing — the strips round their OWN corners:
+  header `12px 12px 0 0`, footer/add-row bar `0 0 12px 12px`.
+- A container's `overflow: hidden` is NOT sufficient, because these containers
+  carry side padding, so an inner strip never reaches the parent's curve and
+  keeps its own square corners inside the padding.
+- A sticky first column rounds with the strip it sits in (equipment's
+  `borderTopLeftRadius`), or it prints a hard corner over a curved one.
+- Strips that sit BETWEEN rows (the locked-row notice, the delete-confirm bar,
+  an equipment note) stay square on purpose — they are clipped by the block
+  they live inside, and rounding them would read as a floating card.
+
 ## 15. Runner hub — DAY CARD (RULING 2026-08-13)
 
 Eli picked **option A · Day card** from `docs/design-refs/runner-hub-options.html`.

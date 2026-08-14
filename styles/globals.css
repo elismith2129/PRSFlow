@@ -1747,9 +1747,16 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-bstat { background: var(--c-srf, var(--c-bg)); box-shadow: var(--c-softsh); border-radius: 14px; padding: 10px 12px; }
 
 /* SEARCH — above the tabs, because it outranks them. */
+/* MATCHES `.c-input` (fix, 2026-08-13). This was a 99px capsule, which is the
+   OLD carved geometry for inputs (§7). The soft skin + the density ruling
+   (§2b) moved every field to a 12px rounded rectangle 32px tall — see
+   `.c-input`, which is what the CRM's "Search 16 leads…" field uses, and which
+   Eli sent as the reference. A lone capsule among 12-radius fields is what read
+   as "a square in a rounded" — the eye was catching the mismatch, not a corner.
+   Any new search field copies .c-input; do not reintroduce a pill. */
 .c-bsearch {
   display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
-  background: var(--c-wash); border-radius: 99px; padding: 8px 14px;
+  background: var(--c-wash); border-radius: 12px; padding: 0 10px; height: 32px;
 }
 .c-bsearch:focus-within { background: var(--c-wash2); }
 .c-bsearch input {
