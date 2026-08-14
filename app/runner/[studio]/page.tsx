@@ -159,166 +159,141 @@ export default function StudioDailyOpsPage() {
   }, [studio, today, load])
 
 
-  function statusBadge(status: string) {
-    const colors: Record<string, string> = {
-      confirmed: 'var(--accent)',
-      tentative: '#f0a24e',
-      tour: 'var(--accent2)',
-      tech: '#a24ef0',
-      open_hours: 'var(--text2)',
+  // ── Presentation ───────────────────────────────────────────────────────────
+  // SOFT SKIN PORT, 2026-08-13 (spec §15, option A "Day card"). Everything above
+  // this line — the queries, the booking→WO resolution, both realtime channels —
+  // is UNTOUCHED. This half was the old skin: legacy --bg/--surface tokens, 1px
+  // borders everywhere (Law 1), DM Serif Display and Syne (both retired, §4),
+  // per-studio colour, and emoji tiles.
+  //
+  // Phone-first: every tap target clears 44px, nothing scrolls sideways.
+
+  /** The work order's state, as a status pill. Same three cases as before. */
+  function woPill(wo: WOStatus) {
+    if (!wo) return <span className="c-pill" style={dimPill}>No WO</span>
+    if (wo.status === 'completed') {
+      return <span className="c-pill c-fill-booked">Completed</span>
     }
-    return (
-      <span style={{
-        fontSize: 9,
-        fontWeight: 700,
-        letterSpacing: '0.08em',
-        textTransform: 'uppercase',
-        color: colors[status] ?? 'var(--text2)',
-        background: (colors[status] ?? 'var(--text2)') + '22',
-        padding: '2px 7px',
-        borderRadius: 4,
-        fontFamily: 'Inter',
-      }}>
-        {status}
-      </span>
-    )
+    return <span className="c-pill c-fill-warm">{wo.status}</span>
   }
 
-  function woStatusBadge(wo: WOStatus) {
-    if (!wo) return <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>No WO</span>
-    if (wo.status === 'completed') return null
-    const colors: Record<string, string> = { draft: 'var(--text2)', submitted: '#f0a24e', approved: 'var(--accent)' }
-    const c = colors[wo.status] ?? 'var(--text2)'
-    return (
-      <span style={{
-        fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
-        color: c, background: c + '22', padding: '2px 7px', borderRadius: 4,
-        fontFamily: 'Inter',
-      }}>
-        {wo.status}
-      </span>
-    )
+  const dimPill: React.CSSProperties = {
+    background: 'var(--c-wash2)', color: 'var(--c-fg)', opacity: 0.7,
   }
+
+  // A card surface. Flat + soft shadow (§7c) — no carving, no borders.
+  const surface: React.CSSProperties = {
+    background: 'var(--c-srf, var(--c-bg))',
+    boxShadow: 'var(--c-softsh)',
+    borderRadius: 18,
+    padding: '13px 14px',
+  }
+
+  const TILES = [
+    { label: 'Opening checklist', route: `/runner/${studio}/checklist/opening`, category: 'opening' },
+    { label: 'Closing checklist', route: `/runner/${studio}/checklist/closing`, category: 'closing' },
+    { label: 'Mic inventory', route: `/runner/${studio}/mics`, category: 'mic_inventory' },
+    { label: 'Petty cash', route: `/runner/${studio}/petty-cash`, category: 'petty_cash' },
+    { label: 'Stock list', route: `/runner/${studio}/stock`, category: 'stock' },
+  ]
 
   return (
     <div style={{
       minHeight: '100dvh',
       maxWidth: '100vw',
       overflowX: 'hidden',
-      background: 'var(--bg)',
-      fontFamily: 'Syne, sans-serif',
-      padding: '0 0 80px',
+      background: 'var(--c-bg)',
+      color: 'var(--c-fg)',
+      paddingBottom: 'calc(28px + env(safe-area-inset-bottom))',
     }}>
-      {/* Header */}
+
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div style={{
-        background: 'var(--surface)',
-        borderBottom: '1px solid var(--border)',
-        padding: '16px 20px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 14,
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
+        display: 'flex', alignItems: 'center', gap: 11,
+        padding: '14px 16px 10px',
+        position: 'sticky', top: 0, zIndex: 10,
+        background: 'var(--c-bg)',
       }}>
         <button
           onClick={() => router.push('/runner')}
-          style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}
-        >
-          ←
-        </button>
-        <div style={{
-          width: 40, height: 40, borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 800, color: 'rgba(232,234,240,0.7)', fontFamily: 'Inter',
-        }}>
-          {meta.abbr}
-        </div>
-        <div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{meta.label}</div>
-          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
-            {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+          aria-label="Back to studio list"
+          className="c-control c-raised"
+          style={{
+            width: 38, height: 38, borderRadius: 99, flexShrink: 0,
+            background: 'var(--c-wash)', color: 'var(--c-fg)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 16, cursor: 'pointer',
+          }}
+        >←</button>
+        <div style={{ minWidth: 0 }}>
+          <div className="c-arch" style={{ fontSize: 18, letterSpacing: '-0.02em', lineHeight: 1.15 }}>
+            {meta.label}
+          </div>
+          <div style={{ fontSize: 11.5, opacity: 0.5 }}>
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
           </div>
         </div>
       </div>
 
-      <div style={{ padding: '20px 16px' }}>
-        {/* Today's Sessions */}
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)', marginBottom: 12 }}>
-            Today's Sessions{!loading && ` · ${bookings.length}`}
+      <div style={{ padding: '4px 14px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+        {/* ── Today's sessions ────────────────────────────────────────────── */}
+        <div>
+          <div className="c-label" style={{ marginBottom: 9 }}>
+            Today{!loading && ` · ${bookings.length} ${bookings.length === 1 ? 'session' : 'sessions'}`}
           </div>
 
           {loading ? (
-            <div style={{ color: 'var(--text2)', fontSize: 13, textAlign: 'center', padding: 32 }}>Loading…</div>
+            <div style={{ ...surface, textAlign: 'center', opacity: 0.5, fontSize: 13, padding: 28 }}>
+              Loading…
+            </div>
           ) : bookings.length === 0 ? (
-            <div style={{ color: 'var(--text2)', fontSize: 13, textAlign: 'center', padding: 32, background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)' }}>
+            <div style={{ ...surface, textAlign: 'center', opacity: 0.5, fontSize: 13, padding: 28 }}>
               No sessions today
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {bookings.map(b => {
                 const wo = woMap[b.id] ?? null
-                const completed = wo?.status === 'completed'
                 return (
                   <div
                     key={b.id}
                     onClick={() => {
-                      if (wo) {
-                        router.push(`/runner/${studio}/wo/${wo.id}`)
-                      } else {
-                        router.push(`/runner/${studio}/wo/new?booking_id=${b.id}`)
-                      }
+                      if (wo) router.push(`/runner/${studio}/wo/${wo.id}`)
+                      else router.push(`/runner/${studio}/wo/new?booking_id=${b.id}`)
                     }}
-                    style={{
-                      background: 'var(--surface)',
-                      border: completed ? '1px solid var(--booked)' : '1px solid var(--border)',
-                      borderRadius: 12,
-                      padding: '14px 16px',
-                      cursor: 'pointer',
-                      WebkitTapHighlightColor: 'transparent',
-                    }}
+                    style={{ ...surface, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                      <div>
-                        {/* Studio is the hero: a runner's first question on any card
-                            is "which room", and it was buried in the small meta
-                            row below with the times. Artist/client drop to the
-                            sub-line. */}
-                        {/* No "Studio " prefix — bookings.studio already holds the
-                            full room label from STUDIO_LOCATIONS ("Studio X",
-                            "North"). Prefixing gave "Studio Studio X", and would
-                            have mislabelled Track's rooms as "Studio North". */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                      <div style={{ minWidth: 0 }}>
+                        {/* The ROOM is the hero — a runner's first question on any
+                            card is "which one". `bookings.studio` already holds
+                            the full room label ("Studio X", "North"), so never
+                            prefix "Studio " onto it. */}
                         {b.studio && (
-                          <div style={{ fontFamily: 'DM Serif Display', fontSize: 22, lineHeight: 1.1, color: 'var(--text)', marginBottom: 3 }}>
+                          <div className="c-arch" style={{ fontSize: 21, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
                             {b.studio}
                           </div>
                         )}
-                        <div style={{ fontSize: 13, fontWeight: 700, color: b.studio ? 'var(--text2)' : 'var(--text)', marginBottom: 2 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {b.artist || b.client_name || '—'}
                         </div>
                         {b.artist && b.client_name && (
-                          <div style={{ fontSize: 11, color: 'var(--text3)' }}>{b.client_name}</div>
+                          <div style={{ fontSize: 11.5, opacity: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {b.client_name}
+                          </div>
                         )}
                       </div>
-                      {completed && (
-                        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--booked)', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>COMPLETED</span>
-                      )}
+                      {woPill(wo)}
                     </div>
 
-                    <div style={{ display: 'flex', gap: 16, marginBottom: 10, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
+                    <div style={{ display: 'flex', gap: 14, marginTop: 9, fontSize: 11.5, opacity: 0.6, flexWrap: 'wrap' }}>
+                      <span className="c-mono" style={{ fontSize: 11.5 }}>
                         {b.from_time ?? '?'} – {b.to_time ?? '?'}
                       </span>
-                      {/* Studio moved to the hero above — not repeated here. */}
-                      {b.engineer_name && (
-                        <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
-                          Eng: {b.engineer_name}
-                        </span>
-                      )}
+                      {b.engineer_name && <span>1ST {b.engineer_name}</span>}
+                      {b.assistant_name && <span>2ND {b.assistant_name}</span>}
                     </div>
-
-                    {woStatusBadge(wo)}
                   </div>
                 )
               })}
@@ -326,41 +301,41 @@ export default function StudioDailyOpsPage() {
           )}
         </div>
 
-        {/* Quick Actions */}
+        {/* ── Tonight ─────────────────────────────────────────────────────── */}
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)', marginBottom: 12 }}>
-            Quick Actions
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {[
-              { label: 'Opening Checklist', icon: '☑', route: `/runner/${studio}/checklist/opening`, category: 'opening' },
-              { label: 'Closing Checklist', icon: '☑', route: `/runner/${studio}/checklist/closing`, category: 'closing' },
-              { label: 'Petty Cash', icon: '$', route: `/runner/${studio}/petty-cash`, category: 'petty_cash' },
-              { label: 'Stock List', icon: '📦', route: `/runner/${studio}/stock`, category: 'stock' },
-              { label: 'Mic Inventory', icon: '🎙', route: `/runner/${studio}/mics`, category: 'mic_inventory' },
-            ].map(a => (
-              <button
-                key={a.route}
-                onClick={() => router.push(a.route)}
-                style={{
-                  background: 'var(--surface)',
-                  border: submittedCategories.has(a.category) ? '1px solid var(--booked)' : '1px solid var(--border)',
-                  borderRadius: 12,
-                  padding: '16px 12px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  color: 'var(--text)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                }}
-              >
-                <span style={{ fontSize: 20 }}>{a.icon}</span>
-                <span style={{ fontSize: 12, fontWeight: 600 }}>{a.label}</span>
-              </button>
-            ))}
+          <div className="c-label" style={{ marginBottom: 9 }}>Tonight</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
+            {TILES.map(t => {
+              const done = submittedCategories.has(t.category)
+              return (
+                <button
+                  key={t.route}
+                  onClick={() => router.push(t.route)}
+                  style={{
+                    ...surface,
+                    minHeight: 72,
+                    display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                    textAlign: 'left', cursor: 'pointer', color: 'var(--c-fg)',
+                    border: 'none', font: 'inherit',
+                  }}
+                >
+                  <span style={{ fontSize: 12.5, fontWeight: 700 }}>{t.label}</span>
+                  {/* Status is the only colour on this surface (§5) — done is
+                      booked-green, everything else is just quiet text. */}
+                  <span style={{
+                    fontSize: 10, marginTop: 4,
+                    color: done ? 'var(--c-st-booked)' : 'var(--c-fg)',
+                    opacity: done ? 1 : 0.45,
+                    fontWeight: done ? 700 : 400,
+                  }}>
+                    {done ? 'Submitted' : 'Not started'}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </div>
+
       </div>
     </div>
   )
