@@ -44,6 +44,7 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib'
 import { calcHours } from '@/lib/time'
 import { engChargeForRow } from '@/lib/woTotals'
+import { roomCode } from '@/lib/studios'
 
 export type WoPdfRow = Record<string, any>
 
@@ -183,6 +184,40 @@ class Sheet {
   }
 
   gap(n: number) { this.y -= n }
+
+  /**
+   * A FILLABLE FIELD on the blank form (Eli, 2026-08-13: "we need to be able to
+   * fill it out as well before printing").
+   *
+   * A blank form that can only be filled with a pen is half a form — the common
+   * case is generating one at a desk, typing it up, and handing it over. These
+   * are real AcroForm text fields, so Preview, Acrobat and every browser viewer
+   * can type into them and the result prints or saves like any other PDF.
+   *
+   * Drawn WITH the writing line underneath, not instead of it: printed blank it
+   * still reads as a form you can write on.
+   */
+  private fieldSeq = 0
+  input(x: number, w: number, h = 12) {
+    const field = this.doc.getForm().createTextField(`f${this.fieldSeq++}`)
+    field.addToPage(this.page, {
+      x,
+      y: this.y - 3,
+      width: Math.max(w, 12),
+      height: h,
+      // INVISIBLE WIDGETS. pdf-lib draws a border unless BOTH of these are
+      // cleared — `borderWidth: 0` alone still rendered a boxed grid, which
+      // turned the clean ruled form into a spreadsheet. The hairline under each
+      // field is the visual; the widget is just the hit area.
+      borderWidth: 0,
+      borderColor: undefined,
+      backgroundColor: undefined,
+      font: this.font,
+    })
+    // AFTER addToPage, not before — setFontSize needs the appearance entry that
+    // addToPage creates, and throws MissingDAEntryError otherwise.
+    field.setFontSize(9.5)
+  }
 }
 
 type Col = {
@@ -245,10 +280,11 @@ function band(s: Sheet, items: Array<{ k: string; v: string; w: number }>, blank
   x = M
   items.forEach(it => {
     if (blank || !it.v) {
-      // A writing line, so a printed blank is actually fillable.
+      // A writing line, so a printed blank is actually fillable by hand.
       s.line(x, x + it.w - 12, HAIR, 0.5, -2)
     }
-    if (!blank) s.text(it.v || '', x, { size: 9.5, width: it.w - 12 })
+    if (blank) s.input(x, it.w - 12)
+    else s.text(it.v || '', x, { size: 9.5, width: it.w - 12 })
     x += it.w
   })
   s.gap(16)
@@ -342,7 +378,12 @@ function table(
     })
 
     s.y = top - (lineCount - 1) * LEAD
-    if (ruledRows) s.line(M, RIGHT, HAIR, 0.5, -3.5)
+    if (ruledRows) {
+      s.line(M, RIGHT, HAIR, 0.5, -3.5)
+      // One typable field per cell on the blank form.
+      let fx = M
+      cols.forEach(c => { s.input(fx, c.w - GUT); fx += c.w })
+    }
     s.gap(13)
   }
 
@@ -363,7 +404,7 @@ function table(
       s.text(k.toUpperCase(), M, { size: 7, bold: true, tracking: 0.6 })
       // A subtotal with no value is a blank form — give it somewhere to write.
       if (v) s.text(v, RIGHT, { size: 9, bold: i === footer.length - 1, align: 'right' })
-      else s.line(RIGHT - 110, RIGHT, HAIR, 0.5, -2)
+      else { s.line(RIGHT - 110, RIGHT, HAIR, 0.5, -2); s.input(RIGHT - 110, 110) }
       s.gap(13)
     })
     s.gap(4)
@@ -443,7 +484,7 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
   s.text('Recording Studios  (323) 465-4000', M, { size: 8 })
   s.text('6245 Santa Monica Blvd, Los Angeles, CA 90038', PAGE[0] / 2, { size: 8, align: 'center' })
   s.text(`Invoice #  ${blank ? '' : (wo.invoice_number || '—')}`, RIGHT, { size: 8, align: 'right' })
-  if (blank) s.line(RIGHT - 62, RIGHT, HAIR, 0.5, -2)
+  if (blank) { s.line(RIGHT - 62, RIGHT, HAIR, 0.5, -2); s.input(RIGHT - 62, 62) }
   s.gap(16)
 
   // ── Title line ────────────────────────────────────────────────────────────
@@ -514,13 +555,14 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
   // column — drop the column or take the width from Session info, which is the
   // only one that truncates gracefully.
   const stCols: Col[] = [
-    { head: 'Studio', w: 38 },
+    // Wide enough for "TRS North", the longest room label.
+    { head: 'Studio', w: 62 },
     { head: 'Date', w: 44 },
     // Session info doubles as the STAFF NAME cell on engineer sub-rows, so it
     // gets every point the money columns can spare. It WRAPS rather than
     // truncating (see Col.wrap): this is the client's record of what was worked
     // on, and a printed page has no popover to open.
-    { head: 'Session info', w: 90, wrap: true },
+    { head: 'Session info', w: 66, wrap: true },
     { head: 'From', w: 46 },
     { head: 'To', w: 46 },
     { head: 'Hrs', w: 22, align: 'right' },
@@ -548,7 +590,10 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
 
       if (!isEngOnly) {
         stRows.push([
-          r.studio || '',
+          // "PRS A", never a bare "A" — every venue has a Studio A, and this
+          // page is read months later by someone who was not there. A row's own
+          // `location` wins; blank means it inherited the session's venue.
+          roomCode(r.studio, r.location || wo.location),
           pdfDate(r.date),
           r.session_info || '',
           r.from_time || '',
@@ -644,7 +689,7 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
     s.need(40)
     sectionTitle(s, 'Session notes')
     if (blank) {
-      for (let i = 0; i < 4; i++) { s.need(15); s.line(M, RIGHT, HAIR, 0.5, -3.5); s.gap(15) }
+      for (let i = 0; i < 4; i++) { s.need(15); s.line(M, RIGHT, HAIR, 0.5, -3.5); s.input(M, W); s.gap(15) }
       s.gap(4)
     } else {
       paragraph(s, String(wo.session_notes))
@@ -682,7 +727,7 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
   const totalLine = (k: string, v: string, big = false) => {
     s.need(16)
     s.text(k.toUpperCase(), M, { size: big ? 8.5 : 7.5, bold: big, tracking: 0.6 })
-    if (blank) s.line(RIGHT - 110, RIGHT, HAIR, 0.5, -2)
+    if (blank) { s.line(RIGHT - 110, RIGHT, HAIR, 0.5, -2); s.input(RIGHT - 110, 110) }
     else s.text(v, RIGHT, { size: big ? 12 : 9.5, bold: big, align: 'right' })
     s.gap(big ? 19 : 15)
   }
@@ -714,6 +759,7 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
       s.text(wo.print_name || '', M, { size: 9.5, width: half })
       s.text(wo.signed_date || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), M + half + 24, { size: 9.5, width: half })
     }
+    if (blank) { s.input(M, half); s.input(M + half + 24, half) }
     s.line(M, M + half, RULE, 0.5, -3)
     s.line(M + half + 24, RIGHT, RULE, 0.5, -3)
     s.gap(26)
@@ -784,7 +830,10 @@ export async function mergePackage(
 ): Promise<Uint8Array> {
   if (!attachment) return workOrderPdf
 
-  const out = await PDFDocument.load(workOrderPdf)
+  // INVOICE FIRST, WORK ORDER BEHIND IT (Eli, 2026-08-13). The client's accounts
+  // payable department opens this to pay a bill, so page 1 must be the bill. The
+  // work order is the backup that justifies it. This was the other way round.
+  const out = await PDFDocument.create()
   const type = (attachment.contentType || '').toLowerCase()
 
   if (type.includes('pdf')) {
@@ -804,6 +853,10 @@ export async function mergePackage(
   }
   // Anything else (a .docx someone dragged in) is skipped rather than fatal:
   // a work order with no invoice attached still beats no file at all.
+
+  const wo = await PDFDocument.load(workOrderPdf)
+  const woPages = await out.copyPages(wo, wo.getPageIndices())
+  woPages.forEach(p => out.addPage(p))
 
   return out.save()
 }

@@ -287,7 +287,7 @@ export default function BillingPage() {
         <button
           className="c-bmore"
           onClick={() => setPageMenu(true)}
-          title="More — blank work order form"
+          title="More — generate a blank work order"
           style={{ fontSize: 15, padding: '4px 6px' }}
         >
           ⋯
@@ -361,7 +361,7 @@ export default function BillingPage() {
             <span>Progress</span>
             <span className="c-r">Balance</span>
             {showAge && <span className="c-r">Age</span>}
-            <span className="c-r">Next</span>
+            <span className="c-bacthd">Next</span>
             <span />
           </div>
         )}
@@ -482,11 +482,12 @@ export default function BillingPage() {
                 setPageMenu(false)
               }}
             >
-              {blankBusy ? 'Building…' : 'Blank work order — download a printable form'}
+              {blankBusy ? 'Building…' : 'Generate WO — a blank work order to fill in'}
             </button>
             <div style={{ fontSize: 10.5, opacity: 0.45, lineHeight: 1.5, margin: '2px 2px 10px' }}>
-              An empty work order to print and fill in by hand. It creates nothing
-              and appears nowhere — if the session is real, enter it properly too.
+              An empty work order you can type into and then print, or print and
+              fill in by hand. It creates nothing and appears nowhere — if the
+              session is real, enter it properly too.
             </div>
             <button className="c-bact c-bmuted c-bblock" onClick={() => setPageMenu(false)}>Cancel</button>
           </div>

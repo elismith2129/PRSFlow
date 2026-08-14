@@ -100,6 +100,17 @@ export async function GET(req: NextRequest) {
   const rentalRows = rent.data ?? []
   const paymentRows = pay.data ?? []
 
+  // The session's VENUE, for the studio column ("PRS A", not "A"). Studio-time
+  // rows store only a room letter and leave `location` blank when it matches the
+  // session's, so the booking is the only place the venue lives. Display only —
+  // it touches no money.
+  let venue: string | null = null
+  if (wo.booking_id) {
+    const { data: bks } = await supabaseAdmin
+      .from('bookings').select('location').eq('id', wo.booking_id).limit(1)
+    venue = (bks?.[0] as any)?.location ?? null
+  }
+
   // NO `fallbackEngRate` (2026-08-13). The engineer's rate lives in
   // `studio_time_rows.eng_rate` and nowhere else — `bookings.engineer_rate` is a
   // vestigial column from the deleted booking form and nothing writes it. See
@@ -112,7 +123,10 @@ export async function GET(req: NextRequest) {
   const totals = computeWoTotals({ studioRows, rentalRows, paymentRows })
 
   // ── Build ─────────────────────────────────────────────────────────────────
-  const woPdf = await renderWorkOrderPdf({ wo, studioRows, rentalRows, paymentRows, totals })
+  const woPdf = await renderWorkOrderPdf({
+    wo: { ...wo, location: venue },
+    studioRows, rentalRows, paymentRows, totals,
+  })
 
   let attachment: { bytes: Uint8Array; contentType: string } | null = null
   if (!woOnly && wo.invoice_doc_path) {

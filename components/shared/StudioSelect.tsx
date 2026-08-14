@@ -1,6 +1,6 @@
 'use client'
 import React from 'react'
-import { STUDIO_LOCATIONS } from '@/lib/studios'
+import { STUDIO_LOCATIONS, STUDIO_SHORT } from '@/lib/studios'
 
 interface StudioSelectProps {
   location: string
@@ -12,12 +12,9 @@ interface StudioSelectProps {
 
 // Display-only short codes for the venue name. The stored value ("Venue|Room")
 // is unchanged — only the rendered option label is abbreviated when shortCodes is set.
-const STUDIO_CODES: Record<string, string> = {
-  Paramount: 'PRS',
-  Ameraycan: 'ARS',
-  Encore: 'ERS',
-  Track: 'TRK',
-}
+// The map itself is lib/studios.STUDIO_SHORT (2026-08-13) — this was a private
+// copy, and it still said TRK after Track was renamed TRS.
+const STUDIO_CODES = STUDIO_SHORT
 
 export default function StudioSelect({ location, studio, onChange, selectStyle, shortCodes }: StudioSelectProps) {
   const base: React.CSSProperties = {

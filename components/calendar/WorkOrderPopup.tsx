@@ -15,10 +15,14 @@ import { seedStudioTimeRows } from '@/lib/seedStudioTimeRows'
 import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter, getLocalToday } from '@/lib/time'
 import { formatCurrency, stripCurrency } from '@/lib/format'
 import { computeWoTotals } from '@/lib/woTotals'
-import { findMissingTimes, missingTimesMessage } from '@/lib/woValidation'
+import {
+  findMissingTimes, missingTimesMessage,
+  findMissingEngRates, missingEngRatesMessage,
+  findDuplicateStaffLines, duplicateStaffMessage,
+} from '@/lib/woValidation'
 import { enterInvoicePipeline, downloadPackage } from '@/lib/billing'
 import { dbResult } from '@/lib/db'
-import { STUDIO_LOCATIONS } from '@/lib/studios'
+import { STUDIO_LOCATIONS, STUDIO_SHORT } from '@/lib/studios'
 
 // Convert a studio_time_rows studio value (bare letter 'X', or 'North'/'South')
 // into the full room label the calendar filters on ('Studio X', 'North'), within
@@ -35,9 +39,9 @@ function roomLabelForVenue(venue: string, rawStudio: string): string {
   return raw
 }
 
-const STUDIO_SHORT: Record<string, string> = {
-  Paramount: 'PRS', Ameraycan: 'ARS', Encore: 'ERS', Track: 'TRK',
-}
+// STUDIO_SHORT moved to lib/studios.ts (2026-08-13) — the PDF needs the same
+// map, and a venue code that prints on a client's paperwork may not have two
+// definitions. Imported below with the other studio helpers.
 
 // Session status bar (calendar status) + session type — session-level, shown in
 // the WO top. Order/labels mirror the old booking form.
@@ -1420,6 +1424,24 @@ export function WorkOrderPopup({
     setTimeErrorMsg(null)
 
     setCompleting(true)
+
+    // SAVE FIRST, THEN STAMP, THEN CLOSE (fix, 2026-08-13).
+    //
+    // The footer comment has claimed since 2026-08-11 that this "saves and
+    // closes". It never did — it wrote the status and left you sitting in the
+    // popup with your edits unsaved, so you then pressed Close and got asked
+    // whether to save. Worse, Complete is what starts the billing pipeline, so
+    // a work order could enter billing with the numbers on screen not yet
+    // written to the row anyone would bill from.
+    //
+    // `handleClose(false)` is the existing save path (save_work_order_atomic +
+    // the booking projection). It returns having reported its own failure, so
+    // if the save fails we must NOT go on to stamp it completed.
+    if (isDirty()) {
+      const saved = await handleClose(false)
+      if (!saved) { setCompleting(false); return }
+    }
+
     const newStatus = reopening ? 'open' : 'completed'
     const now = new Date().toISOString()
     const { error: completeErr } = await supabase.from('work_orders').update({
@@ -1451,6 +1473,10 @@ export function WorkOrderPopup({
     setWo(prev => prev ? { ...prev, status: newStatus } : prev)
     onStatusChange?.(newStatus)
     setCompleting(false)
+    // AND CLOSE. Complete WO is "I'm done here" — leaving the popup open made it
+    // a step rather than a decision, and left people pressing Close afterwards
+    // wondering whether the first press had done anything.
+    if (!reopening) onClose()
   }
 
   // ── Non-session block save (Tour / Tech / Open Hours) ──────────────────────
@@ -1490,14 +1516,19 @@ export function WorkOrderPopup({
    * Save and close. `close=false` saves in place — used by the PDF export, which
    * must never hand out a document that disagrees with the saved record.
    */
-  async function handleClose(close = true) {
-    if (!wo) { if (close) onClose(); return }
+  /**
+   * Returns TRUE only when everything was written. Complete WO calls this to
+   * save before it stamps the work order, and must not stamp a work order whose
+   * save just failed (fix, 2026-08-13).
+   */
+  async function handleClose(close = true): Promise<boolean> {
+    if (!wo) { if (close) onClose(); return false }
     // Tour/Tech/Open-Hours → save as a simple block, skip the WO body + projection.
-    if (BLOCK_STATUSES.includes(wo.session_status)) { await handleBlockSave(); return }
+    if (BLOCK_STATUSES.includes(wo.session_status)) { await handleBlockSave(); return true }
     if (!woIdRef.current) {
       // A legacy WO-less block whose status was flipped to a real session:
       // create its WO now (atomic RPC), then fall through to the normal save.
-      if (!booking.id) { onClose(); return }
+      if (!booking.id) { onClose(); return false }
       setSaving(true)
       try {
         const { workOrderId } = await createWorkOrderForBooking({ ...(booking as any), status: wo.session_status } as Booking)
@@ -1506,7 +1537,7 @@ export function WorkOrderPopup({
       } catch (e: any) {
         setSaving(false)
         dbResult('Creating work order', { message: e?.message ?? String(e) })
-        return
+        return false
       }
       setSaving(false)
     }
@@ -1598,7 +1629,7 @@ export function WorkOrderPopup({
     })
     // All-or-nothing: on failure NOTHING was written — keep the popup open so
     // the user's edits aren't lost, and let them retry.
-    if (!dbResult('Saving work order', saveErr)) { setSaving(false); return }
+    if (!dbResult('Saving work order', saveErr)) { setSaving(false); return false }
 
     // The lead that produced this session is marked booked HERE — on a successful
     // save — rather than when Start Booking was pressed. Opening a WO to check a
@@ -1622,6 +1653,7 @@ export function WorkOrderPopup({
     setSaving(false)
     onSaved?.()
     if (close) onClose()
+    return true
   }
 
   const saveOnly = () => handleClose(false)
@@ -1715,6 +1747,12 @@ export function WorkOrderPopup({
     rentalRows: rentRows,
     paymentRows: payRows,
   })
+
+  // Live, derived — no state, so they cannot get stale behind an edit.
+  // Duplicates outrank a missing rate: being charged twice is a bigger error
+  // than not being charged, and fixing it usually removes the other one too.
+  const engRateWarning = missingEngRatesMessage(findMissingEngRates(stRows))
+  const dupStaffWarning = duplicateStaffMessage(findDuplicateStaffLines(stRows))
   const stTotal = woTotals.studio
   const engTotal = woTotals.engineer
   const rentTotal = woTotals.rentals
@@ -3063,6 +3101,52 @@ export function WorkOrderPopup({
             }}
           >
             {timeErrorMsg}
+          </div>
+        )}
+
+        {/* ── STAFF LINE WITH NO RATE (RULING 2026-08-13) ───────────────────
+            A WARNING, not a block, and it is LIVE — it appears the moment the
+            condition exists rather than waiting for you to press Complete,
+            because the whole point is to catch a typo before the work order is
+            signed off, not after. The rate is hand-typed on every line now that
+            the old inherited default is gone, so a forgotten one is the
+            likeliest way a session quietly under-bills.
+            Hot is sanctioned for missing information (§5). Suppressed while the
+            times banner is up — that error names the same rows and has to be
+            fixed first. */}
+        {!timeErrorMsg && dupStaffWarning && (
+          <div
+            data-no-print=""
+            role="status"
+            style={{
+              flexShrink: 0,
+              background: 'color-mix(in srgb, var(--c-st-hot) 12%, transparent)',
+              color: 'var(--c-fg)',
+              fontFamily: 'Inter',
+              fontSize: 11,
+              lineHeight: 1.5,
+              padding: isMobile ? '10px 16px' : '10px 22px',
+            }}
+          >
+            {dupStaffWarning}
+          </div>
+        )}
+
+        {!timeErrorMsg && !dupStaffWarning && engRateWarning && (
+          <div
+            data-no-print=""
+            role="status"
+            style={{
+              flexShrink: 0,
+              background: 'color-mix(in srgb, var(--c-st-hot) 12%, transparent)',
+              color: 'var(--c-fg)',
+              fontFamily: 'Inter',
+              fontSize: 11,
+              lineHeight: 1.5,
+              padding: isMobile ? '10px 16px' : '10px 22px',
+            }}
+          >
+            {engRateWarning}
           </div>
         )}
 

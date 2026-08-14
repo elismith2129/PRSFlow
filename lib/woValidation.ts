@@ -112,6 +112,115 @@ export function findMissingTimes(rows: ValidatableStudioRow[]): RowTimeProblem[]
   return out
 }
 
+/**
+ * Staff lines that will be worked but never charged (RULING 2026-08-13).
+ *
+ * Eli: "I want there to be a notification that arises when there is an
+ * engineering line that doesn't have a rate on it — noticing it's something we
+ * have to manually enter and that can create errors."
+ *
+ * The rate is typed by hand on every line and there is no default any more (the
+ * old $55 inheritance was removed the same day), so a forgotten rate is now the
+ * likeliest way a session gets under-billed. It is silent by nature: the line
+ * still shows a name and hours, and simply contributes $0 to the total.
+ *
+ * A WARNING, NOT A BLOCK — unlike missing times. A rateless staff line is
+ * sometimes correct: an assistant is never rated on the work order (see the
+ * runner WO page), and a line can legitimately be logged before the rate is
+ * agreed. Refusing to complete would stop real work over a judgement call.
+ *
+ * Only flags lines that would otherwise BILL — the times have to be readable,
+ * because a line with no times computes no hours and is already caught by
+ * findMissingTimes.
+ */
+export function findMissingEngRates(
+  rows: Array<ValidatableStudioRow & { eng_rate?: string | null }>,
+): RowTimeProblem[] {
+  const out: RowTimeProblem[] = []
+
+  for (const r of rows) {
+    if (!staffLineActive(r)) continue
+    if ((r.eng_rate ?? '').trim()) continue
+    // No readable clock → no hours → nothing to under-charge. That row's real
+    // problem is its missing times, and it is reported there instead.
+    if (badTime(r.eng_from_time) || badTime(r.eng_to_time)) continue
+
+    const standalone = !r.studio || r.studio.trim() === ''
+    const who = r.eng_role === 'engineer' ? '1ST' : '2ND'
+    const place = standalone ? who : `Studio ${r.studio} · ${who}`
+    out.push({
+      rowId: r.id,
+      where: `${whereDate(r.date)} · ${place}`,
+      fields: [r.eng_name?.trim() || 'no name'],
+    })
+  }
+
+  return out
+}
+
+/** One sentence for the warning banner. Null when every staff line has a rate. */
+export function missingEngRatesMessage(problems: RowTimeProblem[]): string | null {
+  if (problems.length === 0) return null
+  const detail = problems.map(p => `${p.where} (${p.fields[0]})`).join(' · ')
+  return problems.length === 1
+    ? `One staff line has hours but no rate, so it will bill $0: ${detail}`
+    : `${problems.length} staff lines have hours but no rate, so they will bill $0: ${detail}`
+}
+
+/**
+ * The same person billed twice on the same day (RULING 2026-08-13).
+ *
+ * FOUND IN LIVE DATA (WO-1018, 29–30 July): each day had a studio row carrying
+ * its staff sub-row AND a separate standalone staff row for the SAME engineer,
+ * same rate, same hours. Both contribute to the engineer total, so the session
+ * was billing that engineer twice — and on screen it just looks like two lines.
+ *
+ * Nothing creates this automatically. `+ Add Engineer` pre-fills the previous
+ * staff line's name, rate and times as a convenience, so pressing it on a
+ * session that already has that engineer on the studio row produces an exact
+ * duplicate. Easy to do, invisible afterwards.
+ *
+ * A WARNING, not a block: two lines for one person on one day is legitimate
+ * when someone genuinely worked two separate calls. Only the person looking at
+ * it can tell, so it says what it found and leaves the decision alone.
+ */
+export function findDuplicateStaffLines(
+  rows: Array<ValidatableStudioRow & { eng_rate?: string | null }>,
+): RowTimeProblem[] {
+  const norm = (s: string | null | undefined) => (s ?? '').trim().toLowerCase()
+
+  // Staff carried by a STUDIO row — the sub-row. Keyed by date + person.
+  const onStudioRow = new Set<string>()
+  for (const r of rows) {
+    const standalone = !r.studio || r.studio.trim() === ''
+    if (standalone || r.eng_visible === false) continue
+    if (!norm(r.eng_name)) continue
+    onStudioRow.add(`${r.date ?? ''}|${norm(r.eng_name)}`)
+  }
+
+  const out: RowTimeProblem[] = []
+  for (const r of rows) {
+    const standalone = !r.studio || r.studio.trim() === ''
+    if (!standalone || !norm(r.eng_name)) continue
+    if (!onStudioRow.has(`${r.date ?? ''}|${norm(r.eng_name)}`)) continue
+    out.push({
+      rowId: r.id,
+      where: whereDate(r.date),
+      fields: [r.eng_name!.trim()],
+    })
+  }
+  return out
+}
+
+/** One sentence for the duplicate-staff warning. Null when there are none. */
+export function duplicateStaffMessage(problems: RowTimeProblem[]): string | null {
+  if (problems.length === 0) return null
+  const detail = problems.map(p => `${p.fields[0]} on ${p.where}`).join(' · ')
+  return problems.length === 1
+    ? `${detail} is on two lines for that day, so they will be charged twice. Delete one unless they really worked two calls.`
+    : `${problems.length} staff lines are duplicates and will be charged twice: ${detail}. Delete the extras unless they really worked two calls.`
+}
+
 /** One sentence for the banner. Null when there is nothing wrong. */
 export function missingTimesMessage(problems: RowTimeProblem[]): string | null {
   if (problems.length === 0) return null

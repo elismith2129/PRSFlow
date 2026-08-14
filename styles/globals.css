@@ -1809,7 +1809,12 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-bamt { font-family: 'DM Mono', ui-monospace, monospace; font-size: 11.5px; text-align: right; }
 .c-bage { font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px; opacity: .45; text-align: right; }
 .c-bflagcell { display: flex; justify-content: flex-end; min-width: 0; }
-.c-bactcell { display: flex; justify-content: flex-end; gap: 6px; }
+/* CENTRED IN ITS COLUMN (Eli, 2026-08-13). Right-aligning pills of different
+   widths — "Approve", "Mark sent", "Attach invoice" — lined up their right edges
+   and left their left edges ragged down the list. Centring makes the column read
+   as one stack of buttons instead of a jagged edge. */
+.c-bactcell { display: flex; justify-content: center; gap: 6px; }
+.c-browhd .c-bacthd { text-align: center; }
 /* The ⋯ overflow gets its OWN column at the far right edge (fix, 2026-08-11).
    It used to share the action cell, so on a row with no button it drifted into
    the middle of the gap and on a row with one it crowded the primary. A control

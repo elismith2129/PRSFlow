@@ -73,7 +73,7 @@ const ROOM_NAME_H = 20
 const ROOM_CARD_H = 120
 
 // §14b: rooms are 12, in this order — PRS A,B,C,E,X,Nadine's → ARS A,B →
-// ERS A,B → TRK N,S. Nadine's is PRS's sixth room but is not yet a bookable
+// ERS A,B → TRS N,S. Nadine's is PRS's sixth room but is not yet a bookable
 // studio in the data model (STUDIO_LOCATIONS has no Nadine's), so its card is
 // display-only (`bookable: false`) until that lands.
 const ROOMS: { venue: string; studio: string; label: string; bookable?: boolean }[] = [
@@ -87,8 +87,8 @@ const ROOMS: { venue: string; studio: string; label: string; bookable?: boolean 
   { venue: 'Ameraycan', studio: 'Studio B', label: 'ARS · B' },
   { venue: 'Encore', studio: 'Studio A', label: 'ERS · A' },
   { venue: 'Encore', studio: 'Studio B', label: 'ERS · B' },
-  { venue: 'Track', studio: 'North', label: 'TRK · N' },
-  { venue: 'Track', studio: 'South', label: 'TRK · S' },
+  { venue: 'Track', studio: 'North', label: 'TRS · N' },
+  { venue: 'Track', studio: 'South', label: 'TRS · S' },
 ]
 
 // Location count chips for the sessions pane header (§14b — the old location
@@ -97,7 +97,7 @@ const LOC_CHIPS = [
   { code: 'PRS', venue: 'Paramount' },
   { code: 'ARS', venue: 'Ameraycan' },
   { code: 'ERS', venue: 'Encore' },
-  { code: 'TRK', venue: 'Track' },
+  { code: 'TRS', venue: 'Track' },
 ]
 
 // (The FLO_STATIC / MYDAY_STATIC / DGRID_STATIC placeholders that used to live
