@@ -19,6 +19,107 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.9.1 — UNRELEASED (branch `redesign/carved`) — Aug 13, 2026
+
+**The work order PDF becomes the work order**, v1.9.0's flagged open item. Plus a
+blank fillable form, five real bugs found by tracing the admin workflow end to
+end, and the first rulings of the runner redesign.
+
+**Migrations — run by hand, in order:**
+
+| File | What |
+|---|---|
+| `20260813120000_wipe_stale_packages.sql` | Nulls `invoice_package_path` on every work order. The snapshots taken before the PDF rebuild are faithful copies of a document we replaced. **Run AFTER deploying**, or a download in the gap writes a fresh stale one. |
+| `20260813130000_dedupe_staff_rows.sql` | One-off clean-up: standalone staff rows duplicating a studio row's staff on the same day. Step 1 lists, step 2 deletes. |
+
+**⚠ Storage files cannot be deleted from SQL.** Supabase's `storage.protect_delete()`
+trigger rejects `delete from storage.objects` (42501). The wipe migration clears
+POINTERS only; the orphaned objects stay in the private `invoices` bucket,
+unreferenced and unreachable. Removing them needs the Storage API.
+
+### What shipped
+
+- **`lib/woPdf.ts` rebuilt as a section-by-section replica of the WO screen** —
+  same twelve studio-time columns, engineer sub-rows, rentals, session notes,
+  payments, six totals, COD terms + signature. Verified by rendering and
+  inspecting, not by compiling: that caught engineer sub-rows never drawing,
+  clipped columns, and every table's header rule striking through its first row.
+- **Session Info WRAPS and grows the row, with no line limit.** The one place the
+  PDF deliberately differs from the screen, and it differs by showing MORE — the
+  screen truncates into a popover, and paper has no popover.
+- **Internal fields are STRIPPED from the record before drawing** (`INTERNAL_ONLY`),
+  not merely omitted from the layout. Booking Notes and Needs Attention can no
+  longer leak by someone adding a field to a section.
+- **Blank work order** — `/api/wo-package?blank=1`, behind a page-level `⋯` on
+  `/billing`. 188 real AcroForm fields, so it can be typed into or printed and
+  filled by hand. Creates nothing, stores nothing.
+- **Invoice pages come FIRST, work order behind** — AP opens it to pay a bill.
+- **Studio column prints `PRS A` / `TRS North`**, from the new shared
+  `lib/studios.STUDIO_SHORT` + `roomCode()`. Track is **TRS**, not TRK; three
+  private copies of that map were deleted.
+
+### Bugs found by tracing the workflow
+
+- **A drifted invoice could never be approved.** Approving set `approved` (step 3);
+  `deriveStep` immediately demoted it to 2 because `invoice_total` still held the
+  old figure. The button appeared dead forever. `approveInvoice` now re-snapshots
+  `invoice_total` — which is what approval means.
+- **Complete WO never saved or closed**, despite a comment claiming it did since
+  Aug 11. It now saves, stamps, closes — and will NOT stamp if the save failed
+  (`handleClose` returns a boolean now).
+- **Four fields never marked the WO dirty** (session notes, print name, needs
+  attention, signature), so Complete WO stayed greyed after editing them.
+- **Equipment condition only worked on day one.** Rows are seeded at WO creation
+  for the dates the booking had THEN; later days had no row and the buttons were
+  gated on `row &&`. First tap now creates it. That write was also unchecked.
+- **Double-clicking a row button opened the work order** behind it.
+- A billing row whose booking was deleted did nothing on double-click, silently.
+- Mobile still offered `Re-open WO`, removed on desktop in v1.9.0.
+
+### Two new warnings on the work order
+
+- **Engineer line with hours and no rate** → will bill $0. **Engineers only** —
+  assistants are never rated, and warning on them would fire on most sessions.
+- **The same person on two lines for one day** → will be charged twice. Found in
+  live data (WO-1018, 29–30 July, both at the retired $55). `+ Add Engineer`
+  pre-fills the previous staff line, so pressing it on an already-staffed session
+  makes an exact duplicate.
+
+### Design rulings (spec)
+
+- **§15 Runner hub = Day card.** Built: `/runner/[studio]` ported to soft skin.
+  The work order page is NOT built yet.
+- **§16 Studio Time = day blocks**, zebra retired. **§16c table chrome is TEXT,
+  not bars** — headers and footers lose their fill, subtotals get a result chip,
+  only entries are filled and rounded. Equipment regrouped per GEAR, not per day.
+  §16b (round every strip) is superseded, kept for its reasoning.
+
+### Watch-outs
+
+- **`bookings.engineer_rate` is DEAD. Do not read it.** Nothing writes it since
+  the booking form was deleted. Five surfaces still did, so the WO screen showed
+  engineer charges that billing and the invoice would never bill. All removed,
+  and `woTotals.fallbackEngRate` is gone.
+- **The blank PDF is safe while it is a FORM.** If one gets filled in for real
+  paid work, that job never enters AR. That is the signal it needs a real session.
+- `lib/woPdf.ts` and the WO screen remain two descriptions of one layout. A new
+  PRINTABLE section must be added to both; a `data-no-print` one to neither.
+- `/wo/[id]/print` is **actually deleted** now. CLAUDE.md had claimed so since June
+  while the route still shipped.
+- `.claude/worktrees/` is an abandoned June copy of the app — gitignored, skipped
+  by tsc (dot-folder), harmless where it sits, but it pollutes every grep. See
+  ONBOARDING §5.
+
+**Files:** `lib/woPdf.ts`, `lib/billing.ts`, `lib/woTotals.ts`, `lib/woValidation.ts`,
+`lib/studios.ts`, `app/api/wo-package/route.ts`, `app/(main)/billing/page.tsx`,
+`app/(main)/page.tsx`, `components/calendar/WorkOrderPopup.tsx`,
+`components/shared/StudioSelect.tsx`, `app/runner/[studio]/page.tsx`,
+`app/runner/[studio]/wo/[id]/page.tsx`, `styles/globals.css`, `CLAUDE.md`,
+`docs/ONBOARDING.md`, `docs/PRSFLO-DESIGN-SPEC.md`, three new files in
+`docs/design-refs/`. Deleted: `app/wo/[id]/print/`.
+
+---
+
 ## v1.9.0 — UNRELEASED (branch `redesign/carved`) — Aug 11–12, 2026
 
 **THE BILLING HUB replaces `/wo-hub` AND the Dropbox invoice-filing system**, and the

@@ -3201,3 +3201,144 @@ real, paid session on one, that job never gets invoiced, never enters AR and nev
 appears in a total unless the work order is entered properly afterwards. If these
 start being filled in for real work rather than handed over as a form, that is the
 signal it needs to become a real session — not before.
+
+---
+
+### Aug 13, 2026 — The PDF becomes the work order; five bugs the trace found; the runner redesign starts
+
+#### The sequencing error from v1.9.0, corrected
+
+v1.9.0 shipped the package ARCHIVE before the package LAYOUT was right, so every
+stored snapshot was a faithful copy of a document we were about to throw away.
+Today rebuilt `lib/woPdf.ts` against the work order screen, section by section,
+and wiped the snapshots. The plumbing was always independent of the layout and
+stood; only the artifacts were wrong.
+
+**Rendering it and LOOKING was the whole difference.** `tsc` was clean on a
+generator that never drew engineer sub-rows (the `subRows` argument was simply
+not passed), clipped four columns, and struck a rule through the first row of
+every table. None of that is a type error. Compiling proves a document exists,
+not that it is readable — for anything that produces a document, render it and
+open it.
+
+#### Where I was wrong, and Eli corrected it
+
+**The engineer-rate "money bug" that wasn't.** I read the WO screen's
+`r.eng_rate || booking.engineer_rate` fallback as a live rule, concluded billing
+was under-counting, and "fixed" billing and the PDF to match. Eli: *"we deleted
+the booking page long ago… engineer rates and hours only live in the studio time
+table."* He was right. `bookings.engineer_rate` is vestigial — nothing writes it
+since the booking form was deleted, and `buildBookingProjection` never touched
+it. My fix was worse than the bug: it made two more surfaces READ a dead column,
+so a stale pre-rebuild rate would have ADDED engineering cost to invoices that
+correctly had none.
+
+Reverted, then fixed in the correct direction: five reads removed (two on the WO
+screen, three on the runner WO page) so the row's own `eng_rate` is the only
+source anywhere. Confirmed against live data first — three work orders carried
+the retired $55, all open, none invoiced.
+
+**The lesson generalises past this instance.** A fallback in code is not evidence
+the thing it falls back to is alive. Check what WRITES a column before trusting
+what reads it. And Eli's firsthand account of how the app works outranks my
+reading of it — that rule is already in memory and I should have applied it
+before writing the fix, not after.
+
+**Buttons and warnings at the bottom of the work order.** I argued the footer was
+right because the click that triggers a warning happens down there. Eli: *"move
+the red banner to the top and move all buttons to the top… that was a bad call
+for me."* He is right — the work order is long and you scroll it, so a bar pinned
+under a metre of table is a bar you have to go looking for. Moved, same markup.
+
+#### The bugs, and what they have in common
+
+Tracing the admin workflow end to end found five, and four share a shape: **a
+control that looks available and does nothing.**
+
+- **A drifted invoice could never be approved.** Approving wrote `approved`
+  (step 3) and `deriveStep` instantly demoted it to 2, because `invoice_total`
+  still held the pre-edit figure. Pressing Approve appeared to do nothing,
+  forever, with no error. The fix is also the honest semantics: approving
+  re-snapshots the total, because an owner is signing off on the numbers as they
+  stand, not as they were when the invoice was attached.
+- **Complete WO never saved or closed** — while a comment written on Aug 11
+  asserted it did. A comment is not a test. It now returns a boolean from the
+  save and refuses to stamp a work order whose save just failed.
+- **Four fields never marked the record dirty**, so Complete WO stayed greyed
+  after editing them and the close prompt never appeared.
+- **Equipment condition only accepted clicks on day one.** Rows are seeded at
+  creation for the dates the booking had THEN; add a day later — which is normal,
+  sessions run long — and the cells had no row behind them, with the handler
+  gated on `row &&`. Silent by construction.
+- Double-clicking a row button opened the work order behind it.
+
+#### Duplicate staff lines — a real double-billing, found in live data
+
+WO-1018 had, on 29 and 30 July, the engineer on the studio row AND an identical
+standalone staff row: same name, same $55, same 2:00 PM–10:00 PM. Both feed the
+engineer total, so the session billed him twice. On screen it merely looks like
+two lines.
+
+Nothing creates these automatically. `+ Add Engineer` deliberately pre-fills the
+previous staff line's name, rate and times as a convenience — so pressing it on a
+session that already has that engineer produces an exact duplicate. Easy to do,
+invisible afterwards.
+
+Deleted with a predicate that requires the HOURS to match exactly, so a genuine
+second call at different hours could not be caught by it. Two rows; $880 came off
+WO-1018. The work order now warns live when it sees the pattern.
+
+**Rejected: blocking Complete on it.** Two lines for one person on one day is
+sometimes real, and only the person looking can tell. Same reasoning excluded
+assistants from the no-rate warning — assistants are never rated, so warning on
+them would fire on the majority of sessions and train everyone to ignore the
+banner. A warning that cries wolf is worse than no warning.
+
+#### Table chrome — the fix that chased the symptom
+
+The day-block grouping (§16) exposed that every table had a SQUARE header strip
+and footer bar inside a rounded container. I rounded the strips' outer corners
+(§16b). Eli: *"looks like headers and footers are half round and half square."*
+Right — two filled bars sandwiching filled blocks means three fills competing for
+one edge, and the corner only MOVES.
+
+His diagnosis dissolved it: *"for the headers and footers, there are no bars or
+pills, just text. that way entries have the rounded bubbles."* If only one thing
+is filled, only one thing needs a radius. §16b is superseded but kept, because
+the reasoning for why the first fix was wrong is worth more than the fix.
+
+The same conversation produced the sharper insight about **grouping axis**:
+Studio Time bubbles a DAY (a day and its staff are one fact); Equipment bubbles a
+PIECE OF GEAR across every night. Equipment looked worst precisely because it had
+borrowed Studio Time's axis.
+
+**And the "square" search bar was not square.** Eli sent the CRM field as the
+correct reference: it is `.c-input` — radius 12. Billing's was a 99px capsule,
+left over from the carved geometry that the soft skin and the density ruling
+replaced. The eye was catching a shape mismatch, not a corner.
+
+#### Rejected, with reasons
+
+- **A "create WO" button on billing** (already logged Aug 12) stayed rejected;
+  the blank PDF shipped instead, now with 188 fillable fields after Eli asked to
+  be able to type into it before printing.
+- **Deleting `.claude/worktrees/`.** An abandoned June worktree, 23MB. Verified it
+  holds no unique commits and that its uncommitted changes are features long
+  since shipped. Eli chose to leave it and delete later — correct, because it is
+  gitignored, skipped by tsc (dot-folders are not matched by `**/*`), and never
+  bundled. Documented as an ONBOARDING landmine instead: the hazard is a grep
+  hitting a two-month-old duplicate, not the folder itself.
+  - I also told him it contained no unsaved work based on a command that had
+    ERRORED, and had to correct that. Read the output, not the exit you expected.
+- **Deleting storage objects in SQL.** Not a choice — Supabase's
+  `protect_delete()` trigger rejects it. Pointers cleared, files orphaned.
+
+#### Open
+
+- **The runner work order page is not built.** `/runner/[studio]` is ported;
+  `/runner/[studio]/wo/[id]` (1,591 lines) still has the twelve-column
+  sideways-scrolling table. That is tomorrow, per spec §15 option A.
+- Billing has not been tested by a human on preview — everything today was
+  verified at source and by rendering PDFs.
+- Four AR questions still open (approver set, deposits, Dropbox history import,
+  `SUPABASE_SERVICE_ROLE_KEY` in the Preview environment) — see `docs/AR-SCOPING.md`.

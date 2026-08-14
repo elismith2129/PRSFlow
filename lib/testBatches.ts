@@ -55,6 +55,91 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'wo-pdf-2026-08-13',
+    title: 'The work order PDF, and buttons that used to do nothing',
+    version: 'v1.9.1 (preview branch)',
+    date: 'Aug 13, 2026',
+    intro:
+      'Downloading a work order now produces a document that looks like the work order. Several controls that appeared to work but quietly did nothing have also been fixed. Downloading is safe — it saves a file to your own computer and emails nobody. Do all of this on a work order you do not mind editing.',
+    items: [
+      {
+        id: 'wp-looks', area: 'Billing',
+        what: 'A downloaded work order looks like the work order on screen',
+        how: 'Open Billing, find any line with an invoice attached, and use Download (or open a work order and press Save & download). Open the file. It should have the Paramount letterhead, then the client details, then a Studio Time table with the same columns as the screen — Studio, Date, Session Info, From, To, Hrs, Type, Rate, OT, Total — then rentals, notes, payments and the totals. Report it if it looks like a plain invoice instead.',
+      },
+      {
+        id: 'wp-session-info', area: 'Billing',
+        what: 'A long Session Info prints in full, not cut off',
+        how: 'Open a work order. In Studio Time, click a Session Info cell and type several song names — enough that it is clearly too long for the box. Save, then download. On the PDF that line should be fully readable, wrapped onto as many lines as it needs. Report ANY text that is cut off.',
+      },
+      {
+        id: 'wp-internal', area: 'Billing',
+        what: 'Internal notes never appear on the PDF',
+        how: 'On the same work order type something obvious like "INTERNAL TEST" into Booking Notes AND into Needs Attention / Runner Notes. Save and download. Search the PDF for that text. It must not appear anywhere. This one matters — clients receive this file.',
+      },
+      {
+        id: 'wp-blank', area: 'Billing',
+        what: 'Generate WO makes a blank form you can type into',
+        how: 'On the Billing page click the ⋯ at the top right, beside the Billing / COD switch. Choose "Generate WO". A blank work order downloads. Open it and try clicking into the Client box and typing — it should accept text. Then check the calendar: NOTHING new should have appeared on it.',
+      },
+      {
+        id: 'wp-studio-code', area: 'Billing',
+        what: 'The PDF names the venue, not just the room letter',
+        how: 'On any downloaded work order look at the Studio column in Studio Time. It should read like "PRS A", "ARS B" or "TRS North" — never a bare "A".',
+      },
+      {
+        id: 'wp-approve', area: 'Billing',
+        what: 'Approve works on an invoice that was edited after invoicing',
+        how: 'Find a line on In progress showing "Changed since invoiced" in the flag column (or make one: attach an invoice, then open the work order and change a rate). Press Approve. The line should move on. Report it if you press Approve and absolutely nothing happens.',
+      },
+      {
+        id: 'wp-complete', area: 'Work order',
+        what: 'Complete WO saves and closes in one press',
+        how: 'Open a work order, change something small — a session note is fine — and press Complete WO. It should save AND close, without asking you anything and without you needing to press Close afterwards.',
+      },
+      {
+        id: 'wp-dirty', area: 'Work order',
+        what: 'Editing notes un-greys Complete WO',
+        how: 'Open a work order that is already completed. Complete WO should be greyed out. Now type into Session Notes. It should become pressable. Try the same with Print Name and with Needs Attention.',
+      },
+      {
+        id: 'wp-equipment', area: 'Work order',
+        what: 'Equipment Condition can be ticked on every day, not just the first',
+        how: 'Open a work order covering more than one day (add a second day in Studio Time if you need to, and save). Scroll to Equipment Condition. Click OK under the SECOND date, and the third. Every column must respond. Report any date where clicking does nothing.',
+      },
+      {
+        id: 'wp-dblclick', area: 'Billing',
+        what: 'Double-clicking a button does not also open the work order',
+        how: 'On the Billing list, double-click directly on a row button — Approve, Mark sent or Attach invoice. The button should do its job and the work order should NOT open behind it. Double-clicking empty space on the row should still open it.',
+      },
+      {
+        id: 'wp-warn-rate', area: 'Work order',
+        what: 'A warning appears when an engineer has hours but no rate',
+        how: 'Open a work order with a 1ST engineer line. Clear the rate on that line. A red bar should appear near the top saying the line will bill $0. Now switch that line to 2ND (assistant) — the warning should disappear, because assistants are never rated.',
+      },
+      {
+        id: 'wp-warn-dupe', area: 'Work order',
+        what: 'A warning appears when the same person is on two lines for one day',
+        how: 'Open a work order, note who is on the engineer line for a day, then press "+ Add Engineer" and give the new line the SAME name and the same times. A red bar should appear at the top saying they will be charged twice. Delete the extra line and it should go away.',
+      },
+      {
+        id: 'wp-top-buttons', area: 'Work order',
+        what: 'The buttons and the warning bar are at the TOP',
+        how: 'Open any work order. Cancel, Complete WO, Close, Save & download and Delete should all be near the title at the top, and stay visible as you scroll down the work order. Report it if they are still at the bottom.',
+      },
+      {
+        id: 'wp-grouping', area: 'Work order',
+        what: 'Studio Time groups each day with its engineer or assistant',
+        how: 'Open a work order with a few days on it. Each day and the staff line under it should sit together in one shaded block, with a clear gap before the next day. There should be no stripey alternating rows, and no square corners meeting rounded ones.',
+      },
+      {
+        id: 'wp-runner-hub', area: 'Runner', device: 'phone',
+        what: 'The runner studio page has the new look and still works',
+        how: 'On a phone, open the Runner hub and pick a studio. The room name should be large at the top of each session card, cards should be soft rounded blocks with no outlines, and the tiles below (Opening, Closing, Mic inventory, Petty cash, Stock) should show "Submitted" or "Not started". Tap a session — it must still open its work order.',
+      },
+    ],
+  },
+  {
     id: 'billing-2026-08-12',
     title: 'Billing — the new hub, and the work order buttons',
     version: 'v1.9.0 (preview branch)',

@@ -641,6 +641,41 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.9.1', date:'Aug 13, 2026',
+    headline:'The work order PDF now looks like the work order — and a few things that quietly did nothing now work.',
+    desc:'When you download a work order it is finally the real thing: the same sections, the same columns, the same totals you see on screen, in black and white. There is also a blank one you can generate and fill in. And several buttons that looked available but did nothing have been fixed.',
+    changes:[
+      'Download a work order and it now matches what is on your screen — studio time with every day and who worked it, rentals, notes, payments and the totals. Before, it was a generic invoice that did not look like the work order at all.',
+      'Song names and session details typed into Session Info now print IN FULL. The line grows as tall as it needs to. On screen it still shortens to keep the window manageable, but nothing is hidden on the paper copy.',
+      'Booking Notes and Needs Attention / Runner Notes NEVER appear on the PDF. They are internal, and they are now locked out of it rather than just left off it.',
+      'New: "Generate WO" in the ⋯ menu at the top of Billing. It makes an empty work order you can type into and print, or print and fill in by hand — for the rare time you need a paper one. It does not create a session and nothing appears on the calendar. If the session is real, still enter it properly.',
+      'When you download a package, the invoice comes first and the work order behind it — that is the order a client expects to open it in.',
+      'The studio column now says PRS A or TRS North instead of just "A". Every venue has a Studio A, so on paper the letter alone meant nothing.',
+      'Approve was stuck on any invoice that had been edited after the invoice was attached — you could press it and nothing happened, forever. Fixed. Approving now signs off on the numbers as they stand right now.',
+      'Complete WO now actually saves and closes. Before it only marked the work order complete and left you sitting there, so you had to press Close afterwards.',
+      'Editing Session Notes, Print Name, Needs Attention or the signature now counts as a change, so Complete WO stops being greyed out.',
+      'Equipment Condition: you can now tick OK or ✗ on EVERY day, not just the first one. If a session ran longer than first booked, the extra days were unclickable.',
+      'The buttons and the red warning bar on the work order have moved to the TOP, next to the title. On a long work order a bar at the bottom is a bar you have to go looking for.',
+      'The work order will now warn you if an ENGINEER has hours but no rate — that line would bill nothing. It will also warn you if the same person is on two lines for the same day, which charges them twice. Assistants are not included, because they are never rated.',
+      'Studio Time now groups each day together with the engineer or assistant who worked it, in one shaded block, instead of stripes. Equipment groups each piece of gear across all its nights.'
+    ],
+    affects:'Two habits worth keeping. First: if you see the red bar at the top of a work order, read it — it is telling you something will bill wrong, not that you did something wrong. Second: the blank "Generate WO" form is for handing someone a piece of paper. If a real, paid session ends up on one, it still has to be entered as a proper session afterwards or it never gets invoiced.',
+    dev:[
+      'lib/woPdf.ts rebuilt as a section-by-section replica of WorkOrderPopup — same twelve studio-time columns, engineer sub-rows, rentals, notes, payments, six totals, COD terms. Verified by rendering and inspecting: tsc was clean on a generator that never drew engineer sub-rows.',
+      'Session Info wraps with no line cap — the one deliberate divergence from the screen, and it shows MORE. A six-line cap was tried for ten minutes and silently ate the end of a song list.',
+      'Internal fields are STRIPPED from the record before drawing (INTERNAL_ONLY), not merely omitted from the layout, so a future edit cannot leak them.',
+      'Blank form at /api/wo-package?blank=1 — 188 AcroForm text fields, invisible widgets over the hairlines. Creates nothing, stores nothing.',
+      'A drifted invoice could never be approved: approving wrote step 3 and deriveStep demoted it to 2 off the stale invoice_total. approveInvoice re-snapshots the total now.',
+      'Complete WO never called the save path despite a comment asserting it did since Aug 11. handleClose returns a boolean; Complete refuses to stamp a failed save.',
+      'Equipment rows are seeded at WO creation for the dates the booking had THEN — later days had no row and the handler was gated on `row &&`. First tap creates it; the write is dbResult-checked.',
+      'bookings.engineer_rate is vestigial and five surfaces still read it, showing engineer charges billing would never bill. All removed; woTotals.fallbackEngRate deleted.',
+      'Duplicate staff rows found in live data (WO-1018, 29–30 July, both at the retired $55) double-billed the engineer. Cleaned via migration; the screen now warns live.',
+      'Table chrome ruling (spec §16c): headers and footers lose their fill, subtotals get a result chip, only entries are filled and rounded. Equipment regrouped per GEAR, not per day.',
+      'Runner hub landing ported to the soft skin; spec §15 rules the WO page becomes one card per day. That page is not built yet.',
+      '/wo/[id]/print deleted — CLAUDE.md had claimed so since June while the route still shipped.'
+    ]
+  },
+  {
     ver:'v1.9.0', date:'Aug 12, 2026',
     headline:'Billing — one page for every work order and invoice. Dropbox folders are gone.',
     desc:'Everything that used to live in the Dropbox folders — needs approval, awaiting PO, sent, paid — now happens on one Billing page in the left menu. You do not file anything any more. The page works out where each job is from the work order itself.',
