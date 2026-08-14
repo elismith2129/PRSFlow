@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Equipment condition inside the studio day</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  EQUIPMENT CONDITION, FOLDED INTO THE STUDIO DAY (2026-08-13).
+
+  TODAY it is a separate table below Studio Time: equipment down the left, one
+  COLUMN PER SESSION DATE across the top, horizontally scrolling. On a 30-day
+  work order that is a 30-column grid you scroll sideways through — and the day
+  you are looking at over there has no relationship on screen to the day you were
+  just editing up here. The date is the join, and it is invisible.
+
+  Eli wants it to be part of the day. That is the same law the day block came
+  from (§16): a day, its staff and its condition are ONE fact.
+
+  THE OPERATIONAL SHAPE MATTERS MORE THAN THE LAYOUT. Almost every night, every
+  item is OK. The interaction that deserves one tap is "all fine"; the rare and
+  important one is "the console was not". Any design that costs three taps on a
+  normal night will get done badly on a busy one — which is how you end up with
+  a work order that says nothing was ever checked.
+
+  A · THIRD LINE      an equipment line under the staff line, always visible
+  B · RIGHT CLUSTER   three toggles pinned at the right of the studio row
+  C · ONE CHIP        a per-day EQ chip; tap to open the three items inline
+  D · ALL-OK + EXCEPTIONS  one tap says the night was clean; only faults show
+
+  Use the DAYS switch to see 3 vs 30. The scroll box is set to about EIGHT days
+  in every option, per Eli — so the taller the day, the less of the work order
+  you can see at once. That is the real cost being compared here.
+
+  Law 1 (no lines), TABLE EXEMPTION (§8), day blocks (§16), text chrome (§16c).
+  Mock polarity INVERTED vs the app.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --st-hot:#ff5a4d; --st-warm:#ffa94d; --st-booked:#43dfae;
+  --ivory:#d5d0c2; --srf:#ffffff; --hot-text:#fff4f2; --chip-ink:#1c2626;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+  --ctlsh:0 1px 2px rgba(42,39,34,.10);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  --ctlsh:0 1px 3px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 14px/1.5 system-ui,-apple-system,sans-serif;padding:20px;-webkit-font-smoothing:antialiased}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+h1{font-family:'Archivo Black',sans-serif;font-size:21px;letter-spacing:-.03em}
+.sw{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);margin:12px 8px 14px 0}
+.sw button{padding:6px 14px;border-radius:99px;font:inherit;font-size:12px;font-weight:700;border:none;background:none;color:var(--fg);opacity:.55;cursor:pointer}
+.sw button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .sw button.on{background:var(--fg);color:var(--bg)}
+.why{max-width:980px;font-size:12.5px;line-height:1.65;opacity:.72;margin-bottom:16px}
+.why b{opacity:1}
+.meta{max-width:980px;font-size:11.5px;opacity:.5;margin-bottom:14px}
+
+.pane{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:14px;max-width:980px}
+.sec{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.45;padding:0 3px 7px;display:flex;justify-content:space-between;align-items:baseline}
+.hd{display:grid;grid-template-columns:56px 46px minmax(90px,1fr) 58px 58px 30px 40px 56px 34px 48px 48px 62px;
+    font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.45;padding:0 10px 6px}
+.scr{overflow-y:auto;overflow-x:hidden}
+.day{background:var(--wash);border-radius:12px;margin-bottom:7px;overflow:hidden}
+.r{display:grid;grid-template-columns:56px 46px minmax(90px,1fr) 58px 58px 30px 40px 56px 34px 48px 48px 62px;
+   align-items:center;padding:5px 10px;font-size:11.5px;min-height:29px}
+.r .c{opacity:.55}
+.n{font-family:ui-monospace,monospace;text-align:right}
+.tot{font-family:ui-monospace,monospace;text-align:right;font-weight:700}
+.role{font-size:8px;font-weight:800;opacity:.75}
+.role.a{color:var(--st-warm)}
+
+/* equipment bits */
+.eqline{display:flex;align-items:center;gap:8px;padding:4px 10px 7px;font-size:10.5px}
+.eqlab{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.38;margin-right:2px}
+.item{display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;background:var(--wash2);cursor:pointer;white-space:nowrap;font-size:10px;font-weight:700;opacity:.55}
+.item.ok{opacity:1;color:var(--st-booked)}
+.item.bad{opacity:1;background:var(--st-hot);color:var(--hot-text)}
+.item i{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+.allok{display:flex;align-items:center;gap:7px;padding:4px 12px;border-radius:99px;background:var(--wash2);
+  font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;opacity:.5;white-space:nowrap}
+.allok.on{opacity:1;background:var(--st-booked);color:var(--chip-ink)}
+.flagbtn{font-size:10px;font-weight:700;opacity:.4;cursor:pointer;padding:4px 8px}
+.flagbtn:hover{opacity:.8}
+
+.eqchip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;background:var(--wash2);
+  font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;opacity:.6;white-space:nowrap}
+.eqchip.ok{opacity:1;color:var(--st-booked)}
+.eqchip.bad{opacity:1;background:var(--st-hot);color:var(--hot-text)}
+.eqchip.none{opacity:.45}
+.eqpanel{padding:2px 10px 9px;display:flex;gap:7px;flex-wrap:wrap}
+
+.note{display:flex;align-items:center;gap:7px;padding:5px 10px 8px;font-size:10.5px;color:var(--st-hot)}
+.note .txt{background:var(--wash2);border-radius:8px;padding:3px 9px;flex:1;color:var(--fg);opacity:.8}
+.opt{display:none}.opt.on{display:block}
+</style>
+</head>
+<body>
+
+<h1>Equipment condition, inside the day</h1>
+<div class="sw">
+  <button class="on" onclick="pick('a',this)">A · Third line</button>
+  <button onclick="pick('b',this)">B · Right cluster</button>
+  <button onclick="pick('c',this)">C · One chip</button>
+  <button onclick="pick('d',this)">D · All-OK + exceptions</button>
+</div>
+<div class="sw">
+  <button class="on" onclick="days(3,this)">3 days</button>
+  <button onclick="days(30,this)">30 days</button>
+</div>
+<div class="sw">
+  <button class="on" onclick="th('dark',this)">Dark</button>
+  <button onclick="th('light',this)">Light</button>
+</div>
+
+<p class="why" id="why"></p>
+<p class="meta" id="meta"></p>
+
+<div class="pane">
+  <div class="sec"><b>Studio time</b><span class="mono" style="opacity:.7;letter-spacing:0" id="daycount">3 days</span></div>
+  <div class="hd"><span>Studio</span><span>Date</span><span>Session info</span><span>From</span><span>To</span><span>Hrs</span><span>Type</span><span>Rate</span><span>OT</span><span>OT rate</span><span>OT chg</span><span style="text-align:right">Total</span></div>
+  <div class="scr" id="scr"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 4px 0;font-size:11px">
+    <span style="opacity:.55">+ Add Studio Time &nbsp; + Add Engineer &nbsp; <span style="color:var(--st-warm)">+ Add Assistant</span></span>
+    <span class="mono" style="background:var(--wash2);border-radius:14px;padding:6px 12px;font-weight:700" id="sum"></span>
+  </div>
+</div>
+
+<script>
+// Eight days visible in every option — the block height is what changes, so the
+// taller the day, the less work order you see. That is the comparison.
+const PER_DAY = { a: 86, b: 62, c: 62, d: 62 }
+let OPT='a', DAYS=3
+
+const ROOMS=['PRS A','PRS C','TRS North','ARS B']
+const STAFF=[['1ST','Tom Rivera'],['2ND','Sam Lorimore'],['1ST','Sierra Kim']]
+const INFO=['Vocals — main tracking','Overdubs','Mix rev. 2','Comps and tuning','Tracking — drums']
+
+function eqFor(i){
+  // Most nights are clean. Faults are rare and that is the point.
+  if(i%7===2) return {console:'bad'}
+  if(i%11===5) return {mic:'bad'}
+  return {}
+}
+
+function dayHTML(i){
+  const d=new Date(2026,6,1+i)
+  const date=`${d.getMonth()+1}-${d.getDate()}`
+  const room=ROOMS[i%ROOMS.length], info=INFO[i%INFO.length]
+  const [role,who]=STAFF[i%STAFF.length]
+  const f=eqFor(i), bad=Object.keys(f).length
+  const items=[['Speakers','spk'],['Microphone','mic'],['Console','console']]
+
+  const main=`<div class="r"><span>${room}</span><span class="c">${date}</span><span>${info}</span>
+    <span class="mono">2:00 PM</span><span class="mono">10:00 PM</span><span class="n">8</span><span class="c">Hr</span>
+    <span class="n">$175</span><span class="n">—</span><span class="n">—</span><span class="n">—</span><span class="tot">$1,400.00</span></div>`
+  const staff=`<div class="r"><span class="role${role==='2ND'?' a':''}">${role}</span><span class="c">${date}</span><span>${who}</span>
+    <span class="mono">2:00 PM</span><span class="mono">10:00 PM</span><span class="n">8</span><span></span>
+    <span class="n">${role==='1ST'?'$85':'—'}</span><span></span><span></span><span></span><span class="tot">${role==='1ST'?'$680.00':'—'}</span></div>`
+
+  let eq=''
+  if(OPT==='a'){
+    eq=`<div class="eqline"><span class="eqlab">Equipment</span>`+
+      items.map(([n,k])=>`<span class="item ${f[k]==='bad'?'bad':'ok'}"><i></i>${n}</span>`).join('')+`</div>`
+  }
+  if(OPT==='b'){
+    eq='' // rendered inside the main row instead
+  }
+  if(OPT==='c'){
+    const cls=bad?'bad':(i%5===4?'none':'ok')
+    const txt=bad?`${bad} not OK`:(i%5===4?'Not checked':'All OK')
+    eq=`<div class="eqline"><span class="eqlab">Equipment</span><span class="eqchip ${cls}">${txt}</span>`+
+       (i===0?`<span style="opacity:.35;font-size:10px">tap to open</span>`:'')+`</div>`+
+       (i===0?`<div class="eqpanel">`+items.map(([n,k])=>`<span class="item ${f[k]==='bad'?'bad':'ok'}"><i></i>${n}</span>`).join('')+`</div>`:'')
+  }
+  if(OPT==='d'){
+    eq=bad
+      ? `<div class="eqline"><span class="eqlab">Equipment</span><span class="allok">All OK</span>`+
+        Object.keys(f).map(k=>`<span class="item bad"><i></i>${k==='console'?'Console':'Microphone'}</span>`).join('')+
+        `<span class="flagbtn">+ flag another</span></div>`+
+        `<div class="note">⚠<span class="txt">Ch 14 fader intermittent — engineer flagged it at 9pm</span></div>`
+      : `<div class="eqline"><span class="eqlab">Equipment</span><span class="allok on">✓ All OK</span><span class="flagbtn">+ flag an item</span></div>`
+  }
+  return `<div class="day">${main}${staff}${eq}</div>`
+}
+
+function render(){
+  document.getElementById('scr').innerHTML=Array.from({length:DAYS},(_,i)=>dayHTML(i)).join('')
+  document.getElementById('scr').style.maxHeight=(PER_DAY[OPT]*8)+'px'
+  document.getElementById('daycount').textContent=DAYS+' days'
+  document.getElementById('sum').textContent='Studio: $'+(1400*DAYS).toLocaleString()+'.00'
+  const shown=Math.round(PER_DAY[OPT]*8/PER_DAY[OPT])
+  document.getElementById('meta').innerHTML=
+    `Day block ≈ <b>${PER_DAY[OPT]}px</b> · about <b>${shown} days</b> visible before it scrolls · `+
+    `a 30-day work order is <b>${Math.round(PER_DAY[OPT]*30/ (PER_DAY[OPT]*8) *10)/10}×</b> the height of the box.`
+}
+
+const WHY={
+ a:"<b>A · Third line.</b> Equipment gets its own line inside the day block, under the staff line — three pills, always visible, tap to change. Nothing is hidden and the join to the date is obvious because it is literally in the day. <b>Cost:</b> the tallest by a long way (~86px per day), so you see the fewest days at once and a 30-day work order becomes a long scroll. It also gives equal room to something that is unremarkable on 9 nights out of 10.",
+ b:"<b>B · Right cluster.</b> Three small toggles pinned at the right end of the studio row itself — no extra line at all, so the day stays exactly as tall as it is now. <b>Cost:</b> that row already carries twelve columns, and this is the fullest one; the toggles have to be tiny, which is the opposite of what a runner on a phone needs. Not recommended, shown because it is the obvious idea and it deserves a fair look.",
+ c:"<b>C · One chip.</b> Each day shows a single chip — All OK / 2 not OK / Not checked — and tapping it opens the three items inline beneath. Short rows, and the summary tells you the answer without opening anything. <b>Cost:</b> checking a day costs a tap first; and \"Not checked\" needs to be visibly different from \"All OK\" or the two blur together, which is the one confusion that matters here.",
+ d:"<b>D · All-OK + exceptions.</b> One tap on \"All OK\" settles the night. Only faults get shown, as hot pills, with their note inline underneath. Matches how the work actually goes: nearly every night is clean, and the rare bad one is what needs room. <b>Cost:</b> one tap can mark three items fine, so it is easy to click through without looking — which is exactly the failure the mic-inventory rule exists to prevent. Worth pairing with the runner having to confirm per item on the phone, while the admin screen shows this summary.",
+}
+function pick(k,el){OPT=k;document.getElementById('why').innerHTML=WHY[k]
+ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));el.classList.add('on');render()}
+function days(n,el){DAYS=n
+ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));el.classList.add('on');render()}
+function th(t,el){document.documentElement.setAttribute('data-theme',t)
+ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));el.classList.add('on')}
+document.getElementById('why').innerHTML=WHY.a
+render()
+</script>
+</body>
+</html>
