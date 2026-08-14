@@ -439,7 +439,7 @@ export function ClientPanel({
                     onFocus={() => setShowArtistDD(true)}
                     onBlur={() => setTimeout(() => setShowArtistDD(false), 150)}
                     placeholder="—"
-                    style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13.5, padding: '2px 0', lineHeight: 1.5 }}
+                    className="c-tin" style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13.5, padding: '2px 0', lineHeight: 1.5 }}
                   />
                   {showArtistDD && !readOnly && (clientArtists.filter(a => !value.artist || a.toLowerCase().includes(value.artist.toLowerCase())).length > 0 || value.artist.trim().length >= 2) && (
                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--c-bg)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
@@ -473,7 +473,7 @@ export function ClientPanel({
                           onFocus={() => setShowAnrDD(true)}
                           onBlur={() => { setTimeout(() => setShowAnrDD(false), 150); set('ordered_by', anrQuery) }}
                           placeholder="—"
-                          style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13.5, padding: '2px 0', lineHeight: 1.5 }}
+                          className="c-tin" style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13.5, padding: '2px 0', lineHeight: 1.5 }}
                         />
                         {showAnrDD && !readOnly && (labelContacts.filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase())).length > 0 || anrQuery.trim().length >= 2) && (
                           <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--c-bg)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
@@ -499,11 +499,11 @@ export function ClientPanel({
                         )}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
-                        <input value={anrEmail} disabled={readOnly} onChange={e => setAnrEmail(e.target.value)} onBlur={() => { set('email', anrEmail); if (anrContact?.id && anrEmail !== (anrContact.email || '')) { const cid = anrContact.id; setContactUpdatePrompt({ contactId: cid, column: 'email', value: anrEmail, onUpdate: () => { setAnrContact(p => p ? { ...p, email: anrEmail } : p); setLabelContacts(p => p.map(c => c.id === cid ? { ...c, email: anrEmail } : c)) } }) } }} placeholder="Email" style={cInpStyle} />
+                        <input value={anrEmail} disabled={readOnly} onChange={e => setAnrEmail(e.target.value)} onBlur={() => { set('email', anrEmail); if (anrContact?.id && anrEmail !== (anrContact.email || '')) { const cid = anrContact.id; setContactUpdatePrompt({ contactId: cid, column: 'email', value: anrEmail, onUpdate: () => { setAnrContact(p => p ? { ...p, email: anrEmail } : p); setLabelContacts(p => p.map(c => c.id === cid ? { ...c, email: anrEmail } : c)) } }) } }} placeholder="Email" className="c-tin" style={cInpStyle} />
                         <a href={anrEmail ? `mailto:${anrEmail}` : undefined} onClick={!anrEmail ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-booked)', !!anrEmail)}>Email</a>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
-                        <input value={anrPhone} disabled={readOnly} onChange={e => setAnrPhone(e.target.value)} onBlur={() => { set('phone', anrPhone); if (anrContact?.id && anrPhone !== (anrContact.phone || '')) { const cid = anrContact.id; setContactUpdatePrompt({ contactId: cid, column: 'phone', value: anrPhone, onUpdate: () => { setAnrContact(p => p ? { ...p, phone: anrPhone } : p); setLabelContacts(p => p.map(c => c.id === cid ? { ...c, phone: anrPhone } : c)) } }) } }} placeholder="Phone" style={cInpStyle} />
+                        <input value={anrPhone} disabled={readOnly} onChange={e => setAnrPhone(e.target.value)} onBlur={() => { set('phone', anrPhone); if (anrContact?.id && anrPhone !== (anrContact.phone || '')) { const cid = anrContact.id; setContactUpdatePrompt({ contactId: cid, column: 'phone', value: anrPhone, onUpdate: () => { setAnrContact(p => p ? { ...p, phone: anrPhone } : p); setLabelContacts(p => p.map(c => c.id === cid ? { ...c, phone: anrPhone } : c)) } }) } }} placeholder="Phone" className="c-tin" style={cInpStyle} />
                         <a href={anrPh ? `tel:${anrPh}` : undefined} onClick={!anrPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-booked)', !!anrPh)}>Call</a>
                         <a href={anrPh ? `sms:${anrPh}` : undefined} onClick={!anrPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-warm)', !!anrPh)}>Text</a>
                       </div>
@@ -525,7 +525,7 @@ export function ClientPanel({
                           onFocus={() => setShowAdminDD(true)}
                           onBlur={() => setTimeout(() => setShowAdminDD(false), 150)}
                           placeholder="—"
-                          style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13.5, padding: '2px 0', lineHeight: 1.5 }}
+                          className="c-tin" style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13.5, padding: '2px 0', lineHeight: 1.5 }}
                         />
                         {showAdminDD && !readOnly && (labelAdminContacts.filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase())).length > 0 || adminQuery.trim().length >= 2) && (
                           <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--c-bg)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
@@ -551,11 +551,11 @@ export function ClientPanel({
                         )}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
-                        <input value={adminEmail} disabled={readOnly} onChange={e => setAdminEmail(e.target.value)} onBlur={() => { if (adminContact?.id && adminEmail !== (adminContact.email || '')) { const cid = adminContact.id; setContactUpdatePrompt({ contactId: cid, column: 'email', value: adminEmail, onUpdate: () => { setAdminContact(p => p ? { ...p, email: adminEmail } : p); setLabelAdminContacts(p => p.map(c => c.id === cid ? { ...c, email: adminEmail } : c)) } }) } }} placeholder="Email" style={cInpStyle} />
+                        <input value={adminEmail} disabled={readOnly} onChange={e => setAdminEmail(e.target.value)} onBlur={() => { if (adminContact?.id && adminEmail !== (adminContact.email || '')) { const cid = adminContact.id; setContactUpdatePrompt({ contactId: cid, column: 'email', value: adminEmail, onUpdate: () => { setAdminContact(p => p ? { ...p, email: adminEmail } : p); setLabelAdminContacts(p => p.map(c => c.id === cid ? { ...c, email: adminEmail } : c)) } }) } }} placeholder="Email" className="c-tin" style={cInpStyle} />
                         <a href={adminEmail ? `mailto:${adminEmail}` : undefined} onClick={!adminEmail ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-booked)', !!adminEmail)}>Email</a>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
-                        <input value={adminPhone} disabled={readOnly} onChange={e => setAdminPhone(e.target.value)} onBlur={() => { if (adminContact?.id && adminPhone !== (adminContact.phone || '')) { const cid = adminContact.id; setContactUpdatePrompt({ contactId: cid, column: 'phone', value: adminPhone, onUpdate: () => { setAdminContact(p => p ? { ...p, phone: adminPhone } : p); setLabelAdminContacts(p => p.map(c => c.id === cid ? { ...c, phone: adminPhone } : c)) } }) } }} placeholder="Phone" style={cInpStyle} />
+                        <input value={adminPhone} disabled={readOnly} onChange={e => setAdminPhone(e.target.value)} onBlur={() => { if (adminContact?.id && adminPhone !== (adminContact.phone || '')) { const cid = adminContact.id; setContactUpdatePrompt({ contactId: cid, column: 'phone', value: adminPhone, onUpdate: () => { setAdminContact(p => p ? { ...p, phone: adminPhone } : p); setLabelAdminContacts(p => p.map(c => c.id === cid ? { ...c, phone: adminPhone } : c)) } }) } }} placeholder="Phone" className="c-tin" style={cInpStyle} />
                         <a href={adminPh ? `tel:${adminPh}` : undefined} onClick={!adminPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-booked)', !!adminPh)}>Call</a>
                         <a href={adminPh ? `sms:${adminPh}` : undefined} onClick={!adminPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-warm)', !!adminPh)}>Text</a>
                       </div>

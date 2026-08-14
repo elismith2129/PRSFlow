@@ -1974,7 +1974,8 @@ export function WorkOrderPopup({
       <div
         style={isMobile
           ? { width: '100vw', height: '100%', maxWidth: 'none', minWidth: 0, margin: 0, display: 'flex', flexDirection: 'column' }
-          : { width: '100%', maxWidth: 920, minWidth: 780, marginBottom: 20, alignSelf: 'flex-start' }}
+          : { width: '100%', maxWidth: 920, minWidth: 780, marginBottom: 20, alignSelf: 'flex-start',
+              display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 92px)' }}
         className="c-sheet"
         onClick={e => e.stopPropagation()}
       >
@@ -2106,7 +2107,7 @@ export function WorkOrderPopup({
             `env(safe-area-inset-bottom)` to clear the iPhone home indicator,
             which at the top of the sheet just added dead space. Sticky, so the
             actions stay reachable while the work order scrolls under them. */}
-        <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 8 : 10, padding: isMobile ? '4px 16px 12px' : '0 22px 12px', flexShrink: 0, background: 'var(--c-bg)', position: 'sticky', top: isMobile ? 62 : 52, zIndex: 9 }}>
+        <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 8 : 10, padding: isMobile ? '4px 16px 12px' : '0 22px 12px', flexShrink: 0, background: 'var(--c-bg)', zIndex: 9 }}>
           {/* Document + destructive actions live HERE, not in the title bar.
               Nothing to export for a block — no WO body, so the PDF would be a
               header over an empty page. */}
@@ -2224,7 +2225,7 @@ export function WorkOrderPopup({
         {/* ── SCROLLABLE BODY ──────────────────────────────────────────────── */}
         <div style={isMobile
           ? { padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 20, flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }
-          : { padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+          : { padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 24, flex: 1, minHeight: 0, overflowY: 'auto' }}>
 
           {/* SESSION INFO — mobile only, read-only (mirrors the Runner WO card).
               The editable booking-form fields live in the META section below,
