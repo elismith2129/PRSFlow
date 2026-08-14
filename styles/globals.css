@@ -586,23 +586,34 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-input:focus { outline: none; background: var(--c-wash2); }
 
 /* ── Panel header lozenge / table head / section header ─────────────────── */
+/* SECTION HEADERS ARE TEXT (RULING 2026-08-13, spec §16c extended app-wide).
+   This was a filled capsule bar — an ink fill in light, wash2 in dark. Eli, on
+   seeing the tables go to text chrome: "five headers still have bubbles… I
+   really just see it mostly on dashboard and my day. duties, billing the
+   period, shift notes. don't think we need those. just the text."
+   Right, and it is the same law: a header holds nothing, so it is not an object
+   and takes no surface. Only ENTRIES are filled. Dropping the fill here is what
+   makes the rest of the surface legible as content rather than as more chrome.
+   Kept: the flex row, the micro-caps type, the action on the right. */
 .c-lozenge {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
-  border-radius: 99px; padding: 7px 14px; margin-bottom: 10px;
+  padding: 0 3px 7px; margin-bottom: 6px;
   font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
-  background: var(--c-wash2); color: var(--c-fg);
+  color: var(--c-fg); opacity: 0.45;
 }
-[data-theme="light"] .c-lozenge { background: var(--c-fg); color: var(--c-bg); }
 .c-lozenge a, .c-lozenge button,
 .c-lz-action {
   font-size: 9.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
-  /* `inherit` is load-bearing: the lozenge is an INK FILL in light mode, so its
-     action must take the lozenge's own contrast colour. Setting this to --c-fg
-     paints dark text on a dark bar and the link vanishes. */
-  color: inherit; opacity: 0.55; text-decoration: none; cursor: pointer;
+  /* Was `color: inherit` + opacity .55, because the lozenge used to be an INK
+     FILL in light mode and the action had to take the bar's contrast colour.
+     The bar is gone (2026-08-13), and the header itself now carries opacity
+     .45 — inheriting that AND dimming again made the action nearly invisible.
+     Full colour, own opacity, and it out-reads the label on purpose: the label
+     is a name, the action is the only thing here you can press. */
+  color: var(--c-fg); opacity: 0.75; text-decoration: none; cursor: pointer;
   background: none; box-shadow: none; padding: 0; border-radius: 0; font-family: inherit;
 }
-.c-lz-action:hover { opacity: 0.85; }
+.c-lz-action:hover { opacity: 1; }
 
 /* ── StatusPill / StatusDot ─────────────────────────────────────────────── */
 /* Status is INFORMATION, not an affordance — it is never pressed, so it must not
@@ -635,11 +646,17 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   background: var(--c-ivory); color: #1b1a17;
 }
 [data-theme="light"] .c-count { background: var(--c-fg); color: var(--c-bg); }
-/* Inside a lozenge the badge must invert, or it vanishes: in light the lozenge is
-   already an ink fill, so an ink badge on it is invisible. Also drops the shadow —
-   a badge sitting on an anchor doesn't need its own contact shadow. */
-.c-lozenge .c-count { background: var(--c-bg); color: var(--c-fg); box-shadow: none; }
-[data-theme="light"] .c-lozenge .c-count { background: var(--c-bg); color: var(--c-fg); }
+/* The badge used to INVERT inside a lozenge, because the lozenge was an ink fill
+   and an ink badge on it was invisible. The fill is gone (2026-08-13), so
+   inverting now paints the badge in the PAGE colour and it disappears against
+   the background. It takes the standard .c-count treatment again; only the
+   contact shadow stays dropped, since a count in a header is not an object. */
+.c-lozenge .c-count { box-shadow: none; opacity: 1; }
+/* SectionHeader renders `c-lozenge c-anchor`, and .c-anchor carries a drop
+   shadow for a display anchor resting ON the surface. With the fill removed
+   there is nothing left to cast it, so it painted as a smudge under bare text.
+   A header is not an anchor any more; it is a label. */
+.c-lozenge.c-anchor { box-shadow: none; }
 
 /* ── RoomCard ───────────────────────────────────────────────────────────── */
 .c-room {
