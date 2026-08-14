@@ -744,11 +744,15 @@ person. Do not reuse the dashboard_tasks person/tab system here.
 - **The punch form is HR-SPEC §5 verbatim** (date/shift, punch type, correct
   time, optional note → `punch_correction_requests`, classification by server
   trigger). It is the legal written confirmation; it goes to the manager queue.
-- **OPEN (Eli to rule): runner identity on the punch form.** Runners share one
-  PIN login, but a punch request belongs to a PERSON (`staff_id`). The mock
-  leads the form with a "who are you" picker. Undecided: roster picker of
-  managed runner profiles vs. free-typed name. Do not build the form until
-  this is answered.
+- **RESOLVED (Eli, 2026-08-14): runners get INDIVIDUAL logins.** The shared
+  runner PIN is retired once per-runner accounts exist. This kills the
+  "who are you" picker — the punch form takes `staff_id` from the session,
+  exactly like every other staff surface, and the mock's picker card is NOT
+  built. Also the foundation for runner scheduling (later). Mechanics are
+  already per-person (`staff_pins` + `user_profiles` role `runner` + the
+  AuthGuard runner bounce); rollout is one profile row + one PIN per runner
+  via the existing scripts. Until those accounts exist the punch quiet-row
+  stays "coming soon" — do not ship it against the shared login.
 - The three registers on the hub are now fixed vocabulary: **sections** (tasks,
   sessions), **tiles** (tonight's duties), **quiet rows** (everything that
   isn't tonight's work). New hub features must join one of these, not invent
