@@ -178,6 +178,14 @@ export type InvoiceRow = {
    */
   staleDownload: boolean
   sentAt: string | null
+  /**
+   * When the invoice was marked paid. Needed because a BILLING invoice's money
+   * never touches `payment_rows` — a label pays by cheque or ACH and billing
+   * presses Mark paid; nobody types a payment row. So this stamp is the only
+   * record that money arrived, and the only honest basis for "received this
+   * month".
+   */
+  paidAt: string | null
   poNumber: string | null
   /** Set on the WORK ORDER — this package can go out without a PO. */
   noPoNeeded: boolean
@@ -495,6 +503,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
         step === 3 && !!w.invoice_downloaded_at
         && (daysSince(w.invoice_downloaded_at) ?? 0) >= DOWNLOAD_STALE_DAYS,
       sentAt: w.invoice_sent_at ?? null,
+      paidAt: w.invoice_paid_at ?? null,
       poNumber,
       noPoNeeded,
       // AWAITING PO, entirely from the work order (ruling 2026-08-11). Only
@@ -641,9 +650,30 @@ export function summarise(rows: InvoiceRow[], pipeline: Pipeline): SummaryStat[]
 
   // Payments PRSFlo can see. Anything zeroed straight into QuickBooks never
   // touches payment_rows, so this is a floor, not the books — hence the label.
+  //
+  // COD only. Money at the desk really does arrive as payment_rows, and it
+  // lands on the day of the session, so the session date is the right month.
   const collected = live
     .filter(r => (r.sentAt ?? r.sessionDate ?? '').slice(0, 7) === month)
     .reduce((s, r) => s + r.paid, 0)
+
+  // BILLING IS A DIFFERENT QUESTION (fix, 2026-08-13). Eli: "making paid did not
+  // add money to the paid this month? did remove money from outstanding tho."
+  //
+  // Both were true, and they came from two calculations that disagreed about
+  // what "paid" means. Outstanding excludes the paid bucket, so Mark paid moved
+  // it immediately. Received summed `payment_rows` — which a label invoice never
+  // has, because the money arrives by cheque or ACH and billing presses Mark
+  // paid rather than typing a payment. So the figure could only ever move for
+  // COD, and pressing the button appeared to lose the money.
+  //
+  // Counted from `paidAt` instead, in the month it was MARKED paid — not the
+  // month it was sent, which for anything invoiced across a month boundary put
+  // the receipt in the wrong month anyway. Recorded payments still win when
+  // they exist, so a part-paid invoice reports what actually came in.
+  const received = live
+    .filter(r => (r.paidAt ?? '').slice(0, 7) === month)
+    .reduce((s, r) => s + (r.paid > 0 ? r.paid : r.total), 0)
 
   if (pipeline === 'cod') {
     const balances = live.filter(r => r.bucket === 'balance')
@@ -667,7 +697,7 @@ export function summarise(rows: InvoiceRow[], pipeline: Pipeline): SummaryStat[]
       value: money(live.filter(r => r.bucket !== 'paid').reduce((s, r) => s + Math.max(0, r.balance), 0)),
       label: 'Outstanding', goto: null,
     },
-    { value: money(collected), label: 'Received this month', goto: null },
+    { value: money(received), label: 'Received this month', goto: 'paid' },
     {
       // Step 2 = invoiced, waiting on an owner. This is Eli's own queue.
       value: String(live.filter(r => r.step === 2 && r.bucket === 'progress').length),
