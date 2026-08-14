@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import type { Booking } from '@/lib/supabase'
 import { getLocalToday } from '@/lib/time'
+import { dbResult } from '@/lib/db'
 
 
 
@@ -16,6 +17,17 @@ const STUDIO_META: Record<string, { label: string; abbr: string }> = {
 
 type WOStatus = { id: string; status: string } | null
 
+// Studio tasks (spec §15b): left by the office on a STUDIO, checked off by
+// whoever is on shift. Never assigned to a person — runners rotate.
+type StudioTask = {
+  id: string
+  studio: string
+  task: string
+  created_by_name: string | null
+  created_at: string
+  done_at: string | null
+}
+
 export default function StudioDailyOpsPage() {
   const router = useRouter()
   const { studio } = useParams<{ studio: string }>()
@@ -25,6 +37,7 @@ export default function StudioDailyOpsPage() {
   const [woMap, setWoMap] = useState<Record<string, WOStatus>>({})
   const [loading, setLoading] = useState(true)
   const [submittedCategories, setSubmittedCategories] = useState<Set<string>>(new Set())
+  const [tasks, setTasks] = useState<StudioTask[]>([])
 
   // Stable today string — local calendar date matching how bookings are stored
   const today = getLocalToday()
@@ -121,10 +134,45 @@ export default function StudioDailyOpsPage() {
         .map((s: { category: string }) => s.category),
     ])
     setSubmittedCategories(submitted)
+
+    // ── Studio tasks (§15b) — open ones + anything checked off today ────────
+    const { data: taskData } = await supabase
+      .from('studio_tasks')
+      .select('*')
+      .eq('studio', studio)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: true })
+    const visibleTasks = ((taskData ?? []) as StudioTask[]).filter(
+      t => !t.done_at || t.done_at.slice(0, 10) === today,
+    )
+    // Open tasks first, done-today sink to the bottom of the section.
+    visibleTasks.sort((a, b) => Number(!!a.done_at) - Number(!!b.done_at))
+    setTasks(visibleTasks)
   }, [studio, today, meta.abbr]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initial load
   useEffect(() => { load() }, [load])
+
+  // Real-time: studio tasks — the office can drop a task mid-shift and the
+  // opener's phone updates without a refresh (hard rule: fetch pairs w/ channel).
+  useEffect(() => {
+    const channel = supabase
+      .channel(`runner-tasks-${studio}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_tasks' }, () => { load() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [studio, load])
+
+  // Check a task off (or un-check a same-shift mistake). Optimistic, verified.
+  async function toggleTask(t: StudioTask) {
+    const nextDone = t.done_at ? null : new Date().toISOString()
+    setTasks(prev => prev.map(x => x.id === t.id ? { ...x, done_at: nextDone } : x))
+    const { error } = await supabase
+      .from('studio_tasks')
+      .update({ done_at: nextDone })
+      .eq('id', t.id)
+    if (!dbResult('Saving task', error)) load()
+  }
 
   // Real-time: re-run load on any booking change
   useEffect(() => {
@@ -237,6 +285,49 @@ export default function StudioDailyOpsPage() {
 
       <div style={{ padding: '4px 14px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
+        {/* ── Studio tasks (§15b — option A · Sections) ───────────────────── */}
+        {/* Above sessions: the opener's first question walking in is "anything
+            waiting for me". A studio with no OPEN tasks skips the section. */}
+        {tasks.some(t => !t.done_at) && (
+          <div style={surface}>
+            <div className="c-label" style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 7 }}>
+              This studio · from the office
+              <span className="c-pill c-fill-warm">{tasks.filter(t => !t.done_at).length}</span>
+            </div>
+            {tasks.map((t, i) => (
+              <div key={t.id} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 11, padding: '11px 2px',
+                boxShadow: i > 0 ? '0 -1px 0 var(--c-wash)' : undefined,
+              }}>
+                <button
+                  onClick={() => toggleTask(t)}
+                  aria-label={t.done_at ? 'Mark not done' : 'Mark done'}
+                  style={{
+                    width: 26, height: 26, borderRadius: 99, flexShrink: 0, marginTop: 1,
+                    background: t.done_at ? 'var(--c-st-booked)' : 'var(--c-wash2)',
+                    color: t.done_at ? 'var(--c-chip-ink)' : 'var(--c-fg)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 12, cursor: 'pointer', border: 'none', font: 'inherit',
+                  }}
+                >{t.done_at ? '✓' : ''}</button>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 13, fontWeight: 700,
+                    opacity: t.done_at ? 0.4 : 1,
+                    textDecoration: t.done_at ? 'line-through' : undefined,
+                  }}>{t.task}</div>
+                  <div style={{ fontSize: 11, opacity: 0.5 }}>
+                    {t.done_at
+                      ? `Done ${new Date(t.done_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                      : [t.created_by_name, new Date(t.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })]
+                          .filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* ── Today's sessions ────────────────────────────────────────────── */}
         <div>
           <div className="c-label" style={{ marginBottom: 9 }}>
@@ -333,6 +424,27 @@ export default function StudioDailyOpsPage() {
                 </button>
               )
             })}
+          </div>
+        </div>
+
+        {/* ── Quiet register (§15b) — always here, never shouting ─────────── */}
+        {/* Punch form is gated on the identity ruling (spec §15b OPEN item);
+            manual is the future slot the AI surface later joins. Both render
+            as "coming soon" until built — position and shape are final. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+          <div style={{ ...surface, display: 'flex', alignItems: 'center', gap: 11, minHeight: 52, opacity: 0.55 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700 }}>Missed a punch?</div>
+              <div style={{ fontSize: 10.5, opacity: 0.6 }}>Report it here — coming soon</div>
+            </div>
+            <span style={{ opacity: 0.35, fontSize: 16 }}>›</span>
+          </div>
+          <div style={{ ...surface, display: 'flex', alignItems: 'center', gap: 11, minHeight: 52, opacity: 0.55 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700 }}>Runners manual</div>
+              <div style={{ fontSize: 10.5, opacity: 0.6 }}>Coming soon</div>
+            </div>
+            <span style={{ opacity: 0.35, fontSize: 16 }}>›</span>
           </div>
         </div>
 
