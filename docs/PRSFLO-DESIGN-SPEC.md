@@ -590,7 +590,38 @@ A studio line and its staff lines are ONE fact and must look like one.
 - Cost accepted: a long work order is taller than it was. If that becomes a
   problem the answer is a shorter row, not a return to zebra.
 
-### 16b. Table geometry — nothing square at an edge (RULING 2026-08-13)
+### 16c. TABLE CHROME IS TEXT, NOT BARS (RULING 2026-08-13 — supersedes §16b)
+
+Eli, after seeing §16b built: *"looks like headers and footers are half round and
+half square… maybe for the headers and footers, there are no bars or pills, just
+text. that way entries have the rounded bubbles."*
+
+He is right and §16b was chasing the symptom. Two filled bars sandwiching filled
+row-blocks means three fills competing for one edge, and some corner is always
+wrong — round the header's bottom and you get a pill floating over square-topped
+blocks; the corner only moves. Option **B** of
+`docs/design-refs/table-chrome-options.html` (text chrome + result chip).
+
+- **Column headers have NO fill.** They are the standard uppercase micro-label,
+  sitting above the rows on the same grid. A header holds nothing, so it is not
+  an object and takes no surface.
+- **Footers have no fill either.** `+ Add …` controls are plain text on the
+  left; the subtotal sits on the right in a **small wash2 chip, radius 99** —
+  the one filled thing down there, because it is a RESULT and the controls
+  beside it are not.
+- **Only ENTRIES are filled and rounded** (radius 12). One radius per surface,
+  so there is no seam to get right.
+- **Group along the axis of the fact.** Studio Time bubbles a DAY (a day and its
+  staff are one fact). Equipment bubbles a PIECE OF GEAR across every night
+  (one mic is one fact). Equipment looked worst under §16b precisely because it
+  had borrowed Studio Time's axis. **Zebra is retired from equipment too.**
+- A sticky first column still needs an OPAQUE fill or cells scroll under it:
+  it takes its row's bubble fill (`--c-wash`), and the sticky HEADER cell takes
+  `--c-bg`. That is the one place a fill is structural rather than decorative.
+- §16b's "round every strip" instruction is dead — there are no strips left to
+  round. Kept below only so the reasoning is legible.
+
+### 16b. Table geometry — nothing square at an edge (RULING 2026-08-13, SUPERSEDED by §16c)
 
 The day blocks exposed an older violation rather than causing one. §7 already
 ends "Everything rounded; nothing square", but every table on the work order had

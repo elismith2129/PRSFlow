@@ -2730,9 +2730,9 @@ export function WorkOrderPopup({
                 </div>
               )
             })()}
-            <div style={{ borderRadius: 12, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
+            <div style={{ overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
               {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock | Del */}
-              <div style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px', background: 'var(--c-wash)', borderRadius: '12px 12px 0 0', minWidth: isMobile ? 880 : undefined }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px', paddingBottom: 5, minWidth: isMobile ? 880 : undefined }}>
                 {/* `right` marks the money columns — header and value share an
                     alignment, or the column reads as two ragged edges. */}
                 {([['Studio'], ['Date'], ['Session Info'], ['From'], ['To'], ['Hrs'], ['Type'],
@@ -3050,7 +3050,7 @@ export function WorkOrderPopup({
                   )
                 })}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: 'var(--c-wash)', borderRadius: '0 0 12px 12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 4px 0' }}>
                 {!readOnly ? (
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
                   <button type="button" onClick={addStRow} className="c-x" style={{ fontSize: 10, color: 'var(--c-fg-2)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Studio Time</button>
@@ -3058,7 +3058,7 @@ export function WorkOrderPopup({
                   <button type="button" onClick={() => addEngRow('assistant')} className="c-x" style={{ fontSize: 10, color: 'var(--c-st-warm)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Assistant</button>
                 </div>
                 ) : <div />}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, background: 'var(--c-wash2)', borderRadius: 14, padding: '6px 12px' }}>
                   <span className="c-tnum" style={{ color: 'var(--c-fg)' }}>Studio: ${stTotal.toFixed(2)}</span>
                   {engTotal > 0 && (
                     <span className="c-tnum" style={{ color: 'var(--c-fg)' }}>Eng: ${engTotal.toFixed(2)}</span>
@@ -3077,11 +3077,11 @@ export function WorkOrderPopup({
             {/* hidden file input for note photos */}
             <input ref={equipNoteFileRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={e => { const f = e.target.files?.[0]; if (f) uploadEquipNotePhoto(f) }} />
-            <div style={{ borderRadius: 12, overflowX: 'auto', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
+            <div style={{ overflowX: 'auto' }}>
               <div style={{ minWidth: `${130 + Math.max(sessionDates.length, 1) * 90}px` }}>
                 {/* Header — equipment name cell sticky */}
-                <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, background: 'var(--c-wash)', borderRadius: '12px 12px 0 0' }}>
-                  <div style={{ ...thS, position: 'sticky', left: 0, background: 'var(--c-wash)', borderTopLeftRadius: 12, zIndex: 1 }}>Equipment</div>
+                <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, paddingBottom: 5 }}>
+                  <div style={{ ...thS, position: 'sticky', left: 0, background: 'var(--c-bg)', zIndex: 1 }}>Equipment</div>
                   {sessionDates.length > 0
                     ? sessionDates.map(d => <div key={d} style={thS}>{fmtDate(d)}</div>)
                     : <div style={thS}>—</div>}
@@ -3091,11 +3091,11 @@ export function WorkOrderPopup({
                   const openDate = openNoteKey?.startsWith(`${eq}||`) ? openNoteKey.split('||')[1] : null
                   return (
                     <div key={eq}>
-                      <div className={eqIdx % 2 === 1 ? 'c-trow-alt' : ''} style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)` }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, background: 'var(--c-wash)', borderRadius: 12, marginBottom: 6 }}>
                         {/* Sticky label column. It must be OPAQUE (cells scroll
                             under it) but it takes the row's own band, not a
                             permanent wash — that read as a highlighted column. */}
-                        <div style={{ ...cellS, color: 'var(--c-fg)', fontWeight: 500, position: 'sticky', left: 0, background: eqIdx % 2 === 1 ? 'var(--c-surface-band)' : 'var(--c-bg)', zIndex: 1 }}>{eq}</div>
+                        <div style={{ ...cellS, color: 'var(--c-fg)', fontWeight: 500, position: 'sticky', left: 0, background: 'var(--c-surface-band)', borderRadius: '12px 0 0 12px', zIndex: 1 }}>{eq}</div>
                         {sessionDates.length > 0
                           ? sessionDates.map(d => {
                               const key = `${eq}||${d}`
@@ -3114,9 +3114,12 @@ export function WorkOrderPopup({
                             })
                           : <div style={{ ...cellS, color: 'var(--c-fg-3)' }}>—</div>}
                       </div>
-                      {/* Note area — inline below the equipment row when a Not OK cell is open */}
+                      {/* Note area — inline below the equipment row when a Not OK
+                          cell is open. It used to be clipped by the equipment
+                          container's fill; that fill is gone under §16c, so it
+                          rounds itself or it floats as the one square left. */}
                       {openDate && (
-                        <div style={{ padding: '8px 12px', background: 'var(--c-wash)' }}>
+                        <div style={{ padding: '8px 12px', background: 'var(--c-wash)', borderRadius: 12, marginBottom: 6 }}>
                           <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--c-st-warm)', marginBottom: 6 }}>
                             {eq} — {openDate}
                           </div>
@@ -3159,13 +3162,13 @@ export function WorkOrderPopup({
           {/* RENTALS */}
           <div style={isMobile ? mCard : undefined}>
             <SectionHeader carved title="Rentals" />
-            <div style={{ borderRadius: 12, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', background: 'var(--c-wash)', borderRadius: '12px 12px 0 0', minWidth: isMobile ? 540 : undefined }}>
+            <div style={{ overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', paddingBottom: 5, minWidth: isMobile ? 540 : undefined }}>
                 {([['Qty'], ['Item'], ['Supplier'], ["Date(s) Used"], ['Rate', 'right'], ['Charge', 'right'], ['']] as [string, string?][])
                   .map(([h, align], i) => <div key={i} style={align === 'right' ? thR : thS}>{h}</div>)}
               </div>
               {rentRows.map((r, idx) => (
-                <div key={r.id} className={idx % 2 === 1 ? 'c-trow-alt' : ''} style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', minWidth: isMobile ? 540 : undefined }}>
+                <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', background: 'var(--c-wash)', borderRadius: 12, marginBottom: 6, minWidth: isMobile ? 540 : undefined }}>
                   <div style={cellIn}><input value={r.qty} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, qty: e.target.value } : x))} placeholder="—" className="c-tin c-tin-mono c-tin-show" /></div>
                   <div style={cellIn}><input value={r.item} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, item: e.target.value } : x))} placeholder="Item" className="c-tin c-tin-show" /></div>
                   <div style={cellIn}><input value={r.supplier} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, supplier: e.target.value } : x))} placeholder="Supplier" className="c-tin c-tin-show" /></div>
@@ -3177,9 +3180,9 @@ export function WorkOrderPopup({
                   </div>
                 </div>
               ))}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: 'var(--c-wash)', borderRadius: '0 0 12px 12px', minWidth: isMobile ? 540 : undefined }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 4px 0', minWidth: isMobile ? 540 : undefined }}>
                 {!readOnly ? <button type="button" onClick={() => setRentRows(p => [...p, { id: crypto.randomUUID(), qty: '', item: '', supplier: '', dates_used: '', rate: '', charge: '' }])} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button> : <span />}
-                <span className="c-tnum" style={{ color: 'var(--c-fg)', fontWeight: 700 }}>Total: ${rentTotal.toFixed(2)}</span>
+                <span className="c-tnum" style={{ color: 'var(--c-fg)', fontWeight: 700, background: 'var(--c-wash2)', borderRadius: 99, padding: '5px 12px' }}>Total: ${rentTotal.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -3241,11 +3244,11 @@ export function WorkOrderPopup({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, ...(isMobile ? mCard : {}) }}>
               <div>
                 <SectionHeader carved title="Payments" />
-                <div style={{ borderRadius: 12, overflow: 'hidden', background: 'var(--c-wash)', padding: '0 6px 6px' }}>
+                <div>
                   {payRows.map((p, idx) => {
                     const needsLast4 = p.payment_type === 'Credit Card' || p.payment_type === 'Debit Card'
                     return (
-                      <div key={p.id} className={idx % 2 === 1 ? 'c-trow-alt' : ''} style={{ display: 'grid', gridTemplateColumns: needsLast4 ? '130px 80px 1fr 70px 24px' : '130px 80px 1fr 24px', alignItems: 'center' }}>
+                      <div key={p.id} style={{ display: 'grid', gridTemplateColumns: needsLast4 ? '130px 80px 1fr 70px 24px' : '130px 80px 1fr 24px', alignItems: 'center', background: 'var(--c-wash)', borderRadius: 12, marginBottom: 6 }}>
                         <div style={cellS}>
                           <select value={p.payment_type} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, payment_type: e.target.value, last_four: '' } : x))} className="c-tin c-tin-show" style={{ cursor: 'pointer' }}>
                             <option value="">— type —</option>
@@ -3263,7 +3266,7 @@ export function WorkOrderPopup({
                       </div>
                     )
                   })}
-                  <div style={{ padding: '7px 10px', borderRadius: '0 0 12px 12px' }}>
+                  <div style={{ padding: '9px 4px 0' }}>
                     {!readOnly && <button type="button" onClick={() => setPayRows(p => [...p, { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '' }])} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0 }}>+ Add payment</button>}
                   </div>
                 </div>
