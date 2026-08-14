@@ -41,6 +41,16 @@ export default function PreviewPage() {
   const stageRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
 
+  // Arrived via the floating DeviceToggle? Preload its page + device.
+  // window.location.search, matching the CRM ?lead= pattern (no useSearchParams).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const p = params.get('path')
+    const d = params.get('device')
+    if (p && p.startsWith('/')) { setPath(p); setPathInput(p) }
+    if (d === 'phone' || d === 'ipad' || d === 'desktop') setDevice(d)
+  }, [])
+
   const preset = DEVICES[device]
   const frameW = preset ? (landscape ? preset.h : preset.w) : 0
   const frameH = preset ? (landscape ? preset.w : preset.h) : 0

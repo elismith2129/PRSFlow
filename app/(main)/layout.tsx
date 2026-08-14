@@ -4,6 +4,7 @@ import { WebInquiryProvider } from '@/components/notifications/WebInquiryProvide
 import { WebInquiryToaster } from '@/components/notifications/WebInquiryToaster'
 import { SopGate } from '@/components/SopGate'
 import TestingFloater from '@/components/dev/TestingFloater'
+import DeviceToggle from '@/components/dev/DeviceToggle'
 
 export default function MainLayout({
   children,
@@ -33,6 +34,9 @@ export default function MainLayout({
             keeps it off /login, /register and /inquiry. Renders nothing unless the
             DEV → Testing PIN has been entered this browser session. */}
         <TestingFloater />
+        {/* Owner-only floating phone/ipad preview button → /preview with the
+            current page preloaded. Renders nothing for every other role. */}
+        <DeviceToggle />
       </WebInquiryProvider>
     </AuthGuard>
   )
