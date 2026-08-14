@@ -2353,7 +2353,7 @@ export function WorkOrderPopup({
                     each. They now share a line at their natural widths, and the
                     reclaimed height all goes to Booking Notes below. */}
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <div className="c-well" style={{ flex: '1 1 132px', minWidth: 118 }}>
+                  <div className="c-well" style={{ flex: '0 1 132px', minWidth: 118 }}>
                     <span className="c-pfx">Inv #</span>
                     <input
                       className="c-mono"
@@ -2363,7 +2363,7 @@ export function WorkOrderPopup({
                       onChange={e => { setDirtyFields(prev => new Set(prev).add('invoice_number')); setWo(w => w ? { ...w, invoice_number: e.target.value } : w) }}
                     />
                   </div>
-                  <div className="c-well" style={{ flex: '1 1 120px', minWidth: 110 }}>
+                  <div className="c-well" style={{ flex: '0 1 120px', minWidth: 110 }}>
                     <span className="c-pfx">PO #</span>
                     <input
                       className="c-mono"
@@ -2391,7 +2391,7 @@ export function WorkOrderPopup({
                   {(
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                       <span className="c-pfx">PO req&apos;d</span>
-                      <div className="c-seg" style={{ height: 40 }}>
+                      <div className="c-seg" style={{ height: 32 }}>
                         {([[true, 'Yes'], [false, 'No']] as [boolean, string][]).map(([val, lbl]) => (
                           <button
                             key={lbl}
@@ -2415,7 +2415,7 @@ export function WorkOrderPopup({
                       accidental tap doesn't silently wipe a figure. */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                     <span className="c-pfx">Food</span>
-                    <div className="c-seg" style={{ height: 40 }}>
+                    <div className="c-seg" style={{ height: 32 }}>
                       {([[false, 'No'], [true, 'Yes']] as [boolean, string][]).map(([val, lbl]) => (
                         <button
                           key={lbl}
