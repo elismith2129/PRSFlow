@@ -50,24 +50,17 @@ export type WoTotalsInput = {
   studioRows: TotalsStudioRow[]
   rentalRows: TotalsRentalRow[]
   paymentRows: TotalsPaymentRow[]
-  /**
-   * Engineer rate for rows carrying none of their own.
-   *
-   * NO CALLER PASSES THIS ANY MORE (2026-08-13), and new code should not start.
-   * It existed to inherit `bookings.engineer_rate`, which is vestigial — the
-   * booking form is deleted and `buildBookingProjection` never writes the
-   * column. The WO screen and the runner WO page were still reading it while
-   * billing, the invoice and the PDF were not, so the screens could show an
-   * engineer charge that nothing downstream would ever bill (three work orders
-   * were in that state, all carrying the retired $55 default).
-   *
-   * Staffing lives ONLY in the Studio Time table (CLAUDE.md). The row's
-   * `eng_rate` is the single source; a row with no rate is not a charge.
-   *
-   * Kept as an optional parameter rather than deleted so the removal is one
-   * reviewable change — drop it once nothing references the name.
-   */
-  fallbackEngRate?: string | null
+  // NO FALLBACK RATE. Removed 2026-08-13 along with its last caller. It existed
+  // to inherit `bookings.engineer_rate`, which is vestigial — the booking form
+  // is deleted and `buildBookingProjection` never writes that column. The WO
+  // screen and the runner WO page were still reading it while billing, the
+  // invoice and the PDF were not, so the screens showed an engineer charge that
+  // nothing downstream would ever bill (three work orders were in that state,
+  // all carrying the retired $55 default).
+  //
+  // Staffing lives ONLY in the Studio Time table (CLAUDE.md). The row's
+  // `eng_rate` is the single source; a row with no rate is not a charge. Do not
+  // reintroduce an inheritance here.
 }
 
 export type WoTotals = {
@@ -102,11 +95,8 @@ function rate(v: string | null | undefined): number {
  * total, and that per-row number must come from the same function as the sum —
  * a separate inline copy is exactly how the two used to disagree.
  */
-export function engChargeForRow(
-  row: TotalsStudioRow,
-  fallbackEngRate?: string | null,
-): number {
-  const r = rate(row.eng_rate || fallbackEngRate || '')
+export function engChargeForRow(row: TotalsStudioRow): number {
+  const r = rate(row.eng_rate || '')
   if (!r) return 0
   const clocked = calcHours(
     row.eng_from_time || row.from_time || '',
@@ -119,14 +109,14 @@ export function engChargeForRow(
 
 /** The six numbers on a work order. Pure — no I/O, safe to call in a loop. */
 export function computeWoTotals(input: WoTotalsInput): WoTotals {
-  const { studioRows, rentalRows, paymentRows, fallbackEngRate } = input
+  const { studioRows, rentalRows, paymentRows } = input
 
   const studio = studioRows.reduce(
     (s, r) => s + money(r.charge) + money(r.ot_charge),
     0,
   )
   const engineer = studioRows.reduce(
-    (s, r) => s + engChargeForRow(r, fallbackEngRate),
+    (s, r) => s + engChargeForRow(r),
     0,
   )
   const rentals = rentalRows.reduce((s, r) => s + money(r.charge), 0)

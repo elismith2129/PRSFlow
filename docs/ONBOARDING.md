@@ -115,6 +115,9 @@ Things that look safe and aren't.
 - **Day rate is a flat charge**, never multiplied by hours.
 - **Tech, Tour and Open Hours sessions never generate work orders**, invoice numbers, or appear in daily ops.
 - `bookings.studio` holds full room labels (`"Studio X"`, `"North"`); `studio_time_rows.studio` holds bare letters (`"X"`). They are deliberately not synced. Don't prefix `"Studio "` onto `bookings.studio` — you'll get "Studio Studio X".
+- **`.claude/worktrees/` is an ABANDONED COPY OF THE APP. Do not edit anything in it, and do not read it as current.** A Claude session was given its own git worktree on 2026-06-17, worked for about 45 minutes, and was never cleaned up. It holds ~40 stale `.tsx` files — including a `WorkOrderPopup 2.tsx` — frozen two months before the carved redesign, plus four uncommitted changes whose features (dashboard room-card → booking popup, nav z-index above modals) were later redone properly and are live today. **Nothing unique is in there**; its branch (`worktree-agent-ab5b0d2d510b094ef`) has no commits that aren't already in `redesign/carved`.
+  - **It is harmless where it sits** (verified 2026-08-13): gitignored (`.gitignore:32`), so it is never committed or deployed; skipped by TypeScript, because `tsconfig` glob `**/*` does not descend into dot-directories, so it cannot break a build; never imported, so Next never bundles it. Its only cost is 23MB and search noise.
+  - **The actual hazard is YOU.** It turns up in every `grep`/search across the repo and looks like real source. Exclude it (`--exclude-dir=.claude`) or you will read — or worse, edit — a two-month-old duplicate of a file you are currently working on. Eli's decision (2026-08-13): leave it in place, delete later. Do not "tidy" it away without asking; deleting it is a git-worktree operation and Eli runs all git.
 
 ---
 
