@@ -1779,6 +1779,12 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-bsearch input {
   flex: 1; outline: none; border: none; background: none;
   color: var(--c-fg); font-family: 'Inter', sans-serif; font-size: 12.5px;
+  /* THE BOX IN THE BUBBLE (fix, 2026-08-13). Rule (5) up at line ~353 gives
+     `input:not(.c-input)` a recessed inset shadow, and this input carries no
+     class — so it painted a sunken rectangle INSIDE the rounded search bar.
+     The BAR is the field here; the input is only the text layer, so it must
+     carry no depth of its own. Any wrapper-styled field needs this line. */
+  box-shadow: none;
 }
 .c-bclr { opacity: .45; font-size: 11px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
 .c-bclr:hover { opacity: .9; }
