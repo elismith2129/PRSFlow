@@ -102,7 +102,7 @@ export function cardTiers(height: number) {
 }
 
 export function SessionCardBody({
-  booking, height, eng = '', asst = '', isMobile = false, children,
+  booking, height, eng = '', asst = '', isMobile = false, large = false, children,
 }: {
   booking: Sessionish
   /** Usable height of the card in px — drives the ladder above. */
@@ -113,6 +113,10 @@ export function SessionCardBody({
   eng?: string
   asst?: string
   isMobile?: boolean
+  /** Legibility bump for surfaces NOT confined to a calendar cell (runner hub,
+   *  ruling 2026-08-14): same anatomy, same colours, bigger type. Opt-in only —
+   *  calendar and dashboard output stays byte-identical when omitted. */
+  large?: boolean
   /** Extra absolutely-positioned content inside the payload — the calendar's
    *  repeated payload copies on long multi-day bars. */
   children?: React.ReactNode
@@ -154,7 +158,7 @@ export function SessionCardBody({
       }}>
         {children}
         <div style={{
-          fontSize: isMobile ? 11 : (showTimes ? 12.5 : 11),
+          fontSize: large ? 16 : isMobile ? 11 : (showTimes ? 12.5 : 11),
           fontFamily: "'Archivo Black', sans-serif", lineHeight: 1.3,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
@@ -162,7 +166,7 @@ export function SessionCardBody({
         </div>
         {labelLine && showClient && (
           <div className="c-ev-meta" style={{
-            fontSize: 10, lineHeight: 1.2,
+            fontSize: large ? 12 : 10, lineHeight: 1.2,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
             {labelLine}
@@ -170,7 +174,7 @@ export function SessionCardBody({
         )}
         {timeStr && showTimes && (
           <div className="c-ev-2 c-mono" style={{
-            fontSize: 9.5, lineHeight: 1.25,
+            fontSize: large ? 11.5 : 9.5, lineHeight: 1.25,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
             {timeStr}{typeTag ? `  ${typeTag}` : ''}
@@ -179,14 +183,17 @@ export function SessionCardBody({
       </div>
 
       {showFooter && (invTag || staffTag) && (
-        <div className="c-ev-foot">
-          {invTag && <span className="c-ev-wo">{invTag}</span>}
-          {staffTag && <span className="c-ev-staff">{staffTag}</span>}
+        <div className="c-ev-foot" style={large ? { fontSize: 11, padding: '3px 8px' } : undefined}>
+          {invTag && <span className="c-ev-wo" style={large ? { fontSize: 11 } : undefined}>{invTag}</span>}
+          {staffTag && <span className="c-ev-staff" style={large ? { fontSize: 11 } : undefined}>{staffTag}</span>}
         </div>
       )}
 
       {showPayment && (
-        <div className={`c-ev-cod${codSliver ? ' c-ev-cod-sliver' : ''}`}>
+        <div
+          className={`c-ev-cod${codSliver ? ' c-ev-cod-sliver' : ''}`}
+          style={large && !codSliver ? { fontSize: 11, padding: '3px 8px' } : undefined}
+        >
           {codSliver ? '' : (codLabel ? `COD ${codLabel}` : 'COD')}
         </div>
       )}
