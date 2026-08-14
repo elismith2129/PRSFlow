@@ -21,25 +21,19 @@
 -- because only downloads taken after this point can exist.
 -- ─────────────────────────────────────────────────────────────────────────────
 
-begin;
+-- ⚠ THE FILES CANNOT BE DELETED FROM SQL (found on running this, 2026-08-13).
+-- Supabase guards `storage.objects` with a `protect_delete()` trigger:
+--   ERROR 42501: Direct deletion from storage tables is not allowed.
+--   Use the Storage API instead.
+-- So this migration only clears the POINTERS, which is the half that matters:
+-- nothing can reach a stale snapshot, and the next Download rebuilds the package
+-- from the live record. The orphaned objects stay in the private `invoices`
+-- bucket — unreferenced, unreachable, a few KB. Removing them needs the Storage
+-- API (a service-role script or the dashboard), and is housekeeping, not safety.
 
--- 1. The files. Package snapshots are the only objects written as
---    "<work_order_id>/package-<timestamp>.pdf"; an ATTACHED invoice (the
---    QuickBooks PDF billing dragged onto a row) is stored under a different
---    name and MUST NOT be touched — it is the client's actual invoice and
---    PRSFlo has no other copy of it.
-delete from storage.objects
-where bucket_id = 'invoices'
-  and name like '%/package-%';
-
--- 2. The pointers. Nulled after the files, so a half-run leaves rows pointing
---    at something missing rather than files no row can find.
 update work_orders
 set invoice_package_path = null
 where invoice_package_path is not null;
 
-commit;
-
--- Verify — both should return 0.
+-- Verify — should return 0.
 -- select count(*) from work_orders where invoice_package_path is not null;
--- select count(*) from storage.objects where bucket_id = 'invoices' and name like '%/package-%';
