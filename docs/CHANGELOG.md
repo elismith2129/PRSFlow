@@ -91,8 +91,54 @@ unreferenced and unreachable. Removing them needs the Storage API.
   The work order page is NOT built yet.
 - **§16 Studio Time = day blocks**, zebra retired. **§16c table chrome is TEXT,
   not bars** — headers and footers lose their fill, subtotals get a result chip,
-  only entries are filled and rounded. Equipment regrouped per GEAR, not per day.
-  §16b (round every strip) is superseded, kept for its reasoning.
+  only entries are filled and rounded. §16b (round every strip) is superseded,
+  kept for its reasoning.
+- **§17 the pipeline IS the title** on `/billing` — Billing and COD both live in
+  the heading with live counts; COD's goes hot on a balance. The top-right pill
+  switch and `.c-bsegdot` are gone.
+- **§18 equipment condition lives IN the studio day** — a third line per day
+  block, one pill per item, **tap cycles blank → OK → Not OK → OK …** and never
+  returns to blank (blank means nobody has answered; a third tap must not
+  destroy that). The separate date-column table is DELETED.
+
+### Later the same day — the design pass
+
+- **Section headers are text app-wide.** `.c-lozenge` lost its fill. Three rules
+  depended on that fill and broke silently: the count badge inverted against it
+  (so it vanished), the action link took the bar's contrast colour, and
+  `SectionHeader` also carries `.c-anchor`, whose drop shadow became a smudge
+  under bare text. All three fixed in the same change.
+- **WO meta row:** PO # widened and moved beside Inv #; the "PO req'd Yes/No"
+  segment is gone — **the PO field answers its own question** with a `Not req'd`
+  chip inside the well. Food stopped being a Yes/No that reveals a box and is
+  now just an amount; `food_budget` is derived from it.
+- **The WO header stays put while the body scrolls.** `position: sticky` was
+  already on it and could never work: `.c-sheet` carries `overflow: hidden`, so
+  the SHEET was the sticky scrollport. The sheet is a flex column with an
+  overflowing body now, matching what mobile already did.
+- **One action bar** — Cancel · Complete WO · Save. The title bar's Cancel/Close
+  pair is gone (it sat directly above a second row with the same two words), and
+  `Close` is renamed `Save`. `Save & download` stays only on read-only WOs.
+- Column headers now match section headers (Inter 800, `--c-fg` at 45%).
+- Billing: list header shows a COUNT ONLY; the package window's Work order /
+  Invoice toggle is centred; the search bar matches `.c-input` geometry.
+
+### Watch-outs from the design pass
+
+- **`.c-sheet button:not(…)` / `.c-panel button:not(…)` will eat a new pill.**
+  Those scoped defaults give any raw `<button>` carved padding, its own
+  background and a raised shadow, and they out-specify a plain class. `.c-eqpill`
+  and `.c-poreq` rendered oversized with no status colour until they were added
+  to the `:not()` list — **any new in-sheet control must be added there too.**
+- **An unclassed `<input>` inherits a sunken box** from the global input rule
+  (`input:not(.c-input)` gets an inset shadow). That produced both the "box in a
+  bubble" on the billing search and the pale field boxes in `ClientPanel`. A
+  wrapper-styled field needs `box-shadow: none` or the `.c-tin` class.
+- **Studio Time is a scroll box, not paginated** (`maxHeight: 420`). With
+  equipment the day block is ~86px, so ~5 days are visible; Eli wants ~8, which
+  means ~690px. **Not changed** — it also decides how much screen the table takes
+  before rentals and payments.
+- `fmtDate` and `sessionDates` were deleted with the equipment table.
 
 ### Watch-outs
 

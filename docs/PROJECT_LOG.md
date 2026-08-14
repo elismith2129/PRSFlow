@@ -3342,3 +3342,71 @@ replaced. The eye was catching a shape mismatch, not a corner.
   verified at source and by rendering PDFs.
 - Four AR questions still open (approver set, deposits, Dropbox history import,
   `SUPABASE_SERVICE_ROLE_KEY` in the Preview environment) — see `docs/AR-SCOPING.md`.
+
+#### Later the same day — the design pass, and a pattern worth naming
+
+After the wrap-up we kept going on the work order's surface. Six of the fixes
+turned out to be **one failure mode wearing different clothes: a scoped default
+quietly out-specifying a component's own style.**
+
+- The billing search bar looked like "a box in a bubble". Nothing was square —
+  a global `input:not(.c-input)` rule paints a sunken inset on any unclassed
+  field, so the input drew a recessed box inside the rounded bar.
+- The `ClientPanel` fields rendered as pale boxes for the same reason, one rule
+  along: `.c-sheet input:not(…)` gives them a wash fill. They carry `.c-tin` now.
+- The equipment pills rendered oversized AND refused to change colour on tap.
+  Same shape again: `.c-sheet button:not(…)` gives raw buttons carved padding,
+  their own background and a raised shadow, and beats a plain class. The colour
+  was being painted over — which is why tapping appeared to do nothing except
+  move a dot.
+
+**The generalisation, which is worth more than the three fixes:** the scoped
+sheet/panel defaults are a deliberate compromise (documented at the rule itself)
+that lets ~38 one-off controls look right without converting each to a primitive.
+The cost is that every NEW control inside a sheet is opted IN by default and must
+be opted out by name. Nothing announces that. When a new control looks wrong in a
+way that inline styles cannot explain, check the `:not()` list before anything
+else.
+
+**Section headers going to text had the same shape in reverse.** Removing
+`.c-lozenge`'s fill broke three things that had quietly depended on it: the count
+badge inverted against the fill (so on no fill it painted in the page colour and
+disappeared), the action link took the bar's contrast colour, and `SectionHeader`
+also carries `.c-anchor`, whose drop shadow had nothing left to cast and became a
+smudge. A fill is never only a fill — things lean on it.
+
+**Where I was wrong again, and it is the same lesson as this morning.** I "fixed"
+the half-round/half-square table strips by rounding their outer corners. Eli:
+*"looks like headers and footers are half round and half square."* Two filled
+bars sandwiching filled blocks means three fills competing for one edge; the
+corner only MOVES. His fix dissolved it — headers and footers become text, so
+only entries are filled and only one thing needs a radius. §16b is kept as
+superseded rather than deleted, because the reasoning for why the first attempt
+chased the symptom is worth more than the fix.
+
+**Rejected:** a "PO req'd Yes/No" segment beside the PO field (option D of
+`wo-po-food-options.html`) — kept the control but not the width. Option A won:
+the field answers its own question with a chip inside the well. Also rejected,
+for equipment: B (toggles crammed into the twelve-column row), C (a chip that
+opens), D (one "All OK" tap). D was tempting and Eli nearly had it — one tap
+settling three items matches how the work goes — but it is one tap away from
+clicking through without looking, which is the exact failure the mic-inventory
+pre-fill rule exists to prevent.
+
+**The equipment tap cycle is deliberately one-way:** blank → OK → Not OK → OK →
+… It never returns to blank. Blank means NOBODY HAS ANSWERED, which is
+information, and a third tap must not be able to destroy it. This also keeps
+"not checked" honestly distinct from "checked and fine".
+
+#### Open, going into the runner session
+
+- **`/runner/[studio]/wo/[id]` (1,595 lines) is untouched** — still the
+  twelve-column horizontally-scrolling table, still the old skin. Spec §15
+  option A is the ruling; the hub landing is already ported.
+- **Equipment must fold into the day on the runner page too**, or the two
+  screens edit the same `equipment_condition_notes` rows through different
+  shapes. They already share that table, so notes round-trip today.
+- **Unverified:** whether marking Not OK from the ADMIN line raises a flag the
+  way a runner's Not OK submission does. Check before calling equipment done.
+- The studio-time scroll cap (420px) shows ~5 days now that blocks are ~86px.
+  Eli wants ~8. Deliberately not changed yet.

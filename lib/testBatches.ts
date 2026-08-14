@@ -104,8 +104,8 @@ export const TEST_BATCHES: TestBatch[] = [
       },
       {
         id: 'wp-equipment', area: 'Work order',
-        what: 'Equipment Condition can be ticked on every day, not just the first',
-        how: 'Open a work order covering more than one day (add a second day in Studio Time if you need to, and save). Scroll to Equipment Condition. Click OK under the SECOND date, and the third. Every column must respond. Report any date where clicking does nothing.',
+        what: 'Equipment can be set on every day, not just the first',
+        how: 'Open a work order covering more than one day (add a second day in Studio Time if you need to, and save). Each day now has its own EQUIPMENT line. Tap an item on the SECOND day, and the third. Every day must respond. Report any day where tapping does nothing — that was a real bug: days added after the work order was created had no equipment behind them.',
       },
       {
         id: 'wp-dblclick', area: 'Billing',
@@ -131,6 +131,36 @@ export const TEST_BATCHES: TestBatch[] = [
         id: 'wp-grouping', area: 'Work order',
         what: 'Studio Time groups each day with its engineer or assistant',
         how: 'Open a work order with a few days on it. Each day and the staff line under it should sit together in one shaded block, with a clear gap before the next day. There should be no stripey alternating rows, and no square corners meeting rounded ones.',
+      },
+      {
+        id: 'wp-eq-day', area: 'Work order',
+        what: 'Equipment is now a line inside each day, and tapping changes its colour',
+        how: 'Open a work order with a few days on it. Under each day\'s staff line there is an EQUIPMENT line with Speakers, Microphone and Console. Tap Speakers once — it should turn GREEN. Tap it again — RED, and a box should open asking what was wrong. Tap once more — back to green. Report it if tapping only moves a small dot and the pill does not change colour.',
+      },
+      {
+        id: 'wp-eq-blank', area: 'Work order',
+        what: 'An untouched equipment item cannot be put back to blank',
+        how: 'Find a day where an item has never been tapped — it looks grey and faded. Tap it a few times. It should move between green and red only, and never return to the faded state. That is deliberate: faded means nobody has checked it.',
+      },
+      {
+        id: 'wp-eq-note', area: 'Work order',
+        what: 'A Not OK note saves and is still there when you come back',
+        how: 'Set an item to Not OK, type a sentence in the box, press Done, then close the work order and re-open it. The item should still be red and the note still there. If you have the runner app open on that session, check the same note appears there too.',
+      },
+      {
+        id: 'wp-po-chip', area: 'Work order',
+        what: 'The PO box has a "Not req\'d" button inside it',
+        how: 'Look at the PO # box at the top. At its right-hand end is a small "Not req\'d" button. Press it — it should fill in and the PO field should stop accepting typing. Press again to undo. There should be no separate PO Yes/No switch anywhere.',
+      },
+      {
+        id: 'wp-header-sticky', area: 'Work order',
+        what: 'The title and buttons stay on screen while you scroll',
+        how: 'Open a work order long enough to scroll. Scroll to the bottom. The title and the Cancel / Complete WO / Save buttons should stay visible the whole way down.',
+      },
+      {
+        id: 'wp-billing-title', area: 'Billing',
+        what: 'Billing and COD are both in the page title, each with a count',
+        how: 'Open Billing. The big heading should read "Billing" and "COD" side by side, each followed by a number, with the one you are on at full strength. Click COD — they swap. If any COD session has money outstanding, COD\'s number should be red.',
       },
       {
         id: 'wp-runner-hub', area: 'Runner', device: 'phone',
