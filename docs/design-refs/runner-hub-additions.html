@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Runner hub additions: tasks + punch miss</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  RUNNER HUB ADDITIONS — three placements (2026-08-14). Mock-first.
+
+  RULING CONTEXT (Eli, 2026-08-14): the hub's shape is RIGHT and stays — four
+  studios, pick yours, work tonight's sessions and duties. Nothing is assigned
+  to a runner (they rotate); everything is scoped to STUDIO + SHIFT. Two real
+  additions, one future slot:
+
+    1. PUNCH MISS — the HR-SPEC §5 punch_correction_requests flow, reachable
+       from the hub. Four fields (date, punch type, correct time, note),
+       submit. Classification is a server trigger, not the runner's problem.
+    2. STUDIO TASKS — admin leaves a task on a studio ("windy last night —
+       blow the parking lot"); whoever opens that studio sees it and checks
+       it off. Per-studio, per-nobody. NOT the dashboard_tasks person system.
+    3. RUNNERS MANUAL (later, then AI/chat) — a slot that exists but is one
+       quiet row, not a feature fighting for the screen.
+
+  The three options argue about ONE thing: how much of this earns a place on
+  the surface vs. staying quiet until needed.
+
+    A · SECTIONS     tasks are a real section; punch + manual are quiet rows
+    B · TILES        everything joins the existing Tonight grid — least change
+    C · TASK BANNER  tasks interrupt at the top only when they exist;
+                     punch/manual live behind one "More" row
+
+  The PUNCH FORM phone (right side of A) is the same wherever it opens from —
+  it is HR-SPEC §5.4 verbatim, phone-first. OPEN QUESTION flagged in it:
+  runners share one PIN login, but punch_correction_requests.staff_id needs a
+  PERSON. The form therefore leads with "who are you". How that resolves
+  (roster picker of runner profiles vs. free text) is Eli's call.
+
+  Soft skin (§7c), status colour only (§5), 44px targets. Mock polarity
+  INVERTED vs the app (mock dark = data-theme="dark"; app dark = no attribute).
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626;
+  --st-hot:#ff5a4d; --hot-text:#fff4f2;
+  --st-warm:#ffa94d; --st-cold:#5fc9e8; --st-booked:#43dfae;
+  --st-uncon:#7fb2e5; --st-dead:#cfd6d4;
+  --ivory:#d5d0c2; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+  --ctlsh:0 1px 2px rgba(42,39,34,.10);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  --ctlsh:0 1px 3px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;padding:18px}
+button,input,textarea,select{font:inherit;color:var(--fg);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.label{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45}
+
+/* ── Page chrome (not part of the design) ─────────────────────────────────── */
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.top h1{font-family:'Archivo Black',sans-serif;font-size:22px;letter-spacing:-.03em}
+.switch{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);box-shadow:var(--ctlsh)}
+.switch button{padding:6px 16px;border-radius:99px;font-size:12px;font-weight:700;opacity:.55;cursor:pointer}
+.switch button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .switch button.on{background:var(--fg);color:var(--bg)}
+.note{max-width:760px;font-size:12.5px;line-height:1.6;opacity:.65;margin-bottom:18px}
+.note b{opacity:1}
+.opt{display:none}
+.opt.on{display:block}
+.phones{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+.phonewrap{width:392px}
+.phonewrap > .cap{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.4;margin-bottom:7px}
+.phone{width:390px;height:780px;border-radius:34px;background:var(--bg);box-shadow:var(--softsh);overflow:hidden;display:flex;flex-direction:column;position:relative}
+
+/* ── Runner shell ─────────────────────────────────────────────────────────── */
+.rbar{display:flex;align-items:center;gap:11px;padding:14px 16px 10px;flex-shrink:0;background:var(--bg)}
+.rbar .back{width:34px;height:34px;border-radius:99px;background:var(--wash);box-shadow:var(--ctlsh);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;flex-shrink:0}
+.rbar .ttl{font-family:'Archivo Black',sans-serif;font-size:16px;letter-spacing:-.02em;line-height:1.15}
+.rbar .sub{font-size:11px;opacity:.5;margin-top:1px}
+.rbody{flex:1;overflow-y:auto;padding:4px 14px 28px;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:13px 14px}
+.sechd{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45;margin-bottom:9px;display:flex;align-items:center;justify-content:space-between}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:99px;padding:3px 10px;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--chip-ink)}
+.pill.booked{background:var(--st-booked)}
+.pill.warm{background:var(--st-warm)}
+.pill.hot{background:var(--st-hot);color:var(--hot-text)}
+.pill.dim{background:var(--wash2);color:var(--fg);opacity:.7}
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;min-height:48px;border-radius:14px;background:var(--wash);box-shadow:var(--ctlsh);font-size:13px;font-weight:700;cursor:pointer;padding:0 16px}
+.btn:active{transform:translateY(1px);background:var(--wash2)}
+.btn.primary{background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .btn.primary{background:var(--fg);color:var(--bg)}
+.well{display:flex;align-items:center;gap:7px;background:var(--wash);border-radius:12px;padding:0 11px;min-height:44px}
+.well .pfx{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.4;flex-shrink:0}
+.well input{flex:1;min-width:0;outline:none;font-size:14px}
+.seg{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);box-shadow:var(--ctlsh);flex-wrap:wrap}
+.seg button{padding:7px 14px;border-radius:99px;font-size:11.5px;font-weight:700;opacity:.55;cursor:pointer;white-space:nowrap}
+.seg button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .seg button.on{background:var(--fg);color:var(--bg)}
+
+/* ── Hub pieces (verbatim from runner-hub-options.html) ───────────────────── */
+.sess{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:13px 14px;cursor:pointer}
+.sess .room{font-family:'Archivo Black',sans-serif;font-size:21px;letter-spacing:-.02em;line-height:1.1}
+.sess .who{font-size:13px;font-weight:700;margin-top:2px}
+.sess .cl{font-size:11.5px;opacity:.5}
+.sess .meta{display:flex;gap:12px;margin-top:9px;font-size:11.5px;opacity:.6}
+.sess .tophd{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.tile{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:13px;min-height:70px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;text-align:left}
+.tile .t{font-size:12.5px;font-weight:700}
+.tile .s{font-size:10px;opacity:.45;margin-top:3px}
+.tile.done .s{color:var(--st-booked);opacity:1;font-weight:700}
+.tile .cnt{position:absolute;display:none}
+.tilebadge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:99px;background:var(--st-warm);color:var(--chip-ink);font-size:10px;font-weight:800;padding:0 5px}
+
+/* ── Tasks ────────────────────────────────────────────────────────────────── */
+.task{display:flex;align-items:flex-start;gap:11px;padding:11px 2px}
+.task + .task{box-shadow:0 -1px 0 var(--wash)}
+.task .chk{width:26px;height:26px;border-radius:99px;background:var(--wash2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;margin-top:1px}
+.task.done .chk{background:var(--st-booked);color:var(--chip-ink)}
+.task .tx{flex:1;min-width:0}
+.task .tx .t{font-size:13px;font-weight:700}
+.task.done .tx .t{opacity:.4;text-decoration:line-through}
+.task .tx .s{font-size:11px;opacity:.5}
+
+/* Quiet rows — the "exists but doesn't shout" register. */
+.quiet{display:flex;align-items:center;gap:11px;background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:12px 14px;min-height:52px;cursor:pointer}
+.quiet .t{flex:1;font-size:12.5px;font-weight:700}
+.quiet .s{font-size:10.5px;opacity:.45}
+.quiet .go{opacity:.35;font-size:16px}
+
+/* C · task banner — the one hot-adjacent surface, warm not hot (§5: warm =
+   needs a look; hot is reserved for needs-you-NOW). */
+.banner{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:13px 14px;cursor:pointer}
+.banner .hd{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.banner .dot{width:8px;height:8px;border-radius:50%;background:var(--st-warm)}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>Runner hub — additions</h1>
+  <div class="switch">
+    <button class="on" onclick="pick('a',this)">A · Sections</button>
+    <button onclick="pick('b',this)">B · Tiles</button>
+    <button onclick="pick('c',this)">C · Task banner</button>
+  </div>
+  <div class="switch">
+    <button class="on" onclick="theme('dark',this)">Dark</button>
+    <button onclick="theme('light',this)">Light</button>
+  </div>
+</div>
+
+<p class="note" id="blurb"></p>
+
+<!-- ══ A · SECTIONS ═══════════════════════════════════════════════════════ -->
+<div class="opt on" id="opt-a">
+<div class="phones">
+
+  <div class="phonewrap"><div class="cap">Hub — tasks are a section, punch is a quiet row</div>
+  <div class="phone">
+    <div class="rbar">
+      <div class="back">←</div>
+      <div><div class="ttl">Paramount</div><div class="sub">Fri, Aug 14</div></div>
+    </div>
+    <div class="rbody">
+
+      <!-- TASKS sit ABOVE sessions when open ones exist: the opener's first
+           question walking in is "anything waiting for me". A checked task
+           drops to the bottom of its list; a studio with none skips the
+           section entirely. -->
+      <div class="card">
+        <div class="sechd">This studio · from the office <span class="tilebadge">2</span></div>
+        <div class="task">
+          <div class="chk"></div>
+          <div class="tx"><div class="t">Blow the parking lot</div><div class="s">Windy last night — Fernando, 8:40 AM</div></div>
+        </div>
+        <div class="task">
+          <div class="chk"></div>
+          <div class="tx"><div class="t">Bring the C stands back from Studio D</div><div class="s">Eli, yesterday</div></div>
+        </div>
+        <div class="task done">
+          <div class="chk">✓</div>
+          <div class="tx"><div class="t">Restock kitchen water</div><div class="s">Done 4:55 PM</div></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="sechd">Today · 2 sessions</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="sess">
+            <div class="tophd">
+              <div><div class="room">Studio A</div><div class="who">Kendrick Lamar</div><div class="cl">Interscope Records</div></div>
+              <span class="pill warm">In progress</span>
+            </div>
+            <div class="meta"><span>6:00 PM – 2:00 AM</span><span>1ST Tom R.</span></div>
+          </div>
+          <div class="sess">
+            <div class="tophd">
+              <div><div class="room">Studio C</div><div class="who">Nia Rowe</div><div class="cl">COD · Zelle</div></div>
+              <span class="pill booked">Submitted</span>
+            </div>
+            <div class="meta"><span>12:00 PM – 6:00 PM</span><span>2ND Sierra K.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="sechd">Tonight</div>
+        <div class="tiles">
+          <button class="tile done"><span class="t">Opening</span><span class="s">Submitted 5:12 PM</span></button>
+          <button class="tile"><span class="t">Closing</span><span class="s">Not started</span></button>
+          <button class="tile"><span class="t">Mic inventory</span><span class="s">271 to check</span></button>
+          <button class="tile"><span class="t">Petty cash</span><span class="s">$240 on hand</span></button>
+          <button class="tile"><span class="t">Stock</span><span class="s">2 low</span></button>
+        </div>
+      </div>
+
+      <!-- The quiet register: always there, never shouting. Punch first
+           because it's real today; the manual row is the future slot the
+           AI/chat later replaces or joins. -->
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div class="quiet" onclick="alert('opens the punch form →')">
+          <div class="t">Missed a punch?<div class="s">Report it — takes 30 seconds</div></div>
+          <div class="go">›</div>
+        </div>
+        <div class="quiet" style="opacity:.55">
+          <div class="t">Runners manual<div class="s">Coming soon</div></div>
+          <div class="go">›</div>
+        </div>
+      </div>
+
+    </div>
+  </div></div>
+
+  <!-- The punch form — HR-SPEC §5.4, identical wherever it opens from. -->
+  <div class="phonewrap"><div class="cap">Punch form — HR-SPEC §5, same in every option</div>
+  <div class="phone">
+    <div class="rbar">
+      <div class="back">←</div>
+      <div><div class="ttl">Missed a punch</div><div class="sub">Paramount · goes to Fernando</div></div>
+    </div>
+    <div class="rbody">
+
+      <!-- OPEN QUESTION (Eli to rule): runners share ONE login, but the
+           request must belong to a PERSON (staff_id, and it is the legal
+           written confirmation). So the form leads with who. Shown here as
+           a roster picker; free-text is the fallback option. -->
+      <div class="card">
+        <div class="sechd">Who are you</div>
+        <div class="seg" style="width:100%">
+          <button class="on">Marcus</button><button>Dre</button><button>Lena</button><button>J.P.</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="sechd">The punch</div>
+        <div style="display:flex;flex-direction:column;gap:11px">
+          <div><div class="label" style="margin-bottom:4px">Which shift</div>
+            <div class="seg"><button class="on">Tonight</button><button>Yesterday</button><button>Other day</button></div>
+          </div>
+          <div><div class="label" style="margin-bottom:4px">What was missed</div>
+            <div class="seg"><button class="on">Clock in</button><button>Clock out</button><button>Meal out</button><button>Meal in</button></div>
+          </div>
+          <div><div class="label" style="margin-bottom:4px">The time it should say</div>
+            <div class="well"><input class="mono" value="6:00 PM"></div>
+          </div>
+          <div><div class="label" style="margin-bottom:4px">Note (optional)</div>
+            <div class="well" style="min-height:56px"><input placeholder="Forgot on the way in — got pulled into load-in"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size:11px;opacity:.45;line-height:1.5;padding:0 4px">
+        This is your written confirmation — it goes straight to the manager
+        queue and gets entered in ADP. Same-day reports don't count against you.
+      </div>
+
+      <button class="btn primary" style="min-height:52px">Submit to Fernando</button>
+
+    </div>
+  </div></div>
+
+</div>
+</div>
+
+<!-- ══ B · TILES ══════════════════════════════════════════════════════════ -->
+<div class="opt" id="opt-b">
+<div class="phones">
+
+  <div class="phonewrap"><div class="cap">Hub — everything joins the grid, least change</div>
+  <div class="phone">
+    <div class="rbar">
+      <div class="back">←</div>
+      <div><div class="ttl">Paramount</div><div class="sub">Fri, Aug 14</div></div>
+    </div>
+    <div class="rbody">
+
+      <div>
+        <div class="sechd">Today · 2 sessions</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="sess">
+            <div class="tophd">
+              <div><div class="room">Studio A</div><div class="who">Kendrick Lamar</div><div class="cl">Interscope Records</div></div>
+              <span class="pill warm">In progress</span>
+            </div>
+            <div class="meta"><span>6:00 PM – 2:00 AM</span><span>1ST Tom R.</span></div>
+          </div>
+          <div class="sess">
+            <div class="tophd">
+              <div><div class="room">Studio C</div><div class="who">Nia Rowe</div><div class="cl">COD · Zelle</div></div>
+              <span class="pill booked">Submitted</span>
+            </div>
+            <div class="meta"><span>12:00 PM – 6:00 PM</span><span>2ND Sierra K.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="sechd">Tonight</div>
+        <div class="tiles">
+          <button class="tile" style="position:relative">
+            <span class="t" style="display:flex;justify-content:space-between;align-items:center;width:100%">Tasks <span class="tilebadge">2</span></span>
+            <span class="s">Blow the parking lot +1</span>
+          </button>
+          <button class="tile done"><span class="t">Opening</span><span class="s">Submitted 5:12 PM</span></button>
+          <button class="tile"><span class="t">Closing</span><span class="s">Not started</span></button>
+          <button class="tile"><span class="t">Mic inventory</span><span class="s">271 to check</span></button>
+          <button class="tile"><span class="t">Petty cash</span><span class="s">$240 on hand</span></button>
+          <button class="tile"><span class="t">Stock</span><span class="s">2 low</span></button>
+          <button class="tile"><span class="t">Missed a punch</span><span class="s">Report it</span></button>
+          <button class="tile" style="opacity:.55"><span class="t">Runners manual</span><span class="s">Coming soon</span></button>
+        </div>
+      </div>
+
+    </div>
+  </div></div>
+
+</div>
+</div>
+
+<!-- ══ C · TASK BANNER ════════════════════════════════════════════════════ -->
+<div class="opt" id="opt-c">
+<div class="phones">
+
+  <div class="phonewrap"><div class="cap">Hub — tasks interrupt only when they exist</div>
+  <div class="phone">
+    <div class="rbar">
+      <div class="back">←</div>
+      <div><div class="ttl">Paramount</div><div class="sub">Fri, Aug 14</div></div>
+    </div>
+    <div class="rbody">
+
+      <!-- The banner is the ONLY change to the surface. No open tasks =
+           this whole card is absent and the hub is exactly today's hub. -->
+      <div class="banner">
+        <div class="hd"><span class="dot"></span><span style="font-size:12.5px;font-weight:700">2 tasks from the office</span></div>
+        <div style="font-size:12px;opacity:.6">Blow the parking lot · Bring the C stands back from Studio D</div>
+      </div>
+
+      <div>
+        <div class="sechd">Today · 2 sessions</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="sess">
+            <div class="tophd">
+              <div><div class="room">Studio A</div><div class="who">Kendrick Lamar</div><div class="cl">Interscope Records</div></div>
+              <span class="pill warm">In progress</span>
+            </div>
+            <div class="meta"><span>6:00 PM – 2:00 AM</span><span>1ST Tom R.</span></div>
+          </div>
+          <div class="sess">
+            <div class="tophd">
+              <div><div class="room">Studio C</div><div class="who">Nia Rowe</div><div class="cl">COD · Zelle</div></div>
+              <span class="pill booked">Submitted</span>
+            </div>
+            <div class="meta"><span>12:00 PM – 6:00 PM</span><span>2ND Sierra K.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="sechd">Tonight</div>
+        <div class="tiles">
+          <button class="tile done"><span class="t">Opening</span><span class="s">Submitted 5:12 PM</span></button>
+          <button class="tile"><span class="t">Closing</span><span class="s">Not started</span></button>
+          <button class="tile"><span class="t">Mic inventory</span><span class="s">271 to check</span></button>
+          <button class="tile"><span class="t">Petty cash</span><span class="s">$240 on hand</span></button>
+          <button class="tile"><span class="t">Stock</span><span class="s">2 low</span></button>
+        </div>
+      </div>
+
+      <!-- One door for everything that isn't tonight's work. -->
+      <div class="quiet">
+        <div class="t">More<div class="s">Missed a punch · Runners manual</div></div>
+        <div class="go">›</div>
+      </div>
+
+    </div>
+  </div></div>
+
+</div>
+</div>
+
+<script>
+const BLURB = {
+  a: "<b>A · Sections.</b> Tasks from the office are a real SECTION, and it sits at the very top — the opener's first question walking in is “anything waiting for me”, so it outranks even sessions when tasks exist (a studio with none skips the section entirely). Punch-miss and the future manual are the QUIET register at the bottom: always in the same place, never competing with tonight's work. <b>Cost:</b> the hub gets a third register (sections + tiles + quiet rows), which is the most visual vocabulary of the three.",
+  b: "<b>B · Tiles.</b> The smallest possible change: tasks, punch-miss and the manual just join the Tonight grid as tiles, with a count badge on Tasks. One vocabulary, zero new patterns, and nothing moves. <b>Cost:</b> a task like “blow the parking lot” has the same visual weight as the stock list, and the grid grows to 8 tiles — the punch tile in particular is something a runner needs maybe once a month, paying rent on the surface every night.",
+  c: "<b>C · Task banner.</b> Tasks appear as a warm banner ABOVE sessions only when open ones exist — an interruption, which is what an office task to a runner actually is — and vanish entirely when done. Everything that isn't tonight's work (punch, manual, later the AI) lives behind ONE “More” row. The default night looks exactly like today's hub. <b>Cost:</b> punch-miss is two taps deep, and HR-SPEC §5.4 asked for it prominent; a hidden report path gets used less, and same-day reports are the ones that protect the runner.",
+}
+function pick(k, el){
+  document.querySelectorAll('.opt').forEach(o => o.classList.remove('on'))
+  document.getElementById('opt-' + k).classList.add('on')
+  el.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('on'))
+  el.classList.add('on')
+  document.getElementById('blurb').innerHTML = BLURB[k]
+}
+function theme(t, el){
+  document.documentElement.setAttribute('data-theme', t)
+  el.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('on'))
+  el.classList.add('on')
+}
+document.getElementById('blurb').innerHTML = BLURB.a
+</script>
+</body>
+</html>
