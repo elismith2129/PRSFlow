@@ -590,6 +590,34 @@ A studio line and its staff lines are ONE fact and must look like one.
 - Cost accepted: a long work order is taller than it was. If that becomes a
   problem the answer is a shorter row, not a return to zebra.
 
+## 18. Equipment condition lives IN the studio day (RULING 2026-08-13)
+
+Eli picked option **A · Third line** from
+`docs/design-refs/eq-in-studio-day-options.html`. B/C/D rejected.
+
+**What it replaces:** a separate table under Studio Time with equipment down the
+side and ONE COLUMN PER SESSION DATE across the top, scrolling sideways. The date
+is what joins it to the studio time above, and that join was invisible — on a
+30-day work order it was a 30-column horizontal scroll with no relationship on
+screen to the day you were just editing.
+
+- **Each day block gains a third line**, under the staff line: `EQUIPMENT` then
+  one pill per item. Same law as §16 — a day, its staff and its condition are
+  one fact, so they share one block.
+- **The pill cycles on tap: blank → OK → Not OK → OK → Not OK …** It NEVER
+  returns to blank. Blank means *nobody has answered yet*, which is information;
+  a third tap must not be able to destroy it. This also keeps "not checked"
+  honestly distinct from "checked and fine".
+- **Not OK opens the note field** inline beneath, as now, and raises the flag.
+- Colour is status only (§5): OK is `--c-st-booked`, Not OK is `--c-st-hot`,
+  unanswered is wash at low opacity.
+- The old `data-no-print` exclusion still applies — **equipment condition is
+  internal and never prints** (it is not in `lib/woPdf.ts`, and must not be).
+- **Accepted cost:** the day block grows to ~86px, so about 8 days are visible
+  before the studio-time box scrolls (Eli's stated preference). A 30-day work
+  order is a long inner scroll. If that becomes the problem, shorten the row —
+  do not go back to a separate table.
+
 ## 17. Billing / COD — THE PIPELINE IS THE TITLE (RULING 2026-08-13)
 
 Eli: *"I don't want staff to forget about COD."* Reference:

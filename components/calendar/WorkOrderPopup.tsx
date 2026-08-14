@@ -189,10 +189,6 @@ const EQUIPMENT_ITEMS = ['Speakers', 'Microphone', 'Console']
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 
-function fmtDate(d: string) {
-  return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
 function normalizeWO(d: any): WO {
   return {
     id: d.id,
@@ -1085,10 +1081,24 @@ export function WorkOrderPopup({
 
   // ── Equipment condition ────────────────────────────────────────────────────
 
-  async function toggleEquip(equipment: string, date: string, cond: 'ok' | 'not_ok') {
+  /**
+   * ONE PILL, TAPPED (RULING 2026-08-13, spec §18).
+   *
+   *   blank → OK → Not OK → OK → Not OK → …
+   *
+   * It never returns to blank. Blank means NOBODY HAS ANSWERED YET, which is
+   * information — a third tap must not be able to destroy it, and it keeps
+   * "not checked" honestly distinct from "checked and fine". There is
+   * deliberately no way back to unanswered from the UI.
+   */
+  function cycleEquip(equipment: string, date: string) {
+    const existing = equipRows.find(r => r.equipment === equipment && r.date === date)
+    return setEquipCondition(equipment, date, existing?.condition === 'ok' ? 'not_ok' : 'ok')
+  }
+
+  async function setEquipCondition(equipment: string, date: string, nextCond: 'ok' | 'not_ok' | null) {
     const key = `${equipment}||${date}`
     const existing = equipRows.find(r => r.equipment === equipment && r.date === date)
-    const nextCond: 'ok' | 'not_ok' | null = existing?.condition === cond ? null : cond
 
     // CREATE THE ROW IF IT ISN'T THERE (fix, 2026-08-13). Equipment rows are
     // seeded once, at work-order creation, for the dates the booking had THEN.
@@ -1788,7 +1798,6 @@ export function WorkOrderPopup({
   const grandTotal = woTotals.grand
   const totalPaid = woTotals.paid
   const balanceDue = woTotals.balance
-  const sessionDates = Array.from(new Set(stRows.map(r => r.date).filter(Boolean))).sort()
 
   // ── Styles ────────────────────────────────────────────────────────────────
 
@@ -3028,6 +3037,84 @@ export function WorkOrderPopup({
                           )}
                         </>
                       )}
+
+                      {/* ── EQUIPMENT, THE DAY'S THIRD LINE (§18) ───────────
+                          Rendered on the LAST row of each date, so it closes the
+                          day block rather than splitting the studio row from its
+                          staff. Undated rows get nothing — there is no night to
+                          report on.
+
+                          NEVER PRINTS. Equipment condition is internal; it is
+                          not in lib/woPdf.ts and must not be added there. */}
+                      {lastOfDay && r.date && (
+                        <div data-no-print="" style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', padding: '3px 12px 8px' }}>
+                          <span style={{ fontSize: 8.5, fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg)', opacity: 0.38, marginRight: 2 }}>
+                            Equipment
+                          </span>
+                          {EQUIPMENT_ITEMS.map(eq => {
+                            const cond = equipRows.find(x => x.equipment === eq && x.date === r.date)?.condition ?? null
+                            const noteKey = `${eq}||${r.date}`
+                            const hasNote = !!(equipNotes[noteKey]?.note || (equipNotes[noteKey]?.photo_urls?.length ?? 0) > 0)
+                            return (
+                              <button
+                                key={eq}
+                                type="button"
+                                disabled={readOnly}
+                                onClick={() => cycleEquip(eq, r.date)}
+                                title={cond === null ? 'Not checked — tap to mark OK' : cond === 'ok' ? 'OK — tap if it was not' : 'Not OK — tap to mark OK'}
+                                className={`c-eqpill${cond ? ` c-${cond === 'ok' ? 'ok' : 'bad'}` : ''}`}
+                              >
+                                <i />
+                                {eq}
+                                {cond === 'not_ok' && hasNote && <b>·</b>}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {/* The Not-OK note, for whichever item on THIS day is open. */}
+                      {lastOfDay && r.date && openNoteKey?.endsWith(`||${r.date}`) && (() => {
+                        const eq = openNoteKey.split('||')[0]
+                        const note = equipNotes[openNoteKey]
+                        return (
+                          <div data-no-print="" style={{ padding: '8px 12px', background: 'var(--c-wash2)', borderRadius: 12, margin: '0 8px 8px' }}>
+                            <div style={{ fontSize: 9, fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--c-st-hot)', marginBottom: 6 }}>
+                              {eq} — what was wrong?
+                            </div>
+                            <textarea
+                              value={note?.note ?? ''}
+                              disabled={readOnly}
+                              onChange={e => setEquipNotes(prev => ({ ...prev, [openNoteKey]: { ...(prev[openNoteKey] ?? { id: '', photo_urls: [] }), note: e.target.value } }))}
+                              onBlur={e => upsertEquipNote(openNoteKey, eq, r.date, { note: e.target.value })}
+                              placeholder="Note about this issue…"
+                              style={{ width: '100%', background: 'transparent', borderRadius: 4, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '5px 7px', resize: 'none', outline: 'none', boxSizing: 'border-box', minHeight: 52 }}
+                            />
+                            {(note?.photo_urls?.length ?? 0) > 0 && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+                                {note.photo_urls.map((url, i) => (
+                                  <SignedImage key={i} path={url} link alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
+                                ))}
+                              </div>
+                            )}
+                            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 6 }}>
+                              {!readOnly && (
+                                <button
+                                  type="button"
+                                  disabled={noteUploading}
+                                  onClick={() => { pendingNoteKey.current = { key: openNoteKey, equipment: eq, date: r.date }; equipNoteFileRef.current?.click() }}
+                                  style={{ fontSize: 10, fontFamily: 'Inter', color: noteUploading ? 'var(--c-fg-3)' : 'var(--c-fg-2)', background: 'none', cursor: noteUploading ? 'not-allowed' : 'pointer', padding: 0 }}
+                                >
+                                  {noteUploading ? 'Uploading…' : '+ Photo'}
+                                </button>
+                              )}
+                              <button type="button" onClick={() => setOpenNoteKey(null)} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: 0, marginLeft: 'auto' }}>
+                                Done
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })()}
                     </div>
                   )
                 })}
@@ -3053,93 +3140,18 @@ export function WorkOrderPopup({
             </div>
           </div>
 
-          {/* EQUIPMENT CONDITION — excluded from PDF via data-no-print */}
-          <div data-no-print="" style={isMobile ? mCard : undefined}>
-            <SectionHeader carved title="Equipment Condition" />
-            {/* hidden file input for note photos */}
-            <input ref={equipNoteFileRef} type="file" accept="image/*" style={{ display: 'none' }}
-              onChange={e => { const f = e.target.files?.[0]; if (f) uploadEquipNotePhoto(f) }} />
-            <div style={{ overflowX: 'auto' }}>
-              <div style={{ minWidth: `${130 + Math.max(sessionDates.length, 1) * 90}px` }}>
-                {/* Header — equipment name cell sticky */}
-                <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, paddingBottom: 5 }}>
-                  <div style={{ ...thS, position: 'sticky', left: 0, background: 'var(--c-bg)', zIndex: 1 }}>Equipment</div>
-                  {sessionDates.length > 0
-                    ? sessionDates.map(d => <div key={d} style={thS}>{fmtDate(d)}</div>)
-                    : <div style={thS}>—</div>}
-                </div>
-                {/* Equipment rows */}
-                {EQUIPMENT_ITEMS.map((eq, eqIdx) => {
-                  const openDate = openNoteKey?.startsWith(`${eq}||`) ? openNoteKey.split('||')[1] : null
-                  return (
-                    <div key={eq}>
-                      <div style={{ display: 'grid', gridTemplateColumns: `130px repeat(${Math.max(sessionDates.length, 1)}, 90px)`, background: 'var(--c-wash)', borderRadius: 12, marginBottom: 6 }}>
-                        {/* Sticky label column. It must be OPAQUE (cells scroll
-                            under it) but it takes the row's own band, not a
-                            permanent wash — that read as a highlighted column. */}
-                        <div style={{ ...cellS, color: 'var(--c-fg)', fontWeight: 500, position: 'sticky', left: 0, background: 'var(--c-surface-band)', borderRadius: '12px 0 0 12px', zIndex: 1 }}>{eq}</div>
-                        {sessionDates.length > 0
-                          ? sessionDates.map(d => {
-                              const key = `${eq}||${d}`
-                              const row = equipRows.find(r => r.equipment === eq && r.date === d)
-                              const cond = row?.condition ?? null
-                              const hasNote = !!(equipNotes[key]?.note || (equipNotes[key]?.photo_urls?.length ?? 0) > 0)
-                              return (
-                                <div key={d} style={{ ...cellS, display: 'flex', gap: 4, alignItems: 'center' }}>
-                                  <button type="button" onClick={() => toggleEquip(eq, d, 'ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", cursor: 'pointer', background: 'transparent', color: cond === 'ok' ? 'var(--c-st-booked)' : 'var(--c-fg-3)', fontWeight: cond === 'ok' ? 700 : 400 }}>OK</button>
-                                  <button type="button" onClick={() => toggleEquip(eq, d, 'not_ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", cursor: 'pointer', background: 'transparent', color: cond === 'not_ok' ? 'var(--c-st-hot)' : 'var(--c-fg-3)', fontWeight: cond === 'not_ok' ? 700 : 400 }}>✗</button>
-                                  {cond === 'not_ok' && hasNote && (
-                                    <span style={{ width: 6, height: 6, borderRadius: 3, background: 'var(--c-st-warm)', display: 'inline-block', flexShrink: 0 }} />
-                                  )}
-                                </div>
-                              )
-                            })
-                          : <div style={{ ...cellS, color: 'var(--c-fg-3)' }}>—</div>}
-                      </div>
-                      {/* Note area — inline below the equipment row when a Not OK
-                          cell is open. It used to be clipped by the equipment
-                          container's fill; that fill is gone under §16c, so it
-                          rounds itself or it floats as the one square left. */}
-                      {openDate && (
-                        <div style={{ padding: '8px 12px', background: 'var(--c-wash)', borderRadius: 12, marginBottom: 6 }}>
-                          <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--c-st-warm)', marginBottom: 6 }}>
-                            {eq} — {openDate}
-                          </div>
-                          <textarea
-                            value={equipNotes[`${eq}||${openDate}`]?.note ?? ''}
-                            onChange={e => {
-                              const k = `${eq}||${openDate}`
-                              setEquipNotes(prev => ({ ...prev, [k]: { ...(prev[k] ?? { id: '', photo_urls: [] }), note: e.target.value } }))
-                            }}
-                            onBlur={e => upsertEquipNote(`${eq}||${openDate}`, eq, openDate, { note: e.target.value })}
-                            placeholder="Note about this issue…"
-                            style={{ width: '100%', background: 'transparent', borderRadius: 4, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 10, padding: '5px 7px', resize: 'none', outline: 'none', boxSizing: 'border-box', minHeight: 56 }}
-                          />
-                          {(equipNotes[`${eq}||${openDate}`]?.photo_urls?.length ?? 0) > 0 && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-                              {equipNotes[`${eq}||${openDate}`].photo_urls.map((url, i) => (
-                                <SignedImage key={i} path={url} link alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4, display: 'block' }} />
-                              ))}
-                            </div>
-                          )}
-                          {!readOnly && (
-                          <button
-                            type="button"
-                            disabled={noteUploading}
-                            onClick={() => { pendingNoteKey.current = { key: `${eq}||${openDate}`, equipment: eq, date: openDate }; equipNoteFileRef.current?.click() }}
-                            style={{ marginTop: 6, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, color: noteUploading ? 'var(--c-fg-3)' : 'var(--c-fg-2)', background: 'none', borderRadius: 4, cursor: noteUploading ? 'not-allowed' : 'pointer', padding: '3px 10px' }}
-                          >
-                            {noteUploading ? 'Uploading…' : '+ Photo'}
-                          </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
+          {/* EQUIPMENT CONDITION MOVED INTO THE STUDIO DAY (RULING 2026-08-13,
+              spec §18). It was a separate table here with equipment down the
+              side and ONE COLUMN PER SESSION DATE across the top, scrolling
+              sideways — and the DATE was the only thing joining it to the studio
+              time above, which made that join invisible. On a 30-day work order
+              it was a 30-column horizontal scroll.
+
+              It now renders as a third line inside each day block. Only the
+              hidden file input for note photos stays here: it is shared by every
+              day and must exist exactly once. */}
+          <input data-no-print="" ref={equipNoteFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) uploadEquipNotePhoto(f) }} />
 
           {/* RENTALS */}
           <div style={isMobile ? mCard : undefined}>

@@ -2205,3 +2205,24 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-poreq.c-on, .c-poreq.c-on:hover { opacity: 1; background: var(--c-ivory); color: #1b1a17; }
 [data-theme="light"] .c-poreq.c-on, [data-theme="light"] .c-poreq.c-on:hover { background: var(--c-fg); color: var(--c-bg); }
 .c-poreq:disabled { cursor: default; }
+
+/* ── Equipment pill — the studio day's third line (spec §18) ────────────────
+   One pill per item; tap cycles blank → OK → Not OK → OK → … It never returns
+   to blank, because blank means nobody has answered yet and a third tap must
+   not be able to destroy that. Colour is status only (§5). */
+.c-eqpill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 99px; border: none; cursor: pointer;
+  font-family: inherit; font-size: 10px; font-weight: 700; white-space: nowrap;
+  background: var(--c-wash2); color: var(--c-fg); opacity: .45;
+  transition: opacity .12s ease, background .12s ease;
+}
+.c-eqpill > i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; opacity: .5; }
+.c-eqpill > b { font-weight: 800; opacity: .75; }
+.c-eqpill:hover:not(:disabled) { opacity: .75; }
+.c-eqpill:disabled { cursor: default; }
+/* Answered: OK recedes (it is the normal night), Not OK shouts. */
+.c-eqpill.c-ok { opacity: 1; color: var(--c-st-booked); }
+.c-eqpill.c-ok > i { opacity: 1; }
+.c-eqpill.c-bad, .c-eqpill.c-bad:hover { opacity: 1; background: var(--c-st-hot); color: var(--c-hot-text); }
+.c-eqpill.c-bad > i { opacity: 1; }
