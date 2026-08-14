@@ -140,6 +140,11 @@ export function findMissingEngRates(
 
   for (const r of rows) {
     if (!staffLineActive(r)) continue
+    // ASSISTANTS ARE NEVER RATED ON THE WORK ORDER (Eli, 2026-08-13). A 2ND with
+    // no rate is the normal, correct state — warning about it would fire on the
+    // majority of sessions and train everyone to ignore the banner. Only an
+    // ENGINEER line with hours and no rate is a missed charge.
+    if (r.eng_role !== 'engineer') continue
     if ((r.eng_rate ?? '').trim()) continue
     // No readable clock → no hours → nothing to under-charge. That row's real
     // problem is its missing times, and it is reported there instead.

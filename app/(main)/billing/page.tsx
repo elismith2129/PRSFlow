@@ -651,7 +651,11 @@ function Row({
           created is the worst possible guess to invite. Opening the PDF and
           writing an invoice off are both rare and both deliberate, so they live
           together in a menu that names them in full. */}
-      <span className="c-bactcell">
+      {/* A BUTTON IS NOT THE ROW (fix, 2026-08-13). The row opens the work order
+          on double-click, and these controls sit inside it — so double-clicking
+          Approve fired the button AND opened the work order behind it. Buttons
+          swallow the double-click; only the row itself opens. */}
+      <span className="c-bactcell" onDoubleClick={e => e.stopPropagation()}>
         {label && canAct && (
           <button
             className={`c-bact${blocked ? ' c-bmuted' : ''}`}
@@ -673,7 +677,7 @@ function Row({
           </button>
         )}
       </span>
-      <span className="c-bmorecell">
+      <span className="c-bmorecell" onDoubleClick={e => e.stopPropagation()}>
         {hasMore && (
           <button className="c-bmore" onClick={onMore} title="More — open the invoice, write it off, void it">⋯</button>
         )}

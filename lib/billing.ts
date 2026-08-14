@@ -747,6 +747,18 @@ export async function approveInvoice(row: InvoiceRow, approverId: string | null)
       invoice_state: 'approved',
       invoice_approved_at: new Date().toISOString(),
       invoice_approved_by: approverId,
+      // RE-SNAPSHOT THE TOTAL (fix, 2026-08-13). Without this an invoice that
+      // had drifted could NEVER be approved: approving set the state to
+      // `approved` (step 3), and deriveStep immediately knocked it back to 2
+      // because `invoice_total` still held the old figure — so the row kept
+      // showing Approve, pressing it appeared to do nothing, and the only exits
+      // were Pull it back or editing the database. Eli hit exactly this.
+      //
+      // Re-snapshotting is also what approval MEANS: an owner is signing off on
+      // the numbers as they stand right now, not on what they were when the
+      // invoice was first attached. The drift flag exists to make them look
+      // before they sign, and it has done its job by the time they press this.
+      invoice_total: row.total,
     })
     .eq('id', row.workOrderId)
 

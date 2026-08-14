@@ -878,12 +878,14 @@ export function WorkOrderPopup({
     if (!adminIsDrawingRef.current) return
     adminIsDrawingRef.current = false
     const canvas = adminCanvasRef.current; if (!canvas) return
+    setDirtyFields(prev => new Set(prev).add('signature_data'))
     setWo(w => w ? { ...w, signature_data: canvas.toDataURL('image/png') } : w)
   }
 
   function clearAdminSignature() {
     const canvas = adminCanvasRef.current; if (!canvas) return
     canvas.getContext('2d')!.clearRect(0, 0, canvas.width, canvas.height)
+    setDirtyFields(prev => new Set(prev).add('signature_data'))
     setWo(w => w ? { ...w, signature_data: '' } : w)
   }
 
@@ -1083,15 +1085,42 @@ export function WorkOrderPopup({
 
   // ── Equipment condition ────────────────────────────────────────────────────
 
-  function toggleEquip(equipment: string, date: string, cond: 'ok' | 'not_ok') {
+  async function toggleEquip(equipment: string, date: string, cond: 'ok' | 'not_ok') {
     const key = `${equipment}||${date}`
-    const currentCond = equipRows.find(r => r.equipment === equipment && r.date === date)?.condition
-    const nextCond: 'ok' | 'not_ok' | null = currentCond === cond ? null : cond
-    setEquipRows(prev => prev.map(r => {
-      if (r.equipment !== equipment || r.date !== date) return r
-      supabase.from('equipment_condition_rows').update({ condition: nextCond }).eq('id', r.id)
-      return { ...r, condition: nextCond }
-    }))
+    const existing = equipRows.find(r => r.equipment === equipment && r.date === date)
+    const nextCond: 'ok' | 'not_ok' | null = existing?.condition === cond ? null : cond
+
+    // CREATE THE ROW IF IT ISN'T THERE (fix, 2026-08-13). Equipment rows are
+    // seeded once, at work-order creation, for the dates the booking had THEN.
+    // Add a day in the Studio Time table afterwards — which is normal, sessions
+    // run long — and that day's cells had no row behind them, so the OK / ✗
+    // buttons were gated on `row &&` and silently did nothing. Only the first
+    // day worked, which is exactly what Eli saw.
+    //
+    // The column exists for the day because the table renders one per session
+    // date; the ROW just hadn't been created. So create it on first tap.
+    if (!existing) {
+      if (!woIdRef.current) return
+      const { data, error } = await supabase
+        .from('equipment_condition_rows')
+        .insert({ work_order_id: woIdRef.current, equipment, date, condition: nextCond })
+        .select()
+        .limit(1)
+      if (!dbResult('Saving equipment condition', error)) return
+      const created = data?.[0]
+      if (created) setEquipRows(prev => [...prev, created as any])
+    } else {
+      // Was an unchecked write — a failure here left the screen showing a
+      // condition the database never got (CLAUDE.md: every important write goes
+      // through dbResult).
+      const { error } = await supabase
+        .from('equipment_condition_rows')
+        .update({ condition: nextCond })
+        .eq('id', existing.id)
+      if (!dbResult('Saving equipment condition', error)) return
+      setEquipRows(prev => prev.map(r => r.id === existing.id ? { ...r, condition: nextCond } : r))
+    }
+
     if (nextCond === 'not_ok') setOpenNoteKey(key)
     else setOpenNoteKey(prev => prev === key ? null : prev)
   }
@@ -2009,6 +2038,197 @@ export function WorkOrderPopup({
           </div>
         )}
 
+        {/* ── ACTIONS + WARNINGS, AT THE TOP (RULING 2026-08-13) ───────────
+            Eli: "move the red banner to the top and move all buttons to the
+            top not the bottom. that was a bad call for me."
+
+            The footer was argued for on the grounds that the click which
+            triggers a warning happens down there. Wrong for this screen: the
+            work order is long, you scroll it, and a bar pinned under a metre
+            of table is a bar you have to go looking for. At the top it sits
+            beside the title — the one place you always pass through.
+
+            Rendered in place rather than restyled: this is the SAME markup,
+            moved. Nothing about what the buttons do changed. */}
+        {/* ── MISSING TIMES BANNER (RULING 2026-08-10) ──────────────────────
+            Sits directly above the footer rather than at the top of the body:
+            the click that triggers it is down here, and on a long WO a
+            top-of-page error would appear somewhere you aren't looking.
+            Fill, not border — Law 1. Hot is the sanctioned critical colour. */}
+        {timeErrorMsg && (
+          <div
+            data-no-print=""
+            role="alert"
+            style={{
+              flexShrink: 0,
+              background: 'color-mix(in srgb, var(--c-st-hot) 16%, transparent)',
+              color: 'var(--c-fg)',
+              fontFamily: 'Inter',
+              fontSize: 11,
+              lineHeight: 1.5,
+              padding: isMobile ? '10px 16px' : '10px 22px',
+            }}
+          >
+            {timeErrorMsg}
+          </div>
+        )}
+
+        {/* ── STAFF LINE WITH NO RATE (RULING 2026-08-13) ───────────────────
+            A WARNING, not a block, and it is LIVE — it appears the moment the
+            condition exists rather than waiting for you to press Complete,
+            because the whole point is to catch a typo before the work order is
+            signed off, not after. The rate is hand-typed on every line now that
+            the old inherited default is gone, so a forgotten one is the
+            likeliest way a session quietly under-bills.
+            Hot is sanctioned for missing information (§5). Suppressed while the
+            times banner is up — that error names the same rows and has to be
+            fixed first. */}
+        {!timeErrorMsg && dupStaffWarning && (
+          <div
+            data-no-print=""
+            role="status"
+            style={{
+              flexShrink: 0,
+              background: 'color-mix(in srgb, var(--c-st-hot) 12%, transparent)',
+              color: 'var(--c-fg)',
+              fontFamily: 'Inter',
+              fontSize: 11,
+              lineHeight: 1.5,
+              padding: isMobile ? '10px 16px' : '10px 22px',
+            }}
+          >
+            {dupStaffWarning}
+          </div>
+        )}
+
+        {!timeErrorMsg && !dupStaffWarning && engRateWarning && (
+          <div
+            data-no-print=""
+            role="status"
+            style={{
+              flexShrink: 0,
+              background: 'color-mix(in srgb, var(--c-st-hot) 12%, transparent)',
+              color: 'var(--c-fg)',
+              fontFamily: 'Inter',
+              fontSize: 11,
+              lineHeight: 1.5,
+              padding: isMobile ? '10px 16px' : '10px 22px',
+            }}
+          >
+            {engRateWarning}
+          </div>
+        )}
+
+        {/* ── FOOTER ───────────────────────────────────────────────────────── */}
+        {/* Padding is top-of-screen padding now — the old value carried
+            `env(safe-area-inset-bottom)` to clear the iPhone home indicator,
+            which at the top of the sheet just added dead space. Sticky, so the
+            actions stay reachable while the work order scrolls under them. */}
+        <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 8 : 10, padding: isMobile ? '4px 16px 12px' : '0 22px 12px', flexShrink: 0, background: 'var(--c-bg)', position: 'sticky', top: isMobile ? 62 : 52, zIndex: 9 }}>
+          {/* Document + destructive actions live HERE, not in the title bar.
+              Nothing to export for a block — no WO body, so the PDF would be a
+              header over an empty page. */}
+          {/* PRINT IS GONE (ruling 2026-08-11). It and Export PDF both opened the
+              browser's print dialogue — a page you save by hand, at whatever
+              margins the browser chose, that cannot be stapled to an invoice.
+              One button now, and it produces a real drawn PDF via
+              /api/wo-package. Deleting the print path is also what keeps the
+              work order's layout described in ONE place instead of two. */}
+          {!isBlock && (
+            <button onClick={exportPdf} disabled={exporting} className="c-soft c-control c-raised" style={{ cursor: exporting ? 'default' : 'pointer', ...(isMobile ? { display: 'none' } : {}) }}>
+              {exporting ? 'Building…' : readOnly ? 'Download PDF' : 'Save & download'}
+            </button>
+          )}
+          {/* Delete, moved down from the header. It keeps its two-step confirm —
+              a one-click delete next to Close & Save would be a bad neighbour. */}
+          {!readOnly && onDelete && (
+            confirmDeleteSession ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 'auto' }}>
+                <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>Delete session?</span>
+                <button onClick={() => { setConfirmDeleteSession(false); onDelete() }} className="c-pill c-fill-hot c-control c-raised-chip" style={{ cursor: 'pointer' }}>
+                  Delete
+                </button>
+                <button onClick={() => setConfirmDeleteSession(false)} className="c-soft c-control c-raised">
+                  Keep
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmDeleteSession(true)}
+                disabled={saving}
+                className="c-soft c-control c-raised"
+                style={{ marginRight: 'auto', color: 'var(--c-st-hot)', cursor: saving ? 'default' : 'pointer', ...(isMobile ? { display: 'none' } : {}) }}
+              >
+                Delete
+              </button>
+            )
+          )}
+          {!readOnly && (
+          <>
+          <button onClick={() => handleCancel()} disabled={saving} className="c-soft c-control c-raised" style={{ cursor: saving ? 'default' : 'pointer', ...(isMobile ? { flex: '1 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
+            Cancel
+          </button>
+          {/* Blocks (Tour / Tech / Open Hours) have no work order to complete —
+              they're calendar occupancy, not billable work. The mobile twin of
+              this button is already inside the !isBlock branch above. */}
+          {/* COMPLETE WO IS THE "I'M UPDATING THIS" PATH (Eli, 2026-08-11).
+              Before completion it is the primary act. AFTER completion it stays
+              named Complete WO and greys out until you actually change
+              something — "then it just remains complete". It no longer offers
+              Re-open: with the billing hub owning the invoice lifecycle,
+              re-opening a completed work order was an undo for a state nothing
+              reads any more, and it sat one slip away from the button people
+              press to save an edit. */}
+          {!isBlock && (
+          <button
+            // SAVES AND CLOSES (fix, 2026-08-11). It used to save in place, so
+            // you then pressed Close and — because dirtyFields was still set —
+            // got asked whether to save the thing you had just saved. Complete
+            // WO is the "I'm done here" button; leaving you in the window
+            // afterwards made it a step rather than a decision.
+            onClick={() => (isCompleted ? handleClose() : handleComplete())}
+            disabled={completing || saving || (isCompleted && !isDirty())}
+            className={`c-control ${isCompleted ? 'c-soft c-raised' : 'c-pill c-fill-booked c-raised-chip'}`}
+            style={{ padding: '8px 18px', cursor: (completing || (isCompleted && !isDirty())) ? 'default' : 'pointer', opacity: (completing || saving || (isCompleted && !isDirty())) ? 0.4 : 1, ...(isMobile ? { display: 'none' } : {}) }}
+            title={isCompleted && !isDirty() ? 'Nothing has changed' : undefined}
+          >
+            {completing ? 'Completing…' : 'Complete WO'}
+          </button>
+          )}
+          {/* CLOSE, not "Close & Save" — the two paths are now named for what
+              you came to do (Eli, 2026-08-11). Complete WO is "I'm updating
+              this"; Close is "I'm viewing this". It still saves silently when
+              nothing changed, and asks when something did. */}
+          <button onClick={handleCloseButton} disabled={saving} className="c-btn c-control c-raised-primary" style={{ cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '2 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
+            {saving ? 'Saving…' : 'Close'}
+          </button>
+          </>
+          )}
+          {/* THE ONLY DIALOGUE ON THIS SCREEN, and it only appears when there
+              is something to lose. Three ways out, all named for the outcome
+              rather than for Yes/No — "Discard" has to say what it discards or
+              nobody reads it in time. */}
+          {confirmClose && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 10005, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+                 onClick={() => setConfirmClose(false)}>
+              <div className="c-panel" style={{ maxWidth: 380, width: '100%' }} onClick={e => e.stopPropagation()}>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>You&apos;ve made changes</div>
+                <div style={{ fontSize: 11.5, opacity: 0.6, marginBottom: 14, lineHeight: 1.5 }}>
+                  Save them to this work order, or throw them away and leave it as it was?
+                </div>
+                <button className="c-bact c-bblock" onClick={() => { setConfirmClose(false); handleClose() }}>Save changes and close</button>
+                <button className="c-bact c-bblock" onClick={() => { setConfirmClose(false); handleCancel() }}>Discard my changes</button>
+                <button className="c-bact c-bmuted c-bblock" onClick={() => setConfirmClose(false)}>Keep editing</button>
+              </div>
+            </div>
+          )}
+          {readOnly && (
+            <button onClick={onClose} className="c-soft c-control c-raised" style={{ ...(isMobile ? { flex: '1 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
+              Close
+            </button>
+          )}
+        </div>
+
         {/* ── SCROLLABLE BODY ──────────────────────────────────────────────── */}
         <div style={isMobile
           ? { padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 20, flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }
@@ -2853,8 +3073,8 @@ export function WorkOrderPopup({
                               const hasNote = !!(equipNotes[key]?.note || (equipNotes[key]?.photo_urls?.length ?? 0) > 0)
                               return (
                                 <div key={d} style={{ ...cellS, display: 'flex', gap: 4, alignItems: 'center' }}>
-                                  <button type="button" onClick={() => row && toggleEquip(eq, d, 'ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", cursor: 'pointer', background: 'transparent', color: cond === 'ok' ? 'var(--c-st-booked)' : 'var(--c-fg-3)', fontWeight: cond === 'ok' ? 700 : 400 }}>OK</button>
-                                  <button type="button" onClick={() => row && toggleEquip(eq, d, 'not_ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", cursor: 'pointer', background: 'transparent', color: cond === 'not_ok' ? 'var(--c-st-hot)' : 'var(--c-fg-3)', fontWeight: cond === 'not_ok' ? 700 : 400 }}>✗</button>
+                                  <button type="button" onClick={() => toggleEquip(eq, d, 'ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", cursor: 'pointer', background: 'transparent', color: cond === 'ok' ? 'var(--c-st-booked)' : 'var(--c-fg-3)', fontWeight: cond === 'ok' ? 700 : 400 }}>OK</button>
+                                  <button type="button" onClick={() => toggleEquip(eq, d, 'not_ok')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 9, fontFamily: "'Archivo Black', sans-serif", cursor: 'pointer', background: 'transparent', color: cond === 'not_ok' ? 'var(--c-st-hot)' : 'var(--c-fg-3)', fontWeight: cond === 'not_ok' ? 700 : 400 }}>✗</button>
                                   {cond === 'not_ok' && hasNote && (
                                     <span style={{ width: 6, height: 6, borderRadius: 3, background: 'var(--c-st-warm)', display: 'inline-block', flexShrink: 0 }} />
                                   )}
@@ -2942,7 +3162,7 @@ export function WorkOrderPopup({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, ...(isMobile ? mCard : {}) }}>
               <div>
                 <SectionHeader carved title="Session Notes" />
-                <textarea value={wo.session_notes} onChange={e => setWo(w => w ? { ...w, session_notes: e.target.value } : w)}
+                <textarea value={wo.session_notes} onChange={e => { setDirtyFields(prev => new Set(prev).add('session_notes')); setWo(w => w ? { ...w, session_notes: e.target.value } : w) }}
                   style={{ width: '100%', minHeight: 90, background: 'var(--c-wash)', borderRadius: 5, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }} />
               </div>
               {wo.payment_status === 'COD' && (
@@ -2958,7 +3178,7 @@ export function WorkOrderPopup({
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
                     <div style={metaLabel}>Print Name</div>
-                    <input value={wo.print_name} onChange={e => setWo(w => w ? { ...w, print_name: e.target.value } : w)} className="c-tin" />
+                    <input value={wo.print_name} onChange={e => { setDirtyFields(prev => new Set(prev).add('print_name')); setWo(w => w ? { ...w, print_name: e.target.value } : w) }} className="c-tin" />
                   </div>
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -3043,7 +3263,7 @@ export function WorkOrderPopup({
             </div>
             <textarea
               value={wo.needs_attention_notes}
-              onChange={e => setWo(w => w ? { ...w, needs_attention_notes: e.target.value } : w)}
+              onChange={e => { setDirtyFields(prev => new Set(prev).add('needs_attention_notes')); setWo(w => w ? { ...w, needs_attention_notes: e.target.value } : w) }}
               placeholder="Internal notes only — never appears on the PDF export…"
               style={{ width: '100%', minHeight: 80, background: 'var(--c-wash)', borderRadius: 5, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }}
             />
@@ -3081,180 +3301,6 @@ export function WorkOrderPopup({
 
         </div>{/* end body */}
 
-        {/* ── MISSING TIMES BANNER (RULING 2026-08-10) ──────────────────────
-            Sits directly above the footer rather than at the top of the body:
-            the click that triggers it is down here, and on a long WO a
-            top-of-page error would appear somewhere you aren't looking.
-            Fill, not border — Law 1. Hot is the sanctioned critical colour. */}
-        {timeErrorMsg && (
-          <div
-            data-no-print=""
-            role="alert"
-            style={{
-              flexShrink: 0,
-              background: 'color-mix(in srgb, var(--c-st-hot) 16%, transparent)',
-              color: 'var(--c-fg)',
-              fontFamily: 'Inter',
-              fontSize: 11,
-              lineHeight: 1.5,
-              padding: isMobile ? '10px 16px' : '10px 22px',
-            }}
-          >
-            {timeErrorMsg}
-          </div>
-        )}
-
-        {/* ── STAFF LINE WITH NO RATE (RULING 2026-08-13) ───────────────────
-            A WARNING, not a block, and it is LIVE — it appears the moment the
-            condition exists rather than waiting for you to press Complete,
-            because the whole point is to catch a typo before the work order is
-            signed off, not after. The rate is hand-typed on every line now that
-            the old inherited default is gone, so a forgotten one is the
-            likeliest way a session quietly under-bills.
-            Hot is sanctioned for missing information (§5). Suppressed while the
-            times banner is up — that error names the same rows and has to be
-            fixed first. */}
-        {!timeErrorMsg && dupStaffWarning && (
-          <div
-            data-no-print=""
-            role="status"
-            style={{
-              flexShrink: 0,
-              background: 'color-mix(in srgb, var(--c-st-hot) 12%, transparent)',
-              color: 'var(--c-fg)',
-              fontFamily: 'Inter',
-              fontSize: 11,
-              lineHeight: 1.5,
-              padding: isMobile ? '10px 16px' : '10px 22px',
-            }}
-          >
-            {dupStaffWarning}
-          </div>
-        )}
-
-        {!timeErrorMsg && !dupStaffWarning && engRateWarning && (
-          <div
-            data-no-print=""
-            role="status"
-            style={{
-              flexShrink: 0,
-              background: 'color-mix(in srgb, var(--c-st-hot) 12%, transparent)',
-              color: 'var(--c-fg)',
-              fontFamily: 'Inter',
-              fontSize: 11,
-              lineHeight: 1.5,
-              padding: isMobile ? '10px 16px' : '10px 22px',
-            }}
-          >
-            {engRateWarning}
-          </div>
-        )}
-
-        {/* ── FOOTER ───────────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 8 : 10, padding: isMobile ? '12px 16px calc(12px + env(safe-area-inset-bottom)) 16px' : '14px 22px', flexShrink: 0, background: 'var(--c-bg)' }}>
-          {/* Document + destructive actions live HERE, not in the title bar.
-              Nothing to export for a block — no WO body, so the PDF would be a
-              header over an empty page. */}
-          {/* PRINT IS GONE (ruling 2026-08-11). It and Export PDF both opened the
-              browser's print dialogue — a page you save by hand, at whatever
-              margins the browser chose, that cannot be stapled to an invoice.
-              One button now, and it produces a real drawn PDF via
-              /api/wo-package. Deleting the print path is also what keeps the
-              work order's layout described in ONE place instead of two. */}
-          {!isBlock && (
-            <button onClick={exportPdf} disabled={exporting} className="c-soft c-control c-raised" style={{ cursor: exporting ? 'default' : 'pointer', ...(isMobile ? { display: 'none' } : {}) }}>
-              {exporting ? 'Building…' : readOnly ? 'Download PDF' : 'Save & download'}
-            </button>
-          )}
-          {/* Delete, moved down from the header. It keeps its two-step confirm —
-              a one-click delete next to Close & Save would be a bad neighbour. */}
-          {!readOnly && onDelete && (
-            confirmDeleteSession ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 'auto' }}>
-                <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>Delete session?</span>
-                <button onClick={() => { setConfirmDeleteSession(false); onDelete() }} className="c-pill c-fill-hot c-control c-raised-chip" style={{ cursor: 'pointer' }}>
-                  Delete
-                </button>
-                <button onClick={() => setConfirmDeleteSession(false)} className="c-soft c-control c-raised">
-                  Keep
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setConfirmDeleteSession(true)}
-                disabled={saving}
-                className="c-soft c-control c-raised"
-                style={{ marginRight: 'auto', color: 'var(--c-st-hot)', cursor: saving ? 'default' : 'pointer', ...(isMobile ? { display: 'none' } : {}) }}
-              >
-                Delete
-              </button>
-            )
-          )}
-          {!readOnly && (
-          <>
-          <button onClick={() => handleCancel()} disabled={saving} className="c-soft c-control c-raised" style={{ cursor: saving ? 'default' : 'pointer', ...(isMobile ? { flex: '1 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
-            Cancel
-          </button>
-          {/* Blocks (Tour / Tech / Open Hours) have no work order to complete —
-              they're calendar occupancy, not billable work. The mobile twin of
-              this button is already inside the !isBlock branch above. */}
-          {/* COMPLETE WO IS THE "I'M UPDATING THIS" PATH (Eli, 2026-08-11).
-              Before completion it is the primary act. AFTER completion it stays
-              named Complete WO and greys out until you actually change
-              something — "then it just remains complete". It no longer offers
-              Re-open: with the billing hub owning the invoice lifecycle,
-              re-opening a completed work order was an undo for a state nothing
-              reads any more, and it sat one slip away from the button people
-              press to save an edit. */}
-          {!isBlock && (
-          <button
-            // SAVES AND CLOSES (fix, 2026-08-11). It used to save in place, so
-            // you then pressed Close and — because dirtyFields was still set —
-            // got asked whether to save the thing you had just saved. Complete
-            // WO is the "I'm done here" button; leaving you in the window
-            // afterwards made it a step rather than a decision.
-            onClick={() => (isCompleted ? handleClose() : handleComplete())}
-            disabled={completing || saving || (isCompleted && !isDirty())}
-            className={`c-control ${isCompleted ? 'c-soft c-raised' : 'c-pill c-fill-booked c-raised-chip'}`}
-            style={{ padding: '8px 18px', cursor: (completing || (isCompleted && !isDirty())) ? 'default' : 'pointer', opacity: (completing || saving || (isCompleted && !isDirty())) ? 0.4 : 1, ...(isMobile ? { display: 'none' } : {}) }}
-            title={isCompleted && !isDirty() ? 'Nothing has changed' : undefined}
-          >
-            {completing ? 'Completing…' : 'Complete WO'}
-          </button>
-          )}
-          {/* CLOSE, not "Close & Save" — the two paths are now named for what
-              you came to do (Eli, 2026-08-11). Complete WO is "I'm updating
-              this"; Close is "I'm viewing this". It still saves silently when
-              nothing changed, and asks when something did. */}
-          <button onClick={handleCloseButton} disabled={saving} className="c-btn c-control c-raised-primary" style={{ cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '2 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
-            {saving ? 'Saving…' : 'Close'}
-          </button>
-          </>
-          )}
-          {/* THE ONLY DIALOGUE ON THIS SCREEN, and it only appears when there
-              is something to lose. Three ways out, all named for the outcome
-              rather than for Yes/No — "Discard" has to say what it discards or
-              nobody reads it in time. */}
-          {confirmClose && (
-            <div style={{ position: 'fixed', inset: 0, zIndex: 10005, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-                 onClick={() => setConfirmClose(false)}>
-              <div className="c-panel" style={{ maxWidth: 380, width: '100%' }} onClick={e => e.stopPropagation()}>
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>You&apos;ve made changes</div>
-                <div style={{ fontSize: 11.5, opacity: 0.6, marginBottom: 14, lineHeight: 1.5 }}>
-                  Save them to this work order, or throw them away and leave it as it was?
-                </div>
-                <button className="c-bact c-bblock" onClick={() => { setConfirmClose(false); handleClose() }}>Save changes and close</button>
-                <button className="c-bact c-bblock" onClick={() => { setConfirmClose(false); handleCancel() }}>Discard my changes</button>
-                <button className="c-bact c-bmuted c-bblock" onClick={() => setConfirmClose(false)}>Keep editing</button>
-              </div>
-            </div>
-          )}
-          {readOnly && (
-            <button onClick={onClose} className="c-soft c-control c-raised" style={{ ...(isMobile ? { flex: '1 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
-              Close
-            </button>
-          )}
-        </div>
 
       </div>
       </div>
