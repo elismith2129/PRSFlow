@@ -41,7 +41,11 @@ const BUSINESS: RailItem[] = [
 ]
 const STUDIO: RailItem[] = [
   { href: '/mic-inventory', label: 'Mic Inventory', ic: '◌' },
-  { href: '/runner', label: 'Runner Hub', ic: '▷' },
+  // TEMPORARY (build phase, Eli 2026-08-14): Runner Hub opens the device-frame
+  // viewer preloaded with the runner hub at phone size (phone/iPad toggle on
+  // that page) — admins reviewing the redesign never need it desktop-width.
+  // Revert to plain '/runner' when /preview is removed at go-live.
+  { href: '/preview?path=/runner&device=phone', label: 'Runner Hub', ic: '▷' },
   { href: '/nadines', label: "Nadine's", ic: '♫' },
 ]
 const HR: RailItem[] = [
@@ -127,7 +131,10 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
   }
 
   function isActive(href: string) {
-    return href === '/' ? pathname === '/' : pathname.startsWith(href)
+    // Links may carry a query (Runner Hub → /preview?path=…); match on the
+    // path part only, since usePathname() never includes the query string.
+    const base = href.split('?')[0]
+    return base === '/' ? pathname === '/' : pathname.startsWith(base)
   }
 
   function renderItem(item: RailItem) {
