@@ -1609,25 +1609,35 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 [data-theme="light"] .c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) { box-shadow: none; }
 .c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):active { transform: none; }
 
-/* SELECTED — filled + pressed IN. */
-.c-seg > button.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) {
+/* SELECTED — filled + pressed IN.
+   THE :not() CHAIN HERE MUST MATCH THE BASE RULE ABOVE, PLUS .c-on.
+   Specificity, not source order, decides this — and the base rule sets
+   `background: none`. On 2026-08-11 the billing work added :not(.c-bact) and
+   :not(.c-bmore) to the BASE rule only, which put it one class ahead and killed
+   the selected fill outright. It stayed invisible because the light-mode variant
+   gets a ninth class from [data-theme] and ties, and status-filled segments
+   (.c-fill-*) tie too — so only PLAIN selected segments in DARK mode were dead,
+   and dark only became the default on 2026-08-06. Found 2026-08-13: Recording /
+   Filming / COD / Label-Billing all sat black.
+   If you ever extend the base rule's chain, extend these to match. */
+.c-seg > button.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) {
   opacity: 1; background: var(--c-ivory); color: #1b1a17;
   box-shadow: inset 2px 2px 5px rgba(0, 0, 0, .35);
 }
-[data-theme="light"] .c-seg > button.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) {
+[data-theme="light"] .c-seg > button.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) {
   background: var(--c-fg); color: var(--c-bg);
 }
 
 /* STATUS-FILLED SEGMENT (§5 + §8). Where the field IS status, the pressed
    segment fills with its own status colour rather than ink/ivory — there the
    colour is the meaning, not decoration. Non-status groups stay ink/ivory. */
-.c-seg > button.c-on.c-fill-booked:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) { background: var(--c-st-booked); color: var(--c-chip-ink); }
-.c-seg > button.c-on.c-fill-warm:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)   { background: var(--c-st-warm);   color: var(--c-chip-ink); }
-.c-seg > button.c-on.c-fill-cold:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)   { background: var(--c-st-cold);   color: var(--c-chip-ink); }
-.c-seg > button.c-on.c-fill-uncon:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)  { background: var(--c-st-uncon);  color: var(--c-chip-ink); }
-.c-seg > button.c-on.c-fill-tech:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)   { background: var(--c-st-tech);   color: var(--c-chip-ink); }
-.c-seg > button.c-on.c-fill-dead:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)   { background: var(--c-st-dead);   color: var(--c-chip-ink); }
-.c-seg > button.c-on.c-fill-hot:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)    { background: var(--c-st-hot);    color: var(--c-hot-text); }
+.c-seg > button.c-on.c-fill-booked:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) { background: var(--c-st-booked); color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-warm:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)   { background: var(--c-st-warm);   color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-cold:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)   { background: var(--c-st-cold);   color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-uncon:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)  { background: var(--c-st-uncon);  color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-tech:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)   { background: var(--c-st-tech);   color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-dead:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)   { background: var(--c-st-dead);   color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-hot:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)    { background: var(--c-st-hot);    color: var(--c-hot-text); }
 /* TINY — the housing variant for segments that sit inside an already-raised
    panel (the batch editor). No shadow of its own: a raised housing inside a
    raised panel is the nesting §8 forbids; the tone step alone reads as a
@@ -2073,8 +2083,8 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   background: var(--c-wash2); box-shadow: none;
 }
 .c-pressed, [data-theme="light"] .c-pressed { box-shadow: none; }
-.c-seg > button.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action),
-[data-theme="light"] .c-seg > button.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action) {
+.c-seg > button.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore),
+[data-theme="light"] .c-seg > button.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) {
   box-shadow: none;
 }
 .c-myday-bx, [data-theme="light"] .c-myday-bx { background: var(--c-wash2); box-shadow: none; }
