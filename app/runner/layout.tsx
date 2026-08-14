@@ -12,10 +12,13 @@ export const metadata: Metadata = {
   },
 }
 
+import AdminReturn from '@/components/runner/AdminReturn'
+
 export default function RunnerLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  return <>{children}</>
+  // AdminReturn renders nothing for runners and the public — see the component.
+  return <><AdminReturn />{children}</>
 }
