@@ -2414,7 +2414,7 @@ export function WorkOrderPopup({
                         setWo(w => w ? { ...w, no_po_needed: !w.no_po_needed } : w)
                       }}
                     >
-                      Not required
+                      Not req&apos;d
                     </button>
                   </div>
                   {/* FOOD IS JUST AN AMOUNT (RULING 2026-08-13, option A of
@@ -2431,7 +2431,7 @@ export function WorkOrderPopup({
                       value={wo.food_amount}
                       disabled={readOnly}
                       inputMode="decimal"
-                      placeholder="none"
+                      placeholder="—"
                       onChange={e => {
                         const v = e.target.value
                         setDirtyFields(prev => new Set(prev).add('food_amount'))
