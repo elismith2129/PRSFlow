@@ -758,6 +758,48 @@ person. Do not reuse the dashboard_tasks person/tab system here.
   isn't tonight's work). New hub features must join one of these, not invent
   a fourth.
 
+## 19. TWO WORLDS + the Daily Ops page (RULING 2026-08-14)
+
+Eli's architecture ruling, made while untangling "what happened yesterday":
+**the app is two worlds plus one personal layer.** Reference mock:
+`docs/design-refs/daily-ops-final.html` (single refined layout; the earlier
+`admin-runner-hub-options.html` A/B/C round fed into it and is superseded).
+
+- **BILLING (billing coordinator).** Everything money: payments, rentals,
+  AR/AP, COD chasing, and **work-order review — the Billing hub's "review"
+  bucket owns runner-submitted WOs.** Nothing new was built for this world;
+  it was already complete.
+- **OPERATIONS (studio manager) → the `/daily-ops` page.** "Did last night go
+  right." Layout: **queue LEFT** (exceptions — flags, missing submissions,
+  missing mics; tap to clear, empty = "Yesterday is done"; studio-tasks
+  manager beneath it, so the queue's column has room to grow on a bad
+  morning), **sweep RIGHT** (2×2 studio cards: opening/closing times, mics,
+  petty cash, stock, who worked, shift-log preview). **No work orders, no
+  punches, no live-tonight** — those live in Billing, HR, and the dashboard
+  respectively.
+- **MY DAY** is the personal cadence layer on top of both. It LINKS (the
+  manager's review duty opens /daily-ops; billing duties open the hub) and
+  never copies. One copy of every item, everywhere, always.
+
+**Shift logs replace the Slack shift-notes post.** Real notes run 15+ bullets
+with mid-shift handoffs (see Mathew's 5/20 ERS example), so this is a LOG,
+not a text box: `shift_log_entries` — append-only, per studio per night,
+multiple authors, each entry stamped who + when. Runners write from
+`/runner/[studio]/shift-notes`; the sweep card shows a collapsed preview and
+the full night opens in a popup. Entries are never edited or deleted.
+
+**Clearing the queue persists via `daily_ops_reviews`** — a generic
+(date, item_key) "seen" marker, one row per cleared item, so the queue state
+is shared across every manager and morning. Flags clear by ACKNOWLEDGING the
+flag itself (status → acknowledged), not via a review row — the flag system
+stays the record.
+
+**Retirement path (do not rebuild these):** the dashboard's four ops cards
+are already gone (§14b); Admin → Ops Log and `/daily-ops-log` are absorbed by
+this page over time; `/wo-hub` stays denav'd (Billing replaced it). The
+`/flags` page remains the standing categorized record — the queue is the
+morning door, Flags is the filing cabinet.
+
 ### 14d. Sequencing
 
 The rail + dashboard land FIRST, as the new app frame. The un-migrated pages (admin,

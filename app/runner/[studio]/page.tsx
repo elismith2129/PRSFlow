@@ -40,6 +40,7 @@ export default function StudioDailyOpsPage() {
   const [loading, setLoading] = useState(true)
   const [submittedCategories, setSubmittedCategories] = useState<Set<string>>(new Set())
   const [tasks, setTasks] = useState<StudioTask[]>([])
+  const [shiftEntryCount, setShiftEntryCount] = useState(0)
 
   // Stable today string — local calendar date matching how bookings are stored
   const today = getLocalToday()
@@ -158,6 +159,14 @@ export default function StudioDailyOpsPage() {
     // Open tasks first, done-today sink to the bottom of the section.
     visibleTasks.sort((a, b) => Number(!!a.done_at) - Number(!!b.done_at))
     setTasks(visibleTasks)
+
+    // Shift-log entry count for tonight — the shift-notes tile's status line.
+    const { count } = await supabase
+      .from('shift_log_entries')
+      .select('id', { count: 'exact', head: true })
+      .eq('studio', studio)
+      .eq('date', today)
+    setShiftEntryCount(count ?? 0)
   }, [studio, today, meta.abbr]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initial load
@@ -253,6 +262,9 @@ export default function StudioDailyOpsPage() {
     { label: 'Mic inventory', route: `/runner/${studio}/mics`, category: 'mic_inventory' },
     { label: 'Petty cash', route: `/runner/${studio}/petty-cash`, category: 'petty_cash' },
     { label: 'Stock list', route: `/runner/${studio}/stock`, category: 'stock' },
+    // Shift notes (spec §19) — the Slack post's replacement. No submitted
+    // state: a log is never "done", so its tile shows the entry count instead.
+    { label: 'Shift notes', route: `/runner/${studio}/shift-notes`, category: 'shift_notes' },
   ]
 
   return (
@@ -428,7 +440,13 @@ export default function StudioDailyOpsPage() {
           <div className="c-label" style={{ marginBottom: 9 }}>Tonight</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
             {TILES.map(t => {
-              const done = submittedCategories.has(t.category)
+              const isLog = t.category === 'shift_notes'
+              const done = isLog ? shiftEntryCount > 0 : submittedCategories.has(t.category)
+              const statusText = isLog
+                ? (shiftEntryCount > 0
+                    ? `${shiftEntryCount} ${shiftEntryCount === 1 ? 'entry' : 'entries'}`
+                    : 'Nothing logged')
+                : (done ? 'Submitted' : 'Not started')
               return (
                 <button
                   key={t.route}
@@ -450,7 +468,7 @@ export default function StudioDailyOpsPage() {
                     opacity: done ? 1 : 0.45,
                     fontWeight: done ? 700 : 400,
                   }}>
-                    {done ? 'Submitted' : 'Not started'}
+                    {statusText}
                   </span>
                 </button>
               )
