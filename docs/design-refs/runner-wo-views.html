@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Runner work order: list ⇄ cards</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  RUNNER WORK ORDER — one design, three states (2026-08-15). Mock-first.
+
+  RULING CONTEXT (Eli, 2026-08-14/15, verbal): the runner work order is NOT a
+  second work order. It is the admin WorkOrderPopup with a runner mode:
+
+    · The TOP SECTION IS LOCKED — client / artist / dates / PO / billing info
+      is read-only, "set by the office".
+    · RATES ARE LOCKED. Times, staff, OT hours, equipment condition, song
+      title, payments (COD at the desk) and notes stay editable.
+    · Any day admin has CHECKED OFF is locked whole.
+    · HIDE NOTHING — runners keep totals and payments.
+    · The terminal act is SUBMIT (today's rows → 'submitted'), never
+      Complete WO.
+
+  THE NEW IDEA THIS MOCK ARGUES FOR: a VIEW TOGGLE above the Studio Time
+  table, like Finder's list/icon switch.
+
+    LIST  (default) — the §16/§18 day blocks as built: three lines across
+          per day (studio time / staff / equipment). Compact; a 30-day
+          session is scannable.
+    CARDS — one DAY is one vertical CARD. No sideways scrolling, no tiny
+          cells. Tapping a card opens a bottom SHEET with big phone inputs:
+          From, To, OT hours, engineer, song title, equipment pills. All
+          the data a table line holds, none of the table.
+
+  Card anatomy: date + status dot (orange = submitted, green = approved),
+  times, staff line, equipment pills (blank → OK → Not OK, never back to
+  blank — §18), song title, day total as read-only text ("set by the
+  office"). A locked day renders the same card, dimmed, with 🔒 and no
+  sheet.
+
+  Soft skin (§7c), status colour only (§5), 44px targets, no borders.
+  Mock polarity INVERTED vs the app (mock dark = data-theme="dark";
+  app dark = no attribute).
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --fg2:rgba(42,39,34,.72); --fg3:rgba(42,39,34,.45);
+  --chip-ink:#1c2626;
+  --st-hot:#ff5a4d; --hot-text:#fff4f2;
+  --st-warm:#ffa94d; --st-cold:#5fc9e8; --st-booked:#43dfae;
+  --ivory:#d5d0c2; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+  --ctlsh:0 1px 2px rgba(42,39,34,.10);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --fg2:rgba(217,214,205,.72); --fg3:rgba(217,214,205,.45);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  --ctlsh:0 1px 3px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;padding:18px}
+button,input,textarea,select{font:inherit;color:var(--fg);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.label{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45}
+
+/* ── Page chrome (not part of the design) ────────────────────────────────── */
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.top h1{font-family:'Archivo Black',sans-serif;font-size:22px;letter-spacing:-.03em}
+.switch{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);box-shadow:var(--ctlsh)}
+.switch button{padding:6px 16px;border-radius:99px;font-size:12px;font-weight:700;opacity:.55;cursor:pointer}
+.switch button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .switch button.on{background:var(--fg);color:var(--bg)}
+.note{max-width:820px;font-size:12.5px;line-height:1.6;opacity:.65;margin-bottom:18px}
+.note b{opacity:1}
+.phones{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+.phonewrap{width:392px}
+.phonewrap>.cap{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.5;margin:0 0 8px 6px}
+.phone{background:var(--srf);border-radius:26px;box-shadow:var(--softsh);overflow:hidden;position:relative}
+.screen{height:760px;overflow-y:auto;padding:14px 14px 96px;position:relative}
+
+/* ── Runner WO chrome ────────────────────────────────────────────────────── */
+.hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.hdr .back{width:34px;height:34px;border-radius:99px;background:var(--wash);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer}
+.hdr .who{flex:1;min-width:0}
+.hdr .who .t1{font-family:'Archivo Black',sans-serif;font-size:15px;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr .who .t2{font-size:10.5px;color:var(--fg2)}
+.wonum{font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--fg3)}
+
+/* locked office card */
+.office{background:var(--wash);border-radius:14px;padding:12px 14px;margin-bottom:16px}
+.office .oh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.office .row{display:flex;gap:10px;margin-bottom:4px;font-size:11.5px}
+.office .row .k{min-width:64px;color:var(--fg3);font-size:10px;padding-top:1px}
+.lockchip{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3)}
+
+/* section head + view toggle */
+.sech{display:flex;align-items:center;justify-content:space-between;margin:18px 0 8px}
+.viewtog{display:inline-flex;gap:2px;padding:2px;border-radius:8px;background:var(--wash);box-shadow:var(--ctlsh)}
+.viewtog button{width:34px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;opacity:.45;cursor:pointer}
+.viewtog button.on{opacity:1;background:var(--srf);box-shadow:var(--ctlsh)}
+[data-theme="dark"] .viewtog button.on{background:var(--wash2)}
+.viewtog svg{display:block}
+
+/* status dots */
+.dot{width:7px;height:7px;border-radius:99px;display:inline-block}
+.dot.sub{background:var(--st-warm)}
+.dot.app{background:var(--st-booked)}
+
+/* ── LIST view — §16/§18 day blocks, three lines across ─────────────────── */
+.lst{overflow-x:auto}
+.lst-inner{min-width:520px}
+.lst .cols{display:grid;grid-template-columns:52px 84px 84px 40px 64px 70px;gap:0 6px;padding:0 10px 5px}
+.lst .cols div{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3)}
+.lst .cols div.r{text-align:right}
+.dayblk{background:var(--wash);border-radius:12px;margin-bottom:7px;padding:7px 10px}
+.dayblk.lock{opacity:.62}
+.dl1{display:grid;grid-template-columns:52px 84px 84px 40px 64px 70px;gap:0 6px;align-items:center;font-size:11px}
+.dl1 .d{font-weight:700;display:flex;align-items:center;gap:5px}
+.dl1 .r{text-align:right}
+.dl1 .money{font-family:ui-monospace,Menlo,monospace;font-size:10.5px}
+.dl2{display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--fg2);padding:4px 0 0 6px}
+.rolechip{font-size:8px;font-weight:800;padding:1px 5px;border-radius:3px;background:var(--wash2)}
+.dl3{display:flex;align-items:center;gap:5px;padding:6px 0 1px 6px;flex-wrap:wrap}
+.dl3 .eqh{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-right:2px}
+.eqpill{font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--wash2);color:var(--fg3);cursor:pointer}
+.eqpill.ok{background:color-mix(in srgb,var(--st-booked) 22%,transparent);color:var(--st-booked)}
+.eqpill.bad{background:color-mix(in srgb,var(--st-hot) 22%,transparent);color:var(--st-hot)}
+.scrollhint{font-size:9px;color:var(--fg3);text-align:right;padding:2px 4px 0}
+
+/* ── CARD view — one day, one card ──────────────────────────────────────── */
+.dcard{background:var(--wash);border-radius:14px;padding:13px 14px;margin-bottom:9px;cursor:pointer}
+.dcard.lock{opacity:.62;cursor:default}
+.dc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.dc-date{font-family:'Archivo Black',sans-serif;font-size:13px;letter-spacing:-.01em;display:flex;align-items:center;gap:7px}
+.dc-studio{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3)}
+.dc-times{font-family:ui-monospace,Menlo,monospace;font-size:12px;margin-bottom:2px}
+.dc-times b{font-weight:700}
+.dc-sub{font-size:10.5px;color:var(--fg2);margin-bottom:6px}
+.dc-staff{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--fg2);margin-bottom:7px}
+.dc-eq{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:8px}
+.dc-song{font-size:11px;color:var(--fg2);font-style:italic;margin-bottom:8px}
+.dc-song.empty{color:var(--fg3)}
+.dc-total{display:flex;align-items:center;justify-content:space-between;border-radius:8px;padding:5px 9px;background:var(--wash2)}
+.dc-total .k{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3)}
+.dc-total .v{font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700}
+.dc-lockrow{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--fg3);margin-top:2px}
+
+/* payments / totals */
+.payrow{display:flex;align-items:center;gap:8px;background:var(--wash);border-radius:12px;padding:9px 12px;margin-bottom:6px;font-size:11.5px}
+.payrow .typ{font-weight:700}
+.payrow .amt{margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-weight:700}
+.addlink{font-size:11px;color:var(--fg2);cursor:pointer;padding:2px 4px}
+.totrow{display:flex;justify-content:space-between;font-size:11.5px;color:var(--fg2);padding:2px 4px}
+.totrow .v{font-family:ui-monospace,Menlo,monospace}
+.totrow.due{color:var(--fg);font-weight:700;font-size:13px;margin-top:4px}
+.totrow.due .v{color:var(--st-hot)}
+.chip{display:inline-flex;align-items:center;border-radius:99px;padding:2px 9px;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.chip.hot{background:var(--st-hot);color:var(--hot-text)}
+
+/* fixed submit footer */
+.foot{position:absolute;left:0;right:0;bottom:0;padding:12px 14px 16px;background:linear-gradient(transparent,var(--srf) 38%)}
+.foot .btn{width:100%;min-height:48px;border-radius:14px;background:var(--st-booked);color:var(--chip-ink);font-family:'Archivo Black',sans-serif;font-size:13px;letter-spacing:.02em;cursor:pointer;box-shadow:var(--ctlsh)}
+.foot .hint{text-align:center;font-size:9.5px;color:var(--fg3);margin-top:6px}
+
+/* ── DAY SHEET (card editor) ────────────────────────────────────────────── */
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.45);border-radius:26px}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--srf);border-radius:22px 22px 26px 26px;padding:16px 16px 18px;box-shadow:0 -8px 30px rgba(0,0,0,.3)}
+.sheet .grab{width:36px;height:4px;border-radius:99px;background:var(--wash2);margin:0 auto 12px}
+.sh-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sh-date{font-family:'Archivo Black',sans-serif;font-size:16px;display:flex;align-items:center;gap:8px}
+.f2{display:flex;gap:8px}
+.fld{flex:1;background:var(--wash);border-radius:12px;padding:8px 12px;margin-bottom:8px}
+.fld .k{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:2px}
+.fld .in{font-size:15px;font-family:ui-monospace,Menlo,monospace}
+.fld .in.txt{font-family:inherit;font-size:13px}
+.fld .in.ghost{color:var(--fg3)}
+.sh-eq{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:4px 0 10px}
+.sh-eq .eqpill{font-size:10.5px;padding:6px 13px}
+.billing{background:var(--wash);border-radius:12px;padding:9px 12px;margin-bottom:12px}
+.billing .bh{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:4px}
+.billing .br{display:flex;justify-content:space-between;font-size:11px;color:var(--fg2);padding:1px 0}
+.billing .br .v{font-family:ui-monospace,Menlo,monospace}
+.sh-save{width:100%;min-height:46px;border-radius:12px;background:var(--fg);color:var(--bg);font-family:'Archivo Black',sans-serif;font-size:12px;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>Runner work order — list ⇄ cards</h1>
+  <div class="switch" id="themeswitch">
+    <button data-t="light">Light</button>
+    <button data-t="dark" class="on">Dark</button>
+  </div>
+</div>
+
+<p class="note">
+  One design, three states. <b>Same component as the admin work order</b> — runner mode
+  locks the office card, the rates and any approved day; everything else stays live.
+  <b>Phone 1</b> is the list view (the §16 day blocks — compact, scans well when a session
+  runs many days). <b>Phone 2</b> is card view — one day, one card, no sideways scrolling.
+  <b>Phone 3</b> is what tapping a card opens: a bottom sheet with big inputs for the five
+  things a runner actually types. The toggle above the table switches views, Finder-style;
+  <b>tap the toggle and the cards in phones 1–2 — they work.</b> Payments stay editable
+  (COD at the desk); Submit is the only terminal act.
+</p>
+
+<div class="phones">
+
+  <!-- ═══ PHONE 1 · LIST VIEW ═══ -->
+  <div class="phonewrap">
+    <p class="cap">1 · List view (default)</p>
+    <div class="phone"><div class="screen" id="p1">
+      <div class="hdr">
+        <div class="back">←</div>
+        <div class="who">
+          <div class="t1">Kali Rae — Interscope</div>
+          <div class="t2">Paramount · Studio A · Aug 13–15</div>
+        </div>
+        <span class="wonum">WO-1042</span>
+      </div>
+
+      <div class="office">
+        <div class="oh"><span class="label">Session info</span><span class="lockchip">🔒 set by the office</span></div>
+        <div class="row"><span class="k">Label / A&R</span><span>Interscope / D. Reyes</span></div>
+        <div class="row"><span class="k">Artist</span><span>Kali Rae</span></div>
+        <div class="row"><span class="k">Dates</span><span>Aug 13 – Aug 15 · 2:00 PM – 10:00 PM</span></div>
+        <div class="row"><span class="k">Billing</span><span>COD &nbsp;<span class="chip hot">Balance due</span></span></div>
+      </div>
+
+      <div class="sech">
+        <span class="label" style="font-size:10px">Studio time</span>
+        <div class="viewtog" data-phone="p1">
+          <button class="on" data-v="list" title="List">
+            <svg width="14" height="12" viewBox="0 0 14 12" fill="none"><rect y="0" width="14" height="2" rx="1" fill="currentColor"/><rect y="5" width="14" height="2" rx="1" fill="currentColor"/><rect y="10" width="14" height="2" rx="1" fill="currentColor"/></svg>
+          </button>
+          <button data-v="cards" title="Cards">
+            <svg width="14" height="12" viewBox="0 0 14 12" fill="none"><rect width="14" height="5" rx="1.5" fill="currentColor"/><rect y="7" width="14" height="5" rx="1.5" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="view-list">
+        <div class="lst"><div class="lst-inner">
+          <div class="cols"><div>Date</div><div>From</div><div>To</div><div>Hrs</div><div>OT</div><div class="r">Total</div></div>
+
+          <!-- Day 1 — approved → locked -->
+          <div class="dayblk lock">
+            <div class="dl1">
+              <div class="d">8/13 <span class="dot app"></span></div>
+              <div class="mono">2:00 PM</div><div class="mono">10:00 PM</div><div>8h</div><div>—</div>
+              <div class="r money">$1,100.00</div>
+            </div>
+            <div class="dl2"><span class="rolechip">1ST</span> Mike Torres · 2:00 PM – 10:00 PM · 8h</div>
+            <div class="dl3"><span class="eqh">Equipment</span><span class="eqpill ok">Speakers</span><span class="eqpill ok">Microphone</span><span class="eqpill ok">Console</span></div>
+            <div class="dc-lockrow">🔒 Approved by the office</div>
+          </div>
+
+          <!-- Day 2 — submitted -->
+          <div class="dayblk">
+            <div class="dl1">
+              <div class="d">8/14 <span class="dot sub"></span></div>
+              <div class="mono">2:00 PM</div><div class="mono">11:30 PM</div><div>9.5h</div><div>1.5h</div>
+              <div class="r money">$1,347.50</div>
+            </div>
+            <div class="dl2"><span class="rolechip">1ST</span> Mike Torres · 2:00 PM – 11:30 PM · 9.5h</div>
+            <div class="dl3"><span class="eqh">Equipment</span><span class="eqpill ok">Speakers</span><span class="eqpill bad">Microphone</span><span class="eqpill ok">Console</span></div>
+          </div>
+
+          <!-- Day 3 — today, in progress -->
+          <div class="dayblk">
+            <div class="dl1">
+              <div class="d">8/15</div>
+              <div class="mono">2:00 PM</div><div class="mono" style="color:var(--fg3)">—</div><div>—</div><div>—</div>
+              <div class="r money" style="color:var(--fg3)">—</div>
+            </div>
+            <div class="dl2"><span class="rolechip">1ST</span> Mike Torres · —</div>
+            <div class="dl3"><span class="eqh">Equipment</span><span class="eqpill">Speakers</span><span class="eqpill">Microphone</span><span class="eqpill">Console</span></div>
+          </div>
+        </div></div>
+        <div class="scrollhint">↔ swipe for rate columns</div>
+      </div>
+
+      <div class="view-cards" style="display:none"></div>
+
+      <div class="sech"><span class="label" style="font-size:10px">Payments</span></div>
+      <div class="payrow"><span class="typ">Cash</span><span style="color:var(--fg3);font-size:10px">Aug 13 · desk</span><span class="amt">$1,100.00</span></div>
+      <div class="addlink">+ Add payment</div>
+
+      <div class="sech"><span class="label" style="font-size:10px">Totals</span></div>
+      <div class="totrow"><span>Studio time</span><span class="v">$3,547.50</span></div>
+      <div class="totrow"><span>Engineering</span><span class="v">$960.00</span></div>
+      <div class="totrow"><span>Rentals</span><span class="v">$0.00</span></div>
+      <div class="totrow"><span>Payments</span><span class="v">−$1,100.00</span></div>
+      <div class="totrow due"><span>Balance due</span><span class="v">$3,407.50</span></div>
+
+      <div class="foot">
+        <button class="btn">Submit today</button>
+        <div class="hint">Sends today’s times to the office · nothing is invoiced yet</div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- ═══ PHONE 2 · CARD VIEW ═══ -->
+  <div class="phonewrap">
+    <p class="cap">2 · Card view — one day, one card</p>
+    <div class="phone"><div class="screen" id="p2">
+      <div class="hdr">
+        <div class="back">←</div>
+        <div class="who">
+          <div class="t1">Kali Rae — Interscope</div>
+          <div class="t2">Paramount · Studio A · Aug 13–15</div>
+        </div>
+        <span class="wonum">WO-1042</span>
+      </div>
+
+      <div class="office">
+        <div class="oh"><span class="label">Session info</span><span class="lockchip">🔒 set by the office</span></div>
+        <div class="row"><span class="k">Label / A&R</span><span>Interscope / D. Reyes</span></div>
+        <div class="row"><span class="k">Artist</span><span>Kali Rae</span></div>
+        <div class="row"><span class="k">Dates</span><span>Aug 13 – Aug 15 · 2:00 PM – 10:00 PM</span></div>
+        <div class="row"><span class="k">Billing</span><span>COD &nbsp;<span class="chip hot">Balance due</span></span></div>
+      </div>
+
+      <div class="sech">
+        <span class="label" style="font-size:10px">Studio time</span>
+        <div class="viewtog" data-phone="p2">
+          <button data-v="list" title="List">
+            <svg width="14" height="12" viewBox="0 0 14 12" fill="none"><rect y="0" width="14" height="2" rx="1" fill="currentColor"/><rect y="5" width="14" height="2" rx="1" fill="currentColor"/><rect y="10" width="14" height="2" rx="1" fill="currentColor"/></svg>
+          </button>
+          <button class="on" data-v="cards" title="Cards">
+            <svg width="14" height="12" viewBox="0 0 14 12" fill="none"><rect width="14" height="5" rx="1.5" fill="currentColor"/><rect y="7" width="14" height="5" rx="1.5" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="view-list" style="display:none"></div>
+      <div class="view-cards">
+
+        <!-- Day 1 — approved → locked card -->
+        <div class="dcard lock">
+          <div class="dc-top"><span class="dc-date">Wed, Aug 13 <span class="dot app"></span></span><span class="dc-studio">Studio A</span></div>
+          <div class="dc-times"><b>2:00 PM</b> – <b>10:00 PM</b> · 8h</div>
+          <div class="dc-staff"><span class="rolechip">1ST</span> Mike Torres · 8h</div>
+          <div class="dc-eq"><span class="eqpill ok">Speakers</span><span class="eqpill ok">Microphone</span><span class="eqpill ok">Console</span></div>
+          <div class="dc-song">“Glasshouse” — vocal comps</div>
+          <div class="dc-total"><span class="k">Day total · set by the office</span><span class="v">$1,100.00</span></div>
+          <div class="dc-lockrow">🔒 Approved by the office — locked</div>
+        </div>
+
+        <!-- Day 2 — submitted, still editable until approved -->
+        <div class="dcard" data-opens-sheet>
+          <div class="dc-top"><span class="dc-date">Thu, Aug 14 <span class="dot sub"></span></span><span class="dc-studio">Studio A</span></div>
+          <div class="dc-times"><b>2:00 PM</b> – <b>11:30 PM</b> · 9.5h · <span style="color:var(--st-warm)">OT 1.5h</span></div>
+          <div class="dc-staff"><span class="rolechip">1ST</span> Mike Torres · 9.5h</div>
+          <div class="dc-eq"><span class="eqpill ok">Speakers</span><span class="eqpill bad">Microphone</span><span class="eqpill ok">Console</span></div>
+          <div class="dc-song">“Glasshouse” — strings</div>
+          <div class="dc-total"><span class="k">Day total · set by the office</span><span class="v">$1,347.50</span></div>
+        </div>
+
+        <!-- Day 3 — today, empty, invites the tap -->
+        <div class="dcard" data-opens-sheet>
+          <div class="dc-top"><span class="dc-date">Fri, Aug 15</span><span class="dc-studio">Studio A</span></div>
+          <div class="dc-times"><b>2:00 PM</b> – <span style="color:var(--fg3)">tap to set</span></div>
+          <div class="dc-staff"><span class="rolechip">1ST</span> Mike Torres</div>
+          <div class="dc-eq"><span class="eqpill">Speakers</span><span class="eqpill">Microphone</span><span class="eqpill">Console</span></div>
+          <div class="dc-song empty">Song title —</div>
+          <div class="dc-total"><span class="k">Day total · set by the office</span><span class="v" style="color:var(--fg3)">—</span></div>
+        </div>
+      </div>
+
+      <div class="sech"><span class="label" style="font-size:10px">Payments</span></div>
+      <div class="payrow"><span class="typ">Cash</span><span style="color:var(--fg3);font-size:10px">Aug 13 · desk</span><span class="amt">$1,100.00</span></div>
+      <div class="addlink">+ Add payment</div>
+
+      <div class="sech"><span class="label" style="font-size:10px">Totals</span></div>
+      <div class="totrow"><span>Studio time</span><span class="v">$3,547.50</span></div>
+      <div class="totrow"><span>Engineering</span><span class="v">$960.00</span></div>
+      <div class="totrow"><span>Rentals</span><span class="v">$0.00</span></div>
+      <div class="totrow"><span>Payments</span><span class="v">−$1,100.00</span></div>
+      <div class="totrow due"><span>Balance due</span><span class="v">$3,407.50</span></div>
+
+      <div class="foot">
+        <button class="btn">Submit today</button>
+        <div class="hint">Sends today’s times to the office · nothing is invoiced yet</div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- ═══ PHONE 3 · DAY SHEET ═══ -->
+  <div class="phonewrap">
+    <p class="cap">3 · Tap a card → the day sheet</p>
+    <div class="phone"><div class="screen" style="overflow:hidden">
+      <!-- dimmed card view behind -->
+      <div style="filter:blur(1px);opacity:.55">
+        <div class="hdr">
+          <div class="back">←</div>
+          <div class="who">
+            <div class="t1">Kali Rae — Interscope</div>
+            <div class="t2">Paramount · Studio A · Aug 13–15</div>
+          </div>
+          <span class="wonum">WO-1042</span>
+        </div>
+        <div class="office">
+          <div class="oh"><span class="label">Session info</span><span class="lockchip">🔒 set by the office</span></div>
+          <div class="row"><span class="k">Label / A&R</span><span>Interscope / D. Reyes</span></div>
+          <div class="row"><span class="k">Artist</span><span>Kali Rae</span></div>
+        </div>
+        <div class="dcard"><div class="dc-top"><span class="dc-date">Thu, Aug 14 <span class="dot sub"></span></span><span class="dc-studio">Studio A</span></div>
+        <div class="dc-times"><b>2:00 PM</b> – <b>11:30 PM</b> · 9.5h</div></div>
+      </div>
+
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="sh-top">
+          <span class="sh-date">Thu, Aug 14 <span class="dot sub"></span></span>
+          <span class="dc-studio">Studio A</span>
+        </div>
+        <div class="f2">
+          <div class="fld"><div class="k">Start</div><div class="in">2:00 PM</div></div>
+          <div class="fld"><div class="k">End</div><div class="in">11:30 PM</div></div>
+        </div>
+        <div class="f2">
+          <div class="fld"><div class="k">OT hours</div><div class="in">1.5</div></div>
+          <div class="fld"><div class="k">Engineer · 1st</div><div class="in txt">Mike Torres</div></div>
+        </div>
+        <div class="fld"><div class="k">Song title / session info</div><div class="in txt">“Glasshouse” — strings</div></div>
+        <div class="label" style="margin:2px 0 4px">Equipment</div>
+        <div class="sh-eq"><span class="eqpill ok">Speakers</span><span class="eqpill bad">Microphone</span><span class="eqpill ok">Console</span></div>
+        <div class="billing">
+          <div class="bh">Billing · set by the office</div>
+          <div class="br"><span>Room $110/hr · 9.5h</span><span class="v">$1,045.00</span></div>
+          <div class="br"><span>OT $165/hr × 1.5h</span><span class="v">$247.50</span></div>
+          <div class="br"><span>Engineer $55/hr × 9.5h</span><span class="v">$522.50</span></div>
+          <div class="br" style="font-weight:700;color:var(--fg)"><span>Day total</span><span class="v">$1,347.50</span></div>
+        </div>
+        <button class="sh-save">Done</button>
+      </div>
+    </div></div>
+  </div>
+
+</div>
+
+<script>
+// theme switch (page chrome)
+document.querySelectorAll('#themeswitch button').forEach(b => b.onclick = () => {
+  document.documentElement.dataset.theme = b.dataset.t
+  document.querySelectorAll('#themeswitch button').forEach(x => x.classList.toggle('on', x === b))
+})
+
+// view toggles — phones 1 & 2 share content; toggling swaps which block shows.
+// The mock keeps a copy of each view in each phone so a toggle press works live.
+const listHTML  = document.querySelector('#p1 .view-list').innerHTML
+const cardsHTML = document.querySelector('#p2 .view-cards').innerHTML
+document.querySelector('#p1 .view-cards').innerHTML = cardsHTML
+document.querySelector('#p2 .view-list').innerHTML  = listHTML
+
+document.querySelectorAll('.viewtog').forEach(tog => {
+  const screen = document.getElementById(tog.dataset.phone)
+  tog.querySelectorAll('button').forEach(b => b.onclick = () => {
+    tog.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b))
+    screen.querySelector('.view-list').style.display  = b.dataset.v === 'list'  ? '' : 'none'
+    screen.querySelector('.view-cards').style.display = b.dataset.v === 'cards' ? '' : 'none'
+  })
+})
+
+// equipment pills cycle blank → OK → Not OK → OK … (never back to blank, §18)
+document.addEventListener('click', e => {
+  const p = e.target.closest('.eqpill')
+  if (!p || p.closest('.dayblk.lock') || p.closest('.dcard.lock')) return
+  e.stopPropagation()
+  if (p.classList.contains('ok')) { p.classList.remove('ok'); p.classList.add('bad') }
+  else { p.classList.remove('bad'); p.classList.add('ok') }
+}, true)
+</script>
+</body>
+</html>
