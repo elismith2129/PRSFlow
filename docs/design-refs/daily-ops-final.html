@@ -11,14 +11,16 @@
   ruling: Billing owns everything money (incl. WO review — the hub's "review"
   bucket); Daily Ops is the STUDIO MANAGER'S morning: did last night go right.
 
-  SHAPE (Eli's words): exceptions first, then the per-studio sweep, then tasks.
-    1. NEEDS YOU     flags, missing checklists, missing mics, note problems.
-                     Tap to clear. Empty = the finish line.
-    2. FOUR STUDIOS  last night's full picture per studio: opening/closing,
-                     mics, stock, petty cash, SHIFT NOTE (new — replaces the
-                     Slack post), who worked. Read-only confirmation; a row
-                     tap opens the underlying record.
-    3. STUDIO TASKS  leave notes for whoever opens.
+  SHAPE (Eli's rulings, 2026-08-14): TWO COLUMNS.
+    LEFT   NEEDS YOU queue (tap to clear; empty = finish line), then the
+           STUDIO TASKS manager under it. The queue owns the column so it
+           has somewhere to grow on a bad morning.
+    RIGHT  the SWEEP — four studio cards in a 2×2. Last night only:
+           opening/closing, mics, cash, stock, who worked, and the SHIFT LOG
+           (append-only entries per studio per night — replaces the Slack
+           post; multiple authors, handoffs, photos). Cards show a collapsed
+           preview; "View log" opens the full night in a POPUP (real notes
+           run 15+ bullets — see Mathew's 5/20 ERS example).
 
   NOT here: work orders (Billing), punches (HR), live tonight status
   (dashboard's job). My Day links here via Fernando's review duty — one copy
@@ -56,7 +58,8 @@ button,input{font:inherit;color:var(--fg);background:none;border:none}
 .switch button{padding:6px 16px;border-radius:99px;font-size:12px;font-weight:700;opacity:.55;cursor:pointer}
 .switch button.on{opacity:1;background:var(--ivory);color:#1b1a17}
 [data-theme="light"] .switch button.on{background:var(--fg);color:var(--bg)}
-.frame{max-width:1060px;display:flex;flex-direction:column;gap:16px}
+.frame{max-width:1120px;display:grid;grid-template-columns:5fr 7fr;gap:16px;align-items:start}
+.col{display:flex;flex-direction:column;gap:14px}
 .card{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:14px 16px}
 .pill{display:inline-flex;align-items:center;border-radius:99px;padding:3px 10px;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--chip-ink)}
 .pill.hot{background:var(--st-hot);color:var(--hot-text)}
@@ -82,7 +85,7 @@ button,input{font:inherit;color:var(--fg);background:none;border:none}
 .allclear .revlist{display:none}
 
 /* Studio sweep */
-.studios{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:start}
+.studios{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
 .stu-card{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:13px 14px}
 .stu-card .hd{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px}
 .stu-card .hd .n{font-family:'Archivo Black',sans-serif;font-size:15px;letter-spacing:-.02em}
@@ -91,9 +94,20 @@ button,input{font:inherit;color:var(--fg);background:none;border:none}
 .duty:hover{background:var(--wash)}
 .duty .d{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .duty .v{margin-left:auto;font-size:10.5px;opacity:.5;flex-shrink:0}
-.snote{margin-top:8px;background:var(--wash);border-radius:12px;padding:9px 11px;font-size:11.5px;line-height:1.5}
-.snote .label{margin-bottom:3px}
-.snote.empty{opacity:.45;font-style:italic}
+.snote{margin-top:8px;background:var(--wash);border-radius:12px;padding:9px 11px;font-size:11.5px;line-height:1.5;cursor:pointer}
+.snote:hover{background:var(--wash2)}
+.snote .label{margin-bottom:3px;display:flex;justify-content:space-between}
+.snote .label .more{opacity:.8;font-weight:800;text-transform:none;letter-spacing:0}
+.snote .prev{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;opacity:.8}
+.snote.empty{opacity:.45;font-style:italic;cursor:default}
+/* Shift-log popup */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:50}
+.scrim.on{display:flex}
+.sheet{width:min(560px,92vw);max-height:80vh;overflow-y:auto;background:var(--srf);border-radius:20px;box-shadow:var(--softsh);padding:18px 20px}
+.entry{padding:10px 0}
+.entry + .entry{box-shadow:0 -1px 0 var(--wash)}
+.entry .who{font-size:10.5px;font-weight:800;opacity:.5;margin-bottom:4px}
+.entry ul{margin:0 0 0 16px;font-size:12.5px;line-height:1.6}
 
 /* Tasks */
 .task{display:flex;align-items:center;gap:10px;padding:7px 2px;font-size:12.5px}
@@ -125,7 +139,9 @@ Tap the top items to clear them. Studio rows open the underlying checklist/inven
 
 <div class="frame">
 
-  <!-- 1 ── NEEDS YOU -->
+  <!-- ══ LEFT COLUMN — the queue, then tasks ══ -->
+  <div class="col">
+
   <div>
     <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px">
       <div class="arch" style="font-size:17px;letter-spacing:-.02em">Last night — needs you</div>
@@ -154,59 +170,11 @@ Tap the top items to clear them. Studio rows open the underlying checklist/inven
           <span class="stu">ERS</span><span class="ok"></span>
         </div>
       </div>
-      <div class="finish"><div class="big">Yesterday is done.</div>Every exception handled. The sweep below is your receipt.</div>
+      <div class="finish"><div class="big">Yesterday is done.</div>Every exception handled. The sweep is your receipt.</div>
     </div>
   </div>
 
-  <!-- 2 ── THE SWEEP -->
-  <div>
-    <div class="label" style="margin-bottom:8px">The sweep · every studio, last night</div>
-    <div class="studios">
-
-      <div class="stu-card">
-        <div class="hd"><span class="n">Paramount</span><span class="who">Marcus</span></div>
-        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Opening<span class="v">5:12 PM</span></div>
-        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Closing<span class="v">2:34 AM</span></div>
-        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Mic inventory<span class="v">268 · 1 room</span></div>
-        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Petty cash<span class="v">$240</span></div>
-        <div class="duty"><span class="d" style="background:var(--st-warm)"></span>Stock<span class="v">2 low</span></div>
-        <div class="snote"><div class="label">Shift note</div>Long one in A — Kendrick ran till 2. Left the C stands by the dock for pickup.</div>
-      </div>
-
-      <div class="stu-card">
-        <div class="hd"><span class="n">Ameraycan</span><span class="who">Dre</span></div>
-        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Opening<span class="v">4:58 PM</span></div>
-        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Closing<span class="v">1:10 AM</span></div>
-        <div class="duty"><span class="d" style="background:var(--st-hot)"></span>Mic inventory<span class="v">1 missing</span></div>
-        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Petty cash<span class="v">$180</span></div>
-        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Stock<span class="v">OK</span></div>
-        <div class="snote"><div class="label">Shift note</div>Quiet night. B session wrapped early.</div>
-      </div>
-
-      <div class="stu-card">
-        <div class="hd"><span class="n">Encore</span><span class="who">Lena</span></div>
-        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Opening<span class="v">5:05 PM</span></div>
-        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Closing<span class="v">12:40 AM</span></div>
-        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Mic inventory<span class="v">all here</span></div>
-        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Petty cash<span class="v">$310</span></div>
-        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Stock<span class="v">OK</span></div>
-        <div class="snote"><div class="label">Shift note</div>AC in the B lounge rattling again — flagged it.</div>
-      </div>
-
-      <div class="stu-card">
-        <div class="hd"><span class="n">Track</span><span class="who">—</span></div>
-        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Opening<span class="v">5:20 PM</span></div>
-        <div class="duty"><span class="d" style="background:var(--st-hot)"></span>Closing<span class="v">never submitted</span></div>
-        <div class="duty"><span class="d" style="background:var(--wash2)"></span>Mic inventory<span class="v">not done</span></div>
-        <div class="duty"><span class="d" style="background:var(--wash2)"></span>Petty cash<span class="v">not done</span></div>
-        <div class="duty"><span class="d" style="background:var(--wash2)"></span>Stock<span class="v">not done</span></div>
-        <div class="snote empty">No shift note.</div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- 3 ── TASKS FOR TONIGHT -->
+  <!-- Tasks live under the queue on the left -->
   <div class="card">
     <div class="label" style="margin-bottom:8px">Studio tasks · what the opener sees</div>
     <div class="task"><span class="chk"></span><span>Blow the parking lot</span><span class="meta">PRS · Fernando, 8:40 AM</span></div>
@@ -219,6 +187,89 @@ Tap the top items to clear them. Studio rows open the underlying checklist/inven
     </div>
   </div>
 
+  </div><!-- /left column -->
+
+  <!-- ══ RIGHT COLUMN — the sweep, 2×2 ══ -->
+  <div class="col">
+    <div class="label" style="margin-bottom:-4px">The sweep · every studio, last night</div>
+    <div class="studios">
+
+      <div class="stu-card">
+        <div class="hd"><span class="n">Paramount</span><span class="who">Marcus</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Opening<span class="v">5:12 PM</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Closing<span class="v">2:34 AM</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Mic inventory<span class="v">268 · 1 room</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Petty cash<span class="v">$240</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-warm)"></span>Stock<span class="v">2 low</span></div>
+        <div class="snote" onclick="openLog()"><div class="label">Shift log · 2 entries<span class="more">View →</span></div><div class="prev">Marcus 5:12P: Opened building, bathrooms good, did all opening tasks. Light by stairs out — needs bulb (pic). Opened A for Kendrick…</div></div>
+      </div>
+
+      <div class="stu-card">
+        <div class="hd"><span class="n">Ameraycan</span><span class="who">Dre</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Opening<span class="v">4:58 PM</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Closing<span class="v">1:10 AM</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-hot)"></span>Mic inventory<span class="v">1 missing</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Petty cash<span class="v">$180</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Stock<span class="v">OK</span></div>
+        <div class="snote" onclick="openLog()"><div class="label">Shift log · 1 entry<span class="more">View →</span></div><div class="prev">Dre 1:10A: Quiet night. B session wrapped early.</div></div>
+      </div>
+
+      <div class="stu-card">
+        <div class="hd"><span class="n">Encore</span><span class="who">Lena</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Opening<span class="v">5:05 PM</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Closing<span class="v">12:40 AM</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Mic inventory<span class="v">all here</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Petty cash<span class="v">$310</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Stock<span class="v">OK</span></div>
+        <div class="snote" onclick="openLog()"><div class="label">Shift log · 1 entry<span class="more">View →</span></div><div class="prev">Lena 12:40A: AC in the B lounge rattling again — flagged it.</div></div>
+      </div>
+
+      <div class="stu-card">
+        <div class="hd"><span class="n">Track</span><span class="who">—</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Opening<span class="v">5:20 PM</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-hot)"></span>Closing<span class="v">never submitted</span></div>
+        <div class="duty"><span class="d" style="background:var(--wash2)"></span>Mic inventory<span class="v">not done</span></div>
+        <div class="duty"><span class="d" style="background:var(--wash2)"></span>Petty cash<span class="v">not done</span></div>
+        <div class="duty"><span class="d" style="background:var(--wash2)"></span>Stock<span class="v">not done</span></div>
+        <div class="snote empty">No shift log.</div>
+      </div>
+
+    </div>
+  </div><!-- /right column -->
+
+</div>
+
+<!-- Shift-log popup — the full night, the Slack post's real replacement -->
+<div class="scrim" id="logscrim" onclick="if(event.target===this)closeLog()">
+  <div class="sheet">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
+      <div class="arch" style="font-size:17px">Paramount · shift log</div>
+      <span style="font-size:11.5px;opacity:.5">Thu, Aug 13</span>
+    </div>
+    <div class="entry">
+      <div class="who">MARCUS · 5:12 PM</div>
+      <ul>
+        <li>Given a 5:00pm start time</li>
+        <li>Opened building, bathrooms all good</li>
+        <li>Did all applicable opening tasks</li>
+        <li>Light by stairs by the mic inventory is out — needs bulb (pic below)</li>
+        <li>Opened A for Kendrick — crew in at 8pm</li>
+        <li>Did a run for A</li>
+      </ul>
+    </div>
+    <div class="entry">
+      <div class="who">SAM · 2:34 AM · relieved Marcus 11:30 PM</div>
+      <ul>
+        <li>Kendrick ran till 2 — long one in A</li>
+        <li>Left the C stands by the dock for pickup</li>
+        <li>Closed building, all rooms locked</li>
+        <li>Overall smooth shift</li>
+      </ul>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px">
+      <span class="btn" onclick="closeLog()">Close</span>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -235,6 +286,8 @@ function rev(el){
   document.getElementById('qcount').textContent = remaining
   q.classList.toggle('allclear', remaining === 0)
 }
+function openLog(){ document.getElementById('logscrim').classList.add('on') }
+function closeLog(){ document.getElementById('logscrim').classList.remove('on') }
 </script>
 </body>
 </html>
