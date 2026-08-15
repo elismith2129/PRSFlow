@@ -16,7 +16,7 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
 import { Wordmark } from '@/components/layout/Wordmark'
-import { getLocalToday } from '@/lib/time'
+import { getLocalToday, dayPartLabel } from '@/lib/time'
 
 // Shared with the hub page by literal value — both use 'prsflo-runner-studio'.
 // (Not exported: Next.js App Router restricts page-file exports.)
@@ -125,7 +125,7 @@ export default function RunnerPage() {
         </div>
         <div className="c-label" style={{ marginBottom: 8 }}>Paramount Recording Group</div>
         <div className="c-arch" style={{ fontSize: 23, letterSpacing: '-0.02em' }}>
-          Where are you tonight?
+          Where are you {dayPartLabel().toLowerCase()}?
         </div>
         <div style={{ fontSize: 12, opacity: 0.5, marginTop: 4 }}>
           {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}

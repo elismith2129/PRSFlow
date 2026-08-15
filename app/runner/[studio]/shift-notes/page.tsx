@@ -14,7 +14,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { dbResult } from '@/lib/db'
-import { getLocalToday } from '@/lib/time'
+import { getLocalToday, dayPartLabel, dayPartPossessive } from '@/lib/time'
 import { useUserProfile } from '@/hooks/useUserProfile'
 
 const STUDIO_META: Record<string, { label: string }> = {
@@ -132,7 +132,7 @@ export default function ShiftNotesPage() {
 
         {/* Write */}
         <div style={surface}>
-          <div className="c-label" style={{ marginBottom: 8 }}>Add to tonight&apos;s log</div>
+          <div className="c-label" style={{ marginBottom: 8 }}>Add to {dayPartPossessive()} log</div>
           <textarea
             value={draft}
             onChange={e => setDraft(e.target.value)}
@@ -180,10 +180,10 @@ export default function ShiftNotesPage() {
           </div>
         </div>
 
-        {/* Tonight's log */}
+        {/* The day's log (label tracks the clock — 24/7 operation) */}
         <div style={surface}>
           <div className="c-label" style={{ marginBottom: 8 }}>
-            Tonight · {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
+            {dayPartLabel()} · {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
           </div>
           {entries.length === 0 ? (
             <div style={{ fontSize: 12.5, opacity: 0.5 }}>Nothing logged yet.</div>

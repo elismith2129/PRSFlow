@@ -17,7 +17,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { dbResult } from '@/lib/db'
-import { getLocalToday } from '@/lib/time'
+import { getLocalToday, dayPartLabel } from '@/lib/time'
 import {
   PUNCH_TYPES, PunchRequest, REPORT_CLASS_LABEL, fromDbTime, missBand,
   punchTypeLabel, to24h, windowFloor,
@@ -180,7 +180,7 @@ export default function RunnerPunchPage() {
             <div style={surface}>
               <div className="c-label" style={{ marginBottom: 8 }}>Which shift</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-                <button style={seg(shiftChoice === 'today')} onClick={() => setShiftChoice('today')}>Tonight</button>
+                <button style={seg(shiftChoice === 'today')} onClick={() => setShiftChoice('today')}>{dayPartLabel()}</button>
                 <button style={seg(shiftChoice === 'yesterday')} onClick={() => setShiftChoice('yesterday')}>Yesterday</button>
                 <button style={seg(shiftChoice === 'other')} onClick={() => setShiftChoice('other')}>Other day</button>
               </div>

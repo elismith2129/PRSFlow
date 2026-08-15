@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import type { Booking } from '@/lib/supabase'
-import { getLocalToday } from '@/lib/time'
+import { getLocalToday, dayPartLabel } from '@/lib/time'
 import { dbResult } from '@/lib/db'
 import { SessionCardBody, sessionFillClass, initials } from '@/components/calendar/SessionCard'
 
@@ -435,9 +435,10 @@ export default function StudioDailyOpsPage() {
           )}
         </div>
 
-        {/* ── Tonight ─────────────────────────────────────────────────────── */}
+        {/* ── This morning / Today / Tonight — the studio runs 24/7 (Eli,
+            2026-08-15), so the label tracks the clock via dayPartLabel. */}
         <div>
-          <div className="c-label" style={{ marginBottom: 9 }}>Tonight</div>
+          <div className="c-label" style={{ marginBottom: 9 }}>{dayPartLabel()}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
             {TILES.map(t => {
               const isLog = t.category === 'shift_notes'

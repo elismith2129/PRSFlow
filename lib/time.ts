@@ -84,3 +84,29 @@ export function getLocalToday(): string {
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
   return now.toISOString().slice(0, 10)
 }
+
+// ─── Time-of-day copy (Eli, 2026-08-15) ──────────────────────────────────────
+// The studios run 24/7 — a runner clocking in at 7am was being greeted with
+// "Where are you tonight?". Any runner-facing copy that names the shift uses
+// these helpers so the word tracks the clock and every surface agrees.
+// Boundaries: 4am–11:59am morning · noon–4:59pm daytime · 5pm–3:59am night.
+export type DayPart = 'morning' | 'day' | 'night'
+
+export function dayPart(d: Date = new Date()): DayPart {
+  const h = d.getHours()
+  if (h >= 4 && h < 12) return 'morning'
+  if (h >= 12 && h < 17) return 'day'
+  return 'night'
+}
+
+/** "This morning" / "Today" / "Tonight" — section labels, shift picker. */
+export function dayPartLabel(d: Date = new Date()): string {
+  const p = dayPart(d)
+  return p === 'morning' ? 'This morning' : p === 'day' ? 'Today' : 'Tonight'
+}
+
+/** "this morning's" / "today's" / "tonight's" — possessive, mid-sentence. */
+export function dayPartPossessive(d: Date = new Date()): string {
+  const p = dayPart(d)
+  return p === 'morning' ? "this morning's" : p === 'day' ? "today's" : "tonight's"
+}
