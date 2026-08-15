@@ -21,13 +21,16 @@ import { Sun, Moon } from 'lucide-react'
 
 type RailItem = { href: string; label: string; ic: string; dim?: boolean }
 
+// Rail grouping (RULING 2026-08-14, spec §19 two-worlds): the three personal /
+// scheduling surfaces sit ungrouped at the top; everything about running the
+// building lives under OPERATIONS; money under BUSINESS. The old "Studio"
+// group is retired — its items were operations by any reading.
 const TOP: RailItem[] = [
   { href: '/', label: 'Dashboard', ic: '▦' },
-  // My Day sits directly under Dashboard (MYDAY-BUILD §6.3). NOT "Daily Ops" —
-  // that name is taken by the session/room view (HR-SPEC §2.5a).
-  { href: '/my-day', label: 'My Day', ic: '◑' },
   { href: '/calendar', label: 'Calendar', ic: '▤' },
-  { href: '/daily-ops', label: 'Daily Ops', ic: '◔' },
+  // My Day sits with them (MYDAY-BUILD §6.3) — it is the personal cadence
+  // layer over both worlds, not part of either.
+  { href: '/my-day', label: 'My Day', ic: '◑' },
 ]
 const BUSINESS: RailItem[] = [
   { href: '/crm', label: 'CRM', ic: '◎' },
@@ -36,16 +39,17 @@ const BUSINESS: RailItem[] = [
   // system. /wo-hub still exists and still works; it is simply no longer in the
   // nav, so nothing breaks for anyone with it bookmarked.
   { href: '/billing', label: 'Billing', ic: '▽' },
-  { href: '/tasks', label: 'Tasks', ic: '✓' },
-  { href: '/flags', label: 'Flags', ic: '⚑' },
 ]
-const STUDIO: RailItem[] = [
-  { href: '/mic-inventory', label: 'Mic Inventory', ic: '◌' },
+const OPERATIONS: RailItem[] = [
+  { href: '/daily-ops', label: 'Daily Ops', ic: '◔' },
   // TEMPORARY (build phase, Eli 2026-08-14): Runner Hub opens the device-frame
   // viewer preloaded with the runner hub at phone size (phone/iPad toggle on
   // that page) — admins reviewing the redesign never need it desktop-width.
   // Revert to plain '/runner' when /preview is removed at go-live.
   { href: '/preview?path=/runner&device=phone', label: 'Runner Hub', ic: '▷' },
+  { href: '/mic-inventory', label: 'Mic Inventory', ic: '◌' },
+  { href: '/tasks', label: 'Tasks', ic: '✓' },
+  { href: '/flags', label: 'Flags', ic: '⚑' },
   { href: '/nadines', label: "Nadine's", ic: '♫' },
 ]
 const HR: RailItem[] = [
@@ -168,8 +172,8 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
           {filterItems(TOP).map(renderItem)}
           <div className="c-rail-grp">Business</div>
           {filterItems(BUSINESS).map(renderItem)}
-          <div className="c-rail-grp">Studio</div>
-          {filterItems(STUDIO).map(renderItem)}
+          <div className="c-rail-grp">Operations</div>
+          {filterItems(OPERATIONS).map(renderItem)}
           <div className="c-rail-grp">HR</div>
           {filterItems(HR).map(renderItem)}
         </>
