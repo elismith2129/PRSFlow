@@ -155,6 +155,11 @@ type StRow = {
   admin_locked: boolean
   eng_visible: boolean
   eng_role: 'engineer' | 'assistant' // 1ST vs 2ND — every session has one or the other
+  // Runner submit state: 'in_progress' | 'submitted' | 'approved'. Carried in
+  // state for the status dots + the Submit/Update-submission button label, but
+  // deliberately NOT part of the save payload (stPayloads) — a save must never
+  // clobber a status the runner or admin set through their own act.
+  status: string
 }
 
 type EquipRow = {
@@ -285,6 +290,7 @@ function normalizeStRow(d: any): StRow {
     admin_checked: d.admin_checked ?? false,
     admin_locked: d.admin_locked ?? false,
     eng_visible: d.eng_visible ?? true,
+    status: d.status ?? 'in_progress',
     // Assistant is the default role everywhere — an engineer is the exception.
     // Stored rows keep whatever they were saved with; this only decides the
     // fallback for a row with no role recorded.
@@ -317,6 +323,9 @@ export function WorkOrderPopup({
   onDelete,
   leadId,
   inline,
+  mode = 'admin',
+  runnerStudio,
+  runnerStudioLabel,
 }: {
   booking: Booking
   liveForm?: WOFormSync
@@ -330,10 +339,28 @@ export function WorkOrderPopup({
   // so backing out of a Work Order leaves the lead in the pipeline.
   leadId?: number | null
   inline?: boolean
+  /**
+   * RUNNER MODE (spec §15, Eli 2026-08-14/15): the runner work order IS this
+   * component — there is no second work order. Runner mode is FIELD-LEVEL
+   * locking, not read-only: the office's fields (client block, rates, any day
+   * admin has locked) go read-only; times, staff, OT hours, equipment
+   * condition, song titles, payments (COD at the desk) and notes stay live.
+   * Hide nothing — runners keep totals and payments. The terminal act is
+   * SUBMIT (today's rows → 'submitted'), never Complete WO.
+   */
+  mode?: 'admin' | 'runner'
+  /** Studio key ('paramount'…) — required in runner mode for the wo_flag rows. */
+  runnerStudio?: string
+  /** Studio display label ('Paramount'…) — used in the flag's source label. */
+  runnerStudioLabel?: string
 }) {
+  const runner = mode === 'runner'
   // Mobile gets a full-screen sheet; never applies when rendered inline (USF embed).
+  // Runner mode is phone-first by definition — it always takes the mobile layout
+  // (full-screen sheet, read-only Session Info card, no META/branding), even on
+  // a tablet or desktop, because the locked-top presentation IS the runner UI.
   const isMobileRaw = useIsMobile()
-  const isMobile = isMobileRaw && !inline
+  const isMobile = (isMobileRaw || runner) && !inline
   const { profile } = useUserProfile()
   // Tech is read-only on WOs everywhere (calendar, wo-hub, LocationStrip): hide
   // all write controls. RLS also blocks tech writes, so this is a UX guard.
@@ -408,6 +435,21 @@ export function WorkOrderPopup({
   const primaryBookingIdRef = useRef<string>(booking.id)
   const [resolvedWoId, setResolvedWoId] = useState<string | null>(null)
   const [woMissing, setWoMissing] = useState<string | null>(null)
+  // ── Studio Time view toggle (Eli, 2026-08-15 — mock docs/design-refs/runner-wo-views.html)
+  // 'list' = the §16/§18 day blocks; 'cards' = one day, one card, tap → day sheet.
+  // Available to everyone (same component, gating it off would be extra code);
+  // only the DEFAULT differs: desktop admin defaults to list (the table is the
+  // working surface), phones default to cards for 1–3 day sessions and list for
+  // longer ones. null = not yet decided (rows not loaded).
+  const [stView, setStView] = useState<'list' | 'cards' | null>(null)
+  // The day sheet: which date's card is open for editing (card view only).
+  const [daySheetDate, setDaySheetDate] = useState<string | null>(null)
+  // Runner submit (today's rows → 'submitted').
+  const [submittingRun, setSubmittingRun] = useState(false)
+  // Needs-attention photo upload (ported from the deleted runner WO page —
+  // writes immediately, like the equipment note photos).
+  const [naUploading, setNaUploading] = useState(false)
+  const naFileRef = useRef<HTMLInputElement>(null)
   const [siPopoverRowId, setSiPopoverRowId] = useState<string | null>(null)
   const [siPopoverText, setSiPopoverText] = useState('')
   const [siPopoverPos, setSiPopoverPos] = useState<{ top: number; left: number } | null>(null)
@@ -568,6 +610,18 @@ export function WorkOrderPopup({
     }
   }, [stRows]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Default Studio Time view, decided ONCE per open, after rows load (Eli,
+  // 2026-08-15): phones (and runner mode, which is always phone-layout) get
+  // cards for a 1–3 day session — most sessions — and list for longer runs,
+  // where the compact day blocks scan better. Desktop admin always defaults to
+  // list. The toggle above the table lets anyone override; this only picks the
+  // opening view.
+  useEffect(() => {
+    if (loading || stView !== null) return
+    const dayCount = new Set(stRows.filter(r => r.date).map(r => r.date)).size
+    setStView(isMobile && dayCount > 0 && dayCount <= 3 ? 'cards' : 'list')
+  }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Real-time subscription: work_orders status updates only
   useEffect(() => {
     if (!resolvedWoId) return
@@ -605,8 +659,16 @@ export function WorkOrderPopup({
     // Adopt-first; if no WO exists yet, fall back to the single canonical creator
     // (createWorkOrderForBooking) so admin has a real in-app retry path when save-time
     // WO creation failed. This popup no longer has its own create logic — it calls the
-    // same function the booking-save path uses. (The runner WO page never creates.)
+    // same function the booking-save path uses.
     if (!existing) {
+      // RUNNER IS ADOPT-ONLY (standing rule since June 30, 2026). A runner never
+      // creates a work order — creation is an office act at booking-save. The
+      // old runner page enforced this; runner mode keeps enforcing it.
+      if (runner) {
+        setWoMissing('Work order not yet created — contact office.')
+        setLoading(false)
+        return
+      }
       if (!booking.id) {
         setWoMissing('No booking selected — save the booking first.')
         setLoading(false)
@@ -889,6 +951,17 @@ export function WorkOrderPopup({
 
   function updateStRow(id: string, updates: Partial<StRow>) {
     const row = stRows.find(r => r.id === id)
+    // RUNNER FIELD LOCKS (defence in depth — the inputs are also disabled).
+    // A locked day is the office's; rates are the office's on every day.
+    if (runner) {
+      if (row?.admin_locked) return
+      delete (updates as any).rate
+      delete (updates as any).rate_daily
+      delete (updates as any).ot_rate
+      delete (updates as any).eng_rate
+      delete (updates as any).row_rate_type
+      if (Object.keys(updates).length === 0) return
+    }
     if (row?.admin_locked && !pendingLockedEdits[id]) {
       setPendingLockedEdits(p => ({ ...p, [id]: { ...row } }))
     }
@@ -1234,6 +1307,7 @@ export function WorkOrderPopup({
       // Follow the row above (so a session staffed with an engineer keeps adding
       // engineers), otherwise fall back to assistant.
       eng_role: last?.eng_role || 'assistant',
+      status: 'in_progress',
     }
     setStRows(prev => [...prev, newRow])
     if (last?.eng_rate || (last?.eng_hours ?? 0) > 0) setShowEngRows(true)
@@ -1272,6 +1346,7 @@ export function WorkOrderPopup({
       admin_locked: false,
       eng_visible: true,
       eng_role: role,
+      status: 'in_progress',
     }
     setStRows(prev => [...prev, newRow])
   }
@@ -1337,6 +1412,117 @@ export function WorkOrderPopup({
     if (!newLocked) {
       setPendingLockedEdits(p => { const n = { ...p }; delete n[rowId]; return n })
     }
+  }
+
+  // ── Runner mode: needs-attention photos, flag sync, Submit ─────────────────
+  // All three ported from the deleted app/runner/[studio]/wo/[id]/page.tsx —
+  // behaviour unchanged, they just live on the shared component now.
+
+  async function uploadNAPhoto(file: File) {
+    if (!woIdRef.current || !wo) return
+    setNaUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `na-photos/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+    const { data, error: uploadError } = await supabase.storage.from('checklist-photos').upload(path, file, { upsert: true })
+    if (!uploadError && data) {
+      // Store the storage PATH — checklist-photos is private; reads sign on demand.
+      const prevPhotos = wo.needs_attention_photos ?? []
+      const newPhotos = [...prevPhotos, data.path]
+      setWo(w => w ? { ...w, needs_attention_photos: newPhotos } : w)
+      const { error: dbError } = await supabase.from('work_orders')
+        .update({ needs_attention_photos: newPhotos })
+        .eq('id', woIdRef.current)
+      // A console.error is invisible to a runner on a phone — surface it.
+      if (!dbResult('Saving attention photo', dbError)) setWo(w => w ? { ...w, needs_attention_photos: prevPhotos } : w)
+    } else {
+      dbResult('Uploading attention photo', uploadError)
+    }
+    setNaUploading(false)
+    if (naFileRef.current) naFileRef.current.value = ''
+  }
+
+  async function deleteNAPhoto(url: string) {
+    if (!wo) return
+    const prevPhotos = wo.needs_attention_photos ?? []
+    const updated = prevPhotos.filter(u => u !== url)
+    setWo(w => w ? { ...w, needs_attention_photos: updated } : w)
+    if (woIdRef.current) {
+      const { error: rmErr } = await supabase.from('work_orders')
+        .update({ needs_attention_photos: updated.length > 0 ? updated : null })
+        .eq('id', woIdRef.current)
+      // Put the photo back on screen if the removal didn't land.
+      if (!dbResult('Removing attention photo', rmErr)) setWo(w => w ? { ...w, needs_attention_photos: prevPhotos } : w)
+    }
+  }
+
+  /**
+   * Keep the wo_flag row in step with the needs-attention note. Runs on every
+   * runner save (handleClose calls it): a note raises/updates the flag, an
+   * emptied note resolves it. This is the runner page's exact behaviour —
+   * the flag system stays the office's record of "something needs a look".
+   */
+  async function syncRunnerFlag() {
+    if (!runner || !woIdRef.current || !wo) return
+    const woId = woIdRef.current
+    const notes = (wo.needs_attention_notes || '').trim()
+    if (notes) {
+      const artistPart = booking.artist || wo.artist || ''
+      const clientPart = booking.client_name || wo.client || booking.label || wo.label || ''
+      const sessionParts = [artistPart, clientPart].filter(Boolean).join(' / ')
+      const studioLabel = runnerStudioLabel || runnerStudio || ''
+      const sourceLabel = sessionParts ? `${studioLabel} · ${sessionParts}` : studioLabel
+      const { data: existingFlag } = await supabase
+        .from('flags').select('id').eq('source_id', woId).eq('source', 'wo_flag').maybeSingle()
+      if (existingFlag) {
+        const { error } = await supabase.from('flags')
+          .update({ runner_note: notes, status: 'pending' }).eq('id', existingFlag.id)
+        dbResult('Updating flag', error)
+      } else {
+        const { error } = await supabase.from('flags').insert({
+          studio: runnerStudio, source: 'wo_flag', source_id: woId,
+          source_label: sourceLabel, runner_note: notes, status: 'pending',
+        })
+        dbResult('Raising flag', error)
+      }
+    } else {
+      const { data: existingFlag } = await supabase
+        .from('flags').select('id').eq('source_id', woId).eq('source', 'wo_flag').maybeSingle()
+      if (existingFlag) {
+        const { error } = await supabase.from('flags')
+          .update({ status: 'resolved', resolved_note: 'Needs attention cleared by runner' })
+          .eq('id', existingFlag.id)
+        dbResult('Resolving flag', error)
+      }
+    }
+  }
+
+  /**
+   * THE RUNNER'S TERMINAL ACT (spec §15): save everything through the same
+   * atomic RPC the admin uses, then mark today's rows 'submitted'. Submitted
+   * is a SIGNAL, not a seal — the runner can reopen and edit until the office
+   * approves a day (admin_locked), then that day alone is out of reach. There
+   * is no penalty for resubmitting; the button just reads "Update submission"
+   * once today's rows are already in. Sessions with no rows dated today still
+   * save (a runner fixing yesterday), they just have nothing to mark.
+   */
+  async function handleRunnerSubmit() {
+    if (!woIdRef.current) return
+    setSubmittingRun(true)
+    const saved = await handleClose(false)
+    if (!saved) { setSubmittingRun(false); return }
+    const today = getLocalToday()
+    const todayIds = stRows.filter(r => r.date === today).map(r => r.id)
+    if (todayIds.length > 0) {
+      const { error } = await supabase.from('studio_time_rows')
+        .update({ status: 'submitted' }).in('id', todayIds)
+      if (!dbResult('Submitting today', error)) { setSubmittingRun(false); return }
+      const mark = (rows: StRow[]) => rows.map(r =>
+        todayIds.includes(r.id) && r.status !== 'approved' ? { ...r, status: 'submitted' } : r)
+      setStRows(mark)
+      originalStRowsRef.current = mark(originalStRowsRef.current)
+    }
+    setSubmittingRun(false)
+    onClose()
   }
 
   // ── Projection (Step 5b): one WO → one booking card per room-run ────────────
@@ -1670,6 +1856,11 @@ export function WorkOrderPopup({
     // the user's edits aren't lost, and let them retry.
     if (!dbResult('Saving work order', saveErr)) { setSaving(false); return false }
 
+    // Runner mode: keep the wo_flag row in step with the needs-attention note
+    // on EVERY save, not just Submit — the old runner page did this in its one
+    // save path and the office relies on the flag appearing promptly.
+    if (runner) await syncRunnerFlag()
+
     // The lead that produced this session is marked booked HERE — on a successful
     // save — rather than when Start Booking was pressed. Opening a WO to check a
     // rate and backing out must not close the lead out of the pipeline.
@@ -1840,6 +2031,87 @@ export function WorkOrderPopup({
     fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400,
     letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-2)',
   }
+  // "Thu, Aug 14" for the day cards / day sheet. T00:00:00 keeps the date in
+  // local time — bare YYYY-MM-DD parses as UTC and shifts a day west of it.
+  function weekdayDate(d: string) {
+    if (!d) return 'No date'
+    const dt = new Date(d + 'T00:00:00')
+    return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  }
+
+  // ── Card-view helpers (Eli, 2026-08-15) ───────────────────────────────────
+  // The equipment pills + Not-OK note, shared by the day cards and the day
+  // sheet. The LIST view keeps its own §18 in-row copy untouched — these exist
+  // so the card surfaces don't re-implement the cycle/note behaviour.
+  function renderEquipPills(date: string, disabled: boolean) {
+    if (!date) return null
+    return (
+      <div data-no-print="" style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+        {EQUIPMENT_ITEMS.map(eq => {
+          const cond = equipRows.find(x => x.equipment === eq && x.date === date)?.condition ?? null
+          const noteKey = `${eq}||${date}`
+          const hasNote = !!(equipNotes[noteKey]?.note || (equipNotes[noteKey]?.photo_urls?.length ?? 0) > 0)
+          return (
+            <button
+              key={eq}
+              type="button"
+              disabled={readOnly || disabled}
+              onClick={e => { e.stopPropagation(); cycleEquip(eq, date) }}
+              title={cond === null ? 'Not checked — tap to mark OK' : cond === 'ok' ? 'OK — tap if it was not' : 'Not OK — tap to mark OK'}
+              className={`c-eqpill${cond ? ` c-${cond === 'ok' ? 'ok' : 'bad'}` : ''}`}
+            >
+              <i />
+              {eq}
+              {cond === 'not_ok' && hasNote && <b>·</b>}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
+  function renderEquipNoteBlock(date: string) {
+    if (!date || !openNoteKey?.endsWith(`||${date}`)) return null
+    const eq = openNoteKey.split('||')[0]
+    const note = equipNotes[openNoteKey]
+    return (
+      <div data-no-print="" onClick={e => e.stopPropagation()} style={{ padding: '8px 12px', background: 'var(--c-wash2)', borderRadius: 12, marginTop: 8 }}>
+        <div style={{ fontSize: 9, fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--c-st-hot)', marginBottom: 6 }}>
+          {eq} — what was wrong?
+        </div>
+        <textarea
+          value={note?.note ?? ''}
+          disabled={readOnly}
+          onChange={e => setEquipNotes(prev => ({ ...prev, [openNoteKey]: { ...(prev[openNoteKey] ?? { id: '', photo_urls: [] }), note: e.target.value } }))}
+          onBlur={e => upsertEquipNote(openNoteKey, eq, date, { note: e.target.value })}
+          placeholder="Note about this issue…"
+          style={{ width: '100%', background: 'transparent', borderRadius: 4, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '5px 7px', resize: 'none', outline: 'none', boxSizing: 'border-box', minHeight: 52 }}
+        />
+        {(note?.photo_urls?.length ?? 0) > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+            {note!.photo_urls.map((url, i) => (
+              <SignedImage key={i} path={url} link alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
+            ))}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 6 }}>
+          {!readOnly && (
+            <button
+              type="button"
+              disabled={noteUploading}
+              onClick={() => { pendingNoteKey.current = { key: openNoteKey, equipment: eq, date }; equipNoteFileRef.current?.click() }}
+              style={{ fontSize: 10, fontFamily: 'Inter', color: noteUploading ? 'var(--c-fg-3)' : 'var(--c-fg-2)', background: 'none', cursor: noteUploading ? 'not-allowed' : 'pointer', padding: 0 }}
+            >
+              {noteUploading ? 'Uploading…' : '+ Photo'}
+            </button>
+          )}
+          <button type="button" onClick={() => setOpenNoteKey(null)} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: 0, marginLeft: 'auto' }}>
+            Done
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // ── Client panel wiring ─────────────────────────────────────────────────────
   // Map the WO's client fields onto the shared ClientPanel value, and route the
@@ -1926,7 +2198,7 @@ export function WorkOrderPopup({
   if (loading) return (
     <div style={inline
       ? { position: 'static', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }
-      : { position: 'fixed', top: isMobile ? 0 : 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      : { position: 'fixed', top: (isMobile || runner) ? 0 : 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12 }}>Loading work order…</div>
     </div>
   )
@@ -1934,7 +2206,7 @@ export function WorkOrderPopup({
   if (woMissing) return (
     <div style={inline
       ? { position: 'static', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }
-      : { position: 'fixed', top: isMobile ? 0 : 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      : { position: 'fixed', top: (isMobile || runner) ? 0 : 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ maxWidth: 360, padding: 24, background: 'var(--c-bg)', borderRadius: 12, textAlign: 'center' }}>
         <div style={{ color: 'var(--c-st-hot)', fontFamily: 'Inter', fontSize: 12, marginBottom: 14, lineHeight: 1.5 }}>{woMissing}</div>
         <button onClick={onClose} style={{ background: 'transparent', color: 'var(--c-fg)', borderRadius: 6, padding: '7px 18px', fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>Close</button>
@@ -1970,7 +2242,8 @@ export function WorkOrderPopup({
         // exactly this reason; the mobile branch just never carried it over.
         // The Nav is 52px tall on mobile as well (the 44px is the hamburger
         // button inside it, not the bar).
-        ? { position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'var(--c-bg)' }
+        // Runner routes have no Nav, so runner mode starts at top: 0.
+        ? { position: 'fixed', top: runner ? 0 : 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'var(--c-bg)' }
         : { position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.55)', overflowY: 'auto' }}
       onClick={inline || isMobile ? undefined : e => { if (e.target === e.currentTarget) handleCloseButton() }}
     >
@@ -2081,7 +2354,28 @@ export function WorkOrderPopup({
             Hot is sanctioned for missing information (§5). Suppressed while the
             times banner is up — that error names the same rows and has to be
             fixed first. */}
-        {!timeErrorMsg && dupStaffWarning && (
+        {/* RUNNER LIVE MISSING-TIMES WARNING (RULING 2026-08-10, ported from
+            the deleted runner page): WARNS, never blocks — a runner mid-session
+            often genuinely has no end time yet, and blocking Save/Submit would
+            cost everything else they typed. The hard stop stays on the admin
+            side (Complete WO refuses, same lib/woValidation rule, so the two
+            sides can't disagree about what "done" means). Recomputed live, so
+            it clears itself as rows fill in. */}
+        {runner && !timeErrorMsg && (() => {
+          const problems = findMissingTimes(stRows)
+          if (problems.length === 0) return null
+          return (
+            <div role="alert" style={{ flexShrink: 0, background: 'color-mix(in srgb, var(--c-st-hot) 12%, transparent)', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, lineHeight: 1.5, padding: '10px 16px' }}>
+              {problems.length === 1 ? 'One row is missing times:' : `${problems.length} rows are missing times:`}{' '}
+              <span style={{ opacity: 0.8 }}>{problems.map(p => `${p.where} (${p.fields.join(', ')})`).join(' · ')}</span>
+            </div>
+          )
+        })()}
+
+        {/* The rate warnings are the OFFICE's to act on — rates are locked in
+            runner mode, so showing a runner a problem they cannot fix would
+            just train them to ignore banners. */}
+        {!runner && !timeErrorMsg && dupStaffWarning && (
           <div
             data-no-print=""
             role="status"
@@ -2099,7 +2393,7 @@ export function WorkOrderPopup({
           </div>
         )}
 
-        {!timeErrorMsg && !dupStaffWarning && engRateWarning && (
+        {!runner && !timeErrorMsg && !dupStaffWarning && engRateWarning && (
           <div
             data-no-print=""
             role="status"
@@ -2246,6 +2540,7 @@ export function WorkOrderPopup({
               The editable booking-form fields live in the META section below,
               which is hidden on mobile. */}
           {isMobile && (() => {
+            const contactPhone = booking.phone || wo.phone
             const sessionRows: [string, any][] = [
               [wo.payment_status === 'Billing' ? 'Label / A&R' : 'Client',
                 wo.payment_status === 'Billing'
@@ -2256,16 +2551,39 @@ export function WorkOrderPopup({
               ['Date', booking.start_date || wo.session_date],
               ['Time', [booking.from_time, booking.to_time].filter(Boolean).join(' – ')],
               ['Studio', booking.studio || (wo.studios ?? []).join(', ')],
+              // Billing pipeline + live balance chip — a runner takes COD at the
+              // desk, so an outstanding balance is a fact they must see up top.
+              ['Billing', wo.payment_status],
             ]
             return (
               <div style={mCard}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-2)', marginBottom: 10 }}>Session Info</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-2)' }}>Session Info</div>
+                  {/* The locked-top marker (Eli: "lock the client block at the
+                      top"). In runner mode this card is the WHOLE top — the
+                      editable META/client panel never renders — so the chip is
+                      the truthful label, not a decoration. */}
+                  {runner && <span style={{ fontSize: 8.5, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>🔒 Set by the office</span>}
+                </div>
                 {sessionRows.filter(([, v]) => v).map(([l, v]) => (
-                  <div key={l} style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
+                  <div key={l} style={{ display: 'flex', gap: 8, marginBottom: 5, alignItems: 'center' }}>
                     <span style={{ fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter', minWidth: 60 }}>{l}</span>
                     <span style={{ fontSize: 11, color: 'var(--c-fg)', fontFamily: 'Inter' }}>{v}</span>
+                    {l === 'Billing' && balanceDue > 0 && (
+                      <span style={{ fontSize: 8.5, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', background: 'var(--c-st-hot)', color: 'var(--c-hot-text, #fff4f2)', borderRadius: 99, padding: '2px 8px' }}>Balance due</span>
+                    )}
                   </div>
                 ))}
+                {/* A&R / client contact number — calling is always allowed even
+                    when the block is locked (Eli, 2026-08-15). */}
+                {contactPhone && (
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 5, alignItems: 'center' }}>
+                    <span style={{ fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter', minWidth: 60 }}>Phone</span>
+                    <a href={`tel:${contactPhone.replace(/[^0-9+]/g, '')}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--c-wash2)', borderRadius: 99, padding: '2px 10px', fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-fg)', textDecoration: 'none' }}>
+                      📞 {contactPhone}
+                    </a>
+                  </div>
+                )}
               </div>
             )
           })()}
@@ -2473,7 +2791,7 @@ export function WorkOrderPopup({
           <div style={{ }} />
 
           {/* SEED — bulk-append studio-time rows for a date range (WO-SPEC §6) */}
-          {!readOnly && (
+          {!readOnly && !runner && (
             <div style={{ borderRadius: 12, overflow: 'hidden' }}>
               <button type="button" onClick={() => setSeedOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--c-wash)', cursor: 'pointer', color: 'var(--c-fg-2)' }}>
                 <span style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>+ Seed — add multiple days</span>
@@ -2562,13 +2880,40 @@ export function WorkOrderPopup({
 
           {/* STUDIO TIME TABLE — unified per-row Day/Hr toggle */}
           <div style={isMobile ? mCard : undefined}>
-            <SectionHeader
-              carved
-              title="Studio Time"
-              action={!readOnly && stRows.some(r => r.date && (r.studio || '').trim())
-                ? { label: batchOpen ? 'Close batch edit' : 'Batch edit', onClick: () => setBatchOpen(v => !v) }
-                : undefined}
-            />
+            {/* VIEW TOGGLE (Eli, 2026-08-15 — Finder-style, mock
+                docs/design-refs/runner-wo-views.html): list = the §16 day
+                blocks, cards = one day one card. Sits beside the section
+                header; batch edit (admin's bulk mode) keeps its slot in the
+                header itself. */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <SectionHeader
+                  carved
+                  title="Studio Time"
+                  action={!readOnly && !runner && stView !== 'cards' && stRows.some(r => r.date && (r.studio || '').trim())
+                    ? { label: batchOpen ? 'Close batch edit' : 'Batch edit', onClick: () => setBatchOpen(v => !v) }
+                    : undefined}
+                />
+              </div>
+              <div className="c-seg c-seg-tiny" style={{ flexShrink: 0 }}>
+                {(['list', 'cards'] as const).map(v => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => { setStView(v); setDaySheetDate(null) }}
+                    className={stView === v ? 'c-on' : ''}
+                    title={v === 'list' ? 'List view' : 'Card view'}
+                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px' }}
+                  >
+                    {v === 'list' ? (
+                      <svg width="12" height="10" viewBox="0 0 14 12" fill="none"><rect y="0" width="14" height="2" rx="1" fill="currentColor"/><rect y="5" width="14" height="2" rx="1" fill="currentColor"/><rect y="10" width="14" height="2" rx="1" fill="currentColor"/></svg>
+                    ) : (
+                      <svg width="12" height="10" viewBox="0 0 14 12" fill="none"><rect width="14" height="5" rx="1.5" fill="currentColor"/><rect y="7" width="14" height="5" rx="1.5" fill="currentColor"/></svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
             <datalist id="wo-eng-roster">
               {engRoster.map(n => <option key={n} value={n} />)}
             </datalist>
@@ -2579,7 +2924,7 @@ export function WorkOrderPopup({
                 Cancel reverts the whole thing.
                 Replaced per-cell fill-down arrows — bulk editing reads better as a
                 deliberate mode than as 120 tiny buttons scattered through a table. */}
-            {batchOpen && !readOnly && (() => {
+            {batchOpen && !readOnly && stView !== 'cards' && (() => {
               const targets = batchTargets()
               const skipped = batchLockedSkipped()
               const nDays = new Set(targets.map(r => r.date)).size
@@ -2722,6 +3067,7 @@ export function WorkOrderPopup({
               )
             })()}
             <div style={{ overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
+              {stView !== 'cards' ? (<>
               {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock | Del */}
               <div style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px', paddingBottom: 5, minWidth: isMobile ? 880 : undefined }}>
                 {/* `right` marks the money columns — header and value share an
@@ -2796,7 +3142,11 @@ export function WorkOrderPopup({
                         overflow: 'hidden',
                       }}
                     >
-                      {!isEngOnly && <div style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px', background: r.admin_locked ? 'var(--c-wash2)' : undefined }}>
+                      {/* Runner mode: a day admin locked is the office's — the
+                          whole row goes inert (the lock/delete cells' own
+                          pointerEvents:auto is neutralised by the runner
+                          branches below, so nothing inside re-enables). */}
+                      {!isEngOnly && <div style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px', background: r.admin_locked ? 'var(--c-wash2)' : undefined, ...(runner && r.admin_locked ? { pointerEvents: 'none' as const, opacity: 0.62 } : {}) }}>
                         {/* Studio */}
                         <div style={cellS}>
                           <select
@@ -2825,7 +3175,12 @@ export function WorkOrderPopup({
                           onClick={e => { try { ((e.currentTarget as HTMLElement).querySelector('input[type="date"]') as any)?.showPicker?.() } catch {} }}
                         >
                           <span style={{ pointerEvents: 'none' }}>{shortDate(r.date)}</span>
-                          <input
+                          {/* Submit-state dot: warm = submitted, booked = approved (§5). */}
+                          {(r.status === 'submitted' || r.status === 'approved') && (
+                            <span style={{ position: 'absolute', top: 3, right: 2, width: 5, height: 5, borderRadius: 99, background: r.status === 'approved' ? 'var(--c-st-booked)' : 'var(--c-st-warm)', pointerEvents: 'none' }} />
+                          )}
+                          {/* Moving a row's DATE is a schedule act — office only. */}
+                          {!runner && <input
                             type="date"
                             value={r.date || ''}
                             onChange={e => {
@@ -2837,7 +3192,7 @@ export function WorkOrderPopup({
                               )
                             }}
                             style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
-                          />
+                          />}
                         </div>
                         {/* Session Info — click to edit via popover */}
                         <div
@@ -2880,14 +3235,18 @@ export function WorkOrderPopup({
                         <div style={cellIn}><TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} className="c-tin c-tin-mono" /></div>
                         {/* Total Hrs — always auto-calc */}
                         <div style={{ ...cellS, color: 'var(--c-fg-2)', fontSize: 10 }}>{rowHrs != null ? `${rowHrs}h` : '—'}</div>
-                        {/* Rate Type toggle */}
+                        {/* Rate Type toggle — office's call; frozen for runners */}
                         <div style={{ ...cellS, gap: 2, padding: '3px 4px' }}>
-                          <button style={toggleStyle(isDayRow)} onClick={() => !isDayRow && toggleRowRateType(r.id)}>Day</button>
-                          <button style={toggleStyle(!isDayRow)} onClick={() => isDayRow && toggleRowRateType(r.id)}>Hr</button>
+                          <button style={{ ...toggleStyle(isDayRow), cursor: runner ? 'default' : 'pointer' }} disabled={runner} onClick={() => !runner && !isDayRow && toggleRowRateType(r.id)}>Day</button>
+                          <button style={{ ...toggleStyle(!isDayRow), cursor: runner ? 'default' : 'pointer' }} disabled={runner} onClick={() => !runner && isDayRow && toggleRowRateType(r.id)}>Hr</button>
                         </div>
-                        {/* Rate */}
+                        {/* Rate — LOCKED IN RUNNER MODE (Eli: "lock rates").
+                            Read-only text, not a disabled input: hidden nothing,
+                            promised nothing. */}
                         <div style={cellS}>
-                          {isDayRow
+                          {runner
+                            ? <span className="c-tnum" style={{ fontSize: 10, color: 'var(--c-fg-2)' }}>{(isDayRow ? r.rate_daily : r.rate) || '—'}</span>
+                            : isDayRow
                             ? <input value={r.rate_daily} onChange={e => updateStRow(r.id, { rate_daily: e.target.value })} className="c-tin" placeholder="$0/day" />
                             : <input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} className="c-tin c-tin-mono" placeholder="$0/hr" />
                           }
@@ -2899,9 +3258,11 @@ export function WorkOrderPopup({
                             : <input value={r.ot_hours ?? ''} onChange={e => updateStRow(r.id, { ot_hours: e.target.value })} className="c-tin c-tin-mono" placeholder="0" />
                           }
                         </div>
-                        {/* OT Rate — editable (auto-populated but overridable) */}
+                        {/* OT Rate — editable (auto-populated but overridable); a rate, so locked for runners */}
                         <div style={cellS}>
-                          <input value={r.ot_rate ?? ''} onChange={e => updateStRow(r.id, { ot_rate: e.target.value })} className="c-tin c-tin-mono" placeholder="$0" />
+                          {runner
+                            ? <span className="c-tnum" style={{ fontSize: 10, color: 'var(--c-fg-2)' }}>{r.ot_rate || '—'}</span>
+                            : <input value={r.ot_rate ?? ''} onChange={e => updateStRow(r.id, { ot_rate: e.target.value })} className="c-tin c-tin-mono" placeholder="$0" />}
                         </div>
                         {/* OT Charge — computed read-only */}
                         <div className="c-tnum" style={{ ...cellS, justifyContent: 'flex-end', color: (r.ot_charge ?? 0) > 0 ? 'var(--c-fg)' : 'var(--c-fg-2)' }}>
@@ -2911,14 +3272,17 @@ export function WorkOrderPopup({
                         <div className="c-tnum" style={{ ...cellS, justifyContent: 'flex-end', color: rowTotal > 0 ? 'var(--c-fg)' : 'var(--c-fg-2)', fontWeight: rowTotal > 0 ? 600 : 400 }}>
                           {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : '—'}
                         </div>
-                        {/* Lock pill — always clickable even when WO is completed */}
-                        <div style={{ ...cellS, justifyContent: 'center', pointerEvents: 'auto' }}>
+                        {/* Lock pill — always clickable even when WO is completed.
+                            Except for runners: the lock is the OFFICE's act, so
+                            runner mode shows the state and can't flip it. */}
+                        <div style={{ ...cellS, justifyContent: 'center', pointerEvents: runner ? 'none' : 'auto' }}>
                           <button
                             type="button"
-                            onClick={() => handleToggleLock(r.id, r.admin_locked)}
+                            disabled={runner}
+                            onClick={() => !runner && handleToggleLock(r.id, r.admin_locked)}
                             style={{
                               fontSize: 8, fontFamily: 'Inter', fontWeight: 700, padding: '2px 5px',
-                              borderRadius: 3, cursor: 'pointer', whiteSpace: 'nowrap',
+                              borderRadius: 3, cursor: runner ? 'default' : 'pointer', whiteSpace: 'nowrap',
                               background: r.admin_locked ? 'var(--c-st-booked)' : 'var(--c-wash)',
                               color: r.admin_locked ? 'var(--c-bg)' : 'var(--c-fg-3)',
                             }}
@@ -2926,8 +3290,8 @@ export function WorkOrderPopup({
                         </div>
                         {/* Delete row — confirm pops open to the LEFT of the ×, next
                             to the cursor (the × is at the far-right edge). */}
-                        <div style={{ ...cellS, justifyContent: 'center', pointerEvents: 'auto', position: 'relative' }}>
-                          {!readOnly && (
+                        <div style={{ ...cellS, justifyContent: 'center', pointerEvents: runner ? 'none' : 'auto', position: 'relative' }}>
+                          {!readOnly && !runner && (
                             <>
                               <button type="button" onClick={() => setConfirmDeleteRowId(confirmDeleteRowId === r.id ? null : r.id)} style={{ fontSize: 13, fontFamily: 'Inter', color: confirmDeleteRowId === r.id ? 'var(--c-st-hot)' : 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
                               {confirmDeleteRowId === r.id && (
@@ -2961,7 +3325,7 @@ export function WorkOrderPopup({
                       )}
                       {r.eng_visible !== false && (
                         <>
-                          <div style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px', ...(runner && r.admin_locked ? { pointerEvents: 'none' as const, opacity: 0.62 } : {}) }}>
                             {/* 1ST/2ND role toggle — engineer vs assistant (every session has one OR the other) */}
                             <div style={{ ...cellS, paddingTop: 2, paddingBottom: 2 }}>
                               <button
@@ -2981,7 +3345,7 @@ export function WorkOrderPopup({
                               onClick={e => { try { ((e.currentTarget as HTMLElement).querySelector('input[type="date"]') as any)?.showPicker?.() } catch {} }}
                             >
                               <span style={{ pointerEvents: 'none' }}>{shortDate(r.date)}</span>
-                              {isEngOnly && (
+                              {isEngOnly && !runner && (
                                 <input
                                   type="date"
                                   value={r.date || ''}
@@ -3011,7 +3375,9 @@ export function WorkOrderPopup({
                             <div style={{ ...cellS, color: 'var(--c-fg-2)', fontSize: 10 }}>{engHrs != null ? `${engHrs}h` : '—'}</div>
                             <div style={cellS} />
                             <div style={cellS}>
-                              <input value={r.eng_rate || engRateDisplay} onChange={e => updateStRow(r.id, { eng_rate: e.target.value })} className="c-tin c-tin-mono" style={{ width: 64 }} />
+                              {runner
+                                ? <span className="c-tnum" style={{ fontSize: 10, color: 'var(--c-fg-2)' }}>{(r.eng_rate || engRateDisplay) || '—'}</span>
+                                : <input value={r.eng_rate || engRateDisplay} onChange={e => updateStRow(r.id, { eng_rate: e.target.value })} className="c-tin c-tin-mono" style={{ width: 64 }} />}
                             </div>
                             <div style={cellS} />
                             <div style={cellS} />
@@ -3019,13 +3385,13 @@ export function WorkOrderPopup({
                             <div className="c-tnum" style={{ ...cellS, justifyContent: 'flex-end', color: engCharge != null ? 'var(--c-fg)' : 'var(--c-fg-2)', fontWeight: engCharge != null ? 600 : 400 }}>
                               {engCharge != null ? `$${engCharge.toFixed(2)}` : '—'}
                             </div>
-                            {/* Eng lock */}
-                            <div style={{ ...cellS, justifyContent: 'center', pointerEvents: 'auto' }}>
-                              <button type="button" onClick={() => handleToggleLock(r.id, r.admin_locked)} style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, padding: '2px 5px', borderRadius: 3, cursor: 'pointer', whiteSpace: 'nowrap', background: r.admin_locked ? 'var(--c-st-booked)' : 'var(--c-wash)', color: r.admin_locked ? 'var(--c-bg)' : 'var(--c-fg-3)' }}>{r.admin_locked ? '🔒' : '✓'}</button>
+                            {/* Eng lock — office act; runner sees state only */}
+                            <div style={{ ...cellS, justifyContent: 'center', pointerEvents: runner ? 'none' : 'auto' }}>
+                              <button type="button" disabled={runner} onClick={() => !runner && handleToggleLock(r.id, r.admin_locked)} style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, padding: '2px 5px', borderRadius: 3, cursor: runner ? 'default' : 'pointer', whiteSpace: 'nowrap', background: r.admin_locked ? 'var(--c-st-booked)' : 'var(--c-wash)', color: r.admin_locked ? 'var(--c-bg)' : 'var(--c-fg-3)' }}>{r.admin_locked ? '🔒' : '✓'}</button>
                             </div>
                             {/* Eng delete × */}
-                            <div style={{ ...cellS, justifyContent: 'center', pointerEvents: 'auto' }}>
-                              {!readOnly && <button type="button" onClick={() => setConfirmClearEngId(r.id)} style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>}
+                            <div style={{ ...cellS, justifyContent: 'center', pointerEvents: runner ? 'none' : 'auto' }}>
+                              {!readOnly && !runner && <button type="button" onClick={() => setConfirmClearEngId(r.id)} style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>}
                             </div>
                           </div>
                           {confirmClearEngId === r.id && (
@@ -3119,8 +3485,98 @@ export function WorkOrderPopup({
                   )
                 })}
               </div>
+              </>) : (
+              /* ── CARD VIEW — one day, one card (Eli, 2026-08-15; mock
+                  docs/design-refs/runner-wo-views.html phone 2). A day, its
+                  staff and its condition are ONE FACT (§16/§18) — the card is
+                  the same block, stood upright for a phone. Tap → the day
+                  sheet. All edits go through the sheet; the card itself only
+                  cycles equipment pills. Locked days (admin_locked, runner
+                  mode) render dimmed with no sheet. */
+              <div data-st-cards="">
+                {(() => {
+                  const groups: { date: string; rows: StRow[] }[] = []
+                  for (const r of stRows) {
+                    const key = r.date || ''
+                    const last = groups[groups.length - 1]
+                    if (last && last.date === key) last.rows.push(r)
+                    else groups.push({ date: key, rows: [r] })
+                  }
+                  return groups.map(g => {
+                    const studioRows = g.rows.filter(r => r.studio !== '')
+                    const staffRows = g.rows.filter(r => r.eng_visible !== false && (r.eng_name || r.eng_rate || r.studio === ''))
+                    const cardLocked = runner && g.rows.length > 0 && g.rows.every(r => r.admin_locked)
+                    const allApproved = g.rows.length > 0 && g.rows.every(r => r.status === 'approved')
+                    const anySubmitted = g.rows.some(r => r.status === 'submitted')
+                    const dotColor = allApproved ? 'var(--c-st-booked)' : anySubmitted ? 'var(--c-st-warm)' : null
+                    const first = studioRows[0] ?? g.rows[0]
+                    const studios = Array.from(new Set(studioRows.map(r => toStudioLetter(r.studio)).filter(Boolean)))
+                    const song = g.rows.map(r => r.session_info).find(Boolean) || ''
+                    const otHrsTotal = g.rows.reduce((s, r) => s + (parseFloat(r.ot_hours || '0') || 0), 0)
+                    const engChargeFor = (r: StRow) => {
+                      const rate = parseFloat((r.eng_rate ?? '').replace(/[^0-9.]/g, '')) || 0
+                      const hrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
+                      return hrs != null && hrs > 0 && rate > 0 ? hrs * rate : 0
+                    }
+                    const dayTotal = g.rows.reduce((s, r) => s + (r.charge ?? 0) + (r.ot_charge ?? 0) + engChargeFor(r), 0)
+                    return (
+                      <div
+                        key={g.date || 'undated'}
+                        onClick={() => { if (!cardLocked && !readOnly) setDaySheetDate(g.date) }}
+                        style={{
+                          background: 'var(--c-wash)', borderRadius: 14, padding: '13px 14px', marginBottom: 9,
+                          cursor: cardLocked || readOnly ? 'default' : 'pointer',
+                          opacity: cardLocked ? 0.62 : 1,
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span className="c-arch" style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}>
+                            {weekdayDate(g.date)}
+                            {dotColor && <span style={{ width: 7, height: 7, borderRadius: 99, background: dotColor, display: 'inline-block' }} />}
+                          </span>
+                          <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>
+                            {studios.length ? `Studio ${studios.join(' · ')}` : ''}
+                          </span>
+                        </div>
+                        <div className="c-tnum" style={{ fontSize: 12, color: 'var(--c-fg)', marginBottom: 2 }}>
+                          {first?.from_time || '—'} – {first?.to_time || <span style={{ color: 'var(--c-fg-3)' }}>tap to set</span>}
+                          {first?.total_hours != null && <span style={{ color: 'var(--c-fg-2)' }}> · {first.total_hours}h</span>}
+                          {otHrsTotal > 0 && <span style={{ color: 'var(--c-st-warm)' }}> · OT {otHrsTotal}h</span>}
+                        </div>
+                        {staffRows.map(r => (
+                          <div key={r.id + '-staff'} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)', marginBottom: 3 }}>
+                            <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: 'var(--c-wash2)', color: r.eng_role === 'assistant' ? 'var(--c-st-warm)' : 'var(--c-fg)' }}>
+                              {r.eng_role === 'assistant' ? '2ND' : '1ST'}
+                            </span>
+                            {r.eng_name || <span style={{ color: 'var(--c-fg-3)' }}>TBD</span>}
+                          </div>
+                        ))}
+                        <div style={{ margin: '7px 0' }}>{renderEquipPills(g.date, cardLocked)}</div>
+                        {renderEquipNoteBlock(g.date)}
+                        <div style={{ fontSize: 11, fontFamily: 'Inter', fontStyle: 'italic', color: song ? 'var(--c-fg-2)' : 'var(--c-fg-3)', margin: '2px 0 8px' }}>
+                          {song || 'Song title —'}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--c-wash2)', borderRadius: 8, padding: '5px 9px' }}>
+                          <span style={{ fontSize: 8.5, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>
+                            {runner ? 'Day total · set by the office' : 'Day total'}
+                          </span>
+                          <span className="c-tnum" style={{ fontSize: 12, fontWeight: 700, color: dayTotal > 0 ? 'var(--c-fg)' : 'var(--c-fg-3)' }}>
+                            {dayTotal > 0 ? `$${dayTotal.toFixed(2)}` : '—'}
+                          </span>
+                        </div>
+                        {cardLocked && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)', marginTop: 6 }}>
+                            🔒 Approved by the office — locked
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                })()}
+              </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 4px 0' }}>
-                {!readOnly ? (
+                {!readOnly && !runner && stView !== 'cards' ? (
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
                   <button type="button" onClick={addStRow} className="c-x" style={{ fontSize: 10, color: 'var(--c-fg-2)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Studio Time</button>
                   <button type="button" onClick={() => addEngRow('engineer')} className="c-x" style={{ fontSize: 10, color: 'var(--c-fg)', opacity: 0.4, background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Engineer</button>
@@ -3139,6 +3595,166 @@ export function WorkOrderPopup({
               </div>
             </div>
           </div>
+
+          {/* ── DAY SHEET (card view's editor — Eli, 2026-08-15; mock phone 3).
+              A bottom sheet with the five things actually typed on a phone:
+              start, end, OT hours, staff, song title — plus the equipment
+              pills. Rates appear as inputs for admin and as the read-only
+              "Billing · set by the office" block for the runner. Edits go
+              through updateStRow, so they are LOCAL-FIRST like every other
+              studio-time edit: nothing writes until Save / Submit, and Cancel
+              reverts the lot. */}
+          {daySheetDate !== null && (() => {
+            const sheetRows = stRows.filter(r => (r.date || '') === daySheetDate)
+            const sheetStudioRows = sheetRows.filter(r => r.studio !== '')
+            const sheetStaffRows = sheetRows.filter(r => r.eng_visible !== false && (r.eng_name || r.eng_rate || r.studio === ''))
+            const sheetDot = sheetRows.length > 0 && sheetRows.every(r => r.status === 'approved')
+              ? 'var(--c-st-booked)'
+              : sheetRows.some(r => r.status === 'submitted') ? 'var(--c-st-warm)' : null
+            const fld: React.CSSProperties = { flex: 1, background: 'var(--c-wash)', borderRadius: 12, padding: '8px 12px', minWidth: 0 }
+            const fldK: React.CSSProperties = { fontSize: 8.5, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }
+            const engChargeFor = (r: StRow) => {
+              const rate = parseFloat((r.eng_rate ?? '').replace(/[^0-9.]/g, '')) || 0
+              const hrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
+              return hrs != null && hrs > 0 && rate > 0 ? hrs * rate : 0
+            }
+            const sheetTotal = sheetRows.reduce((s, r) => s + (r.charge ?? 0) + (r.ot_charge ?? 0) + engChargeFor(r), 0)
+            return (
+              <div style={{ position: 'fixed', inset: 0, zIndex: 10030, background: 'rgba(0,0,0,0.45)' }} onClick={() => { setDaySheetDate(null); setOpenNoteKey(null) }}>
+                <div
+                  onClick={e => e.stopPropagation()}
+                  style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'var(--c-bg)', borderRadius: '22px 22px 0 0', padding: '12px 16px calc(16px + env(safe-area-inset-bottom))', maxHeight: '86%', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
+                >
+                  <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--c-wash2)', margin: '0 auto 12px' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <span className="c-arch" style={{ fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {weekdayDate(daySheetDate)}
+                      {sheetDot && <span style={{ width: 7, height: 7, borderRadius: 99, background: sheetDot, display: 'inline-block' }} />}
+                    </span>
+                    <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>
+                      {Array.from(new Set(sheetStudioRows.map(r => toStudioLetter(r.studio)).filter(Boolean))).map(s => `Studio ${s}`).join(' · ')}
+                    </span>
+                  </div>
+
+                  {sheetStudioRows.map(r => {
+                    const rowLocked = runner && r.admin_locked
+                    const isDayRow = r.row_rate_type === 'day'
+                    return (
+                      <div key={r.id + '-sheet'} style={{ pointerEvents: rowLocked ? 'none' : undefined, opacity: rowLocked ? 0.62 : 1, marginBottom: 10 }}>
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                          <div style={fld}>
+                            <div style={fldK}>Start</div>
+                            <TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} className="c-tin c-tin-mono" />
+                          </div>
+                          <div style={fld}>
+                            <div style={fldK}>End</div>
+                            <TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} className="c-tin c-tin-mono" />
+                          </div>
+                          <div style={{ ...fld, flex: '0 0 76px' }}>
+                            <div style={fldK}>OT hrs</div>
+                            {isDayRow
+                              ? <div style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--c-fg-2)', minHeight: 44, display: 'flex', alignItems: 'center' }}>{(parseFloat(r.ot_hours || '0') || 0) > 0 ? r.ot_hours : 'auto'}</div>
+                              : <input value={r.ot_hours ?? ''} onChange={e => updateStRow(r.id, { ot_hours: e.target.value })} placeholder="0" className="c-tin c-tin-mono" />
+                            }
+                          </div>
+                        </div>
+                        <div style={{ ...fld, marginBottom: 8 }}>
+                          <div style={fldK}>Song title / session info</div>
+                          <textarea
+                            value={r.session_info}
+                            onChange={e => updateStRow(r.id, { session_info: e.target.value })}
+                            rows={2}
+                            placeholder="What was worked on…"
+                            style={{ width: '100%', background: 'transparent', outline: 'none', resize: 'vertical', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12, lineHeight: 1.5, boxSizing: 'border-box' }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  {sheetStaffRows.length > 0 && (
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ ...fldK, marginBottom: 6 }}>Staff</div>
+                      {sheetStaffRows.map(r => {
+                        const rowLocked = runner && r.admin_locked
+                        return (
+                          <div key={r.id + '-sheetstaff'} style={{ display: 'flex', gap: 8, marginBottom: 6, pointerEvents: rowLocked ? 'none' : undefined, opacity: rowLocked ? 0.62 : 1 }}>
+                            <button
+                              type="button"
+                              onClick={() => updateStRow(r.id, { eng_role: r.eng_role === 'assistant' ? 'engineer' : 'assistant' })}
+                              style={{ flexShrink: 0, alignSelf: 'stretch', fontSize: 9, fontFamily: 'Inter', fontWeight: 700, padding: '0 9px', borderRadius: 12, cursor: 'pointer', background: 'var(--c-wash2)', color: r.eng_role === 'assistant' ? 'var(--c-st-warm)' : 'var(--c-fg)' }}
+                            >
+                              {r.eng_role === 'assistant' ? '2ND' : '1ST'}
+                            </button>
+                            <div style={fld}>
+                              <div style={fldK}>{r.eng_role === 'assistant' ? 'Assistant' : 'Engineer'}</div>
+                              <input list="wo-eng-roster" value={r.eng_name || ''} onChange={e => updateStRow(r.id, { eng_name: e.target.value })} placeholder="Name…" className="c-tin" />
+                            </div>
+                            <div style={{ ...fld, flex: '0 0 88px' }}>
+                              <div style={fldK}>From</div>
+                              <TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} className="c-tin c-tin-mono" />
+                            </div>
+                            <div style={{ ...fld, flex: '0 0 88px' }}>
+                              <div style={fldK}>To</div>
+                              <TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} className="c-tin c-tin-mono" />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  <div style={{ ...fldK, marginBottom: 6 }}>Equipment</div>
+                  <div style={{ marginBottom: 4 }}>{renderEquipPills(daySheetDate, false)}</div>
+                  {renderEquipNoteBlock(daySheetDate)}
+
+                  {/* Billing — the money the day produced. Runner reads it;
+                      admin can correct rates without leaving the sheet. */}
+                  <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '9px 12px', margin: '10px 0 12px' }}>
+                    <div style={{ ...fldK, marginBottom: 4 }}>{runner ? 'Billing · set by the office' : 'Billing'}</div>
+                    {sheetStudioRows.map(r => {
+                      const isDayRow = r.row_rate_type === 'day'
+                      return (
+                        <div key={r.id + '-bill'} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)', padding: '2px 0', gap: 8 }}>
+                          {runner ? (
+                            <span>Room {isDayRow ? `${r.rate_daily || '—'}/day` : `${r.rate || '—'}/hr`}{r.ot_rate ? ` · OT ${r.ot_rate}` : ''}</span>
+                          ) : (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              Room
+                              {isDayRow
+                                ? <input value={r.rate_daily} onChange={e => updateStRow(r.id, { rate_daily: e.target.value })} placeholder="$0/day" className="c-tin c-tin-mono" style={{ width: 80 }} />
+                                : <input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} placeholder="$0/hr" className="c-tin c-tin-mono" style={{ width: 80 }} />}
+                              OT
+                              <input value={r.ot_rate ?? ''} onChange={e => updateStRow(r.id, { ot_rate: e.target.value })} placeholder="$0" className="c-tin c-tin-mono" style={{ width: 64 }} />
+                            </span>
+                          )}
+                          <span className="c-tnum">{((r.charge ?? 0) + (r.ot_charge ?? 0)) > 0 ? `$${((r.charge ?? 0) + (r.ot_charge ?? 0)).toFixed(2)}` : '—'}</span>
+                        </div>
+                      )
+                    })}
+                    {sheetStaffRows.filter(r => r.eng_rate || engChargeFor(r) > 0).map(r => (
+                      <div key={r.id + '-billeng'} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)', padding: '2px 0' }}>
+                        <span>{r.eng_role === 'assistant' ? 'Assistant' : 'Engineer'} {r.eng_rate ? `${r.eng_rate}/hr` : ''}</span>
+                        <span className="c-tnum">{engChargeFor(r) > 0 ? `$${engChargeFor(r).toFixed(2)}` : '—'}</span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg)', paddingTop: 4 }}>
+                      <span>Day total</span>
+                      <span className="c-tnum">{sheetTotal > 0 ? `$${sheetTotal.toFixed(2)}` : '—'}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => { setDaySheetDate(null); setOpenNoteKey(null) }}
+                    style={{ width: '100%', minHeight: 46, borderRadius: 12, background: 'var(--c-fg)', color: 'var(--c-bg)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 12, cursor: 'pointer' }}
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            )
+          })()}
 
           {/* EQUIPMENT CONDITION MOVED INTO THE STUDIO DAY (RULING 2026-08-13,
               spec §18). It was a separate table here with equipment down the
@@ -3298,9 +3914,30 @@ export function WorkOrderPopup({
             {wo.needs_attention_photos?.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
                 {wo.needs_attention_photos.map((url, i) => (
-                  <SignedImage key={i} path={url} link linkStyle={{ display: 'block', flexShrink: 0 }} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
+                  <div key={i} style={{ position: 'relative' }}>
+                    <SignedImage path={url} link linkStyle={{ display: 'block', flexShrink: 0 }} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
+                    {!readOnly && (
+                      <button type="button" onClick={() => deleteNAPhoto(url)} aria-label="Remove photo" style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 99, background: 'var(--c-wash2)', color: 'var(--c-fg-2)', fontSize: 11, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                    )}
+                  </div>
                 ))}
               </div>
+            )}
+            {/* Photo attach — ported from the runner page; writes immediately
+                (like the equipment note photos), not on Save. */}
+            {!readOnly && (
+              <>
+                <input data-no-print="" ref={naFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) uploadNAPhoto(f) }} />
+                <button
+                  type="button"
+                  disabled={naUploading}
+                  onClick={() => naFileRef.current?.click()}
+                  style={{ marginTop: 8, fontSize: 10, fontFamily: 'Inter', color: naUploading ? 'var(--c-fg-3)' : 'var(--c-fg-2)', background: 'none', cursor: naUploading ? 'not-allowed' : 'pointer', padding: 0 }}
+                >
+                  {naUploading ? 'Uploading…' : '+ Add photo'}
+                </button>
+              </>
             )}
           </div>
 
@@ -3314,7 +3951,10 @@ export function WorkOrderPopup({
               full-width button on the phone — the easiest control on the screen
               to hit by accident. Now, once completed, it saves and closes and
               greys out until something actually changes. */}
-          {isMobile && !readOnly && (
+          {/* COMPLETE WO NEVER APPEARS ON A RUNNER SURFACE (spec §15) —
+              completing is the admin act that starts the billing pipeline.
+              The runner's terminal act is the Submit footer below. */}
+          {isMobile && !readOnly && !runner && (
             <button
               onClick={() => (isCompleted ? handleClose() : handleComplete())}
               disabled={completing || saving || (isCompleted && !isDirty())}
@@ -3328,6 +3968,37 @@ export function WorkOrderPopup({
           </>)}
 
         </div>{/* end body */}
+
+        {/* ── RUNNER SUBMIT FOOTER ──────────────────────────────────────────
+            Fixed at the thumb, like every runner surface. Submit = the same
+            atomic save as Save, plus today's rows → 'submitted'. Submitted is
+            not a seal: the runner reopens and edits freely until the office
+            approves a day, so after the first submit this reads "Update
+            submission" — same act, no penalty, exactly the rule a runner
+            learns in one sentence: you can always fix your day until the
+            office approves it. */}
+        {runner && !isBlock && (() => {
+          const today = getLocalToday()
+          const todayRows = stRows.filter(r => r.date === today)
+          const alreadySubmitted = todayRows.length > 0 && todayRows.every(r => r.status === 'submitted' || r.status === 'approved')
+          return (
+            <div style={{ flexShrink: 0, padding: '10px 16px calc(14px + env(safe-area-inset-bottom))', background: 'var(--c-bg)' }}>
+              <button
+                onClick={handleRunnerSubmit}
+                disabled={submittingRun || saving}
+                className="c-control c-pill c-fill-booked c-raised-chip"
+                style={{ width: '100%', minHeight: 48, justifyContent: 'center', display: 'flex', alignItems: 'center', cursor: (submittingRun || saving) ? 'default' : 'pointer', opacity: (submittingRun || saving) ? 0.5 : 1, fontSize: 13 }}
+              >
+                {submittingRun ? 'Submitting…' : alreadySubmitted ? 'Update submission' : 'Submit today'}
+              </button>
+              <div style={{ textAlign: 'center', fontSize: 9.5, fontFamily: 'Inter', color: 'var(--c-fg-3)', marginTop: 6 }}>
+                {todayRows.length > 0
+                  ? 'Sends today’s times to the office · nothing is invoiced yet'
+                  : 'No rows dated today — this saves your changes'}
+              </div>
+            </div>
+          )
+        })()}
 
 
       </div>
