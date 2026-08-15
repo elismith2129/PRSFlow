@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Daily Ops (final direction)</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  DAILY OPS — single refined layout (2026-08-14, per Eli's direction).
+  Replaces the three-option admin-runner-hub-options.html round. The two-world
+  ruling: Billing owns everything money (incl. WO review — the hub's "review"
+  bucket); Daily Ops is the STUDIO MANAGER'S morning: did last night go right.
+
+  SHAPE (Eli's words): exceptions first, then the per-studio sweep, then tasks.
+    1. NEEDS YOU     flags, missing checklists, missing mics, note problems.
+                     Tap to clear. Empty = the finish line.
+    2. FOUR STUDIOS  last night's full picture per studio: opening/closing,
+                     mics, stock, petty cash, SHIFT NOTE (new — replaces the
+                     Slack post), who worked. Read-only confirmation; a row
+                     tap opens the underlying record.
+    3. STUDIO TASKS  leave notes for whoever opens.
+
+  NOT here: work orders (Billing), punches (HR), live tonight status
+  (dashboard's job). My Day links here via Fernando's review duty — one copy
+  of everything, the duty is just the reminder.
+
+  Tap the NEEDS-YOU items — clearing to "Yesterday is done" is the point.
+  Soft skin (§7c), status colour only (§5). Mock polarity INVERTED vs the app.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626;
+  --st-hot:#ff5a4d; --hot-text:#fff4f2;
+  --st-warm:#ffa94d; --st-cold:#5fc9e8; --st-booked:#43dfae;
+  --ivory:#d5d0c2; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+  --ctlsh:0 1px 2px rgba(42,39,34,.10);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  --ctlsh:0 1px 3px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;padding:18px}
+button,input{font:inherit;color:var(--fg);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.label{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45}
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.top h1{font-family:'Archivo Black',sans-serif;font-size:22px;letter-spacing:-.03em}
+.switch{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);box-shadow:var(--ctlsh)}
+.switch button{padding:6px 16px;border-radius:99px;font-size:12px;font-weight:700;opacity:.55;cursor:pointer}
+.switch button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .switch button.on{background:var(--fg);color:var(--bg)}
+.frame{max-width:1060px;display:flex;flex-direction:column;gap:16px}
+.card{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:14px 16px}
+.pill{display:inline-flex;align-items:center;border-radius:99px;padding:3px 10px;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--chip-ink)}
+.pill.hot{background:var(--st-hot);color:var(--hot-text)}
+.pill.dim{background:var(--wash2);color:var(--fg);opacity:.7}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:36px;border-radius:99px;background:var(--wash);box-shadow:var(--ctlsh);font-size:12px;font-weight:700;cursor:pointer;padding:0 15px}
+
+/* Needs-you item */
+.rev{display:flex;align-items:flex-start;gap:12px;padding:10px 4px;cursor:pointer;border-radius:10px}
+.rev:hover{background:var(--wash)}
+.rev + .rev{box-shadow:0 -1px 0 var(--wash)}
+.rev .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.rev .tx{flex:1;min-width:0}
+.rev .tx .t{font-size:13px;font-weight:700}
+.rev .tx .s{font-size:11.5px;opacity:.55;margin-top:1px}
+.rev .stu{font-size:9px;font-weight:800;letter-spacing:.06em;opacity:.45;flex-shrink:0;margin-top:4px}
+.rev .ok{width:26px;height:26px;border-radius:99px;background:var(--wash2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px}
+.rev.done{opacity:.35}
+.rev.done .ok{background:var(--st-booked);color:var(--chip-ink)}
+.rev.done .tx .t{text-decoration:line-through}
+.finish{display:none;text-align:center;padding:20px 10px;font-size:13px;font-weight:700;color:var(--st-booked)}
+.finish .big{font-family:'Archivo Black',sans-serif;font-size:18px;margin-bottom:3px}
+.allclear .finish{display:block}
+.allclear .revlist{display:none}
+
+/* Studio sweep */
+.studios{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:start}
+.stu-card{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:13px 14px}
+.stu-card .hd{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px}
+.stu-card .hd .n{font-family:'Archivo Black',sans-serif;font-size:15px;letter-spacing:-.02em}
+.stu-card .hd .who{font-size:10.5px;opacity:.5}
+.duty{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;cursor:pointer;border-radius:8px}
+.duty:hover{background:var(--wash)}
+.duty .d{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.duty .v{margin-left:auto;font-size:10.5px;opacity:.5;flex-shrink:0}
+.snote{margin-top:8px;background:var(--wash);border-radius:12px;padding:9px 11px;font-size:11.5px;line-height:1.5}
+.snote .label{margin-bottom:3px}
+.snote.empty{opacity:.45;font-style:italic}
+
+/* Tasks */
+.task{display:flex;align-items:center;gap:10px;padding:7px 2px;font-size:12.5px}
+.task + .task{box-shadow:0 -1px 0 var(--wash)}
+.task .chk{width:20px;height:20px;border-radius:99px;background:var(--wash2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px}
+.task.done .chk{background:var(--st-booked);color:var(--chip-ink)}
+.task.done span{opacity:.4;text-decoration:line-through}
+.task .meta{margin-left:auto;font-size:10.5px;opacity:.45;flex-shrink:0}
+.addrow{display:flex;gap:8px;margin-top:10px}
+.addrow input{flex:1;background:var(--wash);border-radius:10px;padding:9px 12px;font-size:12.5px;outline:none}
+.addrow .stusel{background:var(--wash);border-radius:10px;padding:9px 10px;font-size:12px;font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>Daily Ops</h1>
+  <div class="switch">
+    <button class="on" onclick="theme('dark',this)">Dark</button>
+    <button onclick="theme('light',this)">Light</button>
+  </div>
+</div>
+
+<p class="note" style="max-width:820px;font-size:12.5px;line-height:1.6;opacity:.65;margin-bottom:4px">
+The studio manager's morning: <b>exceptions first, then the four-studio sweep, then tasks for tonight.</b>
+No work orders (Billing's review bucket), no punches (HR), no live-tonight (dashboard).
+Tap the top items to clear them. Studio rows open the underlying checklist/inventory record.
+</p>
+
+<div class="frame">
+
+  <!-- 1 ── NEEDS YOU -->
+  <div>
+    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px">
+      <div class="arch" style="font-size:17px;letter-spacing:-.02em">Last night — needs you</div>
+      <div style="font-size:12px;opacity:.5">Thu, Aug 13 · <b id="qcount">4</b> open</div>
+    </div>
+    <div class="card" id="queue">
+      <div class="revlist">
+        <div class="rev" onclick="rev(this)">
+          <span class="dot" style="background:var(--st-hot)"></span>
+          <span class="tx"><span class="t">Flag — Console Ch 14 fader intermittent</span><span class="s">Closing checklist · note + photo · opens the flag</span></span>
+          <span class="stu">PRS</span><span class="ok"></span>
+        </div>
+        <div class="rev" onclick="rev(this)">
+          <span class="dot" style="background:var(--st-hot)"></span>
+          <span class="tx"><span class="t">Track closing checklist never submitted</span><span class="s">Nothing came in — find out why before tonight</span></span>
+          <span class="stu">TRK</span><span class="ok"></span>
+        </div>
+        <div class="rev" onclick="rev(this)">
+          <span class="dot" style="background:var(--st-hot)"></span>
+          <span class="tx"><span class="t">U87 #2 marked MISSING</span><span class="s">Mic inventory · last seen Aug 11, Studio B</span></span>
+          <span class="stu">ARS</span><span class="ok"></span>
+        </div>
+        <div class="rev" onclick="rev(this)">
+          <span class="dot" style="background:var(--st-warm)"></span>
+          <span class="tx"><span class="t">Shift note — “B lounge AC rattling again”</span><span class="s">Lena · flagged from her note</span></span>
+          <span class="stu">ERS</span><span class="ok"></span>
+        </div>
+      </div>
+      <div class="finish"><div class="big">Yesterday is done.</div>Every exception handled. The sweep below is your receipt.</div>
+    </div>
+  </div>
+
+  <!-- 2 ── THE SWEEP -->
+  <div>
+    <div class="label" style="margin-bottom:8px">The sweep · every studio, last night</div>
+    <div class="studios">
+
+      <div class="stu-card">
+        <div class="hd"><span class="n">Paramount</span><span class="who">Marcus</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Opening<span class="v">5:12 PM</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Closing<span class="v">2:34 AM</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Mic inventory<span class="v">268 · 1 room</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Petty cash<span class="v">$240</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-warm)"></span>Stock<span class="v">2 low</span></div>
+        <div class="snote"><div class="label">Shift note</div>Long one in A — Kendrick ran till 2. Left the C stands by the dock for pickup.</div>
+      </div>
+
+      <div class="stu-card">
+        <div class="hd"><span class="n">Ameraycan</span><span class="who">Dre</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Opening<span class="v">4:58 PM</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Closing<span class="v">1:10 AM</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-hot)"></span>Mic inventory<span class="v">1 missing</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Petty cash<span class="v">$180</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Stock<span class="v">OK</span></div>
+        <div class="snote"><div class="label">Shift note</div>Quiet night. B session wrapped early.</div>
+      </div>
+
+      <div class="stu-card">
+        <div class="hd"><span class="n">Encore</span><span class="who">Lena</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Opening<span class="v">5:05 PM</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Closing<span class="v">12:40 AM</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Mic inventory<span class="v">all here</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Petty cash<span class="v">$310</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Stock<span class="v">OK</span></div>
+        <div class="snote"><div class="label">Shift note</div>AC in the B lounge rattling again — flagged it.</div>
+      </div>
+
+      <div class="stu-card">
+        <div class="hd"><span class="n">Track</span><span class="who">—</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-booked)"></span>Opening<span class="v">5:20 PM</span></div>
+        <div class="duty"><span class="d" style="background:var(--st-hot)"></span>Closing<span class="v">never submitted</span></div>
+        <div class="duty"><span class="d" style="background:var(--wash2)"></span>Mic inventory<span class="v">not done</span></div>
+        <div class="duty"><span class="d" style="background:var(--wash2)"></span>Petty cash<span class="v">not done</span></div>
+        <div class="duty"><span class="d" style="background:var(--wash2)"></span>Stock<span class="v">not done</span></div>
+        <div class="snote empty">No shift note.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 3 ── TASKS FOR TONIGHT -->
+  <div class="card">
+    <div class="label" style="margin-bottom:8px">Studio tasks · what the opener sees</div>
+    <div class="task"><span class="chk"></span><span>Blow the parking lot</span><span class="meta">PRS · Fernando, 8:40 AM</span></div>
+    <div class="task done"><span class="chk">✓</span><span>Restock kitchen water</span><span class="meta">PRS · done 4:55 PM</span></div>
+    <div class="task"><span class="chk"></span><span>Bring the C stands back from Studio D</span><span class="meta">ARS · Eli, yesterday</span></div>
+    <div class="addrow">
+      <span class="stusel">PRS ▾</span>
+      <input placeholder="Leave a task for whoever opens…">
+      <span class="btn">Add</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function theme(t, el){
+  document.documentElement.setAttribute('data-theme', t)
+  el.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('on'))
+  el.classList.add('on')
+}
+function rev(el){
+  el.classList.toggle('done')
+  el.querySelector('.ok').textContent = el.classList.contains('done') ? '✓' : ''
+  const q = document.getElementById('queue')
+  const remaining = q.querySelectorAll('.rev:not(.done)').length
+  document.getElementById('qcount').textContent = remaining
+  q.classList.toggle('allclear', remaining === 0)
+}
+</script>
+</body>
+</html>
