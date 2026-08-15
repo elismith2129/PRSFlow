@@ -735,7 +735,10 @@ export default function CRMPage() {
                       Select a lead to view details
                     </div>
                   ) : (
-                    <div style={{ overflowY: 'auto', flex: 1, padding: '4px 10px 8px' }}>
+                    /* Side padding trimmed 10 → 4 (Eli 2026-08-14): the detail
+                       panel already carries .c-panel's own 12px, so the bands
+                       inside were inset ~22px a side for no reason. */
+                    <div style={{ overflowY: 'auto', flex: 1, padding: '4px 4px 8px' }}>
                       <LeadDetail
                         key={selected.id}
                         lead={selected}
@@ -2452,7 +2455,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
           at real panel widths — the dead-space pattern again). Overflow safety
           now comes from the well's overflow guard + fixed input widths, not
           from stacking. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '6px 14px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '6px 10px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div>
             <div style={fieldLabelStyle}>Location · Studio</div>
@@ -2469,6 +2472,34 @@ const parsedLoc0 = parseLocation(lead.location || '')
                   update('location', combined)
                 }}
                 selectStyle={selStyle}
+              />
+            </div>
+          </div>
+          <div>
+            {/* Start date + OPTIONAL end date. Clients regularly ask to hold a
+                block ("a week in August"); that range used to collapse to a
+                single day because the lead had nowhere to put it. Leave the end
+                blank for an ordinary one-day lead — the calendar seeds a
+                booking's end_date from it when present. */}
+            <div style={fieldLabelStyle}>Session Date{local.session_end_date ? 's' : ''}</div>
+            <div className="c-well">
+              {/* Native date inputs need ~110px for mm/dd/yyyy + the picker
+                  glyph. They were pinned to 92 and clipped; now they take
+                  whatever the (wider) well gives them. */}
+              <input
+                type="date"
+                value={local.session_date || ''}
+                onChange={e => { update('session_date', e.target.value); save('session_date', e.target.value) }}
+                style={{ ...iStyle('session_date'), cursor: 'pointer', paddingLeft: 0, flex: 1, minWidth: 0 }}
+              />
+              <span style={{ color: 'var(--c-fg-3)', fontSize: 11, flexShrink: 0 }}>–</span>
+              <input
+                type="date"
+                value={local.session_end_date || ''}
+                min={local.session_date || undefined}
+                title="Optional — set only when the client wants more than one day"
+                onChange={e => { update('session_end_date', e.target.value); save('session_end_date', e.target.value || null) }}
+                style={{ ...iStyle('session_end_date'), cursor: 'pointer', paddingLeft: 0, opacity: local.session_end_date ? 1 : 0.6, flex: 1, minWidth: 0 }}
               />
             </div>
           </div>
@@ -2522,36 +2553,6 @@ const parsedLoc0 = parseLocation(lead.location || '')
         </div>
       </div>
 
-      {/* Session dates own a FULL-WIDTH row (Eli 2026-08-14). They were in the
-          left half at width 92 each, which clips a native date input — the
-          control needs ~110px for mm/dd/yyyy plus its picker glyph, so both
-          ends rendered cut ("08/16/202"). Half a panel cannot hold two of them;
-          a full row can, with space left over. */}
-      <div style={{ marginTop: 4 }}>
-        {/* Start date + OPTIONAL end date. Clients regularly ask to hold a
-            block ("a week in August"); that range used to collapse to a
-            single day because the lead had nowhere to put it. Leave the end
-            blank for an ordinary one-day lead — the calendar seeds a
-            booking's end_date from it when present. */}
-        <div style={fieldLabelStyle}>Session Date{local.session_end_date ? 's' : ''}</div>
-        <div className="c-well">
-          <input
-            type="date"
-            value={local.session_date || ''}
-            onChange={e => { update('session_date', e.target.value); save('session_date', e.target.value) }}
-            style={{ ...iStyle('session_date'), cursor: 'pointer', paddingLeft: 0, flex: 1, minWidth: 116 }}
-          />
-          <span style={{ color: 'var(--c-fg-3)', fontSize: 11, flexShrink: 0 }}>–</span>
-          <input
-            type="date"
-            value={local.session_end_date || ''}
-            min={local.session_date || undefined}
-            title="Optional — set only when the client wants more than one day"
-            onChange={e => { update('session_end_date', e.target.value); save('session_end_date', e.target.value || null) }}
-            style={{ ...iStyle('session_end_date'), cursor: 'pointer', paddingLeft: 0, opacity: local.session_end_date ? 1 : 0.6, flex: 1, minWidth: 116 }}
-          />
-        </div>
-      </div>
       {/* (calc line removed — Eli 2026-08-10: noise under the times.) */}
 
       {/* Staffing — Eng / Asst / No Staff plus an optional person. Whatever is
