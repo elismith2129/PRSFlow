@@ -1005,13 +1005,20 @@ export default function DashboardPage() {
             auto-placement was seating it in the WIDE left column — console
             belongs left (1.35fr), sessions right. */}
         <div className="c-panel" style={isMobile ? { order: 1 } : { gridColumn: '2', gridRow: '1' }}>
-          <SectionHeader carved title="Today's sessions" />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, margin: '-4px 0 10px' }}>
-            <SoftButton onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() - 1); return n })}>‹</SoftButton>
-            <div className="c-mono" style={{ whiteSpace: 'nowrap', opacity: 0.6 }}>
-              {calDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+          {/* Day nav sits ON the title row (Eli 2026-08-14) — it had its own
+              full-width row underneath, which cost ~34px of vertical padding
+              at the top of the pane for three small controls. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, paddingLeft: 2 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <SectionHeader carved title="Today's sessions" />
             </div>
-            <SoftButton onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() + 1); return n })}>›</SoftButton>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              <SoftButton onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() - 1); return n })}>‹</SoftButton>
+              <div className="c-mono" style={{ whiteSpace: 'nowrap', opacity: 0.6 }}>
+                {calDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              </div>
+              <SoftButton onClick={() => setCalDate(d => { const n = new Date(d); n.setDate(n.getDate() + 1); return n })}>›</SoftButton>
+            </div>
           </div>
           {loading ? (
             <div className="c-sub" style={{ padding: '12px 4px' }}>Loading…</div>
@@ -1059,7 +1066,13 @@ export default function DashboardPage() {
                     onClick={room.bookable === false ? undefined : () => openNewRoomBooking(room)}
                     className="c-room c-inset2 c-room-empty"
                     style={{
-                      minHeight: isMobile ? 84 : 76,
+                      // Same fixed height as a BOOKED card (Eli 2026-08-14).
+                      // Empty was 76 and booked 120, so a row containing a
+                      // session grew and the whole grid shifted the moment
+                      // anything was on the books. A room card is the same
+                      // object whether or not it holds a session.
+                      height: isMobile ? undefined : ROOM_CARD_H,
+                      minHeight: isMobile ? 84 : undefined,
                       cursor: room.bookable === false ? 'default' : 'pointer', overflow: 'hidden',
                     }}
                   >
