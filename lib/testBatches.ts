@@ -55,6 +55,106 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'runner-dailyops-2026-08-14',
+    title: 'The runner app, missed punches, and the new Daily Ops page',
+    version: 'v1.10.0 (preview branch)',
+    date: 'Aug 14, 2026',
+    intro:
+      'A lot changed for runners: the app remembers which studio you are at, the office can leave tasks, shift notes move off Slack, and you can report a missed punch. Managers get a new Daily Ops page for reviewing last night. Nothing here emails anybody or charges anything. Phone items are best done on an actual phone.',
+    items: [
+      {
+        id: 'rn-remember', area: 'Runner', device: 'phone',
+        what: 'The app remembers your studio instead of asking every time',
+        how: 'Open the runner app. If it asks where you are, tap a studio. Now close the app fully and open it again — it should go straight into that studio, no picker. Report it if it asks again.',
+      },
+      {
+        id: 'rn-switch', area: 'Runner', device: 'phone',
+        what: 'You can switch studios from the top of the hub',
+        how: 'On the studio hub, look top right for four small buttons: PRS, ARS, ERS, TRK. Tap a different one. You should land on that studio straight away, with its own sessions.',
+      },
+      {
+        id: 'rn-back-picker', area: 'Runner', device: 'phone',
+        what: 'The back arrow returns you to the studio picker',
+        how: 'On the studio hub, tap the ← arrow at the top left. You should get the "Where are you tonight?" screen. Pick a studio again to carry on.',
+      },
+      {
+        id: 'rn-task', area: 'Runner', device: 'phone',
+        what: 'A task left by the office appears at the top of the hub, and can be checked off',
+        how: 'First, on a computer, open Daily Ops and use the "Studio tasks" box at the bottom left to add a task for your studio. Then on the phone, open that studio hub — the task should be at the very top, above the sessions. Tap the circle beside it. It should tick green and cross out.',
+      },
+      {
+        id: 'rn-session-card', area: 'Runner', device: 'phone',
+        what: 'Session cards look like the calendar cards',
+        how: 'On a studio hub with a session today, look at the card. It should be coloured like the calendar (green for confirmed, amber for a hold), with the artist or client name, the times, and a red COD strip along the bottom if the session is COD. Report it if a COD session shows no red strip.',
+      },
+      {
+        id: 'rn-shift-log', area: 'Runner', device: 'phone',
+        what: 'Shift notes save as a log, and a second person can add to the same night',
+        how: 'On the hub, tap "Shift notes". Type a few lines, put your initials in the small box, and tap "Add to log". It should appear below with your initials and the time. Now add a SECOND entry with different initials. Both should be listed, oldest first.',
+      },
+      {
+        id: 'rn-checklist-look', area: 'Runner', device: 'phone',
+        what: 'The checklists still work after the redesign',
+        how: 'Open the opening or closing checklist. Tap a few items — each should turn green immediately with no save button. Type something in the notes box at the bottom. Leave the page and come back: your ticks and your note should still be there.',
+      },
+      {
+        id: 'rn-mics', area: 'Runner', device: 'phone',
+        what: 'Mic inventory Here / Room / Missing still works',
+        how: 'Open Mic inventory, open a section, and tap HERE on a mic (it fills green), then ROOM on another (it fills blue and offers rooms — pick one), then MISS on a third (it fills red). Add your initials and Submit. Report anything that will not change colour when tapped.',
+      },
+      {
+        id: 'pn-submit', area: 'Punches', device: 'phone',
+        what: 'A missed punch can be reported from the runner hub',
+        how: 'On the studio hub, scroll to the bottom and tap "Missed a punch?". Pick the shift, pick what was missed (clock in / clock out / meal out / meal in), type a time like 6:00 PM, and submit. You should see a confirmation, and the report should appear in "Your last 90 days" underneath. NOTE: if this device is on the shared runner login it will say personal logins are coming — that is correct, report it only if you are on your own login.',
+      },
+      {
+        id: 'pn-queue', area: 'Punches', device: 'desktop',
+        what: 'A submitted punch reaches the manager queue and can be approved',
+        how: 'On a computer, open Punches in the HR section of the left menu. The report from the previous step should be at the top under "Punch queue". Press Approve. It should move down to "Enter in ADP" with a sentence ready to copy.',
+      },
+      {
+        id: 'pn-record', area: 'Punches', device: 'desktop',
+        what: 'The record shows counts per person, colour-coded',
+        how: 'On the Punches page, scroll to "The record · last 90 days". Every staff member should be listed with a coloured dot — green if they have no misses, amber for one or two, red for three or more. Report anyone showing a percentage; there should not be one.',
+      },
+      {
+        id: 'do-queue', area: 'Daily Ops', device: 'desktop',
+        what: 'Last night\'s problems are listed, and clearing one sticks',
+        how: 'Open Daily Ops from the Operations section of the left menu. The left column lists anything that needs you from last night. Click an item — it should tick green and cross out. Now reload the page: it should STILL be crossed out. Report it if it comes back.',
+      },
+      {
+        id: 'do-missing', area: 'Daily Ops', device: 'desktop',
+        what: 'A checklist that was never submitted shows up as a problem',
+        how: 'On Daily Ops, look for any red item saying a checklist "never submitted". Cross-check one against the studio card on the right — that duty should have a red dot and say "never submitted". This is the main thing the page exists for, so report it if a studio that clearly did nothing last night looks clean.',
+      },
+      {
+        id: 'do-sweep', area: 'Daily Ops', device: 'desktop',
+        what: 'Each studio card shows last night, and the shift log opens',
+        how: 'On the right of Daily Ops there are four studio cards. Each lists opening, closing, mic inventory, petty cash and stock with a coloured dot and a time or a note. If a studio has shift notes, click the grey shift-log box on its card — a window should open with the full night, each entry showing who wrote it and when.',
+      },
+      {
+        id: 'do-add-task', area: 'Daily Ops', device: 'desktop',
+        what: 'You can leave a task for tonight\'s opener',
+        how: 'Bottom left of Daily Ops, choose a studio from the small dropdown, type a task, press Add. It should appear in the list immediately — and on that studio\'s runner hub on a phone.',
+      },
+      {
+        id: 'ui-cards', area: 'Dashboard', device: 'desktop',
+        what: 'Room cards are all the same size whether or not there is a session',
+        how: 'On the dashboard, look at "Today\'s sessions". Every room card should be exactly the same height — a row with a booking in it must not be taller than the rows around it. Also check the date arrows sit on the same line as the "TODAY\'S SESSIONS" heading.',
+      },
+      {
+        id: 'ui-lead-dates', area: 'CRM', device: 'desktop',
+        what: 'Session dates on a lead are fully visible',
+        how: 'Open CRM, click any lead, and look at the Session box. The session date should read in full (like 08/16/2026), not cut off part way. Everything should be in the same place it was before.',
+      },
+      {
+        id: 'sec-access', area: 'Security', device: 'desktop',
+        what: 'Everything you normally do still saves after the permissions clean-up',
+        how: 'IMPORTANT — this is the highest-risk item in the batch. Do your ordinary work for a few minutes: open a lead and change something, open a work order and save it, tick a task, open Billing. Everything should save silently. If you see a red "NOT saved" message anywhere, stop and report exactly which screen and which action.',
+      },
+    ],
+  },
+  {
     id: 'wo-pdf-2026-08-13',
     title: 'The work order PDF, and buttons that used to do nothing',
     version: 'v1.9.1 (preview branch)',

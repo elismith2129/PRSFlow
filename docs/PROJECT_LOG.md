@@ -3204,6 +3204,133 @@ signal it needs to become a real session — not before.
 
 ---
 
+### Aug 14, 2026 — The runner hub grows up; the security lockdown that never ran; two worlds
+
+#### The finding that mattered most: RLS was never actually enforced
+
+Auditing runner-role permissions before creating individual runner logins,
+the live DB showed **~40 legacy wide-open policies still standing** —
+`authenticated access` (ALL) on ~20 tables, plus `Public access` / `open
+access` reaching **anon**, including on `user_profiles`. The July 2 hardening
+created the tiered policies but only dropped the five legacy `Public access`
+ones it named; everything older survived. **Postgres RLS policies are
+PERMISSIVE — they OR together, so one open policy silently voids the entire
+tiered model.** For six weeks the app had a security system that was fully
+written, fully documented, and not in effect.
+
+Fixed by `20260814130000_drop_legacy_open_policies.sql`, which is deliberately
+**dynamic** (drops every policy whose `qual`/`with_check` is literally `true`,
+minus a five-table allowlist) rather than a list of names — a name list would
+have missed exactly what the first one missed. Verified after: only the five
+intended tables remain open. Anon reads confirmed dead.
+
+**The generalisable lesson, and it is the same one as July 17's
+`leads.created_by`:** a migration file in the repo is not evidence it ran, and
+*a migration that ran is not evidence it achieved its goal.* The July 2 script
+succeeded — it just didn't drop what it didn't know about. Verify the END
+STATE (`select … from pg_policies`), not the artifact.
+
+**Rejected:** hand-listing the policies to drop (fragile, and the reason we
+were here); dropping ALL policies and re-running the July script blind (would
+have left a window with no policies at all).
+
+#### Two worlds — the architecture ruling (spec §19)
+
+Eli, on feeling the app was fragmenting: *"I really need help here from a
+broader perspective."* Surveying Billing, My Day, the dashboard, flags and
+admin showed the split he was reaching for was **already ~80% true in code**;
+what remained was leftovers from earlier builds.
+
+- **BILLING** (billing coordinator) owns money — payments, rentals, AR/AP,
+  and **work-order review, which the hub's `review` bucket already did**.
+  Nothing was built for this world; the correct move was to *stop putting WOs
+  anywhere else.*
+- **OPERATIONS** (studio manager) owns the building — `/daily-ops`, which
+  existed as an empty rail placeholder and is now the morning review.
+- **MY DAY** is the personal cadence layer over both. It **links, never
+  copies** — Fernando's review duty opens `/daily-ops`; the items live there.
+
+The redundancy test that settles future arguments: *one item, one home.* Eli's
+own framing is why three surfaces isn't bloat — dashboard = "what's happening
+today", daily-ops = "did last night go right", my-day = "what do I owe" — the
+three questions his 24/7 operation actually asks.
+
+**Diagnosis worth keeping:** the four dashboard ops cards failed because they
+tried to be a GLANCE and a CHORE at once. A glance wants to be ambient; a
+chore wants to be a queue you can finish. "Yesterday is done" is a finish line
+the card-and-drawer model could never give.
+
+**ABSENCE IS THE LOUDEST SIGNAL.** A checklist that never came in previously
+rendered as *nothing at all* — the one state that most needs attention was the
+one state with no pixels. It is now a hot queue item.
+
+#### Rulings, and what they cost
+
+- **Runner hub keeps its shape** (Eli: it "works well"). Additions only —
+  option A · Sections from `runner-hub-additions.html`: studio tasks as a
+  section ABOVE sessions (the opener's first question is "anything waiting for
+  me"), punch + manual as a quiet bottom register. **Rejected:** B (tiles —
+  gave "blow the parking lot" the same weight as the stock list), C (banner —
+  buried the punch report, and same-day reports are the ones that protect the
+  runner).
+- **Nothing is assigned to a runner.** They rotate between studios, so
+  everything is scoped STUDIO + SHIFT. `studio_tasks` is deliberately NOT the
+  `dashboard_tasks` person system.
+- **Individual runner logins** (retires the shared PIN). This dissolved the
+  punch form's "who are you" picker — identity comes from the session. Also
+  the prerequisite for scheduling. Until the accounts exist the punch form
+  refuses the shared login rather than filing an unattributable legal record.
+- **Punch tracking is COUNTS, NOT POINTS**, and deliberately not a percentage:
+  a "% of shifts punched correctly" needs shift counts the app won't have
+  until scheduling ships. Faking a denominator would have been a number that
+  looked rigorous and wasn't.
+- **Shift notes are a LOG, not a text box.** Eli's Slack example (Mathew's
+  5/20 ERS post) settled it: 15 bullets, a mid-shift handoff to another
+  runner, a photo. Append-only — an entry is a record, not a draft.
+- **One-landing merge on `/runner`:** the picker is skipped when the phone
+  remembers its studio; the header carries switcher pills. The ← un-remembers,
+  which is the floating runner's "I'm moving" gesture.
+
+#### Where I was wrong
+
+- **Told Eli no model switch had happened** when his UI said otherwise. I have
+  no introspective access to a mid-session switch — I answered from "I don't
+  perceive one" rather than from what I could actually check. He was right; it
+  was a safety-classifier fallback (Fable → Opus), plausibly tripped by the
+  RLS/lockout security discussion.
+- **Restructured the CRM lead card when asked to fix padding.** Eli: *"i dont
+  want to chagne arrangemetn of the lead card at all… it seems like you just
+  moved things around."* Correct. And the diagnosis was wrong too: the dates
+  weren't short of space, they were pinned to `width: 92` inside a well that
+  was already wide enough — the empty gap was visible in his own screenshot.
+  Unpinned them; arrangement untouched. **Read the screenshot for what it
+  shows, not for what confirms the first theory.**
+- **Dashboard room cards changed size with content** — booked 120px, empty 76,
+  so any row holding a session grew and the grid shifted. Same object, same
+  height, regardless of what's in it.
+
+#### Open, going into the next session
+
+- **The runner work order is still the 1,595-line duplicate.** Verdict from
+  the feasibility read: reuse `WorkOrderPopup` with a `mode="runner"` — but
+  `readOnly` is computed internally from the tech role, not a prop, and it is
+  all-or-nothing; runner mode needs FIELD-LEVEL locking. Eli's corrections to
+  the §15 assumption: **runners need totals and payments** (they take COD at
+  the desk), so hide nothing — lock the client block at the top, lock rates,
+  lock any day admin has checked off, and Submit ≠ Complete. Two honest costs:
+  the runner's writes move onto the admin's atomic-RPC save path (a
+  deliberate unification, needs its own test pass), and expenses + receipt OCR
+  exist only on the runner page, so the shared component GROWS.
+- **Individual runner accounts** — profile row + PIN each; then the punch form
+  and shift-log authorship stop being typed.
+- **`/preview` + `DeviceToggle` + the rail's Runner Hub → phone-frame link are
+  TEMPORARY** build-phase tooling. Remove before go-live; the rail entry
+  reverts to `/runner`.
+- Admin → Ops Log and `/daily-ops-log` are superseded by `/daily-ops` but not
+  yet removed.
+- SOP `VERSIONS` still owed at merge (spec §12 fences the file while the
+  branch is unreleased) — now covering v1.9.1 AND v1.10.0.
+
 ### Aug 13, 2026 — The PDF becomes the work order; five bugs the trace found; the runner redesign starts
 
 #### The sequencing error from v1.9.0, corrected

@@ -19,6 +19,90 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.10.0 — UNRELEASED (branch `redesign/carved`) — Aug 14, 2026
+
+The runner subtree becomes a real product (tasks, punches, shift logs, one
+landing, whole-surface port), `/daily-ops` lands as the studio manager's
+morning, and **the July 2 RLS lockdown is made real** — it had never actually
+taken effect in the live database.
+
+**Migrations — run by hand, in order:**
+
+| File | What |
+|---|---|
+| `20260814120000_studio_tasks.sql` | `studio_tasks` — per-STUDIO tasks (no assignment; runners rotate). RLS any-authenticated, realtime. |
+| `20260814130000_drop_legacy_open_policies.sql` | **The important one.** Dynamically drops every `public` policy whose `qual`/`with_check` is literally `true`, except a five-table allowlist. Then **re-run `20260702161117_rls_security_hardening.sql` in full** (idempotent) and verify with the query in the file header. |
+| `20260814150000_punch_correction_requests.sql` | HR-SPEC §5 punch table + `set_punch_report_class()` trigger (same-day vs late is derived server-side, never client-chosen). No DELETE policy — it is a legal record. |
+| `20260814160000_shift_logs_and_reviews.sql` | `shift_log_entries` (append-only; no UPDATE/DELETE policies by design) + `daily_ops_reviews` ((date, item_key) "seen" markers). |
+
+**⚠ Watch-outs**
+
+- **RLS was not in effect before this release.** `20260702161117` created the
+  tiered policies but only dropped the five legacy `Public access` ones it
+  named; ~40 older open policies survived, including `user_profiles` open to
+  **anon**. Policies are PERMISSIVE and OR together, so one open policy voids
+  the whole model. After running the drop migration, **re-run the July 2
+  hardening and then verify against `pg_policies`** — a migration having run
+  is not evidence it achieved its goal.
+- **The five deliberately-open tables** are `app_feedback`,
+  `dashboard_task_comments`, `studio_tasks`, `test_results`,
+  `venue_open_items`. Anything else appearing in the verify query is a
+  regression.
+- **`SessionCardBody` gained a `large` prop.** Opt-in only — omit it and
+  calendar/dashboard output is byte-identical. Do not make it the default.
+- **`daily_ops_reviews` item keys are load-bearing** (`missing:<studio>:<duty>`,
+  `mic:<studio>:<id>`, `note:<id>`). Renaming one orphans its cleared state.
+  Flags are NOT marked here — a flag item clears by acknowledging the flag.
+- **Punch form and shift-log authorship still take typed identity** while the
+  shared runner login exists. The punch form refuses that login outright
+  rather than filing an unattributable record; it self-enables when individual
+  runner accounts are created.
+- **TEMPORARY, remove at go-live:** `app/(main)/preview/`,
+  `components/dev/DeviceToggle.tsx`, and the rail's Runner Hub entry pointing
+  at `/preview?path=/runner&device=phone` (revert to `/runner`).
+
+### What shipped
+
+- **Runner hub additions (spec §15b, option A):** `studio_tasks` section above
+  sessions with tap-to-complete; quiet bottom register (punch, manual).
+  Session cards now render the SHARED `SessionCardBody` — same status colours,
+  COD strip, invoice and staff tags as the calendar, at `large` size.
+- **Missed punches (HR-SPEC §5):** `/runner/punch` (form + personal 90-day
+  record, colour-banded) and `/punches` for managers — queue with
+  approve/adjust/reject, an "Enter in ADP" list with the auto-composed comment
+  + copy, and per-person counts (**counts, not points**; percentages wait for
+  scheduling). Shared helpers in `lib/punches.ts`.
+- **Shift logs:** `/runner/[studio]/shift-notes` — append-only entries per
+  studio per night, multiple authors, replaces the Slack post.
+- **`/daily-ops` (spec §19):** queue left (flags, absences, missing mics,
+  notes; tap to clear; "Yesterday is done" when empty) + studio-task manager
+  beneath; 2×2 studio sweep right with shift-log popup; night pager. Data
+  layer `lib/dailyOps.ts`.
+- **One-landing `/runner`:** remembered studio skips the picker, header
+  switcher pills, `?choose=1` returns and un-remembers. Picker ported to soft
+  skin.
+- **Soft-skin port of the remaining runner pages** (checklists, mics, petty
+  cash, stock) — surface only; queries, `dirtyRef` realtime guards, instant
+  saves and flag-raising untouched.
+- **Office-only `AdminReturn` bar** across `/runner/*` so admins can use the
+  hub and get back; renders nothing for runners and the public.
+- **Rail regrouped:** Dashboard · Calendar · My Day, then Business, then
+  **Operations** (Daily Ops, Runner Hub, Mic Inventory, Tasks, Flags,
+  Nadine's). "Studio" group retired.
+- **Fixes:** dashboard room cards no longer change height with content (booked
+  120 / empty 76 → uniform); day nav moved onto the sessions title row; CRM
+  lead-panel double padding trimmed and date inputs unpinned from `width: 92`
+  (they were clipping inside an already-wide well).
+
+**Files:** `app/runner/page.tsx`, `app/runner/[studio]/{page,shift-notes,mics,petty-cash,stock,checklist/[type]}/…`,
+`app/runner/punch/page.tsx`, `app/runner/layout.tsx`, `components/runner/AdminReturn.tsx`,
+`app/(main)/{daily-ops,punches,preview}/page.tsx`, `app/(main)/page.tsx`, `app/(main)/crm/page.tsx`,
+`app/(main)/layout.tsx`, `components/layout/Rail.tsx`, `components/calendar/SessionCard.tsx`,
+`components/dev/DeviceToggle.tsx`, `lib/{punches,dailyOps}.ts`, four migrations,
+`docs/PRSFLO-DESIGN-SPEC.md` (§15b, §19), `docs/design-refs/{runner-hub-additions,admin-runner-hub-options,daily-ops-final}.html`.
+
+---
+
 ## v1.9.1 — UNRELEASED (branch `redesign/carved`) — Aug 13, 2026
 
 **The work order PDF becomes the work order**, v1.9.0's flagged open item. Plus a
