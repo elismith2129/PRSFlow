@@ -1,4 +1,9 @@
 'use client'
+// SOFT SKIN PORT, 2026-08-14 (one-pass runner redesign). All logic — loads,
+// dirtyRef realtime guard, status/room/qty state, both save paths, the four
+// submit upserts — is UNTOUCHED. Old skin retired (legacy tokens, 1px borders,
+// Syne). Status colour only (§5): Here = booked green, Room = cold blue,
+// Missing = hot red; active state is a FILLED pill, not a tinted border.
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
@@ -175,7 +180,7 @@ export default function MicsPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text2)', fontFamily: 'Syne, sans-serif' }}>
+      <div style={{ minHeight: '100dvh', background: 'var(--c-bg)', color: 'var(--c-fg)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5, fontSize: 13 }}>
         Loading…
       </div>
     )
@@ -185,7 +190,14 @@ export default function MicsPage() {
   const otherMics = mics.filter(m => m.home_studio !== studio && m.home_studio !== 'floating' && m.category === 'mic')
   const floatGear = mics.filter(m => m.category === 'floating_gear')
   const oddsEnds  = mics.filter(m => m.category === 'odds_ends')
-  const canSubmit = initials.trim().length > 0 && !submitting
+
+  // A section: soft card, header always visible, rows revealed when open.
+  const sectionCard: React.CSSProperties = {
+    background: 'var(--c-srf, var(--c-bg))',
+    boxShadow: 'var(--c-softsh)',
+    borderRadius: 16,
+    overflow: 'hidden',
+  }
 
   function SectionHeader({ sectionKey, label, count }: { sectionKey: string; label: string; count: number }) {
     const open = openSections[sectionKey]
@@ -194,21 +206,33 @@ export default function MicsPage() {
         onClick={() => toggleSection(sectionKey)}
         style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: open ? '12px 12px 0 0' : 12,
-          padding: '13px 16px', cursor: 'pointer',
+          background: 'transparent', border: 'none', font: 'inherit', color: 'var(--c-fg)',
+          padding: '13px 14px', cursor: 'pointer', minHeight: 48,
+          WebkitTapHighlightColor: 'transparent',
         }}
       >
-        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne, sans-serif' }}>{label}</span>
+        <span style={{ fontSize: 13, fontWeight: 800 }}>{label}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>{count}</span>
-          <span style={{ fontSize: 11, color: 'var(--text2)', display: 'inline-block', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+          <span style={{ fontSize: 11, opacity: 0.45 }}>{count}</span>
+          <span style={{ fontSize: 11, opacity: 0.45, display: 'inline-block', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
         </div>
       </button>
     )
   }
 
-  function MicRow({ mic }: { mic: Mic }) {
+  // Status pill: filled with its status colour when active, quiet wash when not.
+  function statusPill(on: boolean, color: string, ink: string): React.CSSProperties {
+    return {
+      padding: '6px 10px', minHeight: 32, borderRadius: 99, border: 'none', font: 'inherit',
+      background: on ? color : 'var(--c-wash)',
+      color: on ? ink : 'var(--c-fg)',
+      opacity: on ? 1 : 0.6,
+      fontSize: 10, fontWeight: 800, letterSpacing: '0.03em',
+      cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+    }
+  }
+
+  function MicRow({ mic, first }: { mic: Mic; first: boolean }) {
     const state     = checkins[mic.id] ?? { status: 'not_checked', room: '' }
     const isHere    = state.status === 'here'
     const isRoom    = state.status === 'room'
@@ -216,14 +240,13 @@ export default function MicsPage() {
     const pickerOpen = isRoom && !!roomPickerOpen[mic.id]
 
     return (
-      <div style={{ borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', gap: 8 }}>
-          <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Inter', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ boxShadow: first ? undefined : '0 -1px 0 var(--c-wash)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', gap: 8 }}>
+          <span style={{ fontSize: 12.5, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {mic.name}
           </span>
           <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-            <button onClick={() => setStatus(mic.id, 'here')}
-              style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isHere ? 'var(--booked)' : 'var(--border)'}`, background: isHere ? 'rgba(20,184,166,0.13)' : 'transparent', color: isHere ? 'var(--booked)' : 'var(--text2)', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter' }}>
+            <button onClick={() => setStatus(mic.id, 'here')} style={statusPill(isHere, 'var(--c-st-booked)', 'var(--c-chip-ink)')}>
               HERE
             </button>
             <button onClick={() => {
@@ -233,22 +256,27 @@ export default function MicsPage() {
               } else {
                 setRoomPickerOpen(prev => ({ ...prev, [mic.id]: !prev[mic.id] }))
               }
-            }}
-              style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isRoom ? 'var(--uncontacted)' : 'var(--border)'}`, background: isRoom ? 'rgba(123,167,188,0.13)' : 'transparent', color: isRoom ? 'var(--uncontacted)' : 'var(--text2)', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter' }}>
+            }} style={statusPill(isRoom, 'var(--c-st-cold)', 'var(--c-chip-ink)')}>
               {isRoom && state.room ? state.room.replace('Studio ', '') + ' ▾' : 'ROOM ▾'}
             </button>
-            <button onClick={() => setStatus(mic.id, 'missing')}
-              style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${isMissing ? 'var(--hot)' : 'var(--border)'}`, background: isMissing ? 'rgba(239,68,68,0.13)' : 'transparent', color: isMissing ? 'var(--hot)' : 'var(--text2)', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter' }}>
+            <button onClick={() => setStatus(mic.id, 'missing')} style={statusPill(isMissing, 'var(--c-st-hot)', 'var(--c-hot-text)')}>
               MISS
             </button>
           </div>
         </div>
         {pickerOpen && (
           <div style={{ padding: '0 14px 10px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>Room:</span>
+            <span style={{ fontSize: 10, opacity: 0.45 }}>Room:</span>
             {rooms.map(r => (
               <button key={r} onClick={() => setRoom(mic.id, r)}
-                style={{ padding: '3px 9px', borderRadius: 6, border: `1px solid ${state.room === r ? 'var(--uncontacted)' : 'var(--border)'}`, background: state.room === r ? 'rgba(123,167,188,0.13)' : 'transparent', color: state.room === r ? 'var(--uncontacted)' : 'var(--text2)', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter', whiteSpace: 'nowrap' }}>
+                style={{
+                  padding: '5px 10px', minHeight: 30, borderRadius: 99, border: 'none', font: 'inherit',
+                  background: state.room === r ? 'var(--c-st-cold)' : 'var(--c-wash)',
+                  color: state.room === r ? 'var(--c-chip-ink)' : 'var(--c-fg)',
+                  opacity: state.room === r ? 1 : 0.65,
+                  fontSize: 10.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                  WebkitTapHighlightColor: 'transparent',
+                }}>
                 {r}
               </button>
             ))}
@@ -258,21 +286,25 @@ export default function MicsPage() {
     )
   }
 
-  function OddsRow({ mic }: { mic: Mic }) {
+  function OddsRow({ mic, first }: { mic: Mic; first: boolean }) {
     const qty = quantities[mic.id] ?? 0
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid var(--border)', gap: 8 }}>
-        <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: 'Inter', flex: 1 }}>{mic.name}</span>
-        <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '8px 14px', gap: 8,
+        boxShadow: first ? undefined : '0 -1px 0 var(--c-wash)',
+      }}>
+        <span style={{ fontSize: 12.5, flex: 1 }}>{mic.name}</span>
+        <div style={{ display: 'flex', alignItems: 'center', background: 'var(--c-wash)', borderRadius: 99, overflow: 'hidden', flexShrink: 0 }}>
           <button onClick={() => adjustQty(mic.id, -1)}
-            style={{ width: 32, height: 32, background: 'transparent', border: 'none', color: qty === 0 ? '#3a3e4d' : 'var(--text)', fontSize: 18, cursor: qty === 0 ? 'default' : 'pointer', lineHeight: 1 }}>
+            style={{ width: 36, height: 34, background: 'transparent', border: 'none', font: 'inherit', color: 'var(--c-fg)', opacity: qty === 0 ? 0.25 : 0.8, fontSize: 17, cursor: qty === 0 ? 'default' : 'pointer', lineHeight: 1 }}>
             −
           </button>
-          <span style={{ minWidth: 28, textAlign: 'center', fontSize: 13, fontWeight: 700, color: qty > 0 ? 'var(--text)' : 'var(--text2)', fontFamily: 'Inter' }}>
+          <span className="c-mono" style={{ minWidth: 26, textAlign: 'center', fontSize: 13, fontWeight: 700, opacity: qty > 0 ? 1 : 0.45 }}>
             {qty}
           </span>
           <button onClick={() => adjustQty(mic.id, 1)}
-            style={{ width: 32, height: 32, background: 'transparent', border: 'none', color: 'var(--text)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>
+            style={{ width: 36, height: 34, background: 'transparent', border: 'none', font: 'inherit', color: 'var(--c-fg)', opacity: 0.8, fontSize: 17, cursor: 'pointer', lineHeight: 1 }}>
             +
           </button>
         </div>
@@ -280,74 +312,81 @@ export default function MicsPage() {
     )
   }
 
+  const SECTIONS: { key: string; label: string; mics: Mic[]; odds?: boolean; empty?: string }[] = [
+    { key: 'home', label: `${meta.label} mics`, mics: homeMics },
+    { key: 'other', label: 'Other studio mics', mics: otherMics, empty: 'No stray mics to report.' },
+    { key: 'floating', label: 'Floating gear', mics: floatGear },
+    { key: 'odds', label: 'Odds & ends', mics: oddsEnds, odds: true },
+  ]
+
   return (
-    <div style={{ minHeight: '100dvh', maxWidth: '100vw', overflowX: 'hidden', background: 'var(--bg)', fontFamily: 'Syne, sans-serif', paddingBottom: 120 }}>
+    <div style={{
+      minHeight: '100dvh', maxWidth: '100vw', overflowX: 'hidden',
+      background: 'var(--c-bg)', color: 'var(--c-fg)', paddingBottom: 130,
+    }}>
 
       {/* Header */}
-      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 }}>
-        <button onClick={() => router.push(`/runner/${studio}`)} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>←</button>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 11,
+        padding: '14px 16px 10px', position: 'sticky', top: 0, zIndex: 10,
+        background: 'var(--c-bg)',
+      }}>
+        <button
+          onClick={() => router.push(`/runner/${studio}`)}
+          aria-label="Back"
+          className="c-control c-raised"
+          style={{
+            width: 38, height: 38, borderRadius: 99, flexShrink: 0,
+            background: 'var(--c-wash)', color: 'var(--c-fg)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 16, cursor: 'pointer',
+          }}
+        >←</button>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>Mic Inventory</div>
-          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>{meta.label} · {today}</div>
+          <div className="c-arch" style={{ fontSize: 18, letterSpacing: '-0.02em', lineHeight: 1.15 }}>Mic inventory</div>
+          <div style={{ fontSize: 11.5, opacity: 0.5 }}>{meta.label} · {today}</div>
         </div>
       </div>
 
       {/* Sections */}
-      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-
-        <div>
-          <SectionHeader sectionKey="home" label={`${meta.label} Mics`} count={homeMics.length} />
-          {openSections.home && (
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
-              {homeMics.map(m => <MicRow key={m.id} mic={m} />)}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <SectionHeader sectionKey="other" label="Other Studio Mics" count={otherMics.length} />
-          {openSections.other && (
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
-              {otherMics.length === 0
-                ? <div style={{ padding: '16px 14px', fontSize: 12, color: 'var(--text2)', fontFamily: 'Inter' }}>No stray mics to report.</div>
-                : otherMics.map(m => <MicRow key={m.id} mic={m} />)
-              }
-            </div>
-          )}
-        </div>
-
-        <div>
-          <SectionHeader sectionKey="floating" label="Floating Gear" count={floatGear.length} />
-          {openSections.floating && (
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
-              {floatGear.map(m => <MicRow key={m.id} mic={m} />)}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <SectionHeader sectionKey="odds" label="Odds & Ends" count={oddsEnds.length} />
-          {openSections.odds && (
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
-              {oddsEnds.map(m => <OddsRow key={m.id} mic={m} />)}
-            </div>
-          )}
-        </div>
-
+      <div style={{ padding: '4px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {SECTIONS.map(sec => (
+          <div key={sec.key} style={sectionCard}>
+            <SectionHeader sectionKey={sec.key} label={sec.label} count={sec.mics.length} />
+            {openSections[sec.key] && (
+              sec.mics.length === 0
+                ? <div style={{ padding: '4px 14px 16px', fontSize: 12.5, opacity: 0.5 }}>{sec.empty ?? 'Nothing here.'}</div>
+                : sec.mics.map((m, i) => sec.odds
+                    ? <OddsRow key={m.id} mic={m} first={i === 0} />
+                    : <MicRow key={m.id} mic={m} first={i === 0} />)
+            )}
+          </div>
+        ))}
       </div>
 
       {/* Fixed footer */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--bg)', borderTop: '1px solid var(--surface2)', padding: '12px 20px', display: 'flex', gap: 10, alignItems: 'center' }}>
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        padding: '12px 14px calc(16px + env(safe-area-inset-bottom))',
+        background: 'linear-gradient(to top, var(--c-bg) 68%, transparent)',
+        display: 'flex', gap: 9, alignItems: 'center',
+      }}>
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <input
             value={initials}
             onChange={e => { setInitials(e.target.value.toUpperCase()); if (e.target.value.trim()) setShowInitialsHint(false) }}
             placeholder="Initials"
             maxLength={4}
-            style={{ width: 70, padding: '10px 8px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontSize: 13, fontFamily: 'Inter', textAlign: 'center', outline: 'none' }}
+            className="c-mono"
+            style={{
+              width: 70, minHeight: 48, padding: '10px 8px',
+              background: 'var(--c-wash)', border: 'none', borderRadius: 12,
+              color: 'var(--c-fg)', fontSize: 13, textAlign: 'center', outline: 'none',
+              boxShadow: 'var(--c-softsh)',
+            }}
           />
           {showInitialsHint && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, fontSize: 9, color: 'var(--hot)', fontFamily: 'Inter', marginTop: 3, whiteSpace: 'nowrap' }}>
+            <div style={{ position: 'absolute', top: '100%', left: 0, fontSize: 9.5, color: 'var(--c-st-hot)', fontWeight: 700, marginTop: 3, whiteSpace: 'nowrap' }}>
               Required to submit
             </div>
           )}
@@ -355,14 +394,27 @@ export default function MicsPage() {
         <button
           onClick={handleSave}
           disabled={submitting}
-          style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 12, color: 'var(--text2)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
+          style={{
+            flex: '0 0 26%', minHeight: 48, borderRadius: 14,
+            background: 'var(--c-wash)', color: 'var(--c-fg)', opacity: 0.8,
+            border: 'none', font: 'inherit', fontSize: 13, fontWeight: 700,
+            cursor: 'pointer', boxShadow: 'var(--c-ctlsh, var(--c-softsh))',
+          }}
         >
           Save
         </button>
         <button
           onClick={() => { if (!initials.trim()) { setShowInitialsHint(true); return } handleSubmit() }}
           disabled={submitting}
-          style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 12, color: initials.trim() ? 'var(--text)' : 'var(--text3)', fontSize: 13, fontWeight: 800, cursor: initials.trim() ? 'pointer' : 'default', opacity: initials.trim() ? 1 : 0.6, fontFamily: 'Syne, sans-serif' }}
+          className="c-control c-raised"
+          style={{
+            flex: 1, minHeight: 48, borderRadius: 14,
+            background: 'var(--c-wash2)', color: 'var(--c-fg)',
+            border: 'none', font: 'inherit', fontSize: 13, fontWeight: 800,
+            cursor: initials.trim() ? 'pointer' : 'default',
+            opacity: initials.trim() ? 1 : 0.55,
+            boxShadow: 'var(--c-softsh)',
+          }}
         >
           {submitting ? 'Submitting…' : 'Submit'}
         </button>

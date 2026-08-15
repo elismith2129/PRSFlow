@@ -1,4 +1,9 @@
 'use client'
+// SOFT SKIN PORT, 2026-08-14 (one-pass runner redesign). Queries, save flow and
+// the daily_ops_submissions upsert are UNTOUCHED — this is surface only.
+// Old skin retired: legacy --bg/--surface/--border tokens, 1px borders (Law 1),
+// Syne (§4), dashed borders. Low is status colour (--c-st-warm), the only
+// colour on the page (§5).
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
@@ -70,31 +75,84 @@ export default function StockPage() {
     router.push(`/runner/${studio}`)
   }
 
-  if (loading) return <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text2)', fontFamily: 'Syne, sans-serif' }}>Loading…</div>
+  const surface: React.CSSProperties = {
+    background: 'var(--c-srf, var(--c-bg))',
+    boxShadow: 'var(--c-softsh)',
+    borderRadius: 16,
+    padding: '11px 13px',
+  }
+  const input: React.CSSProperties = {
+    background: 'var(--c-wash)', border: 'none', borderRadius: 10,
+    padding: '9px 11px', color: 'var(--c-fg)', fontSize: 13,
+    font: 'inherit', outline: 'none', minHeight: 40,
+  }
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100dvh', background: 'var(--c-bg)', color: 'var(--c-fg)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5, fontSize: 13 }}>
+        Loading…
+      </div>
+    )
+  }
 
   const lowCount = items.filter(i => i.low).length
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)', fontFamily: 'Syne, sans-serif', paddingBottom: 100 }}>
-      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 }}>
-        <button onClick={() => router.push(`/runner/${studio}`)} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>←</button>
+    <div style={{
+      minHeight: '100dvh', maxWidth: '100vw', overflowX: 'hidden',
+      background: 'var(--c-bg)', color: 'var(--c-fg)', paddingBottom: 110,
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 11,
+        padding: '14px 16px 10px', position: 'sticky', top: 0, zIndex: 10,
+        background: 'var(--c-bg)',
+      }}>
+        <button
+          onClick={() => router.push(`/runner/${studio}`)}
+          aria-label="Back"
+          className="c-control c-raised"
+          style={{
+            width: 38, height: 38, borderRadius: 99, flexShrink: 0,
+            background: 'var(--c-wash)', color: 'var(--c-fg)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 16, cursor: 'pointer',
+          }}
+        >←</button>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>Stock List</div>
-          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>{meta.label}{lowCount > 0 ? ` · ${lowCount} low` : ''}</div>
+          <div className="c-arch" style={{ fontSize: 18, letterSpacing: '-0.02em', lineHeight: 1.15 }}>Stock</div>
+          <div style={{ fontSize: 11.5, opacity: 0.5 }}>
+            {meta.label}
+            {lowCount > 0 && <span style={{ color: 'var(--c-st-warm)', opacity: 1, fontWeight: 700 }}> · {lowCount} low</span>}
+          </div>
         </div>
       </div>
 
-      <div style={{ padding: '16px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ padding: '4px 14px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
           {items.map((it, i) => (
-            <div key={i} style={{ background: 'var(--surface)', border: `1px solid ${it.low ? 'rgba(249,115,22,0.27)' : 'var(--border)'}`, borderRadius: 12, padding: '12px 14px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{it.item}</span>
+            <div key={i} style={surface}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                {it.id || it.item ? (
+                  <span style={{ fontSize: 13, fontWeight: 700, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.item}</span>
+                ) : (
+                  <input
+                    placeholder="Item name"
+                    value={it.item}
+                    onChange={e => setItems(prev => prev.map((x, j) => j === i ? { ...x, item: e.target.value } : x))}
+                    style={{ ...input, flex: 1, fontWeight: 700 }}
+                  />
+                )}
                 <button
                   onClick={() => setItems(prev => prev.map((x, j) => j === i ? { ...x, low: !x.low } : x))}
-                  style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, border: 'none', cursor: 'pointer', background: it.low ? 'rgba(249,115,22,0.13)' : 'var(--border)', color: it.low ? 'var(--warm)' : 'var(--text2)' }}
+                  className="c-pill"
+                  style={{
+                    border: 'none', font: 'inherit', cursor: 'pointer', flexShrink: 0, minHeight: 30,
+                    background: it.low ? 'var(--c-st-warm)' : 'var(--c-wash2)',
+                    color: it.low ? 'var(--c-chip-ink)' : 'var(--c-fg)',
+                    opacity: it.low ? 1 : 0.7,
+                  }}
                 >
-                  {it.low ? '⚠ Low' : 'OK'}
+                  {it.low ? 'Low' : 'OK'}
                 </button>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -103,13 +161,13 @@ export default function StockPage() {
                   placeholder="Qty"
                   value={it.qty}
                   onChange={e => setItems(prev => prev.map((x, j) => j === i ? { ...x, qty: e.target.value } : x))}
-                  style={{ width: 70, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 8px', color: 'var(--text)', fontSize: 12, fontFamily: 'Inter', outline: 'none' }}
+                  style={{ ...input, width: 72 }}
                 />
                 <input
                   placeholder="Notes"
                   value={it.notes}
                   onChange={e => setItems(prev => prev.map((x, j) => j === i ? { ...x, notes: e.target.value } : x))}
-                  style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', color: 'var(--text)', fontSize: 12, fontFamily: 'Inter', outline: 'none' }}
+                  style={{ ...input, flex: 1 }}
                 />
               </div>
             </div>
@@ -117,15 +175,35 @@ export default function StockPage() {
         </div>
         <button
           onClick={() => setItems(prev => [...prev, { item: '', qty: '', notes: '', low: false }])}
-          style={{ marginTop: 12, width: '100%', padding: '12px', background: 'var(--surface)', border: '1px dashed var(--border)', borderRadius: 12, color: 'var(--text2)', fontSize: 13, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
+          style={{
+            marginTop: 12, width: '100%', minHeight: 48,
+            background: 'var(--c-wash)', border: 'none', borderRadius: 14,
+            color: 'var(--c-fg)', opacity: 0.75, fontSize: 13, fontWeight: 700,
+            cursor: 'pointer', font: 'inherit',
+          }}
         >
-          + Add Item
+          + Add item
         </button>
       </div>
 
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: 'var(--bg)', borderTop: '1px solid var(--border)' }}>
-        <button onClick={save} disabled={saving} style={{ width: '100%', padding: '14px 0', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'Syne, sans-serif' }}>
-          {saving ? 'Saving…' : 'Save Stock List'}
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        padding: '12px 14px calc(16px + env(safe-area-inset-bottom))',
+        background: 'linear-gradient(to top, var(--c-bg) 68%, transparent)',
+      }}>
+        <button
+          onClick={save}
+          disabled={saving}
+          className="c-control c-raised"
+          style={{
+            width: '100%', minHeight: 52, borderRadius: 14,
+            background: 'var(--c-wash2)', color: 'var(--c-fg)',
+            border: 'none', font: 'inherit', fontSize: 14, fontWeight: 800,
+            cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1,
+            boxShadow: 'var(--c-softsh)',
+          }}
+        >
+          {saving ? 'Saving…' : 'Save stock list'}
         </button>
       </div>
     </div>
