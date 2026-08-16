@@ -55,6 +55,81 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'runner-wo-2026-08-16',
+    title: 'The runner work order — one work order, two views',
+    version: 'v1.11.0 (preview branch)',
+    date: 'Aug 16, 2026',
+    intro:
+      'The runner work order is now the same work order the office uses, with the office\'s parts locked. Runners get a new card view for short sessions, a tap-to-edit day sheet, and a Submit button that can be re-pressed without penalty. Most of this is phone work; the admin checks are on a computer. You will need one session on the calendar for today to test with.',
+    items: [
+      {
+        id: 'rwo-locked-top', area: 'Runner WO', device: 'phone',
+        what: 'The client info at the top is locked, and the phone number dials',
+        how: 'From the studio hub, open today\'s session. The top card should say "Set by the office" with a lock, and none of it should be editable. If the client has a phone number, tap the phone pill — your phone should offer to call it.',
+      },
+      {
+        id: 'rwo-cards-default', area: 'Runner WO', device: 'phone',
+        what: 'A short session (1–3 days) opens as cards; the toggle switches to the list',
+        how: 'Open a 1–3 day session. Studio Time should show one card per day, not the wide table. Find the small toggle above the table (two icons: lines and blocks) and tap the lines icon — you should get the wide table. Tap back.',
+      },
+      {
+        id: 'rwo-sheet', area: 'Runner WO', device: 'phone',
+        what: 'Tapping a day card opens a sheet where you can set times, OT, engineer, and song title',
+        how: 'In card view, tap today\'s card. A sheet should slide up from the bottom with Start, End, OT hrs, the staff name, and a song title box. Change the End time, tap Done, and check the card now shows the new time.',
+      },
+      {
+        id: 'rwo-rates-locked', area: 'Runner WO', device: 'phone',
+        what: 'You can see every rate but cannot change any of them',
+        how: 'Look at the rates in the list view, the day sheet\'s Billing box, and the totals at the bottom. All the dollar amounts should be visible but none of the rate fields should let you type. If any rate accepts typing, report it.',
+      },
+      {
+        id: 'rwo-equip', area: 'Runner WO', device: 'phone',
+        what: 'Equipment pills cycle OK → Not OK and never go back to blank',
+        how: 'On a day card, tap the Speakers pill: it goes OK (green). Tap again: Not OK (red) and a note box opens. Keep tapping — it should only ever switch between OK and Not OK, never back to grey. Write a note in the box and tap Done.',
+      },
+      {
+        id: 'rwo-payment', area: 'Runner WO', device: 'phone',
+        what: 'You can record a payment taken at the desk',
+        how: 'Scroll to Payments, tap + Add payment, pick Cash, enter 100, then press Save at the top. Reopen the work order — the payment should still be there and the Balance Due at the bottom should be $100 lower.',
+      },
+      {
+        id: 'rwo-submit', area: 'Runner WO', device: 'phone',
+        what: 'Submit sends today and the button changes to "Update submission"',
+        how: 'Press the green "Submit today" button at the bottom. You should land back on the studio hub. Reopen the same work order — the bottom button should now say "Update submission", and today\'s date should show a small orange dot.',
+      },
+      {
+        id: 'rwo-resubmit', area: 'Runner WO', device: 'phone',
+        what: 'You can still edit after submitting — no penalty, no warning',
+        how: 'After submitting, open today\'s card and change the End time. Press "Update submission". It should save and close like normal — no error, no warning, nothing asking you to justify it.',
+      },
+      {
+        id: 'rwo-flag', area: 'Runner WO', device: 'phone',
+        what: 'A needs-attention note raises a flag the office can see',
+        how: 'In "Needs Attention / Runner Notes", type "test flag from runner WO" and add a photo with + Add photo. Press Save. On a computer, check the dashboard Flags panel — the flag should be there with your note. (Resolve it after.)',
+      },
+      {
+        id: 'rwo-locked-day', area: 'Runner WO', device: 'phone',
+        what: 'A day the office approved is greyed out and cannot be edited',
+        how: 'On a computer, open the same work order from the calendar and click the ✓ lock pill on one day\'s row so it shows 🔒. On the phone, reopen the work order — that day\'s card should be dimmed, say "Approved by the office — locked", and tapping it should do nothing.',
+      },
+      {
+        id: 'awo-regression', area: 'Work Orders', device: 'desktop',
+        what: 'The office work order still works exactly as before',
+        how: 'Open any work order from the calendar. Check the table looks normal and Batch edit, Seed, + Add Studio Time, rate typing, the lock pills, and Complete WO are all still there and working. This is the most important check in the batch — the runner build must not have changed the office side.',
+      },
+      {
+        id: 'awo-cards', area: 'Work Orders', device: 'desktop',
+        what: 'The office also gets the card view, with editable rates in the sheet',
+        how: 'On a work order, find the same list/cards toggle above Studio Time and switch to cards. Click a day card — in the sheet\'s Billing box you SHOULD be able to type rates (unlike the runner). Change one, press Done, then Save, and confirm it stuck.',
+      },
+      {
+        id: 'run-daypart', area: 'Runner', device: 'phone',
+        what: 'The app greets you by time of day, not always "tonight"',
+        how: 'Open the runner app and look at the studio picker heading and the duties section on the hub. Before noon they should say "this morning"; midday through late afternoon "today"; evening "tonight". Check whichever applies right now.',
+      },
+    ],
+  },
+  {
     id: 'runner-dailyops-2026-08-14',
     title: 'The runner app, missed punches, and the new Daily Ops page',
     version: 'v1.10.0 (preview branch)',

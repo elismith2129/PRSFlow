@@ -3204,6 +3204,115 @@ signal it needs to become a real session — not before.
 
 ---
 
+### Aug 16, 2026 — The runner work order stops being a second work order
+
+#### The build: WorkOrderPopup gains `mode="runner"`; the 1,595-line duplicate dies
+
+The runner work order is now the admin `WorkOrderPopup` with a runner mode —
+`app/runner/[studio]/wo/[id]/page.tsx` went from 1,595 lines (a drifting second
+description of the work order, the same disease `/wo/[id]/print` had) to a
+136-line wrapper that resolves the WO id, fetches its booking, and renders the
+shared component. Net −800 lines. Mock-first per convention:
+`docs/design-refs/runner-wo-views.html`, approved before build.
+
+The feasibility read's verdict held: `readOnly` (tech) is all-or-nothing, so
+runner mode is **field-level locking** — the Session Info card replaces the
+editable top ("🔒 Set by the office", with the A&R phone as a tel: pill —
+calling is always allowed even when the block is locked, Eli's addition at
+mock review — and a hot "Balance due" chip), rates render as read-only text
+(list cells, eng sub-row, and the sheet's billing block), admin-locked rows go
+fully inert, and batch edit / seed / add-delete rows / date pickers /
+Complete WO don't exist on the runner surface. Everything else — times, staff
+names and roles, OT hours, equipment condition, song titles, payments,
+session notes, needs-attention + photos, COD signature — stays live, per
+Eli's "hide nothing" correction to §15.
+
+**One claimed cost evaporated:** the Aug 14 entry said expenses + receipt OCR
+existed only on the runner page, so the shared component would GROW. Wrong by
+the time of building — nothing in the codebase references `expense_rows` or
+the OCR route any more; the runner page had already lost them. The component
+grew for the card view, not for expenses. (The other honest cost stands:
+runner saves now ride `save_work_order_atomic` + the booking projection — the
+deliberate unification — and the new test batch covers it.)
+
+#### Submitted is a signal, not a seal (Eli's ruling)
+
+Eli, asked what happens when a runner submits then needs to fix something:
+*"im ok with them updating a submittal, theres no penalty for editting it. i
+want it to be correct and often times things can change towards the end of a
+session."* So: Submit = the same atomic save, plus today's dated rows →
+`'submitted'`. The rows stay fully editable; the footer button flips to
+**"Update submission"** (same act); realtime means the office always sees the
+current version. The only lock is **approval** — `admin_locked`, an office
+act, reversible by the office's own lock toggle. The rule a runner learns is
+one sentence: *you can always fix your day until the office approves it.*
+No new columns; `studio_time_rows.status` already existed.
+
+**Deviation from the Aug 13 "buttons at the top" ruling, on purpose:** Submit
+lives in a fixed bottom bar. That ruling was about the long desktop sheet;
+on a phone the thumb-reach fixed footer is the pattern every other runner
+page already uses. Cancel/Save stay in the top bar.
+
+#### The view toggle: cards ⇄ list, for everyone
+
+Eli's interview: the §16 day-block table is fine for long runs but "it's hard
+to see this long line on a phone" for the typical 1–3 day session — he wanted
+a Finder-style toggle, list and cards. Built into the shared component for
+**both** modes (Eli: "should we add the toggle to the admin one too? why
+not?" — and the honest answer was that gating it OFF would be the extra
+code). One day = one card: date + submit-state dot, times, staff, §18
+equipment pills (cycle logic shared via helpers, not re-implemented), song
+title, day total. Tap → a bottom **day sheet** with the five things a runner
+actually types: start, end, OT hours, engineer, song title — plus the pills.
+Admin's sheet shows rate inputs; the runner's shows the read-only "Billing ·
+set by the office" block. **Defaults:** phones (and runner mode, which always
+takes the phone layout) open in cards for 1–3 day sessions, list for longer;
+desktop admin always opens in list. Decided once per open; the toggle
+overrides.
+
+Also ported rather than lost: the runner's LIVE missing-times warning (warns,
+never blocks — a runner mid-session has no end time yet; the hard stop stays
+on admin Complete, same `lib/woValidation` rule both sides). The engineer-rate
+and duplicate-staff warnings are now **hidden in runner mode** — rates are
+locked there, so the banner would name a problem the runner cannot fix and
+train them to ignore banners.
+
+**Decisions worth recording, and what was rejected:**
+- **Rentals stay fully editable for runners.** "Lock the client block, lock
+  rates, lock checked days" was the complete list; a rental added at the desk
+  is a real event. If a runner abuses rental rates, lock those two cells then.
+- **Row DATE changes are locked for runners** (schedule is the office's); the
+  room select was left editable — moving a session to another room mid-shift
+  is a thing that actually happens at the desk.
+- **Runner mode is adopt-only inside the popup** — the create-fallback path
+  is gated off, preserving the June 30 rule without a second resolver.
+- **`StRow.status` is carried in state but deliberately NOT in the save
+  payload** — a save must never clobber a submit/approve status set by
+  someone's explicit act.
+
+#### 24/7 copy: "tonight" now reads the clock
+
+Eli: runners aren't just in at night — the studios run 24/7, so "Where are
+you tonight?" at 7am is wrong. New `dayPart`/`dayPartLabel`/
+`dayPartPossessive` in `lib/time.ts` (4am–noon morning · noon–5pm day ·
+5pm–4am night), used by the studio picker, the hub's duties section, the
+shift-notes page, and the punch form's shift button. In the shared lib per
+the standing rule — four pages with private time-of-day logic would drift.
+
+#### Open, going into the next session
+
+- **Verify `studio_time_rows.status` in the LIVE DB** (`select status from
+  studio_time_rows limit 1;`) before trusting Submit — the column is
+  documented and was shipped for the old Finish flow, but this project's
+  repeated lesson is that documentation is not the database.
+- The **runner-mode save path test pass** (atomic RPC + projection from a
+  runner's phone) is what the Aug 16 test batch exists for.
+- SOP `VERSIONS` still owed at merge — now covering v1.9.1, v1.10.0 AND
+  v1.11.0.
+- `/preview` + `DeviceToggle` + the rail's phone-frame link remain TEMPORARY.
+- Individual runner accounts still pending (punch quiet-row stays "coming
+  soon").
+
 ### Aug 14, 2026 — The runner hub grows up; the security lockdown that never ran; two worlds
 
 #### The finding that mattered most: RLS was never actually enforced

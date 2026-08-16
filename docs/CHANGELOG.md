@@ -19,6 +19,83 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.11.0 — UNRELEASED (branch `redesign/carved`) — Aug 16, 2026
+
+**The runner work order IS the admin work order.** `WorkOrderPopup` gains
+`mode="runner"` (field-level locks, Submit as the terminal act) and a
+list ⇄ cards view toggle for everyone; the 1,595-line runner WO page becomes a
+136-line wrapper. Runner-facing copy now tracks the clock (24/7 operation).
+
+**Migrations: none.** But **verify `studio_time_rows.status` exists in the
+live DB** (`select status from studio_time_rows limit 1;`) — Submit writes it.
+The column shipped with the old Finish flow and is documented in CLAUDE.md,
+but per the July 17 / Aug 14 lesson, verify the end state before trusting it.
+
+**What runner mode does** (spec §15 + Eli's corrections; mock
+`docs/design-refs/runner-wo-views.html`):
+
+- Forces the phone layout (`isMobile = raw || runner`); overlay starts at
+  `top: 0` (runner routes have no Nav).
+- Session Info card = the locked top ("Set by the office") + A&R `tel:` pill +
+  "Balance due" chip. The editable META/client panel never renders.
+- Rates are read-only TEXT (list cells, eng sub-row, sheet billing block);
+  `updateStRow` also strips `rate`/`rate_daily`/`ot_rate`/`eng_rate`/
+  `row_rate_type` in runner mode as defence in depth.
+- `admin_locked` rows render inert (`pointerEvents: none` — note the lock and
+  delete cells' own `pointerEvents: 'auto'` had to be runner-gated or they
+  punch through the parent's `none`).
+- Hidden for runners: batch edit, seed panel, add/delete rows, date pickers,
+  lock toggles, Complete WO. Present: times, staff (name + 1ST/2ND), OT
+  hours, equipment pills, song titles, payments, rentals, both notes, NA
+  photos (upload ported — immediate write), COD signature, totals.
+- **Submit footer**: same atomic save (`handleClose(false)`), then today's
+  dated rows → `status='submitted'`. Re-opens stay editable; the button
+  becomes "Update submission". Only office approval locks a day.
+- Flag sync (needs-attention note ⇄ `wo_flag` raise/update/resolve) runs
+  inside every successful runner save, not just Submit.
+- Runner mode is **adopt-only** in `initWO` — the create-fallback is gated.
+- Live missing-times warning (warn-only) ported from the old page; the
+  eng-rate and duplicate-staff warnings are hidden in runner mode (rates are
+  locked there — a banner naming an unfixable problem trains people to
+  ignore banners).
+
+**View toggle (both modes):** list = the §16/§18 day blocks, unchanged;
+cards = one day per card, tap → bottom day sheet (start / end / OT /
+engineer / song title / equipment; admin gets rate inputs in the sheet).
+Defaults decided once per open: phones cards ≤3 distinct days else list;
+desktop always list.
+
+**24/7 copy:** `dayPart`/`dayPartLabel`/`dayPartPossessive` added to
+`lib/time.ts` (4–12 morning · 12–17 day · else night). Used by
+`app/runner/page.tsx` ("Where are you this morning?"), the hub's duties
+label, shift-notes headings, and the punch form's shift button.
+
+**⚠ Watch-outs**
+
+- **`StRow.status` is state-only.** It is deliberately NOT in `stPayloads`,
+  so the atomic save can never clobber a submitted/approved status. If you
+  add fields to the save payload, do not add `status`.
+- **Old runner-WO deep links still work** (`/runner/[studio]/wo/[id]` and
+  `?booking_id=` both resolve), but the page no longer has its own realtime
+  re-fetch — it inherits the popup's LOCAL-FIRST model (subscribes to
+  `work_orders` status only). That is the standing WO-popup exception to the
+  realtime rule, now covering the runner too.
+- **Runner saves ride `save_work_order_atomic` + the booking projection** —
+  the deliberate unification. A runner's Save/Submit now writes booking
+  cards. The Aug 16 test batch exists to shake this path down.
+- The Aug 14 claim that expenses/receipt OCR would make the shared component
+  grow was stale — nothing references `expense_rows` or the OCR route
+  anywhere; they were already gone from the runner page.
+- SOP `VERSIONS` owed at merge now covers v1.9.1 + v1.10.0 + v1.11.0.
+
+**Files:** `components/calendar/WorkOrderPopup.tsx` (+~700),
+`app/runner/[studio]/wo/[id]/page.tsx` (1,595 → 136), `lib/time.ts`,
+`app/runner/page.tsx`, `app/runner/[studio]/page.tsx`,
+`app/runner/[studio]/shift-notes/page.tsx`, `app/runner/punch/page.tsx`,
+`lib/testBatches.ts`, mock `docs/design-refs/runner-wo-views.html`.
+
+---
+
 ## v1.10.0 — UNRELEASED (branch `redesign/carved`) — Aug 14, 2026
 
 The runner subtree becomes a real product (tasks, punches, shift logs, one
