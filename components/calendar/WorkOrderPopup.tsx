@@ -650,7 +650,11 @@ export function WorkOrderPopup({
   useEffect(() => {
     if (loading || stView !== null) return
     const dayCount = new Set(stRows.filter(r => r.date).map(r => r.date)).size
-    setStView(isMobile && dayCount > 0 && dayCount <= 3 ? 'cards' : 'list')
+    // RUNNER ALWAYS DEFAULTS TO CARDS (Eli, 2026-08-16 — superseding the
+    // 1–3-day rule for runners; the phone list is a sideways-scrolling table
+    // and should never be what a runner lands on). Admin phones keep the
+    // short-session rule; desktop stays list. The toggle overrides everywhere.
+    setStView(runner ? 'cards' : (isMobile && dayCount > 0 && dayCount <= 3 ? 'cards' : 'list'))
   }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Real-time subscription: work_orders status updates only
