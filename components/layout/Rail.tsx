@@ -49,6 +49,9 @@ const OPERATIONS: RailItem[] = [
   // Revert to plain '/runner' when /preview is removed at go-live.
   { href: '/preview?path=/runner&device=phone', label: 'Runner Hub', ic: '▷' },
   { href: '/mic-inventory', label: 'Mic Inventory', ic: '◌' },
+  // Engineers moved out of the retired Admin page (Eli, 2026-08-17) — the one
+  // thing in there still used. Admin's rebuild is a later phase.
+  { href: '/engineers', label: 'Engineers', ic: '◈' },
   { href: '/tasks', label: 'Tasks', ic: '✓' },
   { href: '/flags', label: 'Flags', ic: '⚑' },
   { href: '/nadines', label: "Nadine's", ic: '♫' },
@@ -58,8 +61,12 @@ const HR: RailItem[] = [
   { href: '/hiring', label: 'Hiring', ic: '✎' },
   { href: '/training', label: 'Training', ic: '✦' },
 ]
-const FOOT: RailItem[] = [
-  { href: '/admin', label: 'Admin', ic: '⚙' },
+// Rarely-used items live behind the foot's Settings disclosure (Eli,
+// 2026-08-17): SOP, DEV, the theme + hints toggles, Sign Out. Admin is OUT of
+// the nav entirely — the page still exists for bookmarks, but everything it
+// held is retired except Engineers (now under Operations); its rebuild is a
+// later phase.
+const SETTINGS_LINKS: RailItem[] = [
   { href: '/sop', label: 'SOP', ic: '✧' },
   // TEMPORARY nav item (rollout feedback board) — dimmed like the mock's DEV entry.
   { href: '/feedback', label: 'DEV', ic: '∴', dim: true },
@@ -72,6 +79,7 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
   const [menuOpen, setMenuOpen] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const hintsOn = useHints()
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [unreviewedRegs, setUnreviewedRegs] = useState(0)
   const { profile } = useUserProfile()
   const clientsVersion = useClientsVersion()
@@ -181,21 +189,34 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
         </>
       )}
       <div className="c-rail-foot">
-        {!isRunner && filterItems(FOOT).map(renderItem)}
-        {/* Helpful hints — first-time coach marks app-wide (Eli, 2026-08-17).
-            Default ON; this is the off switch. Same persistence pattern as
-            the theme. */}
-        <button onClick={() => setHintsEnabled(!hintsOn)} className="c-rail-link" aria-label="Toggle helpful hints">
-          <span className="c-rail-ic">💡</span>
-          {hintsOn ? 'Hints: on' : 'Hints: off'}
-        </button>
-        <button onClick={toggleTheme} className="c-rail-link" aria-label="Toggle light/dark theme">
-          <span className="c-rail-ic">{theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}</span>
-          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-        </button>
-        <button onClick={async () => { setMenuOpen(false); await handleSignOut() }} className="c-rail-link">
-          <span className="c-rail-ic">↩</span>
-          Sign Out
+        {/* SETTINGS — one quiet home for everything used once a week or less
+            (Eli, 2026-08-17). Collapsed by default; state is per-render on
+            purpose (it should never persist open). */}
+        {settingsOpen && (
+          <>
+            {!isRunner && filterItems(SETTINGS_LINKS).map(renderItem)}
+            <button onClick={() => setHintsEnabled(!hintsOn)} className="c-rail-link" aria-label="Toggle helpful hints">
+              <span className="c-rail-ic">💡</span>
+              {hintsOn ? 'Hints: on' : 'Hints: off'}
+            </button>
+            <button onClick={toggleTheme} className="c-rail-link" aria-label="Toggle light/dark theme">
+              <span className="c-rail-ic">{theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}</span>
+              {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            </button>
+            <button onClick={async () => { setMenuOpen(false); await handleSignOut() }} className="c-rail-link">
+              <span className="c-rail-ic">↩</span>
+              Sign Out
+            </button>
+          </>
+        )}
+        <button
+          onClick={() => setSettingsOpen(o => !o)}
+          className={`c-rail-link${settingsOpen ? ' c-on' : ''}`}
+          aria-expanded={settingsOpen}
+        >
+          <span className="c-rail-ic">⚙</span>
+          Settings
+          <span style={{ marginLeft: 'auto', fontSize: 9, opacity: 0.5 }}>{settingsOpen ? '▾' : '▸'}</span>
         </button>
       </div>
     </>
