@@ -77,7 +77,11 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
 .rail .grp{margin-top:12px;padding:0 10px 4px}
 .railfoot{margin-top:auto;padding:12px 10px 2px;font-size:10px;opacity:.4;line-height:1.5}
 
-.main{flex:1;min-width:0;padding:18px 26px 60px;max-width:900px}
+/* Centered column, wider cap. 900px left-pinned created a dead zone on the
+   right of every chapter; centering balances the page and the extra width goes
+   to the panes (the WO document and hub table especially). Prose inside stays
+   clamped to a readable measure. */
+.main{flex:1;min-width:0;padding:18px 34px 60px;max-width:1080px;margin:0 auto}
 
 .hbar{padding:4px 2px 6px}
 .hbar h1{font-family:'Archivo Black',sans-serif;font-size:27px;letter-spacing:-.03em;line-height:1.1}
@@ -188,12 +192,164 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
 .rr .what{flex:1;font-size:12.5px;opacity:.82;padding-top:3px}
 .rr .what small{display:block;font-size:10.5px;opacity:.55;margin-top:1px}
 
+/* dashboard chapter mini-renders */
+.mini{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:12px 14px}
+.mini .cap-line{font-size:10.5px;opacity:.55;margin-top:9px;line-height:1.5}
+.minihead{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.minihead .t{font-family:'Archivo Black',sans-serif;font-size:12px}
+.minihead .pt{font-size:9.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+  opacity:.4;margin-left:auto}
+.trow{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:9px;font-size:11.5px}
+.trow:hover{background:var(--wash)}
+.trow .tby{font-size:9.5px;opacity:.45;margin-left:auto;flex-shrink:0}
+.rooms{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.room{border-radius:10px;background:var(--wash);padding:7px 8px;min-height:52px}
+.room .rk{font-family:ui-monospace,monospace;font-size:9px;opacity:.45;display:block}
+.room .ra{font-size:11px;font-weight:700;margin-top:2px;line-height:1.2}
+.room .rt{font-size:9.5px;opacity:.5;font-family:ui-monospace,monospace}
+.room.live{background:color-mix(in srgb,var(--st-booked) 14%,transparent)}
+.room.hold{background:color-mix(in srgb,var(--st-warm) 13%,transparent)}
+
 /* clearing table */
 .crow{display:flex;gap:10px;align-items:flex-start;padding:7px 6px;border-radius:10px;font-size:12px}
 .crow:hover{background:var(--wash)}
 .crow .cdot{margin-top:5px}
 .crow .h{font-weight:700;width:96px;flex-shrink:0}
 .crow .b{flex:1;opacity:.78}
+
+/* ── HELPFUL HINTS (toggle in the top bar) ──
+   Off by default. When on, small ? markers appear beside things worth a tip;
+   hover (or tap) shows the hint. The mechanic to rule on: same markers would
+   ship across the whole SOP — and could later ride along in the app itself. */
+.hint{display:none;position:relative;width:15px;height:15px;border-radius:50%;
+  background:var(--st-cold);color:var(--chip-ink);font-size:9.5px;font-weight:800;
+  align-items:center;justify-content:center;cursor:help;flex-shrink:0;
+  vertical-align:middle;margin-left:5px;line-height:1;
+  animation:hintpulse 2.4s ease-in-out infinite}
+body.hints .hint{display:inline-flex}
+@keyframes hintpulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--st-cold) 45%,transparent)}
+  50%{box-shadow:0 0 0 5px transparent}}
+.tipb{display:none;position:absolute;bottom:135%;left:-8px;width:230px;z-index:20;
+  background:var(--fg);color:var(--bg);border-radius:11px;padding:9px 12px;
+  font-size:11px;font-weight:500;line-height:1.5;text-align:left;letter-spacing:0;
+  text-transform:none;box-shadow:var(--softsh)}
+.hint:hover .tipb,.hint.open .tipb{display:block}
+
+/* ── WO WALKTHROUGH (chapter 03) ──
+   The REAL work order layout (ref: components/calendar/WorkOrderPopup.tsx —
+   letterhead, status pills, meta+client two-col, the 14-col Studio Time table
+   with day blocks, staff lines, equipment pills, rentals, notes|payments,
+   totals), full width. A sticky step bar above it explains one part at a time:
+   the active part lights up, the rest dims, and the page scrolls to it. */
+.wstep{position:sticky;top:41px;z-index:8;background:var(--srf);box-shadow:var(--softsh);
+  border-radius:18px;padding:13px 18px;margin-top:14px;display:flex;gap:18px;align-items:flex-start}
+.wstep .wtxt{flex:1;min-width:0}
+.wstep .k{font-size:9px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.wstep h3{font-family:'Archivo Black',sans-serif;font-size:14px;margin:3px 0 4px}
+.wstep p{font-size:12px;opacity:.85;line-height:1.55;margin-bottom:4px}
+.wstep p:last-child{margin-bottom:0}
+.wstep .wnav{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:9px;padding-top:2px}
+.wstep .navr{display:flex;gap:8px}
+.wstep .navr button{padding:6px 14px;border-radius:99px;background:var(--wash2);font-size:11.5px;font-weight:700}
+.wstep .navr button.pri{background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .wstep .navr button.pri{background:var(--ivory);color:#1b1a17}
+.wdots{display:flex;gap:5px}
+.wdots span{width:7px;height:7px;border-radius:50%;background:var(--wash2);cursor:pointer}
+.wdots span.on{background:var(--st-booked)}
+
+.wodoc{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:20px 22px;
+  margin-top:14px;overflow-x:auto}
+.wsec{border-radius:12px;padding:8px 10px;margin:0 -10px 10px;transition:opacity .25s, box-shadow .25s}
+.touring .wsec{opacity:.18}
+.touring .wsec.hl,.touring .wsec.open{opacity:1}
+.touring .wsec.hl{box-shadow:0 0 0 2px color-mix(in srgb,var(--st-booked) 70%,transparent),
+  0 0 24px color-mix(in srgb,var(--st-booked) 22%,transparent)}
+/* nested highlightables (rows inside the table): the parent opens (full
+   opacity, no ring), the matched rows ring individually, siblings fade */
+.touring [data-sec].hl:not(.wsec){box-shadow:0 0 0 2px color-mix(in srgb,var(--st-booked) 70%,transparent);
+  border-radius:8px;position:relative;z-index:1}
+.touring .wsec.subdim [data-sec]:not(.hl){opacity:.3}
+.wlab{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.4;margin-bottom:6px}
+
+/* letterhead */
+.wbrand{text-align:center}
+.wbrand .co{font-family:'Archivo Black',sans-serif;font-size:15px;letter-spacing:.06em;text-transform:uppercase}
+.wbrand .st{font-size:10px;opacity:.55;margin-top:3px}
+.wbrand .row{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:10px;opacity:.7}
+.wbrand .inv{font-family:ui-monospace,monospace;font-size:11px;opacity:1}
+
+/* status + type segments */
+.wseg{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);box-shadow:var(--ctlsh)}
+.wseg span{padding:4px 12px;border-radius:99px;font-size:10.5px;font-weight:700;opacity:.5}
+.wseg span.on{opacity:1;background:var(--st-booked);color:var(--chip-ink)}
+.wseg span.on.neut{background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .wseg span.on.neut{background:var(--ivory);color:#1b1a17}
+
+/* meta wells + client panel */
+.wcols{display:grid;grid-template-columns:.85fr 1fr;gap:0;align-items:stretch}
+.wwell{display:inline-flex;align-items:center;gap:7px;background:var(--wash);border-radius:10px;
+  padding:6px 11px;font-size:11px}
+.wwell .pfx{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.45}
+.wwell .val{font-family:ui-monospace,monospace}
+.wnote{background:var(--wash);border-radius:11px;padding:9px 11px;font-size:11px;opacity:.75;
+  min-height:64px;line-height:1.5}
+.cfield{margin-bottom:9px}
+.cfield .fl{font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.38;margin-bottom:3px}
+.cfield .fv{background:var(--wash);border-radius:9px;padding:6px 10px;font-size:11.5px}
+.tagint{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--st-warm);margin-left:6px}
+
+/* seed bar */
+.wseed{display:flex;justify-content:space-between;align-items:center;background:var(--wash);
+  border-radius:12px;padding:9px 14px;font-family:'Archivo Black',sans-serif;font-size:10px;
+  letter-spacing:.08em;text-transform:uppercase;opacity:.7}
+
+/* studio time — the real 14 columns */
+.stgrid{display:grid;grid-template-columns:46px 56px minmax(120px,1fr) 60px 60px 32px 42px 58px 40px 54px 62px 68px 26px 20px;
+  gap:0;align-items:center;font-family:ui-monospace,monospace;font-size:10px;min-width:760px}
+.stgrid>div{padding:6px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stgrid.hdr{font-family:inherit;font-size:8px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;opacity:.4}
+.stgrid .r{text-align:right}
+.stgrid .c{text-align:center}
+.dayblk{background:var(--wash);border-radius:12px;margin-bottom:7px;overflow:hidden;min-width:760px}
+.datec{display:flex;align-items:center;gap:4px}
+.sd{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.rtype{font-size:8.5px;font-weight:800;padding:2px 6px;border-radius:4px;background:var(--fg);
+  color:var(--bg);font-family:inherit;justify-self:start}
+[data-theme="dark"] .rtype{background:var(--ivory);color:#1b1a17}
+.role1{font-size:8px;font-weight:800;letter-spacing:.04em}
+.role2{font-size:8px;font-weight:800;letter-spacing:.04em;color:var(--st-warm)}
+.lockp{font-size:9px;background:var(--st-booked);color:var(--chip-ink);border-radius:4px;
+  padding:1px 4px;justify-self:center}
+.lockn{font-size:9px;background:var(--wash2);border-radius:4px;padding:1px 5px;justify-self:center;opacity:.6}
+.eqline{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:3px 12px 9px}
+.eqline .el{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.38}
+.eqpill{display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;
+  padding:3px 9px;border-radius:99px;background:var(--wash2)}
+.eqpill i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.3;font-style:normal}
+.eqpill.ok{color:var(--st-booked)}.eqpill.ok i{background:var(--st-booked);opacity:1}
+.eqpill.bad{color:var(--st-hot)}.eqpill.bad i{background:var(--st-hot);opacity:1}
+.addrow{display:flex;gap:16px;font-size:10px;opacity:.5;padding:2px 4px}
+
+/* rentals */
+.rentgrid{display:grid;grid-template-columns:44px 1fr 100px 90px 56px 76px 20px;gap:0;align-items:center;
+  font-family:ui-monospace,monospace;font-size:10px}
+.rentgrid>div{padding:6px 6px}
+.rentgrid.hdr{font-family:inherit;font-size:8px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;opacity:.4}
+.rentrow{background:var(--wash);border-radius:10px;margin-bottom:5px}
+.rentgrid .r{text-align:right}
+
+/* payments + totals */
+.payrow{display:grid;grid-template-columns:90px 80px 1fr 20px;gap:0;align-items:center;
+  background:var(--wash);border-radius:10px;margin-bottom:5px;font-family:ui-monospace,monospace;font-size:10.5px}
+.payrow>div{padding:7px 8px}
+.wline{display:flex;justify-content:space-between;font-size:11px;padding:3px 4px;
+  font-family:ui-monospace,monospace;opacity:.85}
+.wline.grand{font-size:12.5px;opacity:1;padding-top:7px;font-weight:700}
+.wline.bal{color:var(--st-hot);font-weight:700}
+.songrow{display:grid;grid-template-columns:76px 1fr;gap:8px;align-items:center;font-size:10.5px;margin-bottom:5px}
+.songrow .sl{opacity:.45;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.songrow .sv{background:var(--wash);border-radius:8px;padding:5px 9px;font-family:ui-monospace,monospace}
 
 .section{display:none}
 .section.on{display:block}
@@ -207,6 +363,7 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
 <div class="bar">
   <span style="font-size:12px;opacity:.55">Billing SOP · design + content mock — chapters are live, click the rail</span>
   <span class="grow"></span>
+  <button class="ctl" onclick="hints()" id="hintBtn">💡 Hints: Off</button>
   <button class="ctl" onclick="flip()" id="themeBtn">View light</button>
 </div>
 
@@ -217,14 +374,15 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
   <button class="ch on" data-s="job" onclick="go('job')"><span class="n">01</span> Your job</button>
   <div class="grp label">The flow</div>
   <button class="ch" data-s="flow" onclick="go('flow')"><span class="n">02</span> A session, start to finish</button>
-  <button class="ch" data-s="hub" onclick="go('hub')"><span class="n">03</span> The Billing hub</button>
+  <button class="ch" data-s="wo" onclick="go('wo')"><span class="n">03</span> The work order</button>
+  <button class="ch" data-s="hub" onclick="go('hub')"><span class="n">04</span> The Billing hub</button>
   <div class="grp label">Your day</div>
-  <button class="ch" data-s="dash" onclick="go('dash')"><span class="n">04</span> The Dashboard</button>
-  <button class="ch" data-s="myday" onclick="go('myday')"><span class="n">05</span> My Day</button>
-  <button class="ch" data-s="flo" onclick="go('flo')"><span class="n">06</span> The Flo briefing</button>
-  <button class="ch" data-s="rhythm" onclick="go('rhythm')"><span class="n">07</span> The rhythm</button>
+  <button class="ch" data-s="dash" onclick="go('dash')"><span class="n">05</span> The Dashboard</button>
+  <button class="ch" data-s="myday" onclick="go('myday')"><span class="n">06</span> My Day</button>
+  <button class="ch" data-s="flo" onclick="go('flo')"><span class="n">07</span> The Flo briefing</button>
+  <button class="ch" data-s="rhythm" onclick="go('rhythm')"><span class="n">08</span> The rhythm</button>
   <div class="grp label">Reference</div>
-  <button class="ch" data-s="help" onclick="go('help')"><span class="n">08</span> Help &amp; words</button>
+  <button class="ch" data-s="help" onclick="go('help')"><span class="n">09</span> Help &amp; words</button>
   <div class="railfoot">Version history lives here too once this ships — release notes per version, plain English.</div>
 </nav>
 
@@ -243,7 +401,7 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
 
   <div class="pane">
     <h3>The one rule that shapes everything</h3>
-    <p><b>PRSFlo owns the workflow and the documents. QuickBooks owns the money.</b>
+    <p><b>PRSFlo owns the workflow and the documents. QuickBooks owns the money.</b><span class="hint">?<span class="tipb">Quick test: "where is this invoice?" → PRSFlo. "How much did we make in July?" → QuickBooks.</span></span>
     PRSFlo tells you what needs invoicing, keeps the work order and the invoice PDF
     together, and always knows where every invoice sits. QuickBooks is still the
     accounting — the invoice itself is created there, and the books live there.</p>
@@ -262,8 +420,7 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
     <div class="pane">
       <h3>Billing clients</h3>
       <p>Labels, and anyone invoiced after the fact. The full cycle: review → invoice →
-      owner approval → send → chase → paid. Days to weeks per invoice. Overtime gets
-      billed after.</p>
+      owner approval → send → chase → paid. Days to weeks per invoice.</p>
     </div>
   </div>
 
@@ -329,7 +486,7 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
       document about this session carries both numbers from the start. The amounts get
       trued up later; the number is what matters now.</p>
       <div class="echo"><span class="chip mono">WO-1042</span><span class="chip mono">INV-2214</span>
-      <span class="chip">Created at confirmation, updated after review</span></div>
+      <span class="chip">Created at confirmation, updated after review</span><span class="hint">?<span class="tipb">Quote both numbers in any email about a session — either one finds it instantly, in PRSFlo or in QuickBooks.</span></span></div>
       <div class="why"><b>Why so early</b>A session that runs before its invoice exists
       is a session you're chasing paperwork for afterwards. Number first, money later —
       the flow never has a document with no reference.</div>
@@ -379,8 +536,13 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
       including on a runner's phone. <b>Approve each day as you verify it</b> (that's the
       lock), then <b>Complete</b> the work order. Missing times block completion — the
       app tells you exactly what's unfinished.</p>
-      <p>In QuickBooks, true up INV-2214 to the reviewed totals and attach the PDF to the
-      row. The work order and its invoice now travel together as one package.</p>
+      <p>In QuickBooks, true up INV-2214 to the reviewed totals and export the PDF. Then
+      attach it the easy way: <b>drag the PDF straight onto the work order's row in the
+      hub and drop it.</b> The row highlights as you hover, the invoice attaches, the
+      Invoiced light turns on, and the row routes itself to its next stop — no upload
+      screen, no filing. (The Attach invoice button does the same thing through a file
+      picker if you'd rather click.) From here the work order and its invoice travel
+      together as one package.</p>
       <div class="echo"><span class="lights"><span class="lt on"><span class="d"></span>Reviewed</span>
       <span class="lt on"><span class="d"></span>Invoiced</span>
       <span class="lt"><span class="d"></span>Approved</span></span></div>
@@ -402,7 +564,7 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
       nothing to send. Check it, attach the invoice, done. If collection was missed, the
       session lands in <b>Balance due</b> — rare, and the most important thing on the
       page when it happens.</p>
-      <div class="echo"><span class="btn">Download</span><span class="btn">Mark sent</span>
+      <div class="echo"><span class="btn">Download</span><span class="btn">Mark sent</span><span class="hint">?<span class="tipb">Press Mark sent the day it actually leaves — aging starts from this moment, so batching it "for Friday" makes every invoice look younger than it is.</span></span>
       <span class="btn">Mark paid</span><span class="chip hot">Balance due — collection missed</span></div>
     </div></div>
   </div>
@@ -413,13 +575,196 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
     WO set up (rates·PO) → runners fill it live → you review + approve days → owner approves →
     download → sent → aging → paid</p>
   </div>
-  <div class="nextbar"><button onclick="go('job')">← Your job</button><button onclick="go('hub')">Next · The Billing hub →</button></div>
+  <div class="nextbar"><button onclick="go('job')">← Your job</button><button onclick="go('wo')">Next · The work order →</button></div>
 </section>
 
-<!-- ════════ 03 · THE HUB ════════ -->
-<section class="section" id="s-hub">
+<!-- ════════ 03 · THE WORK ORDER ════════ -->
+<section class="section" id="s-wo">
   <div class="hbar">
     <div class="kicker">Chapter 03</div>
+    <h1>The work order</h1>
+    <p class="lede">One document per session, and the single source of truth for it. This
+    chapter is a real work order — <b>click through the steps on the right</b> and each
+    part of the document lights up as it's explained. Understand this one page and you
+    understand the whole system.</p>
+  </div>
+
+  <div class="wstep">
+    <div class="wtxt">
+      <span class="k" id="wk">Step 1 of 10</span>
+      <h3 id="wt"></h3>
+      <div id="wb"></div>
+    </div>
+    <div class="wnav">
+      <div class="navr"><button onclick="wgo(-1)" id="wprev">← Back</button>
+        <button class="pri" onclick="wgo(1)" id="wnext">Next →</button></div>
+      <div class="wdots" id="wdots"></div>
+    </div>
+  </div>
+
+  <div class="wodoc touring" id="wodoc">
+
+    <!-- letterhead -->
+    <div class="wsec wbrand" data-sec="brand">
+      <div class="co">Paramount Recording Group</div>
+      <div class="st">Paramount · Encore · Ameraycan · Wilder · Track</div>
+      <div class="row"><span>Recording Studios (323) 465-4000</span>
+        <span>Invoice # <span class="inv">INV-2214</span></span></div>
+    </div>
+
+    <!-- status + meta / client two-col -->
+    <div class="wsec" data-sec="meta" style="margin-bottom:4px">
+      <div class="wseg"><span class="on">Confirmed</span><span>Tentative</span><span>Cancelled</span><span>Tour</span><span>Tech</span><span>Open Hours</span></div>
+    </div>
+    <div class="wcols">
+      <div class="wsec" data-sec="meta" style="margin-right:10px">
+        <div class="wlab">Session Type</div>
+        <div class="wseg" style="margin-bottom:12px"><span class="on neut">Recording</span><span>Filming</span><span>Event / Playback</span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <span class="wwell"><span class="pfx">Inv #</span><span class="val">INV-2214</span></span>
+          <span class="wwell"><span class="pfx">PO #</span><span class="val">88-4471</span><span style="font-size:8.5px;font-weight:800;opacity:.4">NO PO</span></span>
+          <span class="wwell"><span class="pfx">Food $</span><span class="val">—</span></span>
+        </div>
+        <div class="wlab">Booking Notes<span class="tagint">Internal only</span></div>
+        <div class="wnote">Label wants rough bounces nightly. Parking for 3. Last session ran long — bill OT without a call, per D. Marsh.</div>
+      </div>
+      <div class="wsec" data-sec="client" style="margin-left:0">
+        <div class="wlab">Client</div>
+        <div class="cfield"><div class="fv" style="opacity:.45">🔍 Search client, A&amp;R, or artist…</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
+          <div class="cfield"><div class="fl">Client / Label</div><div class="fv">Hitline Records</div></div>
+          <div class="cfield"><div class="fl">Artist</div><div class="fv">KAYA B</div></div>
+          <div class="cfield"><div class="fl">Ordered by (A&amp;R)</div><div class="fv">D. Marsh</div></div>
+          <div class="cfield"><div class="fl">Phone</div><div class="fv">(818) 555-0142</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:2px">
+          <span class="fl" style="font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.38">Billing</span>
+          <div class="wseg"><span>COD</span><span class="on neut">Billing</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- seed -->
+    <div class="wsec wseed" data-sec="seed"><span>+ Seed — add multiple days</span><span>▼</span></div>
+
+    <!-- studio time -->
+    <div class="wsec" data-sec="st">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div class="wlab" style="margin-bottom:0">Studio Time</div>
+        <div class="wseg"><span class="on neut">☰ List</span><span>▦ Cards</span></div>
+      </div>
+      <div class="stgrid hdr"><div>Studio</div><div>Date</div><div>Session Info</div><div>From</div><div>To</div><div>Hrs</div><div>Type</div><div>Rate</div><div>OT Hrs</div><div>OT Rate</div><div class="r">OT Chg</div><div class="r">Total</div><div></div><div></div></div>
+
+      <!-- Fri — approved + locked -->
+      <div class="dayblk">
+        <div class="stgrid" data-sec="dots">
+          <div>B</div><div class="datec"><span class="sd" style="background:var(--st-booked)"></span>Fri 8/14</div>
+          <div style="opacity:.6">Vocals — KAYA B</div><div>2:00 PM</div><div>12:00 AM</div><div>10</div>
+          <div><span class="rtype">Day</span></div><div>$1,400</div><div>—</div><div>—</div>
+          <div class="r">—</div><div class="r" style="font-weight:700">$1,400.00</div>
+          <div data-sec="dots" class="c"><span class="lockp">🔒</span></div><div class="c" style="opacity:.4">×</div>
+        </div>
+        <div class="stgrid" data-sec="staff">
+          <div class="role1">1ST</div><div style="opacity:.55">Fri 8/14</div><div>M. Torres</div>
+          <div>2:00 PM</div><div>12:00 AM</div><div>10h</div><div></div><div>$55</div><div></div><div></div>
+          <div class="r"></div><div class="r">$550.00</div><div class="c"><span class="lockn">✓</span></div><div class="c" style="opacity:.4">×</div>
+        </div>
+        <div class="eqline" data-sec="equip"><span class="el">Equipment</span>
+          <span class="eqpill ok"><i></i>Speakers</span><span class="eqpill ok"><i></i>Microphone</span><span class="eqpill ok"><i></i>Console</span></div>
+      </div>
+
+      <!-- Sat — submitted, hourly + OT -->
+      <div class="dayblk">
+        <div class="stgrid" data-sec="dots">
+          <div>B</div><div class="datec"><span class="sd" style="background:var(--st-warm)"></span>Sat 8/15</div>
+          <div style="opacity:.6">Vocals + comps</div><div>2:00 PM</div><div>2:00 AM</div><div>12</div>
+          <div><span class="rtype">Hr</span></div><div>$150</div><div>2</div><div>$225</div>
+          <div class="r">$450.00</div><div class="r" style="font-weight:700">$1,950.00</div>
+          <div class="c"><span class="lockn">✓</span></div><div class="c" style="opacity:.4">×</div>
+        </div>
+        <div class="stgrid" data-sec="staff">
+          <div class="role1">1ST</div><div style="opacity:.55">Sat 8/15</div><div>M. Torres</div>
+          <div>2:00 PM</div><div>2:00 AM</div><div>12h</div><div></div><div>$55</div><div></div><div></div>
+          <div class="r"></div><div class="r">$660.00</div><div class="c"><span class="lockn">✓</span></div><div class="c" style="opacity:.4">×</div>
+        </div>
+        <div class="stgrid" data-sec="staff">
+          <div class="role2">2ND</div><div style="opacity:.55">Sat 8/15</div><div>K. Ito</div>
+          <div>6:00 PM</div><div>2:00 AM</div><div>8h</div><div></div><div>$35</div><div></div><div></div>
+          <div class="r"></div><div class="r">$280.00</div><div class="c"><span class="lockn">✓</span></div><div class="c" style="opacity:.4">×</div>
+        </div>
+        <div class="eqline" data-sec="equip"><span class="el">Equipment</span>
+          <span class="eqpill ok"><i></i>Speakers</span><span class="eqpill bad"><i></i>Microphone<b> ·</b></span><span class="eqpill ok"><i></i>Console</span></div>
+      </div>
+
+      <!-- Sun — in progress -->
+      <div class="dayblk">
+        <div class="stgrid" data-sec="dots">
+          <div>B</div><div class="datec">Sun 8/16</div>
+          <div style="opacity:.6">Mixing refs</div><div>2:00 PM</div><div style="opacity:.35">—</div><div style="opacity:.35">—</div>
+          <div><span class="rtype">Day</span></div><div>$1,400</div><div>—</div><div>—</div>
+          <div class="r">—</div><div class="r" style="font-weight:700">$1,400.00</div>
+          <div class="c"><span class="lockn">✓</span></div><div class="c" style="opacity:.4">×</div>
+        </div>
+        <div class="eqline" data-sec="equip"><span class="el">Equipment</span>
+          <span class="eqpill"><i></i>Speakers</span><span class="eqpill"><i></i>Microphone</span><span class="eqpill"><i></i>Console</span></div>
+      </div>
+      <div class="addrow"><span>+ Add Studio Time</span><span>+ Add Engineer</span><span>+ Add Assistant</span></div>
+    </div>
+
+    <!-- rentals -->
+    <div class="wsec" data-sec="rent">
+      <div class="wlab">Rentals</div>
+      <div class="rentgrid hdr"><div>Qty</div><div>Item</div><div>Date</div><div>Rate</div><div>Days</div><div class="r">Charge</div><div></div></div>
+      <div class="rentgrid rentrow"><div>2</div><div>Neve 1073 preamp</div><div>8/14–16</div><div>$75/day</div><div>3</div><div class="r">$450.00</div><div style="opacity:.4">×</div></div>
+      <div class="rentgrid rentrow"><div>1</div><div>Sony C800G</div><div>8/15</div><div>$200/day</div><div>1</div><div class="r">$200.00</div><div style="opacity:.4">×</div></div>
+    </div>
+
+    <!-- notes | payments + totals -->
+    <div class="wcols">
+      <div class="wsec" data-sec="notes" style="margin-right:10px">
+        <div class="wlab">Session Notes</div>
+        <div class="songrow"><span class="sl">Song · 8/14</span><span class="sv">Midnight Run</span></div>
+        <div class="songrow"><span class="sl">Song · 8/15</span><span class="sv">Midnight Run (comps)</span></div>
+        <div class="wnote" style="margin-top:8px">Client happy with vocal chain. Mic buzz on Sat traced to a cable — see equipment note.</div>
+      </div>
+      <div class="wsec" data-sec="pay" style="margin-left:0">
+        <div class="wlab">Payments</div>
+        <div class="payrow"><div>Zelle</div><div>$2,000.00</div><div style="opacity:.6">deposit · Aug 12</div><div style="opacity:.4">×</div></div>
+        <div style="margin-top:14px" data-sec="tot">
+          <div class="wline"><span>Studio Total</span><span>$4,750.00</span></div>
+          <div class="wline"><span>Eng Total</span><span>$1,490.00</span></div>
+          <div class="wline"><span>Rentals Total</span><span>$650.00</span></div>
+          <div class="wline grand"><span>Grand Total</span><span>$6,890.00</span></div>
+          <div class="wline" style="color:var(--st-booked)"><span>Total Paid</span><span>$2,000.00</span></div>
+          <div class="wline bal"><span>Balance Due</span><span>$4,890.00</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pane">
+    <h3>Who can touch what</h3>
+    <p><b>The office (you)</b> — everything: rates, dates, rooms, rows, batch edits,
+    approval, Complete.</p>
+    <p><b>Runners</b> — the things that happen at the desk: times, staff names and
+    roles, OT that follows from times, equipment condition, song titles, payments taken,
+    session notes, the COD signature. And rentals — a rental added at the desk is a real
+    event.</p>
+    <p><b>Runners can't touch</b> — the client block ("set by the office"), any rate,
+    row dates (the schedule is the office's), or an approved day. They see rates as
+    read-only text; the schedule they can only report against, not rewrite.</p>
+    <div class="why"><b>The principle</b>Whoever witnesses a fact records it. Runners
+    witness time, condition, and cash; the office owns identity, price, and schedule.
+    Every edit lands live on the other side's screen either way.</div>
+  </div>
+
+  <div class="nextbar"><button onclick="go('flow')">← The flow</button><button onclick="go('hub')">Next · The Billing hub →</button></div>
+</section>
+
+<!-- ════════ 04 · THE HUB ════════ -->
+<section class="section" id="s-hub">
+  <div class="hbar">
+    <div class="kicker">Chapter 04</div>
     <h1>The Billing hub</h1>
     <p class="lede">Open <b>Billing</b> in the rail. Every work order is one row, sorted
     into tabs by <b>what it's waiting for</b> — this page replaced the old Dropbox
@@ -436,7 +781,7 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
       <div class="bstat alert"><div class="n">1</div><div class="k">Over 31 days</div></div>
     </div>
     <div class="hrow"><span class="cl"><b>Hitline Records — KAYA B</b><small>Aug 14–16 · Studio B · WO-1042 · INV-2214</small></span>
-      <span class="lights"><span class="lt on"><span class="d"></span>Rev</span><span class="lt on"><span class="d"></span>Inv</span><span class="lt"><span class="d"></span>App</span></span>
+      <span class="lights"><span class="lt on"><span class="d"></span>Rev</span><span class="lt on"><span class="d"></span>Inv</span><span class="lt"><span class="d"></span>App</span></span><span class="hint">?<span class="tipb">The lights are derived — you can't set them. They read the package's real state, so a light is never wrong.</span></span>
       <span class="amt">$4,180</span><span class="btn ghost">Approve</span></div>
     <div class="hrow"><span class="cl"><b>Vantage Music Group — DECOY</b><small>Aug 15 · Studio A · WO-1038 · INV-2209</small></span>
       <span class="lights"><span class="lt on"><span class="d"></span>Rev</span><span class="lt"><span class="d"></span>Inv</span><span class="lt"><span class="d"></span>App</span></span>
@@ -477,39 +822,74 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
     <p><b>Cancelled sessions with a live invoice don't vanish.</b> The client still owes
     the money — void it properly through Closed, with a reason on the record.</p>
   </div>
-  <div class="nextbar"><button onclick="go('flow')">← The flow</button><button onclick="go('dash')">Next · The Dashboard →</button></div>
+  <div class="nextbar"><button onclick="go('wo')">← The work order</button><button onclick="go('dash')">Next · The Dashboard →</button></div>
 </section>
 
-<!-- ════════ 04 · DASHBOARD ════════ -->
+<!-- ════════ 05 · DASHBOARD ════════ -->
 <section class="section" id="s-dash">
   <div class="hbar">
-    <div class="kicker">Chapter 04</div>
+    <div class="kicker">Chapter 05</div>
     <h1>The Dashboard</h1>
     <p class="lede">The dashboard is the morning read, not a work surface. You open it,
     Flo tells you the state of your world in five lines, and you head to the hub or your
     My Day card knowing exactly what the day holds.</p>
   </div>
+  <p class="lede" style="margin-top:0">Four things on it are yours. Here's each one, the
+  way it looks on the page:</p>
+
+  <div class="two" style="margin-top:14px">
+    <div class="mini">
+      <div class="minihead"><span class="t">Flo</span><span class="ftag" style="font-size:10px;opacity:.5">· Your briefing · Aug 28</span><span class="pt">Top left</span></div>
+      <div class="fb"><span class="dot" style="background:var(--st-warm)"></span><span>3 balances outstanding · $5,940</span></div>
+      <div class="fb"><span class="dot" style="background:var(--st-booked)"></span><span>You cleared all 5 duties yesterday</span></div>
+      <div class="fb dim"><span class="dot" style="background:var(--st-dead)"></span><span>Tomorrow: Ramp weekly report</span></div>
+      <div class="flosyn" style="margin-top:7px">"Nothing slipped — a few things are building, none urgent."</div>
+      <div class="cap-line"><b>The Flo box</b> — your briefing, first thing your eye should hit.
+      Computed and rule-based; chapter 07 explains every line.</div>
+    </div>
+    <div class="mini">
+      <div class="minihead"><span class="t">My Day</span><span class="pt">Beside Flo</span></div>
+      <div class="lozenge" style="margin-bottom:6px"><span>Billing · Today</span><span class="ct">2 of 4</span></div>
+      <div class="duty done"><div class="bx">✓</div><div class="tx">Approve Ramp transactions</div><span class="cap">14</span></div>
+      <div class="duty done"><div class="bx">✓</div><div class="tx">Review yesterday's work orders</div></div>
+      <div class="duty"><div class="bx"></div><div class="tx">Update last night's invoices in QB</div></div>
+      <div class="duty"><div class="bx"></div><div class="tx">COD outstanding follow-up</div></div>
+      <div class="cap-line"><b>Your My Day card</b> — today's duties with checkboxes and the
+      progress pill. Short form of the full My Day page (chapter 06); same checkmarks
+      either place.</div>
+    </div>
+    <div class="mini">
+      <div class="minihead"><span class="t">My Tasks</span><span class="pt">Below My Day</span></div>
+      <div class="trow"><span class="dot" style="background:var(--st-warm)"></span><span>Re-send July statement to Hitline</span><span class="tby">from Eli</span></div>
+      <div class="trow"><span class="dot" style="background:var(--st-dead)"></span><span>Call Ramp about the duplicate charge</span><span class="tby">from Fernando</span></div>
+      <div class="cap-line"><b>My Tasks</b> — one-off tasks assigned to you by name, each with
+      a comment thread. Different thing from My Day: tasks are one-offs, duties recur.</div>
+    </div>
+    <div class="mini">
+      <div class="minihead"><span class="t">Today's sessions</span><span class="hint">?<span class="tipb">Tonight's teal cards are tomorrow morning's review queue — a busy grid today means a full In-progress tab tomorrow.</span></span><span class="pt">Center</span></div>
+      <div class="rooms">
+        <div class="room live"><span class="rk">PRS · A</span><span class="ra">KAYA B</span><span class="rt">2p–12a</span></div>
+        <div class="room live"><span class="rk">PRS · B</span><span class="ra">DECOY</span><span class="rt">6p–2a</span></div>
+        <div class="room hold"><span class="rk">ARS · D</span><span class="ra">J. RIVAS</span><span class="rt">hold</span></div>
+        <div class="room"><span class="rk">ERS · A</span><span class="ra" style="opacity:.3">—</span></div>
+      </div>
+      <div class="cap-line"><b>The room grid</b> — what's running in the buildings today.
+      Teal = confirmed, orange = a hold. Worth a glance because tonight's sessions are
+      tomorrow morning's review queue.</div>
+    </div>
+  </div>
+
   <div class="pane">
-    <h3>What's yours on it</h3>
-    <p><b>The Flo box</b> — your briefing. Computed, rule-based, and worth its own
-    chapter (06).</p>
-    <p><b>Your My Day card</b> — today's duties with checkboxes and a progress pill.
-    Short form of the full My Day page; same checkmarks either place.</p>
-    <p><b>My Tasks</b> — one-off tasks assigned to you by name, with comment threads.
-    Different thing from My Day: tasks are one-offs, duties recur.</p>
-    <p><b>Today's sessions</b> — the room-by-room grid of what's running in the
-    buildings today. Useful because tonight's sessions are tomorrow morning's review
-    queue.</p>
-    <div class="why"><b>Everything else</b>Needs-action leads, flags, ops cards — other
-    roles' worlds. You can see them; none of them wait on you.</div>
+    <div class="why" style="margin-top:0"><b>Everything else</b>Needs-action leads, flags,
+    ops cards — other roles' worlds. You can see them; none of them wait on you.</div>
   </div>
   <div class="nextbar"><button onclick="go('hub')">← The hub</button><button onclick="go('myday')">Next · My Day →</button></div>
 </section>
 
-<!-- ════════ 05 · MY DAY ════════ -->
+<!-- ════════ 06 · MY DAY ════════ -->
 <section class="section" id="s-myday">
   <div class="hbar">
-    <div class="kicker">Chapter 05</div>
+    <div class="kicker">Chapter 06</div>
     <h1>My Day</h1>
     <p class="lede">The recurring part of your job, as a card that knows its own schedule.
     Sessions flow through the hub; My Day is the drumbeat around them — Ramp, QuickBooks,
@@ -518,7 +898,7 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
 
   <div class="pane">
     <div class="lozenge"><span>Billing · Today</span><span class="ct">3 of 5</span></div>
-    <div class="duty done"><div class="bx">✓</div><div class="tx">Approve Ramp transactions + chase missing receipts</div><span class="cap">14</span></div>
+    <div class="duty done"><div class="bx">✓</div><div class="tx">Approve Ramp transactions + chase missing receipts</div><span class="cap">14</span><span class="hint">?<span class="tipb">The number well is a captured count — type the real figure. Flo quotes it in tomorrow's briefing, and Eli's oversight numbers are built from it.</span></span></div>
     <div class="duty done"><div class="bx">✓</div><div class="tx">Collect + accuracy-check yesterday's work orders</div></div>
     <div class="duty done"><div class="bx">✓</div><div class="tx">Update last night's invoices in QB</div><span class="cap">6</span></div>
     <div class="duty"><div class="bx"></div><div class="tx">COD invoicing + outstanding follow-up<div class="mono" style="font-size:10px;opacity:.55">records: COD outstanding · chased today · 31+ past due</div></div></div>
@@ -550,10 +930,10 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
   <div class="nextbar"><button onclick="go('dash')">← Dashboard</button><button onclick="go('flo')">Next · The Flo briefing →</button></div>
 </section>
 
-<!-- ════════ 06 · FLO ════════ -->
+<!-- ════════ 07 · FLO ════════ -->
 <section class="section" id="s-flo">
   <div class="hbar">
-    <div class="kicker">Chapter 06</div>
+    <div class="kicker">Chapter 07</div>
     <h1>The Flo briefing</h1>
     <p class="lede">The Flo box reads like a note from an assistant. It is <b>not AI and
     not guessing</b> — every line is computed from real records by fixed rules. Once you
@@ -562,7 +942,7 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
   </div>
 
   <div class="flo-box">
-    <div class="flo-head"><span class="fname">Flo</span><span class="ftag">· Your briefing · Aug 28</span></div>
+    <div class="flo-head"><span class="fname">Flo</span><span class="ftag">· Your briefing · Aug 28</span><span class="hint">?<span class="tipb">No AI here — every line is a fixed rule over live data. If a line surprises you, the data changed, not the rules.</span></span></div>
     <div class="fb"><span class="dot" style="background:var(--st-hot)"></span><span><b>Tenant rent invoices were due Mon 8/25 — 3 days late, needs doing ASAP</b></span></div>
     <div class="annot">RED — something slipped. Appears for exactly three reasons: a duty backlog hits 3+ days · a monthly duty blew its date (this one — loudest, because the next chance is a month away) · a duty due yesterday wasn't done.</div>
     <div class="fb"><span class="dot" style="background:var(--st-warm)"></span><span>2 sessions missing work orders</span></div>
@@ -595,10 +975,10 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
   <div class="nextbar"><button onclick="go('myday')">← My Day</button><button onclick="go('rhythm')">Next · The rhythm →</button></div>
 </section>
 
-<!-- ════════ 07 · RHYTHM ════════ -->
+<!-- ════════ 08 · RHYTHM ════════ -->
 <section class="section" id="s-rhythm">
   <div class="hbar">
-    <div class="kicker">Chapter 07</div>
+    <div class="kicker">Chapter 08</div>
     <h1>The rhythm</h1>
     <p class="lede">Everything recurring in your role, by when it comes around. These are
     the things that pop onto your My Day card on their day — and into Flo's "Tomorrow"
@@ -614,10 +994,10 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
   <div class="nextbar"><button onclick="go('flo')">← The Flo briefing</button><button onclick="go('help')">Next · Help &amp; words →</button></div>
 </section>
 
-<!-- ════════ 08 · HELP ════════ -->
+<!-- ════════ 09 · HELP ════════ -->
 <section class="section" id="s-help">
   <div class="hbar">
-    <div class="kicker">Chapter 08</div>
+    <div class="kicker">Chapter 09</div>
     <h1>Help &amp; words</h1>
   </div>
   <div class="pane">
@@ -651,6 +1031,71 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
 </div>
 
 <script>
+/* ── WO walkthrough ── */
+const WSTEPS=[
+ {t:['brand','meta','client','seed','st','rent','notes','pay'],h:'One document per session',
+  b:'<p>This is the work order, exactly as it looks in PRSFlo. The calendar card, the runner\'s phone, the hub row and the PDF the client receives are all windows onto <b>this same document</b>. There is no separate booking — change a date here and the calendar follows by itself. Click Next and each part lights up as it\'s explained.</p>'},
+ {t:['brand'],h:'The letterhead and the invoice number',
+  b:'<p>The top of the document is the client-facing letterhead — this is what prints. The <b>invoice number</b> sits up here because it exists from the moment the session confirmed (chapter 02): every document about this session carries it from day one.</p>'},
+ {t:['meta'],h:'Status, type, and the reference wells',
+  b:'<p>The status pills say what this event <i>is</i> — Confirmed and Tentative are sessions; Tour, Tech and Open Hours are blocks with no billing. Below: session type, then the slim wells billing lives by — <b>Inv #</b>, <b>PO #</b> with its <b>No-PO</b> switch (approval waits until one or the other is answered), and the food budget. <b>Booking Notes are internal only</b> — they never print.</p>'},
+ {t:['client'],h:'The client panel',
+  b:'<p>Who the session is for: search by client, A&amp;R or artist and the panel fills itself from the CRM — label, artist, the A&amp;R who ordered it, their phone. The <b>COD / Billing</b> switch is the big one for you: it decides which pipeline this work order takes through the hub.</p>'},
+ {t:['st'],h:'Studio Time — the heart of it',
+  b:'<p>One row per day, and the <b>only</b> place schedule and staffing live. Each day is a block: the studio row, its staff lines, its equipment line. Per-row <b>Day/Hr</b> toggle — Day is a flat lockout covering 12 hours, Hr is rate × hours, and a run can mix both (this one does). The <b>List / Cards</b> toggle up top: List is your desk view; Cards is what runners get on their phones.</p>'},
+ {t:['staff'],h:'Staff lines',
+  b:'<p>Under each day: <b>1ST</b> (engineer) and <b>2ND</b> (assistant), with their own times, rate and charge. Staff times follow the studio times until someone edits them. Rates here are <b>office-set</b> — runners see them as read-only text. "Engineer, TBD" is valid; the name can come later.</p>'},
+ {t:['dots'],h:'The life of a day — the dot and the lock',
+  b:'<p><span style="color:var(--st-booked)">●</span> <b>Approved</b> — checked by the office, locked (Friday, note the 🔒). <span style="color:var(--st-warm)">●</span> <b>Submitted</b> — the runner says it\'s done (Saturday). No dot — still <b>in progress</b> (Sunday, mid-session, no end time yet).</p><p><b>Submitted is a signal, not a seal</b> — the runner can keep correcting until you approve. <b>Approval is the only lock</b>, your act, reversible from the same 🔒 toggle.</p>'},
+ {t:['equip'],h:'The equipment line',
+  b:'<p>Each day closes with its equipment check — the runner taps each pill: green = OK, red = a problem, with a note and photo behind the dot (Saturday\'s microphone). <b>Internal only, never prints</b> — the client never sees it, but you\'ll read it when a session note mentions gear.</p>'},
+ {t:['rent','notes','pay'],h:'Rentals, notes, payments',
+  b:'<p><b>Rentals</b> — equipment charged to the session; runners can add these at the desk, because an 11 PM rental is a real event. <b>Session Notes</b> — song titles per day plus the night\'s story. <b>Payments</b> — every dollar taken, with type and memo; COD money recorded here is what makes the COD side of the hub true.</p>'},
+ {t:['tot'],h:'The totals — computed, never typed',
+  b:'<p><b>Every figure here is computed from the rows above.</b> Studio + Eng + Rentals = Grand Total; minus payments = Balance Due. Nothing is ever typed as a total — so this number, the hub row, and the balances queue can never disagree. If a number looks wrong, don\'t argue with the total: <b>read the rows</b>. The answer is always in the rows.</p>'},
+];
+const WNESTED=['staff','dots','equip','tot'];
+let wi=0;
+function wrender(scroll){
+  const s=WSTEPS[wi];
+  document.getElementById('wk').textContent='Step '+(wi+1)+' of '+WSTEPS.length;
+  document.getElementById('wt').textContent=s.h;
+  document.getElementById('wb').innerHTML=s.b;
+  document.getElementById('wprev').style.visibility=wi===0?'hidden':'visible';
+  document.getElementById('wnext').textContent=wi===WSTEPS.length-1?'Start over ↺':'Next →';
+  const doc=document.getElementById('wodoc');
+  const nested=s.t.some(t=>WNESTED.includes(t));
+  doc.querySelectorAll('[data-sec]').forEach(el=>{
+    el.classList.remove('hl','open','subdim');
+    const secs=el.dataset.sec.split(' ');
+    if(s.t.some(t=>secs.includes(t))) el.classList.add('hl');
+  });
+  if(nested){ // open + fade-siblings on every ancestor section of a lit row
+    doc.querySelectorAll('[data-sec].hl').forEach(el=>{
+      let p=el.parentElement;
+      while(p&&p!==doc){
+        if(p.classList.contains('wsec')){p.classList.remove('hl');p.classList.add('open','subdim')}
+        p=p.parentElement;
+      }
+    });
+  }
+  const dots=document.getElementById('wdots');
+  dots.innerHTML=WSTEPS.map((_,i)=>'<span class="'+(i===wi?'on':'')+'" onclick="wset('+i+')"></span>').join('');
+  if(scroll){
+    const first=wi===0?doc:doc.querySelector('[data-sec].hl');
+    if(first) first.scrollIntoView({behavior:'smooth',block:wi===0?'start':'center'});
+  }
+}
+function wgo(d){wi=(wi+d+WSTEPS.length)%WSTEPS.length;wrender(true)}
+function wset(i){wi=i;wrender(true)}
+wrender(false);
+
+/* ── helpful hints toggle ── */
+function hints(){
+  const on=document.body.classList.toggle('hints');
+  document.getElementById('hintBtn').textContent='💡 Hints: '+(on?'On':'Off');
+}
+
 function go(s){
   document.querySelectorAll('.section').forEach(x=>x.classList.remove('on'));
   document.getElementById('s-'+s).classList.add('on');
