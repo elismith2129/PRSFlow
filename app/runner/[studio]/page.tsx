@@ -421,8 +421,15 @@ export default function StudioDailyOpsPage() {
                       }}
                       className={`c-ev c-control c-raised-chip ${sessionFillClass(b.status)}`}
                       style={{
+                        // GRID, not flex-column (fix 2026-08-16): .c-evbody uses
+                        // height: 100%, which resolves to AUTO against a flex
+                        // parent whose height comes from min-height — so the body
+                        // sat a few px short of the chip and the chip's green
+                        // showed as a sliver UNDER the red COD strip. A grid
+                        // item stretches to the track by default, so the body
+                        // fills the chip and the COD strip IS the bottom edge.
                         padding: 0, overflow: 'hidden', cursor: 'pointer',
-                        display: 'flex', flexDirection: 'column',
+                        display: 'grid',
                         minHeight: 84, WebkitTapHighlightColor: 'transparent',
                       }}
                     >

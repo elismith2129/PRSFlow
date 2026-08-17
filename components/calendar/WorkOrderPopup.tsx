@@ -3066,8 +3066,13 @@ export function WorkOrderPopup({
                 </div>
               )
             })()}
+            {/* LIST gets the horizontal-scroll container (880px grid on a
+                phone); CARDS deliberately does NOT — cards are plain full-width
+                blocks, and rendering them inside an overflow-x container is
+                what clipped their right corners square (Eli's screenshot,
+                2026-08-16). The shared footer sits below both. */}
+            {stView !== 'cards' ? (
             <div style={{ overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
-              {stView !== 'cards' ? (<>
               {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock | Del */}
               <div style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px', paddingBottom: 5, minWidth: isMobile ? 880 : undefined }}>
                 {/* `right` marks the money columns — header and value share an
@@ -3485,7 +3490,8 @@ export function WorkOrderPopup({
                   )
                 })}
               </div>
-              </>) : (
+            </div>
+            ) : (
               /* ── CARD VIEW — one day, one card (Eli, 2026-08-15; mock
                   docs/design-refs/runner-wo-views.html phone 2). A day, its
                   staff and its condition are ONE FACT (§16/§18) — the card is
@@ -3525,6 +3531,7 @@ export function WorkOrderPopup({
                         onClick={() => { if (!cardLocked && !readOnly) setDaySheetDate(g.date) }}
                         style={{
                           background: 'var(--c-wash)', borderRadius: 14, padding: '13px 14px', marginBottom: 9,
+                          maxWidth: '100%', boxSizing: 'border-box', minWidth: 0,
                           cursor: cardLocked || readOnly ? 'default' : 'pointer',
                           opacity: cardLocked ? 0.62 : 1,
                         }}
@@ -3538,7 +3545,10 @@ export function WorkOrderPopup({
                             {studios.length ? `Studio ${studios.join(' · ')}` : ''}
                           </span>
                         </div>
-                        <div className="c-tnum" style={{ fontSize: 12, color: 'var(--c-fg)', marginBottom: 2 }}>
+                        {/* Not .c-tnum — that class is text-align: right (it's
+                            for money columns) and it shoved the times to the
+                            card's right edge. */}
+                        <div style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 12, fontWeight: 500, color: 'var(--c-fg)', marginBottom: 2 }}>
                           {first?.from_time || '—'} – {first?.to_time || <span style={{ color: 'var(--c-fg-3)' }}>tap to set</span>}
                           {first?.total_hours != null && <span style={{ color: 'var(--c-fg-2)' }}> · {first.total_hours}h</span>}
                           {otHrsTotal > 0 && <span style={{ color: 'var(--c-st-warm)' }}> · OT {otHrsTotal}h</span>}
@@ -3593,168 +3603,7 @@ export function WorkOrderPopup({
                   )}
                 </div>
               </div>
-            </div>
           </div>
-
-          {/* ── DAY SHEET (card view's editor — Eli, 2026-08-15; mock phone 3).
-              A bottom sheet with the five things actually typed on a phone:
-              start, end, OT hours, staff, song title — plus the equipment
-              pills. Rates appear as inputs for admin and as the read-only
-              "Billing · set by the office" block for the runner. Edits go
-              through updateStRow, so they are LOCAL-FIRST like every other
-              studio-time edit: nothing writes until Save / Submit, and Cancel
-              reverts the lot. */}
-          {daySheetDate !== null && (() => {
-            const sheetRows = stRows.filter(r => (r.date || '') === daySheetDate)
-            const sheetStudioRows = sheetRows.filter(r => r.studio !== '')
-            const sheetStaffRows = sheetRows.filter(r => r.eng_visible !== false && (r.eng_name || r.eng_rate || r.studio === ''))
-            const sheetDot = sheetRows.length > 0 && sheetRows.every(r => r.status === 'approved')
-              ? 'var(--c-st-booked)'
-              : sheetRows.some(r => r.status === 'submitted') ? 'var(--c-st-warm)' : null
-            const fld: React.CSSProperties = { flex: 1, background: 'var(--c-wash)', borderRadius: 12, padding: '8px 12px', minWidth: 0 }
-            const fldK: React.CSSProperties = { fontSize: 8.5, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }
-            const engChargeFor = (r: StRow) => {
-              const rate = parseFloat((r.eng_rate ?? '').replace(/[^0-9.]/g, '')) || 0
-              const hrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
-              return hrs != null && hrs > 0 && rate > 0 ? hrs * rate : 0
-            }
-            const sheetTotal = sheetRows.reduce((s, r) => s + (r.charge ?? 0) + (r.ot_charge ?? 0) + engChargeFor(r), 0)
-            return (
-              <div style={{ position: 'fixed', inset: 0, zIndex: 10030, background: 'rgba(0,0,0,0.45)' }} onClick={() => { setDaySheetDate(null); setOpenNoteKey(null) }}>
-                <div
-                  onClick={e => e.stopPropagation()}
-                  style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'var(--c-bg)', borderRadius: '22px 22px 0 0', padding: '12px 16px calc(16px + env(safe-area-inset-bottom))', maxHeight: '86%', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
-                >
-                  <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--c-wash2)', margin: '0 auto 12px' }} />
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <span className="c-arch" style={{ fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {weekdayDate(daySheetDate)}
-                      {sheetDot && <span style={{ width: 7, height: 7, borderRadius: 99, background: sheetDot, display: 'inline-block' }} />}
-                    </span>
-                    <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>
-                      {Array.from(new Set(sheetStudioRows.map(r => toStudioLetter(r.studio)).filter(Boolean))).map(s => `Studio ${s}`).join(' · ')}
-                    </span>
-                  </div>
-
-                  {sheetStudioRows.map(r => {
-                    const rowLocked = runner && r.admin_locked
-                    const isDayRow = r.row_rate_type === 'day'
-                    return (
-                      <div key={r.id + '-sheet'} style={{ pointerEvents: rowLocked ? 'none' : undefined, opacity: rowLocked ? 0.62 : 1, marginBottom: 10 }}>
-                        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                          <div style={fld}>
-                            <div style={fldK}>Start</div>
-                            <TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} className="c-tin c-tin-mono" />
-                          </div>
-                          <div style={fld}>
-                            <div style={fldK}>End</div>
-                            <TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} className="c-tin c-tin-mono" />
-                          </div>
-                          <div style={{ ...fld, flex: '0 0 76px' }}>
-                            <div style={fldK}>OT hrs</div>
-                            {isDayRow
-                              ? <div style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--c-fg-2)', minHeight: 44, display: 'flex', alignItems: 'center' }}>{(parseFloat(r.ot_hours || '0') || 0) > 0 ? r.ot_hours : 'auto'}</div>
-                              : <input value={r.ot_hours ?? ''} onChange={e => updateStRow(r.id, { ot_hours: e.target.value })} placeholder="0" className="c-tin c-tin-mono" />
-                            }
-                          </div>
-                        </div>
-                        <div style={{ ...fld, marginBottom: 8 }}>
-                          <div style={fldK}>Song title / session info</div>
-                          <textarea
-                            value={r.session_info}
-                            onChange={e => updateStRow(r.id, { session_info: e.target.value })}
-                            rows={2}
-                            placeholder="What was worked on…"
-                            style={{ width: '100%', background: 'transparent', outline: 'none', resize: 'vertical', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12, lineHeight: 1.5, boxSizing: 'border-box' }}
-                          />
-                        </div>
-                      </div>
-                    )
-                  })}
-
-                  {sheetStaffRows.length > 0 && (
-                    <div style={{ marginBottom: 10 }}>
-                      <div style={{ ...fldK, marginBottom: 6 }}>Staff</div>
-                      {sheetStaffRows.map(r => {
-                        const rowLocked = runner && r.admin_locked
-                        return (
-                          <div key={r.id + '-sheetstaff'} style={{ display: 'flex', gap: 8, marginBottom: 6, pointerEvents: rowLocked ? 'none' : undefined, opacity: rowLocked ? 0.62 : 1 }}>
-                            <button
-                              type="button"
-                              onClick={() => updateStRow(r.id, { eng_role: r.eng_role === 'assistant' ? 'engineer' : 'assistant' })}
-                              style={{ flexShrink: 0, alignSelf: 'stretch', fontSize: 9, fontFamily: 'Inter', fontWeight: 700, padding: '0 9px', borderRadius: 12, cursor: 'pointer', background: 'var(--c-wash2)', color: r.eng_role === 'assistant' ? 'var(--c-st-warm)' : 'var(--c-fg)' }}
-                            >
-                              {r.eng_role === 'assistant' ? '2ND' : '1ST'}
-                            </button>
-                            <div style={fld}>
-                              <div style={fldK}>{r.eng_role === 'assistant' ? 'Assistant' : 'Engineer'}</div>
-                              <input list="wo-eng-roster" value={r.eng_name || ''} onChange={e => updateStRow(r.id, { eng_name: e.target.value })} placeholder="Name…" className="c-tin" />
-                            </div>
-                            <div style={{ ...fld, flex: '0 0 88px' }}>
-                              <div style={fldK}>From</div>
-                              <TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} className="c-tin c-tin-mono" />
-                            </div>
-                            <div style={{ ...fld, flex: '0 0 88px' }}>
-                              <div style={fldK}>To</div>
-                              <TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} className="c-tin c-tin-mono" />
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  <div style={{ ...fldK, marginBottom: 6 }}>Equipment</div>
-                  <div style={{ marginBottom: 4 }}>{renderEquipPills(daySheetDate, false)}</div>
-                  {renderEquipNoteBlock(daySheetDate)}
-
-                  {/* Billing — the money the day produced. Runner reads it;
-                      admin can correct rates without leaving the sheet. */}
-                  <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '9px 12px', margin: '10px 0 12px' }}>
-                    <div style={{ ...fldK, marginBottom: 4 }}>{runner ? 'Billing · set by the office' : 'Billing'}</div>
-                    {sheetStudioRows.map(r => {
-                      const isDayRow = r.row_rate_type === 'day'
-                      return (
-                        <div key={r.id + '-bill'} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)', padding: '2px 0', gap: 8 }}>
-                          {runner ? (
-                            <span>Room {isDayRow ? `${r.rate_daily || '—'}/day` : `${r.rate || '—'}/hr`}{r.ot_rate ? ` · OT ${r.ot_rate}` : ''}</span>
-                          ) : (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              Room
-                              {isDayRow
-                                ? <input value={r.rate_daily} onChange={e => updateStRow(r.id, { rate_daily: e.target.value })} placeholder="$0/day" className="c-tin c-tin-mono" style={{ width: 80 }} />
-                                : <input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} placeholder="$0/hr" className="c-tin c-tin-mono" style={{ width: 80 }} />}
-                              OT
-                              <input value={r.ot_rate ?? ''} onChange={e => updateStRow(r.id, { ot_rate: e.target.value })} placeholder="$0" className="c-tin c-tin-mono" style={{ width: 64 }} />
-                            </span>
-                          )}
-                          <span className="c-tnum">{((r.charge ?? 0) + (r.ot_charge ?? 0)) > 0 ? `$${((r.charge ?? 0) + (r.ot_charge ?? 0)).toFixed(2)}` : '—'}</span>
-                        </div>
-                      )
-                    })}
-                    {sheetStaffRows.filter(r => r.eng_rate || engChargeFor(r) > 0).map(r => (
-                      <div key={r.id + '-billeng'} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)', padding: '2px 0' }}>
-                        <span>{r.eng_role === 'assistant' ? 'Assistant' : 'Engineer'} {r.eng_rate ? `${r.eng_rate}/hr` : ''}</span>
-                        <span className="c-tnum">{engChargeFor(r) > 0 ? `$${engChargeFor(r).toFixed(2)}` : '—'}</span>
-                      </div>
-                    ))}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg)', paddingTop: 4 }}>
-                      <span>Day total</span>
-                      <span className="c-tnum">{sheetTotal > 0 ? `$${sheetTotal.toFixed(2)}` : '—'}</span>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => { setDaySheetDate(null); setOpenNoteKey(null) }}
-                    style={{ width: '100%', minHeight: 46, borderRadius: 12, background: 'var(--c-fg)', color: 'var(--c-bg)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 12, cursor: 'pointer' }}
-                  >
-                    Done
-                  </button>
-                </div>
-              </div>
-            )
-          })()}
 
           {/* EQUIPMENT CONDITION MOVED INTO THE STUDIO DAY (RULING 2026-08-13,
               spec §18). It was a separate table here with equipment down the
@@ -3968,6 +3817,190 @@ export function WorkOrderPopup({
           </>)}
 
         </div>{/* end body */}
+
+        {/* ── DAY SHEET (card view's editor — Eli, 2026-08-15/16; mock phone 3).
+            A bottom sheet with the things a runner actually types: start, end,
+            OT, staff (name + THEIR times, in the SAME grid as the studio times
+            directly above — Eli: the runner updates these together, so they
+            must not read as separate parts), song title, equipment pills.
+            Rates are inputs for admin, the read-only "set by the office" block
+            for the runner. Edits go through updateStRow — LOCAL-FIRST, saved
+            on Save/Submit, reverted by Cancel.
+
+            RENDERED HERE, OUTSIDE THE SCROLLABLE BODY (fix 2026-08-16): iOS
+            breaks position:fixed elements nested inside a
+            -webkit-overflow-scrolling:touch container — the sheet rendered but
+            would not scroll. As a sibling of the body it scrolls normally;
+            overscrollBehavior keeps the scroll from chaining to the page. */}
+        {daySheetDate !== null && (() => {
+          const sheetRows = stRows.filter(r => (r.date || '') === daySheetDate)
+          const sheetStudioRows = sheetRows.filter(r => r.studio !== '')
+          const sheetStaffRows = sheetRows.filter(r => r.eng_visible !== false && (r.eng_name || r.eng_rate || r.studio === ''))
+          const sheetDot = sheetRows.length > 0 && sheetRows.every(r => r.status === 'approved')
+            ? 'var(--c-st-booked)'
+            : sheetRows.some(r => r.status === 'submitted') ? 'var(--c-st-warm)' : null
+          const fld: React.CSSProperties = { flex: 1, background: 'var(--c-wash)', borderRadius: 12, padding: '8px 12px', minWidth: 0, boxSizing: 'border-box' }
+          const fldK: React.CSSProperties = { fontSize: 8.5, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }
+          const engChargeFor = (r: StRow) => {
+            const rate = parseFloat((r.eng_rate ?? '').replace(/[^0-9.]/g, '')) || 0
+            const hrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
+            return hrs != null && hrs > 0 && rate > 0 ? hrs * rate : 0
+          }
+          const sheetTotal = sheetRows.reduce((s2, r) => s2 + (r.charge ?? 0) + (r.ot_charge ?? 0) + engChargeFor(r), 0)
+          const closeSheet = () => { setDaySheetDate(null); setOpenNoteKey(null) }
+          return (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 10030, background: 'rgba(0,0,0,0.45)' }} onClick={closeSheet}>
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'var(--c-bg)', borderRadius: '22px 22px 0 0', padding: '12px 16px calc(14px + env(safe-area-inset-bottom))', maxHeight: '86%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}
+              >
+                <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--c-wash2)', margin: '0 auto 12px', flexShrink: 0 }} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexShrink: 0 }}>
+                  <span className="c-arch" style={{ fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {weekdayDate(daySheetDate)}
+                    {sheetDot && <span style={{ width: 7, height: 7, borderRadius: 99, background: sheetDot, display: 'inline-block' }} />}
+                  </span>
+                  <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>
+                    {Array.from(new Set(sheetStudioRows.map(r => toStudioLetter(r.studio)).filter(Boolean))).map(s3 => `Studio ${s3}`).join(' · ')}
+                  </span>
+                </div>
+
+                {/* The scrolling middle — everything between header and Done. */}
+                <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
+
+                  {/* Studio times — Start | End | OT, one row per studio line. */}
+                  {sheetStudioRows.map(r => {
+                    const rowLocked = runner && r.admin_locked
+                    const isDayRow = r.row_rate_type === 'day'
+                    return (
+                      <div key={r.id + '-sheet'} style={{ display: 'flex', gap: 8, marginBottom: 8, pointerEvents: rowLocked ? 'none' : undefined, opacity: rowLocked ? 0.62 : 1 }}>
+                        <div style={fld}>
+                          <div style={fldK}>Start</div>
+                          <TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} className="c-tin c-tin-mono" />
+                        </div>
+                        <div style={fld}>
+                          <div style={fldK}>End</div>
+                          <TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} className="c-tin c-tin-mono" />
+                        </div>
+                        <div style={{ ...fld, flex: '0 0 76px' }}>
+                          <div style={fldK}>OT hrs</div>
+                          {isDayRow
+                            ? <div style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--c-fg-2)', minHeight: 44, display: 'flex', alignItems: 'center' }}>{(parseFloat(r.ot_hours || '0') || 0) > 0 ? r.ot_hours : 'auto'}</div>
+                            : <input value={r.ot_hours ?? ''} onChange={e => updateStRow(r.id, { ot_hours: e.target.value })} placeholder="0" className="c-tin c-tin-mono" />
+                          }
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  {/* Staff — DIRECTLY under the studio times, same three-column
+                      grid so From/To line up under Start/End (Eli, 2026-08-16:
+                      "the runner will update these together"). Name + role on
+                      a compact line, times in the aligned row below it. */}
+                  {sheetStaffRows.map(r => {
+                    const rowLocked = runner && r.admin_locked
+                    const staffHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
+                    return (
+                      <div key={r.id + '-sheetstaff'} style={{ marginBottom: 8, pointerEvents: rowLocked ? 'none' : undefined, opacity: rowLocked ? 0.62 : 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => updateStRow(r.id, { eng_role: r.eng_role === 'assistant' ? 'engineer' : 'assistant' })}
+                            style={{ flexShrink: 0, fontSize: 9, fontFamily: 'Inter', fontWeight: 700, padding: '6px 10px', borderRadius: 8, cursor: 'pointer', background: 'var(--c-wash2)', color: r.eng_role === 'assistant' ? 'var(--c-st-warm)' : 'var(--c-fg)' }}
+                          >
+                            {r.eng_role === 'assistant' ? '2ND' : '1ST'}
+                          </button>
+                          <div style={{ ...fld, padding: '4px 12px' }}>
+                            <input list="wo-eng-roster" value={r.eng_name || ''} onChange={e => updateStRow(r.id, { eng_name: e.target.value })} placeholder={r.eng_role === 'assistant' ? 'Assistant name…' : 'Engineer name…'} className="c-tin" />
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <div style={fld}>
+                            <div style={fldK}>Start</div>
+                            <TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} className="c-tin c-tin-mono" />
+                          </div>
+                          <div style={fld}>
+                            <div style={fldK}>End</div>
+                            <TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} className="c-tin c-tin-mono" />
+                          </div>
+                          <div style={{ ...fld, flex: '0 0 76px' }}>
+                            <div style={fldK}>Hrs</div>
+                            <div style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--c-fg-2)', minHeight: 44, display: 'flex', alignItems: 'center' }}>{staffHrs != null ? `${staffHrs}h` : '—'}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  {/* Song title / session info — after the people and times. */}
+                  {sheetStudioRows.map(r => {
+                    const rowLocked = runner && r.admin_locked
+                    return (
+                      <div key={r.id + '-sheetsong'} style={{ ...fld, marginBottom: 8, pointerEvents: rowLocked ? 'none' : undefined, opacity: rowLocked ? 0.62 : 1 }}>
+                        <div style={fldK}>Song title / session info{sheetStudioRows.length > 1 ? ` · Studio ${toStudioLetter(r.studio)}` : ''}</div>
+                        <textarea
+                          value={r.session_info}
+                          onChange={e => updateStRow(r.id, { session_info: e.target.value })}
+                          rows={2}
+                          placeholder="What was worked on…"
+                          style={{ width: '100%', background: 'transparent', outline: 'none', resize: 'vertical', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12, lineHeight: 1.5, boxSizing: 'border-box' }}
+                        />
+                      </div>
+                    )
+                  })}
+
+                  <div style={{ ...fldK, marginBottom: 6 }}>Equipment</div>
+                  <div style={{ marginBottom: 4 }}>{renderEquipPills(daySheetDate, false)}</div>
+                  {renderEquipNoteBlock(daySheetDate)}
+
+                  {/* Billing — the money the day produced. Runner reads it;
+                      admin can correct rates without leaving the sheet. */}
+                  <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '9px 12px', margin: '10px 0 4px' }}>
+                    <div style={{ ...fldK, marginBottom: 4 }}>{runner ? 'Billing · set by the office' : 'Billing'}</div>
+                    {sheetStudioRows.map(r => {
+                      const isDayRow = r.row_rate_type === 'day'
+                      return (
+                        <div key={r.id + '-bill'} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)', padding: '2px 0', gap: 8 }}>
+                          {runner ? (
+                            <span>Room {isDayRow ? `${r.rate_daily || '—'}/day` : `${r.rate || '—'}/hr`}{r.ot_rate ? ` · OT ${r.ot_rate}` : ''}</span>
+                          ) : (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              Room
+                              {isDayRow
+                                ? <input value={r.rate_daily} onChange={e => updateStRow(r.id, { rate_daily: e.target.value })} placeholder="$0/day" className="c-tin c-tin-mono" style={{ width: 80 }} />
+                                : <input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} placeholder="$0/hr" className="c-tin c-tin-mono" style={{ width: 80 }} />}
+                              OT
+                              <input value={r.ot_rate ?? ''} onChange={e => updateStRow(r.id, { ot_rate: e.target.value })} placeholder="$0" className="c-tin c-tin-mono" style={{ width: 64 }} />
+                            </span>
+                          )}
+                          <span className="c-tnum">{((r.charge ?? 0) + (r.ot_charge ?? 0)) > 0 ? `$${((r.charge ?? 0) + (r.ot_charge ?? 0)).toFixed(2)}` : '—'}</span>
+                        </div>
+                      )
+                    })}
+                    {sheetStaffRows.filter(r => r.eng_rate || engChargeFor(r) > 0).map(r => (
+                      <div key={r.id + '-billeng'} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)', padding: '2px 0' }}>
+                        <span>{r.eng_role === 'assistant' ? 'Assistant' : 'Engineer'} {r.eng_rate ? `${r.eng_rate}/hr` : ''}</span>
+                        <span className="c-tnum">{engChargeFor(r) > 0 ? `$${engChargeFor(r).toFixed(2)}` : '—'}</span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg)', paddingTop: 4 }}>
+                      <span>Day total</span>
+                      <span className="c-tnum">{sheetTotal > 0 ? `$${sheetTotal.toFixed(2)}` : '—'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={closeSheet}
+                  style={{ width: '100%', minHeight: 46, borderRadius: 12, background: 'var(--c-fg)', color: 'var(--c-bg)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 12, cursor: 'pointer', marginTop: 10, flexShrink: 0 }}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* ── RUNNER SUBMIT FOOTER ──────────────────────────────────────────
             Fixed at the thumb, like every runner surface. Submit = the same
