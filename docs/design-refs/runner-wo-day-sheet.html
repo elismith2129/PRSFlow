@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Runner WO day sheet redesign</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  RUNNER WO DAY SHEET — redesign (2026-08-16). Mock-first.
+
+  ELI'S BRIEF (verbal, 2026-08-16, from the first shipped version):
+  · Assistant name as a whole row is wasted space.
+  · Times are too small in the boxes — should be LARGE, like the missed-punch
+    module. This must be easily scanned and entered.
+  · Type the time OR drop down to select.
+  · Studio time needs an HOURS TOTAL (was showing only start/end/OT).
+  · Studio times sit BESIDE the studio name; eng/asst times sit BESIDE the
+    person's name — two short rows, same shape.
+  · Staff times AUTO-FOLLOW the studio times until edited independently
+    (already the data behaviour — the mock has to make it visible).
+  · OT: hourly days = typed in; day-rate days = automatic past 12h. The sheet
+    must say which is happening.
+
+  THE ONE QUESTION THE OPTIONS ARGUE: how big can the time targets be?
+
+  A · ROW PAIRS   the literal brief — one line per party: name left, start,
+                  end, hours right. Tightest scan; time wells are medium.
+  B · PAIR BLOCKS same pairing, but each party is a two-line block: name +
+                  hours on the header line, two BIG time wells below. Fatter
+                  tap targets; the sheet is a little taller.
+
+  Phone 3 shows the dropdown open + the day-rate OT state (either option).
+
+  Soft skin (§7c), status colour only (§5), 44px+ targets. Mock polarity
+  INVERTED vs the app (mock dark = data-theme="dark").
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --fg2:rgba(42,39,34,.72); --fg3:rgba(42,39,34,.45);
+  --st-hot:#ff5a4d; --st-warm:#ffa94d; --st-booked:#43dfae;
+  --ivory:#d5d0c2; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+  --ctlsh:0 1px 2px rgba(42,39,34,.10);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --fg2:rgba(217,214,205,.72); --fg3:rgba(217,214,205,.45);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  --ctlsh:0 1px 3px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;padding:18px}
+button,input{font:inherit;color:var(--fg);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.label{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45}
+
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.top h1{font-family:'Archivo Black',sans-serif;font-size:22px;letter-spacing:-.03em}
+.switch{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);box-shadow:var(--ctlsh)}
+.switch button{padding:6px 16px;border-radius:99px;font-size:12px;font-weight:700;opacity:.55;cursor:pointer}
+.switch button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .switch button.on{background:var(--fg);color:var(--bg)}
+.note{max-width:840px;font-size:12.5px;line-height:1.6;opacity:.65;margin-bottom:18px}
+.note b{opacity:1}
+.phones{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+.phonewrap{width:392px}
+.phonewrap>.cap{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.5;margin:0 0 8px 6px}
+.phone{background:var(--srf);border-radius:26px;box-shadow:var(--softsh);overflow:hidden;position:relative}
+.screen{min-height:700px;padding:14px 16px 20px;position:relative}
+
+/* sheet chrome */
+.grab{width:36px;height:4px;border-radius:99px;background:var(--wash2);margin:0 auto 12px}
+.sh-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sh-date{font-family:'Archivo Black',sans-serif;font-size:17px;display:flex;align-items:center;gap:8px}
+.dot{width:7px;height:7px;border-radius:99px;display:inline-block;background:var(--st-warm)}
+.studio-tag{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3)}
+
+/* ── shared bits ── */
+.twell{background:var(--wash);border-radius:12px;display:flex;align-items:center;justify-content:space-between;padding:0 10px 0 14px;cursor:pointer}
+.twell .tv{font-family:ui-monospace,Menlo,monospace;font-weight:600}
+.twell .chev{font-size:11px;opacity:.4;padding-left:6px}
+.hrschip{font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:700;color:var(--fg2);background:var(--wash2);border-radius:99px;padding:4px 11px;white-space:nowrap}
+.who{display:flex;align-items:center;gap:7px;min-width:0}
+.who .role{font-size:9px;font-weight:800;padding:3px 7px;border-radius:5px;background:var(--wash2);color:var(--st-warm);flex-shrink:0}
+.who .role.first{color:var(--fg)}
+.who .nm{font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who .studio-nm{font-family:'Archivo Black',sans-serif;font-size:13px;letter-spacing:-.01em}
+.follow{font-size:9.5px;color:var(--fg3);margin:-2px 0 10px 2px}
+.otrow{display:flex;align-items:center;gap:10px;background:var(--wash);border-radius:12px;padding:10px 14px;margin-bottom:12px}
+.otrow .k{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3)}
+.otrow input{width:56px;font-family:ui-monospace,Menlo,monospace;font-size:17px;font-weight:600;background:var(--wash2);border-radius:8px;padding:6px 10px;text-align:center}
+.otrow .auto{font-size:11.5px;color:var(--fg2)}
+.songbox{background:var(--wash);border-radius:12px;padding:10px 14px;margin-bottom:12px}
+.songbox .k{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:3px}
+.songbox .ph{font-size:13px;color:var(--fg3)}
+.eqrow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.eqpill{font-size:10.5px;font-weight:700;padding:7px 14px;border-radius:99px;background:var(--wash2);color:var(--fg3)}
+.eqpill.ok{background:color-mix(in srgb,var(--st-booked) 22%,transparent);color:var(--st-booked)}
+.billing{background:var(--wash);border-radius:12px;padding:10px 14px;margin-bottom:14px}
+.billing .bh{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:4px}
+.billing .br{display:flex;justify-content:space-between;font-size:11.5px;color:var(--fg2);padding:1px 0}
+.billing .br .v{font-family:ui-monospace,Menlo,monospace}
+.billing .br.tot{font-weight:700;color:var(--fg);font-size:12.5px;padding-top:4px}
+.done{width:100%;min-height:48px;border-radius:12px;background:var(--fg);color:var(--bg);font-family:'Archivo Black',sans-serif;font-size:13px;cursor:pointer}
+
+/* ── A · row pairs ── */
+.rowA{display:grid;grid-template-columns:96px 1fr 1fr 46px;gap:7px;align-items:stretch;margin-bottom:8px}
+.rowA .twell{height:52px}
+.rowA .tv{font-size:15px}
+.rowA .who{flex-direction:column;align-items:flex-start;gap:2px;justify-content:center}
+.rowA .hrs{display:flex;align-items:center;justify-content:flex-end;font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:700;color:var(--fg2)}
+
+/* ── B · pair blocks ── */
+.blkB{background:var(--wash);border-radius:14px;padding:11px 12px;margin-bottom:9px}
+.blkB .hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.blkB .times{display:flex;gap:8px}
+.blkB .twell{flex:1;height:58px;background:var(--wash2)}
+.blkB .tv{font-size:19px}
+.blkB .tk{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:1px}
+.blkB .tcol{display:flex;flex-direction:column;justify-content:center}
+
+/* dropdown */
+.dd{position:relative}
+.ddpanel{position:absolute;top:60px;left:0;right:0;background:var(--srf);border-radius:12px;box-shadow:var(--softsh);z-index:5;max-height:216px;overflow:hidden}
+.ddpanel .opt{padding:11px 16px;font-family:ui-monospace,Menlo,monospace;font-size:14px;color:var(--fg2)}
+.ddpanel .opt.on{background:var(--wash2);color:var(--fg);font-weight:700}
+.ddhint{font-size:9.5px;color:var(--fg3);text-align:center;padding:6px 0 8px;border-top:1px solid var(--wash)}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>Runner WO — day sheet redesign</h1>
+  <div class="switch" id="themeswitch">
+    <button data-t="light">Light</button>
+    <button data-t="dark" class="on">Dark</button>
+  </div>
+</div>
+
+<p class="note">
+  Both options do everything the brief asks: <b>no wasted name row</b> — the studio and the
+  assistant each get one compact pairing, same shape, times beside the name; <b>big mono
+  time wells</b> you can type into or open with the <b>▾ dropdown</b>; an <b>hours total</b>
+  on both the studio line and each staff line; staff times <b>auto-follow the studio times</b>
+  until touched (the grey note says so); and OT states its rule. The one thing A and B argue
+  about: <b>A</b> keeps each party to a single row — fastest scan, medium wells.
+  <b>B</b> gives each party a block with taller, fatter time wells — easier to hit at 2am,
+  slightly taller sheet. <b>Phone 3</b> shows the dropdown open and the day-rate OT state.
+</p>
+
+<div class="phones">
+
+  <!-- A · ROW PAIRS -->
+  <div class="phonewrap">
+    <p class="cap">A · Row pairs — one line per party</p>
+    <div class="phone"><div class="screen">
+      <div class="grab"></div>
+      <div class="sh-top">
+        <span class="sh-date">Mon, Aug 17 <span class="dot"></span></span>
+        <span class="studio-tag">✎ Editing</span>
+      </div>
+
+      <div class="rowA">
+        <div class="who"><span class="studio-nm">STUDIO B</span></div>
+        <div class="twell"><span class="tv">12:00 PM</span><span class="chev">▾</span></div>
+        <div class="twell"><span class="tv">8:00 PM</span><span class="chev">▾</span></div>
+        <div class="hrs">8h</div>
+      </div>
+      <div class="rowA">
+        <div class="who">
+          <span class="role">2ND</span>
+          <span class="nm" style="font-size:12px">Jack Miller</span>
+        </div>
+        <div class="twell"><span class="tv">12:00 PM</span><span class="chev">▾</span></div>
+        <div class="twell"><span class="tv">8:00 PM</span><span class="chev">▾</span></div>
+        <div class="hrs">8h</div>
+      </div>
+      <div class="follow">Jack’s times follow the studio times until you change them.</div>
+
+      <div class="otrow">
+        <span class="k">OT hours</span>
+        <input value="0">
+        <span class="auto">typed in on hourly days</span>
+      </div>
+
+      <div class="songbox"><div class="k">Song title / session info</div><div class="ph">What was worked on…</div></div>
+
+      <div class="label" style="margin-bottom:6px">Equipment</div>
+      <div class="eqrow"><span class="eqpill">Speakers</span><span class="eqpill ok">Microphone</span><span class="eqpill">Console</span></div>
+
+      <div class="billing">
+        <div class="bh">Billing · set by the office</div>
+        <div class="br"><span>Room 155/hr · OT 155</span><span class="v">$1,240.00</span></div>
+        <div class="br"><span>Assistant 55/hr</span><span class="v">$440.00</span></div>
+        <div class="br tot"><span>Day total</span><span class="v">$1,680.00</span></div>
+      </div>
+
+      <button class="done">Done</button>
+    </div></div>
+  </div>
+
+  <!-- B · PAIR BLOCKS -->
+  <div class="phonewrap">
+    <p class="cap">B · Pair blocks — big wells, same pairing</p>
+    <div class="phone"><div class="screen">
+      <div class="grab"></div>
+      <div class="sh-top">
+        <span class="sh-date">Mon, Aug 17 <span class="dot"></span></span>
+        <span class="studio-tag">✎ Editing</span>
+      </div>
+
+      <div class="blkB">
+        <div class="hd">
+          <span class="who"><span class="studio-nm">STUDIO B</span></span>
+          <span class="hrschip">8h</span>
+        </div>
+        <div class="times">
+          <div class="twell"><div class="tcol"><div class="tk">Start</div><span class="tv">12:00 PM</span></div><span class="chev">▾</span></div>
+          <div class="twell"><div class="tcol"><div class="tk">End</div><span class="tv">8:00 PM</span></div><span class="chev">▾</span></div>
+        </div>
+      </div>
+
+      <div class="blkB">
+        <div class="hd">
+          <span class="who"><span class="role">2ND</span><span class="nm">Jack Miller</span></span>
+          <span class="hrschip">8h</span>
+        </div>
+        <div class="times">
+          <div class="twell"><div class="tcol"><div class="tk">Start</div><span class="tv">12:00 PM</span></div><span class="chev">▾</span></div>
+          <div class="twell"><div class="tcol"><div class="tk">End</div><span class="tv">8:00 PM</span></div><span class="chev">▾</span></div>
+        </div>
+      </div>
+      <div class="follow">Jack’s times follow the studio times until you change them.</div>
+
+      <div class="otrow">
+        <span class="k">OT hours</span>
+        <input value="0">
+        <span class="auto">typed in on hourly days</span>
+      </div>
+
+      <div class="songbox"><div class="k">Song title / session info</div><div class="ph">What was worked on…</div></div>
+
+      <div class="label" style="margin-bottom:6px">Equipment</div>
+      <div class="eqrow"><span class="eqpill">Speakers</span><span class="eqpill ok">Microphone</span><span class="eqpill">Console</span></div>
+
+      <div class="billing">
+        <div class="bh">Billing · set by the office</div>
+        <div class="br"><span>Room 155/hr · OT 155</span><span class="v">$1,240.00</span></div>
+        <div class="br"><span>Assistant 55/hr</span><span class="v">$440.00</span></div>
+        <div class="br tot"><span>Day total</span><span class="v">$1,680.00</span></div>
+      </div>
+
+      <button class="done">Done</button>
+    </div></div>
+  </div>
+
+  <!-- 3 · DROPDOWN OPEN + DAY-RATE OT -->
+  <div class="phonewrap">
+    <p class="cap">3 · The time dropdown + a day-rate day</p>
+    <div class="phone"><div class="screen">
+      <div class="grab"></div>
+      <div class="sh-top">
+        <span class="sh-date">Tue, Aug 18</span>
+        <span class="studio-tag">✎ Editing</span>
+      </div>
+
+      <div class="blkB">
+        <div class="hd">
+          <span class="who"><span class="studio-nm">STUDIO B</span></span>
+          <span class="hrschip">13h</span>
+        </div>
+        <div class="times">
+          <div class="twell dd" style="background:var(--wash2);outline:2px solid color-mix(in srgb,var(--fg) 25%, transparent)">
+            <div class="tcol"><div class="tk">Start</div><span class="tv">11:00 AM</span></div><span class="chev">▴</span>
+            <div class="ddpanel">
+              <div class="opt">10:00 AM</div>
+              <div class="opt">10:30 AM</div>
+              <div class="opt on">11:00 AM</div>
+              <div class="opt">11:30 AM</div>
+              <div class="opt">12:00 PM</div>
+              <div class="ddhint">or just type — “11a”, “1130”, “2:15 PM” all work</div>
+            </div>
+          </div>
+          <div class="twell"><div class="tcol"><div class="tk">End</div><span class="tv">12:00 AM</span></div><span class="chev">▾</span></div>
+        </div>
+      </div>
+
+      <div style="height:150px"></div><!-- space the open panel overlaps -->
+
+      <div class="otrow">
+        <span class="k">OT</span>
+        <span class="auto"><b style="opacity:1">1h automatic</b> — day-rate sessions go to OT after 12 hours. Nothing to type.</span>
+      </div>
+
+      <div class="songbox"><div class="k">Song title / session info</div><div class="ph">“Glasshouse” — strings</div></div>
+
+      <div class="billing">
+        <div class="bh">Billing · set by the office</div>
+        <div class="br"><span>Room $1,100/day · OT $110/hr × 1h</span><span class="v">$1,210.00</span></div>
+        <div class="br tot"><span>Day total</span><span class="v">$1,210.00</span></div>
+      </div>
+
+      <button class="done">Done</button>
+    </div></div>
+  </div>
+
+</div>
+
+<script>
+document.querySelectorAll('#themeswitch button').forEach(b => b.onclick = () => {
+  document.documentElement.dataset.theme = b.dataset.t
+  document.querySelectorAll('#themeswitch button').forEach(x => x.classList.toggle('on', x === b))
+})
+</script>
+</body>
+</html>

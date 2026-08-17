@@ -18,7 +18,10 @@ const STUDIO_META: Record<string, { label: string; abbr: string }> = {
 }
 const STUDIO_ORDER = ['paramount', 'ameraycan', 'encore', 'track'] as const
 
-type WOStatus = { id: string; status: string } | null
+// `today` is the runner's own question — "have I turned in yet?" — derived from
+// today's studio_time_rows statuses. The WO's open/completed lifecycle is the
+// OFFICE's state and only shows here once completed (Eli, 2026-08-16).
+type WOStatus = { id: string; status: string; today?: 'none' | 'submitted' | 'approved' } | null
 
 // Studio tasks (spec §15b): left by the office on a STUDIO, checked off by
 // whoever is on shift. Never assigned to a person — runners rotate.
@@ -117,6 +120,27 @@ export default function StudioDailyOpsPage() {
         const found = (b.work_order_id ? woById[b.work_order_id] : undefined)
           ?? legacyByBooking[b.id]
         if (found) map[b.id] = found
+      }
+
+      // Today's submit state per WO (the pill): all approved → approved, all
+      // sent (submitted or approved) → submitted, anything else → none.
+      const allWoIds = Array.from(new Set(Object.values(map).map(w => w!.id)))
+      if (allWoIds.length > 0) {
+        const { data: stStatus } = await supabase
+          .from('studio_time_rows')
+          .select('work_order_id, status')
+          .eq('date', today)
+          .in('work_order_id', allWoIds)
+        const byWo: Record<string, string[]> = {}
+        for (const r of stStatus ?? []) {
+          (byWo[r.work_order_id] = byWo[r.work_order_id] ?? []).push(r.status ?? 'in_progress')
+        }
+        for (const key of Object.keys(map)) {
+          const sts = byWo[map[key]!.id] ?? []
+          map[key]!.today = sts.length > 0 && sts.every(s => s === 'approved') ? 'approved'
+            : sts.length > 0 && sts.every(s => s === 'submitted' || s === 'approved') ? 'submitted'
+            : 'none'
+        }
       }
       setWoMap(map)
     } else {
@@ -222,6 +246,9 @@ export default function StudioDailyOpsPage() {
         console.log(`[RT] Real-time event received on /runner/${studio}, work_orders:`, payload)
         load()
       })
+      // The pill derives from today's row statuses — a runner Submit or an
+      // office approval must flip it live (same table drives the WO's dots).
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_time_rows' }, () => { load() })
       .subscribe((status, err) => {
         console.log(`[RT] work_orders subscription status on /runner/${studio}:`, status, err ?? '')
       })
@@ -242,12 +269,18 @@ export default function StudioDailyOpsPage() {
   // Phone-first: every tap target clears 44px, nothing scrolls sideways.
 
   /** The work order's state, as a status pill. Same three cases as before. */
+  // The pill answers the RUNNER's question — "have I turned in today?" — not
+  // the office's. It used to show the WO lifecycle ('open'/'completed'), and
+  // "OPEN" meant nothing to a runner (Eli, 2026-08-16). Completed still wins:
+  // once the office closes the WO into billing, that outranks tonight's state.
   function woPill(wo: WOStatus) {
     if (!wo) return <span className="c-pill" style={dimPill}>No WO</span>
     if (wo.status === 'completed') {
       return <span className="c-pill c-fill-booked">Completed</span>
     }
-    return <span className="c-pill c-fill-warm">{wo.status}</span>
+    if (wo.today === 'approved') return <span className="c-pill c-fill-booked">Approved</span>
+    if (wo.today === 'submitted') return <span className="c-pill c-fill-warm">Submitted</span>
+    return <span className="c-pill" style={dimPill}>Not submitted</span>
   }
 
   const dimPill: React.CSSProperties = {
