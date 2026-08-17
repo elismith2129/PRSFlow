@@ -465,6 +465,18 @@ export function WorkOrderPopup({
   // writes immediately, like the equipment note photos).
   const [naUploading, setNaUploading] = useState(false)
   const naFileRef = useRef<HTMLInputElement>(null)
+  // Live-merge bookkeeping (Eli, 2026-08-16 — "I want EVERYTHING live").
+  // Snapshots of payments/rentals as loaded; if the local state still matches
+  // its snapshot the user hasn't touched that table and remote changes adopt.
+  const paySnapRef = useRef<string>('')
+  const rentSnapRef = useRef<string>('')
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Ref mirrors for the live-merge: the realtime channel is created once, so
+  // its callbacks close over THAT render's state — reading these refs instead
+  // keeps the merge honest about what is currently dirty / loading / open.
+  const dirtyFieldsRef = useRef(dirtyFields)
+  const openNoteKeyRef = useRef<string | null>(null)
+  const loadingRef = useRef(true)
   const [siPopoverRowId, setSiPopoverRowId] = useState<string | null>(null)
   const [siPopoverText, setSiPopoverText] = useState('')
   const [siPopoverPos, setSiPopoverPos] = useState<{ top: number; left: number } | null>(null)
@@ -521,6 +533,10 @@ export function WorkOrderPopup({
     supabase.from('engineers').select('first_name,last_name').eq('active', true).order('first_name')
       .then(({ data }) => setEngRoster((data ?? []).map((e: any) => `${e.first_name || ''} ${e.last_name || ''}`.trim()).filter(Boolean)))
   }, [])
+
+  useEffect(() => { dirtyFieldsRef.current = dirtyFields }, [dirtyFields])
+  useEffect(() => { openNoteKeyRef.current = openNoteKey }, [openNoteKey])
+  useEffect(() => { loadingRef.current = loading }, [loading])
 
   useEffect(() => { initWO() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -641,22 +657,30 @@ export function WorkOrderPopup({
   useEffect(() => {
     if (!resolvedWoId) return
 
+    // One channel, every table the popup renders (Eli, 2026-08-16). Events
+    // funnel into the debounced live-merge — see refreshFromDb for the rule.
     const woChannel = supabase
-      .channel(`admin-wo-status-${resolvedWoId}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'work_orders',
-        filter: `id=eq.${resolvedWoId}`,
-      }, (payload) => {
-        const updated = payload.new as any
-        setWo(prev => prev ? { ...prev, status: updated.status ?? prev.status } : prev)
-        onStatusChange?.(updated.status ?? 'open')
-      })
+      .channel(`wo-live-${resolvedWoId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'work_orders', filter: `id=eq.${resolvedWoId}` }, () => { queueRefresh() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_time_rows', filter: `work_order_id=eq.${resolvedWoId}` }, () => { queueRefresh() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_condition_rows', filter: `work_order_id=eq.${resolvedWoId}` }, () => { queueRefresh() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_condition_notes', filter: `work_order_id=eq.${resolvedWoId}` }, () => { queueRefresh() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rental_rows', filter: `work_order_id=eq.${resolvedWoId}` }, () => { queueRefresh() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_rows', filter: `work_order_id=eq.${resolvedWoId}` }, () => { queueRefresh() })
       .subscribe()
+
+    // Phones suspend the socket when the screen locks and missed events are
+    // never replayed — refresh on return to the foreground (same pattern as
+    // hooks/useReloadOnReturn, inlined here because the merge is local).
+    const onReturn = () => { if (document.visibilityState === 'visible') queueRefresh() }
+    document.addEventListener('visibilitychange', onReturn)
+    window.addEventListener('focus', onReturn)
 
     return () => {
       supabase.removeChannel(woChannel)
+      document.removeEventListener('visibilitychange', onReturn)
+      window.removeEventListener('focus', onReturn)
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
     }
   }, [resolvedWoId]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -882,13 +906,128 @@ export function WorkOrderPopup({
         setEquipNotes(map)
       }
       if (rent?.length) {
-        setRentRows(rent.map(r => ({ id: r.id, qty: String(r.qty ?? ''), item: r.item ?? '', supplier: r.supplier ?? '', dates_used: r.dates_used ?? '', rate: r.rate ?? '', charge: String(r.charge ?? '') })))
+        const arr = rent.map(r => ({ id: r.id, qty: String(r.qty ?? ''), item: r.item ?? '', supplier: r.supplier ?? '', dates_used: r.dates_used ?? '', rate: r.rate ?? '', charge: String(r.charge ?? '') }))
+        setRentRows(arr)
+        rentSnapRef.current = JSON.stringify(arr)
       }
       if (pay?.length) {
-        setPayRows(pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: p.amount != null ? formatCurrency(String(p.amount)) : '', memo: p.memo ?? '', last_four: p.last_four ?? '' })))
+        const arr = pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: p.amount != null ? formatCurrency(String(p.amount)) : '', memo: p.memo ?? '', last_four: p.last_four ?? '' }))
+        setPayRows(arr)
+        paySnapRef.current = JSON.stringify(arr)
       }
     }
     setLoading(false)
+  }
+
+  // ── LIVE MERGE (Eli, 2026-08-16: "I want EVERYTHING live") ────────────────
+  // The popup was strictly local-first: load once, edit, one atomic save. That
+  // is still the WRITE model — but the open work order now also LISTENS. When
+  // the other side saves (office fixes a rate while a runner has the day sheet
+  // open, or a runner submits times while the office is looking), every field
+  // the local user has NOT touched updates in place. "Touched" is derived by
+  // comparing local state against the load-time original, so it covers single
+  // edits, batch edit and the seed panel without separate bookkeeping. Your
+  // unsaved edits always win locally; everything else is the database's.
+  async function refreshFromDb() {
+    const id = woIdRef.current
+    if (!id || loadingRef.current) return
+    const [{ data: woRow }, { data: st }, { data: eq }, { data: eqNotes }, { data: rent }, { data: pay }] = await Promise.all([
+      supabase.from('work_orders').select('*').eq('id', id).maybeSingle(),
+      supabase.from('studio_time_rows').select('*').eq('work_order_id', id).order('sort_order'),
+      supabase.from('equipment_condition_rows').select('*').eq('work_order_id', id),
+      supabase.from('equipment_condition_notes').select('*').eq('work_order_id', id),
+      supabase.from('rental_rows').select('*').eq('work_order_id', id).order('sort_order'),
+      supabase.from('payment_rows').select('*').eq('work_order_id', id).order('recorded_at'),
+    ])
+
+    // WO header fields — adopt remote except the keys the user has dirtied.
+    if (woRow) {
+      onStatusChange?.(woRow.status ?? 'open')
+      setWo(prev => {
+        if (!prev) return prev
+        const base: WO = normalizeWO(woRow)
+        base.session_status = base.session_status || (booking as any).status || 'tentative'
+        base.session_type = base.session_type || (booking as any).session_type || 'recording'
+        base.client_id = base.client_id ?? ((booking as any).client_id ?? null)
+        base.is_srs = base.is_srs || !!(booking as any).is_srs
+        base.cod_method = base.cod_method || (booking as any).cod_method || ''
+        for (const k of Object.keys(base) as (keyof WO)[]) {
+          if (dirtyFieldsRef.current.has(k as string)) (base as any)[k] = prev[k]
+        }
+        return base
+      })
+    }
+
+    // Studio time rows — per-FIELD merge against the load-time original.
+    if (st) {
+      const freshRows = st.map(normalizeStRow)
+      const freshById: Record<string, StRow> = {}
+      for (const f of freshRows) freshById[f.id] = f
+      const origById: Record<string, StRow> = {}
+      for (const o of originalStRowsRef.current) origById[o.id] = o
+      setStRows(prev => {
+        const localById: Record<string, StRow> = {}
+        for (const l of prev) localById[l.id] = l
+        // Fresh order leads; a row deleted remotely disappears (the office owns
+        // structure) — EXCEPT rows the DB never had (locally added, unsaved).
+        const merged: StRow[] = freshRows.map(f => {
+          const local = localById[f.id]
+          const orig = origById[f.id]
+          if (!local || !orig) return f
+          const m: StRow = { ...f }
+          for (const k of Object.keys(f) as (keyof StRow)[]) {
+            if (JSON.stringify(local[k]) !== JSON.stringify(orig[k])) (m as any)[k] = local[k]
+          }
+          return m
+        })
+        for (const l of prev) {
+          if (!freshById[l.id] && !origById[l.id]) merged.push(l) // locally added, not yet saved
+        }
+        return merged
+      })
+      originalStRowsRef.current = freshRows
+    }
+
+    // Equipment — condition writes are immediate on both sides; adopt remote.
+    // The note map is skipped while a note is open so typing isn't clobbered.
+    if (eq) setEquipRows(eq as EquipRow[])
+    if (eqNotes && !openNoteKeyRef.current) {
+      const map: Record<string, EquipNote> = {}
+      for (const n of eqNotes) map[`${n.equipment}||${n.date}`] = { id: n.id, note: n.note ?? '', photo_urls: n.photo_urls ?? [] }
+      setEquipNotes(map)
+    }
+
+    // Rentals / payments — coarse guard: adopt remote only while the local
+    // table is untouched (matches its snapshot, or is still the empty shell).
+    if (rent) {
+      const arr = rent.map(r => ({ id: r.id, qty: String(r.qty ?? ''), item: r.item ?? '', supplier: r.supplier ?? '', dates_used: r.dates_used ?? '', rate: r.rate ?? '', charge: String(r.charge ?? '') }))
+      setRentRows(prev => {
+        const untouched = rentSnapRef.current
+          ? JSON.stringify(prev) === rentSnapRef.current
+          : prev.every(r => !r.item && !r.charge)
+        if (!untouched) return prev
+        rentSnapRef.current = JSON.stringify(arr)
+        return arr.length ? arr : prev
+      })
+    }
+    if (pay) {
+      const arr = pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: p.amount != null ? formatCurrency(String(p.amount)) : '', memo: p.memo ?? '', last_four: p.last_four ?? '' }))
+      setPayRows(prev => {
+        const untouched = paySnapRef.current
+          ? JSON.stringify(prev) === paySnapRef.current
+          : prev.every(p => !p.payment_type && !p.amount)
+        if (!untouched) return prev
+        paySnapRef.current = JSON.stringify(arr)
+        return arr.length ? arr : prev
+      })
+    }
+  }
+
+  // Debounced trigger — a save on the other side lands as several row events
+  // at once; one refresh covers them all.
+  function queueRefresh() {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+    refreshTimerRef.current = setTimeout(() => { refreshFromDb() }, 350)
   }
 
   // ── Admin canvas signature ──────────────────────────────────────────────────
@@ -1911,6 +2050,9 @@ export function WorkOrderPopup({
     originalStRowsRef.current = stRows
     deletedRowsRef.current = []
     setDirtyFields(new Set())
+    // Re-baseline the live-merge: everything just written IS the database now.
+    paySnapRef.current = JSON.stringify(payRows)
+    rentSnapRef.current = JSON.stringify(rentRows)
     setSaving(false)
     onSaved?.()
     if (close) onClose()
