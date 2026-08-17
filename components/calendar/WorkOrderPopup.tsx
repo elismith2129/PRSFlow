@@ -3576,24 +3576,27 @@ export function WorkOrderPopup({
                           opacity: cardLocked ? 0.62 : 1,
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                          <span className="c-arch" style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}>
-                            {weekdayDate(g.date)}
-                            {dotColor && <span style={{ width: 7, height: 7, borderRadius: 99, background: dotColor, display: 'inline-block' }} />}
-                          </span>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>
-                              {studios.length ? `Studio ${studios.join(' · ')}` : ''}
+                        {/* THE ROOM LEADS (Eli, 2026-08-16): "Studio B" far
+                            left, slight hero, BEFORE the date — a runner's
+                            first question on any card is "which room". */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}>
+                          {studios.length > 0 && (
+                            <span className="c-arch" style={{ fontSize: 15, letterSpacing: '-0.01em', flexShrink: 0 }}>
+                              Studio {studios.join(' · ')}
                             </span>
-                            {/* The signpost (Eli, 2026-08-16): the whole card
-                                opens the sheet, but nothing SAID so. Not a
-                                separate handler — it rides the card's tap. */}
-                            {!readOnly && (
-                              <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'var(--c-wash2)', color: 'var(--c-fg-2)', borderRadius: 99, padding: '4px 11px' }}>
-                                {cardLocked ? '👁 View' : '✎ Edit'}
-                              </span>
-                            )}
+                          )}
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: 1, fontSize: 11.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {weekdayDate(g.date)}
+                            {dotColor && <span style={{ width: 7, height: 7, borderRadius: 99, background: dotColor, display: 'inline-block', flexShrink: 0 }} />}
                           </span>
+                          {/* The signpost (Eli, 2026-08-16): the whole card
+                              opens the sheet, but nothing SAID so. Not a
+                              separate handler — it rides the card's tap. */}
+                          {!readOnly && (
+                            <span style={{ flexShrink: 0, fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'var(--c-wash2)', color: 'var(--c-fg-2)', borderRadius: 99, padding: '4px 11px' }}>
+                              {cardLocked ? '👁 View' : '✎ Edit'}
+                            </span>
+                          )}
                         </div>
                         {/* Not .c-tnum — that class is text-align: right (it's
                             for money columns) and it shoved the times to the
