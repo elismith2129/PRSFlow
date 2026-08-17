@@ -3204,6 +3204,86 @@ signal it needs to become a real session — not before.
 
 ---
 
+### Aug 16, 2026 (second sitting) — The day sheet grows up; OT becomes a designation; the open work order goes live
+
+Same day, after the v1.11.0 wrap-up — Eli tested on his phone and the session
+turned into a rapid mock→rule→build loop. Ships as v1.12.0.
+
+#### The day sheet, redesigned from his screenshots
+
+First shipped version wasted a row on the assistant's name, had small time
+boxes, no hours total, and staff times detached from studio times. Two mock
+rounds (`runner-wo-day-sheet.html` A/B → Eli picked B; `runner-wo-ot-options.html`)
+converged on `runner-wo-day-sheet-final.html`: **pair blocks** — the studio and
+each staffer get the SAME shape (name + hours chip, two big mono time wells),
+staff times directly under studio times and auto-following them until edited.
+Time wells accept typing (TimeInput parser) OR a ▾ half-hour dropdown that
+**opens scrolled to the shown time** — starting at 12:00 AM was a long crawl
+and the AM/PM mistake factory. A **>14h tripwire warns, never blocks** ("long
+sessions happen") on both studio and staff times. **Swipe (or ‹ ›) moves
+between days** for reference; approved days open view-only (👁 View pill) —
+approval stays the ONLY lock. Runner always defaults to cards now (the 1–3-day
+rule survives only for admin phones); the phone LIST's 44px input rule is
+scoped down to 30px inside the table (it's a reference view, not an entry
+surface). Studio leads the card far-left as a slight hero.
+
+#### OT: "as little room for math error as possible"
+
+Eli's ruling, over one option round: **OT is a DESIGNATION — time beyond what
+was agreed** (booked from/to on hourly days, 12h on lockouts), shown as its own
+line so anyone can see agreed vs overage. COD collects it at the desk in the
+moment; billing sends it after. The "OT pre-approved" flag + Extend&collect
+card were mocked and then **dropped by ruling mid-build** ("not necessary") —
+so as shipped: OT always derives from the clock. In runner mode, editing times
+on an hourly row recomputes `ot_hours` as actual minus booked hours — typed by
+nobody, so it can't disagree with the clock or double-bill (the old model let a
+runner extend the end time AND type OT hours; both billed). Day-rate keeps its
+automatic past-12h rule. Admin list-view OT stays manual — overriding is the
+office's call. Billing block: plain itemized list (the mocked Agreed/Beyond
+sub-headings were also cut), OT appearing only when it exists, and **staff
+rates got a home** — office-editable wells, runner-read-only text. No
+migration; the flag died before it needed a column.
+
+#### "I want EVERYTHING live" — the open work order merges
+
+The popup was strictly local-first (load once, edit, one atomic save) with a
+status-only subscription — so an office rate fix made while a runner sat in
+the day sheet was invisible, and worse, the runner's save would write the
+stale rate back over it. Now: `wo-live-<id>` channel on all six tables the
+popup renders, debounced into `refreshFromDb()`, which merges on the rule
+**your unsaved edits win, per field** — "touched" derived by comparing local
+state to the load-time original (covers single edits, batch and seed with no
+bookkeeping). Locked fields can never be "yours", so office changes always
+land live on a runner's screen. Rentals/payments merge as whole tables only
+while untouched (coarse guard, deliberate). Foreground-return triggers the
+same refresh (phones sleep; events aren't replayed). **The stale-closure trap
+was found before it shipped:** the channel callbacks close over first-render
+state, so `loading`/`dirtyFields`/`openNoteKey` are read through ref mirrors —
+without that the guard saw `loading=true` forever and the merge never ran.
+Accepted edge, stated to Eli: same field edited on both sides before either
+saves = last save wins that field.
+
+Also this sitting: hub pill now answers the runner's question (**Not
+submitted / Submitted / Approved**, office Completed outranking) instead of
+the office's "OPEN"; `useReloadOnReturn` hook wired across five runner pages;
+hub card COD strip made flush (grid, not flex — the body fell short of the
+chip and green peeked under the red); cards freed from the horizontal-scroll
+container that clipped their corners; the sheet moved out of the scrollable
+body (iOS breaks fixed-position inside momentum scroll); dates read "August
+17th, 2026"; A&R phone + Edit/View pills.
+
+#### Rolling toward launch
+
+- `studio_time_rows.status` **verified in the live DB** (86 rows, all
+  in_progress) — migration record `20260816120000` kept regardless.
+- Next session, in order: **billing SOP** (brief in `docs/SOP-REWORK-BRIEF.md`;
+  the coordinator leaves end of next week — her review window is the
+  deadline) → **launch-reset SQL** (shared DB means test data is already in
+  prod; wipe operational tables, keep CRM, re-anchor My Day duties so the Flo
+  box starts clean) → **runner accounts** (Eli sending names/emails/phones)
+  → merge. `/preview` tooling removal + SOP VERSIONS still owed at merge
+  (now v1.9.1 through v1.12.0).
+
 ### Aug 16, 2026 — The runner work order stops being a second work order
 
 #### The build: WorkOrderPopup gains `mode="runner"`; the 1,595-line duplicate dies

@@ -57,10 +57,10 @@ export const TEST_BATCHES: TestBatch[] = [
   {
     id: 'runner-wo-2026-08-16',
     title: 'The runner work order — one work order, two views',
-    version: 'v1.11.0 (preview branch)',
+    version: 'v1.11.0–v1.12.0 (preview branch)',
     date: 'Aug 16, 2026',
     intro:
-      'The runner work order is now the same work order the office uses, with the office\'s parts locked. Runners get a new card view for short sessions, a tap-to-edit day sheet, and a Submit button that can be re-pressed without penalty. Most of this is phone work; the admin checks are on a computer. You will need one session on the calendar for today to test with.',
+      'The runner work order is now the same work order the office uses, with the office\'s parts locked. Runners land on day cards, tap one for a big-input day sheet, swipe between days, and Submit without penalty. Overtime now calculates itself from the times. And the open work order is LIVE — office edits appear on the runner\'s screen while they have it open. Most of this is phone work; the admin checks are on a computer. You will need one session on the calendar for today, with booked start and end times.',
     items: [
       {
         id: 'rwo-locked-top', area: 'Runner WO', device: 'phone',
@@ -69,13 +69,33 @@ export const TEST_BATCHES: TestBatch[] = [
       },
       {
         id: 'rwo-cards-default', area: 'Runner WO', device: 'phone',
-        what: 'A short session (1–3 days) opens as cards; the toggle switches to the list',
-        how: 'Open a 1–3 day session. Studio Time should show one card per day, not the wide table. Find the small toggle above the table (two icons: lines and blocks) and tap the lines icon — you should get the wide table. Tap back.',
+        what: 'Every session opens as cards; the toggle switches to the list and back',
+        how: 'Open any session. Studio Time should show one card per day, never the wide table. Find the small toggle above the cards (two icons: lines and blocks), tap the lines icon for the compact table, then tap back.',
       },
       {
         id: 'rwo-sheet', area: 'Runner WO', device: 'phone',
-        what: 'Tapping a day card opens a sheet where you can set times, OT, engineer, and song title',
-        how: 'In card view, tap today\'s card. A sheet should slide up from the bottom with Start, End, OT hrs, the staff name, and a song title box. Change the End time, tap Done, and check the card now shows the new time.',
+        what: 'The day sheet: studio and staff each get matching big time blocks',
+        how: 'Tap today\'s card (or its ✎ Edit pill). A sheet slides up: the studio with two large Start/End boxes and an hours chip, then each engineer/assistant in an identical block right below with their own times. Change the studio End time, tap Done, and check the card shows the new time.',
+      },
+      {
+        id: 'rwo-dropdown', area: 'Runner WO', device: 'phone',
+        what: 'The time dropdown opens on the current time, and typing works too',
+        how: 'In the day sheet, tap the small ▾ on a time box. The list should appear already scrolled to the time that was showing, with it highlighted — not at 12:00 AM. Pick a time a couple of slots away. Then try typing directly into the box: "930p" should become 9:30 PM.',
+      },
+      {
+        id: 'rwo-ot-auto', area: 'Runner WO', device: 'phone',
+        what: 'Overtime fills itself in when the session runs past the booked end',
+        how: 'On an hourly session booked 12P–8P, set the End time to 11:00 PM in the day sheet. Without typing anything else, the Overtime box should say it ran 3h past the agreed end, and the billing list below should show an OT line with the amount. Set End back to 8:00 PM and the OT line should disappear.',
+      },
+      {
+        id: 'rwo-ampm', area: 'Runner WO', device: 'phone',
+        what: 'A wrong AM/PM gets flagged, not blocked',
+        how: 'In the day sheet, set a Start of 12:00 PM and an End of 8:00 AM (next morning). A small red note should appear under the times warning it is a very long day and to double-check AM/PM. It should NOT stop you from saving.',
+      },
+      {
+        id: 'rwo-swipe', area: 'Runner WO', device: 'phone',
+        what: 'You can swipe between days inside the day sheet',
+        how: 'On a multi-day session, open a day sheet and swipe left — the next day should slide in (the header date changes, with a "2/3" style counter). Swipe right to go back. The ‹ › arrows next to the date do the same.',
       },
       {
         id: 'rwo-rates-locked', area: 'Runner WO', device: 'phone',
@@ -116,6 +136,16 @@ export const TEST_BATCHES: TestBatch[] = [
         id: 'awo-regression', area: 'Work Orders', device: 'desktop',
         what: 'The office work order still works exactly as before',
         how: 'Open any work order from the calendar. Check the table looks normal and Batch edit, Seed, + Add Studio Time, rate typing, the lock pills, and Complete WO are all still there and working. This is the most important check in the batch — the runner build must not have changed the office side.',
+      },
+      {
+        id: 'rwo-live', area: 'Runner WO', device: 'phone',
+        what: 'THE BIG ONE — office edits appear live while the runner has the work order open',
+        how: 'Two screens: the work order open on the phone (day sheet open), the SAME work order open on a computer from the calendar. On the computer, change the room rate and press Save. Within a second or two the phone\'s billing numbers should update by themselves — no refresh, no closing the sheet. Then on the phone change a time and press Update submission, and watch the computer\'s table update.',
+      },
+      {
+        id: 'rn-pill', area: 'Runner', device: 'phone',
+        what: 'The session pill on the hub answers "have I turned in today?"',
+        how: 'On the studio hub, a session you have not submitted should show a grey "Not submitted" pill. Press Submit today inside its work order, come back — it should say "Submitted" in amber, live. When the office approves the day, it turns green "Approved".',
       },
       {
         id: 'awo-cards', area: 'Work Orders', device: 'desktop',

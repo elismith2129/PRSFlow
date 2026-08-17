@@ -19,6 +19,59 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.12.0 — UNRELEASED (branch `redesign/carved`) — Aug 16, 2026 (second sitting)
+
+**Day sheet final + OT-from-the-clock + the open work order goes LIVE.**
+Mock-approved redesign (pair blocks, big type-or-dropdown time wells, swipe
+between days), OT derived as time-beyond-agreement, and a two-way live-merge
+so admin and runner see each other's saves inside the open popup.
+
+**Migrations: none.** (`20260816120000_studio_time_rows_status.sql` is a
+record of a column verified already present — running it is a no-op.)
+
+**Day sheet (mock `runner-wo-day-sheet-final.html`, partially superseded note
+in-file):** pair blocks — studio + each staffer same shape, staff times
+auto-follow studio's until edited; wells accept typed times or a half-hour
+▾ dropdown that opens AT the shown time; hours chip per row; >14h AM/PM
+warning (warn-only, both studio + staff); swipe/chevrons between days
+(approved days open 👁 view-only); billing block = flat itemized list, OT its
+own line only when present, staff rate wells (office inputs, runner text).
+Runner always defaults to cards; phone list inputs scoped to 30px min-height.
+
+**OT model:** hourly runner time edits recompute `ot_hours` = actual − booked
+hours (from `booking.from_time/to_time`); day-rate keeps auto past-12h.
+Runner never types OT. Admin list view stays manual. The pre-approval flag
+and Extend&collect from the option mocks were dropped by ruling — not built.
+
+**Live-merge:** `wo-live-<id>` channel on work_orders + studio_time_rows +
+equipment rows/notes + rental_rows + payment_rows → debounced
+`refreshFromDb()`. Merge rule: adopt remote per field UNLESS the local field
+differs from the load-time original (your unsaved edits win). Rentals/
+payments adopt only while untouched vs snapshot. Foreground-return refreshes.
+Hub pill now shows Not submitted / Submitted / Approved (Completed outranks);
+hub listens to studio_time_rows.
+
+**⚠ Watch-outs**
+
+- **The live-merge callbacks read ref mirrors** (`dirtyFieldsRef`,
+  `openNoteKeyRef`, `loadingRef`) because the channel closes over
+  first-render state. If you add state the merge must respect, mirror it —
+  reading the state var directly will silently use a stale value.
+- **`originalStRowsRef` is the merge baseline.** Anything that mutates
+  stRows outside updateStRow must leave it coherent, or per-field "dirty"
+  detection lies. After every successful save it is re-baselined along with
+  `paySnapRef`/`rentSnapRef`.
+- **Runner OT auto-derive keys off `booking.from_time/to_time`** — live, not
+  snapshotted. An office schedule edit moves the OT baseline for later runner
+  edits. Accepted for v1; per-row included-hours is the upgrade if it bites.
+- Same field edited both sides before either saves: last save wins (stated
+  to Eli, accepted).
+- **Files:** `components/calendar/WorkOrderPopup.tsx`,
+  `app/runner/[studio]/page.tsx`, `hooks/useReloadOnReturn.ts` (+5 runner
+  pages), `lib/format.ts` (`longDate`), mocks ×3, `docs/SOP-REWORK-BRIEF.md`.
+
+---
+
 ## v1.11.0 — UNRELEASED (branch `redesign/carved`) — Aug 16, 2026
 
 **The runner work order IS the admin work order.** `WorkOrderPopup` gains
