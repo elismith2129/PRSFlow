@@ -2425,7 +2425,14 @@ export function WorkOrderPopup({
       onClick={inline || isMobile ? undefined : e => { if (e.target === e.currentTarget) handleCloseButton() }}
     >
       {isMobile && (
-        <style>{`[data-wo-portal] input:not([type="checkbox"]):not([type="radio"]), [data-wo-portal] select, [data-wo-portal] textarea { min-height: 44px; }`}</style>
+        <style>{`
+          [data-wo-portal] input:not([type="checkbox"]):not([type="radio"]), [data-wo-portal] select, [data-wo-portal] textarea { min-height: 44px; }
+          /* The Studio Time LIST is a table of inputs — the 44px tap-target
+             rule inflated every row into a slab (Eli, 2026-08-16: "the list
+             view is super padded"). Table cells get a tighter minimum; the
+             cards/sheet keep the full-size wells for actual entry. */
+          [data-wo-portal] [data-st-scroll] input:not([type="checkbox"]):not([type="radio"]), [data-wo-portal] [data-st-scroll] select { min-height: 30px; }
+        `}</style>
       )}
       <div
         style={isMobile
