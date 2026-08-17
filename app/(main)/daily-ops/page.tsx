@@ -4,10 +4,12 @@
 // Mock: docs/design-refs/daily-ops-final.html.
 //
 // LEFT   the queue (exceptions; tap to clear; empty = "Yesterday is done"),
-//        with the studio-tasks manager beneath it so the queue has room to
-//        grow on a bad morning.
-// RIGHT  the sweep — 2×2 studio cards, last night's full picture, each with
-//        the shift log (preview → popup).
+//        PAGINATED at 10 (Eli, 2026-08-17) so the studio-tasks manager below
+//        never scrolls out of view on a bad morning.
+// RIGHT  the sweep — 2×2 studio cards, one night's full picture, each with
+//        the shift log (preview → popup). The DATE IS THE SWEEP'S HERO and
+//        pages by ‹ › or swipe (Eli, 2026-08-17) — browsing previous nights
+//        here is what replaced the retired daily-ops log.
 //
 // NOT here: work orders (Billing's review bucket), punches (HR), tonight's
 // live status (dashboard). One copy of everything — §19.
@@ -38,6 +40,9 @@ const DUTY_COLOR: Record<string, string> = {
   missing: 'var(--c-st-hot)',
 }
 
+/** Queue page size — keeps the studio-tasks card in view under a long queue. */
+const QUEUE_PAGE = 10
+
 export default function DailyOpsPage() {
   const router = useRouter()
   const { profile } = useUserProfile()
@@ -51,6 +56,12 @@ export default function DailyOpsPage() {
   const [logOpen, setLogOpen] = useState<StudioNight | null>(null)
   const [newTask, setNewTask] = useState('')
   const [newTaskStudio, setNewTaskStudio] = useState<string>('paramount')
+  const [qPage, setQPage] = useState(0)
+  // Swipe start point for the sweep's day paging (touch only; buttons on desktop).
+  const [touchX, setTouchX] = useState<number | null>(null)
+
+  // A new night starts back at the queue's first page.
+  useEffect(() => { setQPage(0) }, [date])
 
   const load = useCallback(async () => {
     const [night, { data: taskData }] = await Promise.all([
@@ -123,6 +134,14 @@ export default function DailyOpsPage() {
   }
 
   const open = queue.filter(q => !q.reviewed)
+  // Queue pagination — derived, and self-clamping when items clear off the end.
+  const qPages = Math.max(1, Math.ceil(queue.length / QUEUE_PAGE))
+  const qPageSafe = Math.min(qPage, qPages - 1)
+  const queuePage = queue.slice(qPageSafe * QUEUE_PAGE, (qPageSafe + 1) * QUEUE_PAGE)
+
+  // Sweep day paging — buttons and swipe share these.
+  const goEarlier = () => setOffset(o => o + 1)
+  const goLater = () => setOffset(o => Math.max(1, o - 1))
   const card: React.CSSProperties = {
     background: 'var(--c-srf, var(--c-bg))', boxShadow: 'var(--c-softsh)',
     borderRadius: 18, padding: '14px 16px',
@@ -134,21 +153,6 @@ export default function DailyOpsPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-      {/* Night pager — yesterday by default, back a day at a time. */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-        <span className="c-arch" style={{ fontSize: 19, letterSpacing: '-0.02em' }}>
-          {offset === 1 ? 'Last night' : prettyDate(date)}
-        </span>
-        <span style={{ fontSize: 12, opacity: 0.5 }}>
-          {prettyDate(date)} · <b>{open.length}</b> open
-        </span>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-          <button onClick={() => setOffset(o => o + 1)} style={{ ...wash, cursor: 'pointer', fontWeight: 700 }}>‹ Earlier</button>
-          <button onClick={() => setOffset(o => Math.max(1, o - 1))} disabled={offset === 1}
-            style={{ ...wash, cursor: offset === 1 ? 'default' : 'pointer', fontWeight: 700, opacity: offset === 1 ? 0.4 : 1 }}>Later ›</button>
-        </div>
-      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 5fr) 7fr', gap: 16, alignItems: 'start' }}>
 
@@ -167,7 +171,7 @@ export default function DailyOpsPage() {
                   {queue.length === 0 ? 'Nothing went wrong.' : 'Every exception handled — the sweep is your receipt.'}
                 </div>
               </div>
-            ) : queue.map((q, i) => (
+            ) : queuePage.map((q, i) => (
               <div
                 key={q.key}
                 onClick={() => clearItem(q)}
@@ -198,6 +202,17 @@ export default function DailyOpsPage() {
                 }}>✓</span>
               </div>
             ))}
+            {/* Pager — only when the queue overflows a page, so quiet mornings
+                look exactly as before. */}
+            {qPages > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+                <button onClick={() => setQPage(p => Math.max(0, p - 1))} disabled={qPageSafe === 0}
+                  style={{ ...wash, cursor: qPageSafe === 0 ? 'default' : 'pointer', fontWeight: 700, opacity: qPageSafe === 0 ? 0.35 : 1, padding: '6px 12px' }}>‹</button>
+                <span style={{ fontSize: 11, opacity: 0.5 }}>Page {qPageSafe + 1} of {qPages}</span>
+                <button onClick={() => setQPage(p => Math.min(qPages - 1, p + 1))} disabled={qPageSafe === qPages - 1}
+                  style={{ ...wash, cursor: qPageSafe === qPages - 1 ? 'default' : 'pointer', fontWeight: 700, opacity: qPageSafe === qPages - 1 ? 0.35 : 1, padding: '6px 12px' }}>›</button>
+              </div>
+            )}
           </div>
 
           <div style={card}>
@@ -246,9 +261,34 @@ export default function DailyOpsPage() {
           </div>
         </div>
 
-        {/* ══ RIGHT — the sweep ══ */}
-        <div>
-          <SectionHeader title="The sweep · every studio, last night" />
+        {/* ══ RIGHT — the sweep. The date is the hero; ‹ ›  or a swipe pages
+            through previous nights (this browsing IS the old daily-ops log). ══ */}
+        <div
+          onTouchStart={e => setTouchX(e.touches[0].clientX)}
+          onTouchEnd={e => {
+            if (touchX === null) return
+            const dx = e.changedTouches[0].clientX - touchX
+            setTouchX(null)
+            // Swipe right → earlier night, swipe left → later (clamped at last night).
+            if (dx > 50) goEarlier()
+            else if (dx < -50) goLater()
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 12 }}>
+            <div>
+              <div className="c-label" style={{ marginBottom: 3 }}>The sweep · every studio</div>
+              <span className="c-arch" style={{ fontSize: 24, letterSpacing: '-0.02em', lineHeight: 1.05 }}>
+                {offset === 1 ? 'Last night' : prettyDate(date)}
+              </span>
+              <span style={{ fontSize: 12, opacity: 0.5, marginLeft: 10 }}>{prettyDate(date)}</span>
+            </div>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+              <button onClick={goEarlier} aria-label="Earlier night"
+                style={{ ...wash, cursor: 'pointer', fontWeight: 700, padding: '7px 14px' }}>‹</button>
+              <button onClick={goLater} disabled={offset === 1} aria-label="Later night"
+                style={{ ...wash, cursor: offset === 1 ? 'default' : 'pointer', fontWeight: 700, opacity: offset === 1 ? 0.4 : 1, padding: '7px 14px' }}>›</button>
+            </div>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'start' }}>
             {studios.map(s => (
               <div key={s.studio} style={card}>
