@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Day sheet FINAL: OT as designation + pre-approval</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  DAY SHEET · FINAL (2026-08-16). Synthesis of the two option rounds —
+  layout B (pair blocks) + Eli's OT ruling. Supersedes runner-wo-day-sheet.html
+  and runner-wo-ot-options.html once approved.
+
+  ELI'S RULING (verbal, 2026-08-16), verbatim logic:
+  · OT is a DESIGNATION, both day types. Clients agree to a window (12–8P
+    hourly, 12h lockout). Anything beyond is "incurred beyond the initial
+    agreement" and must appear as its OWN line — that separation is the point,
+    not a rate trick.
+  · COD: overage is charged AT THE DESK, in the moment — "your session is
+    ending now, would you like to extend? we'll take payment now."
+  · Billing: sent after the fact — agreed charges + the overage line.
+  · OT approval is PREDETERMINED with the client, before the session.
+    It is an INTERNAL flag. Never printed.
+
+  WHAT THAT SETTLES: the auto-vs-confirm debate from the options round.
+  · Flag ON  (OT approved): overage derives from the clock and bills.
+    A statement, zero taps (option 1 behaviour).
+  · Flag OFF: running past the agreed end raises the HOT prompt —
+    COD: "extend & collect now" (the desk conversation, then Payments).
+    Billing: overage flagged for the office to decide before sending.
+  The runner NEVER types hours or dollars in any state. Rates and the
+  approval flag are the office's; the clock is the runner's.
+
+  BUILD NOTES (for the implementation session):
+  · Needs `ot_approved boolean` on work_orders (internal; office toggles it
+    in the WO billing area; never in lib/woPdf's copy).
+  · "Agreed window" source: hourly = the session's booked from/to;
+    lockout = 12h from actual start. Snapshot at seed → per-row
+    included-hours survives later schedule edits; decide at build.
+  · The billing block gains the ENGINEER/ASSISTANT RATE line — rate wells
+    are office-only inputs; runners see plain text.
+  · Phone 1: hourly, OT approved. Phone 2: hourly COD, OT not approved,
+    session ran over — the desk prompt. Phone 3: lockout, OT approved.
+
+  Soft skin (§7c), status colour only (§5). Mock polarity INVERTED vs app.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --fg2:rgba(42,39,34,.72); --fg3:rgba(42,39,34,.45);
+  --st-hot:#ff5a4d; --hot-text:#fff4f2; --st-warm:#ffa94d; --st-booked:#43dfae;
+  --ivory:#d5d0c2; --srf:#ffffff; --chip-ink:#1c2626;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+  --ctlsh:0 1px 2px rgba(42,39,34,.10);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --fg2:rgba(217,214,205,.72); --fg3:rgba(217,214,205,.45);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  --ctlsh:0 1px 3px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;padding:18px}
+button,input{font:inherit;color:var(--fg);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.label{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45}
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.top h1{font-family:'Archivo Black',sans-serif;font-size:22px;letter-spacing:-.03em}
+.switch{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);box-shadow:var(--ctlsh)}
+.switch button{padding:6px 16px;border-radius:99px;font-size:12px;font-weight:700;opacity:.55;cursor:pointer}
+.switch button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .switch button.on{background:var(--fg);color:var(--bg)}
+.note{max-width:860px;font-size:12.5px;line-height:1.6;opacity:.65;margin-bottom:18px}
+.note b{opacity:1}
+.phones{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+.phonewrap{width:392px}
+.phonewrap>.cap{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.5;margin:0 0 8px 6px}
+.phone{background:var(--srf);border-radius:26px;box-shadow:var(--softsh);overflow:hidden}
+.screen{min-height:660px;padding:14px 16px 20px}
+.grab{width:36px;height:4px;border-radius:99px;background:var(--wash2);margin:0 auto 12px}
+.sh-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.sh-date{font-family:'Archivo Black',sans-serif;font-size:17px}
+.studio-tag{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3)}
+.agreed{font-size:10.5px;color:var(--fg3);margin-bottom:12px}
+.agreed b{color:var(--fg2)}
+
+.blkB{background:var(--wash);border-radius:14px;padding:11px 12px;margin-bottom:9px}
+.blkB .hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.who{display:flex;align-items:center;gap:7px;min-width:0}
+.who .role{font-size:9px;font-weight:800;padding:3px 7px;border-radius:5px;background:var(--wash2);color:var(--st-warm)}
+.who .role.first{color:var(--fg)}
+.who .nm{font-weight:700;font-size:13.5px}
+.who .studio-nm{font-family:'Archivo Black',sans-serif;font-size:13px}
+.hrschip{font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:700;color:var(--fg2);background:var(--wash2);border-radius:99px;padding:4px 11px}
+.times{display:flex;gap:8px}
+.twell{flex:1;height:58px;background:var(--wash2);border-radius:12px;display:flex;align-items:center;justify-content:space-between;padding:0 10px 0 14px;cursor:pointer}
+.twell .tk{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:1px}
+.twell .tv{font-family:ui-monospace,Menlo,monospace;font-size:19px;font-weight:600}
+.twell .chev{font-size:11px;opacity:.4}
+.tcol{display:flex;flex-direction:column;justify-content:center}
+.follow{font-size:9.5px;color:var(--fg3);margin:-2px 0 10px 2px}
+
+.otcard{border-radius:12px;padding:10px 14px;margin-bottom:12px;background:var(--wash)}
+.otcard .k{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.otcard .k .flag{font-size:8px;background:var(--wash2);border-radius:99px;padding:2px 8px;color:var(--fg3);letter-spacing:.06em}
+.otline{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:var(--fg2)}
+.otline b{color:var(--fg)}
+.otmoney{font-family:ui-monospace,Menlo,monospace;font-weight:700;color:var(--fg)}
+.hotcard{background:color-mix(in srgb,var(--st-hot) 10%, transparent)}
+.hotcard .k{color:var(--st-hot)}
+.hotbtn{font-size:10.5px;font-weight:800;letter-spacing:.03em;padding:9px 15px;border-radius:99px;background:var(--st-hot);color:var(--hot-text);cursor:pointer;white-space:nowrap}
+.hotsub{font-size:10.5px;color:var(--fg2);margin-top:7px;line-height:1.5}
+
+.songbox{background:var(--wash);border-radius:12px;padding:10px 14px;margin-bottom:12px}
+.songbox .k{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:3px}
+.songbox .ph{font-size:13px;color:var(--fg3)}
+.billing{background:var(--wash);border-radius:12px;padding:10px 14px;margin-bottom:14px}
+.billing .bh{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:4px}
+.billing .sub{font-size:8px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);padding:4px 0 1px}
+.billing .br{display:flex;justify-content:space-between;font-size:11.5px;color:var(--fg2);padding:2px 0;align-items:center}
+.billing .br .v{font-family:ui-monospace,Menlo,monospace}
+.billing .br.tot{font-weight:700;color:var(--fg);font-size:12.5px;padding-top:5px}
+.done{width:100%;min-height:48px;border-radius:12px;background:var(--fg);color:var(--bg);font-family:'Archivo Black',sans-serif;font-size:13px;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>Day sheet — final: OT as designation</h1>
+  <div class="switch" id="themeswitch">
+    <button data-t="light">Light</button>
+    <button data-t="dark" class="on">Dark</button>
+  </div>
+</div>
+
+<p class="note">
+  One design, two OT states, both day types. The <b>agreed window</b> sits right under the
+  date so the baseline is always on screen. The runner touches only the clock — hours and
+  dollars are computed, and the billing block always separates <b>agreed</b> charges from the
+  <b>overage</b>, which is the whole designation. The internal <b>OT pre-approved flag</b>
+  (set by the office, never printed) decides what running over does: approved → it just
+  bills, stated plainly (phone 1, phone 3). Not approved on a COD session → the hot desk
+  prompt: extend &amp; collect now (phone 2). Not approved on a billing session → same card,
+  but the button reads "Flag for office" instead of collecting.
+</p>
+
+<div class="phones">
+
+  <!-- 1 · HOURLY · OT PRE-APPROVED -->
+  <div class="phonewrap">
+    <p class="cap">1 · Hourly · OT pre-approved → automatic</p>
+    <div class="phone"><div class="screen">
+      <div class="grab"></div>
+      <div class="sh-top"><span class="sh-date">Mon, Aug 17</span><span class="studio-tag">Studio B · Hourly</span></div>
+      <div class="agreed">Agreed with client: <b>12:00 PM – 8:00 PM</b> · OT pre-approved</div>
+
+      <div class="blkB">
+        <div class="hd"><span class="who"><span class="studio-nm">STUDIO B</span></span><span class="hrschip">11h</span></div>
+        <div class="times">
+          <div class="twell"><div class="tcol"><div class="tk">Start</div><span class="tv">12:00 PM</span></div><span class="chev">▾</span></div>
+          <div class="twell"><div class="tcol"><div class="tk">End</div><span class="tv">11:00 PM</span></div><span class="chev">▾</span></div>
+        </div>
+      </div>
+      <div class="blkB">
+        <div class="hd"><span class="who"><span class="role">2ND</span><span class="nm">Jack Miller</span></span><span class="hrschip">11h</span></div>
+        <div class="times">
+          <div class="twell"><div class="tcol"><div class="tk">Start</div><span class="tv">12:00 PM</span></div><span class="chev">▾</span></div>
+          <div class="twell"><div class="tcol"><div class="tk">End</div><span class="tv">11:00 PM</span></div><span class="chev">▾</span></div>
+        </div>
+      </div>
+      <div class="follow">Jack’s times follow the studio times until you change them.</div>
+
+      <div class="otcard">
+        <div class="k">Overtime <span class="flag">pre-approved · auto</span></div>
+        <div class="otline">
+          <span>Ran <b>3h</b> past the agreed 8:00 PM end × $165</span>
+          <span class="otmoney">$495.00</span>
+        </div>
+      </div>
+
+      <div class="songbox"><div class="k">Song title / session info</div><div class="ph">What was worked on…</div></div>
+
+      <div class="billing">
+        <div class="bh">Billing · set by the office</div>
+        <div class="sub">Agreed</div>
+        <div class="br"><span>Room 8h × $155/hr</span><span class="v">$1,240.00</span></div>
+        <div class="br"><span>2ND Jack Miller 11h × $55/hr</span><span class="v">$605.00</span></div>
+        <div class="sub">Beyond the agreement</div>
+        <div class="br"><span>OT 3h × $165/hr</span><span class="v">$495.00</span></div>
+        <div class="br tot"><span>Day total</span><span class="v">$2,340.00</span></div>
+      </div>
+
+      <button class="done">Done</button>
+    </div></div>
+  </div>
+
+  <!-- 2 · HOURLY COD · NOT PRE-APPROVED -->
+  <div class="phonewrap">
+    <p class="cap">2 · COD · not pre-approved → the desk prompt</p>
+    <div class="phone"><div class="screen">
+      <div class="grab"></div>
+      <div class="sh-top"><span class="sh-date">Mon, Aug 17</span><span class="studio-tag">Studio A · Hourly · COD</span></div>
+      <div class="agreed">Agreed with client: <b>12:00 PM – 8:00 PM</b> · OT not pre-approved</div>
+
+      <div class="blkB">
+        <div class="hd"><span class="who"><span class="studio-nm">STUDIO A</span></span><span class="hrschip">9.5h</span></div>
+        <div class="times">
+          <div class="twell"><div class="tcol"><div class="tk">Start</div><span class="tv">12:00 PM</span></div><span class="chev">▾</span></div>
+          <div class="twell"><div class="tcol"><div class="tk">End</div><span class="tv">9:30 PM</span></div><span class="chev">▾</span></div>
+        </div>
+      </div>
+      <div class="blkB">
+        <div class="hd"><span class="who"><span class="role first">1ST</span><span class="nm">Dana Cole</span></span><span class="hrschip">9.5h</span></div>
+        <div class="times">
+          <div class="twell"><div class="tcol"><div class="tk">Start</div><span class="tv">12:00 PM</span></div><span class="chev">▾</span></div>
+          <div class="twell"><div class="tcol"><div class="tk">End</div><span class="tv">9:30 PM</span></div><span class="chev">▾</span></div>
+        </div>
+      </div>
+      <div class="follow">Dana’s times follow the studio times until you change them.</div>
+
+      <div class="otcard hotcard">
+        <div class="k">Overtime · not pre-approved</div>
+        <div class="otline">
+          <span>Ran <b>1.5h</b> past the agreed 8:00 PM end.</span>
+          <span class="hotbtn">Extend & collect</span>
+        </div>
+        <div class="hotsub">This is a COD session — the extension is agreed and paid at
+        the desk. Confirming adds <b>OT 1.5h × $165 = $247.50</b> to the balance and
+        takes you to Payments.</div>
+      </div>
+
+      <div class="songbox"><div class="k">Song title / session info</div><div class="ph">What was worked on…</div></div>
+
+      <div class="billing">
+        <div class="bh">Billing · set by the office</div>
+        <div class="sub">Agreed</div>
+        <div class="br"><span>Room 8h × $165/hr</span><span class="v">$1,320.00</span></div>
+        <div class="br"><span>1ST Dana Cole 9.5h × $75/hr</span><span class="v">$712.50</span></div>
+        <div class="sub">Beyond the agreement</div>
+        <div class="br"><span>OT — awaiting extend &amp; collect</span><span class="v" style="color:var(--fg3)">$0.00</span></div>
+        <div class="br tot"><span>Day total</span><span class="v">$2,032.50</span></div>
+      </div>
+
+      <button class="done">Done</button>
+    </div></div>
+  </div>
+
+  <!-- 3 · LOCKOUT · OT PRE-APPROVED -->
+  <div class="phonewrap">
+    <p class="cap">3 · Lockout · 12h included → automatic</p>
+    <div class="phone"><div class="screen">
+      <div class="grab"></div>
+      <div class="sh-top"><span class="sh-date">Tue, Aug 18</span><span class="studio-tag">Studio B · Lockout</span></div>
+      <div class="agreed">Agreed with client: <b>12h lockout</b> · OT pre-approved</div>
+
+      <div class="blkB">
+        <div class="hd"><span class="who"><span class="studio-nm">STUDIO B</span></span><span class="hrschip">13h</span></div>
+        <div class="times">
+          <div class="twell"><div class="tcol"><div class="tk">Start</div><span class="tv">11:00 AM</span></div><span class="chev">▾</span></div>
+          <div class="twell"><div class="tcol"><div class="tk">End</div><span class="tv">12:00 AM</span></div><span class="chev">▾</span></div>
+        </div>
+      </div>
+      <div class="blkB">
+        <div class="hd"><span class="who"><span class="role first">1ST</span><span class="nm">Dana Cole</span></span><span class="hrschip">13h</span></div>
+        <div class="times">
+          <div class="twell"><div class="tcol"><div class="tk">Start</div><span class="tv">11:00 AM</span></div><span class="chev">▾</span></div>
+          <div class="twell"><div class="tcol"><div class="tk">End</div><span class="tv">12:00 AM</span></div><span class="chev">▾</span></div>
+        </div>
+      </div>
+      <div class="follow">Dana’s times follow the studio times until you change them.</div>
+
+      <div class="otcard">
+        <div class="k">Overtime <span class="flag">pre-approved · auto</span></div>
+        <div class="otline">
+          <span>Ran <b>1h</b> past the 12h lockout × $110</span>
+          <span class="otmoney">$110.00</span>
+        </div>
+      </div>
+
+      <div class="songbox"><div class="k">Song title / session info</div><div class="ph">“Glasshouse” — strings</div></div>
+
+      <div class="billing">
+        <div class="bh">Billing · set by the office</div>
+        <div class="sub">Agreed</div>
+        <div class="br"><span>Room lockout — 12h included</span><span class="v">$1,100.00</span></div>
+        <div class="br"><span>1ST Dana Cole 13h × $75/hr</span><span class="v">$975.00</span></div>
+        <div class="sub">Beyond the agreement</div>
+        <div class="br"><span>OT 1h × $110/hr</span><span class="v">$110.00</span></div>
+        <div class="br tot"><span>Day total</span><span class="v">$2,185.00</span></div>
+      </div>
+
+      <button class="done">Done</button>
+    </div></div>
+  </div>
+
+</div>
+
+<script>
+document.querySelectorAll('#themeswitch button').forEach(b => b.onclick = () => {
+  document.documentElement.dataset.theme = b.dataset.t
+  document.querySelectorAll('#themeswitch button').forEach(x => x.classList.toggle('on', x === b))
+})
+</script>
+</body>
+</html>
