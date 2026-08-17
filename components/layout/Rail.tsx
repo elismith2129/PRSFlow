@@ -9,6 +9,7 @@ import { PRSFloIcon } from '@/components/PRSFloIcon'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useClientsVersion } from '@/hooks/useClientsVersion'
 import { Sun, Moon } from 'lucide-react'
+import { useHints, setHintsEnabled } from '@/components/ui/Hint'
 
 /**
  * SIDE NAV RAIL — spec §14a, ported from docs/design-refs/dashboard-final.html.
@@ -70,6 +71,7 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
   const isMobile = useIsMobile()
   const [menuOpen, setMenuOpen] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const hintsOn = useHints()
   const [unreviewedRegs, setUnreviewedRegs] = useState(0)
   const { profile } = useUserProfile()
   const clientsVersion = useClientsVersion()
@@ -180,6 +182,13 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
       )}
       <div className="c-rail-foot">
         {!isRunner && filterItems(FOOT).map(renderItem)}
+        {/* Helpful hints — first-time coach marks app-wide (Eli, 2026-08-17).
+            Default ON; this is the off switch. Same persistence pattern as
+            the theme. */}
+        <button onClick={() => setHintsEnabled(!hintsOn)} className="c-rail-link" aria-label="Toggle helpful hints">
+          <span className="c-rail-ic">💡</span>
+          {hintsOn ? 'Hints: on' : 'Hints: off'}
+        </button>
         <button onClick={toggleTheme} className="c-rail-link" aria-label="Toggle light/dark theme">
           <span className="c-rail-ic">{theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}</span>
           {theme === 'dark' ? 'Light mode' : 'Dark mode'}

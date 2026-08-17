@@ -20,6 +20,7 @@ import { supabase } from '@/lib/supabase'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { dbResult } from '@/lib/db'
 import { SectionHeader } from '@/components/ui/SectionHeader'
+import { Hint } from '@/components/ui/Hint'
 import {
   OPS_STUDIOS, QueueItem, StudioNight, loadNight, markReviewed,
   opsDate, prettyDate, unmarkReviewed,
@@ -159,7 +160,10 @@ export default function DailyOpsPage() {
         {/* ══ LEFT — queue, then tasks ══ */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={card}>
-            <SectionHeader title="Needs you" count={open.length || undefined} countColor="orange" />
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+              <SectionHeader title="Needs you" count={open.length || undefined} countColor="orange" />
+              <Hint tip="Yesterday's exceptions, worst first: flags, then anything that never came in, then missing mics, then notes. Tap an item's circle once you've dealt with it — clearing is shared with every manager." />
+            </div>
             {loading ? (
               <div style={{ opacity: 0.5, fontSize: 13 }}>Loading…</div>
             ) : queue.length === 0 || open.length === 0 ? (
@@ -276,7 +280,7 @@ export default function DailyOpsPage() {
         >
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 12 }}>
             <div>
-              <div className="c-label" style={{ marginBottom: 3 }}>The sweep · every studio</div>
+              <div className="c-label" style={{ marginBottom: 3 }}>The sweep · every studio<Hint tip="One card per studio: the five duties, who worked, and the day's shift log. Use ‹ › (or swipe) to browse previous days — this is also the ops history." /></div>
               <span className="c-arch" style={{ fontSize: 24, letterSpacing: '-0.02em', lineHeight: 1.05 }}>
                 {/* "Yesterday", not "Last night" — the studios run 24/7
                     (terminology ruling, Eli 2026-08-17: day, never night). */}

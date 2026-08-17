@@ -7,6 +7,7 @@ import { getLocalToday, dayPartLabel } from '@/lib/time'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { dbResult } from '@/lib/db'
 import { SessionCardBody, sessionFillClass, initials } from '@/components/calendar/SessionCard'
+import { Hint, useHints, setHintsEnabled } from '@/components/ui/Hint'
 
 
 
@@ -36,6 +37,7 @@ type StudioTask = {
 
 export default function StudioDailyOpsPage() {
   const router = useRouter()
+  const hintsOn = useHints()
   const { studio } = useParams<{ studio: string }>()
   const meta = STUDIO_META[studio] ?? { label: studio, abbr: '?' }
 
@@ -367,6 +369,18 @@ export default function StudioDailyOpsPage() {
               </button>
             )
           })}
+          {/* Helpful-hints toggle (Eli, 2026-08-17) — runners get the same
+              coach marks as the office; this is their on/off. */}
+          <button
+            onClick={() => setHintsEnabled(!hintsOn)}
+            aria-label="Toggle helpful hints"
+            style={{
+              minWidth: 30, minHeight: 30, borderRadius: 99, padding: '0 5px',
+              background: hintsOn ? 'var(--c-wash2)' : 'transparent',
+              opacity: hintsOn ? 1 : 0.4, border: 'none', font: 'inherit',
+              fontSize: 13, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+            }}
+          >💡</button>
         </div>
       </div>
 
@@ -420,6 +434,7 @@ export default function StudioDailyOpsPage() {
         <div>
           <div className="c-label" style={{ marginBottom: 9 }}>
             Today{!loading && ` · ${bookings.length} ${bookings.length === 1 ? 'session' : 'sessions'}`}
+            <Hint tip="Tap a session card to open its work order — times, staff, equipment, and payments all go there. You can keep fixing your day until the office approves it." />
           </div>
 
           {loading ? (
@@ -484,7 +499,9 @@ export default function StudioDailyOpsPage() {
         {/* ── This morning / Today / Tonight — the studio runs 24/7 (Eli,
             2026-08-15), so the label tracks the clock via dayPartLabel. */}
         <div>
-          <div className="c-label" style={{ marginBottom: 9 }}>{dayPartLabel()}</div>
+          <div className="c-label" style={{ marginBottom: 9 }}>{dayPartLabel()}
+            <Hint tip="Everything here saves as you tap — no save button. Found a problem? Use needs-attention with a note and photo; that reports it to the office automatically. Submitted-with-a-problem always beats never-submitted." />
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
             {TILES.map(t => {
               const isLog = t.category === 'shift_notes'

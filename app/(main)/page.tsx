@@ -6,6 +6,7 @@ import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 import { deleteSessionAndWO } from '@/lib/deleteSession'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
+import { Hint } from '@/components/ui/Hint'
 import { Row, SoftButton, StatusDot, NewLeadPulse, statusFillClass } from '@/components/carved'
 import { SessionCardBody, initials, sessionFillClass } from '@/components/calendar/SessionCard'
 import { useUserProfile } from '@/hooks/useUserProfile'
@@ -1101,6 +1102,7 @@ export default function DashboardPage() {
               <PRSFloIcon size={22} />
               <span className="c-fname">Flo</span>
               <span className="c-ftag">· Your briefing · {clockNow.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+              <Hint tip="Flo is computed from real data — no AI. Red lines clear by doing the duty they name; amber lines clear themselves when the pile behind them is gone; the grey line is tomorrow's heads-up." />
             </div>
             {/* Computed from real duties + queues (lib/myday composeBriefing).
                 No AI yet — template sentences over true numbers. */}
@@ -1126,7 +1128,7 @@ export default function DashboardPage() {
             return (
               <div>
                 <div className="c-subhead">
-                  <b>My day — duties</b>
+                  <b>My day — duties<Hint tip="Your recurring duties — they reset on their own schedule. Tick as you go; a missed day shows as 'covering N days' and one tick clears the whole backlog. The count on the right is only what's due today." /></b>
                   <span className="c-myday-prog">{myDay?.progress ?? '—'}</span>
                 </div>
 

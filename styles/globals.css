@@ -1168,16 +1168,13 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    Ink bar with bg text in light; wash2 with fg text in dark. */
 .c-calloc {
   display: flex; align-items: center; gap: 6;
-  padding: 6px 12px;
+  padding: 6px 12px; width: 100%;
   font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
   background: var(--c-wash2); color: var(--c-fg);
-  /* AN INSET PILL, NOT A FULL-BLEED BAR (Eli, 2026-08-16/17: the venue band's
-     left edge met the rail in hard right angles; radius alone on a full-width
-     strip was invisible). Floated off both edges with a small margin so the
-     rounded caps actually read — §7's nothing-square-at-an-edge, made legible. */
-  border-radius: 99px;
-  width: calc(100% - 12px);
-  margin: 3px 6px;
+  /* The band's left-edge treatment is OPEN (Eli, 2026-08-17): plain radius was
+     invisible, an inset pill striped margin-gaps across the whole grid — both
+     reverted. Next round is MOCK-FIRST (docs/design-refs) before any further
+     change here. Until then: square, as it always was. */
 }
 [data-theme="light"] .c-calloc { background: var(--c-fg); color: var(--c-bg); }
 /* The label inherits the bar's contrast colour — setting it to --c-fg paints dark
@@ -2250,3 +2247,29 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-eqpill.c-ok > i { opacity: 1; }
 .c-eqpill.c-bad:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin), .c-eqpill.c-bad:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin):hover { opacity: 1; background: var(--c-st-hot); color: var(--c-hot-text); }
 .c-eqpill.c-bad > i { opacity: 1; }
+
+/* ── Helpful hints — first-time coach marks (Eli, 2026-08-17) ──────────────
+   Rendered by components/ui/Hint.tsx. ON by default; toggled from the rail
+   ("Helpful hints") or the runner hub's 💡; persisted to
+   localStorage['prsflo-hints']. Cold blue = informational, never status. */
+.c-hint {
+  display: inline-flex; position: relative; width: 15px; height: 15px;
+  border-radius: 50%; background: var(--c-st-cold); color: var(--c-bg);
+  font-family: Inter, sans-serif; font-size: 9.5px; font-weight: 800;
+  align-items: center; justify-content: center; cursor: pointer;
+  flex-shrink: 0; vertical-align: middle; margin-left: 6px; line-height: 1;
+  letter-spacing: 0; text-transform: none;
+  animation: c-hintpulse 2.4s ease-in-out infinite;
+}
+@keyframes c-hintpulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-st-cold) 45%, transparent); }
+  50% { box-shadow: 0 0 0 5px transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .c-hint { animation: none; } }
+.c-hint-tip {
+  position: absolute; bottom: 135%; left: -12px; width: 230px; z-index: 10050;
+  background: var(--c-fg); color: var(--c-bg); border-radius: 11px;
+  padding: 9px 12px; font-size: 11px; font-weight: 500; line-height: 1.5;
+  text-align: left; letter-spacing: 0; text-transform: none;
+  box-shadow: var(--c-softsh); cursor: default;
+}

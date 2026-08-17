@@ -51,6 +51,7 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { formatCurrency } from '@/lib/format'
 import { toast } from '@/components/ui/Toaster'
+import { Hint } from '@/components/ui/Hint'
 import {
   fetchInvoices, searchRows, rowsInBucket, bucketCounts, paginate,
   pageCount, summarise, isPastDue, bucketLabel, tabsFor, hasCodAlert, nextAction,
@@ -270,7 +271,7 @@ export default function BillingPage() {
           about. */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: '2px 4px 14px', flexWrap: 'wrap' }}>
         <div>
-          <span className="c-label" style={{ display: 'block', marginBottom: 3 }}>Work orders &amp; invoices</span>
+          <span className="c-label" style={{ display: 'block', marginBottom: 3 }}>Work orders &amp; invoices<Hint tip="Two pipelines. COD: the money is already in — check the work order, attach the invoice, done. Billing: the full cycle — review, invoice, owner approval, send, chase, paid." /></span>
           <div className="c-btitle" style={{ fontSize: isMobile ? 20 : 26 }}>
             {(['billing', 'cod'] as Pipeline[]).map(p => (
               <button
@@ -336,6 +337,7 @@ export default function BillingPage() {
           placeholder="Search everything — client, artist, invoice #, WO #, PO…"
         />
         {searching && <span className="c-bclr" onClick={() => setQuery('')}>clear ✕</span>}
+        <Hint tip="Every row shows at most one button — always the next action. Double-click a row to open the work order (or the combined package once an invoice is attached). Drag a QuickBooks PDF straight onto a row to attach it." />
       </div>
 
       <div className={`c-btabs${searching ? ' c-dim' : ''}`}>
