@@ -173,7 +173,8 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
       queue.push({
         key, severity: 'hot',
         title: `${s.label} ${d.label.toLowerCase()} never submitted`,
-        sub: 'Nothing came in — find out why before tonight',
+        // "next shift", not "tonight" — 24/7 terminology ruling (Eli, 2026-08-17).
+        sub: 'Nothing came in — find out why before the next shift',
         abbr: s.abbr,
         reviewed: seen.has(key),
       })

@@ -117,7 +117,7 @@ The dashboard is the morning read, not a work surface. What's yours on it:
   which is your recurring duties). Anyone in the office can assign you a task;
   comment threads live on each one.
 - **Today's sessions** — the room-by-room grid of what's happening in the
-  buildings today. Useful for knowing what tonight will send you tomorrow.
+  buildings today. Useful for knowing what today will send you tomorrow.
 
 Everything else on the dashboard (needs-action leads, flags) belongs to other
 roles. You can see it; none of it is waiting on you.
@@ -134,7 +134,7 @@ schedule. Open it from the rail (or use the short card on the dashboard).
 - Approve Ramp transactions + chase missing receipts (records a count:
   transactions cleared)
 - Collect and accuracy-check yesterday's work orders
-- Update last night's invoices in QuickBooks per the Daily Invoice Procedure
+- Update yesterday's invoices in QuickBooks per the Daily Invoice Procedure
   (records: invoices updated)
 - Create work orders for today's confirmed sessions — in practice this is
   "check the needs-work-order list is empty," since work orders create

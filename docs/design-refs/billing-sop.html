@@ -33,7 +33,7 @@
   --chip-ink:#1c2626;
   --st-hot:#ff5a4d; --st-warm:#ffa94d; --st-cold:#5fc9e8; --st-booked:#43dfae;
   --st-uncon:#7fb2e5; --st-dead:#cfd6d4;
-  --ivory:#d5d0c2;
+  --ivory:#d5d0c2; --flo-ink:42,39,34;
   --srf:#ffffff;
   --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
   --ctlsh:0 1px 2px rgba(42,39,34,.10);
@@ -41,6 +41,7 @@
 [data-theme="dark"]{
   --bg:#1b1a17; --fg:#d9d6cd;
   --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --flo-ink:213,208,194;
   --srf:#242320;
   --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
   --ctlsh:0 1px 3px rgba(0,0,0,.3);
@@ -163,6 +164,27 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
 .flosyn{margin-top:9px;padding:8px 12px;border-radius:11px;background:var(--wash);
   font-size:12px;font-style:italic;opacity:.8}
 .annot{font-size:10.5px;opacity:.5;padding:1px 4px 7px 25px;line-height:1.5;max-width:560px}
+
+/* ── THE REAL FLO BOX — exact port of the app's (globals.css .c-ringwrap):
+   flat inner surface outlined by a slowly ROTATING ring of light + soft halo.
+   The ring is the only glow in the whole app — glow means AI, exclusively. */
+.ringwrap{position:relative;border-radius:15px;overflow:hidden;padding:1.5px;margin-top:14px;
+  box-shadow:0 0 16px 3px rgba(var(--flo-ink),.045)}
+.ringwrap::before{content:"";position:absolute;inset:-120%;
+  background:conic-gradient(rgba(var(--flo-ink),.06) 0deg,rgba(var(--flo-ink),.32) 90deg,
+  rgba(var(--flo-ink),.06) 200deg,rgba(var(--flo-ink),.06) 360deg);
+  animation:flospin 8s linear infinite}
+@keyframes flospin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.ringwrap::before{animation:none}}
+.flo-inner{position:relative;border-radius:13.5px;background:var(--bg);padding:10px 12px}
+.flohead2{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.flohead2 .fname2{font-family:'Archivo Black',sans-serif;font-size:13px;letter-spacing:-.01em}
+.flohead2 .ftag2{font-size:7.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45}
+.flob{display:flex;gap:8px;align-items:baseline;font-size:12px;line-height:1.45;margin-bottom:4px}
+.flob .flodot{width:7px;height:7px;border-radius:50%;flex-shrink:0;position:relative;top:-1px}
+.flob.alert{color:var(--st-hot);font-weight:600}
+.flosyn2{font-size:11px;opacity:.55;font-style:italic;margin-top:3px}
+.askflo{margin-top:7px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.4}
 
 /* ── duty card echo ── */
 .duty{display:flex;align-items:flex-start;gap:9px;padding:6px 10px;border-radius:10px;margin-bottom:2px}
@@ -394,7 +416,7 @@ body.hints .hint{display:inline-flex}
     <div class="kicker">Chapter 01</div>
     <h1>You own the money side</h1>
     <p class="lede">PRSFlo is two worlds. <b>Operations</b> is the studio manager's — the
-    building, the runners, the nightly checklists. <b>Billing</b> is yours — work orders,
+    building, the runners, the daily checklists. <b>Billing</b> is yours — work orders,
     invoices, payments, money owed. Nothing in your world lives anywhere else, and nothing
     from the other world will chase you. One item, one home.</p>
   </div>
@@ -530,7 +552,7 @@ body.hints .hint{display:inline-flex}
     <div class="fbody"><div class="fcard">
       <div class="who">You · next morning</div>
       <h3>The morning after: review</h3>
-      <p>Last night's sessions are waiting in the hub. Double-click each one and check the
+      <p>Yesterday's sessions are waiting in the hub. Double-click each one and check the
       runner's story against reality: times per day (a wrong end time makes a wrong OT),
       rates, rentals, payments recorded. Fix anything wrong — your edits land live,
       including on a runner's phone. <b>Approve each day as you verify it</b> (that's the
@@ -626,7 +648,7 @@ body.hints .hint{display:inline-flex}
           <span class="wwell"><span class="pfx">Food $</span><span class="val">—</span></span>
         </div>
         <div class="wlab">Booking Notes<span class="tagint">Internal only</span></div>
-        <div class="wnote">Label wants rough bounces nightly. Parking for 3. Last session ran long — bill OT without a call, per D. Marsh.</div>
+        <div class="wnote">Label wants rough bounces after every session. Parking for 3. Last session ran long — bill OT without a call, per D. Marsh.</div>
       </div>
       <div class="wsec" data-sec="client" style="margin-left:0">
         <div class="wlab">Client</div>
@@ -852,7 +874,7 @@ body.hints .hint{display:inline-flex}
       <div class="lozenge" style="margin-bottom:6px"><span>Billing · Today</span><span class="ct">2 of 4</span></div>
       <div class="duty done"><div class="bx">✓</div><div class="tx">Approve Ramp transactions</div><span class="cap">14</span></div>
       <div class="duty done"><div class="bx">✓</div><div class="tx">Review yesterday's work orders</div></div>
-      <div class="duty"><div class="bx"></div><div class="tx">Update last night's invoices in QB</div></div>
+      <div class="duty"><div class="bx"></div><div class="tx">Update yesterday's invoices in QB</div></div>
       <div class="duty"><div class="bx"></div><div class="tx">COD outstanding follow-up</div></div>
       <div class="cap-line"><b>Your My Day card</b> — today's duties with checkboxes and the
       progress pill. Short form of the full My Day page (chapter 06); same checkmarks
@@ -866,7 +888,7 @@ body.hints .hint{display:inline-flex}
       a comment thread. Different thing from My Day: tasks are one-offs, duties recur.</div>
     </div>
     <div class="mini">
-      <div class="minihead"><span class="t">Today's sessions</span><span class="hint">?<span class="tipb">Tonight's teal cards are tomorrow morning's review queue — a busy grid today means a full In-progress tab tomorrow.</span></span><span class="pt">Center</span></div>
+      <div class="minihead"><span class="t">Today's sessions</span><span class="hint">?<span class="tipb">Today's teal cards are tomorrow morning's review queue — a busy grid today means a full In-progress tab tomorrow.</span></span><span class="pt">Center</span></div>
       <div class="rooms">
         <div class="room live"><span class="rk">PRS · A</span><span class="ra">KAYA B</span><span class="rt">2p–12a</span></div>
         <div class="room live"><span class="rk">PRS · B</span><span class="ra">DECOY</span><span class="rt">6p–2a</span></div>
@@ -874,7 +896,7 @@ body.hints .hint{display:inline-flex}
         <div class="room"><span class="rk">ERS · A</span><span class="ra" style="opacity:.3">—</span></div>
       </div>
       <div class="cap-line"><b>The room grid</b> — what's running in the buildings today.
-      Teal = confirmed, orange = a hold. Worth a glance because tonight's sessions are
+      Teal = confirmed, orange = a hold. Worth a glance because today's sessions are
       tomorrow morning's review queue.</div>
     </div>
   </div>
@@ -900,7 +922,7 @@ body.hints .hint{display:inline-flex}
     <div class="lozenge"><span>Billing · Today</span><span class="ct">3 of 5</span></div>
     <div class="duty done"><div class="bx">✓</div><div class="tx">Approve Ramp transactions + chase missing receipts</div><span class="cap">14</span><span class="hint">?<span class="tipb">The number well is a captured count — type the real figure. Flo quotes it in tomorrow's briefing, and Eli's oversight numbers are built from it.</span></span></div>
     <div class="duty done"><div class="bx">✓</div><div class="tx">Collect + accuracy-check yesterday's work orders</div></div>
-    <div class="duty done"><div class="bx">✓</div><div class="tx">Update last night's invoices in QB</div><span class="cap">6</span></div>
+    <div class="duty done"><div class="bx">✓</div><div class="tx">Update yesterday's invoices in QB</div><span class="cap">6</span></div>
     <div class="duty"><div class="bx"></div><div class="tx">COD invoicing + outstanding follow-up<div class="mono" style="font-size:10px;opacity:.55">records: COD outstanding · chased today · 31+ past due</div></div></div>
     <div class="duty late"><div class="bx"></div><div class="tx">Tenant rent — create invoices<div class="mono" style="font-size:10px;opacity:.6">was due the 25th</div></div><span class="late-tag">3 days late · ASAP</span></div>
     <p class="why" style="margin-top:10px"><b>Reading the card</b>The small number wells
@@ -941,18 +963,36 @@ body.hints .hint{display:inline-flex}
     every line it shows you.</p>
   </div>
 
-  <div class="flo-box">
-    <div class="flo-head"><span class="fname">Flo</span><span class="ftag">· Your briefing · Aug 28</span><span class="hint">?<span class="tipb">No AI here — every line is a fixed rule over live data. If a line surprises you, the data changed, not the rules.</span></span></div>
-    <div class="fb"><span class="dot" style="background:var(--st-hot)"></span><span><b>Tenant rent invoices were due Mon 8/25 — 3 days late, needs doing ASAP</b></span></div>
-    <div class="annot">RED — something slipped. Appears for exactly three reasons: a duty backlog hits 3+ days · a monthly duty blew its date (this one — loudest, because the next chance is a month away) · a duty due yesterday wasn't done.</div>
-    <div class="fb"><span class="dot" style="background:var(--st-warm)"></span><span>2 sessions missing work orders</span></div>
-    <div class="fb"><span class="dot" style="background:var(--st-warm)"></span><span>3 balances outstanding · $5,940</span></div>
-    <div class="annot">AMBER — pressure building, not failure. Counted fresh every morning from the live queues: sessions that should have a work order and don't, work orders where owed exceeds taken, and the COD numbers you typed on your card.</div>
-    <div class="fb"><span class="dot" style="background:var(--st-booked)"></span><span>You cleared all 5 duties yesterday</span></div>
-    <div class="annot">GREEN — earned, not decorative. Only appears when every duty due yesterday was actually done.</div>
-    <div class="fb dim"><span class="dot" style="background:var(--st-dead)"></span><span>Tomorrow: Ramp weekly report</span></div>
-    <div class="annot">TOMORROW — the heads-up that day-scoped duties give up by only showing on their own day. Weekly and monthly duties only; never repeats something already red.</div>
-    <div class="flosyn">"One thing needs you today — start with the rent invoices."</div>
+  <!-- THE ACTUAL FLO BOX — exact port from the dashboard, ring animation and
+       all, so the reader recognizes it on sight. -->
+  <div class="ringwrap" style="max-width:520px"><div class="flo-inner">
+    <div class="flohead2">
+      <svg width="22" height="22" viewBox="0 0 200 200" aria-hidden="true" style="flex-shrink:0">
+        <path d="M 14 100 Q 70 -10, 113 100 T 186 100" stroke="currentColor" stroke-width="11" fill="none" stroke-linecap="round" opacity=".35"/>
+        <path d="M 14 100 Q 70 30, 113 100 T 186 100" stroke="currentColor" stroke-width="11" fill="none" stroke-linecap="round" opacity=".6"/>
+        <path d="M 14 100 Q 70 70, 113 100 T 186 100" stroke="currentColor" stroke-width="11" fill="none" stroke-linecap="round"/>
+      </svg>
+      <span class="fname2">Flo</span><span class="ftag2">· Your briefing · Aug 28</span>
+    </div>
+    <div class="flob alert"><span class="flodot" style="background:var(--st-hot)"></span>Billing: Tenant rent — create invoices was due Mon 8/25 — 3 days late, needs doing ASAP</div>
+    <div class="flob"><span class="flodot" style="background:var(--st-warm)"></span>2 sessions missing work orders</div>
+    <div class="flob"><span class="flodot" style="background:var(--st-warm)"></span>3 balances outstanding · $5,940</div>
+    <div class="flob"><span class="flodot" style="background:var(--st-booked)"></span>You cleared all 5 duties yesterday</div>
+    <div class="flob"><span class="flodot" style="background:var(--st-dead)"></span>Tomorrow: Ramp weekly report</div>
+    <div class="flosyn2">Quiet day — one thing needs you: the rent invoices.</div>
+    <div class="askflo">Ask Flo →</div>
+  </div></div>
+  <p style="font-size:11px;opacity:.5;max-width:520px;margin-top:8px;line-height:1.5">This is
+  the exact box from your dashboard — the slow ring of light around it is Flo's signature.
+  <b>Glow means AI</b>: nothing else in the app glows, so if something is glowing, it's Flo.<span class="hint">?<span class="tipb">No AI here yet — every line is a fixed rule over live data. If a line surprises you, the data changed, not the rules.</span></span></p>
+
+  <div class="pane">
+    <h3>Reading it, line by line</h3>
+    <div class="crow"><span class="dot cdot" style="background:var(--st-hot)"></span><span class="h">Red — slipped</span><span class="b">Appears for exactly three reasons: a duty backlog hits 3+ days · a monthly duty blew its date (loudest — the next chance is a month away, and the whole line turns red like above) · a duty due yesterday wasn't done.</span></div>
+    <div class="crow"><span class="dot cdot" style="background:var(--st-warm)"></span><span class="h">Amber — building</span><span class="b">Pressure, not failure. Counted fresh every morning from the live queues: sessions that should have a work order and don't, work orders where owed exceeds taken, and the COD numbers you typed on your card.</span></div>
+    <div class="crow"><span class="dot cdot" style="background:var(--st-booked)"></span><span class="h">Green — went well</span><span class="b">Earned, not decorative. Only appears when every duty due yesterday was actually done.</span></div>
+    <div class="crow"><span class="dot cdot" style="background:var(--st-dead)"></span><span class="h">Tomorrow</span><span class="b">The heads-up that day-scoped duties give up by only showing on their own day. Weekly and monthly duties only; never repeats something already red.</span></div>
+    <div class="crow"><span class="dot cdot" style="background:transparent;box-shadow:inset 0 0 0 1.5px var(--fg);opacity:.4"></span><span class="h">The synopsis</span><span class="b">One italic line at the bottom, always: "All clear." / "Nothing slipped — a few things are building" / "one thing needs you" / "N things need you."</span></div>
   </div>
 
   <div class="pane">
@@ -985,7 +1025,7 @@ body.hints .hint{display:inline-flex}
     line the evening before.</p>
   </div>
   <div class="pane">
-    <div class="rr"><span class="when arch">Every day</span><span class="what">Ramp approvals + missing receipts · review yesterday's work orders · update last night's invoices in QB · COD invoicing + outstanding follow-up<small>The daily four. The review + QB items are the flow of chapter 02, happening on schedule.</small></span></div>
+    <div class="rr"><span class="when arch">Every day</span><span class="what">Ramp approvals + missing receipts · review yesterday's work orders · update yesterday's invoices in QB · COD invoicing + outstanding follow-up<small>The daily four. The review + QB items are the flow of chapter 02, happening on schedule.</small></span></div>
     <div class="rr"><span class="when arch">Mondays</span><span class="what">Ramp weekly report · open/sent-invoice follow-up pass<small>The follow-up rule of thumb: anything sent 14+ days ago that nobody has touched in 7 gets a call or an email.</small></span></div>
     <div class="rr"><span class="when arch">The 25th</span><span class="what">Create tenant rent invoices<small>Monthly. Miss it and it goes red and stays red — rent can't wait four weeks for its next chance.</small></span></div>
     <div class="rr"><span class="when arch">The 5th</span><span class="what">Tenant rent follow-up<small>Anyone who hasn't paid the rent invoiced on the 25th gets chased.</small></span></div>
@@ -1050,7 +1090,7 @@ const WSTEPS=[
  {t:['equip'],h:'The equipment line',
   b:'<p>Each day closes with its equipment check — the runner taps each pill: green = OK, red = a problem, with a note and photo behind the dot (Saturday\'s microphone). <b>Internal only, never prints</b> — the client never sees it, but you\'ll read it when a session note mentions gear.</p>'},
  {t:['rent','notes','pay'],h:'Rentals, notes, payments',
-  b:'<p><b>Rentals</b> — equipment charged to the session; runners can add these at the desk, because an 11 PM rental is a real event. <b>Session Notes</b> — song titles per day plus the night\'s story. <b>Payments</b> — every dollar taken, with type and memo; COD money recorded here is what makes the COD side of the hub true.</p>'},
+  b:'<p><b>Rentals</b> — equipment charged to the session; runners can add these at the desk, because an 11 PM rental is a real event. <b>Session Notes</b> — song titles per day plus the day\'s story. <b>Payments</b> — every dollar taken, with type and memo; COD money recorded here is what makes the COD side of the hub true.</p>'},
  {t:['tot'],h:'The totals — computed, never typed',
   b:'<p><b>Every figure here is computed from the rows above.</b> Studio + Eng + Rentals = Grand Total; minus payments = Balance Due. Nothing is ever typed as a total — so this number, the hub row, and the balances queue can never disagree. If a number looks wrong, don\'t argue with the total: <b>read the rows</b>. The answer is always in the rows.</p>'},
 ];

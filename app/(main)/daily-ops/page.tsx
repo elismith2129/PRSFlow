@@ -278,7 +278,9 @@ export default function DailyOpsPage() {
             <div>
               <div className="c-label" style={{ marginBottom: 3 }}>The sweep · every studio</div>
               <span className="c-arch" style={{ fontSize: 24, letterSpacing: '-0.02em', lineHeight: 1.05 }}>
-                {offset === 1 ? 'Last night' : prettyDate(date)}
+                {/* "Yesterday", not "Last night" — the studios run 24/7
+                    (terminology ruling, Eli 2026-08-17: day, never night). */}
+                {offset === 1 ? 'Yesterday' : prettyDate(date)}
               </span>
               <span style={{ fontSize: 12, opacity: 0.5, marginLeft: 10 }}>{prettyDate(date)}</span>
             </div>
