@@ -191,6 +191,17 @@ type PayRow = {
 
 const EQUIPMENT_ITEMS = ['Speakers', 'Microphone', 'Console']
 
+// Half-hour presets for the day sheet's time-well dropdown (type OR pick —
+// Eli, 2026-08-16; the well still smart-parses typed input via TimeInput).
+const TIME_OPTS: string[] = (() => {
+  const out: string[] = []
+  for (let h = 0; h < 24; h++) for (const m of [0, 30]) {
+    const hr12 = h % 12 === 0 ? 12 : h % 12
+    out.push(`${hr12}:${m === 0 ? '00' : '30'} ${h < 12 ? 'AM' : 'PM'}`)
+  }
+  return out
+})()
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 
@@ -444,6 +455,10 @@ export function WorkOrderPopup({
   const [stView, setStView] = useState<'list' | 'cards' | null>(null)
   // The day sheet: which date's card is open for editing (card view only).
   const [daySheetDate, setDaySheetDate] = useState<string | null>(null)
+  // Which time well's preset dropdown is open (key = rowId|field).
+  const [timeDDKey, setTimeDDKey] = useState<string | null>(null)
+  // Swipe-between-days (Eli, 2026-08-16): touch start X, for the day sheet.
+  const sheetTouchX = useRef<number | null>(null)
   // Runner submit (today's rows → 'submitted').
   const [submittingRun, setSubmittingRun] = useState(false)
   // Needs-attention photo upload (ported from the deleted runner WO page —
@@ -961,6 +976,22 @@ export function WorkOrderPopup({
       delete (updates as any).eng_rate
       delete (updates as any).row_rate_type
       if (Object.keys(updates).length === 0) return
+      // OT IS A DESIGNATION, DERIVED FROM THE CLOCK (Eli, 2026-08-16): the
+      // agreed window is the booked from/to (hourly) or 12h (day-rate; already
+      // auto below). When a runner moves the times on an HOURLY row, OT hours
+      // are recomputed as time beyond the booked hours — never typed, so the
+      // same hours can't be billed twice and the count can't disagree with the
+      // clock. Admin edits stay manual — overriding is the office's call.
+      if (row && row.row_rate_type !== 'day' && ('from_time' in updates || 'to_time' in updates)) {
+        const bookedHrs = calcHours(booking.from_time ?? '', booking.to_time ?? '')
+        const actualHrs = calcHours(
+          ('from_time' in updates ? updates.from_time : row.from_time) ?? '',
+          ('to_time' in updates ? updates.to_time : row.to_time) ?? '',
+        )
+        if (bookedHrs != null && actualHrs != null) {
+          (updates as any).ot_hours = String(Math.max(0, parseFloat((actualHrs - bookedHrs).toFixed(2))))
+        }
+      }
     }
     if (row?.admin_locked && !pendingLockedEdits[id]) {
       setPendingLockedEdits(p => ({ ...p, [id]: { ...row } }))
@@ -3535,7 +3566,9 @@ export function WorkOrderPopup({
                     return (
                       <div
                         key={g.date || 'undated'}
-                        onClick={() => { if (!cardLocked && !readOnly) setDaySheetDate(g.date) }}
+                        // Locked days still OPEN — for reference (Eli,
+                        // 2026-08-16); their inputs are inert inside the sheet.
+                        onClick={() => { if (!readOnly) setDaySheetDate(g.date) }}
                         style={{
                           background: 'var(--c-wash)', borderRadius: 14, padding: '13px 14px', marginBottom: 9,
                           maxWidth: '100%', boxSizing: 'border-box', minWidth: 0,
@@ -3555,9 +3588,9 @@ export function WorkOrderPopup({
                             {/* The signpost (Eli, 2026-08-16): the whole card
                                 opens the sheet, but nothing SAID so. Not a
                                 separate handler — it rides the card's tap. */}
-                            {!cardLocked && !readOnly && (
+                            {!readOnly && (
                               <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'var(--c-wash2)', color: 'var(--c-fg-2)', borderRadius: 99, padding: '4px 11px' }}>
-                                ✎ Edit
+                                {cardLocked ? '👁 View' : '✎ Edit'}
                               </span>
                             )}
                           </span>
@@ -3835,172 +3868,253 @@ export function WorkOrderPopup({
 
         </div>{/* end body */}
 
-        {/* ── DAY SHEET (card view's editor — Eli, 2026-08-15/16; mock phone 3).
-            A bottom sheet with the things a runner actually types: start, end,
-            OT, staff (name + THEIR times, in the SAME grid as the studio times
-            directly above — Eli: the runner updates these together, so they
-            must not read as separate parts), song title, equipment pills.
-            Rates are inputs for admin, the read-only "set by the office" block
-            for the runner. Edits go through updateStRow — LOCAL-FIRST, saved
-            on Save/Submit, reverted by Cancel.
-
-            RENDERED HERE, OUTSIDE THE SCROLLABLE BODY (fix 2026-08-16): iOS
-            breaks position:fixed elements nested inside a
-            -webkit-overflow-scrolling:touch container — the sheet rendered but
-            would not scroll. As a sibling of the body it scrolls normally;
-            overscrollBehavior keeps the scroll from chaining to the page. */}
+        {/* ── DAY SHEET · FINAL (Eli rulings 2026-08-16; mock
+            docs/design-refs/runner-wo-day-sheet-final.html — layout B).
+            · Pair blocks: the studio and each staffer get the SAME shape —
+              name + hours chip, then two big time wells (type or ▾ pick).
+            · The AGREED window sits under the date; OT is a DESIGNATION —
+              derived from the clock as time beyond the agreement, never
+              typed by a runner (admin can still override in list view).
+              No "pre-approved" language — dropped by ruling.
+            · SWIPE left/right (or the ‹ › chevrons) moves between days for
+              reference; the only edit lock is admin approval.
+            · Billing splits "Agreed" from "Beyond the agreement" and gives
+              the staff RATE a home — office types it, runner reads it.
+            Rendered OUTSIDE the scrollable body (iOS fixed-in-scroller bug). */}
         {daySheetDate !== null && (() => {
+          const allDates = Array.from(new Set(stRows.filter(r => r.date).map(r => r.date))).sort()
+          const dayIdx = allDates.indexOf(daySheetDate)
+          const goDay = (dir: number) => {
+            const next = allDates[dayIdx + dir]
+            if (next) { setDaySheetDate(next); setOpenNoteKey(null); setTimeDDKey(null) }
+          }
           const sheetRows = stRows.filter(r => (r.date || '') === daySheetDate)
           const sheetStudioRows = sheetRows.filter(r => r.studio !== '')
           const sheetStaffRows = sheetRows.filter(r => r.eng_visible !== false && (r.eng_name || r.eng_rate || r.studio === ''))
           const sheetDot = sheetRows.length > 0 && sheetRows.every(r => r.status === 'approved')
             ? 'var(--c-st-booked)'
             : sheetRows.some(r => r.status === 'submitted') ? 'var(--c-st-warm)' : null
-          const fld: React.CSSProperties = { flex: 1, background: 'var(--c-wash)', borderRadius: 12, padding: '8px 12px', minWidth: 0, boxSizing: 'border-box' }
-          const fldK: React.CSSProperties = { fontSize: 8.5, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }
+          const dayLocked = runner && sheetRows.length > 0 && sheetRows.every(r => r.admin_locked)
+          const isDayRate = sheetStudioRows.some(r => r.row_rate_type === 'day')
+          const agreedLabel = isDayRate
+            ? '12h lockout'
+            : (booking.from_time && booking.to_time) ? `${booking.from_time} – ${booking.to_time}` : null
+          const fldK: React.CSSProperties = { fontSize: 8.5, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }
+          const hrsChip: React.CSSProperties = { fontFamily: 'DM Mono, ui-monospace, monospace', fontSize: 12, fontWeight: 700, color: 'var(--c-fg-2)', background: 'var(--c-wash2)', borderRadius: 99, padding: '4px 11px', whiteSpace: 'nowrap' }
           const engChargeFor = (r: StRow) => {
             const rate = parseFloat((r.eng_rate ?? '').replace(/[^0-9.]/g, '')) || 0
             const hrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
             return hrs != null && hrs > 0 && rate > 0 ? hrs * rate : 0
           }
-          const sheetTotal = sheetRows.reduce((s2, r) => s2 + (r.charge ?? 0) + (r.ot_charge ?? 0) + engChargeFor(r), 0)
-          const closeSheet = () => { setDaySheetDate(null); setOpenNoteKey(null) }
+          const otHrsDay = sheetRows.reduce((a, r) => a + (parseFloat(r.ot_hours || '0') || 0), 0)
+          const otChargeDay = sheetRows.reduce((a, r) => a + (r.ot_charge ?? 0), 0)
+          const agreedCharge = sheetRows.reduce((a, r) => a + (r.charge ?? 0), 0) + sheetStaffRows.reduce((a, r) => a + engChargeFor(r), 0)
+          const sheetTotal = agreedCharge + otChargeDay
+          const closeSheet = () => { setDaySheetDate(null); setOpenNoteKey(null); setTimeDDKey(null) }
+          // One big time well: type into it (TimeInput smart-parse) or open the
+          // half-hour preset list with the ▾.
+          const timeWell = (r: StRow, field: 'from_time' | 'to_time' | 'eng_from_time' | 'eng_to_time', label: string, value: string) => {
+            const key = `${r.id}|${field}`
+            return (
+              <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+                <div style={{ background: 'var(--c-wash2)', borderRadius: 12, padding: '7px 8px 7px 14px', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ ...fldK, fontSize: 8, marginBottom: 1 }}>{label}</div>
+                    <TimeInput value={value} onChange={v => updateStRow(r.id, { [field]: v } as Partial<StRow>)} className="c-tin c-tin-mono" style={{ fontSize: 17, fontWeight: 600, padding: 0, minHeight: 30 }} />
+                  </div>
+                  <button type="button" onClick={e => { e.stopPropagation(); setTimeDDKey(timeDDKey === key ? null : key) }} style={{ fontSize: 11, color: 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: '8px 6px', flexShrink: 0 }}>
+                    {timeDDKey === key ? '▴' : '▾'}
+                  </button>
+                </div>
+                {timeDDKey === key && (
+                  <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 4 }} onClick={() => setTimeDDKey(null)} />
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 5, background: 'var(--c-bg)', borderRadius: 12, boxShadow: '0 8px 26px rgba(0,0,0,0.4)', maxHeight: 200, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+                      {TIME_OPTS.map(t => (
+                        <div key={t} onClick={() => { updateStRow(r.id, { [field]: t } as Partial<StRow>); setTimeDDKey(null) }}
+                          style={{ padding: '10px 16px', fontFamily: 'DM Mono, ui-monospace, monospace', fontSize: 13, cursor: 'pointer', color: t === value ? 'var(--c-fg)' : 'var(--c-fg-2)', fontWeight: t === value ? 700 : 400, background: t === value ? 'var(--c-wash2)' : 'transparent' }}>
+                          {t}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )
+          }
           return (
             <div style={{ position: 'fixed', inset: 0, zIndex: 10030, background: 'rgba(0,0,0,0.45)' }} onClick={closeSheet}>
               <div
                 onClick={e => e.stopPropagation()}
+                onTouchStart={e => { sheetTouchX.current = e.touches[0].clientX }}
+                onTouchEnd={e => {
+                  const sx = sheetTouchX.current
+                  sheetTouchX.current = null
+                  if (sx == null || timeDDKey) return
+                  const dx = e.changedTouches[0].clientX - sx
+                  if (Math.abs(dx) > 64) goDay(dx < 0 ? 1 : -1)
+                }}
                 style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'var(--c-bg)', borderRadius: '22px 22px 0 0', padding: '12px 16px calc(14px + env(safe-area-inset-bottom))', maxHeight: '86%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}
               >
-                <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--c-wash2)', margin: '0 auto 12px', flexShrink: 0 }} />
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexShrink: 0 }}>
-                  <span className="c-arch" style={{ fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--c-wash2)', margin: '0 auto 10px', flexShrink: 0 }} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                  <span className="c-arch" style={{ fontSize: 17, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button type="button" disabled={dayIdx <= 0} onClick={() => goDay(-1)} style={{ fontSize: 15, color: 'var(--c-fg-3)', background: 'none', cursor: dayIdx > 0 ? 'pointer' : 'default', opacity: dayIdx > 0 ? 1 : 0.25, padding: '4px 6px' }}>‹</button>
                     {weekdayDate(daySheetDate)}
+                    <button type="button" disabled={dayIdx >= allDates.length - 1} onClick={() => goDay(1)} style={{ fontSize: 15, color: 'var(--c-fg-3)', background: 'none', cursor: dayIdx < allDates.length - 1 ? 'pointer' : 'default', opacity: dayIdx < allDates.length - 1 ? 1 : 0.25, padding: '4px 6px' }}>›</button>
                     {sheetDot && <span style={{ width: 7, height: 7, borderRadius: 99, background: sheetDot, display: 'inline-block' }} />}
                   </span>
-                  <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>
+                  <span style={fldK}>
                     {Array.from(new Set(sheetStudioRows.map(r => toStudioLetter(r.studio)).filter(Boolean))).map(s3 => `Studio ${s3}`).join(' · ')}
                   </span>
                 </div>
+                <div style={{ fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-fg-3)', margin: '2px 0 10px', flexShrink: 0 }}>
+                  {agreedLabel && <>Agreed with client: <b style={{ color: 'var(--c-fg-2)', fontWeight: 700 }}>{agreedLabel}</b></>}
+                  {dayLocked && <span style={{ marginLeft: agreedLabel ? 8 : 0 }}>🔒 Approved by the office — view only</span>}
+                  {allDates.length > 1 && <span style={{ float: 'right' }}>swipe for other days · {dayIdx + 1}/{allDates.length}</span>}
+                </div>
 
-                {/* The scrolling middle — everything between header and Done. */}
-                <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
+                <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
 
-                  {/* Studio times — Start | End | OT, one row per studio line. */}
+                  {/* Studio pair block */}
                   {sheetStudioRows.map(r => {
                     const rowLocked = runner && r.admin_locked
-                    const isDayRow = r.row_rate_type === 'day'
+                    const rowHrs = r.total_hours ?? calcHours(r.from_time, r.to_time)
                     return (
-                      <div key={r.id + '-sheet'} style={{ display: 'flex', gap: 8, marginBottom: 8, pointerEvents: rowLocked ? 'none' : undefined, opacity: rowLocked ? 0.62 : 1 }}>
-                        <div style={fld}>
-                          <div style={fldK}>Start</div>
-                          <TimeInput value={r.from_time} onChange={v => updateStRow(r.id, { from_time: v })} className="c-tin c-tin-mono" />
+                      <div key={r.id + '-sheet'} style={{ background: 'var(--c-wash)', borderRadius: 14, padding: '11px 12px', marginBottom: 9, pointerEvents: rowLocked ? 'none' : undefined, opacity: rowLocked ? 0.62 : 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <span className="c-arch" style={{ fontSize: 13 }}>{toStudioLetter(r.studio) ? `STUDIO ${toStudioLetter(r.studio)}` : 'STUDIO'}</span>
+                          <span style={hrsChip}>{rowHrs != null ? `${rowHrs}h` : '—'}</span>
                         </div>
-                        <div style={fld}>
-                          <div style={fldK}>End</div>
-                          <TimeInput value={r.to_time} onChange={v => updateStRow(r.id, { to_time: v })} className="c-tin c-tin-mono" />
-                        </div>
-                        <div style={{ ...fld, flex: '0 0 76px' }}>
-                          <div style={fldK}>OT hrs</div>
-                          {isDayRow
-                            ? <div style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--c-fg-2)', minHeight: 44, display: 'flex', alignItems: 'center' }}>{(parseFloat(r.ot_hours || '0') || 0) > 0 ? r.ot_hours : 'auto'}</div>
-                            : <input value={r.ot_hours ?? ''} onChange={e => updateStRow(r.id, { ot_hours: e.target.value })} placeholder="0" className="c-tin c-tin-mono" />
-                          }
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          {timeWell(r, 'from_time', 'Start', r.from_time)}
+                          {timeWell(r, 'to_time', 'End', r.to_time)}
                         </div>
                       </div>
                     )
                   })}
 
-                  {/* Staff — DIRECTLY under the studio times, same three-column
-                      grid so From/To line up under Start/End (Eli, 2026-08-16:
-                      "the runner will update these together"). Name + role on
-                      a compact line, times in the aligned row below it. */}
+                  {/* Staff pair blocks — SAME shape, times aligned under the
+                      studio's, auto-following them until edited. */}
                   {sheetStaffRows.map(r => {
                     const rowLocked = runner && r.admin_locked
                     const staffHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
                     return (
-                      <div key={r.id + '-sheetstaff'} style={{ marginBottom: 8, pointerEvents: rowLocked ? 'none' : undefined, opacity: rowLocked ? 0.62 : 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                          <button
-                            type="button"
-                            onClick={() => updateStRow(r.id, { eng_role: r.eng_role === 'assistant' ? 'engineer' : 'assistant' })}
-                            style={{ flexShrink: 0, fontSize: 9, fontFamily: 'Inter', fontWeight: 700, padding: '6px 10px', borderRadius: 8, cursor: 'pointer', background: 'var(--c-wash2)', color: r.eng_role === 'assistant' ? 'var(--c-st-warm)' : 'var(--c-fg)' }}
-                          >
-                            {r.eng_role === 'assistant' ? '2ND' : '1ST'}
-                          </button>
-                          <div style={{ ...fld, padding: '4px 12px' }}>
-                            <input list="wo-eng-roster" value={r.eng_name || ''} onChange={e => updateStRow(r.id, { eng_name: e.target.value })} placeholder={r.eng_role === 'assistant' ? 'Assistant name…' : 'Engineer name…'} className="c-tin" />
-                          </div>
+                      <div key={r.id + '-sheetstaff'} style={{ background: 'var(--c-wash)', borderRadius: 14, padding: '11px 12px', marginBottom: 9, pointerEvents: rowLocked ? 'none' : undefined, opacity: rowLocked ? 0.62 : 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: 1 }}>
+                            <button
+                              type="button"
+                              onClick={() => updateStRow(r.id, { eng_role: r.eng_role === 'assistant' ? 'engineer' : 'assistant' })}
+                              style={{ flexShrink: 0, fontSize: 9, fontFamily: 'Inter', fontWeight: 800, padding: '4px 8px', borderRadius: 6, cursor: 'pointer', background: 'var(--c-wash2)', color: r.eng_role === 'assistant' ? 'var(--c-st-warm)' : 'var(--c-fg)' }}
+                            >
+                              {r.eng_role === 'assistant' ? '2ND' : '1ST'}
+                            </button>
+                            <input list="wo-eng-roster" value={r.eng_name || ''} onChange={e => updateStRow(r.id, { eng_name: e.target.value })} placeholder={r.eng_role === 'assistant' ? 'Assistant name…' : 'Engineer name…'} className="c-tin" style={{ fontWeight: 700, fontSize: 13, minHeight: 30 }} />
+                          </span>
+                          <span style={hrsChip}>{staffHrs != null ? `${staffHrs}h` : '—'}</span>
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
-                          <div style={fld}>
-                            <div style={fldK}>Start</div>
-                            <TimeInput value={r.eng_from_time || r.from_time} onChange={v => updateStRow(r.id, { eng_from_time: v })} className="c-tin c-tin-mono" />
-                          </div>
-                          <div style={fld}>
-                            <div style={fldK}>End</div>
-                            <TimeInput value={r.eng_to_time || r.to_time} onChange={v => updateStRow(r.id, { eng_to_time: v })} className="c-tin c-tin-mono" />
-                          </div>
-                          <div style={{ ...fld, flex: '0 0 76px' }}>
-                            <div style={fldK}>Hrs</div>
-                            <div style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--c-fg-2)', minHeight: 44, display: 'flex', alignItems: 'center' }}>{staffHrs != null ? `${staffHrs}h` : '—'}</div>
-                          </div>
+                          {timeWell(r, 'eng_from_time', 'Start', r.eng_from_time || r.from_time)}
+                          {timeWell(r, 'eng_to_time', 'End', r.eng_to_time || r.to_time)}
                         </div>
                       </div>
                     )
                   })}
+                  {sheetStaffRows.length > 0 && !dayLocked && (
+                    <div style={{ fontSize: 9.5, fontFamily: 'Inter', color: 'var(--c-fg-3)', margin: '-3px 0 10px 2px' }}>
+                      Staff times follow the studio times until you change them.
+                    </div>
+                  )}
 
-                  {/* Song title / session info — after the people and times. */}
+                  {/* Overtime — a designation, derived from the clock. */}
+                  <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '10px 14px', marginBottom: 10 }}>
+                    <div style={{ ...fldK, marginBottom: 4 }}>Overtime · beyond the agreement</div>
+                    {otHrsDay > 0 ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, fontSize: 12, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>
+                        <span>
+                          Ran <b style={{ color: 'var(--c-fg)' }}>{otHrsDay}h</b> past the agreed {isDayRate ? '12h' : 'end'}
+                          {sheetStudioRows[0]?.ot_rate ? ` × ${sheetStudioRows[0].ot_rate}` : ''}
+                        </span>
+                        <span style={{ fontFamily: 'DM Mono, ui-monospace, monospace', fontWeight: 700, color: 'var(--c-fg)' }}>
+                          {otChargeDay > 0 ? `$${otChargeDay.toFixed(2)}` : '—'}
+                        </span>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 11.5, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>
+                        None — within the agreed time. Runs past it and this fills in by itself.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Song title / session info */}
                   {sheetStudioRows.map(r => {
                     const rowLocked = runner && r.admin_locked
                     return (
-                      <div key={r.id + '-sheetsong'} style={{ ...fld, marginBottom: 8, pointerEvents: rowLocked ? 'none' : undefined, opacity: rowLocked ? 0.62 : 1 }}>
-                        <div style={fldK}>Song title / session info{sheetStudioRows.length > 1 ? ` · Studio ${toStudioLetter(r.studio)}` : ''}</div>
+                      <div key={r.id + '-sheetsong'} style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '10px 14px', marginBottom: 10, pointerEvents: rowLocked ? 'none' : undefined, opacity: rowLocked ? 0.62 : 1 }}>
+                        <div style={{ ...fldK, marginBottom: 3 }}>Song title / session info{sheetStudioRows.length > 1 ? ` · Studio ${toStudioLetter(r.studio)}` : ''}</div>
                         <textarea
                           value={r.session_info}
                           onChange={e => updateStRow(r.id, { session_info: e.target.value })}
                           rows={2}
                           placeholder="What was worked on…"
-                          style={{ width: '100%', background: 'transparent', outline: 'none', resize: 'vertical', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12, lineHeight: 1.5, boxSizing: 'border-box' }}
+                          style={{ width: '100%', background: 'transparent', outline: 'none', resize: 'vertical', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13, lineHeight: 1.5, boxSizing: 'border-box' }}
                         />
                       </div>
                     )
                   })}
 
                   <div style={{ ...fldK, marginBottom: 6 }}>Equipment</div>
-                  <div style={{ marginBottom: 4 }}>{renderEquipPills(daySheetDate, false)}</div>
+                  <div style={{ marginBottom: 4 }}>{renderEquipPills(daySheetDate, dayLocked)}</div>
                   {renderEquipNoteBlock(daySheetDate)}
 
-                  {/* Billing — the money the day produced. Runner reads it;
-                      admin can correct rates without leaving the sheet. */}
-                  <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '9px 12px', margin: '10px 0 4px' }}>
+                  {/* Billing — agreed vs beyond, the designation itself.
+                      Rate wells (room / OT / staff) are office inputs. */}
+                  <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '10px 14px', margin: '10px 0 4px' }}>
                     <div style={{ ...fldK, marginBottom: 4 }}>{runner ? 'Billing · set by the office' : 'Billing'}</div>
+                    <div style={{ ...fldK, fontSize: 8, padding: '3px 0 1px' }}>Agreed</div>
                     {sheetStudioRows.map(r => {
                       const isDayRow = r.row_rate_type === 'day'
                       return (
-                        <div key={r.id + '-bill'} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)', padding: '2px 0', gap: 8 }}>
+                        <div key={r.id + '-bill'} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, fontFamily: 'Inter', color: 'var(--c-fg-2)', padding: '2px 0', gap: 8 }}>
                           {runner ? (
-                            <span>Room {isDayRow ? `${r.rate_daily || '—'}/day` : `${r.rate || '—'}/hr`}{r.ot_rate ? ` · OT ${r.ot_rate}` : ''}</span>
+                            <span>Room {isDayRow ? `lockout — 12h incl. (${r.rate_daily || '—'})` : `${r.total_hours ?? calcHours(r.from_time, r.to_time) ?? '—'}h × ${r.rate || '—'}/hr`}</span>
                           ) : (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                               Room
                               {isDayRow
                                 ? <input value={r.rate_daily} onChange={e => updateStRow(r.id, { rate_daily: e.target.value })} placeholder="$0/day" className="c-tin c-tin-mono" style={{ width: 80 }} />
                                 : <input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} placeholder="$0/hr" className="c-tin c-tin-mono" style={{ width: 80 }} />}
-                              OT
+                              OT rate
                               <input value={r.ot_rate ?? ''} onChange={e => updateStRow(r.id, { ot_rate: e.target.value })} placeholder="$0" className="c-tin c-tin-mono" style={{ width: 64 }} />
                             </span>
                           )}
-                          <span className="c-tnum">{((r.charge ?? 0) + (r.ot_charge ?? 0)) > 0 ? `$${((r.charge ?? 0) + (r.ot_charge ?? 0)).toFixed(2)}` : '—'}</span>
+                          <span className="c-tnum">{(r.charge ?? 0) > 0 ? `$${(r.charge ?? 0).toFixed(2)}` : '—'}</span>
                         </div>
                       )
                     })}
-                    {sheetStaffRows.filter(r => r.eng_rate || engChargeFor(r) > 0).map(r => (
-                      <div key={r.id + '-billeng'} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)', padding: '2px 0' }}>
-                        <span>{r.eng_role === 'assistant' ? 'Assistant' : 'Engineer'} {r.eng_rate ? `${r.eng_rate}/hr` : ''}</span>
-                        <span className="c-tnum">{engChargeFor(r) > 0 ? `$${engChargeFor(r).toFixed(2)}` : '—'}</span>
-                      </div>
-                    ))}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg)', paddingTop: 4 }}>
+                    {sheetStaffRows.map(r => {
+                      const staffHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
+                      return (
+                        <div key={r.id + '-billeng'} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, fontFamily: 'Inter', color: 'var(--c-fg-2)', padding: '2px 0', gap: 8 }}>
+                          {runner ? (
+                            <span>{r.eng_role === 'assistant' ? '2ND' : '1ST'} {r.eng_name || 'TBD'} {staffHrs != null ? `${staffHrs}h` : ''}{r.eng_rate ? ` × ${r.eng_rate}/hr` : ''}</span>
+                          ) : (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {r.eng_role === 'assistant' ? '2ND' : '1ST'} {r.eng_name || 'TBD'} · rate
+                              <input value={r.eng_rate || ''} onChange={e => updateStRow(r.id, { eng_rate: e.target.value })} placeholder="$0/hr" className="c-tin c-tin-mono" style={{ width: 64 }} />
+                            </span>
+                          )}
+                          <span className="c-tnum">{engChargeFor(r) > 0 ? `$${engChargeFor(r).toFixed(2)}` : '—'}</span>
+                        </div>
+                      )
+                    })}
+                    <div style={{ ...fldK, fontSize: 8, padding: '4px 0 1px' }}>Beyond the agreement</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, fontFamily: 'Inter', color: 'var(--c-fg-2)', padding: '2px 0' }}>
+                      <span>{otHrsDay > 0 ? `OT ${otHrsDay}h${sheetStudioRows[0]?.ot_rate ? ` × ${sheetStudioRows[0].ot_rate}/hr` : ''}` : 'No overtime'}</span>
+                      <span className="c-tnum">{otChargeDay > 0 ? `$${otChargeDay.toFixed(2)}` : '$0.00'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg)', paddingTop: 5 }}>
                       <span>Day total</span>
                       <span className="c-tnum">{sheetTotal > 0 ? `$${sheetTotal.toFixed(2)}` : '—'}</span>
                     </div>
