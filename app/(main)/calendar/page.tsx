@@ -1604,7 +1604,11 @@ function CalendarPageInner() {
   // ground below TRACK. Cap = fills tall content, hugs short content.
   // (44px ≈ the rail-era page-main padding.)
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 44px)', overflow: 'hidden' }}>
+    // marginLeft -12: the frame gives every page a 20px gutter off the nav
+    // rail; the calendar's label column adds its own insets on top, which read
+    // as dead space (Eli, 2026-08-17). The calendar alone pulls itself closer —
+    // the shared frame padding stays untouched for every other page.
+    <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 44px)', overflow: 'hidden', marginLeft: -12 }}>
 
       {/* Work-order creation warning — booking saved, but its WO failed to create (non-blocking) */}
       {woWarning && (

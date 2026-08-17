@@ -1168,13 +1168,16 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    Ink bar with bg text in light; wash2 with fg text in dark. */
 .c-calloc {
   display: flex; align-items: center; gap: 6;
-  padding: 6px 12px; width: 100%;
+  padding: 6px 12px;
   font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
   background: var(--c-wash2); color: var(--c-fg);
-  /* Rounded ends (Eli, 2026-08-16: the venue band's left edge met the rail in
-     hard right angles). §7's law — nothing square at an edge — applies to the
-     one filled strip on this grid too. */
+  /* AN INSET PILL, NOT A FULL-BLEED BAR (Eli, 2026-08-16/17: the venue band's
+     left edge met the rail in hard right angles; radius alone on a full-width
+     strip was invisible). Floated off both edges with a small margin so the
+     rounded caps actually read — §7's nothing-square-at-an-edge, made legible. */
   border-radius: 99px;
+  width: calc(100% - 12px);
+  margin: 3px 6px;
 }
 [data-theme="light"] .c-calloc { background: var(--c-fg); color: var(--c-bg); }
 /* The label inherits the bar's contrast colour — setting it to --c-fg paints dark
