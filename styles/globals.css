@@ -1171,6 +1171,10 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   padding: 6px 12px; width: 100%;
   font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
   background: var(--c-wash2); color: var(--c-fg);
+  /* Rounded ends (Eli, 2026-08-16: the venue band's left edge met the rail in
+     hard right angles). §7's law — nothing square at an edge — applies to the
+     one filled strip on this grid too. */
+  border-radius: 99px;
 }
 [data-theme="light"] .c-calloc { background: var(--c-fg); color: var(--c-bg); }
 /* The label inherits the bar's contrast colour — setting it to --c-fg paints dark

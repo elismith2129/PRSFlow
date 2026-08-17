@@ -43,7 +43,10 @@ const STATUS_SLOT: Record<string, string> = {
 
 // ─── LAYOUT CONSTANTS ────────────────────────────────────────────────────────
 
-const LABEL_W = 148
+// 148 → 112 (Eli, 2026-08-16: "lots of unused padding" in the rail). The
+// widest occupants — "AMERAYCAN" in Archivo 10px + arrow, "Studio X" + arrow —
+// clear 112 comfortably; the rest was dead air the grid could use.
+const LABEL_W = 112
 const COL_W = 120  // minimum day-column width; forces horizontal scroll when cols × days > viewport
 // ROW HEIGHT — two modes, not a ladder. VERTICAL ONLY (column width is the
 // horizontal zoom, below; the two were confused once and bumping this made every
@@ -1351,7 +1354,11 @@ function CalendarPageInner() {
       <div
         ref={gridRef}
         onScroll={handleGridScroll}
-        style={{ flex: 1, overflow: 'auto', minHeight: 0, borderRadius: 6, WebkitOverflowScrolling: 'touch' }}
+        // flex '0 1 auto', not 1 (Eli, 2026-08-16: "too much padding on the
+        // bottom") — the grid hugs its rows when they're shorter than the
+        // viewport instead of stretching dead space below TRACK; when content
+        // is taller it still shrinks to fit and scrolls exactly as before.
+        style={{ flex: '0 1 auto', overflow: 'auto', minHeight: 0, borderRadius: 6, WebkitOverflowScrolling: 'touch' }}
       >
         <div style={{ minWidth: labelW + DAYS * colW }}>
         {/* MONTH RAIL — one segment per month, each exactly as wide as its days.
