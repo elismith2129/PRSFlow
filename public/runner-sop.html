@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Runner App Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  RUNNER APP SOP (Eli, 2026-08-17) — HOW TO USE THE APP, nothing else.
+  The RUNNER MANUAL (the job itself — runs, etiquette, the building) is a
+  separate document Eli already has on paper; its digital version is a later
+  project. Do not merge the two.
+
+  Served inside the runner app at /runner/sop (iframe, same pattern as /sop).
+  Phone-first: chapter pills across the top, one chapter at a time, big touch
+  targets. Runners only ever see THIS guide — the admin manuals are not
+  reachable from runner surfaces.
+
+  Same hints mechanic as the admin SOP mocks: 💡 toggle in the top bar; blue ?
+  markers appear beside things worth a tip; tap one for the tip.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626;
+  --st-hot:#ff5a4d; --st-warm:#ffa94d; --st-booked:#43dfae; --st-cold:#5fc9e8;
+  --st-dead:#cfd6d4; --ivory:#d5d0c2;
+  --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+  --ctlsh:0 1px 2px rgba(42,39,34,.10);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  --ctlsh:0 1px 3px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);
+  font:400 14px/1.55 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;
+  padding-bottom:40px}
+button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+
+.top{position:sticky;top:0;z-index:9;background:var(--bg);padding:12px 14px 0;box-shadow:0 1px 0 var(--wash)}
+.toprow{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.wm{font-family:'Archivo Black',sans-serif;letter-spacing:-.02em;font-size:14px}
+.wm .flo{opacity:.45}
+.tsub{font-size:10px;opacity:.5}
+.ctl{margin-left:auto;padding:6px 12px;border-radius:99px;background:var(--wash);
+  font-size:11px;font-weight:700;box-shadow:var(--ctlsh);flex-shrink:0}
+.pills{display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none}
+.pills::-webkit-scrollbar{display:none}
+.pills button{flex-shrink:0;padding:7px 13px;border-radius:99px;background:var(--wash);
+  font-size:11.5px;font-weight:700;opacity:.6;white-space:nowrap}
+.pills button.on{opacity:1;background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .pills button.on{background:var(--ivory);color:#1b1a17}
+
+.main{padding:16px 14px;max-width:640px;margin:0 auto}
+.hbar h1{font-family:'Archivo Black',sans-serif;font-size:22px;letter-spacing:-.03em;line-height:1.15}
+.kicker{font-size:9px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;opacity:.45;margin-bottom:4px}
+.lede{font-size:13px;opacity:.72;margin:8px 0 4px;line-height:1.6}
+
+.pane{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:14px 15px;margin-top:12px}
+.pane h3{font-family:'Archivo Black',sans-serif;font-size:13.5px;margin-bottom:7px}
+.pane p{font-size:12.5px;opacity:.82;margin-bottom:8px}
+.pane p:last-child{margin-bottom:0}
+.why{font-size:11px;opacity:.55;background:var(--wash);border-radius:11px;
+  padding:8px 11px;margin-top:9px;line-height:1.55}
+.why b{font-weight:800;font-size:9px;letter-spacing:.09em;text-transform:uppercase;
+  display:block;margin-bottom:2px;opacity:.8}
+
+.echo{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:9px 0 3px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:99px;
+  background:var(--wash2);font-size:10.5px;font-weight:700}
+.chip.hot{background:color-mix(in srgb,var(--st-hot) 18%,transparent);color:var(--st-hot)}
+.chip.ok{background:var(--st-booked);color:var(--chip-ink)}
+.chip.warm{background:color-mix(in srgb,var(--st-warm) 22%,transparent)}
+.btnp{display:inline-block;padding:6px 14px;border-radius:99px;background:var(--fg);color:var(--bg);
+  font-size:11px;font-weight:700;box-shadow:var(--ctlsh)}
+[data-theme="dark"] .btnp{background:var(--ivory);color:#1b1a17}
+
+/* numbered mini-steps */
+.step{display:flex;gap:10px;padding:8px 2px;align-items:flex-start}
+.step .n{width:22px;height:22px;border-radius:99px;background:var(--fg);color:var(--bg);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-family:'Archivo Black',sans-serif;font-size:10px}
+[data-theme="dark"] .step .n{background:var(--ivory);color:#1b1a17}
+.step .t{flex:1;font-size:12.5px;line-height:1.5;opacity:.85;padding-top:2px}
+.step .t b{opacity:1}
+
+/* status pills like the hub's */
+.pill{font-size:8.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  padding:3px 9px;border-radius:99px;background:var(--wash2);opacity:.7;display:inline-block}
+.pill.warm{background:var(--st-warm);color:var(--chip-ink);opacity:1}
+.pill.ok{background:var(--st-booked);color:var(--chip-ink);opacity:1}
+
+/* equipment pills */
+.eqpill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;
+  padding:4px 10px;border-radius:99px;background:var(--wash2)}
+.eqpill i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.3;font-style:normal}
+.eqpill.ok{color:var(--st-booked)}.eqpill.ok i{background:var(--st-booked);opacity:1}
+.eqpill.bad{color:var(--st-hot)}.eqpill.bad i{background:var(--st-hot);opacity:1}
+
+/* day-sheet echo */
+.well{background:var(--wash);border-radius:11px;padding:8px 11px;font-family:ui-monospace,monospace;
+  font-size:13px;display:inline-block;min-width:96px;text-align:center}
+.wlab{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.4;
+  display:block;margin-bottom:4px}
+
+/* hints */
+.hint{display:none;position:relative;width:16px;height:16px;border-radius:50%;
+  background:var(--st-cold);color:var(--chip-ink);font-size:10px;font-weight:800;
+  align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;
+  vertical-align:middle;margin-left:5px;line-height:1;
+  animation:hintpulse 2.4s ease-in-out infinite}
+body.hints .hint{display:inline-flex}
+@keyframes hintpulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--st-cold) 45%,transparent)}
+  50%{box-shadow:0 0 0 5px transparent}}
+.tipb{display:none;position:absolute;bottom:135%;left:-90px;width:210px;z-index:20;
+  background:var(--fg);color:var(--bg);border-radius:11px;padding:9px 12px;
+  font-size:11px;font-weight:500;line-height:1.5;text-align:left;box-shadow:var(--softsh)}
+.hint.open .tipb,.hint:hover .tipb{display:block}
+
+.section{display:none}
+.section.on{display:block}
+.nextbar{display:flex;justify-content:space-between;margin-top:18px}
+.nextbar button{padding:9px 16px;border-radius:99px;background:var(--wash2);font-size:11.5px;font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="toprow">
+    <span class="wm">PRS<span class="flo">FLO</span></span>
+    <span class="tsub">Runner App Guide</span>
+    <button class="ctl" onclick="hints()" id="hintBtn">💡 Hints: Off</button>
+  </div>
+  <div class="pills" id="pills">
+    <button class="on" data-s="start" onclick="go('start')">Start here</button>
+    <button data-s="day" onclick="go('day')">Your day</button>
+    <button data-s="wo" onclick="go('wo')">The work order</button>
+    <button data-s="duties" onclick="go('duties')">Checklists &amp; duties</button>
+    <button data-s="notes" onclick="go('notes')">Shift notes</button>
+    <button data-s="punch" onclick="go('punch')">Missed a punch</button>
+    <button data-s="rules" onclick="go('rules')">The rules</button>
+  </div>
+</div>
+
+<main class="main">
+
+<!-- ══ START HERE ══ -->
+<section class="section on" id="s-start">
+  <div class="hbar">
+    <div class="kicker">Runner app guide</div>
+    <h1>Start here</h1>
+    <p class="lede">This guide is about the app only — how to use PRSFlo on your phone.
+    The runner manual (the job itself) is a separate thing. Two minutes here and
+    you'll know every screen.</p>
+  </div>
+  <div class="pane">
+    <h3>Signing in</h3>
+    <p>Go to <b>prsflow.paramountrecording.com</b> and sign in with your <b>email and
+    password</b> (you got them from the office — they're yours, don't share them).
+    Add the app to your home screen when your phone offers; it works like a regular
+    app after that.<span class="hint">?<span class="tipb">iPhone: open in Safari → Share → "Add to Home Screen." Android: Chrome offers an Install banner.</span></span></p>
+    <p>Your account is <b>you</b> — what you check off, submit, and write is recorded
+    under your name. That's a good thing: it's what proves you did your job.</p>
+  </div>
+  <div class="pane">
+    <h3>Picking your studio</h3>
+    <p>First open, you pick a studio. The app <b>remembers it</b> — next time you land
+    straight on your studio's page. The little pills at the top (PRS · ARS · ERS · TRK)
+    switch studios in one tap if you're covering somewhere else, and the <b>←</b> button
+    forgets your studio so you can pick fresh.</p>
+    <p>The greeting follows the clock — "this morning," "today," "tonight." The studios
+    run 24/7; the app knows what shift you're on.</p>
+  </div>
+  <div class="nextbar"><span></span><button onclick="go('day')">Next · Your day →</button></div>
+</section>
+
+<!-- ══ YOUR DAY ══ -->
+<section class="section" id="s-day">
+  <div class="hbar">
+    <div class="kicker">Runner app guide</div>
+    <h1>Your day in the app</h1>
+    <p class="lede">The studio page stacks everything in the order you need it:</p>
+  </div>
+  <div class="pane">
+    <div class="step"><span class="n">1</span><span class="t"><b>From the office</b> — tasks left for your studio and shift.
+    Check them first; tap the circle when one's done.</span></div>
+    <div class="step"><span class="n">2</span><span class="t"><b>Today's sessions</b> — one card per session, the room letter big.
+    Tap a card to open its <b>work order</b> — that's where your session work happens (next chapter).</span></div>
+    <div class="step"><span class="n">3</span><span class="t"><b>The duty tiles</b> — opening &amp; closing checklists, mic
+    inventory, petty cash, stock. Green "Submitted" means done; quiet text means not yet.</span></div>
+    <div class="step"><span class="n">4</span><span class="t"><b>Shift notes</b> — write the day down as it happens.</span></div>
+    <div class="step"><span class="n">5</span><span class="t"><b>Missed a punch?</b> — at the bottom, takes 30 seconds, same day.</span></div>
+  </div>
+  <div class="why"><b>The one habit</b>Work top to bottom. If the office left a task, it's
+  the first thing on your screen because it's the first thing they need.</div>
+  <div class="nextbar"><button onclick="go('start')">← Start here</button><button onclick="go('wo')">Next · The work order →</button></div>
+</section>
+
+<!-- ══ THE WORK ORDER ══ -->
+<section class="section" id="s-wo">
+  <div class="hbar">
+    <div class="kicker">Runner app guide</div>
+    <h1>The work order</h1>
+    <p class="lede">Every session has one work order — the session's paperwork. You fill
+    in what actually happened; the office sees it live as you type.</p>
+  </div>
+
+  <div class="pane">
+    <h3>The day cards</h3>
+    <p>The work order shows <b>one card per day</b>. Each card has a status pill:</p>
+    <div class="echo"><span class="pill">Not submitted</span><span class="pill warm">Submitted</span><span class="pill ok">Approved</span></div>
+    <p>Tap a card to open the <b>day sheet</b> — the handful of things you actually
+    type. (There's also a list view toggle if you prefer the table.)</p>
+  </div>
+
+  <div class="pane">
+    <h3>The day sheet — what you type</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <span><span class="wlab">Start</span><span class="well">2:00 PM</span></span>
+      <span><span class="wlab">End</span><span class="well">2:00 AM</span></span>
+      <span><span class="wlab">OT</span><span class="well" style="opacity:.6">auto</span></span>
+    </div>
+    <p><b>Times:</b> type them ("10a", "930p", even "1430") or use the ▾ half-hour
+    picker.<span class="hint">?<span class="tipb">The picker opens scrolled to the time already shown, so you're never crawling from 12:00 AM — and double-check AM/PM before you submit.</span></span>
+    Staff times follow the studio times until you change them. <b>Overtime figures
+    itself out</b> from the clock — if the session ran past what was booked, the OT
+    line appears on its own. You never type OT math.</p>
+    <p><b>Also on the sheet:</b> who engineered (1ST) or assisted (2ND) — "TBD" is fine
+    until you know — the song title, and the equipment pills:</p>
+    <div class="echo"><span class="eqpill ok"><i></i>Speakers</span><span class="eqpill bad"><i></i>Microphone</span><span class="eqpill"><i></i>Console</span></div>
+    <p>Tap a pill to cycle it: green = OK, red = a problem (add a note and a photo —
+    that goes straight to the office as a flag).</p>
+    <p><b>Payments (COD sessions):</b> money taken at the desk goes on the work order
+    the moment it's taken — type, amount, memo. The signature pad is at the bottom.
+    A red <b>Balance due</b> chip up top means money is still owed on this session.</p>
+    <p><b>What you can't touch:</b> the client block ("Set by the office"), rates, and
+    dates. You can always tap the phone number to call the A&amp;R, even on locked
+    parts.</p>
+  </div>
+
+  <div class="pane">
+    <h3>Submitting — the one rule</h3>
+    <p>When your day is done, hit <b>Submit</b> at the bottom. Something changed after
+    you submitted? Just fix it and hit <b>Update submission</b> — same button, no
+    penalty, ever.<span class="hint">?<span class="tipb">Sessions change near the end all the time. The office wants it CORRECT, not frozen — updating a submission is doing your job well, not admitting a mistake.</span></span></p>
+    <p style="font-weight:700">You can always fix your day until the office approves it.</p>
+    <p>Once a day shows <span class="pill ok">Approved</span>, it's locked — the office
+    checked it and signed off. If something's wrong on an approved day, tell the
+    office; they can unlock it.</p>
+    <div class="why"><b>Long day?</b>If a day runs past 14 hours the app asks "really?"
+    — it warns, it never blocks. Long sessions happen.</div>
+  </div>
+  <div class="nextbar"><button onclick="go('day')">← Your day</button><button onclick="go('duties')">Next · Checklists &amp; duties →</button></div>
+</section>
+
+<!-- ══ DUTIES ══ -->
+<section class="section" id="s-duties">
+  <div class="hbar">
+    <div class="kicker">Runner app guide</div>
+    <h1>Checklists &amp; duties</h1>
+    <p class="lede">The four tiles on your studio page. Each one saves as you tap — no
+    save button, no losing work.</p>
+  </div>
+  <div class="pane">
+    <h3>Opening &amp; closing checklists</h3>
+    <p>Tap each item as you do it — it saves instantly. Found something wrong? Use
+    <b>needs attention</b>: write what you saw, add a photo. That creates a flag for
+    the manager automatically — you never need to also text someone.<span class="hint">?<span class="tipb">A needs-attention note IS the report. It lands in the manager's morning queue with your name and photo attached.</span></span></p>
+    <div class="why"><b>Why it matters</b>A checklist that never comes in shows up RED on
+    the manager's morning screen — louder than one with a problem. Submitting with an
+    issue noted is always better than not submitting.</div>
+  </div>
+  <div class="pane">
+    <h3>Mic inventory</h3>
+    <p>Every mic gets one of three answers: <b>Here</b> · <b>In a room</b> (say which) ·
+    <b>Missing</b>. Marking one missing alerts the office — that's the point, don't
+    hesitate. Counted items (odds &amp; ends) get a quantity. Submit when the sweep's
+    done.</p>
+  </div>
+  <div class="pane">
+    <h3>Petty cash &amp; stock</h3>
+    <p><b>Petty cash:</b> every dollar in or out, as it happens — tap In/Out, amount,
+    what for. <b>Stock:</b> walk the list, mark anything running low. Both take two
+    minutes and both feed the office's morning review.</p>
+  </div>
+  <div class="nextbar"><button onclick="go('wo')">← The work order</button><button onclick="go('notes')">Next · Shift notes →</button></div>
+</section>
+
+<!-- ══ SHIFT NOTES ══ -->
+<section class="section" id="s-notes">
+  <div class="hbar">
+    <div class="kicker">Runner app guide</div>
+    <h1>Shift notes</h1>
+    <p class="lede">The old end-of-shift Slack post, but live. Write entries through
+    your shift, as things happen — don't save it all up for the end.</p>
+  </div>
+  <div class="pane">
+    <p>Each entry is stamped with your name and the time. Photos welcome. Handing off
+    mid-shift? The next runner keeps writing in the same day's log — that's the
+    handoff, on the record.</p>
+    <p><b>Entries can't be edited or deleted</b> — they're records. Typo'd something
+    important? Write a new entry correcting it.</p>
+    <div class="why"><b>What a good log looks like</b>Short lines, as they happen:
+    "11:40 — Session B wrapped, client took roughs." "1:15 — handed off to Mathew."
+    The manager reads this every morning; write what tomorrow will want to know.</div>
+  </div>
+  <div class="nextbar"><button onclick="go('duties')">← Duties</button><button onclick="go('punch')">Next · Missed a punch →</button></div>
+</section>
+
+<!-- ══ PUNCH ══ -->
+<section class="section" id="s-punch">
+  <div class="hbar">
+    <div class="kicker">Runner app guide</div>
+    <h1>Missed a punch</h1>
+    <p class="lede">Forgot to clock in or out, or a meal punch didn't take? Report it in
+    the app — bottom of your studio page, takes 30 seconds.</p>
+  </div>
+  <div class="pane">
+    <p>Pick what kind of punch it was (clock in, clock out, meal), the shift date, and
+    the real time. That's it — the report goes to the manager, who fixes it in ADP.</p>
+    <p><b>Do it the same day.</b> The report is the written confirmation the law
+    requires before anyone can edit your hours — it protects <i>you</i>, and same-day
+    reports protect you best.<span class="hint">?<span class="tipb">California requires your written confirmation before a time punch is edited. This form IS that confirmation — which is why it's in the app and not a text to the manager.</span></span></p>
+  </div>
+  <div class="nextbar"><button onclick="go('notes')">← Shift notes</button><button onclick="go('rules')">Next · The rules →</button></div>
+</section>
+
+<!-- ══ RULES ══ -->
+<section class="section" id="s-rules">
+  <div class="hbar">
+    <div class="kicker">Runner app guide</div>
+    <h1>The rules, in one place</h1>
+  </div>
+  <div class="pane">
+    <div class="step"><span class="n">1</span><span class="t"><b>You can always fix your day until the office approves it.</b> Submit, then update freely — no penalty.</span></div>
+    <div class="step"><span class="n">2</span><span class="t"><b>Record things when they happen</b> — payments, rentals, notes, cash. The paperwork should say what the desk saw, the moment it saw it.</span></div>
+    <div class="step"><span class="n">3</span><span class="t"><b>If something's wrong, say so in the app</b> — needs attention, a flag, a missing mic. Marking a problem is doing the job, not causing trouble.</span></div>
+    <div class="step"><span class="n">4</span><span class="t"><b>Rates, dates, and the client block are the office's.</b> If one looks wrong, call — the number's right there on the work order.</span></div>
+    <div class="step"><span class="n">5</span><span class="t"><b>Submitted-with-a-problem always beats never-submitted.</b> A checklist that never comes in is the loudest alarm on the manager's screen — an honest problem noted is just a normal day.</span></div>
+  </div>
+  <div class="pane">
+    <h3>Words you'll see</h3>
+    <p><b>Work order</b> — the session's paperwork; one per session. <b>Day sheet</b> —
+    one day's card opened up. <b>Submit / Update submission</b> — turning your day in;
+    same button. <b>Approved</b> — the office checked your day; it's locked.
+    <b>Needs attention</b> — your note + photo about a problem; becomes a flag.
+    <b>Flag</b> — a problem on the record with the office. <b>Shift notes</b> — the
+    day's log, entry by entry. <b>From the office</b> — tasks left for your studio.</p>
+  </div>
+  <div class="pane">
+    <h3>Something broken in the app?</h3>
+    <p>A red "NOT saved" message means exactly that — try again, and tell the office if
+    it keeps happening. If this guide doesn't match your screen, the app changed —
+    tell the office so the guide gets fixed.</p>
+  </div>
+  <div class="nextbar"><button onclick="go('punch')">← Missed a punch</button><span></span></div>
+</section>
+
+</main>
+
+<script>
+function go(s){
+  document.querySelectorAll('.section').forEach(x=>x.classList.remove('on'));
+  document.getElementById('s-'+s).classList.add('on');
+  document.querySelectorAll('.pills button').forEach(x=>x.classList.toggle('on',x.dataset.s===s));
+  window.scrollTo({top:0,behavior:'instant'});
+}
+function hints(){
+  const on=document.body.classList.toggle('hints');
+  document.getElementById('hintBtn').textContent='💡 Hints: '+(on?'On':'Off');
+}
+/* Tap-to-toggle tips on touch (no hover on phones). */
+document.addEventListener('click',e=>{
+  const h=e.target.closest('.hint');
+  document.querySelectorAll('.hint.open').forEach(x=>{if(x!==h)x.classList.remove('open')});
+  if(h)h.classList.toggle('open');
+});
+</script>
+</body>
+</html>

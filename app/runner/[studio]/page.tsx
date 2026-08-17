@@ -540,6 +540,23 @@ export default function StudioDailyOpsPage() {
             </div>
             <span style={{ opacity: 0.35, fontSize: 16 }}>›</span>
           </button>
+          {/* App guide = how to use THIS APP (public/runner-sop.html). The
+              runners MANUAL below stays its own slot — that's the JOB (Eli's
+              existing paper doc; digital version is a later project). */}
+          <button
+            onClick={() => router.push('/runner/sop')}
+            style={{
+              ...surface, display: 'flex', alignItems: 'center', gap: 11, minHeight: 52,
+              border: 'none', font: 'inherit', color: 'var(--c-fg)', textAlign: 'left',
+              cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700 }}>App guide</div>
+              <div style={{ fontSize: 10.5, opacity: 0.6 }}>How to use PRSFlo — two minutes</div>
+            </div>
+            <span style={{ opacity: 0.35, fontSize: 16 }}>›</span>
+          </button>
           <div style={{ ...surface, display: 'flex', alignItems: 'center', gap: 11, minHeight: 52, opacity: 0.55 }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 12.5, fontWeight: 700 }}>Runners manual</div>
