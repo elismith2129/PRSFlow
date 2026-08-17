@@ -16,6 +16,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { dbResult } from '@/lib/db'
 import { getLocalToday, dayPartLabel } from '@/lib/time'
 import {
@@ -60,6 +61,7 @@ export default function RunnerPunchPage() {
   }, [profile])
 
   useEffect(() => { load() }, [load])
+  useReloadOnReturn(load)
 
   useEffect(() => {
     if (!profile) return

@@ -8,6 +8,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { getLocalToday } from '@/lib/time'
+import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 
 
 const STUDIO_META: Record<string, { label: string }> = {
@@ -91,6 +92,8 @@ export default function MicsPage() {
   }, [studio, today])
 
   useEffect(() => { load() }, [load])
+  // Same dirty-guard as the realtime channel: never clobber an in-progress check-in.
+  useReloadOnReturn(useCallback(() => { if (!dirtyRef.current) load() }, [load]))
 
   // Real-time: another device's mic check-ins/quantities refetch live when clean;
   // skipped while this runner is mid-edit so their local entries are never clobbered.

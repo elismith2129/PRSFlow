@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase'
 import { dbResult } from '@/lib/db'
 import { getLocalToday, dayPartLabel, dayPartPossessive } from '@/lib/time'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 
 const STUDIO_META: Record<string, { label: string }> = {
   paramount: { label: 'Paramount' },
@@ -66,6 +67,7 @@ export default function ShiftNotesPage() {
   }, [studio, today])
 
   useEffect(() => { load() }, [load])
+  useReloadOnReturn(load)
 
   useEffect(() => {
     const channel = supabase

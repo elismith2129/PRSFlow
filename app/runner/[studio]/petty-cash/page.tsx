@@ -6,6 +6,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
+import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 
 const STUDIO_META: Record<string, { label: string }> = {
   paramount: { label: 'Paramount' },
@@ -49,6 +50,8 @@ export default function PettyCashPage() {
   }, [studio])
 
   useEffect(() => { load() }, [load])
+  // Same dirty-guard as the realtime channel: never clobber a half-typed entry.
+  useReloadOnReturn(useCallback(() => { if (!dirtyRef.current) load() }, [load]))
 
   // Real-time: refetch entries/balance live when clean; skip while the runner is mid-edit.
   useEffect(() => {

@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import type { Booking } from '@/lib/supabase'
 import { getLocalToday, dayPartLabel } from '@/lib/time'
+import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { dbResult } from '@/lib/db'
 import { SessionCardBody, sessionFillClass, initials } from '@/components/calendar/SessionCard'
 
@@ -171,6 +172,11 @@ export default function StudioDailyOpsPage() {
 
   // Initial load
   useEffect(() => { load() }, [load])
+
+  // iOS suspends the realtime socket while the phone is locked/backgrounded and
+  // missed events are never replayed — re-fetch on return so a session added or
+  // confirmed while the phone was asleep appears without a manual refresh.
+  useReloadOnReturn(load)
 
   // Real-time: studio tasks — the office can drop a task mid-shift and the
   // opener's phone updates without a refresh (hard rule: fetch pairs w/ channel).
