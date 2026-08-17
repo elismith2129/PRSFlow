@@ -33,3 +33,17 @@ export function fmtClock(iso: string | null): string {
   if (!iso) return ''
   return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 }
+
+// "2026-08-17" → "August 17th, 2026" (Eli, 2026-08-16 — the Session Info card
+// was showing the raw DB date). Parses as LOCAL time (bare YYYY-MM-DD parses
+// as UTC and shifts a day west of it). Unparseable → the input unchanged.
+export function longDate(d: string): string {
+  if (!d) return d
+  const dt = new Date(d + 'T00:00:00')
+  if (isNaN(dt.getTime())) return d
+  const day = dt.getDate()
+  const suffix = day % 10 === 1 && day !== 11 ? 'st'
+    : day % 10 === 2 && day !== 12 ? 'nd'
+    : day % 10 === 3 && day !== 13 ? 'rd' : 'th'
+  return `${dt.toLocaleDateString('en-US', { month: 'long' })} ${day}${suffix}, ${dt.getFullYear()}`
+}

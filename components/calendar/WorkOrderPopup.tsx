@@ -13,7 +13,7 @@ import { SignedImage } from '@/components/shared/SignedImage'
 import { ClientPanel, type ClientPanelValue } from '@/components/shared/ClientPanel'
 import { seedStudioTimeRows } from '@/lib/seedStudioTimeRows'
 import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter, getLocalToday } from '@/lib/time'
-import { formatCurrency, stripCurrency } from '@/lib/format'
+import { formatCurrency, stripCurrency, longDate } from '@/lib/format'
 import { computeWoTotals } from '@/lib/woTotals'
 import {
   findMissingTimes, missingTimesMessage,
@@ -2278,7 +2278,7 @@ export function WorkOrderPopup({
                 Work Order{wo.wo_number ? ` · ${wo.wo_number}` : ''}
               </div>
               <div className="c-sub" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {(booking.client_name || wo.client || '—')} · {(booking.start_date || wo.session_date || '')}
+                {(booking.client_name || wo.client || '—')} · {longDate(booking.start_date || wo.session_date || '')}
               </div>
             </div>
           </div>
@@ -2548,7 +2548,14 @@ export function WorkOrderPopup({
                   : (booking.client_name || wo.client)],
               ['Artist', booking.artist || wo.artist],
               ['Engineer', booking.engineer_name || wo.engineer],
-              ['Date', booking.start_date || wo.session_date],
+              // "August 17th, 2026", not the raw DB date (Eli, 2026-08-16);
+              // multi-day sessions show the full range.
+              ['Date', (() => {
+                const dStart = booking.start_date || wo.session_date
+                if (!dStart) return ''
+                const dEnd = booking.end_date && booking.end_date !== dStart ? booking.end_date : null
+                return dEnd ? `${longDate(dStart)} – ${longDate(dEnd)}` : longDate(dStart)
+              })()],
               ['Time', [booking.from_time, booking.to_time].filter(Boolean).join(' – ')],
               ['Studio', booking.studio || (wo.studios ?? []).join(', ')],
               // Billing pipeline + live balance chip — a runner takes COD at the
@@ -3541,8 +3548,18 @@ export function WorkOrderPopup({
                             {weekdayDate(g.date)}
                             {dotColor && <span style={{ width: 7, height: 7, borderRadius: 99, background: dotColor, display: 'inline-block' }} />}
                           </span>
-                          <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>
-                            {studios.length ? `Studio ${studios.join(' · ')}` : ''}
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>
+                              {studios.length ? `Studio ${studios.join(' · ')}` : ''}
+                            </span>
+                            {/* The signpost (Eli, 2026-08-16): the whole card
+                                opens the sheet, but nothing SAID so. Not a
+                                separate handler — it rides the card's tap. */}
+                            {!cardLocked && !readOnly && (
+                              <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'var(--c-wash2)', color: 'var(--c-fg-2)', borderRadius: 99, padding: '4px 11px' }}>
+                                ✎ Edit
+                              </span>
+                            )}
                           </span>
                         </div>
                         {/* Not .c-tnum — that class is text-align: right (it's
