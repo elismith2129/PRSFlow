@@ -2923,7 +2923,7 @@ export function WorkOrderPopup({
                 blocks, cards = one day one card. Sits beside the section
                 header; batch edit (admin's bulk mode) keeps its slot in the
                 header itself. */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <SectionHeader
                   carved
@@ -2933,7 +2933,7 @@ export function WorkOrderPopup({
                     : undefined}
                 />
               </div>
-              <div className="c-seg c-seg-tiny" style={{ flexShrink: 0 }}>
+              <div className="c-seg c-seg-tiny" style={{ flexShrink: 0, marginBottom: 12 }}>
                 {(['list', 'cards'] as const).map(v => (
                   <button
                     key={v}
@@ -3635,7 +3635,7 @@ export function WorkOrderPopup({
                 })()}
               </div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 4px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: stView === 'cards' ? '5px 4px 0' : '9px 4px 0' }}>
                 {!readOnly && !runner && stView !== 'cards' ? (
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
                   <button type="button" onClick={addStRow} className="c-x" style={{ fontSize: 10, color: 'var(--c-fg-2)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Studio Time</button>
@@ -3926,19 +3926,35 @@ export function WorkOrderPopup({
                     {timeDDKey === key ? '▴' : '▾'}
                   </button>
                 </div>
-                {timeDDKey === key && (
+                {timeDDKey === key && (() => {
+                  // Open ON the shown time (nearest half-hour) — starting at
+                  // 12:00 AM meant a long scroll and AM-for-PM mistakes
+                  // (Eli, 2026-08-16).
+                  const curMins = timeToMins(value)
+                  let nearest = -1
+                  if (curMins != null) {
+                    let best = Infinity
+                    TIME_OPTS.forEach((t, i) => {
+                      const m = timeToMins(t)
+                      if (m != null && Math.abs(m - curMins) < best) { best = Math.abs(m - curMins); nearest = i }
+                    })
+                  }
+                  return (
                   <>
                     <div style={{ position: 'fixed', inset: 0, zIndex: 4 }} onClick={() => setTimeDDKey(null)} />
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 5, background: 'var(--c-bg)', borderRadius: 12, boxShadow: '0 8px 26px rgba(0,0,0,0.4)', maxHeight: 200, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
-                      {TIME_OPTS.map(t => (
+                    <div
+                      ref={el => { if (el && nearest >= 0) { const sel = el.children[nearest] as HTMLElement | undefined; if (sel) el.scrollTop = Math.max(0, sel.offsetTop - 78) } }}
+                      style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 5, background: 'var(--c-bg)', borderRadius: 12, boxShadow: '0 8px 26px rgba(0,0,0,0.4)', maxHeight: 200, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+                      {TIME_OPTS.map((t, i) => (
                         <div key={t} onClick={() => { updateStRow(r.id, { [field]: t } as Partial<StRow>); setTimeDDKey(null) }}
-                          style={{ padding: '10px 16px', fontFamily: 'DM Mono, ui-monospace, monospace', fontSize: 13, cursor: 'pointer', color: t === value ? 'var(--c-fg)' : 'var(--c-fg-2)', fontWeight: t === value ? 700 : 400, background: t === value ? 'var(--c-wash2)' : 'transparent' }}>
+                          style={{ padding: '10px 16px', fontFamily: 'DM Mono, ui-monospace, monospace', fontSize: 13, cursor: 'pointer', color: i === nearest ? 'var(--c-fg)' : 'var(--c-fg-2)', fontWeight: i === nearest ? 700 : 400, background: i === nearest ? 'var(--c-wash2)' : 'transparent' }}>
                           {t}
                         </div>
                       ))}
                     </div>
                   </>
-                )}
+                  )
+                })()}
               </div>
             )
           }
@@ -3990,6 +4006,14 @@ export function WorkOrderPopup({
                           {timeWell(r, 'from_time', 'Start', r.from_time)}
                           {timeWell(r, 'to_time', 'End', r.to_time)}
                         </div>
+                        {/* AM/PM tripwire (Eli, 2026-08-16): a wrong meridiem
+                            reads as a 14h+ day. Sessions genuinely run that
+                            long sometimes, so this WARNS and never blocks. */}
+                        {rowHrs != null && rowHrs > 14 && (
+                          <div style={{ fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-st-hot)', marginTop: 7 }}>
+                            ⚠ That&apos;s {rowHrs}h in the room — long sessions happen, but double-check AM/PM on the times.
+                          </div>
+                        )}
                       </div>
                     )
                   })}
@@ -4018,6 +4042,11 @@ export function WorkOrderPopup({
                           {timeWell(r, 'eng_from_time', 'Start', r.eng_from_time || r.from_time)}
                           {timeWell(r, 'eng_to_time', 'End', r.eng_to_time || r.to_time)}
                         </div>
+                        {staffHrs != null && staffHrs > 14 && (
+                          <div style={{ fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-st-hot)', marginTop: 7 }}>
+                            ⚠ That&apos;s {staffHrs}h — double-check AM/PM on the times.
+                          </div>
+                        )}
                       </div>
                     )
                   })}
