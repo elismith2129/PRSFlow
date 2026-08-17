@@ -19,6 +19,69 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.13.0 — UNRELEASED (branch `redesign/carved`) — Aug 17, 2026
+
+**Launch prep: SOPs, app-wide hints, Settings, Engineers, day-not-night.**
+
+**Migrations: none.** Two hand-run SQL artifacts exist (NOT schema
+migrations): `supabase/launch_reset_20260817.sql` — the one-shot operational
+wipe at go-live (keeps CRM untouched; re-anchors `myday_duties.created_at` so
+Flo starts with zero history-based red; built-in before/after verification
+that must show all ✓) — and a one-liner renaming the "last night's invoices"
+duty label (in PROJECT_LOG). `scripts/create-runners.mjs` creates the 10
+individual runner accounts (adopt-or-create auth, role `runner`, readable
+passwords, prints credentials, **emails nothing**; re-running rotates).
+
+- **Helpful hints** — `components/ui/Hint.tsx` (`Hint`, `useHints`,
+  `setHintsEnabled`) + `.c-hint`/`.c-hint-tip` in globals.css. Coach marks
+  app-wide, default ON, persisted to `localStorage['prsflo-hints']`; seeded ×9
+  (dashboard ×2, billing ×2, daily-ops ×2, runner hub ×2 + engineers).
+- **Rail**: foot collapsed into a **Settings** disclosure (SOP, DEV, hints,
+  theme, Sign Out). **Admin de-nav'd** (route alive for bookmarks; rebuild is
+  a later phase). **Engineers** rebuilt at `/engineers` under Operations —
+  soft skin, realtime channel `engineers-page`, `dbResult` on writes (the
+  Admin copy had neither). Roster only; session history stays in Admin.
+- **Runner app SOP** at `/runner/sop` (iframe over `public/runner-sop.html`);
+  hub quiet register gains a live "App guide" row. The Runners-manual slot
+  stays Coming soon — that's Eli's separate JOB manual, digitized later.
+- **SOP design mocks**: `docs/design-refs/billing-sop.html` +
+  `manager-sop.html` — chaptered, flow-first, real Flo box port (ring
+  animation), real WO click-through walkthrough (billing ch. 03), oversight
+  chapters (billing-from-where-you-sit, the runner's day). Ruling: all admin
+  manuals visible to all admin staff; runners see only theirs.
+- **Daily Ops**: queue paginated (`QUEUE_PAGE = 10`, pager only on overflow);
+  sweep leads with a date hero + ‹ ›/touch-swipe day paging (replaces the
+  retired ops log). Hero copy "Last night" → "Yesterday".
+- **Terminology ruling: day, never night** (24/7 operation) — applied to
+  daily-ops copy, `lib/dailyOps.ts` queue sub, and all three SOPs.
+- **Go-live removals**: `app/(main)/preview/` + `components/dev/DeviceToggle.tsx`
+  deleted; rail Runner Hub reverted to `/runner`.
+- SOP `VERSIONS` updated: v1.10.0–v1.13.0 entries added (the owed set).
+
+**⚠ Watch-outs**
+
+- **The launch-reset SQL wipes ALL bookings + work orders** (Eli's ruling:
+  everything is test data). It is all-or-nothing; if it errors, nothing was
+  deleted. Verify the end-state SELECT before letting anyone in.
+- **Hints stop propagation** — a `<Hint>` inside a clickable row is safe, but
+  don't wrap one in an element that needs the click to bubble.
+- The duty label rename (DB seed) must be run or the My Day card and the
+  manuals disagree on "last night's" vs "yesterday's".
+- `/engineers` and Admin's engineers tab now coexist — edits in either are
+  fine (both write `engineers`; the new page is realtime), but Admin's copy
+  is scheduled to die in the Phase-B rebuild.
+
+**Files:** `components/ui/Hint.tsx`, `styles/globals.css`,
+`components/layout/Rail.tsx`, `app/(main)/{page,billing/page,daily-ops/page,engineers/page,layout}.tsx`,
+`app/runner/[studio]/page.tsx`, `app/runner/sop/page.tsx`, `public/runner-sop.html`,
+`public/sop.html`, `lib/dailyOps.ts`, `lib/testBatches.ts`,
+`scripts/create-runners.mjs`, `supabase/launch_reset_20260817.sql`,
+`docs/design-refs/{billing-sop,manager-sop}.html`,
+`docs/sop-drafts/{BILLING-SOP-DRAFT,LAUNCH-ANNOUNCEMENT}.md`.
+Deleted: `app/(main)/preview/`, `components/dev/DeviceToggle.tsx`.
+
+---
+
 ## v1.12.0 — UNRELEASED (branch `redesign/carved`) — Aug 16, 2026 (second sitting)
 
 **Day sheet final + OT-from-the-clock + the open work order goes LIVE.**

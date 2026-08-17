@@ -43,11 +43,7 @@ const BUSINESS: RailItem[] = [
 ]
 const OPERATIONS: RailItem[] = [
   { href: '/daily-ops', label: 'Daily Ops', ic: '◔' },
-  // TEMPORARY (build phase, Eli 2026-08-14): Runner Hub opens the device-frame
-  // viewer preloaded with the runner hub at phone size (phone/iPad toggle on
-  // that page) — admins reviewing the redesign never need it desktop-width.
-  // Revert to plain '/runner' when /preview is removed at go-live.
-  { href: '/preview?path=/runner&device=phone', label: 'Runner Hub', ic: '▷' },
+  { href: '/runner', label: 'Runner Hub', ic: '▷' },
   { href: '/mic-inventory', label: 'Mic Inventory', ic: '◌' },
   // Engineers moved out of the retired Admin page (Eli, 2026-08-17) — the one
   // thing in there still used. Admin's rebuild is a later phase.

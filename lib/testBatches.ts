@@ -55,6 +55,61 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'launch-prep-2026-08-17',
+    title: 'Launch prep — guides, hints, Settings, Engineers, Daily Ops paging',
+    version: 'v1.13.0 (preview branch)',
+    date: 'Aug 17, 2026',
+    intro:
+      'Pre-launch housekeeping: runners get an in-app App Guide, small helpful-hint markers appear across the app (toggleable), the rail\'s rarely-used items moved into a Settings disclosure, Engineers got its own page, and Daily Ops gained queue paging plus browse-any-day on the sweep. Admin checks on a computer; the two runner checks on a phone.',
+    items: [
+      {
+        id: 'lp-hints-visible', area: 'Hints',
+        what: 'Blue ? markers appear and show a tip when tapped',
+        how: 'Open the dashboard. You should see a small pulsing blue ? next to the Flo box header and next to "My day — duties". Click one — a dark tip bubble should appear; click anywhere else and it closes. Clicking the ? must NOT trigger anything behind it.',
+      },
+      {
+        id: 'lp-hints-toggle', area: 'Hints',
+        what: 'Hints turn off from Settings and stay off after a reload',
+        how: 'Bottom of the left menu → Settings → "Hints: on". Click it. Every blue ? should vanish immediately. Reload the page — they must STAY gone. Turn them back on the same way.',
+      },
+      {
+        id: 'lp-settings', area: 'Rail',
+        what: 'Settings holds SOP, DEV, hints, theme and Sign Out; Admin is gone from the menu',
+        how: 'Click ⚙ Settings at the bottom of the left menu. It should expand to show SOP, DEV, Hints, Light/Dark mode and Sign Out. Confirm "Admin" appears NOWHERE in the menu (typing /admin in the address bar should still load the old page).',
+      },
+      {
+        id: 'lp-engineers', area: 'Engineers',
+        what: 'The Engineers page lists the roster and edits save',
+        how: 'Left menu → Operations → Engineers. The roster should load with initials, role tags and contact info. Edit someone, change their phone, Save — the row should update without a reload. Deactivate then Reactivate someone and confirm the INACTIVE tag comes and goes ("Show inactive" reveals hidden people).',
+      },
+      {
+        id: 'lp-ops-paging', area: 'Daily Ops',
+        what: 'The queue pages at 10 and the studio tasks card stays visible',
+        how: 'Open Daily Ops. If "Needs you" has more than 10 items, page arrows with "Page 1 of N" appear at its foot and the Studio tasks card below stays on screen. Fewer than 10 items = no pager at all.',
+      },
+      {
+        id: 'lp-ops-swipe', area: 'Daily Ops',
+        what: 'The sweep leads with the date and browses previous days',
+        how: 'On Daily Ops, the right side should say "Yesterday" big, with the date beside it. Click ‹ a few times — the heading becomes the actual date and the four studio cards change to that day. › returns; it stops at Yesterday. On a touch screen, swiping the sweep area left/right should do the same.',
+      },
+      {
+        id: 'lp-runner-guide', area: 'Runner hub', device: 'phone',
+        what: 'The App Guide opens from the studio page and reads on a phone',
+        how: 'On the runner studio page, scroll to the bottom register and tap "App guide". A guide with chapter pills across the top should open; tap through two chapters, then ← back to the hub. "Runners manual" should still say Coming soon.',
+      },
+      {
+        id: 'lp-runner-hints', area: 'Runner hub', device: 'phone',
+        what: 'The 💡 on the hub toggles hints for runners',
+        how: 'On the studio page header, tap the 💡 to the right of the studio pills. Blue ? markers should appear next to "Today" and the duties heading; tap one for the tip. Tap 💡 again to turn them off.',
+      },
+      {
+        id: 'lp-day-words', area: 'Wording',
+        what: 'Daily Ops says "Yesterday", not "Last night"',
+        how: 'Open Daily Ops on the most recent day. The sweep heading must read "Yesterday". A missing-checklist item in the queue should say "find out why before the next shift" — no "tonight".',
+      },
+    ],
+  },
+  {
     id: 'runner-wo-2026-08-16',
     title: 'The runner work order — one work order, two views',
     version: 'v1.11.0–v1.12.0 (preview branch)',

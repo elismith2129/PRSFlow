@@ -641,6 +641,93 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.13.0', date:'Aug 17, 2026',
+    headline:'Manuals, helpful hints, a Settings home — and the app now says "day", never "night".',
+    desc:'Getting ready for launch: runners get an in-app guide to the app, small helpful hints appear across every page (you can turn them off), rarely-used buttons moved into Settings at the bottom of the menu, and Engineers got its own page.',
+    changes:[
+      'Runners now have an App Guide on their studio page — short chapters on how to use every screen. The Runners Manual slot (the job itself) stays "coming soon".',
+      'Helpful hints: small blue ? markers now appear next to things worth knowing — tap one for a tip. They are ON for everyone to start. To turn them off: Settings at the bottom of the left menu (or the 💡 on the runner page).',
+      'Settings: light/dark mode, hints, the SOP and Sign Out now live under one ⚙ Settings button at the bottom of the left menu. Your everyday pages stay where they were.',
+      'Engineers has its own page under Operations — the roster with add, edit and deactivate. The old Admin page is out of the menu; everything it held has moved or is being rebuilt.',
+      'Daily Ops: the "Needs you" list now shows 10 at a time (with page arrows) so studio tasks never scroll out of view, and the studio cards lead with the DATE — use the ‹ › arrows or swipe to look back at any previous day. That replaces the old ops log.',
+      'Wording: the app now says "day" and "yesterday" instead of "night" and "last night" everywhere — the studios run 24/7 and the words now match.',
+      'Every runner is getting their own personal login (email + password) — what you check off and submit is recorded under your name.'
+    ],
+    affects:'If the little blue ? circles bother you, Settings → Hints turns them off in one tap and the app remembers. And if you are used to finding light/dark mode at the bottom of the menu — it is still there, just inside Settings now.',
+    dev:[
+      'components/ui/Hint.tsx + useHints/setHintsEnabled — coach marks app-wide, default ON, persisted to localStorage[prsflo-hints]; stopPropagation so a hint inside a clickable row never triggers the row. Seeded ×9 (dashboard, billing, daily-ops, runner hub).',
+      'Rail foot collapsed into a Settings disclosure (SOP, DEV, hints, theme, Sign Out); Admin de-nav\'d (route alive for bookmarks); Engineers rebuilt at /engineers — soft skin, realtime channel engineers-page, dbResult on writes (the Admin copy had neither).',
+      'Runner app SOP at /runner/sop (iframe over public/runner-sop.html); hub quiet register gains a live App-guide row; the Runners-manual slot untouched.',
+      'Daily Ops: queue paginated at QUEUE_PAGE=10 (pager renders only on overflow); sweep date hero + ‹ ›/touch-swipe night… day paging; "Last night"→"Yesterday"; dailyOps queue sub copy de-nighted.',
+      'Billing + manager SOP design mocks (docs/design-refs/billing-sop.html, manager-sop.html): chaptered, flow-first, real Flo box port (ring animation), real WO click-through walkthrough, oversight chapters; all admin manuals visible to all admin staff, runners see only theirs.',
+      'scripts/create-runners.mjs — 10 individual runner accounts, adopt-or-create auth, role runner, readable passwords, prints credentials, emails nothing.',
+      '/preview + DeviceToggle deleted at go-live; rail Runner Hub reverted to /runner.',
+      'supabase/launch_reset_20260817.sql — one-shot operational wipe (keeps CRM, re-anchors myday_duties.created_at) with built-in before/after verification.'
+    ]
+  },
+  {
+    ver:'v1.12.0', date:'Aug 16, 2026',
+    headline:'The runner day sheet grew up, overtime figures itself out, and the open work order is live in both directions.',
+    desc:'The day sheet was redesigned around big, honest time entry; overtime is now computed from the clock instead of typed; and while a work order is open, changes made by the office and the runner appear on each other\'s screens live.',
+    changes:[
+      'The day sheet now pairs the studio\'s times with each staffer\'s times in matching blocks — staff times follow the studio\'s until you change them. Big time boxes you can type into ("930p" works) or pick from a dropdown that opens AT the time already shown.',
+      'Overtime is automatic for runners: if the session ran past what was booked (or past 12 hours on a lockout), the OT line appears on its own, computed from the clock. Nobody types OT math any more, so it cannot disagree with the times or double-bill.',
+      'If a day runs past 14 hours the app asks "really?" — it warns but never blocks. Long sessions happen; typos get caught.',
+      'Swipe (or use ‹ ›) to flip between the days of a session. Days the office already approved open in view-only.',
+      'While a work order is open, office edits land on the runner\'s screen live and vice versa — your own unsaved edits always win on your screen.',
+      'The status pill on the runner\'s session card now answers the runner\'s question: Not submitted / Submitted / Approved.',
+      'Dates on the work order read like dates — "August 17th, 2026".'
+    ],
+    affects:'For runners: stop calculating overtime — enter the real start and end times and the OT line takes care of itself. For the office: a rate fix you make while a runner has the work order open reaches their phone immediately; no more "close and reopen".',
+    dev:[
+      'Pair-block day sheet per runner-wo-day-sheet-final.html; time wells accept TimeInput parsing OR a half-hour dropdown opening at the shown time; >14h tripwire warns only.',
+      'OT model: runner time edits recompute ot_hours = actual − booked (from booking.from_time/to_time); day-rate keeps auto past-12h; admin list OT stays manual; the pre-approval flag and Extend&collect were mocked and dropped by ruling.',
+      'Live-merge: wo-live-<id> channel over six tables → debounced refreshFromDb(); per-field "your unsaved edits win" derived by comparing local state to load-time original; rentals/payments merge as whole tables only while untouched; foreground-return refreshes. Channel callbacks read ref mirrors — the stale-closure trap was caught pre-ship.',
+      'Hub pill: Not submitted / Submitted / Approved with office Completed outranking; useReloadOnReturn across five runner pages; card COD strip flush via grid; sheet moved out of the scrollable body (iOS fixed-position inside momentum scroll).'
+    ]
+  },
+  {
+    ver:'v1.11.0', date:'Aug 16, 2026',
+    headline:'The runner work order and the office work order are now the same work order.',
+    desc:'Runners and the office now look at the identical document — the runner just sees the office-only parts locked. Plus a cards view for phones, and the app greets by time of day because the studios never close.',
+    changes:[
+      'The runner work order is the same screen the office uses, with the office\'s parts locked: the client block says "Set by the office", rates show as plain text, and approved days are untouchable. Everything a runner actually does — times, staff, equipment, song titles, payments, signature — stays fully live.',
+      'A new cards view shows one card per day; tap it to open the day sheet with just the things you type. Phones start in cards for short sessions; the office desktop keeps the full table. A toggle flips either.',
+      'Submit sends your day to the office — and you can keep fixing it afterwards. The button just becomes "Update submission". The only thing that locks a day is the office approving it. The rule: you can always fix your day until the office approves it.',
+      'Calling the A&R is always allowed — the phone number is a tap-to-call button even inside the locked block.',
+      'The app now greets by the clock — "this morning", "today", "tonight" — because a 7am shift is not "tonight".'
+    ],
+    affects:'Runners: submitting is not final — if something changes at the end of the session, fix it and press Update submission. Correct beats frozen. Office: a runner\'s save now updates the calendar cards too, same as yours.',
+    dev:[
+      'WorkOrderPopup gains mode="runner" — field-level locking, not the all-or-nothing readOnly; the 1,595-line runner WO page became a 136-line wrapper (net −800 lines, one description of the work order).',
+      'Runner mode: forced phone layout, Session Info card replaces META/client, rates read-only + stripped from updateStRow as defence in depth, admin_locked rows inert, create-fallback gated (adopt-only), batch/seed/dates/Complete hidden.',
+      'Submit = the same atomic save + today\'s dated rows → status submitted; StRow.status carried in state but deliberately NOT in the save payload so a save can never clobber a submit/approve.',
+      'View toggle both modes; defaults once per open (phones cards ≤3 days, desktop list). Missing-times warning ported (warn-only); eng-rate + duplicate-staff warnings hidden in runner mode (unfixable there).',
+      'dayPart/dayPartLabel/dayPartPossessive in lib/time.ts, used by picker, hub, shift notes, punch form.'
+    ]
+  },
+  {
+    ver:'v1.10.0', date:'Aug 14, 2026',
+    headline:'The runner app becomes a real product, managers get a morning Daily Ops page — and security is now actually on.',
+    desc:'Studio tasks from the office, missed-punch reports, shift notes replacing the Slack post, one-tap studio memory — and a new Daily Ops page that answers "did yesterday go right?" in one look.',
+    changes:[
+      'The office can leave tasks for a studio — they appear at the top of the runner\'s page, because "anything waiting for me?" is the first question of a shift. Tasks belong to a studio and shift, never a person.',
+      'Missed a punch? Report it in the app the same day — clock in, clock out or meal, the shift date and the real time. Managers get a Punches page to approve and enter them in ADP. This is the written confirmation the law requires, and it protects the runner.',
+      'Shift notes replace the end-of-shift Slack post: write entries through the shift, each stamped with who and when, photos welcome, handoffs supported. Entries are permanent — records, not drafts.',
+      'The app remembers your studio — no more picking it every time. The pills at the top switch studios; ← forgets.',
+      'New Daily Ops page for managers: everything from yesterday that needs a decision on the left (worst first — and a checklist that NEVER came in is now the loudest thing on it), all four studios at a glance on the right. When the list is empty it says "Yesterday is done."',
+      'Security tightened across the whole app — every table is now properly locked to the roles that should see it.'
+    ],
+    affects:'Runners: the punch report only works from your own login — and do it the same day. Managers: Daily Ops is your morning door now; the flags, the missing checklists and the missing mics all come to you there.',
+    dev:[
+      'RLS was never actually in effect — ~40 legacy open policies survived July 2 (permissive policies OR together). 20260814130000 drops every qual=true policy dynamically minus a five-table allowlist; re-run the July 2 hardening after and verify pg_policies. A migration having run is not evidence it achieved its goal.',
+      'studio_tasks (studio+shift scoped, no assignment), punch_correction_requests (report class derived server-side by trigger; no DELETE policy — legal record), shift_log_entries (append-only, no UPDATE/DELETE), daily_ops_reviews ((date,item_key) seen markers — keys are load-bearing, never rename).',
+      '/daily-ops: queue (flags → absences → missing mics → notes) + 2×2 sweep + shift-log popup; lib/dailyOps.ts data layer; flags clear by acknowledging the flag, everything else by review marker.',
+      'One-landing /runner with remembered studio; soft-skin port of checklists/mics/petty-cash/stock (surface only — queries, dirtyRef guards, instant saves untouched); AdminReturn bar for office visitors; SessionCardBody `large` (opt-in only).',
+      'Punch form refuses the shared runner login rather than filing an unattributable record; counts-not-points by design.'
+    ]
+  },
+  {
     ver:'v1.9.1', date:'Aug 13, 2026',
     headline:'The work order PDF now looks like the work order — and a few things that quietly did nothing now work.',
     desc:'When you download a work order it is finally the real thing: the same sections, the same columns, the same totals you see on screen, in black and white. There is also a blank one you can generate and fill in. And several buttons that looked available but did nothing have been fixed.',

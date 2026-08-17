@@ -3204,6 +3204,91 @@ signal it needs to become a real session — not before.
 
 ---
 
+### Aug 17, 2026 — Launch prep: the SOPs take shape, hints go app-wide, day never night
+
+Ships as v1.13.0. The queue from Aug 16's "Rolling toward launch" got worked
+in order; several rulings landed along the way.
+
+#### The SOPs: chapters, flow, and real renders
+
+The billing SOP started as a flat markdown draft; Eli's correction reshaped
+everything after it: **not one long "how things work" page — chapters, and
+the spine is THE FLOW**, a session's life start to finish ("that's why I
+named it Flo"). Both admin manuals (mocks:
+`docs/design-refs/billing-sop.html`, `manager-sop.html`) follow that
+architecture — billing follows a session hold→paid, the manager follows a
+day tasks-posted→"Yesterday is done".
+
+Two more corrections that now bind future manual work: **renders must be the
+REAL thing, not approximations** — the WO chapter became a click-through of
+the actual WorkOrderPopup layout (14 columns, day blocks, letterhead) after
+Eli rejected an invented one; the Flo chapter carries an exact port of the
+ring-animated Flo box; the manager's runner chapter shows the actual hub.
+And a **new procedural fact recorded in the flow: the QB invoice is created
+the moment a session CONFIRMS**, so the invoice number is referenced on the
+work order from day one (amounts trued up after review).
+
+**Oversight, not duplication (ruling).** The manager supervises billing, so
+their manual needs billing content — but as *oversight* chapters ("Billing,
+from where you sit": the coordinator's cadence, the four peek numbers, four
+walk-over triggers), never a copy of procedures. One item, one home; the
+manager's question is "is it being done", not "how do I do it". **Rejected:**
+duplicating the billing manual's procedure sections into the manager SOP
+(would drift), and bare "go read the other manual" (too thin for a
+supervisor). Also ruled: **all admin manuals are visible to all admin staff;
+runners see only theirs.**
+
+**Runner SOP ≠ runner manual.** The in-app guide (`/runner/sop`,
+`public/runner-sop.html`) is HOW TO USE THE APP only. Eli has an existing
+paper RUNNER MANUAL (the job); digitizing it is a separate later project and
+keeps its "Coming soon" slot on the hub. Do not merge the two.
+
+**HR is post-launch, deliberately.** No HR chapters in any SOP until the HR
+section exists — "my focus is just to get the meat and potatoes out."
+
+#### Helpful hints: an app feature, not a manual feature
+
+First built into the SOP mocks; Eli's correction — he meant **first-time-user
+coach marks across the live app**. Now real: `components/ui/Hint.tsx`,
+default ON, per-device persistence, toggles in the rail Settings and the
+runner hub header, seeded ×9. The SOP-embedded markers stay as illustrations
+of the same mechanic; the toggles are independent on purpose.
+
+#### Other rulings this session
+
+- **Day, never night** — the studios run 24/7; every term at every staff
+  level says day/yesterday/shift. Applied to app copy + all three SOPs; the
+  clock-driven dayPart greetings stay (evening genuinely is "tonight"). The
+  `myday_duties` label "Update last night's invoices in QB" needs the
+  one-liner: `update myday_duties set label = replace(label, 'last night''s',
+  'yesterday''s') where label ilike '%last night%';`
+- **Settings disclosure** in the rail foot absorbs SOP/DEV/hints/theme/Sign
+  Out. **Admin is de-nav'd** — everything it held is retired except
+  Engineers, now `/engineers` under Operations (rebuilt in the current skin,
+  with the realtime pairing and dbResult checks the Admin copy lacked).
+  Admin's full rebuild is a later phase.
+- **Daily Ops**: queue paginates at 10 so studio tasks never scroll away;
+  the sweep leads with the DATE as hero and pages by ‹ ›/swipe — which is
+  the replacement for the retired daily-ops log.
+- **Runner accounts: create, don't send.** `scripts/create-runners.mjs`
+  provisions all 10 (roster in-file), prints credentials for Eli to hand out
+  personally. Readable Word-Word-## passwords — runners type them on phones.
+- **Launch-reset SQL** (`supabase/launch_reset_20260817.sql`): Eli ruled ALL
+  bookings/WOs are test data — wiped; CRM untouched; dashboard tasks kept.
+  The My Day re-anchor is `created_at = now()` because that is exactly what
+  lib/myday.ts clamps every retrospective judgement to.
+- `/preview` + `DeviceToggle` deleted; rail Runner Hub → `/runner`. SOP
+  VERSIONS v1.10.0–v1.13.0 added (the owed set). Office announcement drafted
+  (`docs/sop-drafts/LAUNCH-ANNOUNCEMENT.md`).
+
+Still open for launch: Eli runs the reset SQL (verify the ✓s), runs
+create-runners, reviews both admin SOP mocks (billing's with the departing
+coordinator — her window is the deadline), duty-label one-liner, merge. The
+mic-inventory / tasks / flags re-skins are queued for a fresh session — 2,200
+lines of old-skin ports deserve full attention, not session-end scraps.
+
+---
+
 ### Aug 16, 2026 (second sitting) — The day sheet grows up; OT becomes a designation; the open work order goes live
 
 Same day, after the v1.11.0 wrap-up — Eli tested on his phone and the session
