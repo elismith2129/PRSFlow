@@ -4029,7 +4029,7 @@ export function WorkOrderPopup({
 
                   {/* Overtime — a designation, derived from the clock. */}
                   <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '10px 14px', marginBottom: 10 }}>
-                    <div style={{ ...fldK, marginBottom: 4 }}>Overtime · beyond the agreement</div>
+                    <div style={{ ...fldK, marginBottom: 4 }}>Overtime</div>
                     {otHrsDay > 0 ? (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, fontSize: 12, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>
                         <span>
@@ -4072,7 +4072,6 @@ export function WorkOrderPopup({
                       Rate wells (room / OT / staff) are office inputs. */}
                   <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '10px 14px', margin: '10px 0 4px' }}>
                     <div style={{ ...fldK, marginBottom: 4 }}>{runner ? 'Billing · set by the office' : 'Billing'}</div>
-                    <div style={{ ...fldK, fontSize: 8, padding: '3px 0 1px' }}>Agreed</div>
                     {sheetStudioRows.map(r => {
                       const isDayRow = r.row_rate_type === 'day'
                       return (
@@ -4109,11 +4108,14 @@ export function WorkOrderPopup({
                         </div>
                       )
                     })}
-                    <div style={{ ...fldK, fontSize: 8, padding: '4px 0 1px' }}>Beyond the agreement</div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, fontFamily: 'Inter', color: 'var(--c-fg-2)', padding: '2px 0' }}>
-                      <span>{otHrsDay > 0 ? `OT ${otHrsDay}h${sheetStudioRows[0]?.ot_rate ? ` × ${sheetStudioRows[0].ot_rate}/hr` : ''}` : 'No overtime'}</span>
-                      <span className="c-tnum">{otChargeDay > 0 ? `$${otChargeDay.toFixed(2)}` : '$0.00'}</span>
-                    </div>
+                    {/* OT: its own line, only when it exists (Eli, 2026-08-16 —
+                        plain itemized list, no agreement sub-headings). */}
+                    {otHrsDay > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, fontFamily: 'Inter', color: 'var(--c-fg-2)', padding: '2px 0' }}>
+                        <span>{`OT ${otHrsDay}h${sheetStudioRows[0]?.ot_rate ? ` × ${sheetStudioRows[0].ot_rate}/hr` : ''}`}</span>
+                        <span className="c-tnum">{`$${otChargeDay.toFixed(2)}`}</span>
+                      </div>
+                    )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg)', paddingTop: 5 }}>
                       <span>Day total</span>
                       <span className="c-tnum">{sheetTotal > 0 ? `$${sheetTotal.toFixed(2)}` : '—'}</span>
