@@ -1940,6 +1940,30 @@ export function WorkOrderPopup({
       }
       setSaving(false)
     }
+
+    // ── VENUE GUARD (Eli's ruling, 2026-08-17 — found in launch testing) ──
+    // A dated studio row with no VENUE saves fine and shows in Billing, but
+    // projects a booking card the calendar cannot place — the session becomes
+    // invisible exactly where the office looks for it. So the save refuses
+    // until every dated studio row has a venue picked in its studio dropdown.
+    // Office-only: runners cannot edit location, so blocking them would trap
+    // them behind a field that isn't theirs (same logic as the hidden
+    // eng-rate warning).
+    if (!runner) {
+      const venueless = stRows.filter(r =>
+        r.studio !== '' && (r.date || '') !== '' &&
+        !((r.location || booking.location || '').trim()),
+      )
+      if (venueless.length > 0) {
+        setSaving(false)
+        setTimeErrorRows(new Set(venueless.map(r => r.id)))
+        setTimeErrorMsg('Pick a venue for each studio day (the studio dropdown — e.g. "Paramount · A"). Without a venue the session never appears on the calendar.')
+        return false
+      }
+      setTimeErrorRows(new Set())
+      setTimeErrorMsg(null)
+    }
+
     setSaving(true)
     const id = woIdRef.current
 
@@ -4115,7 +4139,16 @@ export function WorkOrderPopup({
             )
           }
           return (
-            <div style={{ position: 'fixed', inset: 0, zIndex: 10030, background: 'rgba(0,0,0,0.45)' }} onClick={closeSheet}>
+            <div
+              onClick={closeSheet}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 10030, background: 'rgba(0,0,0,0.45)',
+                // DESKTOP: the sheet is a CENTERED CARD, not a bottom sheet
+                // (Eli, 2026-08-17 — the phone sheet rendered full-bleed under
+                // the rail on admin desktop and looked broken).
+                ...(isMobile ? {} : { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }),
+              }}
+            >
               <div
                 onClick={e => e.stopPropagation()}
                 onTouchStart={e => { sheetTouchX.current = e.touches[0].clientX }}
@@ -4126,9 +4159,11 @@ export function WorkOrderPopup({
                   const dx = e.changedTouches[0].clientX - sx
                   if (Math.abs(dx) > 64) goDay(dx < 0 ? 1 : -1)
                 }}
-                style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'var(--c-bg)', borderRadius: '22px 22px 0 0', padding: '12px 16px calc(14px + env(safe-area-inset-bottom))', maxHeight: '86%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}
+                style={isMobile
+                  ? { position: 'absolute', left: 0, right: 0, bottom: 0, background: 'var(--c-bg)', borderRadius: '22px 22px 0 0', padding: '12px 16px calc(14px + env(safe-area-inset-bottom))', maxHeight: '86%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }
+                  : { width: 'min(620px, 94vw)', maxHeight: '82vh', background: 'var(--c-bg)', borderRadius: 22, padding: '14px 18px 16px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', boxShadow: 'var(--c-softsh)' }}
               >
-                <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--c-wash2)', margin: '0 auto 10px', flexShrink: 0 }} />
+                {isMobile && <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--c-wash2)', margin: '0 auto 10px', flexShrink: 0 }} />}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                   <span className="c-arch" style={{ fontSize: 17, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button type="button" disabled={dayIdx <= 0} onClick={() => goDay(-1)} style={{ fontSize: 15, color: 'var(--c-fg-3)', background: 'none', cursor: dayIdx > 0 ? 'pointer' : 'default', opacity: dayIdx > 0 ? 1 : 0.25, padding: '4px 6px' }}>‹</button>
@@ -4143,7 +4178,7 @@ export function WorkOrderPopup({
                 <div style={{ fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-fg-3)', margin: '2px 0 10px', flexShrink: 0 }}>
                   {agreedLabel && <>Agreed with client: <b style={{ color: 'var(--c-fg-2)', fontWeight: 700 }}>{agreedLabel}</b></>}
                   {dayLocked && <span style={{ marginLeft: agreedLabel ? 8 : 0 }}>🔒 Approved by the office — view only</span>}
-                  {allDates.length > 1 && <span style={{ float: 'right' }}>swipe for other days · {dayIdx + 1}/{allDates.length}</span>}
+                  {allDates.length > 1 && <span style={{ float: 'right' }}>{isMobile ? 'swipe' : '‹ ›'} for other days · {dayIdx + 1}/{allDates.length}</span>}
                 </div>
 
                 <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
