@@ -57,6 +57,11 @@ passwords, prints credentials, **emails nothing**; re-running rotates).
 - **Go-live removals**: `app/(main)/preview/` + `components/dev/DeviceToggle.tsx`
   deleted; rail Runner Hub reverted to `/runner`.
 - SOP `VERSIONS` updated: v1.10.0–v1.13.0 entries added (the owed set).
+- **`scripts/selftest.mjs`** — run before every hand-off (CLAUDE.md →
+  Commands): tsc, service-key-in-client-code, tracked env files, VERSIONS
+  parse, optional `--build` (works in the Claude sandbox), plus landmine
+  WARN counters with baselines (`.maybeSingle()` 25 · dead engineer_rate
+  reads 2 · no-dbResult writers 23, as of 2026-08-17). Judge the delta.
 
 **⚠ Watch-outs**
 

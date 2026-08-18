@@ -3281,6 +3281,23 @@ of the same mechanic; the toggles are independent on purpose.
   VERSIONS v1.10.0–v1.13.0 added (the owed set). Office announcement drafted
   (`docs/sop-drafts/LAUNCH-ANNOUNCEMENT.md`).
 
+#### Late addition: the self-test (Eli: "test everything yourself")
+
+`scripts/selftest.mjs` — run before every hand-off line from now on
+(CLAUDE.md → Commands). tsc + high-confidence security fails (service-role
+key inside a `'use client'` file, env files tracked by git, SOP VERSIONS
+parse, optional `--build`) + landmine WARNS with recorded baselines
+(`.maybeSingle()` ×25, dead `bookings.engineer_rate` reads ×2, no-dbResult
+writers ×23 — all pre-existing legacy; a session answers for its DELTA).
+First run caught its own false positive: matching the `'use client'`
+substring flagged comments *saying* "no 'use client'" — the check now matches
+the directive line only. **The production build runs in the Claude sandbox**
+(`.env.local` is mounted), so build-level verification no longer depends on
+the broken local dev server. What the script deliberately does NOT do: DB
+end-state checks (SQL editor, Eli's) and clicking the UI — the browser-level
+answer, if wanted later, is the Claude in Chrome extension driving the
+preview URL with a test login, not resurrecting `npm run dev`.
+
 Still open for launch: Eli runs the reset SQL (verify the ✓s), runs
 create-runners, reviews both admin SOP mocks (billing's with the departing
 coordinator — her window is the deadline), duty-label one-liner, merge. The

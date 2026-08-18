@@ -72,6 +72,13 @@ Batch rules:
 
 ## Commands
 
+- `node scripts/selftest.mjs` — **run before every hand-off line** (added
+  2026-08-17): tsc + security/landmine checks (service-role key in client
+  code, tracked env files, SOP VERSIONS parse, `.maybeSingle()` / dead-column
+  / silent-write DELTAS against the in-file baselines). `--build` adds a full
+  production build — which works in the Claude sandbox (`.env.local` is
+  mounted) even though `npm run dev` is broken locally. Warnings are known
+  legacy debt: a session answers for the DELTA it adds, not the baseline.
 - `npm run dev` — start the Next.js dev server at http://localhost:3000
 - `npm run build` — production build
 - `npm run start` — run the production build
