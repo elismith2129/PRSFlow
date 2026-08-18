@@ -157,10 +157,12 @@ Tables in use (**RLS enforced on all as of July 2, 2026** — keyed on `user_pro
 - `checklists` — actual item check data. `items` is jsonb `[{item, checked}]`. One row per studio+type+date
 - `petty_cash_entries` — in/out transactions per studio+date
 - `petty_cash_balances` — opening balance per studio+date. UNIQUE(studio, date)
-- `stock_items` — **GHOST: does not exist in the live DB** (verified via
-  information_schema 2026-08-17 during the launch reset). The runner Stock
-  page and `lib/dailyOps.ts` still query it — live bug, tracked; fix (create
-  the table) or retire the tile. Documented here for months as if real.
+- `stock_items` — per-studio stock (item, qty, notes, low; UNIQUE(studio,
+  item)). **Was a GHOST until 2026-08-18**: documented for months but never
+  existed in the live DB (found by the launch reset); the runner Stock page
+  and dailyOps sweep queried it into the void. Created by migration
+  `20260818120000_stock_items.sql` (run by Eli — a migration file is not
+  proof it ran; verify `to_regclass('public.stock_items')`).
 - `mics` — **live mic catalog (source of truth for ~271 mics/gear).** Columns: `id`, `name`, `home_studio` (`paramount`/`ameraycan`/`encore`/`track`/`floating`), `category` (`mic`/`floating_gear`/`odds_ends`), `sort_order`, `is_active`. Read by the runner mics page and the Admin Mic Inventory tab.
 - `mic_checkins` — per-mic Here/Room/Missing status per night. `mic_id`, `studio` (lowercase key), `date` (text), `status` (`here`/`room`/`missing`), `room` (set only when `status='room'`), `source` (`runner`/`admin`, NOT NULL DEFAULT `runner`), `amended_by` (text, set on admin edits — the typed initials). UNIQUE(mic_id, studio, date). Source of truth per mic per studio = the most recent row regardless of `source`; an admin edit upserts (overwrites) that day's row.
 - `mic_inventory_quantities` — per-mic count per night (used for odds & ends). `mic_id`, `studio`, `date`, `quantity`. UNIQUE(mic_id, studio, date)

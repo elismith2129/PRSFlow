@@ -71,8 +71,11 @@ passwords, prints credentials, **emails nothing**; re-running rotates).
   hint text reads "‹ ›" instead of "swipe" on desktop.
 - **Ghost tables**: `expense_rows` and `stock_items` do NOT exist in the live
   DB despite being documented (found by the launch-reset run + confirmed via
-  information_schema). Data-model docs corrected; `stock_items` is a live bug
-  — the runner Stock page and dailyOps sweep query it. Fix or retire.
+  information_schema). Data-model docs corrected. `stock_items` ruled FIX
+  (Eli): migration `20260818120000_stock_items.sql` creates it — RLS
+  authenticated-ALL, UNIQUE(studio, item), realtime publication. Zero code
+  changes; the Stock page already seeds its defaults in the UI. **Run by
+  hand + verify before trusting the Stock tile.**
 - **`docs/HARDENING.md`** — standing security/stability checklist (2FA on
   master accounts, restore test, offboarding, WO audit trail, npm audit
   deferred to post-launch week one). Sessions surface it when Eli asks
