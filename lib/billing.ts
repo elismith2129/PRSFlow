@@ -393,7 +393,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
   const [st, rent, pay] = await Promise.all([
     supabase
       .from('studio_time_rows')
-      .select('work_order_id, date, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate')
+      .select('work_order_id, date, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate, status')
       .in('work_order_id', ids),
     supabase.from('rental_rows').select('work_order_id, charge').in('work_order_id', ids),
     supabase.from('payment_rows').select('work_order_id, amount').in('work_order_id', ids),
@@ -431,6 +431,18 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     const dates = stRows.map((r: any) => r.date).filter(Boolean).sort()
     const lastDate: string | null = dates.length ? dates[dates.length - 1] : null
     const ended = lastDate !== null && lastDate < today
+
+    // A RUNNER SUBMISSION ENDS "UPCOMING" (Eli, 2026-08-18, launch testing).
+    // Upcoming used to be purely calendar + office acts: an untouched WO whose
+    // last day hadn't PASSED was "not work yet" — which filed a session the
+    // runner had already submitted TODAY under Upcoming, invisible to review
+    // until midnight. Submitted is a signal to the office (the standing rule);
+    // any submitted/approved day makes this work NOW. `ended` on the row stays
+    // honest (it drives sorting); only the bucket gate treats submission as
+    // arrival.
+    const anySubmitted = stRows.some(
+      (r: any) => r.status === 'submitted' || r.status === 'approved',
+    )
 
     // METADATA ON THE LINE (Eli, 2026-08-11). Free: these rows are already
     // loaded for the totals, so no extra query. Derived from the ROWS, not the
@@ -488,7 +500,8 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       isCod,
       pipeline: (isCod ? 'cod' : 'billing') as Pipeline,
       bucket: deriveBucket({
-        state, isCod, step, balance: totals.balance, grand: totals.grand, ended,
+        state, isCod, step, balance: totals.balance, grand: totals.grand,
+        ended: ended || anySubmitted,
       }),
       step,
       state,

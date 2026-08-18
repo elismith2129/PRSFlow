@@ -455,6 +455,22 @@ export function WorkOrderPopup({
   const [stView, setStView] = useState<'list' | 'cards' | null>(null)
   // The day sheet: which date's card is open for editing (card view only).
   const [daySheetDate, setDaySheetDate] = useState<string | null>(null)
+  // Snapshot of the open day's rows, taken when the sheet opens (and again on
+  // ‹ › day changes) — the baseline the sheet's Cancel reverts to (Eli,
+  // 2026-08-18: "need save/cancel on the day pop up for runner and admin").
+  // Save keeps the edits in state (persisting stays with the top-bar Save /
+  // the runner's Submit); Cancel restores exactly this day's rows.
+  const sheetSnapRef = useRef<StRow[]>([])
+  useEffect(() => {
+    if (daySheetDate !== null) {
+      sheetSnapRef.current = stRows
+        .filter(r => (r.date || '') === daySheetDate)
+        .map(r => ({ ...r }))
+    }
+    // Deliberately NOT depending on stRows: the baseline is the moment the
+    // sheet opened, not every keystroke since.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [daySheetDate])
   // Which time well's preset dropdown is open (key = rowId|field).
   const [timeDDKey, setTimeDDKey] = useState<string | null>(null)
   // Swipe-between-days (Eli, 2026-08-16): touch start X, for the day sheet.
@@ -4344,13 +4360,35 @@ export function WorkOrderPopup({
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={closeSheet}
-                  style={{ width: '100%', minHeight: 46, borderRadius: 12, background: 'var(--c-fg)', color: 'var(--c-bg)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 12, cursor: 'pointer', marginTop: 10, flexShrink: 0 }}
-                >
-                  Done
-                </button>
+                {/* SAVE / CANCEL (Eli, 2026-08-18) — was a lone "Done", which
+                    gave sheet edits no way back. Cancel reverts THIS day's
+                    rows to the open-time snapshot; Save keeps them (the real
+                    persist stays with the top-bar Save / runner Submit). */}
+                <div style={{ display: 'flex', gap: 9, marginTop: 10, flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const snap = sheetSnapRef.current
+                      if (snap.length) {
+                        setStRows(prev => prev.map(r => {
+                          const s = snap.find(x => x.id === r.id)
+                          return s ? { ...s } : r
+                        }))
+                      }
+                      closeSheet()
+                    }}
+                    style={{ flex: 1, minHeight: 46, borderRadius: 12, background: 'var(--c-wash2)', color: 'var(--c-fg)', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: 'none' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeSheet}
+                    style={{ flex: 2, minHeight: 46, borderRadius: 12, background: 'var(--c-fg)', color: 'var(--c-bg)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 12, cursor: 'pointer', border: 'none' }}
+                  >
+                    Save
+                  </button>
+                </div>
               </div>
             </div>
           )
