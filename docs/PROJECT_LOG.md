@@ -3298,11 +3298,47 @@ end-state checks (SQL editor, Eli's) and clicking the UI — the browser-level
 answer, if wanted later, is the Claude in Chrome extension driving the
 preview URL with a test login, not resurrecting `npm run dev`.
 
-Still open for launch: Eli runs the reset SQL (verify the ✓s), runs
+#### Third sitting: the wipe ran, the browser test ran, two bugs died
+
+**The launch reset executed clean** — all 25 operational tables ✓ wiped (467
+rows), CRM ✓ untouched (3,865 leads / 674 clients / 155 contacts), anchor
+re-set. It took three attempts, each failing SAFELY before any delete:
+**`expense_rows` and `stock_items` are documented in CLAUDE.md but DO NOT
+EXIST in the live DB.** The final script was cut against an
+`information_schema` existence check instead of the docs — the July 17/Aug 14
+lesson applied to our own tooling. **`stock_items` is also a live app bug**:
+the runner Stock page + dailyOps sweep query it (tracked; fix or retire the
+tile). CLAUDE.md's data model corrected.
+
+**First Claude-driven browser test** (Chrome extension + preview URL).
+Verdict on the method, from Eli, accepted: too slow for TOURING — a human
+clicks faster. Where it earned its keep: console-error reading on every page
+(zero errors), systematic clean-state verification, and one end-to-end
+session build that found a real bug. Division of labor going forward: Eli
+clicks, Claude diagnoses (console/network/code) when something breaks.
+
+Found and FIXED same sitting (both in `WorkOrderPopup.tsx`):
+- **Venue guard (Eli's ruling: block the save).** A dated studio row with no
+  venue saved fine, showed in Billing, but projected a card the calendar
+  cannot place — an invisible session. Save now refuses (office only; runners
+  can't edit venue so they're exempt) with the red banner + row highlight.
+- **Day sheet on admin desktop** rendered as the phone bottom-sheet — full
+  bleed under the rail, looked broken. Now a centered 620px card on desktop;
+  phones unchanged.
+
+**Hardening review** (Eli: "treat this like a financial institution") →
+**`docs/HARDENING.md`** — the standing checklist. RULE FOR FUTURE SESSIONS:
+when Eli asks "what else should we do", read HARDENING.md first and surface
+its open items. Date-critical: offboarding the departing billing coordinator.
+`npm audit`: 6 high-severity transitive vulns noted, deliberately deferred to
+week one post-launch (dependency churn the night before launch was rejected).
+
+Still open for launch: Eli finishes his own click-through (test batches in
+DEV → Testing), **deletes test session WO-1032 (Atlantic Records)**, runs
 create-runners, reviews both admin SOP mocks (billing's with the departing
-coordinator — her window is the deadline), duty-label one-liner, merge. The
-mic-inventory / tasks / flags re-skins are queued for a fresh session — 2,200
-lines of old-skin ports deserve full attention, not session-end scraps.
+coordinator — her window is the deadline), merge. The mic-inventory / tasks /
+flags re-skins are queued for a fresh session — 2,200 lines of old-skin ports
+deserve full attention, not session-end scraps.
 
 ---
 

@@ -651,7 +651,9 @@ const VERSIONS=[
       'Engineers has its own page under Operations — the roster with add, edit and deactivate. The old Admin page is out of the menu; everything it held has moved or is being rebuilt.',
       'Daily Ops: the "Needs you" list now shows 10 at a time (with page arrows) so studio tasks never scroll out of view, and the studio cards lead with the DATE — use the ‹ › arrows or swipe to look back at any previous day. That replaces the old ops log.',
       'Wording: the app now says "day" and "yesterday" instead of "night" and "last night" everywhere — the studios run 24/7 and the words now match.',
-      'Every runner is getting their own personal login (email + password) — what you check off and submit is recorded under your name.'
+      'Every runner is getting their own personal login (email + password) — what you check off and submit is recorded under your name.',
+      'A session can no longer be saved without picking a VENUE for each studio day (the studio dropdown, e.g. "Paramount · A"). Without one, the session could exist but never show on the calendar.',
+      'Editing a day from the card view on a desktop now opens a proper centered window instead of a phone-style sheet.'
     ],
     affects:'If the little blue ? circles bother you, Settings → Hints turns them off in one tap and the app remembers. And if you are used to finding light/dark mode at the bottom of the menu — it is still there, just inside Settings now.',
     dev:[
@@ -662,7 +664,10 @@ const VERSIONS=[
       'Billing + manager SOP design mocks (docs/design-refs/billing-sop.html, manager-sop.html): chaptered, flow-first, real Flo box port (ring animation), real WO click-through walkthrough, oversight chapters; all admin manuals visible to all admin staff, runners see only theirs.',
       'scripts/create-runners.mjs — 10 individual runner accounts, adopt-or-create auth, role runner, readable passwords, prints credentials, emails nothing.',
       '/preview + DeviceToggle deleted at go-live; rail Runner Hub reverted to /runner.',
-      'supabase/launch_reset_20260817.sql — one-shot operational wipe (keeps CRM, re-anchors myday_duties.created_at) with built-in before/after verification.'
+      'supabase/launch_reset_20260817.sql — one-shot operational wipe (keeps CRM, re-anchors myday_duties.created_at) with built-in before/after verification.',
+      'Venue guard in WorkOrderPopup handleClose (office only — runners exempt): dated studio rows with empty resolved location block the save via the missing-times banner mechanism. Found in launch browser testing: venue-less cards are calendar-invisible while visible in Billing.',
+      'Day sheet: centered 620px card on admin desktop (was the phone bottom-sheet full-bleed under the rail); phones unchanged.',
+      'Ghost tables found by the launch reset: expense_rows and stock_items do not exist in the live DB despite docs; stock_items is still queried by the runner Stock page + dailyOps — tracked. docs/HARDENING.md added (standing security checklist).'
     ]
   },
   {

@@ -17,7 +17,7 @@
 -- WHAT IT NEVER TOUCHES
 --   CRM: leads, clients, client_contacts, lead_activity, contact_log,
 --   registration_tokens. Also kept: dashboard_tasks (+comments) by ruling,
---   the mics catalog, stock_items, engineers, user_profiles/auth, the
+--   the mics catalog, engineers, user_profiles/auth, the
 --   myday_duties templates themselves (re-anchored, not deleted).
 --
 -- DELIBERATE LEFTOVERS (harmless, clean up later if wanted):
@@ -30,6 +30,13 @@
 -- (bookings.work_order_id is ON DELETE CASCADE, so linked booking cards go
 -- with their WO), then remaining bookings — never bookings before WOs,
 -- because work_orders.booking_id would block it.
+--
+-- CORRECTED 2026-08-17 (runs 1+2): `expense_rows` AND `stock_items` are both
+-- documented in CLAUDE.md but DO NOT EXIST in the live DB — each run errored
+-- at the counting step, before any delete, and rolled back (the all-or-nothing
+-- design working). Confirmed against information_schema: all 37 other tables
+-- exist. stock_items is ALSO a live app bug (runner Stock page + dailyOps
+-- sweep query it) — tracked separately. The docs/DB lesson strikes again.
 --
 -- VERIFY: the final SELECT is the proof. Every "wipe" row must read
 -- '✓ wiped'; every "keep" row must read '✓ untouched'. Any ✗ means STOP
@@ -59,7 +66,6 @@ insert into _reset_before
   select 'mic_inventory_submissions', count(*) from mic_inventory_submissions union all
   select 'srs_log', count(*) from srs_log union all
   select 'qc_reports', count(*) from qc_reports union all
-  select 'expense_rows', count(*) from expense_rows union all
   select 'studio_time_rows', count(*) from studio_time_rows union all
   select 'equipment_condition_rows', count(*) from equipment_condition_rows union all
   select 'equipment_condition_notes', count(*) from equipment_condition_notes union all
@@ -77,7 +83,6 @@ insert into _reset_before
   select 'dashboard_tasks', count(*) from dashboard_tasks union all
   select 'dashboard_task_comments', count(*) from dashboard_task_comments union all
   select 'mics', count(*) from mics union all
-  select 'stock_items', count(*) from stock_items union all
   select 'engineers', count(*) from engineers union all
   select 'user_profiles', count(*) from user_profiles union all
   select 'myday_duties', count(*) from myday_duties;
@@ -113,7 +118,6 @@ delete from mic_inventory_submissions;
 -- Line items and per-session records first…
 delete from srs_log;
 delete from qc_reports;
-delete from expense_rows;
 delete from studio_time_rows;
 delete from equipment_condition_rows;
 delete from equipment_condition_notes;
@@ -149,7 +153,6 @@ with now_counts (t, n) as (
   select 'mic_inventory_submissions', count(*) from mic_inventory_submissions union all
   select 'srs_log', count(*) from srs_log union all
   select 'qc_reports', count(*) from qc_reports union all
-  select 'expense_rows', count(*) from expense_rows union all
   select 'studio_time_rows', count(*) from studio_time_rows union all
   select 'equipment_condition_rows', count(*) from equipment_condition_rows union all
   select 'equipment_condition_notes', count(*) from equipment_condition_notes union all
@@ -166,7 +169,6 @@ with now_counts (t, n) as (
   select 'dashboard_tasks', count(*) from dashboard_tasks union all
   select 'dashboard_task_comments', count(*) from dashboard_task_comments union all
   select 'mics', count(*) from mics union all
-  select 'stock_items', count(*) from stock_items union all
   select 'engineers', count(*) from engineers union all
   select 'user_profiles', count(*) from user_profiles union all
   select 'myday_duties', count(*) from myday_duties
@@ -179,13 +181,13 @@ expectations (t, kind) as (
     ('checklists','wipe'), ('daily_ops_submissions','wipe'), ('daily_ops_reviews','wipe'),
     ('petty_cash_entries','wipe'), ('petty_cash_balances','wipe'),
     ('mic_checkins','wipe'), ('mic_inventory_quantities','wipe'), ('mic_inventory_submissions','wipe'),
-    ('srs_log','wipe'), ('qc_reports','wipe'), ('expense_rows','wipe'),
+    ('srs_log','wipe'), ('qc_reports','wipe'),
     ('studio_time_rows','wipe'), ('equipment_condition_rows','wipe'), ('equipment_condition_notes','wipe'),
     ('rental_rows','wipe'), ('payment_rows','wipe'), ('work_orders','wipe'), ('bookings','wipe'),
     ('leads','keep'), ('clients','keep'), ('client_contacts','keep'),
     ('lead_activity','keep'), ('contact_log','keep'), ('registration_tokens','keep'),
     ('dashboard_tasks','keep'), ('dashboard_task_comments','keep'),
-    ('mics','keep'), ('stock_items','keep'), ('engineers','keep'),
+    ('mics','keep'), ('engineers','keep'),
     ('user_profiles','keep'), ('myday_duties','keep')
 )
 select e.kind, e.t as table_name, b.n as before_rows, c.n as now_rows,

@@ -103,6 +103,16 @@ export const TEST_BATCHES: TestBatch[] = [
         how: 'On the studio page header, tap the 💡 to the right of the studio pills. Blue ? markers should appear next to "Today" and the duties heading; tap one for the tip. Tap 💡 again to turn them off.',
       },
       {
+        id: 'lp-venue-guard', area: 'Work order',
+        what: 'A session cannot be saved without a venue on each studio day',
+        how: 'Calendar → + New Booking. Pick a client, add a studio time row with a date and times but leave the studio dropdown on a bare letter (no venue). Press Save. A red banner should appear telling you to pick a venue, and the row should be highlighted — the popup must NOT close. Pick "Paramount · A" and Save again — now it should save and the chip should appear on the calendar.',
+      },
+      {
+        id: 'lp-desktop-sheet', area: 'Work order',
+        what: 'Editing a day from card view on desktop opens a centered window',
+        how: 'On a computer, open a work order, switch Studio Time to the cards view (grid icon), and click a day card. The editor should open as a centered window with a dark background — not a phone-style sheet stuck to the bottom or anything overlapping the left menu. Esc/clicking outside closes it.',
+      },
+      {
         id: 'lp-day-words', area: 'Wording',
         what: 'Daily Ops says "Yesterday", not "Last night"',
         how: 'Open Daily Ops on the most recent day. The sweep heading must read "Yesterday". A missing-checklist item in the queue should say "find out why before the next shift" — no "tonight".',
