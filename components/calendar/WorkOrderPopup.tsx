@@ -2703,13 +2703,14 @@ export function WorkOrderPopup({
             {completing ? 'Completing…' : 'Complete WO'}
           </button>
           )}
-          {/* SAVE (Eli, 2026-08-13). It was "Close", named on 2026-08-11 for
-              where it takes you rather than what it does — which read fine as a
-              footer button and stopped reading fine the moment the actions moved
-              to the TOP of the sheet, beside Cancel. Behaviour is unchanged: it
-              saves and closes, silently when nothing changed, asking when
-              something did. */}
-          <button onClick={handleCloseButton} disabled={saving} className="c-btn c-control c-raised-primary" style={{ cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '2 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
+          {/* SAVE (Eli, 2026-08-13; prompt removed 2026-08-18). It was "Close"
+              once, and until today it still carried Close's dirty-check — so
+              pressing SAVE with changes asked "save or discard?", a question
+              that answers itself when the button you pressed says Save. Now it
+              calls handleClose() directly: saves and closes, no dialog. The
+              confirm dialog survives ONLY on the backdrop-click path
+              (handleCloseButton), where intent genuinely is ambiguous. */}
+          <button onClick={() => handleClose()} disabled={saving} className="c-btn c-control c-raised-primary" style={{ cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '2 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
             {saving ? 'Saving…' : 'Save'}
           </button>
           </>
