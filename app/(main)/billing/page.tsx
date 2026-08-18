@@ -123,11 +123,23 @@ export default function BillingPage() {
   // safe rather than merely honest.
   const stale = useMemo(() => staleDownloads(rows).length, [rows])
 
-  const activeBucket: BucketKey = showUpcoming ? 'upcoming' : tab
+  // UPCOMING IS AN INLINE EXPAND, NOT A PLACE (Eli, 2026-08-18, launch
+  // testing: "right now it takes you away from the main needs-review one —
+  // we need to see all"). `showUpcoming` no longer switches the list; the
+  // active bucket is ALWAYS the tab, and the upcoming rows render as their
+  // own short section under the toggle bar. Un-paginated on purpose — it sits
+  // visually apart under its own bar, so the pager ambiguity that justified
+  // the old swap no longer exists.
+  const activeBucket: BucketKey = tab
   const visible = useMemo(() => {
     if (searching) return searchRows(rows, query)
     return rowsInBucket(rows, activeBucket, pipeline)
   }, [rows, activeBucket, pipeline, query, searching])
+
+  const upcomingRows = useMemo(
+    () => rowsInBucket(rows, 'upcoming', pipeline),
+    [rows, pipeline],
+  )
 
   const perPage = pageSizeFor(activeBucket)
   const pages = pageCount(visible.length, perPage)
@@ -138,7 +150,7 @@ export default function BillingPage() {
   // is a column of dashes. Dropped there rather than filled with nothing.
   const showAge = searching || ['awaiting', 'paid', 'closed'].includes(activeBucket)
 
-  useEffect(() => { setPage(1) }, [tab, query, pipeline, showUpcoming])
+  useEffect(() => { setPage(1) }, [tab, query, pipeline])
 
   // Switching pipeline lands on that side's FIRST tab — for COD that is Balance
   // due, which is the whole reason it leads.
@@ -344,8 +356,8 @@ export default function BillingPage() {
         {tabs.map(b => (
           <span
             key={b.key}
-            className={`c-btab${tab === b.key && !showUpcoming ? ' c-on' : ''}`}
-            onClick={() => { setTab(b.key); setShowUpcoming(false) }}
+            className={`c-btab${tab === b.key ? ' c-on' : ''}`}
+            onClick={() => setTab(b.key)}
           >
             {b.label}{' '}
             <span
@@ -361,7 +373,7 @@ export default function BillingPage() {
 
       <div className={`c-panel${showAge ? "" : " c-bage-off"}`}>
         <div className="c-lozenge">
-          <b>{searching ? 'Search results' : showUpcoming ? 'Upcoming sessions' : bucketLabel(tab)}</b>
+          <b>{searching ? 'Search results' : bucketLabel(tab)}</b>
           {/* COUNT ONLY (Eli, 2026-08-13: "don't need the balance shown in the
               top right corner of the list. messy."). The bucket total was a
               third money figure on a screen that already leads with Outstanding
@@ -418,30 +430,45 @@ export default function BillingPage() {
           </div>
         )}
 
-        {/* UPCOMING — pinned BELOW the pager so it can never fall onto page 3,
-            and it SWITCHES the list rather than expanding beneath it. Ten
-            paginated rows followed by twelve un-paginated ones would make
-            "page 2" mean two different things. */}
-        {!searching && showUpcoming && (
-          <button className="c-bup" onClick={() => setShowUpcoming(false)}>
-            ← Back to {bucketLabel(tab)}<span className="c-go">›</span>
+        {/* UPCOMING — an inline DISCLOSURE below the pager (Eli, 2026-08-18):
+            the main bucket stays on screen, the toggle expands the not-yet
+            sessions beneath it. Pinned below the pager so it can never fall
+            onto page 3. */}
+        {!searching && upcomingCount > 0 && (
+          <button className="c-bup" onClick={() => setShowUpcoming(o => !o)}>
+            Upcoming sessions <span className="c-bn">{upcomingCount}</span> — not started yet
+            <span className="c-go">{showUpcoming ? '▾' : '▸'}</span>
           </button>
         )}
-        {!searching && !showUpcoming && upcomingCount > 0 && (
-          <button className="c-bup" onClick={() => setShowUpcoming(true)}>
-            Upcoming sessions <span className="c-bn">{upcomingCount}</span> — not started yet
-            <span className="c-go">→</span>
-          </button>
+        {!searching && showUpcoming && upcomingRows.map(r => (
+          <Row
+            key={r.workOrderId}
+            row={r}
+            searching={false}
+            isOwner={isOwner}
+            busy={busy === r.workOrderId}
+            showAge={showAge}
+            onAct={() => act(r)}
+            onMore={() => setMoreFor(r)}
+            onOpen={() => openRow(r)}
+            dragOver={dragOver === r.workOrderId}
+            onDragOver={e => { e.preventDefault(); setDragOver(r.workOrderId) }}
+            onDragLeave={() => setDragOver(null)}
+            onDrop={e => onDropFile(r, e)}
+          />
+        ))}
+        {!searching && showUpcoming && (
+          <div className="c-bnote" style={{ paddingTop: 4 }}>
+            Sessions that have not happened yet. Fully editable — extend, cancel days, adjust rates — they just are not work yet.
+          </div>
         )}
 
         <div className="c-bnote">
           {searching
             ? 'Searching every bucket and both pipelines, closed included — each result shows where it lives. Clear the search to go back.'
-            : showUpcoming
-              ? 'Sessions that have not happened yet. Fully editable — extend, cancel days, adjust rates — they just are not work yet.'
-              : pipeline === 'cod'
-                ? 'COD is paid at the top of the session. Check the work order is accurate, drop the QuickBooks invoice on it, done. A balance means collection was missed — the only way COD goes wrong.'
-                : 'Reviewed → Invoiced → Approved. Each light is derived; the button is whatever comes next. Drop a QuickBooks PDF straight onto a row to attach it. A package waits on a PO unless the work order has a PO number or is marked No PO needed.'}
+            : pipeline === 'cod'
+              ? 'COD is paid at the top of the session. Check the work order is accurate, drop the QuickBooks invoice on it, done. A balance means collection was missed — the only way COD goes wrong.'
+              : 'Reviewed → Invoiced → Approved. Each light is derived; the button is whatever comes next. Drop a QuickBooks PDF straight onto a row to attach it. A package waits on a PO unless the work order has a PO number or is marked No PO needed.'}
         </div>
       </div>
 
