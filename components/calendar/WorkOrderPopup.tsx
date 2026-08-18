@@ -3757,6 +3757,95 @@ export function WorkOrderPopup({
                       return hrs != null && hrs > 0 && rate > 0 ? hrs * rate : 0
                     }
                     const dayTotal = g.rows.reduce((s, r) => s + (r.charge ?? 0) + (r.ot_charge ?? 0) + engChargeFor(r), 0)
+
+                    // ── DESKTOP CARD — V1 "two halves" (Eli's pick, 2026-08-18;
+                    // mock docs/design-refs/wo-day-card-options.html). The day
+                    // reads on the left exactly like the phone card but at
+                    // size — studio times big, each staff line directly under
+                    // in the same inline voice — and the money lives in a
+                    // right panel where OT sits touching the day total.
+                    // Phone/runner keeps the original card below untouched
+                    // (mobile-is-the-original rule). Same row fields as the
+                    // table and the PDF — no card-only math.
+                    if (!isMobile) {
+                      const otChargeTotal = g.rows.reduce((s, r) => s + (r.ot_charge ?? 0), 0)
+                      return (
+                        <div
+                          key={g.date || 'undated'}
+                          onClick={() => { if (!readOnly) setDaySheetDate(g.date) }}
+                          style={{
+                            background: 'var(--c-wash)', borderRadius: 14, padding: '15px 16px', marginBottom: 9,
+                            cursor: cardLocked || readOnly ? 'default' : 'pointer',
+                            opacity: cardLocked ? 0.62 : 1,
+                            display: 'flex', gap: 22, alignItems: 'stretch',
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              {studios.length > 0 && (
+                                <span className="c-arch" style={{ fontSize: 16, letterSpacing: '-0.01em', flexShrink: 0 }}>
+                                  Studio {studios.join(' · ')}
+                                </span>
+                              )}
+                              <span style={{ fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)' }}>{weekdayDate(g.date)}</span>
+                              {dotColor && <span style={{ width: 8, height: 8, borderRadius: 99, background: dotColor, display: 'inline-block', flexShrink: 0 }} />}
+                            </div>
+                            <div style={{ marginTop: 11, display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+                              <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 22, fontWeight: 500 }}>
+                                {first?.from_time || '—'} – {first?.to_time || <span style={{ color: 'var(--c-fg-3)', fontSize: 14 }}>tap to set</span>}
+                              </span>
+                              {first?.total_hours != null && <span style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>{first.total_hours}h</span>}
+                            </div>
+                            {staffRows.map(r => {
+                              const engHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
+                              return (
+                                <div key={r.id + '-staff'} style={{ display: 'flex', alignItems: 'baseline', gap: 9, marginTop: 7, flexWrap: 'wrap' }}>
+                                  <span style={{ fontSize: 8.5, fontFamily: 'Inter', fontWeight: 800, padding: '2px 6px', borderRadius: 5, background: 'var(--c-wash2)', color: r.eng_role === 'assistant' ? 'var(--c-st-warm)' : 'var(--c-fg)', flexShrink: 0 }}>
+                                    {r.eng_role === 'assistant' ? '2ND' : '1ST'}
+                                  </span>
+                                  <span style={{ fontSize: 13.5, fontFamily: 'Inter', fontWeight: 600 }}>
+                                    {r.eng_name || <span style={{ color: 'var(--c-fg-3)' }}>TBD</span>}
+                                  </span>
+                                  <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 15, color: 'var(--c-fg-2)' }}>
+                                    {(r.eng_from_time || r.from_time) || '—'} – {(r.eng_to_time || r.to_time) || '—'}
+                                  </span>
+                                  {engHrs != null && engHrs > 0 && <span style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>{engHrs}h</span>}
+                                </div>
+                              )
+                            })}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 'auto', paddingTop: 12, flexWrap: 'wrap' }}>
+                              <span style={{ display: 'inline-flex' }}>{renderEquipPills(g.date, cardLocked)}</span>
+                              <span style={{ fontSize: 11.5, fontFamily: 'Inter', fontStyle: 'italic', color: song ? 'var(--c-fg-2)' : 'var(--c-fg-3)' }}>
+                                {song || 'Song title —'}
+                              </span>
+                            </div>
+                            {renderEquipNoteBlock(g.date)}
+                          </div>
+
+                          <div style={{ width: 200, flexShrink: 0, background: 'var(--c-wash2)', borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column' }}>
+                            {!readOnly && (
+                              <span style={{ alignSelf: 'flex-end', fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'var(--c-wash)', color: 'var(--c-fg-2)', borderRadius: 99, padding: '4px 11px' }}>
+                                {cardLocked ? '👁 View' : '✎ Edit'}
+                              </span>
+                            )}
+                            <div style={{ marginTop: 'auto', textAlign: 'right' }}>
+                              {otHrsTotal > 0 && (
+                                <div style={{ fontSize: 12.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-st-warm)' }}>
+                                  OT {otHrsTotal}h{otChargeTotal > 0 ? ` · $${otChargeTotal.toFixed(0)}` : ''}
+                                </div>
+                              )}
+                              <div style={{ fontSize: 8.5, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginTop: otHrsTotal > 0 ? 8 : 0 }}>
+                                Day total
+                              </div>
+                              <div className="c-arch" style={{ fontSize: 23, letterSpacing: '-0.02em', color: dayTotal > 0 ? 'var(--c-fg)' : 'var(--c-fg-3)' }}>
+                                {dayTotal > 0 ? `$${dayTotal.toFixed(2)}` : '—'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
+
                     return (
                       <div
                         key={g.date || 'undated'}
