@@ -657,20 +657,20 @@ export function WorkOrderPopup({
     }
   }, [stRows]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Default Studio Time view, decided ONCE per open, after rows load (Eli,
-  // 2026-08-15): phones (and runner mode, which is always phone-layout) get
-  // cards for a 1–3 day session — most sessions — and list for longer runs,
-  // where the compact day blocks scan better. Desktop admin always defaults to
-  // list. The toggle above the table lets anyone override; this only picks the
-  // opening view.
+  // Default Studio Time view, decided ONCE per open, after rows load.
+  // RULING UPDATED 2026-08-18 (Eli, after the desktop V1 card shipped):
+  // CARDS ARE THE DEFAULT EVERYWHERE for 1–3-day sessions — desktop admin
+  // included ("card view default"; most sessions are one day). Longer runs
+  // still open in list, where scanning 30 days as cards would be scrolling
+  // punishment. The toggle overrides; this only picks the opening view.
+  // (Supersedes the 2026-08-15 desktop-always-list rule.)
   useEffect(() => {
     if (loading || stView !== null) return
     const dayCount = new Set(stRows.filter(r => r.date).map(r => r.date)).size
-    // RUNNER ALWAYS DEFAULTS TO CARDS (Eli, 2026-08-16 — superseding the
-    // 1–3-day rule for runners; the phone list is a sideways-scrolling table
-    // and should never be what a runner lands on). Admin phones keep the
-    // short-session rule; desktop stays list. The toggle overrides everywhere.
-    setStView(runner ? 'cards' : (isMobile && dayCount > 0 && dayCount <= 3 ? 'cards' : 'list'))
+    // RUNNER ALWAYS DEFAULTS TO CARDS (Eli, 2026-08-16). Everyone else —
+    // admin desktop included (Eli, 2026-08-18) — opens in cards for short
+    // sessions (≤3 days) and list for long runs.
+    setStView(runner ? 'cards' : (dayCount > 0 && dayCount <= 3 ? 'cards' : 'list'))
   }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Real-time subscription: work_orders status updates only
@@ -2974,7 +2974,8 @@ export function WorkOrderPopup({
                       already answered by whether there is a figure in the box.
                       `food_budget` is still written, derived from the amount, so
                       nothing downstream changes. */}
-                  <div className="c-well" style={{ flex: '0 1 156px', minWidth: 132 }}>
+                  {/* Same basis as Inv # (Eli, 2026-08-18 — cleaner line). */}
+                  <div className="c-well" style={{ flex: '0 1 132px', minWidth: 118 }}>
                     <span className="c-pfx">Food $</span>
                     <input
                       className="c-mono"
@@ -3018,9 +3019,10 @@ export function WorkOrderPopup({
             )}
           </div>
 
-          {/* Everything below the top is session-only — hidden for block events. */}
+          {/* Everything below the top is session-only — hidden for block events.
+              (An empty spacer div lived here until 2026-08-18 — it ate a whole
+              24px flex-gap slot and was the mystery air above Studio Time.) */}
           {!isBlock && (<>
-          <div style={{ }} />
 
           {/* SEED — bulk-append studio-time rows for a date range (WO-SPEC §6) */}
           {!readOnly && !runner && (
@@ -3614,7 +3616,25 @@ export function WorkOrderPopup({
                             <div style={cellS}>
                               {runner
                                 ? <span className="c-tnum" style={{ fontSize: 10, color: 'var(--c-fg-2)' }}>{(r.eng_rate || engRateDisplay) || '—'}</span>
-                                : <input value={r.eng_rate || engRateDisplay} onChange={e => updateStRow(r.id, { eng_rate: e.target.value })} className="c-tin c-tin-mono" style={{ width: 64 }} />}
+                                : (
+                                  // "$/hr" placeholder + warm tint when an ENGINEER
+                                  // is named with no rate (Eli, 2026-08-18: the
+                                  // blank cell gave no hint it was an input, and a
+                                  // rated engineer with no rate bills $0).
+                                  // Assistants excluded — they're never rated.
+                                  <input
+                                    value={r.eng_rate || engRateDisplay}
+                                    onChange={e => updateStRow(r.id, { eng_rate: e.target.value })}
+                                    placeholder="$/hr"
+                                    className="c-tin c-tin-mono"
+                                    style={{
+                                      width: 64,
+                                      ...(r.eng_role !== 'assistant' && (r.eng_name || '').trim() && !(r.eng_rate || engRateDisplay)
+                                        ? { background: 'color-mix(in srgb, var(--c-st-warm) 20%, transparent)', borderRadius: 5 }
+                                        : {}),
+                                    }}
+                                  />
+                                )}
                             </div>
                             <div style={cellS} />
                             <div style={cellS} />
@@ -4427,7 +4447,20 @@ export function WorkOrderPopup({
                           ) : (
                             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               {r.eng_role === 'assistant' ? '2ND' : '1ST'} {r.eng_name || 'TBD'} · rate
-                              <input value={r.eng_rate || ''} onChange={e => updateStRow(r.id, { eng_rate: e.target.value })} placeholder="$0/hr" className="c-tin c-tin-mono" style={{ width: 64 }} />
+                              <input
+                                value={r.eng_rate || ''}
+                                onChange={e => updateStRow(r.id, { eng_rate: e.target.value })}
+                                placeholder="$0/hr"
+                                className="c-tin c-tin-mono"
+                                style={{
+                                  width: 64,
+                                  // Same warm nudge as the table (Eli, 2026-08-18):
+                                  // a named ENGINEER with no rate bills $0.
+                                  ...(r.eng_role !== 'assistant' && (r.eng_name || '').trim() && !r.eng_rate
+                                    ? { background: 'color-mix(in srgb, var(--c-st-warm) 20%, transparent)', borderRadius: 5 }
+                                    : {}),
+                                }}
+                              />
                             </span>
                           )}
                           <span className="c-tnum">{engChargeFor(r) > 0 ? `$${engChargeFor(r).toFixed(2)}` : '—'}</span>
