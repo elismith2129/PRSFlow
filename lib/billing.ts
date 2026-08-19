@@ -61,8 +61,15 @@ export type ClosedReason = 'written_off' | 'voided'
 export type Pipeline = 'billing' | 'cod'
 
 /**
- * The tabs. Four for billing, three for COD, plus `upcoming` — which is NOT a
- * tab but a pinned sub-view below the pager (see the page).
+ * The tabs. Four for billing, four for COD.
+ *
+ * UPCOMING IS GONE (Eli, 2026-08-19, launch morning: "ditch the upcoming bin
+ * and just organize all WO into in progress based on date"). It kept catching
+ * real work — a session on its own day, after its start time, is not
+ * "upcoming" to anyone standing in the building, and no derivation of
+ * "has it started" from a date column can beat just showing the row where
+ * the work lives. In progress now holds everything pre-send, sorted so
+ * started work leads and not-yet-started sessions sit below it (sortBucket).
  *
  * The four steps v1 modelled as PLACES (open → needs invoice → needs approval →
  * approved) were never four places. They are one package being assembled, so
@@ -71,16 +78,15 @@ export type Pipeline = 'billing' | 'cod'
  * something is on.
  */
 export type BucketKey =
-  // Billing
-  | 'progress'   // being assembled: reviewed → invoiced → approved
-  | 'awaiting'   // sent, waiting on the client's money
+  // Shared
+  | 'progress'   // being assembled — includes sessions that haven't started yet
   | 'paid'
   | 'closed'     // written off / voided — the archive for BOTH pipelines
+  // Billing
+  | 'awaiting'   // sent, waiting on the client's money
   // COD
   | 'balance'    // collection was missed. Rare, critical, leads its side.
   | 'review'     // money is in; check the WO and attach the invoice
-  // Shared sub-view
-  | 'upcoming'   // hasn't happened yet — not work, just visible
 
 export type Bucket = { key: BucketKey; label: string; pill: string; hot?: boolean }
 
@@ -96,9 +102,13 @@ export const COD_TABS: Bucket[] = [
   // made in error, so COD with balance exists — not a lot, but very important
   // these surface as the most important bin." Rare-but-critical sorted by
   // frequency ends up at the bottom, which is where you find it late.
-  { key: 'balance', label: 'Balance due',  pill: 'c-fill-hot', hot: true },
-  { key: 'review',  label: 'Needs review', pill: 'c-fill-warm' },
-  { key: 'paid',    label: 'Paid',         pill: 'c-fill-booked' },
+  { key: 'balance',  label: 'Balance due',  pill: 'c-fill-hot', hot: true },
+  // COD's In progress (2026-08-19, with the death of Upcoming): a session
+  // that hasn't ended lives here; the moment it ends (or a runner submits)
+  // it becomes Balance due / Needs review / Paid.
+  { key: 'progress', label: 'In progress',  pill: 'c-fill-uncon' },
+  { key: 'review',   label: 'Needs review', pill: 'c-fill-warm' },
+  { key: 'paid',     label: 'Paid',         pill: 'c-fill-booked' },
 ]
 
 export function tabsFor(pipeline: Pipeline): Bucket[] {
@@ -107,7 +117,6 @@ export function tabsFor(pipeline: Pipeline): Bucket[] {
 
 const ALL_BUCKETS: Bucket[] = [
   ...BILLING_TABS, ...COD_TABS,
-  { key: 'upcoming', label: 'Upcoming', pill: 'c-fill-dead' },
 ]
 
 export function bucketLabel(key: BucketKey): string {
@@ -149,6 +158,12 @@ export type InvoiceRow = {
   client: string
   artist: string | null
   sessionDate: string | null
+  /**
+   * First dated row (or session_date) is after today — the session hasn't
+   * begun. Drives the "Not started" chip and the In-progress sort, now that
+   * these rows live in the same tab as real work (2026-08-19).
+   */
+  notStarted: boolean
   isCod: boolean
   pipeline: Pipeline
   bucket: BucketKey
@@ -296,9 +311,11 @@ export function deriveStep(
  * payment type. A voided COD invoice under a COD-only Closed tab would be an
  * archive nobody would ever think to open.
  *
- * `upcoming` is second, and it is deliberately narrow — only a work order
- * nobody has touched (step 0) whose last day has not passed. A session that is
- * mid-run has not ended, but the moment billing completes it, it is work.
+ * NO MORE `upcoming` (Eli, 2026-08-19). Not-yet-started sessions are just
+ * `progress` rows now, sorted below the started work. On the COD side a
+ * session that hasn't ENDED (or been runner-submitted — `ended` here already
+ * includes that, see fetchInvoices) is `progress` too: Balance due means
+ * collection was MISSED, which cannot be true of a session still running.
  */
 export function deriveBucket(args: {
   state: InvoiceState | null
@@ -310,9 +327,12 @@ export function deriveBucket(args: {
 }): BucketKey {
   const { state, isCod, step, balance, grand, ended } = args
   if (state === 'closed') return 'closed'
-  if (!ended && step === 0) return 'upcoming'
 
   if (isCod) {
+    // Still running (and no runner submission yet) → In progress. This gate
+    // comes FIRST: an unfinished session with an outstanding balance is not a
+    // missed collection, it's a session that isn't over.
+    if (!ended) return 'progress'
     // BALANCE DUE beats everything else on the COD side, at any step. Money
     // that was supposed to be collected at the top of the session and wasn't is
     // the only way COD goes wrong, and it must never be reachable only by
@@ -497,6 +517,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       client: (w as any).label || w.client || 'Unknown',
       artist: w.artist ?? null,
       sessionDate: w.session_date ?? null,
+      notStarted: ((firstDate ?? w.session_date) ?? '') > today,
       isCod,
       pipeline: (isCod ? 'cod' : 'billing') as Pipeline,
       bucket: deriveBucket({
@@ -592,19 +613,26 @@ export function rowsInBucket(
 /**
  * Ordered so each tab reads as a queue rather than a list.
  *
- *   Upcoming → SOONEST first. Tomorrow matters more than September, and
- *              newest-first buried next week under next month.
+ *   In progress → STARTED WORK FIRST, most recent on top (last night is the
+ *              work). Not-yet-started sessions sit BELOW it, soonest first —
+ *              the old Upcoming order, kept inside the one tab (Eli,
+ *              2026-08-19: "organize all WO into in progress based on date").
  *   Awaiting → OLDEST sent first. The chase list is led by the debt that has
  *              been out longest, which is the one about to become a problem.
- *   Everything else → most recent session first. Last night is the work.
+ *   Everything else → most recent session first.
  */
 export function sortBucket(rows: InvoiceRow[], bucket: BucketKey): InvoiceRow[] {
   return [...rows].sort((a, b) => {
-    if (bucket === 'upcoming') {
-      return (a.sessionDate ?? '').localeCompare(b.sessionDate ?? '')
-    }
     if (bucket === 'awaiting') {
       return (b.ageDays ?? 0) - (a.ageDays ?? 0)
+    }
+    if (bucket === 'progress') {
+      const fa = a.notStarted ? 1 : 0
+      const fb = b.notStarted ? 1 : 0
+      if (fa !== fb) return fa - fb // started work above not-yet-started
+      return fa
+        ? (a.sessionDate ?? '').localeCompare(b.sessionDate ?? '')  // future: soonest first
+        : (b.sessionDate ?? '').localeCompare(a.sessionDate ?? '')  // started: most recent first
     }
     return (b.sessionDate ?? '').localeCompare(a.sessionDate ?? '')
   })
@@ -612,7 +640,7 @@ export function sortBucket(rows: InvoiceRow[], bucket: BucketKey): InvoiceRow[] 
 
 export function bucketCounts(rows: InvoiceRow[], pipeline: Pipeline): Record<string, number> {
   const out: Record<string, number> = {}
-  for (const b of [...tabsFor(pipeline), { key: 'upcoming' as BucketKey }]) out[b.key] = 0
+  for (const b of tabsFor(pipeline)) out[b.key] = 0
   for (const r of rows) {
     if (r.bucket !== 'closed' && r.pipeline !== pipeline) continue
     out[r.bucket] = (out[r.bucket] ?? 0) + 1

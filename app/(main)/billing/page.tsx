@@ -74,7 +74,6 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(true)
   const [pipeline, setPipeline] = useState<Pipeline>('billing')
   const [tab, setTab] = useState<BucketKey>('progress')
-  const [showUpcoming, setShowUpcoming] = useState(false)
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const [busy, setBusy] = useState<string | null>(null)
@@ -123,31 +122,23 @@ export default function BillingPage() {
   // safe rather than merely honest.
   const stale = useMemo(() => staleDownloads(rows).length, [rows])
 
-  // UPCOMING IS AN INLINE EXPAND, NOT A PLACE (Eli, 2026-08-18, launch
-  // testing: "right now it takes you away from the main needs-review one —
-  // we need to see all"). `showUpcoming` no longer switches the list; the
-  // active bucket is ALWAYS the tab, and the upcoming rows render as their
-  // own short section under the toggle bar. Un-paginated on purpose — it sits
-  // visually apart under its own bar, so the pager ambiguity that justified
-  // the old swap no longer exists.
+  // UPCOMING IS GONE ENTIRELY (Eli, 2026-08-19 — it was an inline expand for
+  // one day: "ditch the upcoming bin and just organize all WO into in
+  // progress based on date"). Not-yet-started sessions are ordinary In
+  // progress rows now, sorted below the started work with a "Not started"
+  // chip (lib/billing: deriveBucket + sortBucket + notStarted).
   const activeBucket: BucketKey = tab
   const visible = useMemo(() => {
     if (searching) return searchRows(rows, query)
     return rowsInBucket(rows, activeBucket, pipeline)
   }, [rows, activeBucket, pipeline, query, searching])
 
-  const upcomingRows = useMemo(
-    () => rowsInBucket(rows, 'upcoming', pipeline),
-    [rows, pipeline],
-  )
-
   const perPage = pageSizeFor(activeBucket)
   const pages = pageCount(visible.length, perPage)
   const safePage = Math.min(page, pages)
   const pageRows = paginate(visible, safePage, perPage)
-  const upcomingCount = counts.upcoming ?? 0
-  // Age counts days since SENT, so on In progress / Needs review / Upcoming it
-  // is a column of dashes. Dropped there rather than filled with nothing.
+  // Age counts days since SENT, so on In progress / Needs review it is a
+  // column of dashes. Dropped there rather than filled with nothing.
   const showAge = searching || ['awaiting', 'paid', 'closed'].includes(activeBucket)
 
   useEffect(() => { setPage(1) }, [tab, query, pipeline])
@@ -157,7 +148,6 @@ export default function BillingPage() {
   function switchPipeline(p: Pipeline) {
     setPipeline(p)
     setTab(tabsFor(p)[0].key)
-    setShowUpcoming(false)
   }
 
   // ── Actions ────────────────────────────────────────────────────────────────
@@ -329,7 +319,7 @@ export default function BillingPage() {
             key={s.label}
             className="c-bstat"
             style={{ cursor: s.goto ? 'pointer' : 'default' }}
-            onClick={() => { if (s.goto) { setShowUpcoming(false); setQuery(''); setTab(s.goto) } }}
+            onClick={() => { if (s.goto) { setQuery(''); setTab(s.goto) } }}
           >
             <div className="c-arch" style={{ fontSize: 20, letterSpacing: '-0.02em', color: s.alert ? 'var(--c-st-hot)' : undefined }}>
               {s.value}
@@ -427,39 +417,6 @@ export default function BillingPage() {
             {pages > 1 && Array.from({ length: pages }, (_, i) => i + 1).map(p => (
               <span key={p} className={`c-bpg${p === safePage ? ' c-on' : ''}`} onClick={() => setPage(p)}>{p}</span>
             ))}
-          </div>
-        )}
-
-        {/* UPCOMING — an inline DISCLOSURE below the pager (Eli, 2026-08-18):
-            the main bucket stays on screen, the toggle expands the not-yet
-            sessions beneath it. Pinned below the pager so it can never fall
-            onto page 3. */}
-        {!searching && upcomingCount > 0 && (
-          <button className="c-bup" onClick={() => setShowUpcoming(o => !o)}>
-            Upcoming sessions <span className="c-bn">{upcomingCount}</span> — not started yet
-            <span className="c-go">{showUpcoming ? '▾' : '▸'}</span>
-          </button>
-        )}
-        {!searching && showUpcoming && upcomingRows.map(r => (
-          <Row
-            key={r.workOrderId}
-            row={r}
-            searching={false}
-            isOwner={isOwner}
-            busy={busy === r.workOrderId}
-            showAge={showAge}
-            onAct={() => act(r)}
-            onMore={() => setMoreFor(r)}
-            onOpen={() => openRow(r)}
-            dragOver={dragOver === r.workOrderId}
-            onDragOver={e => { e.preventDefault(); setDragOver(r.workOrderId) }}
-            onDragLeave={() => setDragOver(null)}
-            onDrop={e => onDropFile(r, e)}
-          />
-        ))}
-        {!searching && showUpcoming && (
-          <div className="c-bnote" style={{ paddingTop: 4 }}>
-            Sessions that have not happened yet. Fully editable — extend, cancel days, adjust rates — they just are not work yet.
           </div>
         )}
 
@@ -602,10 +559,10 @@ function Row({
   const canAct = label !== 'Approve' || isOwner
   // Every row accepts a dropped PDF — replacing an invoice is legitimate — but
   // only a row waiting on its invoice ADVANCES on drop (see lib/billing).
-  const wantsInvoice = row.step === 1 && row.bucket !== 'upcoming'
+  const wantsInvoice = row.step === 1
   // Lights only where the assembly line is still running. On a sent, paid or
   // closed row every light is green and says nothing.
-  const showLights = ['progress', 'review', 'balance', 'upcoming'].includes(row.bucket)
+  const showLights = ['progress', 'review', 'balance'].includes(row.bucket)
   // The overflow only exists when there is something in it: an invoice to open,
   // or an invoice real enough to be written off.
   // Approved but with no PO: the button shows, disabled, rather than vanishing.
@@ -654,7 +611,9 @@ function Row({
           <span className="c-bflag c-po">Awaiting PO</span>
         ) : row.closedReason ? (
           <span className="c-bflag c-soon">{row.closedReason === 'written_off' ? 'Written off' : 'Voided'}</span>
-        ) : row.bucket === 'upcoming' ? (
+        ) : row.notStarted && row.bucket === 'progress' ? (
+          /* Inside In progress now (Upcoming is gone, 2026-08-19) — the chip
+             is what still says "this one hasn't happened yet". */
           <span className="c-bflag c-soon">Not started</span>
         ) : wantsInvoice ? (
           <span className="c-bhint">{dragOver ? 'Release to attach' : 'Drop invoice here'}</span>
