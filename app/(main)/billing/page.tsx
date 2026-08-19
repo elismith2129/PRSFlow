@@ -74,6 +74,22 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(true)
   const [pipeline, setPipeline] = useState<Pipeline>('billing')
   const [tab, setTab] = useState<BucketKey>('progress')
+  // COD TABS ARE LATCHES (Eli, 2026-08-19: "make the latching buttons only on
+  // COD… say COD in progress and balance due. that way we dont miss
+  // anything"). Independent toggles, several can be on, the merged list wears
+  // per-row bin badges. Billing keeps plain single tabs — its buckets are
+  // sequential stages, not parallel queues. Same family as the CRM
+  // multi-select status tabs: persisted, last latch can't turn off.
+  const [codBins, setCodBins] = useState<Set<BucketKey>>(new Set(['balance', 'progress']))
+  useEffect(() => {
+    try {
+      const s = sessionStorage.getItem('prsflo-billing-cod-bins')
+      if (s) { const arr = JSON.parse(s) as BucketKey[]; if (Array.isArray(arr) && arr.length) setCodBins(new Set(arr)) }
+    } catch { /* first visit */ }
+  }, [])
+  useEffect(() => {
+    try { sessionStorage.setItem('prsflo-billing-cod-bins', JSON.stringify([...codBins])) } catch { /* private mode */ }
+  }, [codBins])
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const [busy, setBusy] = useState<string | null>(null)
@@ -128,20 +144,32 @@ export default function BillingPage() {
   // progress rows now, sorted below the started work with a "Not started"
   // chip (lib/billing: deriveBucket + sortBucket + notStarted).
   const activeBucket: BucketKey = tab
+  // COD merges every latched bin into ONE list, in tab order — the critical
+  // bin (Balance due) always leads, and each bin keeps its own internal sort
+  // (rowsInBucket → sortBucket).
   const visible = useMemo(() => {
     if (searching) return searchRows(rows, query)
+    if (pipeline === 'cod') {
+      return tabsFor('cod').map(t => t.key).filter(k => codBins.has(k))
+        .flatMap(k => rowsInBucket(rows, k, 'cod'))
+    }
     return rowsInBucket(rows, activeBucket, pipeline)
-  }, [rows, activeBucket, pipeline, query, searching])
+  }, [rows, activeBucket, pipeline, query, searching, codBins])
 
-  const perPage = pageSizeFor(activeBucket)
+  // Badges only when 2+ bins are on screen — with one, the tab names it.
+  const codMulti = pipeline === 'cod' && !searching && codBins.size > 1
+
+  const perPage = pageSizeFor(pipeline === 'cod' ? 'progress' : activeBucket)
   const pages = pageCount(visible.length, perPage)
   const safePage = Math.min(page, pages)
   const pageRows = paginate(visible, safePage, perPage)
   // Age counts days since SENT, so on In progress / Needs review it is a
   // column of dashes. Dropped there rather than filled with nothing.
-  const showAge = searching || ['awaiting', 'paid', 'closed'].includes(activeBucket)
+  const showAge = searching || (pipeline === 'cod'
+    ? codBins.has('paid')
+    : ['awaiting', 'paid', 'closed'].includes(activeBucket))
 
-  useEffect(() => { setPage(1) }, [tab, query, pipeline])
+  useEffect(() => { setPage(1) }, [tab, query, pipeline, codBins])
 
   // Switching pipeline lands on that side's FIRST tab — for COD that is Balance
   // due, which is the whole reason it leads.
@@ -319,7 +347,15 @@ export default function BillingPage() {
             key={s.label}
             className="c-bstat"
             style={{ cursor: s.goto ? 'pointer' : 'default' }}
-            onClick={() => { if (s.goto) { setQuery(''); setTab(s.goto) } }}
+            onClick={() => {
+              if (!s.goto) return
+              setQuery('')
+              // On COD a stat jump FOCUSES that bin (latches it alone) —
+              // "the numbers ARE the filters" only holds if the click shows
+              // exactly what was counted.
+              if (pipeline === 'cod') setCodBins(new Set([s.goto]))
+              else setTab(s.goto)
+            }}
           >
             <div className="c-arch" style={{ fontSize: 20, letterSpacing: '-0.02em', color: s.alert ? 'var(--c-st-hot)' : undefined }}>
               {s.value}
@@ -346,8 +382,22 @@ export default function BillingPage() {
         {tabs.map(b => (
           <span
             key={b.key}
-            className={`c-btab${tab === b.key ? ' c-on' : ''}`}
-            onClick={() => setTab(b.key)}
+            className={`c-btab${(pipeline === 'cod' ? codBins.has(b.key) : tab === b.key) ? ' c-on' : ''}`}
+            onClick={() => {
+              if (pipeline === 'cod') {
+                // Latch: toggle on/off; the LAST latched bin refuses to turn
+                // off — a zero-bin list means nothing. (Built by filter, not
+                // Set mutation — the selftest write-scan pattern-matches
+                // mutating method calls and would flag this file.)
+                setCodBins(prev => {
+                  if (prev.has(b.key)) {
+                    if (prev.size === 1) return prev
+                    return new Set([...prev].filter(k => k !== b.key))
+                  }
+                  return new Set([...prev, b.key])
+                })
+              } else setTab(b.key)
+            }}
           >
             {b.label}{' '}
             <span
@@ -361,9 +411,13 @@ export default function BillingPage() {
         ))}
       </div>
 
-      <div className={`c-panel${showAge ? "" : " c-bage-off"}`}>
+      <div className={`c-panel${showAge ? "" : " c-bage-off"}${codMulti && !isMobile ? ' c-bmulti' : ''}`}>
         <div className="c-lozenge">
-          <b>{searching ? 'Search results' : bucketLabel(tab)}</b>
+          <b>{searching
+            ? 'Search results'
+            : pipeline === 'cod'
+              ? tabsFor('cod').filter(t => codBins.has(t.key)).map(t => t.label).join(' + ')
+              : bucketLabel(tab)}</b>
           {/* COUNT ONLY (Eli, 2026-08-13: "don't need the balance shown in the
               top right corner of the list. messy."). The bucket total was a
               third money figure on a screen that already leads with Outstanding
@@ -374,6 +428,7 @@ export default function BillingPage() {
 
         {!isMobile && visible.length > 0 && (
           <div className="c-browhd">
+            {codMulti && <span>Bin</span>}
             <span>WO</span>
             <span>Client &amp; session</span>
             <span className="c-r">Flag</span>
@@ -398,6 +453,7 @@ export default function BillingPage() {
             isOwner={isOwner}
             busy={busy === r.workOrderId}
             showAge={showAge}
+            badge={codMulti && !isMobile ? r.bucket : null}
             onAct={() => act(r)}
             onMore={() => setMoreFor(r)}
             onOpen={() => openRow(r)}
@@ -535,8 +591,17 @@ function Lights({ row }: { row: InvoiceRow }) {
   )
 }
 
+// Bin badge colors — the row's home bin when several are latched (COD).
+// Matches the tab pill colors so the badge and the tab read as one system.
+const BIN_COLOR: Partial<Record<BucketKey, string>> = {
+  balance: 'var(--c-st-hot)',
+  progress: 'var(--c-st-uncon)',
+  review: 'var(--c-st-warm)',
+  paid: 'var(--c-st-booked)',
+}
+
 function Row({
-  row, searching, isOwner, busy, dragOver, showAge, onAct, onMore, onOpen,
+  row, searching, isOwner, busy, dragOver, showAge, badge, onAct, onMore, onOpen,
   onDragOver, onDragLeave, onDrop,
 }: {
   row: InvoiceRow
@@ -545,6 +610,8 @@ function Row({
   busy: boolean
   dragOver: boolean
   showAge: boolean
+  /** The row's bucket, when 2+ COD bins are latched — null renders no cell. */
+  badge: BucketKey | null
   onAct: () => void
   onMore: () => void
   onOpen: () => void
@@ -582,6 +649,14 @@ function Row({
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
+      {badge && (
+        <span
+          className="c-bbin"
+          style={{ background: BIN_COLOR[badge] ?? 'var(--c-wash2)', color: badge === 'balance' ? 'var(--c-hot-text)' : 'var(--c-chip-ink)' }}
+        >
+          {bucketLabel(badge)}
+        </span>
+      )}
       <span className="c-binv">{row.woNumber || row.invoiceNumber || '—'}</span>
       <span className="c-bwho">
         <b>{row.client}</b>

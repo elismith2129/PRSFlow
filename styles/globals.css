@@ -1833,6 +1833,20 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-bage-off .c-brow, .c-bage-off .c-browhd {
   grid-template-columns: 76px minmax(0, 1fr) 124px 210px 84px 120px 26px;
 }
+/* COD LATCHED BINS (2026-08-19): with 2+ bins merged into one list, a leading
+   badge column says each row's home bin. The class only exists on desktop —
+   mobile rows never carry the badge. */
+.c-bmulti .c-brow, .c-bmulti .c-browhd {
+  grid-template-columns: 88px 76px minmax(0, 1fr) 124px 210px 84px 46px 120px 26px;
+}
+.c-bmulti.c-bage-off .c-brow, .c-bmulti.c-bage-off .c-browhd {
+  grid-template-columns: 88px 76px minmax(0, 1fr) 124px 210px 84px 120px 26px;
+}
+.c-bbin {
+  font-size: 8px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  border-radius: 5px; padding: 3px 6px; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 /* FIXED ROW HEIGHT. A button is taller than a line of text, so rows that had
    one grew and rows that didn't stayed short — which is why the one Approve in
    a list read as floating between its neighbours rather than sitting in a
