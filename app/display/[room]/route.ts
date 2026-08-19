@@ -115,8 +115,19 @@ function initials(name: string | null): string {
   return p.length === 1 ? p[0].slice(0, 2).toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase()
 }
 
-const ARCHIVO = "'Archivo Black','Arial Black',Helvetica,sans-serif"
-const MONO = "'DM Mono',ui-monospace,'Courier New',monospace"
+// SYSTEM FONTS ONLY — no webfont link. This page used to pull Archivo Black and
+// DM Mono from fonts.googleapis.com, and that turned the Encore B panel white
+// (2026-08-19): a <link rel="stylesheet"> is RENDER-BLOCKING, and an Android 4.4
+// device cannot reliably complete TLS to Google's font CDN — same class of
+// certificate problem that needed ISRG Root X1 installed by hand. The browser
+// sat waiting on a stylesheet that never arrived and painted nothing.
+//
+// A wall display must have ZERO render-blocking external requests. Arial Black
+// is the same kind of heavy grotesque as Archivo Black and ships with the
+// device. If the real faces are ever wanted here, self-host them and load them
+// with font-display:swap so a failed fetch can never block the paint again.
+const ARCHIVO = "'Arial Black','Helvetica Neue',Helvetica,Arial,sans-serif"
+const MONO = "'Courier New',Courier,monospace"
 
 /** The §10b payload: Archivo name, client line, mono times. */
 function payload(b: B, ink: string, big: boolean) {
@@ -233,10 +244,9 @@ function page(title: string, body: string, tail = ''): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8">`
     + `<meta http-equiv="refresh" content="900">`
     + `<title>${esc(title)}</title>`
-    + `<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">`
     + `<style>`
     + `html,body{margin:0;padding:0;background:${BG};color:${FG};`
-    + `font-family:Inter,Helvetica,Arial,sans-serif;overflow:hidden;cursor:none}`
+    + `font-family:Helvetica,Arial,sans-serif;overflow:hidden;cursor:none}`
     + `table{border-collapse:collapse;width:100%;table-layout:fixed}`
     + `td{vertical-align:top;overflow:hidden}`
     + `</style></head><body>${body}${tail}</body></html>`
