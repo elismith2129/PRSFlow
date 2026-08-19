@@ -229,9 +229,16 @@ function spanBar(b: B, day: string): string {
  *  the wall still heals itself; it just does so slowly. */
 const POLL_MS = 5000
 
-function poller(hash: string, probeUrl: string): string {
+function poller(hash: string, _probeUrl: string): string {
+  // The probe URL is built from location at runtime, not baked in, so the page
+  // still polls correctly when it is served through a proxy on another host.
+  // These panels cannot complete TLS to Vercel (no Let's Encrypt root, and the
+  // HTML5 Browser ignores user-installed CAs — 2026-08-19), so the wall reaches
+  // this page via the WordPress host it already trusts. A hardcoded /display/...
+  // path would 404 against that origin.
   return `<script>(function(){`
-    + `var v=${JSON.stringify(hash)},u=${JSON.stringify(probeUrl)};`
+    + `var v=${JSON.stringify(hash)};`
+    + `var u=location.pathname+location.search+(location.search?"&":"?")+"probe=1";`
     + `function c(){try{var x=new XMLHttpRequest();`
     + `x.open("GET",u+"&t="+(new Date()).getTime(),true);`
     + `x.onreadystatechange=function(){if(x.readyState===4&&x.status===200){`
