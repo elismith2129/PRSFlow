@@ -14,7 +14,7 @@ import { ClientPanel, type ClientPanelValue } from '@/components/shared/ClientPa
 import { seedStudioTimeRows } from '@/lib/seedStudioTimeRows'
 import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter, getLocalToday } from '@/lib/time'
 import { formatCurrency, stripCurrency, longDate } from '@/lib/format'
-import { computeWoTotals } from '@/lib/woTotals'
+import { computeWoTotals, engChargeForRow } from '@/lib/woTotals'
 import {
   findMissingTimes, missingTimesMessage,
   findMissingEngRates, missingEngRatesMessage,
@@ -22,7 +22,7 @@ import {
 } from '@/lib/woValidation'
 import { enterInvoicePipeline, downloadPackage } from '@/lib/billing'
 import { dbResult } from '@/lib/db'
-import { STUDIO_LOCATIONS, STUDIO_SHORT } from '@/lib/studios'
+import { STUDIO_LOCATIONS, STUDIO_SHORT, roomCode } from '@/lib/studios'
 
 // Convert a studio_time_rows studio value (bare letter 'X', or 'North'/'South')
 // into the full room label the calendar filters on ('Studio X', 'North'), within
@@ -191,6 +191,13 @@ type PayRow = {
 
 const EQUIPMENT_ITEMS = ['Speakers', 'Microphone', 'Console']
 
+// The studio-time table's 14 columns at their minimum widths:
+// 58+58+150+66+66+38+48+68+44+62+60+74+34+22. Kept as a named constant because
+// the header grid and the row scroller must agree on it — see the note at the
+// header. Every cell in this table stays typeable (the standing rule for the
+// admin view), and that is what costs the width.
+const ST_MINW = 848
+
 // Half-hour presets for the day sheet's time-well dropdown (type OR pick —
 // Eli, 2026-08-16; the well still smart-parses typed input via TimeInput).
 const TIME_OPTS: string[] = (() => {
@@ -201,6 +208,66 @@ const TIME_OPTS: string[] = (() => {
   }
   return out
 })()
+
+// ─── Scroll indicators (RULING 2026-08-18, admin desktop) ────────────────────
+// A bin that scrolls MUST announce it. The two bins on the numbers column (days
+// and rentals) scroll independently, so a day can sit below the fold with
+// nothing on screen saying so — which is how a billable day gets missed.
+//
+// Both hints are LIVE, not decorative: the fade and the "↓ N more" pill render
+// only while content actually remains below, and disappear at the bottom. N is
+// counted from the DOM (children whose bottom edge is past the visible edge),
+// so it can't drift from what is really there.
+//
+// Layout only — it reads scroll positions and renders two absolutely-positioned
+// overlays. It never touches rows, totals or saves.
+function ScrollHints({ targetRef, unit }: {
+  targetRef: React.RefObject<HTMLDivElement | null>
+  unit: string
+}) {
+  const [more, setMore] = useState(0)
+  useEffect(() => {
+    const el = targetRef.current
+    if (!el) return
+    const measure = () => {
+      const bottom = el.scrollTop + el.clientHeight
+      // Nothing left below → no fade, no pill (the ruling: hide at the bottom).
+      if (el.scrollHeight - bottom <= 2) { setMore(0); return }
+      let n = 0
+      for (const c of Array.from(el.children) as HTMLElement[]) {
+        if (c.offsetTop + c.offsetHeight > bottom + 2) n++
+      }
+      setMore(Math.max(n, 1))
+    }
+    measure()
+    el.addEventListener('scroll', measure, { passive: true })
+    // Rows are added, deleted and resized while the WO is open, so the hint has
+    // to re-measure on content change as well as on scroll.
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null
+    ro?.observe(el)
+    const mo = typeof MutationObserver !== 'undefined' ? new MutationObserver(measure) : null
+    mo?.observe(el, { childList: true, subtree: true, characterData: true, attributes: true })
+    return () => { el.removeEventListener('scroll', measure); ro?.disconnect(); mo?.disconnect() }
+  }, [targetRef])
+  if (more <= 0) return null
+  return (
+    <>
+      <div aria-hidden style={{
+        position: 'absolute', left: 0, right: 6, bottom: 0, height: 34,
+        background: 'linear-gradient(transparent, var(--c-bg))',
+        pointerEvents: 'none', borderRadius: '0 0 12px 12px',
+      }} />
+      <div style={{
+        position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)',
+        pointerEvents: 'none', background: 'var(--c-wash2)', color: 'var(--c-fg-2)',
+        borderRadius: 99, padding: '3px 11px', whiteSpace: 'nowrap',
+        fontSize: 8.5, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase',
+      }}>
+        ↓ {more} more {unit}{more === 1 ? '' : 's'}
+      </div>
+    </>
+  )
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -481,6 +548,18 @@ export function WorkOrderPopup({
   // writes immediately, like the equipment note photos).
   const [naUploading, setNaUploading] = useState(false)
   const naFileRef = useRef<HTMLInputElement>(null)
+  // Needs-attention strip: open/closed on admin desktop only (2026-08-18). It
+  // is a single strip pinned to the bottom of the words column and it GROWS
+  // ONLY WHEN IT HAS CONTENT — this flag is the manual override for adding the
+  // first note. Pure UI state; mobile ignores it and always renders the field.
+  const [naOpen, setNaOpen] = useState(false)
+  // The two independent scroll bins on the admin-desktop numbers column
+  // (2026-08-18). Days and rentals scroll separately — a multi-day session with
+  // no rentals must not spend height on an empty rentals scroller, and vice
+  // versa. Each ref feeds its own <ScrollHints>. Only one studio-time view
+  // (list or cards) is mounted at a time, so they share stBinRef.
+  const stBinRef = useRef<HTMLDivElement | null>(null)
+  const rentBinRef = useRef<HTMLDivElement | null>(null)
   // Live-merge bookkeeping (Eli, 2026-08-16 — "I want EVERYTHING live").
   // Snapshots of payments/rentals as loaded; if the local state still matches
   // its snapshot the user hasn't touched that table and remote changes adopt.
@@ -2446,6 +2525,68 @@ export function WorkOrderPopup({
   // rather than a coloured border (§5: colour is a fill, never an outline).
   const mCardOrange: React.CSSProperties = { background: 'var(--c-wash2)', borderRadius: 20, padding: 14, boxSizing: 'border-box' }
 
+  // ── ADMIN DESKTOP, TWO COLUMNS (RULING 2026-08-18, task #11) ───────────────
+  // mock: docs/design-refs/wo-compact-options.html — its header comment is the
+  // ruling list and this layout is built to it.
+  //
+  //   WORDS LEFT (0.72fr) · NUMBERS RIGHT (1.28fr)
+  //
+  // `wide` is the ONE switch. Everything it gates is layout: where a block sits,
+  // how tall a bin is, whether a hint renders. No saves, queries, realtime,
+  // atomic RPCs, projections or lib/woPdf.ts behaviour changes with it — the PDF
+  // is drawn from studio_time_rows on the server and never reads this DOM.
+  //
+  // Blocks (Tour/Tech/Open Hours) keep the old single column: they have no
+  // numbers column to put beside anything. Mobile and runner keep the original
+  // stack — see the `order` values below, which are what preserve it.
+  const wide = !isMobile && !isBlock
+
+  // Column members carry an explicit flex `order` so that when the two column
+  // wrappers collapse to `display: contents` (mobile / block), the children fall
+  // back into EXACTLY the sequence they had before this layout existed. The
+  // numbers are spaced so a block can be inserted without renumbering.
+  const ORD = {
+    letterhead: 20, sessionTop: 30, seed: 50, studioTime: 60, studioTotal: 65,
+    equipFile: 70, rentals: 80, spacer: 90, sessionNotes: 100, payments: 110,
+    needsAttention: 120, mobileComplete: 130,
+  }
+
+  // ── Itemized studio running total (pinned under the days bin) ──────────────
+  // "Totals always computed from studio_time_rows — no view invents math."
+  // Every figure below is either straight from computeWoTotals (already the
+  // canonical source for stTotal / engTotal) or a REGROUPING of the very same
+  // per-row function the totals use, engChargeForRow. Sum(staffLines) is
+  // engTotal by construction; nothing here is a second implementation.
+  const staffLines = (() => {
+    const m = new Map<string, { role: 'engineer' | 'assistant'; name: string; total: number }>()
+    for (const r of stRows) {
+      const amt = engChargeForRow(r)
+      if (!(amt > 0)) continue
+      const name = (r.eng_name || '').trim() || 'TBD'
+      const key = `${r.eng_role}|${name.toLowerCase()}`
+      const cur = m.get(key)
+      if (cur) cur.total += amt
+      else m.set(key, { role: r.eng_role, name, total: amt })
+    }
+    return Array.from(m.values())
+  })()
+  const otHoursAll = stRows.reduce((s, r) => s + (parseFloat(r.ot_hours || '0') || 0), 0)
+  const otChargeAll = stRows.reduce((s, r) => s + (r.ot_charge ?? 0), 0)
+  const dayCount = new Set(stRows.filter(r => r.date).map(r => r.date)).size
+  // "It grows only when it has content" — content means a note OR a photo.
+  const naHasContent = !!(wo.needs_attention_notes || '').trim() || (wo.needs_attention_photos?.length ?? 0) > 0
+
+  // Small shared bits of the words column.
+  const kLabel: React.CSSProperties = {
+    fontSize: 8, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em',
+    textTransform: 'uppercase', color: 'var(--c-fg)', opacity: 0.42,
+  }
+  const internalTag: React.CSSProperties = {
+    fontSize: 8, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.08em',
+    textTransform: 'uppercase', color: 'var(--c-st-warm)', background: 'var(--c-wash2)',
+    borderRadius: 5, padding: '2px 7px',
+  }
+
   return (
     <div
       data-wo-portal=""
@@ -2486,7 +2627,14 @@ export function WorkOrderPopup({
       <div
         style={isMobile
           ? { width: '100vw', height: '100%', maxWidth: 'none', minWidth: 0, margin: 0, display: 'flex', flexDirection: 'column' }
-          : { width: '100%', maxWidth: 920, minWidth: 780, marginBottom: 20, alignSelf: 'flex-start',
+          // WIDER FOR THE TWO-COLUMN ADMIN LAYOUT (2026-08-18). 920 was sized for
+          // a single stacked column; the numbers column alone has to hold the
+          // 14-column studio-time table (~850px) with every cell still typeable,
+          // which is the standing rule for this screen. 1320 puts the table
+          // inside its column with no sideways scroll on a normal laptop and
+          // still leaves margin on a 1440 display. Blocks keep 920 — they have
+          // one column of content and would just be a wide empty sheet.
+          : { width: '100%', maxWidth: wide ? 1320 : 920, minWidth: 780, marginBottom: 20, alignSelf: 'flex-start',
               display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 92px)' }}
         className="c-sheet"
         onClick={e => e.stopPropagation()}
@@ -2820,24 +2968,73 @@ export function WorkOrderPopup({
             )
           })()}
 
-          {/* BRANDING — hidden on mobile + for block events (letterhead) */}
-          <div style={{ textAlign: 'center', paddingBottom: 20, display: (isMobile || isBlock) ? 'none' : 'block' }}>
-            <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15, color: 'var(--c-fg)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Paramount Recording Group</div>
-            <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-2)', marginTop: 3 }}>Paramount · Encore · Ameraycan · Wilder · Track</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-              <span style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-2)' }}>Recording Studios (323) 465-4000</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-2)' }}>Invoice #</span>
-                <span style={{ fontFamily: 'DM Mono', fontSize: 11, color: 'var(--c-fg)', minWidth: 60 }}>{wo.invoice_number || '—'}</span>
+          {/* ══ TWO COLUMNS · words left, numbers right ═════════════════════════
+              On mobile and for block events both wrappers go `display: contents`,
+              so every child below drops straight back into the body's flex column
+              in its original sequence (that is what the ORD numbers guarantee).
+              Nothing about the mobile render changes. */}
+          <div style={wide
+            ? { display: 'grid', gridTemplateColumns: '0.72fr 1.28fr', gap: 16, alignItems: 'stretch', minHeight: 0 }
+            : { display: 'contents' }}>
+
+          {/* ══ WORDS COLUMN ══════════════════════════════════════════════════ */}
+          <div style={wide
+            ? { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }
+            : { display: 'contents' }}>
+
+          {/* LETTERHEAD — OPEN SPACE, TOP-LEFT (ruling 2026-08-18). Was a centred
+              three-line masthead with the invoice number floated opposite it, which
+              spent a full band of the sheet on branding and put the WO's own number
+              nowhere. Now: who we are on the left, WHICH work order on the right,
+              at size, with the invoice number under it. No box — real padding is
+              what makes a letterhead read as a letterhead.
+              Invoice # is deliberately in TWO places (mock ruling): here, always
+              visible, and editable in the Invoice/PO/Food row below. */}
+          <div style={{ order: ORD.letterhead, textAlign: wide ? 'left' : 'center', paddingBottom: wide ? 2 : 20, display: (isMobile || isBlock) ? 'none' : 'block' }}>
+            {wide ? (
+              <div style={{ padding: '6px 4px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div className="c-arch" style={{ fontSize: 17, letterSpacing: '-0.02em' }}>Paramount Recording</div>
+                  <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-2)', marginTop: 7, lineHeight: 1.7 }}>
+                    6245 Santa Monica Blvd, Hollywood, CA 90038<br />
+                    (323) 465-4000 · booking@paramountrecording.com
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div className="c-arch" style={{ fontSize: 24, letterSpacing: '-0.02em' }}>{wo.wo_number || 'WO'}</div>
+                  <div style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 11, color: 'var(--c-fg-2)', marginTop: 2 }}>
+                    Invoice #{wo.invoice_number || '—'}
+                  </div>
+                  {/* Status only. The mock also drew a Complete pill here; the
+                      footer already carries Complete WO, and a second one beside
+                      the title is the exact duplication Eli struck out on
+                      2026-08-13 ("there are a million buttons up here"). One
+                      Complete, in the action bar. */}
+                  <div data-no-print="" style={{ marginTop: 7, display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                    <StatusBadge status={wo.status} />
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <>
+                <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15, color: 'var(--c-fg)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Paramount Recording Group</div>
+                <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-2)', marginTop: 3 }}>Paramount · Encore · Ameraycan · Wilder · Track</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                  <span style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-2)' }}>Recording Studios (323) 465-4000</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-2)' }}>Invoice #</span>
+                    <span style={{ fontFamily: 'DM Mono', fontSize: 11, color: 'var(--c-fg)', minWidth: 60 }}>{wo.invoice_number || '—'}</span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* SESSION-LEVEL TOP — status bar + session type + billing + client panel.
               No per-day schedule here (studios / dates / times / rates / engineers
               live ONLY in the Studio Time table — see docs/WO-SPEC.md §3). Hidden on
               mobile; the read-only SESSION INFO card above replaces it there. */}
-          <div style={isMobile ? { display: 'none' } : { display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={isMobile ? { display: 'none' } : { order: ORD.sessionTop, display: 'flex', flexDirection: 'column', gap: wide ? 12 : 16, minWidth: 0 }}>
 
             {/* Status — ONE housing (§8). This was six separate raised pills; the
                 selected one now presses IN and fills with its own status colour,
@@ -2889,17 +3086,27 @@ export function WorkOrderPopup({
               </div>
             )}
 
-            {/* Two columns: left = session-level card, right = client panel */}
+            {/* ONE COLUMN ON ADMIN DESKTOP (2026-08-18). This was a 0.85fr/1fr
+                pair — session meta beside the client card — which is the shape
+                that has to go when the whole sheet becomes words-left /
+                numbers-right: the client card IS the words column's anchor and
+                cannot sit in a sub-column of it.
+                Order on the desktop stack: Session Type → ★ locked contact card
+                → Invoice/PO/Food → Booking notes. `display: contents` on the old
+                left-hand wrapper is what lets the three meta blocks interleave
+                with the client card without moving any of their markup. */}
             {!isBlock && (
-            <div style={{ display: 'grid', gridTemplateColumns: '0.85fr 1fr', gap: 20, alignItems: 'stretch' }}>
+            <div style={wide
+              ? { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }
+              : { display: 'grid', gridTemplateColumns: '0.85fr 1fr', gap: 20, alignItems: 'stretch' }}>
 
               {/* Left — session type + meta + notes. NO container of its own:
                   the wells carve into the sheet directly. It used to be a
                   c-bg box sitting inside the sheet, which put a surface between
                   panel and control for no reason (§8: panel → control, nothing
                   between). */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                <div>
+              <div style={wide ? { display: 'contents' } : { display: 'flex', flexDirection: 'column', gap: 18 }}>
+                <div style={{ order: 1 }}>
                   <div style={{ ...metaLabel, marginBottom: 8 }}>Session Type</div>
                   {/* ONE housing (§8) — was three loose pills. */}
                   <div className="c-seg c-seg-wrap">
@@ -2918,8 +3125,16 @@ export function WorkOrderPopup({
                     and the panel's whole width spent on about five characters
                     each. They now share a line at their natural widths, and the
                     reclaimed height all goes to Booking Notes below. */}
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <div className="c-well" style={{ flex: '0 1 132px', minWidth: 118 }}>
+                {/* ONE ROW, THREE SAME-SIZE FIELDS, directly under the contact
+                    card (mock ruling 2026-08-18). PO gets 1.35 rather than a
+                    true third because it is the only one of the three carrying a
+                    second control — the Not req'd toggle — and starving that
+                    field to make the row arithmetically equal would cost the
+                    thing the row is for. */}
+                <div style={wide
+                  ? { order: 3, display: 'grid', gridTemplateColumns: '1fr 1.35fr 1fr', gap: 8, alignItems: 'center' }
+                  : { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div className="c-well" style={wide ? { minWidth: 0 } : { flex: '0 1 132px', minWidth: 118 }}>
                     <span className="c-pfx">Inv #</span>
                     <input
                       className="c-mono"
@@ -2932,7 +3147,7 @@ export function WorkOrderPopup({
                   {/* PO NUMBERS ARE LONG (Eli, 2026-08-13). A label's PO can run
                       well past ten characters, and this was sized off Inv #,
                       which never does. It gets the widest basis on the row. */}
-                  <div className="c-well" style={{ flex: '1 1 210px', minWidth: 160 }}>
+                  <div className="c-well" style={wide ? { minWidth: 0 } : { flex: '1 1 210px', minWidth: 160 }}>
                     <span className="c-pfx">PO #</span>
                     <input
                       className="c-mono"
@@ -2975,7 +3190,7 @@ export function WorkOrderPopup({
                       `food_budget` is still written, derived from the amount, so
                       nothing downstream changes. */}
                   {/* Same basis as Inv # (Eli, 2026-08-18 — cleaner line). */}
-                  <div className="c-well" style={{ flex: '0 1 132px', minWidth: 118 }}>
+                  <div className="c-well" style={wide ? { minWidth: 0 } : { flex: '0 1 132px', minWidth: 118 }}>
                     <span className="c-pfx">Food $</span>
                     <input
                       className="c-mono"
@@ -2994,10 +3209,19 @@ export function WorkOrderPopup({
                 </div>
 
                 {/* Booking notes — internal/ops notes about the booking; never printed */}
-                <div data-no-print="" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                {/* THE THREE NOTE BOXES MUST NOT READ AS ONE KIND (mock ruling).
+                    Booking notes and Needs attention are INTERNAL: orange tag,
+                    wash2 tint. Session notes is what the client's session was —
+                    it stays plain. On admin desktop the three are compact and
+                    ordered Booking → Session → Needs attention, and any of them
+                    may shrink as the column needs; on mobile this box keeps its
+                    full 190px, which is where it is actually typed into. */}
+                <div data-no-print="" style={wide
+                  ? { order: 4, display: 'flex', flexDirection: 'column', background: 'var(--c-wash2)', borderRadius: 12, padding: '9px 12px' }
+                  : { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
                   <div style={{ ...metaLabel, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                     Booking Notes
-                    <span style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--c-st-warm)', borderRadius: 3, padding: '1px 5px', textTransform: 'uppercase' }}>Internal only</span>
+                    <span style={wide ? internalTag : { fontSize: 8, fontFamily: 'Inter', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--c-st-warm)', borderRadius: 3, padding: '1px 5px', textTransform: 'uppercase' }}>Internal{wide ? '' : ' only'}</span>
                   </div>
                   {/* Absorbs everything the meta row gave back — the notes are the
                       only field here anyone writes a paragraph into, so they get
@@ -3008,25 +3232,166 @@ export function WorkOrderPopup({
                     disabled={readOnly}
                     onChange={e => { setDirtyFields(prev => new Set(prev).add('booking_notes')); setWo(w => w ? { ...w, booking_notes: e.target.value } : w) }}
                     placeholder="Ops notes about the booking — arrival, payment, past experience… never on the invoice."
-                    style={{ flex: 1, minHeight: 190 }}
+                    style={wide ? { minHeight: 62, background: 'transparent', boxShadow: 'none', padding: 0 } : { flex: 1, minHeight: 190 }}
                   />
                 </div>
               </div>
 
-              {/* Right — client panel */}
-              <ClientPanel value={clientValue} onChange={handleClientChange} readOnly={readOnly} />
+              {/* ★ THE LOCKED CONTACT CARD — the anchor of the words column.
+                  In `wide` it renders LABEL-as-hero for label clients (person
+                  for COD), the artist well sized to its content, and A&R beside
+                  Admin with ellipsizing emails and icon actions. Same component,
+                  same state, same saves — only its arrangement differs. */}
+              <div style={wide ? { order: 2, minWidth: 0, display: 'flex', flexDirection: 'column' } : { minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                <ClientPanel value={clientValue} onChange={handleClientChange} readOnly={readOnly} layout={wide ? 'wide' : 'stack'} />
+              </div>
             </div>
             )}
           </div>
 
-          {/* Everything below the top is session-only — hidden for block events.
-              (An empty spacer div lived here until 2026-08-18 — it ate a whole
-              24px flex-gap slot and was the mystery air above Studio Time.) */}
+          {/* Session notes → Needs attention, the bottom of the WORDS column
+              (mock ruling): Booking notes (internal) → Session notes (plain) →
+              Needs attention (internal), each smaller than the last. */}
           {!isBlock && (<>
+
+          {/* SESSION NOTES — the whole session, in the client's terms. Plain: no
+              orange tag, no wash2 tint. It is the one of the three notes boxes
+              that is NOT internal, and it has to look unlike the other two. */}
+          <div style={{ order: ORD.sessionNotes, display: 'flex', flexDirection: 'column', gap: 16, ...(isMobile ? mCard : {}) }}>
+            <div>
+              <SectionHeader carved title="Session Notes" />
+              <textarea value={wo.session_notes} onChange={e => { setDirtyFields(prev => new Set(prev).add('session_notes')); setWo(w => w ? { ...w, session_notes: e.target.value } : w) }}
+                style={{ width: '100%', minHeight: wide ? 58 : 90, background: 'var(--c-wash)', borderRadius: 5, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }} />
+            </div>
+            {wo.payment_status === 'COD' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-3)', lineHeight: 1.8, padding: '10px 12px', background: 'var(--c-wash)', borderRadius: 5 }}>
+                  By signing below, I acknowledge that I am authorized to approve charges for this session. I accept responsibility for all associated costs and understand that payment is due in full at the time of service unless otherwise agreed. I also acknowledge that Paramount Recording is not responsible for any media, personal items, or equipment left behind.
+                  <br /><br />
+                  <em>No Tapes, CDs, DVDs, Thumb Drives, Computer Drives or other Recording Media will be released until payment in full is received.</em>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
+                  <div style={metaLabel}>Date</div>
+                  <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)' }}>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
+                  <div style={metaLabel}>Print Name</div>
+                  <input value={wo.print_name} onChange={e => { setDirtyFields(prev => new Set(prev).add('print_name')); setWo(w => w ? { ...w, print_name: e.target.value } : w) }} className="c-tin" />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <div style={metaLabel}>Signature</div>
+                    {!readOnly && <button type="button" onClick={clearAdminSignature} style={{ background: 'none', borderRadius: 4, padding: '2px 8px', color: 'var(--c-fg-2)', fontSize: 10, cursor: 'pointer', fontFamily: 'Inter' }}>Clear</button>}
+                  </div>
+                  {!readOnly && (
+                  <canvas
+                    ref={adminCanvasRef}
+                    width={700}
+                    height={200}
+                    onMouseDown={startAdminDraw}
+                    onMouseMove={continueAdminDraw}
+                    onMouseUp={endAdminDraw}
+                    onMouseLeave={endAdminDraw}
+                    onTouchStart={startAdminDraw}
+                    onTouchMove={continueAdminDraw}
+                    onTouchEnd={endAdminDraw}
+                    style={{ width: '100%', height: 100, background: 'var(--c-bg)', borderRadius: 6, display: 'block', touchAction: 'none', cursor: 'crosshair' }}
+                  />
+                  )}
+                  {wo.signature_data && <div style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 4 }}>Signature captured ✓</div>}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* NEEDS ATTENTION — internal only, never printed.
+              ONE STRIP, PINNED TO THE COLUMN BOTTOM (mock ruling 2026-08-18).
+              It was a full section with a 80px textarea always standing open at
+              the very bottom of the work order — about a third of the words
+              column spent on a field that is empty on most sessions. It is now
+              `margin-top: auto` so it hugs the bottom of the column, collapsed
+              to a single labelled strip, and GROWS ONLY WHEN IT HAS CONTENT:
+              open the row (or have notes/photos already) and the full editable
+              textarea and photo tools are right there. Nothing was removed. */}
+          <div data-no-print="" style={wide
+            ? { order: ORD.needsAttention, marginTop: 'auto', background: 'var(--c-wash2)', borderRadius: 12, padding: '7px 12px' }
+            : { order: ORD.needsAttention, ...(isMobile ? mCardOrange : { paddingTop: 20 }) }}>
+            <div style={wide
+              ? { display: 'flex', alignItems: 'baseline', gap: 8 }
+              : { marginBottom: 8 }}>
+              <span style={wide
+                ? kLabel
+                : { fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 10, color: 'var(--c-st-warm)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                Needs Attention{wide ? '' : ' / Runner Notes'}
+              </span>
+              {wide && <span style={internalTag}>Internal</span>}
+              {wide && (
+                <button
+                  type="button"
+                  onClick={() => setNaOpen(o => !o)}
+                  className="c-x"
+                  style={{ marginLeft: 'auto', fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0, opacity: 1 }}
+                >
+                  {naHasContent || naOpen ? (naOpen ? 'Hide' : 'Show') : '+ Add'}
+                </button>
+              )}
+            </div>
+            {(!wide || naOpen || naHasContent) && (
+            <>
+            <textarea
+              value={wo.needs_attention_notes}
+              onChange={e => { setDirtyFields(prev => new Set(prev).add('needs_attention_notes')); setWo(w => w ? { ...w, needs_attention_notes: e.target.value } : w) }}
+              placeholder="Internal notes only — never appears on the PDF export…"
+              style={{ width: '100%', minHeight: wide ? 46 : 80, marginTop: wide ? 6 : 0, background: 'var(--c-wash)', borderRadius: 5, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }}
+            />
+            {wo.needs_attention_photos?.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                {wo.needs_attention_photos.map((url, i) => (
+                  <div key={i} style={{ position: 'relative' }}>
+                    <SignedImage path={url} link linkStyle={{ display: 'block', flexShrink: 0 }} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
+                    {!readOnly && (
+                      <button type="button" onClick={() => deleteNAPhoto(url)} aria-label="Remove photo" style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 99, background: 'var(--c-wash2)', color: 'var(--c-fg-2)', fontSize: 11, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Photo attach — ported from the runner page; writes immediately
+                (like the equipment note photos), not on Save. */}
+            {!readOnly && (
+              <>
+                <input data-no-print="" ref={naFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) uploadNAPhoto(f) }} />
+                <button
+                  type="button"
+                  disabled={naUploading}
+                  onClick={() => naFileRef.current?.click()}
+                  style={{ marginTop: 8, fontSize: 10, fontFamily: 'Inter', color: naUploading ? 'var(--c-fg-3)' : 'var(--c-fg-2)', background: 'none', cursor: naUploading ? 'not-allowed' : 'pointer', padding: 0 }}
+                >
+                  {naUploading ? 'Uploading…' : '+ Add photo'}
+                </button>
+              </>
+            )}
+            </>
+            )}
+          </div>
+
+          </>)}
+
+          </div>{/* ══ end WORDS column ══ */}
+
+          {/* ══ NUMBERS COLUMN ══════════════════════════════════════════════════
+              Studio-time bin → pinned itemized total → rentals bin → payments
+              and totals. The two bins scroll INDEPENDENTLY and each announces
+              itself; everything below them is pinned. */}
+          {!isBlock && (
+          <div style={wide
+            ? { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }
+            : { display: 'contents' }}>
 
           {/* SEED — bulk-append studio-time rows for a date range (WO-SPEC §6) */}
           {!readOnly && !runner && (
-            <div style={{ borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ order: ORD.seed, borderRadius: 12, overflow: 'hidden' }}>
               <button type="button" onClick={() => setSeedOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--c-wash)', cursor: 'pointer', color: 'var(--c-fg-2)' }}>
                 <span style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>+ Seed — add multiple days</span>
                 <span style={{ fontSize: 10 }}>{seedOpen ? '▲' : '▼'}</span>
@@ -3113,7 +3478,7 @@ export function WorkOrderPopup({
           )}
 
           {/* STUDIO TIME TABLE — unified per-row Day/Hr toggle */}
-          <div style={isMobile ? mCard : undefined}>
+          <div style={isMobile ? { order: ORD.studioTime, ...mCard } : { order: ORD.studioTime, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             {/* VIEW TOGGLE (Eli, 2026-08-15 — Finder-style, mock
                 docs/design-refs/runner-wo-views.html): list = the §16 day
                 blocks, cards = one day one card. Sits beside the section
@@ -3123,7 +3488,7 @@ export function WorkOrderPopup({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <SectionHeader
                   carved
-                  title="Studio Time"
+                  title={wide && dayCount > 0 ? `Studio Time · ${dayCount} day${dayCount === 1 ? '' : 's'}` : 'Studio Time'}
                   action={!readOnly && !runner && stView !== 'cards' && stRows.some(r => r.date && (r.studio || '').trim())
                     ? { label: batchOpen ? 'Close batch edit' : 'Batch edit', onClick: () => setBatchOpen(v => !v) }
                     : undefined}
@@ -3306,16 +3671,33 @@ export function WorkOrderPopup({
                 what clipped their right corners square (Eli's screenshot,
                 2026-08-16). The shared footer sits below both. */}
             {stView !== 'cards' ? (
-            <div style={{ overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
+            /* The relative wrapper is OUTSIDE the horizontal scroller on
+               purpose: the fade and the "↓ N more" pill must stay put over the
+               bin, not slide away when a wide table is scrolled sideways. */
+            <div style={{ position: 'relative' }}>
+            <div style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
               {/* Header: Studio | Date | Session Info | From | To | Hrs | Type | Rate | OT Hrs | OT Rate | OT Chg | Total | Lock | Del */}
-              <div style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px', paddingBottom: 5, minWidth: isMobile ? 880 : undefined }}>
+              {/* ST_MINW: the 14 columns add up to 848px at their minimums. The
+                  header and the row scroller both carry it so that when the
+                  numbers column is narrower than that, ONE horizontal scrollbar
+                  — the outer container's — moves the header and the rows
+                  together. Without it the inner scroller (overflow-y: auto
+                  computes overflow-x to auto) grows a second scrollbar and the
+                  header stops lining up with the cells under it. */}
+              <div style={{ display: 'grid', gridTemplateColumns: '58px 58px minmax(150px, 1fr) 66px 66px 38px 48px 68px 44px 62px 60px 74px 34px 22px', paddingBottom: 5, minWidth: isMobile ? 880 : (wide ? ST_MINW : undefined) }}>
                 {/* `right` marks the money columns — header and value share an
                     alignment, or the column reads as two ragged edges. */}
                 {([['Studio'], ['Date'], ['Session Info'], ['From'], ['To'], ['Hrs'], ['Type'],
                    ['Rate'], ['OT Hrs'], ['OT Rate'], ['OT Chg', 'right'], ['Total', 'right'], [''], ['']] as [string, string?][])
                   .map(([h, align], i) => <div key={i} style={align === 'right' ? thR : thS}>{h}</div>)}
               </div>
-              <div data-st-scroll="" style={{ maxHeight: 420, overflowY: 'auto', minWidth: isMobile ? 880 : undefined }}>
+              {/* BIN 1 — the days. Scrolls ALONE (mock ruling): it is capped so
+                  the rentals bin and the money below it stay on screen, and it
+                  gets its own <ScrollHints> so a day below the fold announces
+                  itself instead of hiding. Shorter cap on admin desktop because
+                  the column has three more things under it that must stay
+                  pinned; mobile keeps its original 420. */}
+              <div ref={stBinRef} data-st-scroll="" style={{ maxHeight: wide ? 322 : 420, overflowY: 'auto', minWidth: isMobile ? 880 : (wide ? ST_MINW : undefined) }}>
                 {stRows.map((r, rowIdx) => {
                   // ── DAY BLOCK (RULING 2026-08-13, spec §16) ──────────────
                   // A day and every staff line under it sit in ONE wash block,
@@ -3397,7 +3779,13 @@ export function WorkOrderPopup({
                             className="c-tin" style={{ padding: '2px 2px', fontSize: 10 }}
                           >
                             {!STUDIO_LOCATIONS.some(l => l.name === (r.location || booking.location)) && (
-                              <option value={`${r.location || booking.location || ''}|${toStudioLetter(r.studio)}`}>{toStudioLetter(r.studio) || '—'}</option>
+                              /* NEVER A BARE ROOM LETTER (ruling 2026-08-13,
+                                 restated in the WO-reorg mock): every venue has
+                                 a Studio A, so the fallback option names the
+                                 venue too — PRS B / ARS A / ERS B / TRS North —
+                                 via lib/studios' roomCode, the same map the PDF
+                                 prints from. */
+                              <option value={`${r.location || booking.location || ''}|${toStudioLetter(r.studio)}`}>{roomCode(toStudioLetter(r.studio), r.location || booking.location) || toStudioLetter(r.studio) || '—'}</option>
                             )}
                             {STUDIO_LOCATIONS.map(l => l.rooms.map(room => {
                               const letter = toStudioLetter(room)
@@ -3743,6 +4131,8 @@ export function WorkOrderPopup({
                 })}
               </div>
             </div>
+            {wide && <ScrollHints targetRef={stBinRef} unit="row" />}
+            </div>
             ) : (
               /* ── CARD VIEW — one day, one card (Eli, 2026-08-15; mock
                   docs/design-refs/runner-wo-views.html phone 2). A day, its
@@ -3751,7 +4141,11 @@ export function WorkOrderPopup({
                   sheet. All edits go through the sheet; the card itself only
                   cycles equipment pills. Locked days (admin_locked, runner
                   mode) render dimmed with no sheet. */
-              <div data-st-cards="">
+              /* BIN 1, cards flavour — same bin, same cap, same hints. The
+                 toggle changes what a day looks like, never where it lives or
+                 what scrolls. */
+              <div style={{ position: 'relative' }}>
+              <div ref={stBinRef} data-st-cards="" style={wide ? { maxHeight: 322, overflowY: 'auto', paddingRight: 4 } : undefined}>
                 {(() => {
                   const groups: { date: string; rows: StRow[] }[] = []
                   for (const r of stRows) {
@@ -3797,10 +4191,16 @@ export function WorkOrderPopup({
                             background: 'var(--c-wash)', borderRadius: 14, padding: '15px 16px', marginBottom: 9,
                             cursor: cardLocked || readOnly ? 'default' : 'pointer',
                             opacity: cardLocked ? 0.62 : 1,
-                            display: 'flex', gap: 22, alignItems: 'stretch',
+                            display: 'flex', gap: 14, alignItems: 'stretch',
                           }}
                         >
-                          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                          {/* Three regions, per the mock: the day on the left,
+                              its notes in the middle gap, the money on the
+                              right. The left is basis-sized rather than an equal
+                              flex share so the notes column gets the room — a
+                              time range and two staff lines have a known width;
+                              a note does not. */}
+                          <div style={{ flex: '0 1 235px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                               {studios.length > 0 && (
                                 <span className="c-arch" style={{ fontSize: 16, letterSpacing: '-0.01em', flexShrink: 0 }}>
@@ -3835,14 +4235,29 @@ export function WorkOrderPopup({
                             })}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 'auto', paddingTop: 12, flexWrap: 'wrap' }}>
                               <span style={{ display: 'inline-flex' }}>{renderEquipPills(g.date, cardLocked)}</span>
-                              <span style={{ fontSize: 11.5, fontFamily: 'Inter', fontStyle: 'italic', color: song ? 'var(--c-fg-2)' : 'var(--c-fg-3)' }}>
-                                {song || 'Song title —'}
-                              </span>
                             </div>
                             {renderEquipNoteBlock(g.date)}
                           </div>
 
-                          <div style={{ width: 200, flexShrink: 0, background: 'var(--c-wash2)', borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column' }}>
+                          {/* THE MIDDLE GAP IS WHERE THE DAY'S NOTES GO (mock
+                              ruling 2026-08-18). The song/session note used to
+                              trail the equipment pills as one more italic scrap
+                              on the bottom line, where a three-day card gave you
+                              no way to tell at a glance what happened on each
+                              day. It now has the card's middle column to itself.
+                              Read-only here on purpose — it is `session_info`,
+                              the SAME existing field, edited in the day sheet
+                              this card opens. No new field, no new write. */}
+                          <div style={{ flex: 1, minWidth: 0, borderLeft: '1px solid var(--c-wash2)', paddingLeft: 12 }}>
+                            <div style={{ ...kLabel, marginBottom: 3 }}>
+                              Song / session notes{g.date ? ` · ${shortDate(g.date)}` : ''}
+                            </div>
+                            <div style={{ fontSize: 11.5, fontFamily: 'Inter', lineHeight: 1.5, color: song ? 'var(--c-fg-2)' : 'var(--c-fg-3)', fontStyle: song ? 'normal' : 'italic' }}>
+                              {song || '—'}
+                            </div>
+                          </div>
+
+                          <div style={{ width: 158, flexShrink: 0, background: 'var(--c-wash2)', borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column' }}>
                             {!readOnly && (
                               <span style={{ alignSelf: 'flex-end', fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'var(--c-wash)', color: 'var(--c-fg-2)', borderRadius: 99, padding: '4px 11px' }}>
                                 {cardLocked ? '👁 View' : '✎ Edit'}
@@ -3940,7 +4355,59 @@ export function WorkOrderPopup({
                   })
                 })()}
               </div>
+              {wide && <ScrollHints targetRef={stBinRef} unit="day" />}
+              </div>
               )}
+              {/* ── PINNED STUDIO RUNNING TOTAL (mock ruling 2026-08-18) ──────
+                  "Not a whimpy one-liner." This was a small chip reading
+                  "Studio: $x / Eng: $y / Total: $z" tucked beside the add-row
+                  links. It is now the itemized panel the mock asks for: Studio,
+                  then a line per engineer/assistant, then the OT note, then the
+                  arch total — sitting directly under the bin in BOTH views and
+                  never scrolling with it.
+                  Every figure comes from studio_time_rows via lib/woTotals; the
+                  staff lines are that same per-row function regrouped by person,
+                  so they add up to Eng Total by construction and the card, the
+                  table and the PDF cannot disagree. */}
+              {wide ? (
+              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end', background: 'var(--c-wash)', borderRadius: 12, padding: '10px 14px', marginTop: 10 }}>
+                {!readOnly && !runner ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+                    <button type="button" onClick={addStRow} className="c-x" style={{ fontSize: 10, color: 'var(--c-fg-2)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Studio Time</button>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <button type="button" onClick={() => addEngRow('engineer')} className="c-x" style={{ fontSize: 10, color: 'var(--c-fg)', opacity: 0.4, background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Engineer</button>
+                      <button type="button" onClick={() => addEngRow('assistant')} className="c-x" style={{ fontSize: 10, color: 'var(--c-st-warm)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Assistant</button>
+                    </div>
+                  </div>
+                ) : <div />}
+                <div style={{ marginLeft: 'auto', textAlign: 'right', minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 20, fontSize: 11.5, padding: '1px 0' }}>
+                    <span style={{ color: 'var(--c-fg-2)' }}>Studio</span>
+                    <span className="c-tnum" style={{ color: 'var(--c-fg)' }}>${stTotal.toFixed(2)}</span>
+                  </div>
+                  {staffLines.map(s => (
+                    <div key={`${s.role}|${s.name}`} style={{ display: 'flex', justifyContent: 'flex-end', gap: 20, fontSize: 11.5, padding: '1px 0' }}>
+                      <span style={{ color: 'var(--c-fg-2)' }}>
+                        <b style={{ color: s.role === 'assistant' ? 'var(--c-st-warm)' : 'var(--c-fg)', fontSize: 9, letterSpacing: '0.04em' }}>{s.role === 'assistant' ? '2ND' : '1ST'}</b>
+                        {' · '}{s.name}
+                      </span>
+                      <span className="c-tnum" style={{ color: 'var(--c-fg)' }}>${s.total.toFixed(2)}</span>
+                    </div>
+                  ))}
+                  {otHoursAll > 0 && (
+                    <div style={{ fontSize: 11, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-st-warm)', marginTop: 2 }}>
+                      OT {otHoursAll}h{otChargeAll > 0 ? ` · $${otChargeAll.toFixed(2)}` : ''} included
+                    </div>
+                  )}
+                  <div style={{ ...kLabel, marginTop: 5 }}>
+                    Studio total{dayCount > 0 ? ` · ${dayCount} day${dayCount === 1 ? '' : 's'}` : ''}
+                  </div>
+                  <div className="c-arch" style={{ fontSize: 20, letterSpacing: '-0.02em', color: (stTotal + engTotal) > 0 ? 'var(--c-fg)' : 'var(--c-fg-3)' }}>
+                    ${(stTotal + engTotal).toFixed(2)}
+                  </div>
+                </div>
+              </div>
+              ) : (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: stView === 'cards' ? '5px 4px 0' : '9px 4px 0' }}>
                 {!readOnly && !runner && stView !== 'cards' ? (
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
@@ -3959,6 +4426,7 @@ export function WorkOrderPopup({
                   )}
                 </div>
               </div>
+              )}
           </div>
 
           {/* EQUIPMENT CONDITION MOVED INTO THE STUDIO DAY (RULING 2026-08-13,
@@ -3971,17 +4439,24 @@ export function WorkOrderPopup({
               It now renders as a third line inside each day block. Only the
               hidden file input for note photos stays here: it is shared by every
               day and must exist exactly once. */}
-          <input data-no-print="" ref={equipNoteFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+          <input data-no-print="" ref={equipNoteFileRef} type="file" accept="image/*" style={{ order: ORD.equipFile, display: 'none' }}
             onChange={e => { const f = e.target.files?.[0]; if (f) uploadEquipNotePhoto(f) }} />
 
-          {/* RENTALS */}
-          <div style={isMobile ? mCard : undefined}>
+          {/* RENTALS — the SECOND independent bin (mock ruling). It scrolls on
+              its own, so a 30-day session with two rentals wastes no height and
+              a two-day session with twenty rentals is not squeezed by the days
+              above it. Its own fade + "↓ N more" pill, on the same rule: shown
+              only while rows remain below. */}
+          <div style={isMobile ? { order: ORD.rentals, ...mCard } : { order: ORD.rentals, minWidth: 0 }}>
             <SectionHeader carved title="Rentals" />
-            <div style={{ overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
+            <div style={{ overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', position: 'relative' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', paddingBottom: 5, minWidth: isMobile ? 540 : undefined }}>
                 {([['Qty'], ['Item'], ['Supplier'], ["Date(s) Used"], ['Rate', 'right'], ['Charge', 'right'], ['']] as [string, string?][])
                   .map(([h, align], i) => <div key={i} style={align === 'right' ? thR : thS}>{h}</div>)}
               </div>
+              {/* BIN 2. Capped and scrolling on its own on admin desktop; on
+                  mobile the rows just run on as they always have. */}
+              <div ref={rentBinRef} style={wide ? { maxHeight: 150, overflowY: 'auto', paddingRight: 4 } : undefined}>
               {rentRows.map((r, idx) => (
                 <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', background: 'var(--c-wash)', borderRadius: 12, marginBottom: 6, minWidth: isMobile ? 540 : undefined }}>
                   <div style={cellIn}><input value={r.qty} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, qty: e.target.value } : x))} placeholder="—" className="c-tin c-tin-mono c-tin-show" /></div>
@@ -3995,6 +4470,8 @@ export function WorkOrderPopup({
                   </div>
                 </div>
               ))}
+              </div>
+              {wide && <ScrollHints targetRef={rentBinRef} unit="rental" />}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 4px 0', minWidth: isMobile ? 540 : undefined }}>
                 {!readOnly ? <button type="button" onClick={() => setRentRows(p => [...p, { id: crypto.randomUUID(), qty: '', item: '', supplier: '', dates_used: '', rate: '', charge: '' }])} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0 }}>+ Add row</button> : <span />}
                 <span className="c-tnum" style={{ color: 'var(--c-fg)', fontWeight: 700, background: 'var(--c-wash2)', borderRadius: 99, padding: '5px 12px' }}>Total: ${rentTotal.toFixed(2)}</span>
@@ -4002,61 +4479,18 @@ export function WorkOrderPopup({
             </div>
           </div>
 
-          <div style={{ display: isMobile ? 'none' : 'block' }} />
+          {/* Desktop spacer between rentals and the money block. In the two-column
+              layout the column's own gap does that job, so it collapses. */}
+          <div style={{ order: ORD.spacer, display: (isMobile || wide) ? 'none' : 'block' }} />
 
-          {/* BOTTOM TWO COLUMNS */}
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 20 : 28 }}>
-
-            {/* Left — Notes + Legal */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, ...(isMobile ? mCard : {}) }}>
-              <div>
-                <SectionHeader carved title="Session Notes" />
-                <textarea value={wo.session_notes} onChange={e => { setDirtyFields(prev => new Set(prev).add('session_notes')); setWo(w => w ? { ...w, session_notes: e.target.value } : w) }}
-                  style={{ width: '100%', minHeight: 90, background: 'var(--c-wash)', borderRadius: 5, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }} />
-              </div>
-              {wo.payment_status === 'COD' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-3)', lineHeight: 1.8, padding: '10px 12px', background: 'var(--c-wash)', borderRadius: 5 }}>
-                    By signing below, I acknowledge that I am authorized to approve charges for this session. I accept responsibility for all associated costs and understand that payment is due in full at the time of service unless otherwise agreed. I also acknowledge that Paramount Recording is not responsible for any media, personal items, or equipment left behind.
-                    <br /><br />
-                    <em>No Tapes, CDs, DVDs, Thumb Drives, Computer Drives or other Recording Media will be released until payment in full is received.</em>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
-                    <div style={metaLabel}>Date</div>
-                    <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)' }}>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
-                    <div style={metaLabel}>Print Name</div>
-                    <input value={wo.print_name} onChange={e => { setDirtyFields(prev => new Set(prev).add('print_name')); setWo(w => w ? { ...w, print_name: e.target.value } : w) }} className="c-tin" />
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <div style={metaLabel}>Signature</div>
-                      {!readOnly && <button type="button" onClick={clearAdminSignature} style={{ background: 'none', borderRadius: 4, padding: '2px 8px', color: 'var(--c-fg-2)', fontSize: 10, cursor: 'pointer', fontFamily: 'Inter' }}>Clear</button>}
-                    </div>
-                    {!readOnly && (
-                    <canvas
-                      ref={adminCanvasRef}
-                      width={700}
-                      height={200}
-                      onMouseDown={startAdminDraw}
-                      onMouseMove={continueAdminDraw}
-                      onMouseUp={endAdminDraw}
-                      onMouseLeave={endAdminDraw}
-                      onTouchStart={startAdminDraw}
-                      onTouchMove={continueAdminDraw}
-                      onTouchEnd={endAdminDraw}
-                      style={{ width: '100%', height: 100, background: 'var(--c-bg)', borderRadius: 6, display: 'block', touchAction: 'none', cursor: 'crosshair' }}
-                    />
-                    )}
-                    {wo.signature_data && <div style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 4 }}>Signature captured ✓</div>}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Right — Payments + Totals */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, ...(isMobile ? mCard : {}) }}>
+          {/* PAYMENTS + TOTALS — the foot of the NUMBERS column, PINNED.
+              The old "BOTTOM TWO COLUMNS" grid is gone. Its left half (Session
+              Notes + the COD legal/signature block) is words, not numbers, and
+              has moved into the words column; payments and totals belong here,
+              below the rentals bin, where they never scroll away — the two bins
+              above scroll, this does not. On mobile nothing moves: both halves
+              are still plain stacked cards in the same order (see ORD). */}
+          <div style={{ order: ORD.payments, display: 'flex', flexDirection: 'column', gap: 16, ...(isMobile ? mCard : {}) }}>
               <div>
                 <SectionHeader carved title="Payments" />
                 <div>
@@ -4102,48 +4536,6 @@ export function WorkOrderPopup({
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-
-          {/* NEEDS ATTENTION — internal only, never printed */}
-          <div data-no-print="" style={isMobile ? mCardOrange : { paddingTop: 20 }}>
-            <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 10, color: 'var(--c-st-warm)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
-              Needs Attention / Runner Notes
-            </div>
-            <textarea
-              value={wo.needs_attention_notes}
-              onChange={e => { setDirtyFields(prev => new Set(prev).add('needs_attention_notes')); setWo(w => w ? { ...w, needs_attention_notes: e.target.value } : w) }}
-              placeholder="Internal notes only — never appears on the PDF export…"
-              style={{ width: '100%', minHeight: 80, background: 'var(--c-wash)', borderRadius: 5, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }}
-            />
-            {wo.needs_attention_photos?.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-                {wo.needs_attention_photos.map((url, i) => (
-                  <div key={i} style={{ position: 'relative' }}>
-                    <SignedImage path={url} link linkStyle={{ display: 'block', flexShrink: 0 }} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
-                    {!readOnly && (
-                      <button type="button" onClick={() => deleteNAPhoto(url)} aria-label="Remove photo" style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 99, background: 'var(--c-wash2)', color: 'var(--c-fg-2)', fontSize: 11, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            {/* Photo attach — ported from the runner page; writes immediately
-                (like the equipment note photos), not on Save. */}
-            {!readOnly && (
-              <>
-                <input data-no-print="" ref={naFileRef} type="file" accept="image/*" style={{ display: 'none' }}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) uploadNAPhoto(f) }} />
-                <button
-                  type="button"
-                  disabled={naUploading}
-                  onClick={() => naFileRef.current?.click()}
-                  style={{ marginTop: 8, fontSize: 10, fontFamily: 'Inter', color: naUploading ? 'var(--c-fg-3)' : 'var(--c-fg-2)', background: 'none', cursor: naUploading ? 'not-allowed' : 'pointer', padding: 0 }}
-                >
-                  {naUploading ? 'Uploading…' : '+ Add photo'}
-                </button>
-              </>
-            )}
           </div>
 
           {/* COMPLETE WO — mobile secondary action (the footer is Cancel/Save only
@@ -4164,13 +4556,16 @@ export function WorkOrderPopup({
               onClick={() => (isCompleted ? handleClose() : handleComplete())}
               disabled={completing || saving || (isCompleted && !isDirty())}
               className={`c-control c-block ${isCompleted ? 'c-soft c-raised' : 'c-pill c-fill-booked c-raised-chip'}`}
-              style={{ minHeight: 48, justifyContent: 'center', cursor: (completing || (isCompleted && !isDirty())) ? 'default' : 'pointer', opacity: (completing || saving || (isCompleted && !isDirty())) ? 0.4 : 1 }}
+              style={{ order: ORD.mobileComplete, minHeight: 48, justifyContent: 'center', cursor: (completing || (isCompleted && !isDirty())) ? 'default' : 'pointer', opacity: (completing || saving || (isCompleted && !isDirty())) ? 0.4 : 1 }}
               title={isCompleted && !isDirty() ? 'Nothing has changed' : undefined}
             >
               {completing ? 'Completing…' : 'Complete WO'}
             </button>
           )}
-          </>)}
+          </div>
+          )}{/* ══ end NUMBERS column ══ */}
+
+          </div>{/* ══ end two-column layout ══ */}
 
         </div>{/* end body */}
 

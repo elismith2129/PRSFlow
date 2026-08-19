@@ -106,12 +106,29 @@ function ClientCardField({ label, value, fieldKey, onEdit }: {
 // ─── ClientPanel ──────────────────────────────────────────────────────────────
 
 export function ClientPanel({
-  value, onChange, readOnly = false,
+  value, onChange, readOnly = false, layout = 'stack',
 }: {
   value: ClientPanelValue
   onChange: (patch: Partial<ClientPanelValue>) => void
   readOnly?: boolean
+  /**
+   * 'stack' — the original: person-name hero, A&R above Admin, full-word
+   * Email/Call/Text links. Every existing surface gets this and is unchanged.
+   *
+   * 'wide' — ★ THE LOCKED CONTACT CARD of the admin-desktop work order
+   * (mock docs/design-refs/wo-compact-options.html, ruling 2026-08-18):
+   *   · the LABEL is the hero for label clients (the person for COD) — the WO
+   *     is billed to the label, so the label is the fact the card is about;
+   *   · the artist well is sized to its content, because an input's width is a
+   *     claim about how long its value is, and a runway pill lies;
+   *   · A&R and Admin sit SIDE BY SIDE with their full emails and phones, and
+   *     the card MUST NOT WRAP: emails ellipsize on their own line and the
+   *     Email/Call/Text actions collapse to icons beside the name.
+   * Layout only — same state, same searches, same writes.
+   */
+  layout?: 'stack' | 'wide'
 }) {
+  const wide = layout === 'wide'
   const set = <K extends keyof ClientPanelValue>(k: K, v: ClientPanelValue[K]) => onChange({ [k]: v })
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -319,7 +336,21 @@ export function ClientPanel({
 
   const nameColor = 'var(--c-fg)'
   const badgeLabel = isBilling ? 'LABEL/BILLING' : 'COD'
-  const displayName = isBilling ? (value.client_name || value.label) : value.client_name
+  // LABEL IS HERO in the wide card. In the stack card the hero has always been
+  // the person (A&R) with the label as a sub-line; on the work order the payer
+  // is the label, so the two swap. COD is unaffected — there is no label, the
+  // person IS the client either way.
+  const displayName = wide
+    ? (isBilling ? (value.label || value.client_name) : value.client_name)
+    : (isBilling ? (value.client_name || value.label) : value.client_name)
+  const subName = wide ? '' : value.label
+  // Icon actions for the wide card. Same hrefs, same guards — a third of the
+  // width. Kept as <a> so long-press / right-click still offer the address.
+  const iconAct = (color: string, active: boolean): React.CSSProperties => ({
+    padding: '1px 4px', borderRadius: 3, background: 'transparent', color,
+    fontSize: 11, lineHeight: 1.2, textDecoration: 'none',
+    opacity: active ? 1 : 0.25, cursor: active ? 'pointer' : 'default',
+  })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
@@ -412,9 +443,9 @@ export function ClientPanel({
           <div style={{ padding: '12px 14px 10px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 17, lineHeight: 1.2, color: nameColor, wordBreak: 'break-word' }}>{displayName}</div>
-                {value.label && value.label !== displayName && (
-                  <div style={{ fontSize: 12, fontFamily: 'Inter', color: nameColor, marginTop: 3, opacity: 0.75 }}>{value.label}</div>
+                <div style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: wide ? 15 : 17, lineHeight: 1.2, color: nameColor, wordBreak: 'break-word' }}>{displayName}</div>
+                {subName && subName !== displayName && (
+                  <div style={{ fontSize: 12, fontFamily: 'Inter', color: nameColor, marginTop: 3, opacity: 0.75 }}>{subName}</div>
                 )}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -431,15 +462,24 @@ export function ClientPanel({
             {isBilling ? (
               <>
                 {/* Artist */}
-                <div style={{ marginBottom: 8, position: 'relative' }}>
-                  <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>Artist</div>
+                {/* AN INPUT'S WIDTH IS A CLAIM ABOUT ITS CONTENT (mock ruling).
+                    Full-width here made a six-letter artist name sit at the left
+                    end of a runway. In the wide card the label goes inline and
+                    the well is sized from the value, with a floor so an empty
+                    one is still an obvious target. */}
+                <div style={wide
+                  ? { marginBottom: 9, position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }
+                  : { marginBottom: 8, position: 'relative' }}>
+                  <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: wide ? 0 : 2, flexShrink: 0 }}>Artist</div>
                   <input
                     value={value.artist} disabled={readOnly}
                     onChange={e => { set('artist', e.target.value); setShowArtistDD(true) }}
                     onFocus={() => setShowArtistDD(true)}
                     onBlur={() => setTimeout(() => setShowArtistDD(false), 150)}
                     placeholder="—"
-                    className="c-tin" style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13.5, padding: '2px 0', lineHeight: 1.5 }}
+                    className="c-tin" style={wide
+                      ? { width: `${Math.min(26, Math.max(7, (value.artist || '').length + 2))}ch`, maxWidth: '100%', background: 'var(--c-wash2)', borderRadius: 8, outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12, padding: '4px 9px', lineHeight: 1.4 }
+                      : { width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13.5, padding: '2px 0', lineHeight: 1.5 }}
                   />
                   {showArtistDD && !readOnly && (clientArtists.filter(a => !value.artist || a.toLowerCase().includes(value.artist.toLowerCase())).length > 0 || value.artist.trim().length >= 2) && (
                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--c-bg)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
@@ -459,22 +499,43 @@ export function ClientPanel({
                   )}
                 </div>
 
+                {/* A&R + ADMIN, SIDE BY SIDE in the wide card (mock ruling) —
+                    the two people on a label job are one comparison, not two
+                    stacked sections, and stacking them is what pushed the card
+                    past the height the words column can spend on it. */}
+                <div style={wide ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'start' } : undefined}>
                 {/* A&R */}
                 {(() => {
-                  const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0' }
+                  const cInpStyle: React.CSSProperties = wide
+                    ? { flex: 1, minWidth: 0, background: 'transparent', outline: 'none', color: 'var(--c-fg-2)', fontFamily: 'Inter', fontSize: 10, padding: '1px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
+                    : { flex: 1, background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0' }
                   const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, background: 'transparent', color, fontFamily: 'Inter', fontSize: 10, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' })
                   const anrPh = anrPhone.replace(/\D/g, '')
                   return (
-                    <div style={{ marginBottom: 10 }}>
+                    <div style={wide ? { minWidth: 0 } : { marginBottom: 10 }}>
                       <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>A&amp;R</div>
-                      <div style={{ position: 'relative' }}>
+                      <div style={wide ? { position: 'relative', display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 } : { position: 'relative' }}>
                         <input value={anrQuery} disabled={readOnly}
                           onChange={e => { setAnrQuery(e.target.value); set('ordered_by', e.target.value); set('anr_contact_id', null); setAnrContact(null); setShowAnrDD(true) }}
                           onFocus={() => setShowAnrDD(true)}
                           onBlur={() => { setTimeout(() => setShowAnrDD(false), 150); set('ordered_by', anrQuery) }}
                           placeholder="—"
-                          className="c-tin" style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13.5, padding: '2px 0', lineHeight: 1.5 }}
+                          className="c-tin" style={wide
+                            ? { minWidth: 0, flex: 1, background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12, fontWeight: 600, padding: '2px 0', lineHeight: 1.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
+                            : { width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13.5, padding: '2px 0', lineHeight: 1.5 }}
                         />
+                        {/* Icon actions beside the NAME (mock ruling) — the
+                            full words "Email · Call · Text" cannot ride beside a
+                            field in a half-width column without wrapping the
+                            card, and the card must never wrap. Same three links,
+                            same guards, same hrefs. */}
+                        {wide && (
+                          <span style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 1, whiteSpace: 'nowrap' }}>
+                            <a href={anrEmail ? `mailto:${anrEmail}` : undefined} onClick={!anrEmail ? e => e.preventDefault() : undefined} title={anrEmail || 'No email'} aria-label="Email" style={iconAct('var(--c-st-booked)', !!anrEmail)}>✉</a>
+                            <a href={anrPh ? `tel:${anrPh}` : undefined} onClick={!anrPh ? e => e.preventDefault() : undefined} title={anrPhone || 'No phone'} aria-label="Call" style={iconAct('var(--c-st-booked)', !!anrPh)}>☎</a>
+                            <a href={anrPh ? `sms:${anrPh}` : undefined} onClick={!anrPh ? e => e.preventDefault() : undefined} title={anrPhone || 'No phone'} aria-label="Text" style={iconAct('var(--c-st-warm)', !!anrPh)}>💬</a>
+                          </span>
+                        )}
                         {showAnrDD && !readOnly && (labelContacts.filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase())).length > 0 || anrQuery.trim().length >= 2) && (
                           <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--c-bg)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
                             {labelContacts.filter(c => !anrQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(anrQuery.toLowerCase())).map((c, i) => {
@@ -500,12 +561,12 @@ export function ClientPanel({
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
                         <input value={anrEmail} disabled={readOnly} onChange={e => setAnrEmail(e.target.value)} onBlur={() => { set('email', anrEmail); if (anrContact?.id && anrEmail !== (anrContact.email || '')) { const cid = anrContact.id; setContactUpdatePrompt({ contactId: cid, column: 'email', value: anrEmail, onUpdate: () => { setAnrContact(p => p ? { ...p, email: anrEmail } : p); setLabelContacts(p => p.map(c => c.id === cid ? { ...c, email: anrEmail } : c)) } }) } }} placeholder="Email" className="c-tin" style={cInpStyle} />
-                        <a href={anrEmail ? `mailto:${anrEmail}` : undefined} onClick={!anrEmail ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-booked)', !!anrEmail)}>Email</a>
+                        {!wide && <a href={anrEmail ? `mailto:${anrEmail}` : undefined} onClick={!anrEmail ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-booked)', !!anrEmail)}>Email</a>}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
                         <input value={anrPhone} disabled={readOnly} onChange={e => setAnrPhone(e.target.value)} onBlur={() => { set('phone', anrPhone); if (anrContact?.id && anrPhone !== (anrContact.phone || '')) { const cid = anrContact.id; setContactUpdatePrompt({ contactId: cid, column: 'phone', value: anrPhone, onUpdate: () => { setAnrContact(p => p ? { ...p, phone: anrPhone } : p); setLabelContacts(p => p.map(c => c.id === cid ? { ...c, phone: anrPhone } : c)) } }) } }} placeholder="Phone" className="c-tin" style={cInpStyle} />
-                        <a href={anrPh ? `tel:${anrPh}` : undefined} onClick={!anrPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-booked)', !!anrPh)}>Call</a>
-                        <a href={anrPh ? `sms:${anrPh}` : undefined} onClick={!anrPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-warm)', !!anrPh)}>Text</a>
+                        {!wide && <a href={anrPh ? `tel:${anrPh}` : undefined} onClick={!anrPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-booked)', !!anrPh)}>Call</a>}
+                        {!wide && <a href={anrPh ? `sms:${anrPh}` : undefined} onClick={!anrPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-warm)', !!anrPh)}>Text</a>}
                       </div>
                     </div>
                   )
@@ -513,20 +574,31 @@ export function ClientPanel({
 
                 {/* Admin */}
                 {(() => {
-                  const cInpStyle: React.CSSProperties = { flex: 1, background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0' }
+                  const cInpStyle: React.CSSProperties = wide
+                    ? { flex: 1, minWidth: 0, background: 'transparent', outline: 'none', color: 'var(--c-fg-2)', fontFamily: 'Inter', fontSize: 10, padding: '1px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
+                    : { flex: 1, background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12, padding: '2px 0' }
                   const aBtnStyle = (color: string, active: boolean): React.CSSProperties => ({ padding: '2px 7px', borderRadius: 3, background: 'transparent', color, fontFamily: 'Inter', fontSize: 10, textDecoration: 'none', opacity: active ? 1 : 0.3, cursor: active ? 'pointer' : 'default', whiteSpace: 'nowrap' })
                   const adminPh = adminPhone.replace(/\D/g, '')
                   return (
-                    <div style={{ marginBottom: 8 }}>
+                    <div style={wide ? { minWidth: 0 } : { marginBottom: 8 }}>
                       <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>Admin</div>
-                      <div style={{ position: 'relative' }}>
+                      <div style={wide ? { position: 'relative', display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 } : { position: 'relative' }}>
                         <input value={adminQuery} disabled={readOnly}
                           onChange={e => { setAdminQuery(e.target.value); set('anr_admin_contact_id', null); setAdminContact(null); setShowAdminDD(true) }}
                           onFocus={() => setShowAdminDD(true)}
                           onBlur={() => setTimeout(() => setShowAdminDD(false), 150)}
                           placeholder="—"
-                          className="c-tin" style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13.5, padding: '2px 0', lineHeight: 1.5 }}
+                          className="c-tin" style={wide
+                            ? { minWidth: 0, flex: 1, background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12, fontWeight: 600, padding: '2px 0', lineHeight: 1.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
+                            : { width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13.5, padding: '2px 0', lineHeight: 1.5 }}
                         />
+                        {wide && (
+                          <span style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 1, whiteSpace: 'nowrap' }}>
+                            <a href={adminEmail ? `mailto:${adminEmail}` : undefined} onClick={!adminEmail ? e => e.preventDefault() : undefined} title={adminEmail || 'No email'} aria-label="Email" style={iconAct('var(--c-st-booked)', !!adminEmail)}>✉</a>
+                            <a href={adminPh ? `tel:${adminPh}` : undefined} onClick={!adminPh ? e => e.preventDefault() : undefined} title={adminPhone || 'No phone'} aria-label="Call" style={iconAct('var(--c-st-booked)', !!adminPh)}>☎</a>
+                            <a href={adminPh ? `sms:${adminPh}` : undefined} onClick={!adminPh ? e => e.preventDefault() : undefined} title={adminPhone || 'No phone'} aria-label="Text" style={iconAct('var(--c-st-warm)', !!adminPh)}>💬</a>
+                          </span>
+                        )}
                         {showAdminDD && !readOnly && (labelAdminContacts.filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase())).length > 0 || adminQuery.trim().length >= 2) && (
                           <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--c-bg)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
                             {labelAdminContacts.filter(c => !adminQuery || `${c.fname || ''} ${c.lname || ''}`.toLowerCase().includes(adminQuery.toLowerCase())).map((c, i) => {
@@ -552,16 +624,17 @@ export function ClientPanel({
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
                         <input value={adminEmail} disabled={readOnly} onChange={e => setAdminEmail(e.target.value)} onBlur={() => { if (adminContact?.id && adminEmail !== (adminContact.email || '')) { const cid = adminContact.id; setContactUpdatePrompt({ contactId: cid, column: 'email', value: adminEmail, onUpdate: () => { setAdminContact(p => p ? { ...p, email: adminEmail } : p); setLabelAdminContacts(p => p.map(c => c.id === cid ? { ...c, email: adminEmail } : c)) } }) } }} placeholder="Email" className="c-tin" style={cInpStyle} />
-                        <a href={adminEmail ? `mailto:${adminEmail}` : undefined} onClick={!adminEmail ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-booked)', !!adminEmail)}>Email</a>
+                        {!wide && <a href={adminEmail ? `mailto:${adminEmail}` : undefined} onClick={!adminEmail ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-booked)', !!adminEmail)}>Email</a>}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
                         <input value={adminPhone} disabled={readOnly} onChange={e => setAdminPhone(e.target.value)} onBlur={() => { if (adminContact?.id && adminPhone !== (adminContact.phone || '')) { const cid = adminContact.id; setContactUpdatePrompt({ contactId: cid, column: 'phone', value: adminPhone, onUpdate: () => { setAdminContact(p => p ? { ...p, phone: adminPhone } : p); setLabelAdminContacts(p => p.map(c => c.id === cid ? { ...c, phone: adminPhone } : c)) } }) } }} placeholder="Phone" className="c-tin" style={cInpStyle} />
-                        <a href={adminPh ? `tel:${adminPh}` : undefined} onClick={!adminPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-booked)', !!adminPh)}>Call</a>
-                        <a href={adminPh ? `sms:${adminPh}` : undefined} onClick={!adminPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-warm)', !!adminPh)}>Text</a>
+                        {!wide && <a href={adminPh ? `tel:${adminPh}` : undefined} onClick={!adminPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-booked)', !!adminPh)}>Call</a>}
+                        {!wide && <a href={adminPh ? `sms:${adminPh}` : undefined} onClick={!adminPh ? e => e.preventDefault() : undefined} style={aBtnStyle('var(--c-st-warm)', !!adminPh)}>Text</a>}
                       </div>
                     </div>
                   )
                 })()}
+                </div>{/* end A&R | Admin pair */}
 
                 {/* Contact update prompt */}
                 {contactUpdatePrompt && (
