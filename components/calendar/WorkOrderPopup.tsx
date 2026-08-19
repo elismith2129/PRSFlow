@@ -2635,7 +2635,9 @@ export function WorkOrderPopup({
           // 52px from the top, so 100dvh would overflow the viewport by exactly
           // the height of the Nav and push the footer buttons off-screen.
           ? { display: 'flex', flexDirection: 'column', height: '100%', padding: 0, boxSizing: 'border-box' }
-          : { display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '100%', padding: '20px 16px', boxSizing: 'border-box' }}
+          // wide: 8px top, not 20 — with the title band gone the sheet should
+          // start just under the Nav (Eli: "i need that realestate").
+          : { display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '100%', padding: wide ? '8px 16px 16px' : '20px 16px', boxSizing: 'border-box' }}
         onClick={inline || isMobile ? undefined : e => { if (e.target === e.currentTarget) { readOnly ? onClose() : handleCloseButton() } }}
       >
       <div
@@ -2649,12 +2651,19 @@ export function WorkOrderPopup({
           // still leaves margin on a 1440 display. Blocks keep 920 — they have
           // one column of content and would just be a wide empty sheet.
           : { width: '100%', maxWidth: wide ? 1320 : 920, minWidth: 780, marginBottom: 20, alignSelf: 'flex-start',
-              display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 92px)' }}
+              display: 'flex', flexDirection: 'column', maxHeight: wide ? 'calc(100vh - 68px)' : 'calc(100vh - 92px)' }}
         className="c-sheet"
         onClick={e => e.stopPropagation()}
       >
 
         {/* ── HEADER ────────────────────────────────────────────────────────── */}
+        {/* NO TITLE BAND ON THE WIDE ADMIN LAYOUT (Eli, 2026-08-18: "def too
+            much padding at the top… starts 2 inches from top of the page. i
+            need that realestate"). The letterhead IS the header — a band
+            reading "Work Order · WO-x" above a letterhead reading WO-x said
+            everything twice and spent a row doing it. Blocks keep the band
+            (they have no letterhead); read-only wide is fine too — the action
+            bar below carries its Close and Download PDF. */}
         {isMobile ? (
           /* Mobile: matches the Runner Hub WO header (back arrow + title + sub) */
           <div style={{ background: 'var(--c-bg)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10, flexShrink: 0 }}>
@@ -2668,7 +2677,7 @@ export function WorkOrderPopup({
               </div>
             </div>
           </div>
-        ) : (
+        ) : wide ? null : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 22px 12px', position: 'sticky', top: 0, background: 'var(--c-bg)', zIndex: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span className="c-arch" style={{ fontSize: 15 }}>
@@ -2802,7 +2811,7 @@ export function WorkOrderPopup({
             `env(safe-area-inset-bottom)` to clear the iPhone home indicator,
             which at the top of the sheet just added dead space. Sticky, so the
             actions stay reachable while the work order scrolls under them. */}
-        <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 8 : 10, padding: isMobile ? '4px 16px 12px' : '0 22px 12px', flexShrink: 0, background: 'var(--c-bg)', zIndex: 9 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'stretch' : 'flex-end', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 8 : 10, padding: isMobile ? '4px 16px 12px' : wide ? '12px 22px 10px' : '0 22px 12px', flexShrink: 0, background: 'var(--c-bg)', zIndex: 9, ...(wide ? { position: 'sticky', top: 0 } : {}) }}>
           {/* Document + destructive actions live HERE, not in the title bar.
               Nothing to export for a block — no WO body, so the PDF would be a
               header over an empty page. */}
@@ -2851,7 +2860,11 @@ export function WorkOrderPopup({
           )}
           {!readOnly && (
           <>
-          <button onClick={() => handleCancel()} disabled={saving} className="c-soft c-control c-raised" style={{ cursor: saving ? 'default' : 'pointer', ...(isMobile ? { flex: '1 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
+          {/* DOUBLED + FLAT ON DESKTOP (Eli, 2026-08-18: "doubel the size of
+              the close/save pills… none of the old carved or raised buttons").
+              Mobile keeps the raised classes and its own sizing untouched —
+              the className fork below is what protects it. */}
+          <button onClick={() => handleCancel()} disabled={saving} className={isMobile ? 'c-soft c-control c-raised' : 'c-soft c-control'} style={{ cursor: saving ? 'default' : 'pointer', ...(isMobile ? { flex: '1 1 0', minHeight: 48, fontSize: 12 } : { fontSize: 12, padding: '12px 26px', borderRadius: 99, boxShadow: '1.5px 1.5px 4px rgba(0,0,0,.25)' }) }}>
             Cancel
           </button>
           {/* Blocks (Tour / Tech / Open Hours) have no work order to complete —
@@ -2874,8 +2887,8 @@ export function WorkOrderPopup({
             // afterwards made it a step rather than a decision.
             onClick={() => (isCompleted ? handleClose() : handleComplete())}
             disabled={completing || saving || (isCompleted && !isDirty())}
-            className={`c-control ${isCompleted ? 'c-soft c-raised' : 'c-pill c-fill-booked c-raised-chip'}`}
-            style={{ padding: '8px 18px', cursor: (completing || (isCompleted && !isDirty())) ? 'default' : 'pointer', opacity: (completing || saving || (isCompleted && !isDirty())) ? 0.4 : 1, ...(isMobile ? { display: 'none' } : {}) }}
+            className={`c-control ${isCompleted ? 'c-soft' : 'c-pill c-fill-booked'}`}
+            style={{ padding: '12px 26px', fontSize: 12, cursor: (completing || (isCompleted && !isDirty())) ? 'default' : 'pointer', opacity: (completing || saving || (isCompleted && !isDirty())) ? 0.4 : 1, boxShadow: '1.5px 1.5px 4px rgba(0,0,0,.25)', ...(isMobile ? { display: 'none' } : {}) }}
             title={isCompleted && !isDirty() ? 'Nothing has changed' : undefined}
           >
             {completing ? 'Completing…' : 'Complete WO'}
@@ -2888,7 +2901,7 @@ export function WorkOrderPopup({
               calls handleClose() directly: saves and closes, no dialog. The
               confirm dialog survives ONLY on the backdrop-click path
               (handleCloseButton), where intent genuinely is ambiguous. */}
-          <button onClick={() => handleClose()} disabled={saving} className="c-btn c-control c-raised-primary" style={{ cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '2 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
+          <button onClick={() => handleClose()} disabled={saving} className={isMobile ? 'c-btn c-control c-raised-primary' : 'c-btn c-control'} style={{ cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, ...(isMobile ? { flex: '2 1 0', minHeight: 48, fontSize: 12 } : { fontSize: 12, padding: '12px 32px', boxShadow: '1.5px 1.5px 4px rgba(0,0,0,.3)' }) }}>
             {saving ? 'Saving…' : 'Save'}
           </button>
           </>
@@ -2921,7 +2934,9 @@ export function WorkOrderPopup({
         {/* ── SCROLLABLE BODY ──────────────────────────────────────────────── */}
         <div style={isMobile
           ? { padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 20, flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }
-          : { padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 24, flex: 1, minHeight: 0, overflowY: 'auto' }}>
+          // wide: mock density — the popup itself should barely scroll; the
+          // bins do the scrolling (Eli, 2026-08-18: "so much scrolling now").
+          : { padding: wide ? '10px 22px 18px' : '24px 28px', display: 'flex', flexDirection: 'column', gap: wide ? 14 : 24, flex: 1, minHeight: 0, overflowY: 'auto' }}>
 
           {/* SESSION INFO — mobile only, read-only (mirrors the Runner WO card).
               The editable booking-form fields live in the META section below,
@@ -2988,12 +3003,12 @@ export function WorkOrderPopup({
               in its original sequence (that is what the ORD numbers guarantee).
               Nothing about the mobile render changes. */}
           <div style={wide
-            ? { display: 'grid', gridTemplateColumns: '0.72fr 1.28fr', gap: 16, alignItems: 'stretch', minHeight: 0 }
+            ? { display: 'grid', gridTemplateColumns: '0.72fr 1.28fr', gap: 13, alignItems: 'stretch', minHeight: 0 }
             : { display: 'contents' }}>
 
           {/* ══ WORDS COLUMN ══════════════════════════════════════════════════ */}
           <div style={wide
-            ? { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }
+            ? { display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }
             : { display: 'contents' }}>
 
           {/* LETTERHEAD — OPEN SPACE, TOP-LEFT (ruling 2026-08-18). Was a centred
@@ -3006,7 +3021,7 @@ export function WorkOrderPopup({
               visible, and editable in the Invoice/PO/Food row below. */}
           <div style={{ order: ORD.letterhead, textAlign: wide ? 'left' : 'center', paddingBottom: wide ? 2 : 20, display: (isMobile || isBlock) ? 'none' : 'block' }}>
             {wide ? (
-              <div style={{ padding: '6px 4px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}>
+              <div style={{ padding: '2px 4px 6px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}>
                 <div style={{ minWidth: 0 }}>
                   <div className="c-arch" style={{ fontSize: 17, letterSpacing: '-0.02em' }}>Paramount Recording</div>
                   <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-2)', marginTop: 7, lineHeight: 1.7 }}>
@@ -3075,7 +3090,10 @@ export function WorkOrderPopup({
                 The ordering below is what does it: on `wide` the whole session
                 top collapses to one flex column and these two take orders 3 and
                 4, between the client card (2) and the Invoice row (5). */}
-            <div className="c-seg c-seg-wrap" style={{ order: wide ? 3 : undefined, alignSelf: 'flex-start', maxWidth: '100%' }}>
+            {/* c-seg-tiny on wide (Eli, 2026-08-18: "sesstoin status is two
+                rows") — six pills at the tiny size fit the words column on one
+                line. Non-wide keeps the full-size seg. */}
+            <div className={wide ? 'c-seg c-seg-wrap c-seg-tiny' : 'c-seg c-seg-wrap'} style={{ order: wide ? 3 : undefined, alignSelf: 'flex-start', maxWidth: '100%' }}>
               {SESSION_STATUSES.map(([val, lbl]) => {
                 const on = wo.session_status === val
                 return (
@@ -3149,8 +3167,9 @@ export function WorkOrderPopup({
               <div style={wide ? { display: 'contents' } : { display: 'flex', flexDirection: 'column', gap: 18 }}>
                 <div style={{ order: 4 }}>
                   <div style={{ ...metaLabel, marginBottom: 8 }}>Session Type</div>
-                  {/* ONE housing (§8) — was three loose pills. */}
-                  <div className="c-seg c-seg-wrap">
+                  {/* ONE housing (§8) — was three loose pills. Tiny on wide,
+                      same reason as the status seg above. */}
+                  <div className={wide ? 'c-seg c-seg-wrap c-seg-tiny' : 'c-seg c-seg-wrap'}>
                     {SESSION_TYPES.map(([val, lbl]) => (
                       <button key={val} type="button" disabled={readOnly}
                         className={wo.session_type === val ? 'c-on' : ''}
@@ -3442,7 +3461,7 @@ export function WorkOrderPopup({
               itself; everything below them is pinned. */}
           {!isBlock && (
           <div style={wide
-            ? { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }
+            ? { display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }
             : { display: 'contents' }}>
 
           {/* SEED — bulk-append studio-time rows for a date range (WO-SPEC §6) */}
@@ -4445,7 +4464,7 @@ export function WorkOrderPopup({
                   so they add up to Eng Total by construction and the card, the
                   table and the PDF cannot disagree. */}
               {wide ? (
-              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end', background: 'var(--c-wash)', borderRadius: 12, padding: '10px 14px', marginTop: 10 }}>
+              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end', background: 'var(--c-wash)', borderRadius: 12, padding: '7px 12px', marginTop: 6 }}>
                 {!readOnly && !runner ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
                     <button type="button" onClick={addStRow} className="c-x" style={{ fontSize: 10, color: 'var(--c-fg-2)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Studio Time</button>

@@ -362,19 +362,22 @@ export function ClientPanel({
             control rather than joining the housing beside it, because a housing
             means "pick one of these" and SRS is orthogonal to COD/Billing.
             Two controls side by side is fine; §8 bars raised INSIDE raised. */}
-        <div className="c-seg">
+        {/* Tiny on the wide (admin WO) layout — Eli, 2026-08-18: "i put those
+            back just dont like how it is so big." Stack layout keeps the
+            full-size segs. */}
+        <div className={wide ? 'c-seg c-seg-tiny' : 'c-seg'}>
           <button
             type="button"
             disabled={readOnly}
             className={value.is_srs ? 'c-on c-fill-hot' : ''}
             onClick={() => { if (readOnly) return; if (!value.is_srs) setShowSrsModal(true); else set('is_srs', false) }}
-            style={{ padding: '6px 18px', cursor: readOnly ? 'default' : 'pointer' }}
+            style={{ padding: wide ? '4px 14px' : '6px 18px', cursor: readOnly ? 'default' : 'pointer' }}
           >SRS</button>
         </div>
 
         {/* ONE housing (§8) — was a flat box holding two flat buttons, which read
             as neither a control nor a container. Selected segment presses in. */}
-        <div className="c-seg">
+        <div className={wide ? 'c-seg c-seg-tiny' : 'c-seg'}>
           {(['COD', 'billing'] as const).map(m => (
             <button
               key={m}
@@ -382,7 +385,7 @@ export function ClientPanel({
               disabled={readOnly}
               className={value.payment_type === m ? 'c-on' : ''}
               onClick={() => { if (readOnly) return; if (m !== value.payment_type) clearClient(); set('payment_type', m) }}
-              style={{ padding: '6px 22px', cursor: readOnly ? 'default' : 'pointer' }}
+              style={{ padding: wide ? '4px 16px' : '6px 22px', cursor: readOnly ? 'default' : 'pointer' }}
             >{m === 'COD' ? 'COD' : 'Label/Billing'}</button>
           ))}
         </div>
