@@ -2616,7 +2616,13 @@ export function WorkOrderPopup({
         // button inside it, not the bar).
         // Runner routes have no Nav, so runner mode starts at top: 0.
         ? { position: 'fixed', top: runner ? 0 : 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'var(--c-bg)' }
-        : { position: 'fixed', top: 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.55)', overflowY: 'auto' }}
+        // DESKTOP: left: 176 clears the RAIL, not a top nav (fix 2026-08-18 —
+        // Eli: "youll see the see-through issue"). The rail is 176px, sticky,
+        // z 99999 and deliberately ABOVE modals; at maxWidth 1320 the sheet
+        // reached under it and the rail's text painted through. top: 52 was
+        // the OLD top-nav offset — the rail layout has no top bar, so it just
+        // showed a strip of page above the sheet.
+        : { position: 'fixed', top: 0, left: 176, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.55)', overflowY: 'auto' }}
       onClick={inline || isMobile ? undefined : e => { if (e.target === e.currentTarget) handleCloseButton() }}
     >
       {isMobile && (
@@ -2651,7 +2657,7 @@ export function WorkOrderPopup({
           // still leaves margin on a 1440 display. Blocks keep 920 — they have
           // one column of content and would just be a wide empty sheet.
           : { width: '100%', maxWidth: wide ? 1320 : 920, minWidth: 780, marginBottom: 20, alignSelf: 'flex-start',
-              display: 'flex', flexDirection: 'column', maxHeight: wide ? 'calc(100vh - 68px)' : 'calc(100vh - 92px)' }}
+              display: 'flex', flexDirection: 'column', maxHeight: wide ? 'calc(100vh - 26px)' : 'calc(100vh - 42px)' }}
         className="c-sheet"
         onClick={e => e.stopPropagation()}
       >
@@ -3048,7 +3054,11 @@ export function WorkOrderPopup({
                         onClick={() => (isCompleted ? handleClose() : handleComplete())}
                         disabled={completing || saving || (isCompleted && !isDirty())}
                         className={`c-pill c-control ${isCompleted ? 'c-fill-booked' : ''}`}
-                        style={{ cursor: (completing || (isCompleted && !isDirty())) ? 'default' : 'pointer', opacity: (completing || saving || (isCompleted && !isDirty())) ? 0.4 : 1 }}
+                        // c-pill has no background of its own — the fill classes
+                        // supply it — so the un-completed state painted black on
+                        // black (Eli, 2026-08-18: "complete is black and cant
+                        // see"). Wash2 + fg, same recipe as the mock's pill.
+                        style={{ cursor: (completing || (isCompleted && !isDirty())) ? 'default' : 'pointer', opacity: (completing || saving || (isCompleted && !isDirty())) ? 0.4 : 1, ...(isCompleted ? {} : { background: 'var(--c-wash2)', color: 'var(--c-fg)' }) }}
                         title={isCompleted && !isDirty() ? 'Nothing has changed' : 'Complete this work order'}
                       >
                         {completing ? 'Completing…' : '✓ Complete'}
@@ -4279,7 +4289,13 @@ export function WorkOrderPopup({
                               flex share so the notes column gets the room — a
                               time range and two staff lines have a known width;
                               a note does not. */}
-                          <div style={{ flex: '0 1 235px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                          {/* 340 FIXED, not 235 shrinkable (Eli, 2026-08-18:
+                              "move the line… over so that the info on the left
+                              isnt crampeed. we dont need that much space for
+                              seession info"). At 235 with shrink the equipment
+                              pills wrapped and the staff line squeezed; the
+                              notes column was hogging width it rarely uses. */}
+                          <div style={{ flex: '0 0 340px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                               {studios.length > 0 && (
                                 <span className="c-arch" style={{ fontSize: 16, letterSpacing: '-0.01em', flexShrink: 0 }}>
