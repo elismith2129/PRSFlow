@@ -22,6 +22,7 @@
 //
 // Ten-foot minimums (§13): artist ≥15px equivalent, mono ≥12px, COD strip
 // full-width and unmissable. Dark register only — the wall runs dark.
+import { createHash } from 'crypto'
 import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { timeToMins } from '@/lib/time'
@@ -202,9 +203,35 @@ function spanBar(b: B, day: string): string {
     + `${esc(lead + name + tail)}</div>`
 }
 
-function page(title: string, body: string): string {
+/** Change detection. The wall must update within seconds of a booking edit,
+ *  and Chromium 30 has no fetch, no Promise and no supabase-js — but it does
+ *  have XMLHttpRequest (and has since 2006). So: this page embeds a hash of
+ *  exactly what it rendered, and a ten-line ES3 loop asks the same route for
+ *  the current hash every POLL_MS. Different hash -> location.reload().
+ *
+ *  Hashing the rendered rows rather than trusting bookings.updated_at is
+ *  deliberate: a timestamp column only works if every write path maintains it,
+ *  and the WO save goes through atomic RPCs. A hash of the payload cannot be
+ *  wrong — if anything on screen would differ, the hash differs.
+ *
+ *  The meta refresh stays as a backstop at 15 minutes. If the script ever dies
+ *  the wall still heals itself; it just does so slowly. */
+const POLL_MS = 5000
+
+function poller(hash: string, probeUrl: string): string {
+  return `<script>(function(){`
+    + `var v=${JSON.stringify(hash)},u=${JSON.stringify(probeUrl)};`
+    + `function c(){try{var x=new XMLHttpRequest();`
+    + `x.open("GET",u+"&t="+(new Date()).getTime(),true);`
+    + `x.onreadystatechange=function(){if(x.readyState===4&&x.status===200){`
+    + `if(x.responseText&&x.responseText!==v){location.reload();}}};`
+    + `x.send();}catch(e){}}`
+    + `setInterval(c,${POLL_MS});})();</script>`
+}
+
+function page(title: string, body: string, tail = ''): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8">`
-    + `<meta http-equiv="refresh" content="120">`
+    + `<meta http-equiv="refresh" content="900">`
     + `<title>${esc(title)}</title>`
     + `<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">`
     + `<style>`
@@ -212,7 +239,7 @@ function page(title: string, body: string): string {
     + `font-family:Inter,Helvetica,Arial,sans-serif;overflow:hidden;cursor:none}`
     + `table{border-collapse:collapse;width:100%;table-layout:fixed}`
     + `td{vertical-align:top;overflow:hidden}`
-    + `</style></head><body>${body}</body></html>`
+    + `</style></head><body>${body}${tail}</body></html>`
 }
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ room: string }> }) {
@@ -245,12 +272,40 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
     .eq('location', room.location).eq('studio', room.studio)
     .lte('start_date', fmtDate(gridEnd)).gte('end_date', fmtDate(gridStart))
 
-  // A wall that goes blank is worse than a wall that says why.
-  if (error) {
-    return html(page(room.label, `<div style="padding:40px;font-size:20px;color:${HOT}">Data unavailable. Retrying.</div>`))
+  const bookings: B[] = data ?? []
+
+  // Stable ordering first, or an arbitrary row order from Postgres would change
+  // the hash on its own and reload the wall every few seconds for no reason.
+  bookings.sort((a, b) => String(a.id).localeCompare(String(b.id)))
+
+  // An outage gets a CONSTANT hash, not an error page hashed as content. The
+  // error page embeds this same value, so a wall that loses the database sits
+  // quietly on its message instead of reloading every POLL_MS for hours — and
+  // the moment data returns the hash changes and it heals itself.
+  const hash = error
+    ? 'unavailable'
+    : createHash('sha1').update(JSON.stringify(bookings)).digest('hex').slice(0, 16)
+
+  // The probe: same query, no HTML. Answered before anything is rendered, so a
+  // check costs one query and 16 bytes rather than a full page build. Must sit
+  // ahead of the error branch or an outage would answer probes with HTML.
+  if (req.nextUrl.searchParams.get('probe')) {
+    return new Response(hash, {
+      headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
+    })
   }
 
-  const bookings: B[] = data ?? []
+  const probeUrl = req.nextUrl.pathname + (key ? `?k=${encodeURIComponent(key)}&probe=1` : '?probe=1')
+
+  // A wall that goes blank is worse than a wall that says why.
+  if (error) {
+    return html(page(
+      room.label,
+      `<div style="padding:40px;font-size:20px;color:${HOT}">Data unavailable. Retrying.</div>`,
+      poller(hash, probeUrl),
+    ))
+  }
+
   const todayStr = fmtDate(now)
   const monthNow = now.getMonth()
 
@@ -302,5 +357,5 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
     + `</div>`
     + `<table><tr>${head}</tr>${rows}</table>`
 
-  return html(page(room.label, body))
+  return html(page(room.label, body, poller(hash, probeUrl)))
 }
