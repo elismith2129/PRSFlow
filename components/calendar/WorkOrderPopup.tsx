@@ -198,6 +198,20 @@ const EQUIPMENT_ITEMS = ['Speakers', 'Microphone', 'Console']
 // admin view), and that is what costs the width.
 const ST_MINW = 848
 
+// Height of the studio-time bin on admin desktop — the ONE number to change if
+// the days bin should show more or fewer days at rest.
+//
+// There is a real tension recorded here. The old single-column table capped at
+// 420px (~5 day blocks at ~86px) and Eli wanted ~8, which is ~690px. The
+// two-column layout cannot spend 690px on the bin: the pinned itemized total,
+// the rentals bin and payments/totals all sit UNDER it in the same column and
+// the ruling is that they never scroll away. 322 keeps all four on screen on a
+// 900px-tall display and shows ~3–4 days at rest.
+//
+// This is why the scroll indicator is not optional. A capped bin that doesn't
+// announce what's below it is how a billable day gets missed — see ScrollHints.
+const ST_BIN_H = 322
+
 // Half-hour presets for the day sheet's time-well dropdown (type OR pick —
 // Eli, 2026-08-16; the well still smart-parses typed input via TimeInput).
 const TIME_OPTS: string[] = (() => {
@@ -3697,7 +3711,7 @@ export function WorkOrderPopup({
                   itself instead of hiding. Shorter cap on admin desktop because
                   the column has three more things under it that must stay
                   pinned; mobile keeps its original 420. */}
-              <div ref={stBinRef} data-st-scroll="" style={{ maxHeight: wide ? 322 : 420, overflowY: 'auto', minWidth: isMobile ? 880 : (wide ? ST_MINW : undefined) }}>
+              <div ref={stBinRef} data-st-scroll="" style={{ maxHeight: wide ? ST_BIN_H : 420, overflowY: 'auto', minWidth: isMobile ? 880 : (wide ? ST_MINW : undefined) }}>
                 {stRows.map((r, rowIdx) => {
                   // ── DAY BLOCK (RULING 2026-08-13, spec §16) ──────────────
                   // A day and every staff line under it sit in ONE wash block,
@@ -4145,7 +4159,7 @@ export function WorkOrderPopup({
                  toggle changes what a day looks like, never where it lives or
                  what scrolls. */
               <div style={{ position: 'relative' }}>
-              <div ref={stBinRef} data-st-cards="" style={wide ? { maxHeight: 322, overflowY: 'auto', paddingRight: 4 } : undefined}>
+              <div ref={stBinRef} data-st-cards="" style={wide ? { maxHeight: ST_BIN_H, overflowY: 'auto', paddingRight: 4 } : undefined}>
                 {(() => {
                   const groups: { date: string; rows: StRow[] }[] = []
                   for (const r of stRows) {
