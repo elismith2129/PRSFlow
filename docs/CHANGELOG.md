@@ -19,6 +19,104 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.14.0 — UNRELEASED (branch `redesign/carved`) — Aug 18, 2026
+
+**The admin desktop work order is two columns: words left, numbers right.**
+
+**Migrations: none.** No schema, no RPC, no data change of any kind. This is a
+layout commit: the diff touches `components/calendar/WorkOrderPopup.tsx` and
+`components/shared/ClientPanel.tsx` and nothing else. No save, query, realtime
+channel, atomic RPC, projection or `lib/woPdf.ts` line was edited — verified by
+grepping the diff for `supabase` / `.rpc(` / `.insert(` / `.update(` /
+`.upsert(` / `.delete(` / `channel(` / `dbResult` / `buildBookingProjection`,
+which returns exactly one hit and it is a comment.
+
+Built to `docs/design-refs/wo-compact-options.html`. That file's header comment
+is the ruling list; read it before changing this layout.
+
+- **Two columns, `0.72fr / 1.28fr`**, gated on one flag: `const wide =
+  !isMobile && !isBlock`. Blocks (Tour/Tech/Open Hours) keep the single column —
+  they have no numbers column to sit beside. Sheet cap **920 → 1320** for `wide`
+  only.
+- **LEFT (words)**: open-space letterhead top-left (branding + address left, big
+  WO number + invoice # + status right) replacing the centred masthead → ★ the
+  locked contact card → Invoice/PO/Food row (3 fields, PO gets 1.35 because it
+  carries the Not-req'd toggle) → Booking notes (INTERNAL tag + wash2) → Session
+  notes (plain) → Needs attention.
+- **Needs attention is now a strip pinned to the column bottom**
+  (`margin-top: auto`) that **grows only when it has content** — new UI-only
+  state `naOpen`, plus `naHasContent` (note text OR photos). Mobile ignores both
+  and always renders the full field. Nothing was removed: open the strip and the
+  textarea, the photo grid and + Add photo are all there.
+- **RIGHT (numbers)**: studio-time bin → pinned itemized total → rentals bin →
+  payments + totals. The two bins scroll independently; everything below them is
+  pinned.
+- **`ScrollHints`** (new, module scope) — bottom fade + "↓ N more day/row/rental"
+  pill, rendered **only while content remains below** and hidden at the bottom.
+  N is counted from the DOM (children whose bottom edge is past the visible
+  edge), re-measured on scroll via a listener and on content change via a
+  `ResizeObserver` + `MutationObserver` set up once.
+- **Pinned itemized total** replaces the "Studio: $x / Eng: $y" chip: Studio,
+  one line per engineer/assistant, OT note, arch total, with the three add-row
+  links beside it. Figures come from `computeWoTotals` and from
+  `engChargeForRow` **regrouped by person** — the same per-row function the
+  totals use, so the staff lines sum to Eng Total by construction. No view
+  invents math.
+- **Per-day song notes** moved into each desktop day card's middle column, read
+  from the existing `session_info` field (still edited in the day sheet). Desktop
+  card is now three regions: day / notes / money.
+- **`ClientPanel` gains `layout?: 'stack' | 'wide'`** (default `'stack'` —
+  every other caller unchanged). `wide` = LABEL is hero for label clients, artist
+  well sized to content, A&R **beside** Admin, emails ellipsize, Email/Call/Text
+  collapse to ✉ ☎ 💬 beside the name. Same state, same searches, same writes.
+- **`STUDIO_SHORT`/`roomCode` in the studio-time fallback option** — the
+  unknown-venue case printed a bare room letter, and every venue has a Studio A.
+  Now PRS B / ARS A / ERS B / **TRS** North (TRS, not TRK — the Aug 13 ruling).
+
+### Watch-outs
+
+- **`display: contents` + flex `order` is what keeps mobile identical.** Off
+  `wide`, both column wrappers collapse to `display: contents`, so every child
+  becomes a direct flex item of the body again — and each one carries an explicit
+  `order` from the `ORD` map that restores the original sequence. **If you add a
+  child to either column, give it an `ORD` entry**, or it will land at the top of
+  the phone layout. The numbers are spaced by 10 so you can insert without
+  renumbering.
+- **The old "BOTTOM TWO COLUMNS" grid is gone.** Session Notes + the COD
+  legal/signature block moved into the words column; payments/totals stayed in
+  the numbers column. On mobile they are two stacked cards with the body's own
+  gap instead of one grid with an internal gap — same pixels, different DOM.
+- **`ST_MINW = 848`** is on both the header grid and the row scroller on
+  purpose. The inner scroller has `overflow-y: auto`, which computes
+  `overflow-x` to `auto` too; without a matching min-width it grows its own
+  horizontal scrollbar and the header stops lining up with the cells. One
+  scrollbar, on the outer container, moves both.
+- **List view scrolls sideways ~50px at the 1320 cap.** The 14 columns need
+  848px and the numbers column gets ~800. This is the price of the ruling that
+  every cell stays typeable (the mock's list was a read-only audit table; that
+  was declined). Raising the sheet cap to ~1400 removes it.
+- **`ST_BIN_H = 322`** is the days-bin height and the one number to change.
+  There is a recorded tension: the old single-column cap was 420 (~5 days) and
+  Eli wanted ~8 (~690px). The two-column layout cannot spend that — the itemized
+  total, rentals and payments all sit under the bin and must not scroll away.
+  322 keeps all four on screen at 900px tall and shows ~3–4 days. **The scroll
+  indicator is the mitigation and is therefore not optional.**
+- **The mock's Complete pill in the letterhead was deliberately NOT built.** The
+  action bar already carries Complete WO, and a second one beside the title is
+  what the 2026-08-13 ruling ("a million buttons up here") removed. The
+  letterhead carries the status badge only.
+- The session-level top block renders on mobile too but is `display: none`
+  there, so its internal restructure (2-column grid → single stack via
+  `display: contents` on the old left wrapper) is invisible on phones.
+  `ClientPanel` still mounts exactly once either way.
+- **Not verified in a browser.** tsc clean, `selftest` PASS (6 ok · 3 warnings
+  at baseline · 0 failures), full `next build` green. Nobody has looked at it.
+
+**Files:** `components/calendar/WorkOrderPopup.tsx`,
+`components/shared/ClientPanel.tsx`. Mock: `docs/design-refs/wo-compact-options.html`.
+
+---
+
 ## v1.13.0 — UNRELEASED (branch `redesign/carved`) — Aug 17, 2026
 
 **Launch prep: SOPs, app-wide hints, Settings, Engineers, day-not-night.**

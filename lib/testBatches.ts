@@ -55,6 +55,86 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'wo-two-column-2026-08-18',
+    title: 'The work order in two columns — words left, numbers right',
+    version: 'v1.14.0 (preview branch)',
+    date: 'Aug 18, 2026',
+    intro:
+      'The work order was rearranged on a computer into two halves: the client and the notes on the left, every number on the right. Nothing was removed and nothing became read-only, so most of this batch is checking that things you could type into before you still can. The phone version was not touched at all — the last two items check exactly that. Do items 1–12 at a computer with a MULTI-DAY label session open (3 days is ideal); you will need a one-day COD session for two of them.',
+    items: [
+      {
+        id: 'wo2c-two-columns', area: 'Work order',
+        what: 'The work order opens in two columns, not one long page',
+        how: 'On a computer, open the calendar and click a session that has 3 days. The work order should open WIDE, with the client details down the left side and the studio days, rentals and payments down the right. If it is one single column top to bottom, stop and report it.',
+      },
+      {
+        id: 'wo2c-letterhead', area: 'Work order',
+        what: 'The top left is a letterhead with the WO number large on the right',
+        how: 'Look at the very top of the left column. You should see "Paramount Recording" with our address and phone under it, and on the right of that block the work order number (like WO-1032) in large type, with "Invoice #…" underneath and an OPEN or COMPLETED tag under that. Check the WO number matches the one in the window title bar.',
+      },
+      {
+        id: 'wo2c-label-hero', area: 'Work order',
+        what: 'On a label job the LABEL is the big name on the client card',
+        how: 'On that same label session, look at the client card under the letterhead. The big bold name should be the LABEL (e.g. Interscope), not the A&R person. There should be a LABEL/BILLING tag beside it. Report it if the person\'s name is the big one.',
+      },
+      {
+        id: 'wo2c-anr-admin', area: 'Work order',
+        what: 'A&R and Admin sit side by side and neither one wraps onto extra lines',
+        how: 'On the client card, A&R should be on the left and Admin on the right, each with a name, an email and a phone. Long emails should be cut off with "…" rather than wrapping. Beside each name there should be three small icons — an envelope, a phone and a speech bubble. Nothing should be spilling outside the card.',
+      },
+      {
+        id: 'wo2c-contact-actions', area: 'Work order',
+        what: 'The ✉ ☎ 💬 icons still open mail, phone and text',
+        how: 'On the A&R line, hover the envelope — a tooltip should show the email address. Click it; your mail app should open a new message to that address. Do the same with the phone icon. If a contact has no email or phone, that icon should look faded and do nothing when clicked.',
+      },
+      {
+        id: 'wo2c-everything-editable', area: 'Work order',
+        what: 'Every field on the left column still accepts typing',
+        how: 'Working down the left column, type into each of these and confirm the text appears: Artist, A&R name, A&R email, A&R phone, Admin name, Admin email, Admin phone, Invoice #, PO #, Food $, and Booking Notes. Then press Cancel so nothing is saved. If any of them refuses to take text, report which one.',
+      },
+      {
+        id: 'wo2c-needs-attention', area: 'Work order',
+        what: 'Needs attention is a slim strip that opens when you click + Add',
+        how: 'Look at the very bottom of the LEFT column. On a session with no attention notes you should see one slim strip reading "Needs attention · Internal" with "+ Add" on the right — not a big empty box. Click + Add: a text box and "+ Add photo" should appear. Type something, then click Hide and Show again — your text must still be there.',
+      },
+      {
+        id: 'wo2c-scroll-hint', area: 'Work order',
+        what: 'The days list says how many more days are below, and stops saying it at the bottom',
+        how: 'You need a session with at least 5 days for this (add days with + Seed if you have none). Look at the bottom of the studio days area: it should fade out and show a small tag like "↓ 2 more days". Scroll that list to the very bottom — the fade and the tag must BOTH disappear. Scroll back up and they should come back.',
+      },
+      {
+        id: 'wo2c-two-bins', area: 'Work order',
+        what: 'Days and rentals scroll separately',
+        how: 'On a multi-day session, add 5 or 6 rental rows with + Add row. Scroll inside the studio days list — the rentals list below must NOT move. Then scroll inside the rentals list — the days list must not move. Each one should scroll on its own.',
+      },
+      {
+        id: 'wo2c-itemized-total', area: 'Work order',
+        what: 'The running total under the days is itemized and adds up',
+        how: 'Under the studio days list, find the total panel. It should list "Studio" with an amount, then a separate line for each engineer/assistant by name with their own amount, then the big total. Add the Studio line and every staff line together on a calculator — it must equal the big total exactly. Then check that big total matches "Studio Total" + "Eng Total" in the Payments box on the bottom right.',
+      },
+      {
+        id: 'wo2c-song-notes', area: 'Work order',
+        what: 'Each day card shows that day\'s song / session notes in its middle',
+        how: 'Switch the studio days to card view (the ▦ button beside "Studio Time"). Each day card should have three parts: the room and times on the left, "Song / session notes · <date>" in the middle, and the day total on the right. Click a card, type a song title into the day sheet, press Save — that title should now show in the middle of that card and NOT on any other day\'s card.',
+      },
+      {
+        id: 'wo2c-pdf-unchanged', area: 'Work order',
+        what: 'The PDF is exactly what it was before this change',
+        how: 'Open /billing, find a work order you have a previously-downloaded PDF for, and download the package again. Open both PDFs side by side — every page must be identical. If ANYTHING differs, stop and report it; this change was not supposed to touch the PDF at all.',
+      },
+      {
+        id: 'wo2c-phone-unchanged', area: 'Runner', device: 'phone',
+        what: 'The runner work order on a phone looks exactly as it did',
+        how: 'On your phone, open a runner studio and tap into a session\'s work order. It should look and behave exactly as it did yesterday — session info card at the top, day cards, notes, then the Submit button at the bottom. Anything that looks rearranged, out of order, or squashed is a bug.',
+      },
+      {
+        id: 'wo2c-phone-order', area: 'Runner', device: 'phone',
+        what: 'The sections on the phone are still in the right order',
+        how: 'On that same phone work order, scroll from top to bottom and check the order is: Session Info → Studio Time → Rentals → Session Notes → Payments/Totals → Needs Attention. If Session Notes or Needs Attention has jumped to the top, report it.',
+      },
+    ],
+  },
+  {
     id: 'launch-prep-2026-08-17',
     title: 'Launch prep — guides, hints, Settings, Engineers, Daily Ops paging',
     version: 'v1.13.0 (preview branch)',

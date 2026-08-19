@@ -641,6 +641,38 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.14.0', date:'Aug 18, 2026',
+    headline:'The work order is laid out in two halves now — who the job is for on the left, what it costs on the right.',
+    desc:'On a computer, the work order used to be one long page you scrolled top to bottom. It is now two columns side by side: everything about the client and the session on the left, and every number — days, staff, rentals, payments, totals — on the right. Nothing was removed and nothing became read-only; it is the same work order, arranged so you can see the client and the money at the same time. On a phone it is completely unchanged.',
+    changes:[
+      'Two columns on a computer: the client and the notes on the left, all the money on the right. You no longer scroll past the client to get to the total and back again to check who it was for.',
+      'The top of the page is now a proper letterhead — our name and address on the left, the work order number large on the right with the invoice number and OPEN/COMPLETED under it. The WO number is always visible now.',
+      'The client card is locked to the top left. For a label job the LABEL is the big name (it is who we bill), with the artist under it and the A&R and the Admin side by side — both with their full email and phone. Email, call and text are now small ✉ ☎ 💬 buttons beside each name.',
+      'Invoice #, PO # and Food budget sit in one row directly under the client card.',
+      'The notes now read in order and look different from each other on purpose: Booking notes (internal, orange tag) → Session notes (the client-facing one, plain) → Needs attention.',
+      'Needs attention is now a single slim strip at the bottom of the left column instead of a big empty box. It opens the moment there is something in it, and "+ Add" opens it when you want to write something. Notes and photos work exactly as before.',
+      'The days list and the rentals list now scroll separately, so a long session no longer squashes the rentals and a long rentals list no longer pushes the days off screen.',
+      'If there is more below in either list, the app tells you — the bottom fades and a "↓ 2 more days" tag appears, and it disappears when you reach the end. No more wondering whether you have seen every day.',
+      'The running total under the days list is itemized now: Studio, then a line for each engineer and assistant by name, then any overtime, then the big total. It was a small chip before.',
+      'Payments and the totals stay pinned at the bottom right — they never scroll away while you work.',
+      'On a session card, the song / session notes for that day now have their own space in the middle of the card instead of trailing off the bottom line.',
+      'Anywhere the app has to name a room on its own it now says the venue too — PRS B, ARS A, TRS North — never just "B".'
+    ],
+    affects:'Everything you could type into before, you can still type into — this changed where things sit, not what they do. The printed/emailed PDF is completely unaffected. Two things to know: the days list now shows about three or four days at a time and you scroll for the rest (watch for the "↓ more" tag at the bottom), and in the table view you may need to scroll sideways a little to reach the last columns. On a phone nothing has changed at all.',
+    dev:[
+      'Two columns 0.72fr / 1.28fr gated on `const wide = !isMobile && !isBlock`; blocks (Tour/Tech/Open Hours) keep the single column; sheet cap 920 → 1320 for `wide` only.',
+      'LEFT: open-space letterhead (replaces the centred masthead) → ★ locked contact card → Invoice/PO/Food row (PO gets 1.35 — it carries the Not-req\'d toggle) → Booking notes (INTERNAL + wash2) → Session notes (plain) → Needs attention as a `margin-top:auto` strip that grows only on content (`naOpen` UI state + `naHasContent`).',
+      'RIGHT: studio-time bin → pinned itemized total → rentals bin → payments/totals. New module-scope `ScrollHints`: fade + "↓ N more" pill, rendered only while content remains below, N counted from the DOM, re-measured by a scroll listener plus a ResizeObserver + MutationObserver set up once.',
+      'Itemized total regroups `engChargeForRow` by role+name — the same per-row function `computeWoTotals` uses — so the staff lines sum to Eng Total by construction. No view invents math.',
+      '`ClientPanel` gains `layout?: \'stack\' | \'wide\'` (default stack, all other callers untouched): LABEL-as-hero for billing, content-sized artist well, A&R beside Admin, ellipsizing emails, icon actions.',
+      'Mobile/runner byte-identical via `display: contents` on both column wrappers + an explicit ORD flex-order map. WATCH-OUT: a new child of either column with no ORD entry lands at the TOP of the phone layout.',
+      '`ST_MINW = 848` on both the header grid and the row scroller — the inner scroller\'s `overflow-y:auto` computes `overflow-x` to auto, and without a matching min-width it grows a second scrollbar and the header stops lining up.',
+      '`ST_BIN_H = 322` is the days-bin height and the one constant to change. Recorded tension: the old cap was 420 (~5 days), Eli wanted ~8 (~690px); the two-column layout can\'t spend it because the itemized total, rentals and payments sit under the bin and must not scroll away. This is why the scroll indicator is not optional.',
+      'List stays the full 14-column editable table by ruling (the mock\'s slim read-only audit table was declined) — hence ~50px of sideways scroll at the 1320 cap. The mock\'s letterhead Complete pill was also declined: the action bar already has one, per the 2026-08-13 duplicate-actions ruling.',
+      'Zero logic: no save, query, realtime, atomic RPC, projection or lib/woPdf.ts change. No migrations. NOT verified in a browser — tsc clean, selftest PASS, production build green.'
+    ]
+  },
+  {
     ver:'v1.13.0', date:'Aug 17, 2026',
     headline:'Manuals, helpful hints, a Settings home — and the app now says "day", never "night".',
     desc:'Getting ready for launch: runners get an in-app guide to the app, small helpful hints appear across every page (you can turn them off), rarely-used buttons moved into Settings at the bottom of the menu, and Engineers got its own page.',

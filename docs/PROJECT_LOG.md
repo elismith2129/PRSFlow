@@ -3204,6 +3204,91 @@ signal it needs to become a real session — not before.
 
 ---
 
+### Aug 18, 2026 — The work order becomes two columns: words left, numbers right
+
+Task #11, the WO reorganization. One commit, two files, zero logic.
+
+**Why the shape.** The work order had become one long scroll: branding, then the
+session top, then studio time, then rentals, then a two-column footer of notes
+and money, then needs-attention. Everything on it is either a WORD (who the
+client is, what was agreed, what to remember) or a NUMBER (hours, rates, OT,
+rentals, payments). A single column forces you to travel past all the words to
+reach the money and back again to check who it's for. Splitting them at
+`0.72fr / 1.28fr` means the identity of the job is permanently beside the
+arithmetic of it, which is how the job is actually read.
+
+**Lineage of the mock, same day.** A "compact" pass was rejected — everything
+must stay visible and editable. Pair-block grids were rejected ("looks like the
+table"). Card language was accepted. Option 2 (words-left / numbers-right)
+became the base. "The merge" — folding contact and booking into one top band —
+was rejected. `docs/design-refs/wo-compact-options.html` is the survivor and its
+header comment is the ruling list.
+
+#### Two decisions that went against the mock, and why
+
+**The list view stays the full editable table.** The mock draws a slim
+read-only audit table (Studio·Date·Info·From·To·Hrs·OT·Total, staff as
+sub-rows), which is genuinely nicer to scan and fits the column with no
+sideways scroll. It loses cell editing. Eli's standing rule for this screen —
+"every field stays visible AND editable, this is the admin view, it must be
+robust" — outranks the mock's slimness, so list is still the 14-column table
+with every cell typeable. **The cost is real and was accepted knowingly:** the
+table needs 848px, the numbers column gets ~800 at the 1320 cap, so list slides
+~50px sideways. A third "slim by default, ✎ toggles the full table" option was
+offered and declined — it would have been a third view state to keep in step
+with List and Cards.
+
+**No Complete pill in the letterhead.** The mock puts `● OPEN` and `✓ Complete`
+under the big WO number. The action bar already has Complete WO, and on
+2026-08-13 Eli removed exactly this duplication ("there are a million buttons up
+here"). Building it from the mock would have re-litigated a ruling the mock's
+author didn't know about. The letterhead carries the status badge; the act stays
+in one place.
+
+#### The technique that protects mobile
+
+The rule is that mobile and runner are byte-identical to before. The obvious
+implementation — two branches, one desktop, one mobile — would have duplicated
+~900 lines of money-bearing markup, and a transcription slip in there is a
+mis-billed session. The obvious alternative — extracting every block into JSX
+consts — meant retyping the same 900 lines once.
+
+What shipped instead: the two column wrappers are real DOM when `wide`, and
+`display: contents` when not. Off `wide` every child falls back into the body's
+flex column exactly as before, and an explicit `order` from the `ORD` map
+restores the original sequence for the four blocks that genuinely moved
+(Session Notes, the COD legal block, payments/totals, needs-attention). The
+markup itself was moved, never rewritten. **The trap for the next person:** a
+new child of either column with no `ORD` entry lands at the TOP of the phone
+layout, because `order` defaults to 0.
+
+#### Totals
+
+Standing rule: totals always come from `studio_time_rows`, no view invents
+math. The new pinned panel itemizes per person, which is a shape `computeWoTotals`
+doesn't return — so it regroups `engChargeForRow`, the same per-row function the
+totals already use, keyed by role + name. Sum(staff lines) is Eng Total by
+construction rather than by coincidence, so the card, the table and the PDF
+cannot drift apart.
+
+#### Open, going out of this session
+
+- **The days bin is 322px (~3–4 days), and the recorded want was ~8.** The Aug
+  13 note says the 420px cap showed ~5 and Eli wanted ~8, i.e. ~690px. The
+  two-column layout can't spend that: the itemized total, the rentals bin and
+  payments/totals all sit under the bin and the ruling is that they never scroll
+  away. `ST_BIN_H` is the single constant to change if the trade is wrong. This
+  is also the whole reason `ScrollHints` exists — a capped bin that doesn't
+  announce what's below it is how a billable day gets missed.
+- **Nobody has looked at it.** tsc clean, selftest PASS, full production build
+  green — none of which can see a layout. Open one 3-day label WO and one 1-day
+  COD WO before trusting it.
+- The `[data-wo-portal]` print block in `globals.css` still matches on inline
+  style substrings including `gridTemplateColumns: '1fr 1fr'`. It is dead code
+  (`window.print()` went in v1.9.0; the PDF is drawn server-side in
+  `lib/woPdf.ts`), and this layout changed which elements it would match. Worth
+  deleting the block outright rather than maintaining a fiction.
+
 ### Aug 17, 2026 — Launch prep: the SOPs take shape, hints go app-wide, day never night
 
 Ships as v1.13.0. The queue from Aug 16's "Rolling toward launch" got worked
