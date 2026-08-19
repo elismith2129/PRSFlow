@@ -515,6 +515,9 @@ export function WorkOrderPopup({
   const [blockStart, setBlockStart] = useState(booking.start_date || '')
   const [blockEnd, setBlockEnd] = useState(booking.end_date || booking.start_date || '')
   const [confirmClearEngId, setConfirmClearEngId] = useState<string | null>(null)
+  // Day-card × (Eli, 2026-08-18: "no way to delete a day card on the WO").
+  // Holds the date of the card awaiting its yes/no. Admin only.
+  const [confirmDeleteDay, setConfirmDeleteDay] = useState<string | null>(null)
   const [pendingLockedEdits, setPendingLockedEdits] = useState<Record<string, StRow>>({})
   const [dirtyFields, setDirtyFields] = useState<Set<string>>(new Set())
   const [equipNotes, setEquipNotes] = useState<Record<string, EquipNote>>({})
@@ -1641,6 +1644,19 @@ export function WorkOrderPopup({
     setStRows(prev => prev.filter(r => r.id !== id))
     setConfirmDeleteRowId(null)
     setConfirmClearEngId(null)
+  }
+
+  // Deletes EVERY row of a day card in one call (Eli, 2026-08-18). Same
+  // contract as deleteStRow: immediate DB delete, rows parked in
+  // deletedRowsRef so Cancel re-inserts them. dbResult per the audit rule —
+  // a silent failed delete here would leave the card on screen after reload.
+  async function deleteDayRows(rows: StRow[]) {
+    const ids = rows.map(r => r.id)
+    const { error } = await supabase.from('studio_time_rows').delete().in('id', ids)
+    if (!dbResult('Deleting day', error)) return
+    deletedRowsRef.current = [...deletedRowsRef.current, ...rows]
+    setStRows(prev => prev.filter(r => !ids.includes(r.id)))
+    setConfirmDeleteDay(null)
   }
 
   async function clearEngRow(id: string) {
@@ -4334,6 +4350,20 @@ export function WorkOrderPopup({
                                     {(r.eng_from_time || r.from_time) || '—'} – {(r.eng_to_time || r.to_time) || '—'}
                                     {engHrs != null && engHrs > 0 ? ` · ${engHrs}h` : ''}
                                   </span>
+                                  {/* Staff-line × — ADMIN ONLY (Eli, 2026-08-18:
+                                      two assistants is rare but real, so a
+                                      mis-add needs a way out). Standalone staff
+                                      rows delete; a studio row's eng sub-row
+                                      clears — the same fork the list view uses. */}
+                                  {!readOnly && (
+                                    <button
+                                      type="button"
+                                      aria-label="Remove this staff line"
+                                      className="c-x"
+                                      onClick={e => { e.stopPropagation(); r.studio === '' ? deleteStRow(r.id) : clearEngRow(r.id) }}
+                                      style={{ fontSize: 12, boxShadow: 'none' }}
+                                    >×</button>
+                                  )}
                                 </div>
                               )
                             })}
@@ -4369,9 +4399,29 @@ export function WorkOrderPopup({
                               top, the day total at the bottom, OT touching it. */}
                           <div style={{ width: 120, flexShrink: 0, textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
                             {!readOnly && (
-                              <span style={{ ...kLabel, alignSelf: 'flex-end' }}>
-                                {cardLocked ? '👁 view' : '✎ edit'}
-                              </span>
+                              confirmDeleteDay === (g.date || '') ? (
+                                /* Two-step, like every other delete on this
+                                   screen — a whole day is too much to lose to
+                                   one stray click. */
+                                <span style={{ display: 'flex', gap: 6, alignSelf: 'flex-end', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                                  <span style={{ fontSize: 9.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)' }}>Delete day?</span>
+                                  <button type="button" className="c-x" onClick={() => deleteDayRows(g.rows)} style={{ fontSize: 9.5, fontFamily: 'Inter', fontWeight: 800, color: 'var(--c-bg)', background: 'var(--c-st-hot)', borderRadius: 99, padding: '2px 9px', cursor: 'pointer', opacity: 1 }}>Delete</button>
+                                  <button type="button" className="c-x" onClick={() => setConfirmDeleteDay(null)} style={{ fontSize: 9.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)', background: 'var(--c-wash2)', borderRadius: 99, padding: '2px 9px', cursor: 'pointer', opacity: 1 }}>Keep</button>
+                                </span>
+                              ) : (
+                                <span style={{ display: 'flex', gap: 10, alignSelf: 'flex-end', alignItems: 'center' }}>
+                                  <span style={kLabel}>{cardLocked ? '👁 view' : '✎ edit'}</span>
+                                  {/* Day-card × — ADMIN ONLY (runner renders the
+                                      phone card, never this branch). */}
+                                  <button
+                                    type="button"
+                                    aria-label="Delete this day"
+                                    className="c-x"
+                                    onClick={e => { e.stopPropagation(); setConfirmDeleteDay(g.date || '') }}
+                                    style={{ fontSize: 13, boxShadow: 'none' }}
+                                  >×</button>
+                                </span>
+                              )
                             )}
                             <div style={{ marginTop: 'auto' }}>
                               {otHrsTotal > 0 && (
