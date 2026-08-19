@@ -268,6 +268,33 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
     return html(page('Display', `<div style="padding:40px;font-size:20px;color:${FG}">Unknown room "${esc(slug)}".</div>`), 404)
   }
 
+  // ?diag=1 — the bisection page. Barest possible HTML: no script, no external
+  // request, no database, one table, inline styles only. Added 2026-08-19 after
+  // the Encore B panel kept painting white while the same URL rendered
+  // correctly in every other browser, and guessing at which CSS feature
+  // Chromium 30 choked on was not converging.
+  //   Renders  -> HTML delivery, inline CSS and tables are all fine, so the
+  //               fault is something specific in the full page.
+  //   White    -> the panel is not receiving this route at all (wrong URL in
+  //               the Web URL field, cache, TLS, or the app itself).
+  if (req.nextUrl.searchParams.get('diag')) {
+    return html(
+      '<!DOCTYPE html><html><head><meta charset="utf-8"><title>diag</title></head>'
+      + `<body style="background:${BG};color:${FG};font-family:Helvetica,Arial,sans-serif;margin:0">`
+      + `<div style="padding:30px 40px 0;font-size:64px">DISPLAY OK</div>`
+      + `<div style="padding:6px 40px 24px;font-size:30px">${esc(room.label)} — ${esc(new Date().toISOString())}</div>`
+      + `<table style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:30px">`
+      + `<tr><td style="border:1px solid ${FG};padding:10px">Sun</td>`
+      + `<td style="border:1px solid ${FG};padding:10px">Mon</td>`
+      + `<td style="border:1px solid ${FG};padding:10px">Tue</td></tr>`
+      + `<tr><td style="border:1px solid ${FG};height:140px;padding:10px;vertical-align:top">1`
+      + `<div style="background:rgba(67,223,174,.72);color:#1c2626;border-radius:14px;padding:8px 12px;margin-top:8px">Card test</div>`
+      + `</td><td style="border:1px solid ${FG};padding:10px">2</td>`
+      + `<td style="border:1px solid ${FG};padding:10px">3</td></tr></table>`
+      + '</body></html>'
+    )
+  }
+
   const now = new Date()
   // Anchor on the week containing the 1st, then keep rendering past the month
   // end — the wall should use every row the panel can show, not stop at the 31st.
