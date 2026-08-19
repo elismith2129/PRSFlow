@@ -3019,13 +3019,26 @@ export function WorkOrderPopup({
                   <div style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 11, color: 'var(--c-fg-2)', marginTop: 2 }}>
                     Invoice #{wo.invoice_number || '—'}
                   </div>
-                  {/* Status only. The mock also drew a Complete pill here; the
-                      footer already carries Complete WO, and a second one beside
-                      the title is the exact duplication Eli struck out on
-                      2026-08-13 ("there are a million buttons up here"). One
-                      Complete, in the action bar. */}
-                  <div data-no-print="" style={{ marginTop: 7, display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                  {/* Status + Complete, as the mock draws them (Eli, 2026-08-18
+                      — "copy the mock exactly"). I had left Complete out on the
+                      2026-08-13 "million buttons up here" ruling, since the
+                      action bar already has one; overruled. Same handler as the
+                      action bar's button, same disabled rule, so the two can
+                      never disagree about what Complete means. */}
+                  <div data-no-print="" style={{ marginTop: 7, display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                     <StatusBadge status={wo.status} />
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        onClick={() => (isCompleted ? handleClose() : handleComplete())}
+                        disabled={completing || saving || (isCompleted && !isDirty())}
+                        className={`c-pill c-control ${isCompleted ? 'c-fill-booked' : ''}`}
+                        style={{ cursor: (completing || (isCompleted && !isDirty())) ? 'default' : 'pointer', opacity: (completing || saving || (isCompleted && !isDirty())) ? 0.4 : 1 }}
+                        title={isCompleted && !isDirty() ? 'Nothing has changed' : 'Complete this work order'}
+                      >
+                        {completing ? 'Completing…' : '✓ Complete'}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -3053,7 +3066,16 @@ export function WorkOrderPopup({
             {/* Status — ONE housing (§8). This was six separate raised pills; the
                 selected one now presses IN and fills with its own status colour,
                 which is sanctioned here because the field IS status (§5). */}
-            <div className="c-seg c-seg-wrap" style={{ alignSelf: 'flex-start', maxWidth: '100%' }}>
+            {/* STATUS + SESSION TYPE SIT UNDER THE CONTACT CARD (Eli,
+                2026-08-18). They were the first thing on the work order, above
+                everything — but what a session IS (confirmed/tentative,
+                recording/filming) is a fact about the job you read AFTER you
+                know whose job it is. Under the client card and above the
+                Invoice/PO row is where it belongs.
+                The ordering below is what does it: on `wide` the whole session
+                top collapses to one flex column and these two take orders 3 and
+                4, between the client card (2) and the Invoice row (5). */}
+            <div className="c-seg c-seg-wrap" style={{ order: wide ? 3 : undefined, alignSelf: 'flex-start', maxWidth: '100%' }}>
               {SESSION_STATUSES.map(([val, lbl]) => {
                 const on = wo.session_status === val
                 return (
@@ -3110,8 +3132,13 @@ export function WorkOrderPopup({
                 left-hand wrapper is what lets the three meta blocks interleave
                 with the client card without moving any of their markup. */}
             {!isBlock && (
+            /* `display: contents` on BOTH this and the wrapper below is what
+               lets the status bar (a sibling above, outside this block) sit
+               between the client card and the Invoice row. Everything inside
+               becomes a direct flex child of the session top, so one `order`
+               scale covers all five. */
             <div style={wide
-              ? { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }
+              ? { display: 'contents' }
               : { display: 'grid', gridTemplateColumns: '0.85fr 1fr', gap: 20, alignItems: 'stretch' }}>
 
               {/* Left — session type + meta + notes. NO container of its own:
@@ -3120,7 +3147,7 @@ export function WorkOrderPopup({
                   panel and control for no reason (§8: panel → control, nothing
                   between). */}
               <div style={wide ? { display: 'contents' } : { display: 'flex', flexDirection: 'column', gap: 18 }}>
-                <div style={{ order: 1 }}>
+                <div style={{ order: 4 }}>
                   <div style={{ ...metaLabel, marginBottom: 8 }}>Session Type</div>
                   {/* ONE housing (§8) — was three loose pills. */}
                   <div className="c-seg c-seg-wrap">
@@ -3146,10 +3173,18 @@ export function WorkOrderPopup({
                     field to make the row arithmetically equal would cost the
                     thing the row is for. */}
                 <div style={wide
-                  ? { order: 3, display: 'grid', gridTemplateColumns: '1fr 1.35fr 1fr', gap: 8, alignItems: 'center' }
+                  ? { order: 5, display: 'grid', gridTemplateColumns: '1fr 1.35fr 1fr', gap: 8, alignItems: 'center', background: 'var(--c-wash)', borderRadius: 12, padding: '10px 12px' }
                   : { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {/* MOCK VALUES, NOT HOUSE COMPONENTS (2026-08-18). These were
+                      three loose wells with inline `Inv #` / `PO #` / `Food $`
+                      prefixes. The mock stacks a small-caps label ABOVE each
+                      field and sits the whole row in one tinted block — copied
+                      exactly. The `display: contents` wrappers keep the
+                      non-wide (phone) render as three bare flex children. */}
+                  <div style={wide ? { minWidth: 0 } : { display: 'contents' }}>
+                  {wide && <div style={{ ...kLabel, marginBottom: 3 }}>Invoice #</div>}
                   <div className="c-well" style={wide ? { minWidth: 0 } : { flex: '0 1 132px', minWidth: 118 }}>
-                    <span className="c-pfx">Inv #</span>
+                    {!wide && <span className="c-pfx">Inv #</span>}
                     <input
                       className="c-mono"
                       value={wo.invoice_number}
@@ -3158,11 +3193,14 @@ export function WorkOrderPopup({
                       onChange={e => { setDirtyFields(prev => new Set(prev).add('invoice_number')); setWo(w => w ? { ...w, invoice_number: e.target.value } : w) }}
                     />
                   </div>
+                  </div>
                   {/* PO NUMBERS ARE LONG (Eli, 2026-08-13). A label's PO can run
                       well past ten characters, and this was sized off Inv #,
                       which never does. It gets the widest basis on the row. */}
+                  <div style={wide ? { minWidth: 0 } : { display: 'contents' }}>
+                  {wide && <div style={{ ...kLabel, marginBottom: 3 }}>PO #</div>}
                   <div className="c-well" style={wide ? { minWidth: 0 } : { flex: '1 1 210px', minWidth: 160 }}>
-                    <span className="c-pfx">PO #</span>
+                    {!wide && <span className="c-pfx">PO #</span>}
                     <input
                       className="c-mono"
                       value={wo.po_number}
@@ -3196,6 +3234,7 @@ export function WorkOrderPopup({
                       Not req&apos;d
                     </button>
                   </div>
+                  </div>
                   {/* FOOD IS JUST AN AMOUNT (RULING 2026-08-13, option A of
                       docs/design-refs/wo-po-food-options.html). It was a Yes/No
                       segment that REVEALED an amount well — two controls for one
@@ -3204,8 +3243,10 @@ export function WorkOrderPopup({
                       `food_budget` is still written, derived from the amount, so
                       nothing downstream changes. */}
                   {/* Same basis as Inv # (Eli, 2026-08-18 — cleaner line). */}
+                  <div style={wide ? { minWidth: 0 } : { display: 'contents' }}>
+                  {wide && <div style={{ ...kLabel, marginBottom: 3 }}>Food budget</div>}
                   <div className="c-well" style={wide ? { minWidth: 0 } : { flex: '0 1 132px', minWidth: 118 }}>
-                    <span className="c-pfx">Food $</span>
+                    {!wide && <span className="c-pfx">Food $</span>}
                     <input
                       className="c-mono"
                       value={wo.food_amount}
@@ -3220,6 +3261,7 @@ export function WorkOrderPopup({
                       }}
                     />
                   </div>
+                  </div>
                 </div>
 
                 {/* Booking notes — internal/ops notes about the booking; never printed */}
@@ -3231,7 +3273,7 @@ export function WorkOrderPopup({
                     may shrink as the column needs; on mobile this box keeps its
                     full 190px, which is where it is actually typed into. */}
                 <div data-no-print="" style={wide
-                  ? { order: 4, display: 'flex', flexDirection: 'column', background: 'var(--c-wash2)', borderRadius: 12, padding: '9px 12px' }
+                  ? { order: 6, display: 'flex', flexDirection: 'column', background: 'var(--c-wash2)', borderRadius: 12, padding: '9px 12px' }
                   : { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
                   <div style={{ ...metaLabel, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                     Booking Notes
@@ -3523,6 +3565,10 @@ export function WorkOrderPopup({
                     ) : (
                       <svg width="12" height="10" viewBox="0 0 14 12" fill="none"><rect width="14" height="5" rx="1.5" fill="currentColor"/><rect y="7" width="14" height="5" rx="1.5" fill="currentColor"/></svg>
                     )}
+                    {/* The mock labels the toggle. Two bare icons make you learn
+                        which is which; on a phone the icon alone is the right
+                        call for the room it saves, so the words are desktop-only. */}
+                    {wide && <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{v}</span>}
                   </button>
                 ))}
               </div>
@@ -4224,26 +4270,35 @@ export function WorkOrderPopup({
                               <span style={{ fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)' }}>{weekdayDate(g.date)}</span>
                               {dotColor && <span style={{ width: 8, height: 8, borderRadius: 99, background: dotColor, display: 'inline-block', flexShrink: 0 }} />}
                             </div>
-                            <div style={{ marginTop: 11, display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-                              <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 22, fontWeight: 500 }}>
-                                {first?.from_time || '—'} – {first?.to_time || <span style={{ color: 'var(--c-fg-3)', fontSize: 14 }}>tap to set</span>}
+                            {/* 16px, NOT 22 (2026-08-18). At 22 the range wrapped
+                                onto two lines and pushed the hours onto a third —
+                                the mock sets 16 and keeps "12:00 PM – 7:00 PM 7h"
+                                on ONE line, which is the whole point of the day
+                                reading at a glance. `whiteSpace: nowrap` makes
+                                that a guarantee rather than a hope. */}
+                            <div style={{ marginTop: 10, display: 'flex', alignItems: 'baseline', gap: 8, whiteSpace: 'nowrap' }}>
+                              <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 16, fontWeight: 600 }}>
+                                {first?.from_time || '—'} – {first?.to_time || <span style={{ color: 'var(--c-fg-3)', fontSize: 12 }}>tap to set</span>}
                               </span>
-                              {first?.total_hours != null && <span style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>{first.total_hours}h</span>}
+                              {first?.total_hours != null && <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>{first.total_hours}h</span>}
                             </div>
                             {staffRows.map(r => {
                               const engHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
                               return (
-                                <div key={r.id + '-staff'} style={{ display: 'flex', alignItems: 'baseline', gap: 9, marginTop: 7, flexWrap: 'wrap' }}>
-                                  <span style={{ fontSize: 8.5, fontFamily: 'Inter', fontWeight: 800, padding: '2px 6px', borderRadius: 5, background: 'var(--c-wash2)', color: r.eng_role === 'assistant' ? 'var(--c-st-warm)' : 'var(--c-fg)', flexShrink: 0 }}>
+                                /* One line per staffer, same as the mock: role
+                                   chip, name, their window, their hours. It was
+                                   13.5/15px and wrapping to three lines. */
+                                <div key={r.id + '-staff'} style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4, whiteSpace: 'nowrap' }}>
+                                  <span style={{ fontSize: 8.5, fontFamily: 'Inter', fontWeight: 800, color: r.eng_role === 'assistant' ? 'var(--c-st-warm)' : 'var(--c-fg)', flexShrink: 0 }}>
                                     {r.eng_role === 'assistant' ? '2ND' : '1ST'}
                                   </span>
-                                  <span style={{ fontSize: 13.5, fontFamily: 'Inter', fontWeight: 600 }}>
+                                  <span style={{ fontSize: 11.5, fontFamily: 'Inter', fontWeight: 600 }}>
                                     {r.eng_name || <span style={{ color: 'var(--c-fg-3)' }}>TBD</span>}
                                   </span>
-                                  <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 15, color: 'var(--c-fg-2)' }}>
+                                  <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 10.5, color: 'var(--c-fg-2)', opacity: 0.75 }}>
                                     {(r.eng_from_time || r.from_time) || '—'} – {(r.eng_to_time || r.to_time) || '—'}
+                                    {engHrs != null && engHrs > 0 ? ` · ${engHrs}h` : ''}
                                   </span>
-                                  {engHrs != null && engHrs > 0 && <span style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>{engHrs}h</span>}
                                 </div>
                               )
                             })}
@@ -4271,22 +4326,28 @@ export function WorkOrderPopup({
                             </div>
                           </div>
 
-                          <div style={{ width: 158, flexShrink: 0, background: 'var(--c-wash2)', borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column' }}>
+                          {/* NO PANEL (2026-08-18). This was a 158px --c-wash2
+                              slab with a raised Edit chip — a box inside a box,
+                              and the heaviest thing on the card. The mock is a
+                              120px column of plain right-aligned text on the
+                              card's own surface: a small "✎ edit" label at the
+                              top, the day total at the bottom, OT touching it. */}
+                          <div style={{ width: 120, flexShrink: 0, textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
                             {!readOnly && (
-                              <span style={{ alignSelf: 'flex-end', fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'var(--c-wash)', color: 'var(--c-fg-2)', borderRadius: 99, padding: '4px 11px' }}>
-                                {cardLocked ? '👁 View' : '✎ Edit'}
+                              <span style={{ ...kLabel, alignSelf: 'flex-end' }}>
+                                {cardLocked ? '👁 view' : '✎ edit'}
                               </span>
                             )}
-                            <div style={{ marginTop: 'auto', textAlign: 'right' }}>
+                            <div style={{ marginTop: 'auto' }}>
                               {otHrsTotal > 0 && (
-                                <div style={{ fontSize: 12.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-st-warm)' }}>
+                                <div style={{ fontSize: 10.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-st-warm)' }}>
                                   OT {otHrsTotal}h{otChargeTotal > 0 ? ` · $${otChargeTotal.toFixed(0)}` : ''}
                                 </div>
                               )}
-                              <div style={{ fontSize: 8.5, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginTop: otHrsTotal > 0 ? 8 : 0 }}>
+                              <div style={{ ...kLabel, marginTop: otHrsTotal > 0 ? 3 : 0 }}>
                                 Day total
                               </div>
-                              <div className="c-arch" style={{ fontSize: 23, letterSpacing: '-0.02em', color: dayTotal > 0 ? 'var(--c-fg)' : 'var(--c-fg-3)' }}>
+                              <div className="c-arch" style={{ fontSize: 15, letterSpacing: '-0.02em', color: dayTotal > 0 ? 'var(--c-fg)' : 'var(--c-fg-3)' }}>
                                 {dayTotal > 0 ? `$${dayTotal.toFixed(2)}` : '—'}
                               </div>
                             </div>
