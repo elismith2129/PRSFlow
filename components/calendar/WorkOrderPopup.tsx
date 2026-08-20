@@ -550,6 +550,17 @@ export function WorkOrderPopup({
       sheetSnapRef.current = stRows
         .filter(r => (r.date || '') === daySheetDate)
         .map(r => ({ ...r }))
+      // A DAY ALWAYS HAS A STAFF LINE (Eli, 2026-08-20: "the ass/eng line
+      // always there under the studio time and you select eng or ass. there
+      // is always one so no need for the step of adding one"). Opening a day
+      // with no staff row seeds ONE, in state only — it saves with the rest
+      // on Save, and Cancel drops it because the snapshot above was taken
+      // first. Role defaults to assistant, the standing default everywhere
+      // (migration 20260728210000); the 1ST/2ND toggle promotes it. "+ Add"
+      // survives for the rare second staffer.
+      const hasStaff = stRows.some(r =>
+        (r.date || '') === daySheetDate && r.eng_visible !== false && (r.eng_name || r.eng_rate || r.studio === ''))
+      if (!hasStaff && !readOnly && !runner) addEngRowForDate('assistant', daySheetDate)
     }
     // Deliberately NOT depending on stRows: the baseline is the moment the
     // sheet opened, not every keystroke since.
@@ -4389,6 +4400,18 @@ export function WorkOrderPopup({
                                 )
                               })()}
                             </div>
+                            {/* THE STAFF SLOT IS ALWAYS VISIBLE (2026-08-20).
+                                Every session has someone on it, so a day with
+                                nobody assigned yet shows the empty slot rather
+                                than hiding the whole idea — click through to
+                                the day sheet to fill it. */}
+                            {staffRows.length === 0 && (
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4, whiteSpace: 'nowrap', opacity: 0.55 }}>
+                                <span style={{ fontSize: 8.5, fontFamily: 'Inter', fontWeight: 800, color: 'var(--c-st-warm)' }}>2ND</span>
+                                <span style={{ fontSize: 11.5, fontFamily: 'Inter', fontWeight: 600, color: 'var(--c-fg-3)' }}>no one assigned</span>
+                                {!readOnly && <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>· click to set</span>}
+                              </div>
+                            )}
                             {staffRows.map(r => {
                               const engHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
                               return (
