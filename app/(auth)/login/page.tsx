@@ -23,9 +23,15 @@ const MAX_FAILS = 5
 // disable /api/auth/pin — the server still enforces its own lockout, which is
 // what actually matters if someone hits the endpoint directly.
 //
-// FLIP BACK TO TRUE when 6-digit PINs are re-issued. Nothing else needs
-// changing; the PIN code paths are untouched.
-const PIN_LOGIN_ENABLED = false
+// RE-ENABLED 2026-08-20, exactly as the plan above prescribed ("flip back
+// when 6-digit PINs are re-issued") — per-person SIX-digit PINs dealt by
+// scripts/set-pins.mjs, which must run BEFORE this ships or the pad can't
+// succeed for anyone. Fast switching on shared tablets is the point: a
+// Word-Word-## password at 2 AM guaranteed nobody ever changed accounts.
+// SIX digits (Eli, same day, after the honest brute-force math): 100× the
+// combinations of 4, still two seconds to type. Must match set-pins.mjs.
+const PIN_LOGIN_ENABLED = true
+const PIN_LENGTH = 6
 
 const LOCKOUT_MS = 30_000
 
@@ -238,11 +244,11 @@ export default function LoginPage() {
   }
 
   function pressDigit(d: string) {
-    if (isLocked || submittingPin || pin.length >= 4) return
+    if (isLocked || submittingPin || pin.length >= PIN_LENGTH) return
     if (pinMsg && pinMsg.color !== COLOR_SUCCESS) setPinMsg(null)
     const next = pin + d
     setPin(next)
-    if (next.length === 4) submitPin(next)
+    if (next.length === PIN_LENGTH) submitPin(next)
   }
 
   function pressBack() {
@@ -397,7 +403,7 @@ export default function LoginPage() {
             >
               {/* Filled = ink resting on the surface; empty = a carved hole.
                   The old 2px ring is gone (Law 1) — depth marks the empty slot. */}
-              {[0, 1, 2, 3].map(i => (
+              {Array.from({ length: PIN_LENGTH }, (_, i) => i).map(i => (
                 <div
                   key={i}
                   className={i < pin.length ? 'c-anchor' : 'c-inset2'}

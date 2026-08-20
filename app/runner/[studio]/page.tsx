@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import type { Booking } from '@/lib/supabase'
 import { getLocalToday, shiftLogDate, dayPartLabel } from '@/lib/time'
+import { useUserProfile } from '@/hooks/useUserProfile'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { dbResult } from '@/lib/db'
 import { SessionCardBody, sessionFillClass, initials } from '@/components/calendar/SessionCard'
@@ -50,6 +51,7 @@ export default function StudioDailyOpsPage() {
 
   // Stable today string — local calendar date matching how bookings are stored
   const today = getLocalToday()
+  const { profile: hubProfile } = useUserProfile()
 
   // One-landing merge (2026-08-14): remember this studio so the next launch of
   // /runner comes straight here, skipping the picker. Same key the picker uses.
@@ -342,8 +344,11 @@ export default function StudioDailyOpsPage() {
           <div className="c-arch" style={{ fontSize: 18, letterSpacing: '-0.02em', lineHeight: 1.15 }}>
             {meta.label}
           </div>
-          <div style={{ fontSize: 11.5, opacity: 0.5 }}>
+          <div style={{ fontSize: 11.5, opacity: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            {/* Whose session this tablet is — visible on every hub visit, so a
+                wrong identity gets noticed before anything is filed under it. */}
+            {hubProfile?.display_name ? ` · ${hubProfile.display_name}` : ''}
           </div>
         </div>
         {/* Studio switcher (one-landing merge): floating runners move studios

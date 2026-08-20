@@ -58,6 +58,52 @@ export function RunnerGuard({ children }: { children: React.ReactNode }) {
     }
   }, [router])
 
+  // ── SHIFT-CHANGE AUTO-LOGOUT (Eli, 2026-08-20) — RUNNER SESSIONS ONLY. ──
+  // A runner session expires (a) 4 hours after sign-in, or (b) when it
+  // crosses the 8:50 AM daily seal — whichever comes first. With per-person
+  // PINs a re-login is two seconds, so expiry is cheap; without it a shared
+  // tablet stays "whoever logged in last week" forever. Checked on mount, on
+  // tablet wake (visibilitychange) and every 10 minutes — NEVER mid-keystroke;
+  // the worst case is finishing a form and being asked for your PIN on the
+  // next screen. Admin/staff sessions visiting runner pages are exempt: their
+  // whole login (rail app included) must not be killed by a runner rule.
+  useEffect(() => {
+    let active = true
+
+    async function expireIfStale() {
+      const { data } = await supabase.auth.getSession()
+      const session = data.session
+      if (!active || !session) return
+      const { data: profs } = await supabase
+        .from('user_profiles')
+        .select('role')
+        .eq('auth_user_id', session.user.id)
+        .limit(1)
+      if (!active || profs?.[0]?.role !== 'runner') return
+
+      const signedInAt = new Date(session.user.last_sign_in_at ?? 0).getTime()
+      const now = Date.now()
+      const fourHours = now - signedInAt > 4 * 60 * 60_000
+      // Today's 8:50 AM (local). Crossing it ends every session from before it.
+      const seal = new Date(); seal.setHours(8, 50, 0, 0)
+      const crossedSeal = signedInAt < seal.getTime() && now >= seal.getTime()
+      if (fourHours || crossedSeal) {
+        await supabase.auth.signOut()
+        router.replace('/login')
+      }
+    }
+
+    expireIfStale()
+    const onVis = () => { if (document.visibilityState === 'visible') expireIfStale() }
+    document.addEventListener('visibilitychange', onVis)
+    const timer = setInterval(expireIfStale, 10 * 60_000)
+    return () => {
+      active = false
+      document.removeEventListener('visibilitychange', onVis)
+      clearInterval(timer)
+    }
+  }, [router])
+
   if (exempt) return <>{children}</>
   // Nothing renders until the session resolves — the hub must never flash
   // (even hollow) on an unauthenticated screen.
