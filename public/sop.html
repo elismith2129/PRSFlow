@@ -645,6 +645,33 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.15.0', date:'Aug 20, 2026',
+    headline:'Launch day — the new PRSFlo is live, you log in with a six-digit PIN, and the app knows who you are.',
+    desc:'The redesign everyone has been previewing is now THE app. Along with it: a new way to log in, your name shown wherever your work is filed, editable shift notes, and a simpler billing page. Here is what changed for you.',
+    changes:[
+      'You now log in with your own SIX-DIGIT PIN on the number pad — no more typed passwords. Your PIN is handed to you personally; it is yours alone, and everything you do files under your name. If you ever need the old email login, use "Forgot password".',
+      'On the runner tablets, the app greets you by name and shows who is signed in at the top of every screen. If it is not your name, sign out and tap in your own PIN — it takes two seconds.',
+      'The missed-punch form now says "Submit as [your name]" right on the button, so a punch can never be filed under the wrong person.',
+      'Runner tablets sign themselves out after 4 hours (and every morning at 8:50) so the next person always logs in as themselves.',
+      'Shift notes can now be EDITED — tap an entry to fix a typo. Fixed entries show a small "edited" tag. At 8:50 each morning the night\'s log submits itself and is sealed; then a fresh log starts. Notes written after midnight now count toward the night they belong to.',
+      'Billing: the "Upcoming" list is gone. Every work order that isn\'t sent yet lives in "In progress", with sessions that haven\'t started sitting at the bottom wearing a "Not started" tag — nothing hides in a separate list anymore.',
+      'Billing, COD side: the tabs now work like switches — you can turn on Balance due AND In progress at the same time and see both as one list, with a colored tag on each row saying which is which.',
+      'The guides all moved to TRAINING in the sidebar: the app guide, the Billing SOP and the Studio Manager SOP each have a card there, along with the helpful-hints switch. This guide also got the new look.',
+      'The work order got day-one polish: it starts at the top of the screen, the buttons are bigger, and you can delete a day card or remove a staff line with the little ×.',
+      'When you text a client their registration link, it now shows as "Paramount Client Registration" from our own web address — not an internal app name.',
+    ],
+    affects:'One habit to build, runners especially: when you take over a tablet, glance at the name on screen. If it isn\'t you, sign out and PIN in — two seconds, and it keeps everyone\'s hours, notes and punches filed right.',
+    dev:[
+      'Billing: <code>upcoming</code> bucket deleted — everything pre-send is <code>progress</code>, COD gains the tab, <code>InvoiceRow.notStarted</code> drives the chip + split sort; COD tabs are latches (merged list in tab order, per-row bin badges, sessionStorage-persisted, last latch refuses).',
+      'WO desktop: title band deleted (letterhead is the header), overlay starts at the rail edge (left 176 / top 0), doubled flat action buttons, one-row segs via <code>c-seg-tiny</code>, day-card left region fixed 340px, admin-only day/staff delete ×s riding the existing deletedRowsRef revert.',
+      'Runner: <code>RunnerGuard</code> gates /runner/* (any session passes, /runner/sop public) and expires runner-role sessions at 4h or crossing 8:50 (mount/wake/interval checks only); staff sessions exempt.',
+      'PINs: <code>scripts/set-pins.mjs</code> deals unique 6-digit PINs to every active profile and rotates every auth password; numpad re-enabled with <code>PIN_LENGTH = 6</code> — the two must match.',
+      'Shift log: tap-to-edit with <code>edited_at</code> marker while live; sealed 8:50 AM by the <code>shift_log_edit_live</code> RLS policy; <code>shiftLogDate()</code> makes 8:50 the log\'s day boundary (fixes the midnight split). Policy and helper must stay in step.',
+      'SOPs: public/billing-sop.html + public/manager-sop.html served at /sop/billing + /sop/manager (public/ = served copy, design-refs = mock); billing SOP WO chapter redrawn to the launched layout; this file re-skinned (palette/fonts only).',
+      'Misc: CRM desktop at <code>zoom: 0.9</code> with height compensated; dashboard room cards 120→84; register/* metadata "Paramount Client Registration"; login errors name system failures instead of blaming the password.',
+    ],
+  },
+  {
     ver:'v1.14.0', date:'Aug 18, 2026',
     headline:'The work order is laid out in two halves now — who the job is for on the left, what it costs on the right.',
     desc:'On a computer, the work order used to be one long page you scrolled top to bottom. It is now two columns side by side: everything about the client and the session on the left, and every number — days, staff, rentals, payments, totals — on the right. Nothing was removed and nothing became read-only; it is the same work order, arranged so you can see the client and the money at the same time. On a phone it is completely unchanged.',
