@@ -3497,7 +3497,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   <input value={form.lname} onChange={e => { set('lname', e.target.value); setShowNameDD(true) }} onFocus={() => setShowNameDD(nameSuggestions.length > 0)} onBlur={() => setTimeout(() => setShowNameDD(false), 200)} onKeyDown={handleNameKeyDown} style={inputStyle} />
                 </div>
                 {showNameDD && nameSuggestions.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--c-wash)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--c-bg)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden', boxShadow: '0 8px 26px rgba(0,0,0,0.45)' }}>
                     {nameSuggestions.map((item, i) => {
                       const r = item.record; const isClient = item.type === 'client'
                       return (
@@ -3575,7 +3575,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   style={inputStyle}
                 />
                 {showUniDD && uniSuggestions.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--c-wash)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden', maxHeight: 280, overflowY: 'auto' }}>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--c-bg)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden', maxHeight: 280, overflowY: 'auto', boxShadow: '0 8px 26px rgba(0,0,0,0.45)' }}>
                     {uniSuggestions.map((s, i) => (
                       <div key={`${s.clientId}-${s.artist}-${s.anrContactId || ''}-${i}`} onMouseDown={() => selectUniClient(s)} style={{ padding: '10px 14px', cursor: 'pointer', background: i === uniHighlight ? 'var(--c-bg)' : 'transparent' }}>
                         <div style={{ fontSize: 12, color: 'var(--c-fg)', marginBottom: 2 }}>
@@ -3618,7 +3618,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   style={inputStyle}
                 />
                 {showAnrDD && labelClientId && (anrFiltered.length > 0 || anrQuery.trim().length >= 2) && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--c-wash)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--c-bg)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden', boxShadow: '0 8px 26px rgba(0,0,0,0.45)' }}>
                     {anrFiltered.map((c, i) => (
                       <div key={c.id} onMouseDown={() => selectAnr(c)} style={{ padding: '10px 14px', cursor: 'pointer', background: i === anrHighlight ? 'var(--c-bg)' : 'transparent' }}>
                         <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 2 }}>{c.fname} {c.lname}</div>
@@ -3649,7 +3649,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                   style={inputStyle}
                 />
                 {showArtistDD && (artistSuggestions.length > 0 || (artistQuery.trim().length >= 2 && !labelArtists.some(a => a.toLowerCase() === artistQuery.trim().toLowerCase()))) && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--c-wash)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--c-bg)', borderRadius: 8, zIndex: 20, marginTop: 2, overflow: 'hidden', boxShadow: '0 8px 26px rgba(0,0,0,0.45)' }}>
                     {artistSuggestions.map((a, i) => (
                       <div key={a} onMouseDown={() => { setArtistQuery(a); set('artist_name', a); setShowArtistDD(false); setArtistHighlight(-1) }} style={{ padding: '9px 14px', cursor: 'pointer', fontSize: 12, fontFamily: 'Inter', background: i === artistHighlight ? 'var(--c-bg)' : 'transparent' }}>{a}</div>
                     ))}
