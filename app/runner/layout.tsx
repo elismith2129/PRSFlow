@@ -13,6 +13,7 @@ export const metadata: Metadata = {
 }
 
 import AdminReturn from '@/components/runner/AdminReturn'
+import RunnerGuard from '@/components/runner/RunnerGuard'
 
 export default function RunnerLayout({
   children,
@@ -20,5 +21,9 @@ export default function RunnerLayout({
   children: React.ReactNode
 }) {
   // AdminReturn renders nothing for runners and the public — see the component.
-  return <><AdminReturn />{children}</>
+  // RunnerGuard (2026-08-20) is the subtree's login gate: no session → /login.
+  // /runner/* was public since the pre-RLS era; RLS made that LOOK safe by
+  // returning empty data, but a tablet being set up saw a hollow app instead
+  // of a login. /runner/sop stays public (see the guard).
+  return <><AdminReturn /><RunnerGuard>{children}</RunnerGuard></>
 }
