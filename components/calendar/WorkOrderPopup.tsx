@@ -1601,6 +1601,38 @@ export function WorkOrderPopup({
 
   // Standalone staff row — engineer (1ST) or assistant (2ND). Any number of
   // these can be added per day, fully custom, independent of studio rows.
+  /**
+   * Add a staff line TO A GIVEN DAY (Eli, 2026-08-20, building a real session:
+   * "there wasnt a place for rate and there was nothing for eng/ass
+   * assignemtn… that needs to exist on the card"). The day sheet only ever
+   * rendered staff blocks for rows that already existed, so a session with no
+   * seeded staff offered nothing to fill in and no way to add one without
+   * leaving the sheet. Same shape as addEngRow, but dated and returning the
+   * new row's id so the sheet's snapshot can include it.
+   */
+  function addEngRowForDate(role: 'engineer' | 'assistant', date: string) {
+    const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
+    const dayStudio = stRows.find(r => (r.date || '') === date && r.studio !== '')
+    const lastEng = [...stRows].reverse().find(r => r.eng_rate)
+    const newRow: StRow = {
+      id: crypto.randomUUID(),
+      studio: '', location: '', eng_name: '', date,
+      session_info: '', from_time: '', to_time: '', total_hours: null,
+      rate: '', rate_daily: '', row_rate_type: 'hour',
+      ot_rate: '', ot_hours: '', ot_charge: null, charge: null,
+      sort_order: maxOrder + 1, day_count: null,
+      // Follow the day's studio window — the same "staff times follow the
+      // studio times until you change them" rule the sheet already states.
+      eng_from_time: dayStudio?.from_time || '',
+      eng_to_time: dayStudio?.to_time || '',
+      eng_rate: lastEng?.eng_rate || '',
+      eng_hours: null, eng_charge: null,
+      admin_checked: false, admin_locked: false, eng_visible: true,
+      eng_role: role, status: 'in_progress',
+    }
+    setStRows(prev => [...prev, newRow])
+  }
+
   function addEngRow(role: 'engineer' | 'assistant' = 'assistant') {
     const engMaxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
     const lastEng = [...stRows].reverse().find(r => r.eng_rate || (r.eng_hours ?? 0) > 0 || r.eng_from_time) || stRows[stRows.length - 1]
@@ -4332,6 +4364,30 @@ export function WorkOrderPopup({
                                 {first?.from_time || '—'} – {first?.to_time || <span style={{ color: 'var(--c-fg-3)', fontSize: 12 }}>tap to set</span>}
                               </span>
                               {first?.total_hours != null && <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>{first.total_hours}h</span>}
+                              {/* THE RATE THAT MADE THE TOTAL (Eli, 2026-08-20:
+                                  "the studio time cards have no place for rate").
+                                  The card showed times, hours and a day total with
+                                  nothing to check the total against. Read-only, like
+                                  every other figure on the card — editing still
+                                  happens in the day sheet. Day rate reads "Day
+                                  $1,400"; hourly reads "$150/hr". A dated studio row
+                                  with no rate says so in warm, the same signal the
+                                  table and sheet use for a missing rate. */}
+                              {first && (() => {
+                                const daily = first.row_rate_type === 'day'
+                                const raw = ((daily ? first.rate_daily : first.rate) ?? '').toString().trim()
+                                if (!raw) {
+                                  return first.date ? (
+                                    <span style={{ fontSize: 10.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-st-warm)' }}>rate?</span>
+                                  ) : null
+                                }
+                                const money = raw.startsWith('$') ? raw : `$${raw}`
+                                return (
+                                  <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>
+                                    {daily ? `Day ${money}` : `${money}/hr`}
+                                  </span>
+                                )
+                              })()}
                             </div>
                             {staffRows.map(r => {
                               const engHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
@@ -4350,6 +4406,28 @@ export function WorkOrderPopup({
                                     {(r.eng_from_time || r.from_time) || '—'} – {(r.eng_to_time || r.to_time) || '—'}
                                     {engHrs != null && engHrs > 0 ? ` · ${engHrs}h` : ''}
                                   </span>
+                                  {/* Their rate, same reason as the studio rate
+                                      above. A NAMED staffer with no rate is the
+                                      likeliest way a session under-bills, so that
+                                      case shouts in warm rather than staying blank
+                                      — the live warning banner says the same thing.
+                                      Assistants are excluded from the warning (they
+                                      are often unpaid seconds), matching the rule
+                                      the table cell and sheet already use. */}
+                                  {(() => {
+                                    const raw = (r.eng_rate ?? '').toString().trim()
+                                    if (raw) {
+                                      const money = raw.startsWith('$') ? raw : `$${raw}`
+                                      return (
+                                        <span style={{ fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>
+                                          {money}/hr
+                                        </span>
+                                      )
+                                    }
+                                    return r.eng_name && r.eng_role !== 'assistant' ? (
+                                      <span style={{ fontSize: 10, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-st-warm)' }}>rate?</span>
+                                    ) : null
+                                  })()}
                                   {/* Staff-line × — ADMIN ONLY (Eli, 2026-08-18:
                                       two assistants is rare but real, so a
                                       mis-add needs a way out). Standalone staff
@@ -4925,6 +5003,28 @@ export function WorkOrderPopup({
                   {sheetStaffRows.length > 0 && !dayLocked && (
                     <div style={{ fontSize: 9.5, fontFamily: 'Inter', color: 'var(--c-fg-3)', margin: '-3px 0 10px 2px' }}>
                       Staff times follow the studio times until you change them.
+                    </div>
+                  )}
+                  {/* ASSIGN STAFF FROM INSIDE THE DAY (2026-08-20). Without
+                      these, a day with no seeded staff row had no staff UI at
+                      all — you had to close the sheet and use the add links
+                      under the bin, which nobody finds while building a
+                      session. Office-only and hidden on a locked day, matching
+                      every other edit affordance here. */}
+                  {!readOnly && !runner && !dayLocked && (
+                    <div style={{ display: 'flex', gap: 14, margin: '2px 0 12px 2px' }}>
+                      <button
+                        type="button"
+                        className="c-x"
+                        onClick={() => addEngRowForDate('engineer', daySheetDate)}
+                        style={{ fontSize: 11, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg)', opacity: 0.55, background: 'none', boxShadow: 'none', padding: 0, cursor: 'pointer' }}
+                      >+ Add engineer</button>
+                      <button
+                        type="button"
+                        className="c-x"
+                        onClick={() => addEngRowForDate('assistant', daySheetDate)}
+                        style={{ fontSize: 11, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-st-warm)', opacity: 1, background: 'none', boxShadow: 'none', padding: 0, cursor: 'pointer' }}
+                      >+ Add assistant</button>
                     </div>
                   )}
 
