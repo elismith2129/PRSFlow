@@ -232,7 +232,15 @@ export default function LoginPage() {
       if (res.status === 401 || data.error === 'incorrect') {
         registerFail()
       } else {
-        setPinMsg({ text: 'something went wrong', color: COLOR_ERROR })
+        // NAME THE FAILURE (2026-08-20, launch night). This was a flat
+        // "something went wrong", which cost an hour of guessing while every
+        // PIN failed: the server distinguishes server_config (a missing key)
+        // from server_error (the sign-in itself), and the screen threw that
+        // away. Same rule as the email path — a message may only claim what
+        // it actually knows. Short codes, not raw internals, but enough to
+        // diagnose from a photo of the screen.
+        const code = typeof data.error === 'string' ? data.error : `http ${res.status}`
+        setPinMsg({ text: `sign-in failed · ${code}`, color: COLOR_ERROR })
       }
       setSubmittingPin(false)
     } catch {
