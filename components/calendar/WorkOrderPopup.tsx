@@ -4925,7 +4925,12 @@ export function WorkOrderPopup({
                     <div style={{ ...fldK, fontSize: 8, marginBottom: 1 }}>{label}</div>
                     <TimeInput value={value} onChange={v => updateStRow(r.id, { [field]: v } as Partial<StRow>)} className="c-tin c-tin-mono" style={{ fontSize: 17, fontWeight: 600, padding: 0, minHeight: 30 }} />
                   </div>
-                  <button type="button" onClick={e => { e.stopPropagation(); setTimeDDKey(timeDDKey === key ? null : key) }} style={{ fontSize: 11, color: 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: '8px 6px', flexShrink: 0 }}>
+                  {/* tabIndex -1 (Eli, 2026-08-20): tabbing from Start landed
+                      on this picker before End, so entering times took two
+                      tabs per field. It stays fully clickable — it is just out
+                      of the keyboard's path, which is what you want for a
+                      shortcut that duplicates something you can type. */}
+                  <button type="button" tabIndex={-1} onClick={e => { e.stopPropagation(); setTimeDDKey(timeDDKey === key ? null : key) }} style={{ fontSize: 11, color: 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: '8px 6px', flexShrink: 0 }}>
                     {timeDDKey === key ? '▴' : '▾'}
                   </button>
                 </div>
