@@ -114,7 +114,13 @@ for (const p of profiles) {
 
   // 3 · the PIN
   const pin = dealPin()
-  const pin_hash = bcrypt.hashSync(pin, 8)
+  // $2a$, NOT bcryptjs's default $2b$ (launch-night bug, 2026-08-20):
+  // pgcrypto's crypt() silently no-matches $2b$ hashes — every PIN read as
+  // "incorrect". For all-ASCII input (digits) the two formats are
+  // byte-identical, so forcing the $2a$ prefix on the salt is a pure
+  // compatibility rename. The live rows were fixed the same way in SQL.
+  const salt = bcrypt.genSaltSync(8).replace('$2b$', '$2a$')
+  const pin_hash = bcrypt.hashSync(pin, salt)
   const { error: upErr } = await supabase.from('staff_pins').upsert({
     user_profile_id: p.id, pin_hash, supabase_password: password,
     updated_at: new Date().toISOString(),
