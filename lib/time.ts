@@ -85,6 +85,22 @@ export function getLocalToday(): string {
   return now.toISOString().slice(0, 10)
 }
 
+/**
+ * The SHIFT LOG's day (Eli, 2026-08-20: "make the notes submit at 8:50a").
+ * A night's log runs 8:50 AM → 8:49 AM the next day: entries written before
+ * 8:50 AM belong to the PREVIOUS date's log (a 1 AM note is part of the night
+ * it happened in, not tomorrow's page), and at 8:50 AM the log seals —
+ * edits stop (RLS policy, migration 20260820) and a fresh day's log begins.
+ * Implemented by subtracting 8h50m before taking the date. The matching
+ * server-side rule lives in the shift_log_entries UPDATE policy — keep the
+ * two in step.
+ */
+export function shiftLogDate(): string {
+  const now = new Date()
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset() - (8 * 60 + 50))
+  return now.toISOString().slice(0, 10)
+}
+
 // ─── Time-of-day copy (Eli, 2026-08-15) ──────────────────────────────────────
 // The studios run 24/7 — a runner clocking in at 7am was being greeted with
 // "Where are you tonight?". Any runner-facing copy that names the shift uses
