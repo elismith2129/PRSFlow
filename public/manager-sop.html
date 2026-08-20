@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Studio Manager SOP</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  STUDIO MANAGER SOP — DESIGN + CONTENT MOCK (Eli, 2026-08-17)
+
+  Companion to billing-sop.html — same chapter architecture, same skin, same
+  hints mechanic. The manager's spine is the DAY: sessions run, runners work
+  their duties, and the morning answers "did yesterday go right" on /daily-ops.
+  TERMINOLOGY RULING (Eli, 2026-08-17): the studios run 24/7 — say DAY, never
+  night, in every term at every staff level.
+
+  RULINGS THIS ENCODES (Eli, this session):
+  · Every role manual is viewable by ALL admin staff. Runners see ONLY the
+    runner manual (role gate on the rebuilt /sop). The manager supervises
+    billing, so this manual carries two OVERSIGHT chapters — "Billing, from
+    where you sit" and "The runner's day". Oversight is NEW content (what
+    done looks like, when to step in), never a copy of the other manual's
+    procedures — one item, one home. Procedures are cross-references.
+
+  Content sources: lib/dailyOps.ts (queue ladder, sweep, seen markers),
+  docs/MYDAY-BUILD.md §2 (manager duties), lib/myday.ts (Flo, billing peek),
+  spec §19 (two worlds), Aug 14 PROJECT_LOG (flags = door vs filing cabinet,
+  absence is the loudest signal, studio+shift scoping, shift logs, punches).
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626;
+  --st-hot:#ff5a4d; --st-warm:#ffa94d; --st-cold:#5fc9e8; --st-booked:#43dfae;
+  --st-uncon:#7fb2e5; --st-dead:#cfd6d4;
+  --ivory:#d5d0c2; --flo-ink:42,39,34;
+  --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+  --ctlsh:0 1px 2px rgba(42,39,34,.10);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --flo-ink:213,208,194;
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  --ctlsh:0 1px 3px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);
+  font:400 14px/1.55 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.grow{flex:1}
+
+.bar{position:sticky;top:0;z-index:9;display:flex;align-items:center;gap:8px;
+  padding:10px 20px;background:var(--bg);box-shadow:0 1px 0 var(--wash)}
+.bar .ctl{padding:5px 12px;border-radius:99px;background:var(--wash);
+  font-size:11.5px;font-weight:700;box-shadow:var(--ctlsh)}
+
+.frame{display:flex;min-height:100vh}
+.rail{width:212px;flex-shrink:0;padding:16px 10px 14px 12px;display:flex;flex-direction:column;
+  gap:2px;background:var(--wash);position:sticky;top:41px;height:calc(100vh - 41px);overflow-y:auto}
+.rail .wm{font-family:'Archivo Black',sans-serif;letter-spacing:-.02em;font-size:15px;padding:2px 10px 2px}
+.rail .wm .flo{opacity:.45}
+.rail .sub{font-size:10px;opacity:.5;padding:0 10px 12px}
+.ch{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:11px;
+  font-size:12.5px;font-weight:600;opacity:.55;text-align:left;width:100%}
+.ch .n{font-family:ui-monospace,monospace;font-size:9.5px;opacity:.7;width:16px;flex-shrink:0}
+.ch:hover{opacity:.85;background:var(--wash)}
+.ch.on{opacity:1;background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .ch.on{background:var(--ivory);color:#1b1a17}
+.rail .grp{margin-top:12px;padding:0 10px 4px}
+.railfoot{margin-top:auto;padding:12px 10px 2px;font-size:10px;opacity:.4;line-height:1.5}
+
+.main{flex:1;min-width:0;padding:18px 34px 60px;max-width:1080px;margin:0 auto}
+
+.hbar{padding:4px 2px 6px}
+.hbar h1{font-family:'Archivo Black',sans-serif;font-size:27px;letter-spacing:-.03em;line-height:1.1}
+.kicker{font-size:9.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;opacity:.45;margin-bottom:5px}
+.lede{font-size:13.5px;opacity:.72;max-width:640px;margin:10px 0 4px;line-height:1.6}
+
+.pane{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:16px 18px;margin-top:14px}
+.pane h3{font-family:'Archivo Black',sans-serif;font-size:14px;letter-spacing:-.01em;margin-bottom:8px}
+.pane p{font-size:12.5px;opacity:.82;margin-bottom:8px;max-width:640px}
+.pane p:last-child{margin-bottom:0}
+.pane .why{font-size:11px;opacity:.55;background:var(--wash);border-radius:11px;
+  padding:8px 12px;margin-top:10px;max-width:640px;line-height:1.55}
+.pane .why b{font-weight:800;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
+  display:block;margin-bottom:2px;opacity:.8}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+
+/* flow stepper */
+.fstep{display:flex;gap:14px;margin-top:14px}
+.fnum{flex-shrink:0;width:34px;display:flex;flex-direction:column;align-items:center}
+.fnum .bub{width:34px;height:34px;border-radius:50%;background:var(--fg);color:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Archivo Black',sans-serif;font-size:12px}
+[data-theme="dark"] .fnum .bub{background:var(--ivory);color:#1b1a17}
+.fnum .line{width:2px;flex:1;background:var(--wash2);margin-top:6px;border-radius:2px}
+.fstep:last-child .fnum .line{display:none}
+.fbody{flex:1;min-width:0;padding-bottom:10px}
+.fcard{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:14px 16px}
+.fcard .who{font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.45;margin-bottom:3px}
+.fcard h3{font-family:'Archivo Black',sans-serif;font-size:15px;letter-spacing:-.01em;margin-bottom:7px}
+.fcard p{font-size:12.5px;opacity:.82;margin-bottom:7px;max-width:620px}
+.fcard p:last-of-type{margin-bottom:0}
+.echo{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0 4px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:99px;
+  background:var(--wash2);font-size:10.5px;font-weight:700}
+.chip.mono{font-family:ui-monospace,monospace;letter-spacing:.02em}
+.chip.hot{background:color-mix(in srgb,var(--st-hot) 18%,transparent);color:var(--st-hot)}
+.chip.ok{background:var(--st-booked);color:var(--chip-ink)}
+.chip.warm{background:color-mix(in srgb,var(--st-warm) 22%,transparent)}
+.btn{display:inline-block;padding:5px 13px;border-radius:99px;background:var(--fg);color:var(--bg);
+  font-size:11px;font-weight:700;box-shadow:var(--ctlsh)}
+[data-theme="dark"] .btn{background:var(--ivory);color:#1b1a17}
+
+/* mini renders */
+.mini{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:12px 14px}
+.mini .cap-line{font-size:10.5px;opacity:.55;margin-top:9px;line-height:1.5}
+.minihead{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.minihead .t{font-family:'Archivo Black',sans-serif;font-size:12px}
+.minihead .pt{font-size:9.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+  opacity:.4;margin-left:auto}
+.trow{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:9px;font-size:11.5px}
+.trow .tby{font-size:9.5px;opacity:.45;margin-left:auto;flex-shrink:0}
+.rooms{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.room{border-radius:10px;background:var(--wash);padding:7px 8px;min-height:52px}
+.room .rk{font-family:ui-monospace,monospace;font-size:9px;opacity:.45;display:block}
+.room .ra{font-size:11px;font-weight:700;margin-top:2px;line-height:1.2}
+.room .rt{font-size:9.5px;opacity:.5;font-family:ui-monospace,monospace}
+.room.live{background:color-mix(in srgb,var(--st-booked) 14%,transparent)}
+.room.hold{background:color-mix(in srgb,var(--st-warm) 13%,transparent)}
+
+/* daily-ops queue + sweep echoes */
+.qitem{display:flex;gap:9px;align-items:flex-start;padding:8px 9px;border-radius:11px;margin-bottom:5px;background:var(--wash)}
+.qitem .dot{margin-top:4px}
+.qitem .qt{font-size:11.5px;font-weight:700;line-height:1.35}
+.qitem .qs{font-size:10px;opacity:.5;margin-top:1px}
+.qitem .qa{font-family:ui-monospace,monospace;font-size:9px;opacity:.45;margin-left:auto;flex-shrink:0;padding-top:2px}
+.qitem .clr{flex-shrink:0;width:16px;height:16px;border-radius:50%;background:var(--wash2);margin-top:1px;
+  display:flex;align-items:center;justify-content:center;font-size:9px}
+.qitem.done{opacity:.45}
+.qitem.done .clr{background:var(--st-booked);color:var(--chip-ink)}
+.sweep{border-radius:12px;background:var(--wash);padding:10px 12px}
+.sweep .sh{display:flex;align-items:baseline;gap:7px;margin-bottom:7px}
+.sweep .sh b{font-family:'Archivo Black',sans-serif;font-size:12px}
+.sweep .sh small{font-size:9.5px;opacity:.5}
+.srow{display:flex;align-items:center;gap:7px;font-size:10.5px;padding:2px 0}
+.srow .sl{width:86px;opacity:.6}
+.srow .sv{font-family:ui-monospace,monospace;font-size:10px;opacity:.8}
+.slog{font-size:10px;opacity:.55;font-style:italic;margin-top:7px;line-height:1.5}
+
+/* THE REAL FLO BOX — exact port of the app's (globals.css .c-ringwrap): flat
+   inner surface outlined by a slowly ROTATING ring of light + soft halo. The
+   ring is the only glow in the whole app — glow means AI, exclusively. */
+.ringwrap{position:relative;border-radius:15px;overflow:hidden;padding:1.5px;margin-top:14px;
+  box-shadow:0 0 16px 3px rgba(var(--flo-ink),.045)}
+.ringwrap::before{content:"";position:absolute;inset:-120%;
+  background:conic-gradient(rgba(var(--flo-ink),.06) 0deg,rgba(var(--flo-ink),.32) 90deg,
+  rgba(var(--flo-ink),.06) 200deg,rgba(var(--flo-ink),.06) 360deg);
+  animation:flospin 8s linear infinite}
+@keyframes flospin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.ringwrap::before{animation:none}}
+.flo-inner{position:relative;border-radius:13.5px;background:var(--bg);padding:10px 12px}
+.flohead2{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.flohead2 .fname2{font-family:'Archivo Black',sans-serif;font-size:13px;letter-spacing:-.01em}
+.flohead2 .ftag2{font-size:7.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45}
+.flob{display:flex;gap:8px;align-items:baseline;font-size:12px;line-height:1.45;margin-bottom:4px}
+.flob .flodot{width:7px;height:7px;border-radius:50%;flex-shrink:0;position:relative;top:-1px}
+.flob.alert{color:var(--st-hot);font-weight:600}
+.flosyn2{font-size:11px;opacity:.55;font-style:italic;margin-top:3px}
+.askflo{margin-top:7px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.4}
+
+/* flo box (dashboard-mini simplified echo) */
+.flo-box{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:14px 16px;margin-top:14px}
+.flo-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.flo-head .fname{font-family:'Archivo Black',sans-serif;font-size:14px}
+.flo-head .ftag{font-size:10.5px;opacity:.5}
+.fb{display:flex;align-items:flex-start;gap:9px;padding:5px 4px;font-size:12.5px}
+.fb .dot{margin-top:5px}
+.fb.dim{opacity:.65}
+.flosyn{margin-top:9px;padding:8px 12px;border-radius:11px;background:var(--wash);
+  font-size:12px;font-style:italic;opacity:.8}
+.annot{font-size:10.5px;opacity:.5;padding:1px 4px 7px 25px;line-height:1.5;max-width:560px}
+
+/* duty card */
+.duty{display:flex;align-items:flex-start;gap:9px;padding:6px 10px;border-radius:10px;margin-bottom:2px}
+.bx{width:15px;height:15px;border-radius:5px;background:var(--wash2);flex-shrink:0;margin-top:2px;
+  display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1}
+.duty.done .bx{background:var(--st-booked);color:var(--chip-ink)}
+.duty.done .tx{opacity:.42;text-decoration:line-through}
+.tx{font-size:12.5px;flex:1;min-width:0}
+.subtx{font-size:10px;opacity:.5;margin-top:1px;line-height:1.45}
+.cap{width:52px;padding:2px 7px;border-radius:7px;background:var(--wash2);
+  font-family:ui-monospace,monospace;font-size:10px;text-align:right;flex-shrink:0}
+.due{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.45;flex-shrink:0;margin-top:3px}
+.lozenge{display:flex;align-items:baseline;justify-content:space-between;border-radius:99px;
+  padding:7px 14px;margin-bottom:9px;font-size:10px;font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase}
+:root .lozenge{background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .lozenge{background:var(--wash2);color:var(--fg)}
+.lozenge .ct{font-family:ui-monospace,monospace;font-size:10px;opacity:.7;letter-spacing:0}
+
+/* billing peek */
+.stat4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.bstat{background:var(--wash);border-radius:12px;padding:9px 11px}
+.bstat .n{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-.02em;line-height:1.1}
+.bstat .k{font-size:9.5px;opacity:.55;margin-top:2px}
+.bstat.alert .n{color:var(--st-hot)}
+
+/* rhythm + clearing rows */
+.rr{display:flex;gap:10px;align-items:flex-start;padding:8px 6px;border-radius:11px}
+.rr:hover{background:var(--wash)}
+.when{flex-shrink:0;width:86px;font-family:'Archivo Black',sans-serif;font-size:11px;letter-spacing:.02em;
+  padding:4px 0;text-align:left}
+.rr .what{flex:1;font-size:12.5px;opacity:.82;padding-top:3px}
+.rr .what small{display:block;font-size:10.5px;opacity:.55;margin-top:1px}
+.crow{display:flex;gap:10px;align-items:flex-start;padding:7px 6px;border-radius:10px;font-size:12px}
+.crow .cdot{margin-top:5px}
+.crow .h{font-weight:700;width:110px;flex-shrink:0}
+.crow .b{flex:1;opacity:.78}
+
+/* runner hub echo — REAL layout (app/runner/[studio]/page.tsx): header with
+   back circle + studio + switcher pills, From-the-office card, room-hero
+   session with WO pill, day-part tiles with status lines, quiet register. */
+.phone{max-width:300px;background:var(--srf);box-shadow:var(--softsh);border-radius:22px;padding:13px 12px}
+.phdr{display:flex;align-items:center;gap:9px;margin-bottom:12px}
+.phdr .back{width:30px;height:30px;border-radius:99px;background:var(--wash2);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:13px}
+.phdr .pst{font-family:'Archivo Black',sans-serif;font-size:14px;letter-spacing:-.02em;line-height:1.15}
+.phdr .pdt{font-size:9px;opacity:.5}
+.phdr .sw{margin-left:auto;display:flex;gap:3px}
+.phdr .sw span{font-size:8px;font-weight:800;letter-spacing:.04em;padding:4px 6px;border-radius:99px;opacity:.45}
+.phdr .sw span.on{background:var(--wash2);opacity:1}
+.psec{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.4;margin:10px 0 5px}
+.pcard{background:var(--wash);border-radius:11px;padding:8px 10px;font-size:11px;margin-bottom:5px}
+.pcard b{display:block;font-size:11.5px}
+.pcard small{font-size:9.5px;opacity:.5}
+.ptaskrow{display:flex;align-items:center;gap:7px;font-size:10.5px}
+.ptaskrow .tc{width:16px;height:16px;border-radius:99px;background:var(--wash2);flex-shrink:0}
+.proom{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;padding:0 2px}
+.proom .rn{font-family:'Archivo Black',sans-serif;font-size:14px}
+.ppill{font-size:8px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  padding:3px 8px;border-radius:99px;background:var(--wash2);opacity:.7}
+.ppill.warm{background:var(--st-warm);color:var(--chip-ink);opacity:1}
+.pchip{border-radius:13px;background:color-mix(in srgb,var(--st-booked) 22%,transparent);
+  padding:9px 11px;font-size:10.5px}
+.pchip b{display:block;font-size:12px}
+.pchip small{font-size:9px;opacity:.6}
+.ptiles{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.ptile{background:var(--wash);border-radius:10px;padding:8px 9px;min-height:48px;
+  display:flex;flex-direction:column;justify-content:space-between}
+.ptile b{font-size:10px;font-weight:700}
+.ptile small{font-size:8.5px;opacity:.45;margin-top:3px}
+.ptile small.ok{color:var(--st-booked);opacity:1;font-weight:700}
+.pquiet{background:var(--wash);border-radius:11px;padding:8px 10px;margin-top:5px;
+  display:flex;align-items:center;gap:8px}
+.pquiet div{flex:1}
+.pquiet b{display:block;font-size:10.5px}
+.pquiet small{font-size:9px;opacity:.55}
+.pquiet .ar{opacity:.35;font-size:13px}
+
+/* hints */
+.hint{display:none;position:relative;width:15px;height:15px;border-radius:50%;
+  background:var(--st-cold);color:var(--chip-ink);font-size:9.5px;font-weight:800;
+  align-items:center;justify-content:center;cursor:help;flex-shrink:0;
+  vertical-align:middle;margin-left:5px;line-height:1;
+  animation:hintpulse 2.4s ease-in-out infinite}
+body.hints .hint{display:inline-flex}
+@keyframes hintpulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--st-cold) 45%,transparent)}
+  50%{box-shadow:0 0 0 5px transparent}}
+.tipb{display:none;position:absolute;bottom:135%;left:-8px;width:230px;z-index:20;
+  background:var(--fg);color:var(--bg);border-radius:11px;padding:9px 12px;
+  font-size:11px;font-weight:500;line-height:1.5;text-align:left;letter-spacing:0;
+  text-transform:none;box-shadow:var(--softsh)}
+.hint:hover .tipb,.hint.open .tipb{display:block}
+
+.section{display:none}
+.section.on{display:block}
+.nextbar{display:flex;justify-content:space-between;margin-top:22px}
+.nextbar button{padding:7px 15px;border-radius:99px;background:var(--wash2);font-size:11.5px;font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span style="font-size:12px;opacity:.55">Studio Manager SOP · Paramount Recording Studios</span>
+  <span class="grow"></span>
+  <button class="ctl" onclick="hints()" id="hintBtn">💡 Hints: Off</button>
+  <button class="ctl" onclick="flip()" id="themeBtn">View light</button>
+</div>
+
+<div class="frame">
+<nav class="rail">
+  <span class="wm">PRS<span class="flo">FLO</span></span>
+  <span class="sub">Studio Manager · Operating Manual</span>
+  <button class="ch on" data-s="job" onclick="go('job')"><span class="n">01</span> Your job</button>
+  <div class="grp label">The flow</div>
+  <button class="ch" data-s="flow" onclick="go('flow')"><span class="n">02</span> A day, start to finish</button>
+  <button class="ch" data-s="ops" onclick="go('ops')"><span class="n">03</span> The Daily Ops page</button>
+  <button class="ch" data-s="flags" onclick="go('flags')"><span class="n">04</span> Flags</button>
+  <button class="ch" data-s="tasks" onclick="go('tasks')"><span class="n">05</span> Studio tasks &amp; shift logs</button>
+  <div class="grp label">Your day</div>
+  <button class="ch" data-s="dash" onclick="go('dash')"><span class="n">06</span> The Dashboard</button>
+  <button class="ch" data-s="myday" onclick="go('myday')"><span class="n">07</span> My Day</button>
+  <button class="ch" data-s="flo" onclick="go('flo')"><span class="n">08</span> The Flo briefing</button>
+  <button class="ch" data-s="rhythm" onclick="go('rhythm')"><span class="n">09</span> The rhythm</button>
+  <div class="grp label">Oversight</div>
+  <button class="ch" data-s="obill" onclick="go('obill')"><span class="n">10</span> Billing, from where you sit</button>
+  <button class="ch" data-s="orun" onclick="go('orun')"><span class="n">11</span> The runner's day</button>
+  <div class="grp label">Reference</div>
+  <button class="ch" data-s="help" onclick="go('help')"><span class="n">12</span> Help &amp; words</button>
+  <div class="railfoot">All manuals are open to admin staff — the Billing and Runner manuals are one click away. Runners see only theirs.</div>
+</nav>
+
+<main class="main">
+
+<!-- ════════ 01 · YOUR JOB ════════ -->
+<section class="section on" id="s-job">
+  <div class="hbar">
+    <div class="kicker">Chapter 01</div>
+    <h1>You own the building</h1>
+    <p class="lede">PRSFlo is two worlds. <b>Billing</b> is the coordinator's — invoices,
+    payments, money owed. <b>Operations</b> is yours — four studios running around the
+    clock, the runners who keep them running, and the paperwork that proves every day
+    went right. You're also the person the operation reports to, so the last two
+    chapters of this manual are about overseeing the other roles, not doing their jobs.</p>
+  </div>
+
+  <div class="pane">
+    <h3>The three questions your screens answer</h3>
+    <p>Your day runs on three surfaces, and each one answers a different question.
+    <b>The Dashboard</b> — <i>what's happening today?</i> <b>Daily Ops</b> — <i>did yesterday
+    go right?</i> <b>My Day</b> — <i>what do I owe today?</i> Keeping the three
+    questions separate is deliberate: a screen that tries to answer all of them answers
+    none of them well.</p>
+    <div class="why"><b>The habit to build</b>Morning order: Dashboard for Flo's
+    briefing → Daily Ops until the queue is empty → My Day check-ins as you go. When
+    Daily Ops says "Yesterday is done," it is.</div>
+  </div>
+
+  <div class="two">
+    <div class="pane">
+      <h3>What's yours</h3>
+      <p>The daily duties (checklists, mic inventory, petty cash, stock), flags and
+      their resolutions, studio tasks, shift logs, runner timecards, the morning
+      review, and the studio check-ins. Nothing about money — sessions become invoices
+      in the coordinator's world, already covered.</p>
+    </div>
+    <div class="pane">
+      <h3>What's deliberately not</h3>
+      <p>Work orders and invoices live in <b>Billing</b> (you oversee — chapter 10).
+      Punch corrections live in <b>HR</b>. Today's live status is the
+      <b>dashboard's</b> job. One copy of everything, one home for each thing.</p>
+    </div>
+  </div>
+  <div class="nextbar"><span></span><button onclick="go('flow')">Next · A day, start to finish →</button></div>
+</section>
+
+<!-- ════════ 02 · THE FLOW ════════ -->
+<section class="section" id="s-flow">
+  <div class="hbar">
+    <div class="kicker">Chapter 02 · The flow</div>
+    <h1>A day, start to finish</h1>
+    <p class="lede">The billing manual follows a session from hold to paid. Yours follows
+    a <b>day</b> — from the moment a runner walks in to the moment you clear the last
+    queue item the next morning. Every screen you use is a window onto this cycle.</p>
+  </div>
+
+  <div class="fstep">
+    <div class="fnum"><div class="bub">1</div><div class="line"></div></div>
+    <div class="fbody"><div class="fcard">
+      <div class="who">You · ahead of the shift</div>
+      <h3>The day is set up</h3>
+      <p>Sessions sit on the calendar (each already carrying its work order). Anything
+      you need done at a studio goes up as a <b>studio task</b> — scoped to a studio and
+      a shift, never a person, because runners rotate. Whoever opens Encore next sees
+      Encore's tasks first thing.</p>
+      <div class="echo"><span class="chip">Studio + shift, never a name</span></div>
+    </div></div>
+  </div>
+
+  <div class="fstep">
+    <div class="fnum"><div class="bub">2</div><div class="line"></div></div>
+    <div class="fbody"><div class="fcard">
+      <div class="who">Runners · their phones</div>
+      <h3>Runners arrive and work the hub</h3>
+      <p>A runner opens the hub, lands on their studio, and sees: tasks waiting, today's
+      sessions, and the duty tiles. Through the shift they work the work order day sheet
+      for each session (times, staff, equipment, payments — billing's chapter covers
+      what happens to it) and the studio's own duties: <b>opening and closing
+      checklists, mic inventory, petty cash, stock.</b></p>
+    </div></div>
+  </div>
+
+  <div class="fstep">
+    <div class="fnum"><div class="bub">3</div><div class="line"></div></div>
+    <div class="fbody"><div class="fcard">
+      <div class="who">Runners · as things happen</div>
+      <h3>Problems become flags, not memories</h3>
+      <p>A ripped couch, a dead mic, a leak — the runner marks <b>needs attention</b> on
+      a checklist or work order (note + photo), and PRSFlo raises a <b>flag</b>
+      automatically. Anyone can also raise one by hand. A flag is a record from the
+      moment it exists — it will be waiting for you in the morning, and it cannot be
+      forgotten because it never lived in anyone's memory.</p>
+    </div></div>
+  </div>
+
+  <div class="fstep">
+    <div class="fnum"><div class="bub">4</div><div class="line"></div></div>
+    <div class="fbody"><div class="fcard">
+      <div class="who">Runners · through the shift</div>
+      <h3>The shift log is written as it happens</h3>
+      <p>The shift log replaced the Slack post. It's a <b>log, not a text box</b>:
+      entries added through the shift, each stamped with who and when, photos welcome,
+      handoffs mid-shift supported — and <b>append-only</b>. An entry is a record, not a
+      draft; nothing is ever edited or deleted.</p>
+    </div></div>
+  </div>
+
+  <div class="fstep">
+    <div class="fnum"><div class="bub">5</div><div class="line"></div></div>
+    <div class="fbody"><div class="fcard">
+      <div class="who">Runners · same day, protected</div>
+      <h3>Punches</h3>
+      <p>Hours live in ADP, not PRSFlo. What PRSFlo holds is the <b>missed-punch
+      report</b> — the written confirmation California requires before a punch is
+      edited, filed by the runner the same day.<span class="hint">?<span class="tipb">Same-day reports are the ones that protect the runner — that's why the punch report sits on the hub itself, not buried in a menu.</span></span> Your end of it is the ADP timecards
+      duty on your My Day card: clear the exceptions, tick the duty, type how many.</p>
+    </div></div>
+  </div>
+
+  <div class="fstep">
+    <div class="fnum"><div class="bub">6</div><div class="line"></div></div>
+    <div class="fbody"><div class="fcard">
+      <div class="who">You · next morning</div>
+      <h3>The morning review — Daily Ops</h3>
+      <p>Open <b>Daily Ops</b>. The left column is the <b>queue</b> — everything about
+      yesterday that needs a decision, worst first. The right side is the <b>sweep</b> —
+      all four studios at a glance. Work the queue to zero, skim the sweep, and the page
+      tells you the finish line exists: <b>"Yesterday is done."</b></p>
+      <div class="echo"><span class="chip hot">Queue — decide</span><span class="chip">Sweep — verify</span><span class="chip ok">Yesterday is done</span></div>
+    </div></div>
+  </div>
+
+  <div class="fstep">
+    <div class="fnum"><div class="bub">7</div><div class="line"></div></div>
+    <div class="fbody"><div class="fcard">
+      <div class="who">You · out of the morning</div>
+      <h3>What leaves the review</h3>
+      <p>A flag worth acting on gets acknowledged and becomes work — a vendor call, a
+      task, a conversation. A missing submission becomes a question for today's
+      runner. Your studio check-ins (chapter 07) get ticked as you go. And the work
+      orders from yesterday? Already in the billing hub, being reviewed — not your
+      queue.</p>
+    </div></div>
+  </div>
+
+  <div class="pane">
+    <h3>The whole cycle in one line</h3>
+    <p class="mono" style="font-size:11.5px;opacity:.75">tasks posted → runners work the day (duties · flags ·
+    shift log · punches) → morning queue to zero → sweep read → "Yesterday is done" → set up today</p>
+  </div>
+  <div class="nextbar"><button onclick="go('job')">← Your job</button><button onclick="go('ops')">Next · The Daily Ops page →</button></div>
+</section>
+
+<!-- ════════ 03 · DAILY OPS ════════ -->
+<section class="section" id="s-ops">
+  <div class="hbar">
+    <div class="kicker">Chapter 03</div>
+    <h1>The Daily Ops page</h1>
+    <p class="lede">One page, one question: <b>did yesterday go right?</b> Queue on the
+    left — exceptions needing a decision. Sweep on the right — every studio's day at a
+    glance. When the queue is empty, the page says so, and you're done.</p>
+  </div>
+
+  <div class="two">
+    <div class="mini">
+      <div class="minihead"><span class="t">The queue</span><span class="pt">Left</span></div>
+      <div class="qitem"><span class="dot" style="background:var(--st-hot)"></span>
+        <span><span class="qt">Flag — B-room couch ripped</span><span class="qs" style="display:block">Runner flag · opens the flag itself</span></span>
+        <span class="qa">ARS</span><span class="clr"></span></div>
+      <div class="qitem"><span class="dot" style="background:var(--st-hot)"></span>
+        <span><span class="qt">Encore closing checklist never submitted</span><span class="qs" style="display:block">Nothing came in — find out why before the next shift</span></span>
+        <span class="qa">ERS</span><span class="clr"></span></div>
+      <div class="qitem"><span class="dot" style="background:var(--st-hot)"></span>
+        <span><span class="qt">U87 #2 marked MISSING</span><span class="qs" style="display:block">Mic inventory</span></span>
+        <span class="qa">TRK</span><span class="clr"></span></div>
+      <div class="qitem done"><span class="dot" style="background:var(--st-warm)"></span>
+        <span><span class="qt">Note — "AC dripping in the lounge"</span><span class="qs" style="display:block">Opening checklist</span></span>
+        <span class="qa">PRS</span><span class="clr">✓</span></div>
+      <div class="cap-line">Worst first, and the order <b>is</b> the urgency ladder:
+      flags, then things that never came in, then missing mics, then notes. Tap the
+      circle to clear a reviewed item.<span class="hint">?<span class="tipb">Cleared is shared — one row per item per date, visible to every manager. If Quinn clears it at 8am, it stays cleared for everyone.</span></span></div>
+    </div>
+    <div class="mini">
+      <div class="minihead"><span class="t">The sweep</span><span class="pt">Right · one of four</span></div>
+      <div class="sweep">
+        <div class="sh"><b>Paramount</b><small>PRS · worked: Dre, Mathew</small></div>
+        <div class="srow"><span class="sl">Opening</span><span class="dot" style="width:6px;height:6px;background:var(--st-booked)"></span><span class="sv">9:12 AM</span></div>
+        <div class="srow"><span class="sl">Closing</span><span class="dot" style="width:6px;height:6px;background:var(--st-booked)"></span><span class="sv">2:41 AM</span></div>
+        <div class="srow"><span class="sl">Mic inventory</span><span class="dot" style="width:6px;height:6px;background:var(--st-booked)"></span><span class="sv">71 checked</span></div>
+        <div class="srow"><span class="sl">Petty cash</span><span class="dot" style="width:6px;height:6px;background:var(--st-booked)"></span><span class="sv">3 entries · −$62</span></div>
+        <div class="srow"><span class="sl">Stock</span><span class="dot" style="width:6px;height:6px;background:var(--st-warm)"></span><span class="sv">2 low</span></div>
+        <div class="slog">"11:40 — Session B wrapped, client took roughs… 1:15 — handed off to Mathew…" <b style="font-style:normal;opacity:.7">· full log opens in a popup</b></div>
+      </div>
+      <div class="cap-line">Five duties per studio, who worked, and the day's shift
+      log. Green = came in clean · orange = came in with a problem · <b>red = never came
+      in at all.</b></div>
+    </div>
+  </div>
+
+  <div class="pane">
+    <h3>Absence is the loudest signal</h3>
+    <p>A checklist that came in with a problem announces itself. A checklist that
+    <b>never came in</b> used to be the quietest thing in the system — nothing rendered,
+    nowhere. It's now a hot queue item, above almost everything else, because the state
+    that most needs your attention is the one with no pixels of its own.</p>
+    <div class="why"><b>Why clearing exists</b>The queue isn't a to-do list — it's a
+    "seen" list. Clearing an item says <i>a manager looked at this and dealt with it or
+    chose not to</i>. That's what makes "Yesterday is done" mean something.</div>
+  </div>
+
+  <div class="pane">
+    <h3>What's deliberately not on this page</h3>
+    <p>No work orders (Billing reviews those — chapter 10 is your window into it), no
+    punches (HR), no live today (the dashboard). The one exception to clearing: a
+    <b>flag</b> clears only by acknowledging the flag itself — the flag system stays
+    the permanent record, this page is just the door.</p>
+  </div>
+  <div class="nextbar"><button onclick="go('flow')">← The flow</button><button onclick="go('flags')">Next · Flags →</button></div>
+</section>
+
+<!-- ════════ 04 · FLAGS ════════ -->
+<section class="section" id="s-flags">
+  <div class="hbar">
+    <div class="kicker">Chapter 04</div>
+    <h1>Flags</h1>
+    <p class="lede">A flag is how a problem in the building becomes a record instead of a
+    memory. Anything broken, missing, leaking, or wrong gets one — raised automatically
+    from a runner's needs-attention note, or by hand by anyone.</p>
+  </div>
+
+  <div class="pane">
+    <h3>The life of a flag</h3>
+    <div class="echo"><span class="chip hot">Pending — just raised</span>
+      <span class="chip warm">Acknowledged — you've seen it, it's being handled</span>
+      <span class="chip ok">Resolved — fixed, with the story attached</span></div>
+    <p><b>Pending</b> flags sit in your Daily Ops queue and on the dashboard's flags
+    panel. <b>Acknowledging</b> says "a manager knows" — you can recategorize it at the
+    same moment. <b>Resolving</b> closes it with a resolution note, and when money was
+    involved, the vendor and the cost — so a year from now "when did we last fix that
+    AC and what did it cost" has an answer.</p>
+    <p>Every flag carries its comment thread and photos. Runner-raised flags keep the
+    runner's original note — that's the primary source; don't retype it.</p>
+    <div class="why"><b>Door vs filing cabinet</b>The Daily Ops queue is where flags
+    meet you in the morning. The <b>/flags</b> page is the standing record — every flag
+    ever, searchable, by category. Don't work from the cabinet; work from the door.</div>
+  </div>
+  <div class="nextbar"><button onclick="go('ops')">← Daily Ops</button><button onclick="go('tasks')">Next · Studio tasks &amp; shift logs →</button></div>
+</section>
+
+<!-- ════════ 05 · TASKS & LOGS ════════ -->
+<section class="section" id="s-tasks">
+  <div class="hbar">
+    <div class="kicker">Chapter 05</div>
+    <h1>Studio tasks &amp; shift logs</h1>
+    <p class="lede">Two tools for talking to a shift you won't be awake for.</p>
+  </div>
+
+  <div class="two">
+    <div class="pane">
+      <h3>Studio tasks — work you leave for the building</h3>
+      <p>Scoped to a <b>studio and a shift, never a person</b> — runners rotate, so
+      "whoever opens Ameraycan" is the only assignee that always exists. Tasks sit at
+      the top of the runner hub, above the sessions, because a runner's first question
+      is "is anything waiting for me?" You post them, runners complete them, done ones
+      collapse away.</p>
+      <p>Don't confuse them with <b>My Tasks</b> on the dashboard — those are personal,
+      assigned by name, for office staff. Studio tasks belong to a room and a time of
+      day.</p>
+    </div>
+    <div class="pane">
+      <h3>Shift logs — the day, written down</h3>
+      <p>One log per studio per day, entries appended as things happen, each stamped
+      with author and time. Multiple runners can write into the same day — that's a
+      handoff, on the record. <b>Nothing is ever edited or deleted.</b></p>
+      <p>You read them two ways: the sweep card shows a preview of each studio's day,
+      and the full log opens in a popup. A good log answers tomorrow's questions before
+      they're asked — that's the standard to hold runners to.</p>
+    </div>
+  </div>
+  <div class="nextbar"><button onclick="go('flags')">← Flags</button><button onclick="go('dash')">Next · The Dashboard →</button></div>
+</section>
+
+<!-- ════════ 06 · DASHBOARD ════════ -->
+<section class="section" id="s-dash">
+  <div class="hbar">
+    <div class="kicker">Chapter 06</div>
+    <h1>The Dashboard</h1>
+    <p class="lede">The morning read — <i>what's happening today?</i> Open it, read Flo,
+    glance at the rooms, and move on to Daily Ops.</p>
+  </div>
+  <p class="lede" style="margin-top:0">Four things on it are yours:</p>
+
+  <div class="two" style="margin-top:14px">
+    <div class="mini">
+      <div class="minihead"><span class="t">Flo</span><span class="ftag" style="font-size:10px;opacity:.5">· Your briefing · Aug 28</span><span class="pt">Top left</span></div>
+      <div class="fb"><span class="dot" style="background:var(--st-hot)"></span><span>Encore closing checklist never submitted yesterday</span></div>
+      <div class="fb"><span class="dot" style="background:var(--st-booked)"></span><span>You cleared all 7 duties yesterday</span></div>
+      <div class="fb dim"><span class="dot" style="background:var(--st-dead)"></span><span>Tomorrow: Valley checks</span></div>
+      <div class="flosyn">"Quiet day — one thing needs you: Encore's closing checklist."</div>
+      <div class="cap-line"><b>The Flo box</b> — computed, rule-based; chapter 08.</div>
+    </div>
+    <div class="mini">
+      <div class="minihead"><span class="t">My Day</span><span class="pt">Beside Flo</span></div>
+      <div class="lozenge" style="margin-bottom:6px"><span>Manager · Today</span><span class="ct">3 of 7</span></div>
+      <div class="duty done"><div class="bx">✓</div><div class="tx">Studio check-in — Paramount</div></div>
+      <div class="duty done"><div class="bx">✓</div><div class="tx">Studio check-in — Ameraycan</div></div>
+      <div class="duty"><div class="bx"></div><div class="tx">Studio check-in — Encore<div class="subtx">opener/closer · sessions · Slack · Mustard's start time</div></div></div>
+      <div class="duty"><div class="bx"></div><div class="tx">ADP runner timecards</div><span class="cap">—</span></div>
+      <div class="cap-line"><b>Your My Day card</b> — the check-ins and duties; chapter 07.</div>
+    </div>
+    <div class="mini">
+      <div class="minihead"><span class="t">My Tasks</span><span class="pt">Below My Day</span></div>
+      <div class="trow"><span class="dot" style="background:var(--st-warm)"></span><span>Get quote for B-room couch</span><span class="tby">from Eli</span></div>
+      <div class="trow"><span class="dot" style="background:var(--st-dead)"></span><span>Schedule TRK deep clean</span><span class="tby">self</span></div>
+      <div class="cap-line"><b>My Tasks</b> — personal, by name, with comment threads.
+      Different from studio tasks (chapter 05), which belong to a room and shift.</div>
+    </div>
+    <div class="mini">
+      <div class="minihead"><span class="t">Today's sessions</span><span class="pt">Center</span></div>
+      <div class="rooms">
+        <div class="room live"><span class="rk">PRS · A</span><span class="ra">KAYA B</span><span class="rt">2p–12a</span></div>
+        <div class="room live"><span class="rk">PRS · B</span><span class="ra">DECOY</span><span class="rt">6p–2a</span></div>
+        <div class="room hold"><span class="rk">ARS · D</span><span class="ra">J. RIVAS</span><span class="rt">hold</span></div>
+        <div class="room"><span class="rk">ERS · A</span><span class="ra" style="opacity:.3">—</span></div>
+      </div>
+      <div class="cap-line"><b>The room grid</b> — today across all buildings. Teal =
+      confirmed, orange = a hold. Today's rooms are tomorrow's queue.</div>
+    </div>
+  </div>
+
+  <div class="pane">
+    <div class="why" style="margin-top:0"><b>Also visible</b>The flags panel (pending
+    flags surface here too) and the needs-action leads. Leads are the CRM's world — you
+    can see them; the flags are yours.</div>
+  </div>
+  <div class="nextbar"><button onclick="go('tasks')">← Tasks &amp; logs</button><button onclick="go('myday')">Next · My Day →</button></div>
+</section>
+
+<!-- ════════ 07 · MY DAY ════════ -->
+<section class="section" id="s-myday">
+  <div class="hbar">
+    <div class="kicker">Chapter 07</div>
+    <h1>My Day</h1>
+    <p class="lede">Your recurring duties as a card that knows its own schedule. The
+    days flow through Daily Ops; My Day is your personal drumbeat around them.</p>
+  </div>
+
+  <div class="pane">
+    <div class="lozenge"><span>Manager · Today</span><span class="ct">3 of 7</span></div>
+    <div class="duty done"><div class="bx">✓</div><div class="tx">Studio check-in — Paramount<div class="subtx">opener/closer confirmed · today's sessions reviewed · yesterday's Slack read · check-in done</div></div></div>
+    <div class="duty done"><div class="bx">✓</div><div class="tx">Studio check-in — Ameraycan</div></div>
+    <div class="duty"><div class="bx"></div><div class="tx">Studio check-in — Encore<div class="subtx">…plus: Mustard's start time confirmed</div></div></div>
+    <div class="duty"><div class="bx"></div><div class="tx">Studio check-in — Track<div class="subtx">…plus: cleaning shift confirmed</div></div></div>
+    <div class="duty"><div class="bx"></div><div class="tx">ADP runner timecards<div class="subtx">records: exceptions cleared</div></div><span class="cap">—</span></div>
+    <div class="duty"><div class="bx"></div><div class="tx">Deliverables / schedule</div></div>
+    <div class="duty"><div class="bx"></div><div class="tx">Valley checks<div class="subtx">shown every day — due Tue &amp; Fri</div></div><span class="due">Not due today</span></div>
+    <p class="why" style="margin-top:10px"><b>The grey sub-lines</b>A check-in stands
+    for four small things (opener/closer, sessions, Slack, the check-in itself) — the
+    grey text keeps them visible, but there's <b>one tick per duty</b>. The tick means
+    all of it happened.</p>
+  </div>
+
+  <div class="pane">
+    <h3>The rules the card lives by</h3>
+    <p><b>Day-scoped duties show on their day.</b> Office stock appears Wednesday;
+    valley checks are the exception — shown every day so you can do them whenever, but
+    <b>due</b> Tue and Fri, and a skipped week still goes red.</p>
+    <p><b>Missed days accrue on cumulative duties.</b> Skip timecards two days and one
+    line reads "covering 3 days" — one tick clears the backlog it names.</p>
+    <p><b>Never "late" on the day itself</b> — late means a previous day went
+    unfinished. And <b>anyone can cover</b>: another admin can work your card when
+    you're out; the record shows who did what.</p>
+  </div>
+  <div class="nextbar"><button onclick="go('dash')">← Dashboard</button><button onclick="go('flo')">Next · The Flo briefing →</button></div>
+</section>
+
+<!-- ════════ 08 · FLO ════════ -->
+<section class="section" id="s-flo">
+  <div class="hbar">
+    <div class="kicker">Chapter 08</div>
+    <h1>The Flo briefing</h1>
+    <p class="lede">Not AI, not guessing — every line is a fixed rule over live data.<span class="hint">?<span class="tipb">If a line surprises you, the data changed, not the rules. The full tier-by-tier logic is in the Billing manual's Flo chapter — the rules are identical for every role.</span></span>
+    Yours reads on your world:</p>
+  </div>
+
+  <!-- THE ACTUAL FLO BOX — exact port from the dashboard, ring animation and
+       all, so the reader recognizes it on sight. -->
+  <div class="ringwrap" style="max-width:520px"><div class="flo-inner">
+    <div class="flohead2">
+      <svg width="22" height="22" viewBox="0 0 200 200" aria-hidden="true" style="flex-shrink:0">
+        <path d="M 14 100 Q 70 -10, 113 100 T 186 100" stroke="currentColor" stroke-width="11" fill="none" stroke-linecap="round" opacity=".35"/>
+        <path d="M 14 100 Q 70 30, 113 100 T 186 100" stroke="currentColor" stroke-width="11" fill="none" stroke-linecap="round" opacity=".6"/>
+        <path d="M 14 100 Q 70 70, 113 100 T 186 100" stroke="currentColor" stroke-width="11" fill="none" stroke-linecap="round"/>
+      </svg>
+      <span class="fname2">Flo</span><span class="ftag2">· Your briefing · Aug 28</span>
+    </div>
+    <div class="flob alert"><span class="flodot" style="background:var(--st-hot)"></span>You missed ADP runner timecards — covering 3 days</div>
+    <div class="flob"><span class="flodot" style="background:var(--st-warm)"></span>2 sessions missing work orders</div>
+    <div class="flob"><span class="flodot" style="background:var(--st-booked)"></span>You cleared all 7 duties yesterday</div>
+    <div class="flob"><span class="flodot" style="background:var(--st-dead)"></span>Tomorrow: Valley checks · Office stock</div>
+    <div class="flosyn2">Quiet day — one thing needs you: You missed ADP runner timecards — covering 3 days.</div>
+    <div class="askflo">Ask Flo →</div>
+  </div></div>
+  <p style="font-size:11px;opacity:.5;max-width:520px;margin-top:8px;line-height:1.5">This is
+  the exact box from your dashboard — the slow ring of light around it is Flo's signature.
+  <b>Glow means AI</b>: nothing else in the app glows, so if something is glowing, it's Flo.</p>
+
+  <div class="pane">
+    <h3>Reading it, line by line</h3>
+    <div class="crow"><span class="dot cdot" style="background:var(--st-hot)"></span><span class="h">Red — slipped</span><span class="b">A backlog hit 3+ days, a monthly duty blew its date, or yesterday's duty went unticked. The whole line turns red and bold — that's the one visual alarm Flo has.</span></div>
+    <div class="crow"><span class="dot cdot" style="background:var(--st-warm)"></span><span class="h">Amber — building</span><span class="b">Pressure in the system, counted fresh each morning. Some ambers are billing-world numbers; they're context for you, work for the coordinator.</span></div>
+    <div class="crow"><span class="dot cdot" style="background:var(--st-booked)"></span><span class="h">Green — went well</span><span class="b">Earned, never decorative — only when every duty due yesterday was done.</span></div>
+    <div class="crow"><span class="dot cdot" style="background:var(--st-dead)"></span><span class="h">Tomorrow</span><span class="b">The day-before nudge for weekly/monthly duties. Never repeats something already red.</span></div>
+  </div>
+
+  <div class="pane">
+    <h3>What clearing means</h3>
+    <div class="crow"><span class="dot cdot" style="background:var(--st-hot)"></span><span class="h">Red clears</span><span class="b">by doing the duty — one tick covers the backlog it names. No dismiss, no snooze.</span></div>
+    <div class="crow"><span class="dot cdot" style="background:var(--st-warm)"></span><span class="h">Amber clears</span><span class="b">itself when reality improves — the queue behind it empties and the line is gone next morning.</span></div>
+    <div class="crow"><span class="dot cdot" style="background:var(--st-booked)"></span><span class="h">Green &amp; Tomorrow</span><span class="b">aren't clearable — a report and a heads-up.</span></div>
+  </div>
+  <div class="nextbar"><button onclick="go('myday')">← My Day</button><button onclick="go('rhythm')">Next · The rhythm →</button></div>
+</section>
+
+<!-- ════════ 09 · RHYTHM ════════ -->
+<section class="section" id="s-rhythm">
+  <div class="hbar">
+    <div class="kicker">Chapter 09</div>
+    <h1>The rhythm</h1>
+    <p class="lede">Everything recurring in your role, by when it comes around.</p>
+  </div>
+  <div class="pane">
+    <div class="rr"><span class="when arch">Every morning</span><span class="what">Daily Ops review — queue to zero, sweep read<small>The morning door. "Yesterday is done" is the finish line.</small></span></div>
+    <div class="rr"><span class="when arch">Every day</span><span class="what">Studio check-ins × 4 · ADP timecards · deliverables/schedule · calendar look-ahead · staff tasks review<small>The check-ins carry their sub-items; Encore adds Mustard's start time, Track adds the cleaning shift.</small></span></div>
+    <div class="rr"><span class="when arch">Tue + Fri</span><span class="what">Valley checks<small>ARS / ERS / TRK. Shown on the card every day; due twice a week; a skipped week goes red.</small></span></div>
+    <div class="rr"><span class="when arch">Wednesdays</span><span class="what">Office stock<small>Yours, not billing's — it was deliberately moved off their list.</small></span></div>
+  </div>
+  <div class="nextbar"><button onclick="go('flo')">← The Flo briefing</button><button onclick="go('obill')">Next · Billing, from where you sit →</button></div>
+</section>
+
+<!-- ════════ 10 · OVERSIGHT: BILLING ════════ -->
+<section class="section" id="s-obill">
+  <div class="hbar">
+    <div class="kicker">Chapter 10 · Oversight</div>
+    <h1>Billing, from where you sit</h1>
+    <p class="lede">The coordinator reports to you. This chapter is <b>not</b> how to do
+    billing — that's the Billing manual, one click away, and you can read it any time.
+    This is how to know the job is being done, and when to walk over.</p>
+  </div>
+
+  <div class="pane">
+    <h3>What the coordinator owes, at a glance</h3>
+    <p><b>Daily:</b> Ramp approvals + receipts · review yesterday's work orders ·
+    update yesterday's invoices in QuickBooks · COD outstanding follow-up.
+    <b>Mondays:</b> the Ramp weekly report and the sent-invoice follow-up pass.
+    <b>Monthly:</b> tenant rent — invoiced the 25th, chased the 5th.</p>
+    <p>You don't track this by asking — the <b>staff grid</b> on the dashboard shows
+    billing's row going green each day, and their misses show in Flo exactly like
+    yours do.</p>
+  </div>
+
+  <div class="pane">
+    <h3>Your four numbers — the billing peek</h3>
+    <p>Your My Day page carries a read-only box built precisely for this. Four numbers,
+    no actions:</p>
+    <div class="stat4" style="max-width:560px;margin:10px 0 2px">
+      <div class="bstat"><div class="n">$5,940</div><div class="k">Balances outstanding · 3</div></div>
+      <div class="bstat"><div class="n">$22,750</div><div class="k">Payments received<span class="hint">?<span class="tipb">A floor, not a total — it counts what PRSFlo can see. Money zeroed straight into QuickBooks doesn't appear here until the QB connection lands.</span></span></div></div>
+      <div class="bstat"><div class="n">4</div><div class="k">COD outstanding</div></div>
+      <div class="bstat alert"><div class="n">1</div><div class="k">31+ past due</div></div>
+    </div>
+    <p class="why" style="margin-top:10px"><b>Why read-only</b>Eli's ruling: you oversee
+    the billing period, but your world shouldn't be cluttered with billing work. Four
+    numbers is oversight; anything more is doing the job.</p>
+  </div>
+
+  <div class="pane">
+    <h3>When to walk over</h3>
+    <p><b>COD "Balance due" above zero</b> — money that should have been collected at
+    the desk wasn't. Rare and critical; it should never sit more than a morning.</p>
+    <p><b>The 31+ number growing</b> — sent invoices aging past a month. One is a slow
+    client; a trend is a chasing problem.</p>
+    <p><b>"In progress" piling up morning after morning</b> — yesterday's work orders
+    aren't being reviewed same-day. The whole flow rests on that morning habit.</p>
+    <p><b>COD outstanding stuck at "—"</b> — the counts aren't being typed, which means
+    the follow-up duty isn't really being worked, and Flo is flying blind on it.</p>
+  </div>
+  <div class="nextbar"><button onclick="go('rhythm')">← The rhythm</button><button onclick="go('orun')">Next · The runner's day →</button></div>
+</section>
+
+<!-- ════════ 11 · OVERSIGHT: RUNNERS ════════ -->
+<section class="section" id="s-orun">
+  <div class="hbar">
+    <div class="kicker">Chapter 11 · Oversight</div>
+    <h1>The runner's day</h1>
+    <p class="lede">You meet runner work every morning through the queue — but when a
+    runner calls confused at 1 AM, you need to picture their screen. This is it, one
+    page. The full walkthrough is the Runner manual.</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:start;margin-top:14px">
+    <div class="phone">
+      <div class="phdr">
+        <span class="back">←</span>
+        <span><span class="pst" style="display:block">Paramount</span><span class="pdt">Monday, Aug 17</span></span>
+        <span class="sw"><span class="on">PRS</span><span>ARS</span><span>ERS</span><span>TRK</span></span>
+      </div>
+      <div class="pcard" style="padding:7px 10px">
+        <div style="font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.4;margin-bottom:4px">From the office <span style="background:var(--st-warm);color:var(--chip-ink);border-radius:99px;padding:1px 6px;letter-spacing:0">1</span></div>
+        <div class="ptaskrow"><span class="tc"></span><span style="font-weight:700">Restock B-room fridge</span><span style="opacity:.45;font-size:9px">Fernando</span></div>
+      </div>
+      <div class="psec">Today · 1 session</div>
+      <div class="proom"><span class="rn">B</span><span class="ppill">Not submitted</span></div>
+      <div class="pchip"><b>KAYA B</b><small>Hitline Records · 2:00 PM – 12:00 AM · 1ST-MT</small></div>
+      <div class="psec">This morning</div>
+      <div class="ptiles">
+        <div class="ptile"><b>Opening checklist</b><small class="ok">Submitted</small></div>
+        <div class="ptile"><b>Closing checklist</b><small>Not started</small></div>
+        <div class="ptile"><b>Mic inventory</b><small>Not started</small></div>
+        <div class="ptile"><b>Petty cash</b><small class="ok">Submitted</small></div>
+        <div class="ptile"><b>Stock list</b><small>Not started</small></div>
+        <div class="ptile"><b>Shift notes</b><small>3 entries</small></div>
+      </div>
+      <div class="pquiet" style="margin-top:10px"><div><b>Missed a punch?</b><small>Report it — takes 30 seconds</small></div><span class="ar">›</span></div>
+      <div class="pquiet" style="opacity:.55"><div><b>Runners manual</b><small>Coming soon</small></div><span class="ar">›</span></div>
+    </div>
+    <div>
+      <div class="pane" style="margin-top:0">
+        <h3>How to read it</h3>
+        <p>The hub remembers its studio, greets by time of day (the studios run 24/7 —
+        "tonight" at 7 AM would be wrong), and stacks the shift in your priority order:
+        <b>tasks first</b> (your voice on their screen), then sessions — each opening
+        its work order day sheet — then the duty tiles, then the shift log. The punch
+        report and manual sit quietly at the bottom.</p>
+      </div>
+      <div class="pane">
+        <h3>What runners can and can't do</h3>
+        <p><b>Can:</b> everything that happens at the desk — times, staff names, OT
+        that follows from the clock, equipment condition, payments taken, rentals,
+        notes, flags. <b>Can't:</b> rates, schedule dates, the client block, approved
+        days, or any admin page — and they see only the Runner manual, not this one.</p>
+        <p>The one rule they're taught about submissions: <i>you can fix your day until
+        the office approves it.</i> If a runner is nervous about editing a submitted
+        day — that's the answer.</p>
+      </div>
+    </div>
+  </div>
+  <div class="nextbar"><button onclick="go('obill')">← Billing oversight</button><button onclick="go('help')">Next · Help &amp; words →</button></div>
+</section>
+
+<!-- ════════ 12 · HELP ════════ -->
+<section class="section" id="s-help">
+  <div class="hbar">
+    <div class="kicker">Chapter 12</div>
+    <h1>Help &amp; words</h1>
+  </div>
+  <div class="pane">
+    <h3>When something looks wrong</h3>
+    <p><b>A studio's day looks empty</b> — before assuming the worst, check who
+    worked: the sweep card names everyone who touched that day. Empty AND staffed is
+    the real signal.</p>
+    <p><b>A red "NOT saved" message</b> — the save failed and the app said so honestly.
+    Retry; if it persists, tell Eli — errors are logged.</p>
+    <p><b>The manual doesn't match the screen</b> — the app changed and the manual
+    didn't. Say so; the version history (bottom of the rail) lists what changed per
+    release.</p>
+  </div>
+  <div class="pane">
+    <h3>Words this manual uses</h3>
+    <p><b>Queue</b> — yesterday's exceptions, worst first. <b>Sweep</b> — the four
+    studio cards. <b>Clearing</b> — marking a queue item seen; shared across managers.
+    · <b>Flag</b> — a problem as a record; pending → acknowledged → resolved.
+    · <b>Studio task</b> — work scoped to a studio + shift, never a person.
+    · <b>Shift log</b> — the day's append-only record, per studio.
+    · <b>Punch report</b> — the same-day missed-punch confirmation (legal record).
+    · <b>Duty / backlog</b> — a recurring My Day item / its missed prior days.
+    · <b>Check-in</b> — your daily per-studio duty with its sub-items.
+    · <b>The peek</b> — your four read-only billing numbers.
+    · <b>Flo</b> — the briefing; computed, rule-based, no AI.</p>
+  </div>
+  <div class="nextbar"><button onclick="go('orun')">← The runner's day</button><span></span></div>
+</section>
+
+</main>
+</div>
+
+<script>
+function go(s){
+  document.querySelectorAll('.section').forEach(x=>x.classList.remove('on'));
+  document.getElementById('s-'+s).classList.add('on');
+  document.querySelectorAll('.ch').forEach(x=>x.classList.toggle('on',x.dataset.s===s));
+  window.scrollTo({top:0,behavior:'instant'});
+}
+function flip(){
+  const h=document.documentElement;
+  const d=h.getAttribute('data-theme')==='dark';
+  h.setAttribute('data-theme',d?'light':'dark');
+  document.getElementById('themeBtn').textContent=d?'View dark':'View light';
+}
+function hints(){
+  const on=document.body.classList.toggle('hints');
+  document.getElementById('hintBtn').textContent='💡 Hints: '+(on?'On':'Off');
+}
+</script>
+</body>
+</html>

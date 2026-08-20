@@ -40,6 +40,36 @@ export default function TrainingPage() {
         </div>
       </Link>
 
+      {/* Billing SOP — the coordinator's manual */}
+      <Link href="/sop/billing" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+        <div className="c-panel" style={{ padding: '18px 20px', marginBottom: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span style={{ fontSize: 20 }}>▽</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>Billing SOP</div>
+            <div style={{ fontSize: 11.5, opacity: 0.6, marginTop: 2 }}>
+              The billing coordinator&apos;s manual — the flow of a session from booking to
+              paid, the work order walkthrough, the hub, COD, and the monthly rhythm.
+            </div>
+          </div>
+          <span style={{ fontSize: 13, opacity: 0.4 }}>→</span>
+        </div>
+      </Link>
+
+      {/* Manager SOP — operations + oversight */}
+      <Link href="/sop/manager" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+        <div className="c-panel" style={{ padding: '18px 20px', marginBottom: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span style={{ fontSize: 20 }}>◈</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>Studio Manager SOP</div>
+            <div style={{ fontSize: 11.5, opacity: 0.6, marginTop: 2 }}>
+              The manager&apos;s manual — daily ops, the runner crew, flags, My Day, and the
+              oversight chapters for billing and the runner app.
+            </div>
+          </div>
+          <span style={{ fontSize: 13, opacity: 0.4 }}>→</span>
+        </div>
+      </Link>
+
       {/* Helpful hints toggle */}
       <div className="c-panel" style={{ padding: '18px 20px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 14 }}>
         <span style={{ fontSize: 20 }}>💡</span>
