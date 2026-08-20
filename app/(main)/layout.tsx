@@ -13,10 +13,14 @@ export default function MainLayout({
   return (
     <AuthGuard>
       <WebInquiryProvider>
-        <NavGate />
-        <main className="page-main" style={{ padding: '24px 32px' }}>
-          {children}
-        </main>
+        {/* §14 frame: side rail left, content right (column-stacked on mobile,
+            where NavGate renders a top bar instead — see .c-frame media query). */}
+        <div className="c-frame">
+          <NavGate />
+          <main className="page-main" style={{ flex: 1, minWidth: 0, padding: '14px 20px 20px' }}>
+            {children}
+          </main>
+        </div>
         {/* Site-wide Web Inquiry toasts — mounted at layout level so they appear
             on every internal page, independent of page content. */}
         <WebInquiryToaster />
@@ -29,6 +33,8 @@ export default function MainLayout({
             keeps it off /login, /register and /inquiry. Renders nothing unless the
             DEV → Testing PIN has been entered this browser session. */}
         <TestingFloater />
+        {/* DeviceToggle + /preview removed at go-live (2026-08-17) — they were
+            TEMPORARY build-phase tooling (Eli, 2026-08-14). */}
       </WebInquiryProvider>
     </AuthGuard>
   )

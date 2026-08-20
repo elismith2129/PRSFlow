@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Lead Profile FINAL</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  LEAD PROFILE — FINAL REFERENCE (approved by Eli)
+  Layout: "The Sheet, V3 Bands" + meta-line identity (option A).
+  For the implementing session: values and structure here are truth.
+  Naming/polarity are NOT: the app uses --c- prefixed tokens, and the app's
+  dark mode is the ABSENCE of data-theme (this mock sets data-theme="dark").
+  Translate accordingly.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626;
+  --st-hot:#ff5a4d; --hot-text:#fff4f2;
+  --st-warm:#ffa94d; --st-cold:#5fc9e8; --st-booked:#43dfae;
+  --st-uncon:#7fb2e5; --st-dead:#cfd6d4;
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--fg);
+  font:400 14.5px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;
+  padding:30px 24px 90px;transition:background .2s,color .2s;
+  display:flex;flex-direction:column;align-items:center;gap:22px}
+button,input{font:inherit;color:var(--fg);background:none;border:none}
+input:focus{outline:none}
+::selection{background:var(--fg);color:var(--bg)}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+
+/* ============ CONTROLS (raised; press in on :active) ============ */
+.actbtn{background:var(--fg);color:var(--bg);border-radius:99px;padding:10px 20px;
+  font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+  box-shadow:3px 3px 9px rgba(42,39,34,.28), -2px -2px 6px rgba(255,255,255,.5);
+  transition:transform .16s ease, box-shadow .16s ease}
+[data-theme="dark"] .actbtn{background:#d5d0c2;color:#1b1a17;
+  box-shadow:3px 3px 10px rgba(0,0,0,.55), -2px -2px 7px rgba(255,255,255,.04)}
+.actbtn:active{transform:translateY(1px);box-shadow:inset 3px 3px 7px rgba(0,0,0,.28)}
+.mini{background:var(--bg);border-radius:99px;padding:6px 12px;font-size:9.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;flex-shrink:0;
+  box-shadow:2px 2px 6px rgba(42,39,34,.14), -2px -2px 6px rgba(255,255,255,.7);
+  transition:transform .16s ease, box-shadow .16s ease}
+[data-theme="dark"] .mini{box-shadow:2px 2px 7px rgba(0,0,0,.45), -2px -2px 7px rgba(255,255,255,.035)}
+.mini:active{transform:translateY(1px);box-shadow:inset 2px 2px 5px rgba(0,0,0,.25)}
+
+/* SEGMENTED CONTROL — raised housing; selected segment pressed IN + filled */
+.seg{display:inline-flex;background:var(--bg);border-radius:99px;padding:4px;gap:2px;
+  box-shadow:3px 3px 8px rgba(42,39,34,.14), -3px -3px 8px rgba(255,255,255,.7)}
+[data-theme="dark"] .seg{box-shadow:3px 3px 9px rgba(0,0,0,.5), -3px -3px 9px rgba(255,255,255,.04)}
+.seg button{border-radius:99px;padding:6px 14px;font-size:10px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;opacity:.5}
+.seg button.on{opacity:1;background:var(--fg);color:var(--bg);
+  box-shadow:inset 2px 2px 5px rgba(0,0,0,.35)}
+[data-theme="dark"] .seg button.on{background:#d5d0c2;color:#1b1a17}
+.seg.tiny{padding:3px;box-shadow:none;background:var(--wash)}
+.seg.tiny button{padding:4px 10px;font-size:9px}
+
+/* ============ THE WELL — one recipe, filled and empty identical ============ */
+.well{background:var(--bg);border-radius:14px;height:40px;display:flex;align-items:center;
+  gap:8px;padding:0 14px;font-size:13.5px;
+  box-shadow:inset 3px 3px 8px rgba(42,39,34,.07), inset -3px -3px 8px rgba(255,255,255,.65)}
+[data-theme="dark"] .well{
+  box-shadow:inset 3px 3px 9px rgba(0,0,0,.34), inset -3px -3px 9px rgba(255,255,255,.03)}
+.well input{width:100%;height:100%;font-size:13.5px}
+.well input::placeholder{color:var(--fg);opacity:.35}
+.well.area{height:auto;min-height:56px;padding:11px 14px;align-items:flex-start;font-size:13px}
+.well .ico{opacity:.4;font-size:13px;flex-shrink:0}
+
+/* ============ CARD (the only carved container) ============ */
+.card{background:var(--bg);border-radius:32px;padding:22px;width:100%;max-width:560px;
+  box-shadow:inset 5px 5px 14px rgba(42,39,34,.08), inset -5px -5px 14px rgba(255,255,255,.7)}
+[data-theme="dark"] .card{
+  box-shadow:inset 5px 5px 15px rgba(0,0,0,.4), inset -5px -5px 15px rgba(255,255,255,.03)}
+
+/* ============ STATUS STRIP ============ */
+.strip{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pill{border-radius:99px;padding:5px 12px;font-size:9px;font-weight:800;
+  letter-spacing:.08em;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px}
+.pill.hot{background:var(--st-hot);color:var(--hot-text)}
+.returning{border-radius:99px;padding:5px 12px;font-size:9px;font-weight:800;
+  letter-spacing:.08em;text-transform:uppercase;background:var(--st-booked);color:var(--chip-ink);
+  cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.returning small{font-weight:600;opacity:.7;letter-spacing:.04em}
+
+/* ============ NAME ZONE + META LINE ============ */
+.namesrow{display:flex;align-items:flex-start;gap:12px;margin-top:12px}
+.bigname{font-family:'Archivo Black',sans-serif;font-size:28px;letter-spacing:-.025em;line-height:1.05}
+.metaline{display:flex;gap:8px;align-items:baseline;margin-top:7px;flex-wrap:wrap;
+  font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.metaline .pay{cursor:pointer}
+.metaline .dotsep{opacity:.35;font-weight:600}
+.metaline .src{opacity:.45;font-weight:700}
+.metaline .age{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;opacity:.5;
+  text-transform:none;letter-spacing:0;font-weight:400}
+.artist-sub{display:inline-flex;align-items:center;gap:7px;margin-top:8px;font-size:12.5px}
+.artist-sub .aw{background:var(--bg);border-radius:10px;height:28px;display:flex;align-items:center;
+  padding:0 10px;box-shadow:inset 2px 2px 6px rgba(42,39,34,.06), inset -2px -2px 6px rgba(255,255,255,.55)}
+[data-theme="dark"] .artist-sub .aw{box-shadow:inset 2px 2px 6px rgba(0,0,0,.3), inset -2px -2px 6px rgba(255,255,255,.03)}
+.artist-sub input{font-size:12.5px;width:140px}
+.btns{display:flex;flex-direction:column;gap:8px;align-items:flex-end;flex-shrink:0}
+
+/* ============ BANDS — grouping ground: one tone step, no border, no depth ============ */
+.gband{background:var(--wash);border-radius:20px;padding:14px 15px;margin-top:14px}
+.ghead{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  opacity:.5;margin-bottom:11px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wlabel{display:block;margin-bottom:5px}
+.frow{margin-bottom:10px}
+.frow:last-child{margin-bottom:0}
+.calcline{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;opacity:.55;margin-top:8px}
+
+/* ============ FOLDS ============ */
+.fold{margin-top:10px}
+.fold summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;
+  font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45;padding:7px 0}
+.fold summary::-webkit-details-marker{display:none}
+.fold summary::before{content:"›";font-size:14px;transition:transform .15s;display:inline-block}
+.fold[open] summary::before{transform:rotate(90deg)}
+.fold .foldbody{padding:6px 0 2px}
+.logline{display:flex;gap:8px;align-items:center;font-family:ui-monospace,Menlo,monospace;
+  font-size:11.5px;opacity:.65;margin-bottom:7px}
+.logline .dot{width:7px;height:7px;border-radius:50%;background:var(--fg);opacity:.5;flex-shrink:0}
+.sub{font-size:12.5px;opacity:.6}
+
+/* ============ FOOTER ============ */
+.footrow{display:flex;align-items:center;justify-content:flex-end;margin-top:14px}
+.del{color:var(--st-hot);font-size:10px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;cursor:pointer;opacity:.8}
+
+@media (prefers-reduced-motion: reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+
+<button class="actbtn" id="themeBtn" onclick="flip()" style="align-self:flex-end">View dark</button>
+
+<div class="card">
+
+  <!-- 1 · STATUS STRIP: temp pill + returning badge only -->
+  <div class="strip">
+    <span class="pill hot">Hot</span>
+    <span style="flex:1"></span>
+    <a class="returning" href="#">Returning <small>· 6 sessions →</small></a>
+  </div>
+
+  <!-- 2 · NAME ZONE: name, meta line (payment · source · age), aka, actions -->
+  <div class="namesrow">
+    <div style="flex:1;min-width:0">
+      <div class="bigname">Shilloy Stephens</div>
+      <div class="metaline">
+        <span class="pay" id="pay" onclick="togglePay()">COD</span>
+        <span class="dotsep">·</span>
+        <span class="src">Web inquiry</span>
+        <span class="dotsep">·</span>
+        <span class="age">2h since contact</span>
+      </div>
+      <span class="artist-sub">
+        <span class="label" style="margin:0">aka</span>
+        <span class="aw"><input placeholder="Artist name"></span>
+      </span>
+    </div>
+    <div class="btns">
+      <button class="actbtn">Start booking</button>
+      <button class="mini">Send reg</button>
+    </div>
+  </div>
+
+  <!-- 3 · CONTACT band -->
+  <div class="gband">
+    <div class="ghead">Contact</div>
+    <div class="two">
+      <div class="well"><input placeholder="Add email" type="email"><span class="mini">✉</span></div>
+      <div class="well"><input value="(310) 622-2328" type="tel"><span class="mini">Call</span><span class="mini">Text</span></div>
+    </div>
+  </div>
+
+  <!-- 4 · SESSION band -->
+  <div class="gband">
+    <div class="ghead">Session</div>
+    <div class="two frow">
+      <div>
+        <span class="label wlabel">Location · Studio</span>
+        <div class="well"><input value="PRS · Studio C"><span class="ico">▾</span></div>
+      </div>
+      <div>
+        <span class="label wlabel">Quote</span>
+        <div class="well">
+          <input placeholder="$ —" inputmode="decimal">
+          <span class="seg tiny"><button class="on">HR</button><button>DAY</button></span>
+        </div>
+      </div>
+    </div>
+    <div class="two frow">
+      <div>
+        <span class="label wlabel">Dates</span>
+        <div class="well"><span class="ico">▦</span>
+          <input value="08/06/2026" class="mono" style="font-size:12.5px">
+          <span style="opacity:.35">–</span>
+          <input placeholder="mm/dd/yyyy" class="mono" style="font-size:12.5px;width:80px">
+        </div>
+      </div>
+      <div>
+        <span class="label wlabel">Start – End</span>
+        <div class="well">
+          <input placeholder="Start" style="width:60px">
+          <span style="opacity:.35">–</span>
+          <input placeholder="End">
+        </div>
+      </div>
+    </div>
+    <div class="frow">
+      <span class="label wlabel">Staffing</span>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <span class="seg"><button class="on">Eng</button><button>Asst</button><button>None</button></span>
+        <div class="well" style="flex:1;min-width:150px"><input placeholder="Staff name (optional)"><span class="ico">▾</span></div>
+      </div>
+    </div>
+    <div class="calcline">8h × $— = —</div>
+  </div>
+
+  <!-- 5 · NOTES band -->
+  <div class="gband">
+    <div class="ghead">Notes</div>
+    <div class="well area">Needs 8 Hrs in Large room. Studio C preferred.</div>
+  </div>
+
+  <!-- 6 · FOLDS: activity, tags -->
+  <details class="fold">
+    <summary>Activity · 1</summary>
+    <div class="foldbody">
+      <div class="logline"><span class="dot"></span>Jul 31, 1:10 PM · AA · Lead Created</div>
+    </div>
+  </details>
+  <details class="fold">
+    <summary>Tags</summary>
+    <div class="foldbody sub">No tags yet</div>
+  </details>
+
+  <!-- 7 · FOOTER -->
+  <div class="footrow"><span class="del">Delete lead</span></div>
+
+</div>
+
+<script>
+function flip(){
+  var h=document.documentElement;
+  var next=h.getAttribute('data-theme')==='light'?'dark':'light';
+  h.setAttribute('data-theme',next);
+  document.getElementById('themeBtn').textContent = next==='light'?'View dark':'View light';
+}
+function togglePay(){
+  var el=document.getElementById('pay');
+  el.textContent = el.textContent==='COD' ? 'BILLING' : 'COD';
+}
+</script>
+</body>
+</html>

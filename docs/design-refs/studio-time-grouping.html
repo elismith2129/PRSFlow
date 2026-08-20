@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Studio Time: grouping a day with its staff</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  STUDIO TIME — four ways to bind a studio line to its staff line (2026-08-13).
+
+  THE PROBLEM (Eli): "Every session has an assistant or an engineer, period. I
+  want these lines to look like they're kind of grouped. Right now we did the
+  separate colors, black and light gray to distinguish between days, but I kind
+  of want the studio and the engineer/assistant grouped together in some way,
+  whether that's just kind of the bubble on the end being one thing."
+
+  Right, and the diagnosis is sharper than the fix: the zebra banding groups by
+  DAY, which is a different question from the one the eye is asking. Looking at
+  a row you want to know "who was on this?" — and the staff line answers it from
+  a band that says nothing about belonging. The two lines are one fact.
+
+  Same data in all four so they compare honestly: three days, one with an
+  engineer, one with an assistant, one with both (a 1ST and a 2ND).
+
+  D is Eli's own instinct — the end bubble merged into one.
+
+  TABLE EXEMPTION (§8) still applies: no wells, no per-cell bubbles, no borders.
+  Grouping has to come from FILL and SPACE, never from a rule or an outline.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626;
+  --st-hot:#ff5a4d; --st-warm:#ffa94d; --st-booked:#43dfae; --st-dead:#cfd6d4;
+  --ivory:#d5d0c2; --srf:#ffffff; --band:#efece5;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --srf:#242320; --band:#201f1c;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 14px/1.5 system-ui,-apple-system,sans-serif;padding:20px;-webkit-font-smoothing:antialiased}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+h1{font-family:'Archivo Black',sans-serif;font-size:21px;letter-spacing:-.03em;margin-bottom:4px}
+.sw{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);margin:12px 0 18px}
+.sw button{padding:6px 14px;border-radius:99px;font:inherit;font-size:12px;font-weight:700;border:none;background:none;color:var(--fg);opacity:.55;cursor:pointer}
+.sw button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .sw button.on{background:var(--fg);color:var(--bg)}
+
+.pane{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:12px;max-width:1080px;margin-bottom:10px}
+.lz{border-radius:99px;padding:7px 14px;margin-bottom:8px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;background:var(--wash2)}
+.why{max-width:1080px;font-size:12.5px;line-height:1.65;opacity:.7;margin-bottom:22px}
+.why b{opacity:1}
+
+/* shared grid — the live column set */
+.hd,.r{display:grid;grid-template-columns:52px 52px minmax(120px,1fr) 62px 62px 34px 44px 62px 40px 56px 56px 70px;align-items:center}
+.hd{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.38;padding:4px 10px 6px}
+.r{padding:5px 10px;font-size:11.5px;min-height:30px}
+.r .n{font-family:ui-monospace,monospace;text-align:right}
+.r .c{opacity:.55}
+.role{font-size:8px;font-weight:800;letter-spacing:.04em;opacity:.75}
+.role.a{color:var(--st-warm)}
+.staff{opacity:.9}
+.tot{font-family:ui-monospace,monospace;text-align:right;font-weight:700}
+
+/* ── A · day block ─────────────────────────────────────────────────────── */
+.a .day{background:var(--wash);border-radius:14px;padding:3px 0;margin-bottom:7px}
+.a .day .r.sub{opacity:.92}
+
+/* ── B · left spine ────────────────────────────────────────────────────── */
+.b .day{position:relative;padding-left:12px;margin-bottom:9px}
+.b .day::before{content:"";position:absolute;left:2px;top:5px;bottom:5px;width:4px;border-radius:99px;background:var(--wash2)}
+.b .day.warm::before{background:var(--st-warm);opacity:.5}
+
+/* ── C · indent the staff line ─────────────────────────────────────────── */
+.c-opt .day{margin-bottom:11px}
+.c-opt .r.sub{padding-left:34px;opacity:.85}
+.c-opt .r.sub .tie{position:relative}
+.c-opt .r.main{background:var(--band);border-radius:10px}
+
+/* ── D · one bubble on the end (Eli's) ─────────────────────────────────── */
+.d .day{display:grid;grid-template-columns:1fr 84px;gap:0;align-items:stretch;margin-bottom:7px}
+.d .day .rows{min-width:0}
+.d .day .rows .r{grid-template-columns:52px 52px minmax(120px,1fr) 62px 62px 34px 44px 62px 40px 56px 56px}
+.d .hd{grid-template-columns:52px 52px minmax(120px,1fr) 62px 62px 34px 44px 62px 40px 56px 56px 84px}
+.d .bub{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;background:var(--wash2);border-radius:12px;padding:6px 10px;margin:2px 0}
+.d .bub .big{font-family:ui-monospace,monospace;font-size:12.5px;font-weight:700;line-height:1.25}
+.d .bub .sm{font-family:ui-monospace,monospace;font-size:9.5px;opacity:.5;line-height:1.3}
+.d .day .rows{background:var(--wash);border-radius:12px 0 0 12px;padding:3px 0}
+.d .bub{border-radius:0 12px 12px 0;margin:0}
+
+.opt{display:none}.opt.on{display:block}
+</style>
+</head>
+<body>
+
+<h1>Studio Time — grouping the day with its staff</h1>
+<div class="sw">
+  <button class="on" onclick="pick('a',this)">A · Day block</button>
+  <button onclick="pick('b',this)">B · Left spine</button>
+  <button onclick="pick('c',this)">C · Indent</button>
+  <button onclick="pick('d',this)">D · One end bubble</button>
+</div>
+<div class="sw" style="margin-left:8px">
+  <button class="on" onclick="th('dark',this)">Dark</button>
+  <button onclick="th('light',this)">Light</button>
+</div>
+
+<p class="why" id="why"></p>
+
+<!-- ══ A ══ -->
+<div class="opt on" id="o-a"><div class="pane a">
+  <div class="lz">Studio time</div>
+  <div class="hd"><span>Studio</span><span>Date</span><span>Session info</span><span>From</span><span>To</span><span>Hrs</span><span>Type</span><span>Rate</span><span>OT hrs</span><span>OT rate</span><span>OT chg</span><span style="text-align:right">Total</span></div>
+
+  <div class="day">
+    <div class="r"><span>PRS A</span><span class="c">Aug 4</span><span>Vocals — main tracking</span><span class="mono">6:00 PM</span><span class="mono">2:00 AM</span><span class="n">8</span><span class="c">Hr</span><span class="n">$150</span><span class="n">1</span><span class="n">$225</span><span class="n">$225.00</span><span class="tot">$1,425.00</span></div>
+    <div class="r sub"><span class="role">1ST</span><span></span><span class="staff">Tom Rivera</span><span class="mono">6:00 PM</span><span class="mono">2:00 AM</span><span class="n">8</span><span></span><span class="n">$85</span><span></span><span></span><span></span><span class="tot">$680.00</span></div>
+  </div>
+
+  <div class="day">
+    <div class="r"><span>PRS A</span><span class="c">Aug 5</span><span>Overdubs</span><span class="mono">2:00 PM</span><span class="mono">11:00 PM</span><span class="n">9</span><span class="c">Day</span><span class="n">$1,400</span><span class="n">—</span><span class="n">—</span><span class="n">—</span><span class="tot">$1,400.00</span></div>
+    <div class="r sub"><span class="role a">2ND</span><span></span><span class="staff">Sierra Kim</span><span class="mono">2:00 PM</span><span class="mono">11:00 PM</span><span class="n">9</span><span></span><span class="n">—</span><span></span><span></span><span></span><span class="tot c">—</span></div>
+  </div>
+
+  <div class="day">
+    <div class="r"><span>TRS North</span><span class="c">Aug 6</span><span>Mix rev. 2</span><span class="mono">12:00 PM</span><span class="mono">8:00 PM</span><span class="n">8</span><span class="c">Hr</span><span class="n">$150</span><span class="n">—</span><span class="n">—</span><span class="n">—</span><span class="tot">$1,200.00</span></div>
+    <div class="r sub"><span class="role">1ST</span><span></span><span class="staff">Tom Rivera</span><span class="mono">12:00 PM</span><span class="mono">8:00 PM</span><span class="n">8</span><span></span><span class="n">$85</span><span></span><span></span><span></span><span class="tot">$680.00</span></div>
+    <div class="r sub"><span class="role a">2ND</span><span></span><span class="staff">Sam Lorimore</span><span class="mono">12:00 PM</span><span class="mono">8:00 PM</span><span class="n">8</span><span></span><span class="n">—</span><span></span><span></span><span></span><span class="tot c">—</span></div>
+  </div>
+</div></div>
+
+<!-- ══ B ══ -->
+<div class="opt" id="o-b"><div class="pane b">
+  <div class="lz">Studio time</div>
+  <div class="hd"><span>Studio</span><span>Date</span><span>Session info</span><span>From</span><span>To</span><span>Hrs</span><span>Type</span><span>Rate</span><span>OT hrs</span><span>OT rate</span><span>OT chg</span><span style="text-align:right">Total</span></div>
+
+  <div class="day">
+    <div class="r"><span>PRS A</span><span class="c">Aug 4</span><span>Vocals — main tracking</span><span class="mono">6:00 PM</span><span class="mono">2:00 AM</span><span class="n">8</span><span class="c">Hr</span><span class="n">$150</span><span class="n">1</span><span class="n">$225</span><span class="n">$225.00</span><span class="tot">$1,425.00</span></div>
+    <div class="r sub"><span class="role">1ST</span><span></span><span class="staff">Tom Rivera</span><span class="mono">6:00 PM</span><span class="mono">2:00 AM</span><span class="n">8</span><span></span><span class="n">$85</span><span></span><span></span><span></span><span class="tot">$680.00</span></div>
+  </div>
+  <div class="day warm">
+    <div class="r"><span>PRS A</span><span class="c">Aug 5</span><span>Overdubs</span><span class="mono">2:00 PM</span><span class="mono">11:00 PM</span><span class="n">9</span><span class="c">Day</span><span class="n">$1,400</span><span class="n">—</span><span class="n">—</span><span class="n">—</span><span class="tot">$1,400.00</span></div>
+    <div class="r sub"><span class="role a">2ND</span><span></span><span class="staff">Sierra Kim</span><span class="mono">2:00 PM</span><span class="mono">11:00 PM</span><span class="n">9</span><span></span><span class="n">—</span><span></span><span></span><span></span><span class="tot c">—</span></div>
+  </div>
+  <div class="day">
+    <div class="r"><span>TRS North</span><span class="c">Aug 6</span><span>Mix rev. 2</span><span class="mono">12:00 PM</span><span class="mono">8:00 PM</span><span class="n">8</span><span class="c">Hr</span><span class="n">$150</span><span class="n">—</span><span class="n">—</span><span class="n">—</span><span class="tot">$1,200.00</span></div>
+    <div class="r sub"><span class="role">1ST</span><span></span><span class="staff">Tom Rivera</span><span class="mono">12:00 PM</span><span class="mono">8:00 PM</span><span class="n">8</span><span></span><span class="n">$85</span><span></span><span></span><span></span><span class="tot">$680.00</span></div>
+    <div class="r sub"><span class="role a">2ND</span><span></span><span class="staff">Sam Lorimore</span><span class="mono">12:00 PM</span><span class="mono">8:00 PM</span><span class="n">8</span><span></span><span class="n">—</span><span></span><span></span><span></span><span class="tot c">—</span></div>
+  </div>
+</div></div>
+
+<!-- ══ C ══ -->
+<div class="opt" id="o-c"><div class="pane c-opt">
+  <div class="lz">Studio time</div>
+  <div class="hd"><span>Studio</span><span>Date</span><span>Session info</span><span>From</span><span>To</span><span>Hrs</span><span>Type</span><span>Rate</span><span>OT hrs</span><span>OT rate</span><span>OT chg</span><span style="text-align:right">Total</span></div>
+
+  <div class="day">
+    <div class="r main"><span>PRS A</span><span class="c">Aug 4</span><span>Vocals — main tracking</span><span class="mono">6:00 PM</span><span class="mono">2:00 AM</span><span class="n">8</span><span class="c">Hr</span><span class="n">$150</span><span class="n">1</span><span class="n">$225</span><span class="n">$225.00</span><span class="tot">$1,425.00</span></div>
+    <div class="r sub"><span class="role">1ST</span><span></span><span class="staff">Tom Rivera</span><span class="mono">6:00 PM</span><span class="mono">2:00 AM</span><span class="n">8</span><span></span><span class="n">$85</span><span></span><span></span><span></span><span class="tot">$680.00</span></div>
+  </div>
+  <div class="day">
+    <div class="r main"><span>PRS A</span><span class="c">Aug 5</span><span>Overdubs</span><span class="mono">2:00 PM</span><span class="mono">11:00 PM</span><span class="n">9</span><span class="c">Day</span><span class="n">$1,400</span><span class="n">—</span><span class="n">—</span><span class="n">—</span><span class="tot">$1,400.00</span></div>
+    <div class="r sub"><span class="role a">2ND</span><span></span><span class="staff">Sierra Kim</span><span class="mono">2:00 PM</span><span class="mono">11:00 PM</span><span class="n">9</span><span></span><span class="n">—</span><span></span><span></span><span></span><span class="tot c">—</span></div>
+  </div>
+  <div class="day">
+    <div class="r main"><span>TRS North</span><span class="c">Aug 6</span><span>Mix rev. 2</span><span class="mono">12:00 PM</span><span class="mono">8:00 PM</span><span class="n">8</span><span class="c">Hr</span><span class="n">$150</span><span class="n">—</span><span class="n">—</span><span class="n">—</span><span class="tot">$1,200.00</span></div>
+    <div class="r sub"><span class="role">1ST</span><span></span><span class="staff">Tom Rivera</span><span class="mono">12:00 PM</span><span class="mono">8:00 PM</span><span class="n">8</span><span></span><span class="n">$85</span><span></span><span></span><span></span><span class="tot">$680.00</span></div>
+    <div class="r sub"><span class="role a">2ND</span><span></span><span class="staff">Sam Lorimore</span><span class="mono">12:00 PM</span><span class="mono">8:00 PM</span><span class="n">8</span><span></span><span class="n">—</span><span></span><span></span><span></span><span class="tot c">—</span></div>
+  </div>
+</div></div>
+
+<!-- ══ D ══ -->
+<div class="opt" id="o-d"><div class="pane d">
+  <div class="lz">Studio time</div>
+  <div class="hd"><span>Studio</span><span>Date</span><span>Session info</span><span>From</span><span>To</span><span>Hrs</span><span>Type</span><span>Rate</span><span>OT hrs</span><span>OT rate</span><span>OT chg</span><span style="text-align:right">Day total</span></div>
+
+  <div class="day">
+    <div class="rows">
+      <div class="r"><span>PRS A</span><span class="c">Aug 4</span><span>Vocals — main tracking</span><span class="mono">6:00 PM</span><span class="mono">2:00 AM</span><span class="n">8</span><span class="c">Hr</span><span class="n">$150</span><span class="n">1</span><span class="n">$225</span><span class="n">$225.00</span></div>
+      <div class="r sub"><span class="role">1ST</span><span></span><span class="staff">Tom Rivera</span><span class="mono">6:00 PM</span><span class="mono">2:00 AM</span><span class="n">8</span><span></span><span class="n">$85</span><span></span><span></span><span></span></div>
+    </div>
+    <div class="bub"><span class="big">$2,105.00</span><span class="sm">room 1,425</span><span class="sm">eng 680</span></div>
+  </div>
+
+  <div class="day">
+    <div class="rows">
+      <div class="r"><span>PRS A</span><span class="c">Aug 5</span><span>Overdubs</span><span class="mono">2:00 PM</span><span class="mono">11:00 PM</span><span class="n">9</span><span class="c">Day</span><span class="n">$1,400</span><span class="n">—</span><span class="n">—</span><span class="n">—</span></div>
+      <div class="r sub"><span class="role a">2ND</span><span></span><span class="staff">Sierra Kim</span><span class="mono">2:00 PM</span><span class="mono">11:00 PM</span><span class="n">9</span><span></span><span class="n">—</span><span></span><span></span><span></span></div>
+    </div>
+    <div class="bub"><span class="big">$1,400.00</span><span class="sm">room 1,400</span></div>
+  </div>
+
+  <div class="day">
+    <div class="rows">
+      <div class="r"><span>TRS North</span><span class="c">Aug 6</span><span>Mix rev. 2</span><span class="mono">12:00 PM</span><span class="mono">8:00 PM</span><span class="n">8</span><span class="c">Hr</span><span class="n">$150</span><span class="n">—</span><span class="n">—</span><span class="n">—</span></div>
+      <div class="r sub"><span class="role">1ST</span><span></span><span class="staff">Tom Rivera</span><span class="mono">12:00 PM</span><span class="mono">8:00 PM</span><span class="n">8</span><span></span><span class="n">$85</span><span></span><span></span><span></span></div>
+      <div class="r sub"><span class="role a">2ND</span><span></span><span class="staff">Sam Lorimore</span><span class="mono">12:00 PM</span><span class="mono">8:00 PM</span><span class="n">8</span><span></span><span class="n">—</span><span></span><span></span><span></span></div>
+    </div>
+    <div class="bub"><span class="big">$1,880.00</span><span class="sm">room 1,200</span><span class="sm">eng 680</span></div>
+  </div>
+</div></div>
+
+<script>
+const WHY={
+ a:"<b>A · Day block.</b> The day sits in one soft wash panel; the gap between days does the separating that the zebra stripe used to. Strongest grouping of the four, and it reads instantly. <b>Cost:</b> a 30-day work order becomes 30 blocks — more vertical space than the zebra, and the density law (§2b) says compact is the default.",
+ b:"<b>B · Left spine.</b> A short rounded bar down the left edge spans the day and its staff. Cheapest change, keeps today's row heights exactly, and the spine can carry status colour later (the warm one here is a tentative day). <b>Cost:</b> subtlest of the four — on a busy table it's a hint, not a statement. It's also the closest thing to a rule, so it has to stay a fat soft capsule, never a hairline.",
+ c:"<b>C · Indent.</b> The studio line keeps a band, the staff lines step in underneath it. Uses the oldest grouping convention there is and costs zero height. <b>Cost:</b> the indent eats the Studio column's width on the staff row, so 1ST/2ND shifts right and the columns stop lining up down the page — which is the thing a table is for.",
+ d:"<b>D · One end bubble.</b> Your instinct. The Total column stops being per-line and becomes ONE bubble per day, spanning the room line and its staff, with the split whispered underneath. The day is a thing with a price, which is what it actually is. <b>Cost:</b> the biggest change — per-line totals go away, so \"what did the engineer alone cost on the 4th\" moves from a column you scan to small print inside the bubble. Worth it if the day-total is the number people actually read.",
+}
+function pick(k,el){
+ document.querySelectorAll('.opt').forEach(o=>o.classList.remove('on'))
+ document.getElementById('o-'+k).classList.add('on')
+ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));el.classList.add('on')
+ document.getElementById('why').innerHTML=WHY[k]
+}
+function th(t,el){document.documentElement.setAttribute('data-theme',t)
+ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));el.classList.add('on')}
+document.getElementById('why').innerHTML=WHY.a
+</script>
+</body>
+</html>

@@ -252,8 +252,56 @@ This applies to all new tables going forward. Existing tables are unaffected unt
 
 ---
 
+### HR & payroll layer — My Day, punch corrections, required training (August 5, 2026)
+*Documents live in `docs/hr/`. Technical spec is `docs/HR-SPEC.md`. Nothing built yet — queued behind the WO regressions.*
+
+- **ADP Workforce Now stays the system of record for pay. No integration.** WFN's API is Marketplace-gated and not worth negotiating for a 15-person company. PRSFlo is a **collection and audit layer only** — it captures what staff report, timestamps it, and never writes to ADP. If the two disagree, ADP is right about what was paid and PRSFlo is right about what was requested and confirmed. If a future session proposes syncing them, the answer is no.
+- **Time records are NOT linked to work orders. Hard separation.** No foreign keys, no `work_order_id` anywhere in the HR layer. Staff shifts and WOs do not line up — a person may cover three rooms in a night or none, a WO may span two people or zero. Deriving a shift from a WO produces wrong data most of the time. *(An earlier draft proposed auto-attaching WO context to punch corrections. That was wrong and is reversed.)*
+- **"My Day" is a separate surface from Tasks.** Todos are one-off and close forever; duties recur daily and are never permanently done. Merging them is why the task list stopped working — duties pile up as noise and everything reads as perpetually overdue, so staff disengage from the whole list.
+- **Duties are typed cumulative or point-in-time.** A cumulative duty is **never duplicated** when missed — one row with a growing `backlog_days` counter and visible scope (`Review timecards — covering 2 days`). 3+ days flags the card. A point-in-time duty (e.g. "confirm today's staffing") just goes red. Missing a day is recorded permanently regardless of later catch-up.
+- **Naming: "Daily Ops" is taken** by the existing session/room view (see the Runner Hub & Daily Ops subsection above). The duties surface is **My Day**.
+- **A few duty rows capture a number, not a checkmark.** "Exceptions cleared: 4" requires having done the work; a checkbox is one click and possibly untrue. These numbers feed the monthly reporting for free.
+- **Dashboard moves to a left side nav.** The top nav already carries 8 items and this layer adds 3 more; a horizontal bar runs out of room and hides things behind overflow. A side nav scales, supports grouping, and has room for count badges — the pending punch count is how Fernando knows to open the queue. The current top-nav dashboard is WIP and is **not** the target layout.
+- **My Day placement:** right column, directly above the Tasks card, reusing the existing role tabs. Duties above todos makes the distinction self-evident. Open to challenge in the redesign.
+- **The morning briefing has a home already.** The dashboard greeting reads "here's your briefing" with nothing beneath it. Render the Haiku-generated summary of yesterday there — no new real estate.
+- **Punch corrections are the highest-value feature. Ship it alone if nothing else gets built.** California requires written employee confirmation before any punch is edited; a timestamped in-app submission *is* that record. The same timestamp classifies the report as same-day / late / manager-found, which makes the coaching ladder count itself. Mobile-first — it gets used on a phone, at 1 AM, tired.
+- **Staff see their own ladder count and clean-shift streak. Not anyone else's.**
+- **All managers can see and work each other's cards and queues**, with a default owner and a `covered_by` field on the day.
+- **AR is two-phase.** AR lives in QuickBooks, not PRSFlo, so the queue cannot be built yet. **Phase 1 (now):** Aaron types three numbers into his My Day card — COD outstanding, accounts chased, accounts past 31 days. **Phase 2 (with the QB integration):** a nightly read-only sync computes the same three fields and the account-level queue appears beneath them. Same rows either way — build Phase 1 so swapping the source is a one-file change. Do not attempt Phase 2 before the QB integration exists.
+- **Payment terms reuse the existing COD vs. Billing client flag.** COD = 0 days, Billing = 30. Clients with no flag must surface in the queue as "terms not set" with two buttons, **never silently drop out** — an empty queue that should not be empty is the worst failure mode, because it looks like success.
+- **Eli creates hires and starts terminations in ADP; Fernando does everything else.** Fernando does not hold those permissions and is not being granted them (Lynair's recommendation, accepted). The ADP action is quick, and because Eli enters position and rate himself, nobody reviews those figures afterwards.
+- **Employee timecard approval is a hard requirement** and one of the seven clean-close conditions. An approved timecard is the employee affirming every hour in the period. **A manager never approves on an employee's behalf** — that produces something that looks like employee confirmation and is not.
+- **WPV training is self-contained, unlike harassment training.** Harassment uses an external CRD course producing a certificate we file. The WPV *plan document is* the training material, so the whole cycle lives in PRSFlo — assign, read, acknowledge, sign with PIN, auto-write the training record. Reuse the SOP gate mechanic.
+- **LC 6401.9(e) requires an interactive Q&A opportunity** with someone knowledgeable about the plan. A read-and-sign flow alone does **not** satisfy it — the acknowledgment must capture questions asked and who answered.
+- **The violent incident log must omit personal identifying information** of anyone who experienced or witnessed an incident. Do not put a `staff_id` foreign key on that table.
+- **Queue position: none of this starts before the WO regressions are fixed.** The only real deadline is January 1, 2027 for harassment training, and that can be met with a spreadsheet.
+
+---
+
 ## 2. Future Considerations
 *Things to think about when we get to a specific chunk. Don't build now, but don't forget.*
+
+### 🚨 GO-LIVE BLOCKER — the backup covers the database, not the files (raised Aug 11, 2026)
+
+`scripts/backup.mjs` copies **17 database tables** to Google Drive nightly. It never
+touches **Supabase Storage**. So today there is NO backup of:
+`checklist-photos` (runner NA photos, dashboard-task photos, flag photos) ·
+`client-ids` (customer ID scans) · expense receipts · WO signature images.
+
+**Why it happened, honestly:** the script was written to answer "what if we lose the
+database", and storage was never in scope. Nobody revisited it when private buckets were
+added in July. The irony is that the database ALSO has Supabase PITR behind it, so the
+protected thing got a second copy and the unprotected thing got none.
+
+**Eli's ruling (Aug 11, 2026): everything must be backed up before go-live.** Not
+optional, not deferred. Also a hard prerequisite for the AR work — `docs/AR-SCOPING.md`
+proposes replacing the Dropbox invoice archive, and Dropbox is currently doing backup duty
+as well as filing duty. Replacing only the filing half would leave the sole copy of the
+studio's financial documents unprotected.
+
+Scope when built: enumerate every bucket via the storage API, download and upload
+alongside the table dumps, keep the same 7-day rotation, and fail loudly (the current
+script only `exit(1)`s on a Drive upload failure).
 
 ### Chunk 6 — Calendar (in progress)
 - **Calendar is live at `/calendar`.** Week/2-week view with all 11 studio rooms visible by default. Lane assignment for overlapping same-day bookings. Block always reserves click zone at the bottom to add new bookings.
@@ -2398,3 +2446,1506 @@ Five fails → 30-second lock → **counter back to zero**. So every IP got 5 fr
 **Evidence the attacker never got in.** `auth.users.last_sign_in_at` for every account except Eli's predates the attack window (timestamps are UTC; the 21:16 PT attack is 04:16 UTC on the 30th). Eli's own 05:09 UTC sign-in is him working the incident. Caveat for anyone re-checking this later: that column holds only the *most recent* sign-in, so it cannot rule out an earlier session that was later overwritten — it is good evidence, not proof.
 
 **Left for tomorrow, deliberately:** a "Change password" link in the nav. `/reset-password` works fine for a logged-in user — it calls `updateUser({ password })` and needs nothing but a session — but **nothing in the app links to it**; it was built purely as the landing page for reset emails. Handing nine people a temporary password with no in-app way to change it does not survive contact with reality. Small change, but not at midnight.
+
+### July 30, 2026 — "Carved" design system: tokens, primitives, and the first four surfaces
+
+Branch `redesign/carved`, nothing merged. Spec `docs/PRSFLO-DESIGN-SPEC.md` + `prsflo-final-mock.html`.
+Per-version detail is in CHANGELOG; this entry is the reasoning and the roads not taken.
+
+**Why a token+primitive layer at all.** Light mode was 63–66 `[data-theme="light"]` rules, ~20 of them
+matching on **inline-style substrings**, sitting over ~2,700 inline `style={{}}` objects. That is why
+changing the body font once took a 728-instance mechanical sweep. The goal state is that those override
+rules get **deleted**, not added to — so every surface migration has to pay down the layer, not just
+repaint on top of it.
+
+**Decisions taken, with the alternatives rejected:**
+
+- **`--c-` prefix, permanently.** Rejected: reusing the bare names, which breaks on contact (`--bg` means
+  `transparent` in the current light theme and the page gradient depends on it). Also rejected: a
+  rename-sweep at the end to reclaim the short names — Eli's call, and the right one. A sweep is a large
+  mechanical diff for cosmetics, and this codebase has already been bitten once by exactly that kind of
+  sweep. The prefix has a second benefit: `--c-` greps the entire new system.
+- **Dark on `:root`, light as the override.** The spec prints it the other way round. Copying it verbatim
+  would have produced a dark block that matches **nothing**, because this app expresses dark as the
+  *absence* of `data-theme`. Worth knowing that the spec's CSS examples all need mentally inverting.
+- **Carved CSS lives in `globals.css`, not a separate stylesheet.** Rejected: `styles/carved.css` +
+  `@import`. There is no `postcss-import` in the PostCSS config, so a plain `@import` may or may not be
+  inlined at build — unverifiable from here, and the failure mode is a broken preview.
+- **The wordmark became a component.** The old locked rule said "copy these exact spans out of `Nav.tsx`,
+  never recreate from description." It existed because the login page had already drifted, and it was
+  being enforced by hand across five files. Rejected: restating the rule harder. A copy-paste convention
+  fails eventually; `<Wordmark/>` removes the failure mode instead of forbidding it.
+- **`.c-sheet` gives raw controls carved defaults.** Rejected: converting ~38 one-off buttons and inputs
+  inside the migrated modals into primitives by hand — a large error-prone diff for no behavioural gain.
+  This is uncomfortably adjacent to the pattern being retired, so the distinction matters: the old layer
+  matched inline-style **substrings document-wide** (invisible coupling, broke when an unrelated inline
+  style changed); these are ordinary **component-scoped element selectors**, visible from the markup and
+  bounded by the class. New code should still use primitives.
+- **Status is not raised.** HOT/WARM pills shipped with the raised-control shadow and read as buttons.
+  Under Law 2 that is a category error: status is information, never pressed. They now carry only the
+  minimal contact shadow. Related: the count badge inside a lozenge was **ink on ink in light mode** —
+  invisible — and now inverts.
+- **Sign-offs are pressed, not just filled.** Runner/Admin toggles are raised-and-empty when unsigned and
+  **pressed-in and filled** when signed. Signing something off *is* an act of pressing, so the affordance
+  law carries the meaning with no colour. Added `.c-pressed` (persistent `:active` geometry) for this;
+  reusable for any latched control.
+
+**The mistake worth remembering.** The dashboard's seven modals were migrated with **scripted regex
+passes** — token swaps, font swaps, border stripping across ~1,800 lines. That is fine for *retiring*
+legacy values and useless for *applying* a design system: there is nothing in old markup for a regex to
+map a panel recipe or a carved pool onto. The result was "typography arrived, physics didn't" — Daily Ops
+came out as flat text on the void, correctly rejected on review, and had to be redone by hand. **A
+scripted token-swap is not a migration.** Apply recipes surface by surface.
+
+Eli's reviewer read the same symptom as evidence that surfaces were being migrated before `/dev-style`
+and the proof surface were approved. That wasn't the cause — the guide shipped and was approved, and the
+dashboard was the approved proof surface — but the instinct was sound and the method changed.
+
+**The success metric was wrong and has been replaced.** `[style*=` count (recommended earlier in this
+session) counts the **WO print stylesheet**: 38 of 52 occurrences live in `@media print`, and no amount of
+CRM work will move them. Track instead **`[data-theme="light"]` selectors that don't contain `.c-`** —
+the legacy override layer proper. **36 remain, from ~66.** Five are the substring matchers.
+
+**Open, deliberately:**
+- Engineer/assistant initials lost their confirmed/hold green-orange on the room cards, because §5 scopes
+  colour to lead temperature, session status and analytics — staffing confirmation isn't on that list.
+  Flagged to Eli; if he reads that colour operationally, the right fix is to widen §5, not to sneak it back.
+- Login errors and PIN messages render as **status chips** rather than tinted text (§5 forbids coloured
+  body copy). Reads well, but "error as a chip" stretches what §5 meant — easy to revert.
+- Petty cash lost its green/red on in/out; the +/− carries direction. Least confident of the colour calls.
+- `public/sop.html` NOT updated despite the four-doc ritual — spec §1 fences it off as a separate project.
+  Staff notes are owed when this merges.
+
+### August 1, 2026 — Carved redesign: design + implementation status (sign-off)
+
+Branch `redesign/carved`, still unmerged. Detail per version is in CHANGELOG; this is the
+reasoning, the rulings, and the corrections. Design side authored by the Fable session;
+implementation by the Opus session. Both halves recorded together.
+
+**Design system.** "Carved" approved and specced — `docs/PRSFLO-DESIGN-SPEC.md` is law,
+`docs/design-refs/` holds the component references. Laws: no borders or lines (the calendar
+is grid-EXEMPT per the §10 ruling — position is information there and the grid encoding it
+is functional); carved affordance (containers inset, controls raised, press-in on `:active`);
+colour = status only (Lagoon set; warm moved violet → **amber `#ffa94d`**; hot is
+**dual-purpose** — temperature AND destructive/critical, per the §5 ruling, and warm is
+never a warning); two registers (bright light, dimmed dark, no large bright surfaces in
+dark); tokens `--c-` prefixed, permanently, legacy dying with its last consumer.
+
+**Surfaces migrated.** Dashboard, daily ops, CRM list + lead profile (per
+`lead-profile-final.html`: bands, wells, segmented controls, meta line, Returning badge on
+the approved email/phone SQL, Needs Contact toggle, Send-Reg guards + `dbResult` fix),
+calendar (grid restored per §10, full-width location bars, chip payload in chip-ink,
+staffing bottom-right, per-day staffing via `studio_time_rows` [Option B, approved display
+exception], long-bar tape labels). WorkOrderPopup is next, pending Eli's visual sweep.
+
+**Process.** F/O numbered relay adopted between the design and implementation sessions after
+FOUR messages were dropped in relay (the V3 layout prompt, a "Send Re—" fragment, and F-1/F-2).
+`docs/working-conventions.md` was rewritten for the Claude-direct workflow — sandbox shells
+never run git, Eli runs everything from provided one-liners — after the 2026-07-30
+credential/lock incident.
+
+**CORRECTION — the override metric in the design-side summary is superseded.** It records
+"`[style*=` count, baseline 58, monotonic decreasing". That metric measures the wrong
+population: of 54 occurrences today, **38 live inside `@media print`** (the WO print
+stylesheet) and have nothing to do with theming. No amount of migration moves them, so the
+number looks stalled while real progress happens — and would look falsely good later.
+**Track instead: `[data-theme="light"]` selectors that do NOT contain `.c-` — the legacy
+override layer proper. 27 remain, from ~66 at branch start.**
+
+**Decisions taken this period, with what was rejected:**
+
+- **`--c-` prefix is permanent.** Rejected: reusing bare names (breaks on contact — `--bg`
+  means `transparent` in the legacy light theme), and a rename sweep at the end (a large
+  mechanical diff for cosmetics, on a codebase already bitten by one).
+- **Dark on `:root`, light as the override.** The spec prints it the other way round, and
+  copying it verbatim produces a dark block that matches NOTHING — this app expresses dark
+  as the *absence* of `data-theme`. Every spec CSS example needs mentally inverting.
+- **Wordmark became a component** (`components/layout/Wordmark.tsx`). The locked rule in
+  `CLAUDE.md` changed shape from "copy these spans out of Nav.tsx" — a convention that had
+  already failed once and was being enforced by hand across five files. `PRSFloIcon` went
+  monochrome and dropped `'use client'` (CSS handles the theme; no MutationObserver needed).
+- **Field geometry: radius 14 / height 40, app-wide** — supersedes §7's "inputs 99px" on the
+  mock-wins rule. Applied to every input in the app, not just the lead profile.
+- **`.c-sheet` / `.c-panel` give raw controls carved defaults.** A deliberate compromise for
+  ~38 one-off buttons and inputs. NOT the pattern being retired: the old layer matched
+  inline-style *substrings document-wide*; these are component-scoped element selectors.
+  Prefer primitives in new code.
+- **Per-day calendar staffing = Option B (display-layer read).** Option A (splitting runs in
+  `projectBookingCards`) rejected: it edits the atomic WO save path and rewrites booking data
+  to fix a label, and WO regressions are the standing top hazard.
+
+**Bugs found and fixed that are worth not repeating:**
+
+- **A missing `[data-theme="light"]` prefix on ONE selector in a comma group** applied a
+  70%-white shadow in dark mode — the "white haze" on buttons. Multi-selector theme rules
+  need the prefix on EVERY line; a scan for this now exists.
+- **`:not()` chains inflate specificity.** `.c-panel button:not()×5` is (0,6,1) and silently
+  outranked the targeted `.c-lozenge button` (0,1,1) — turning quiet action links into pills,
+  then invisible text. Fixed by an explicit `c-lz-action` opt-out, not by fighting order.
+- **Scrollbars and native widget chrome** were the last global consumers of legacy `--border`
+  (a desaturated blue) — the "blue bars".
+- **Calendar chip thresholds were guessed, not measured**, truncating the client line at every
+  zoom under 80 where it actually fitted. Archivo Black also needs ~1.35 leading or its
+  descenders clip — the same lesson as the dashboard room cards, learned twice.
+- **The Returning badge's phone narrowing was broken for formatted numbers.** `clients.phone`
+  holds MIXED formats (ClientProfile stores digits-only; `/api/register` stores raw as typed),
+  so narrowing on the full digit string silently missed every registration-origin client.
+  Now narrows on the last 4 digits, which stays contiguous in every US format.
+
+**The methodological lesson.** The dashboard modals were first migrated with scripted regex
+passes — token, font and border swaps across ~1,800 lines. That retires legacy values but
+CANNOT add carved structure, because there is nothing in old markup for a regex to map a
+panel recipe onto. The result was "typography arrived, physics didn't", correctly rejected on
+review, and Daily Ops had to be redone by hand. **A scripted token-swap is not a migration.**
+
+**Also recorded:** `docs/design-refs/` and `docs/PRSFLO-DESIGN-SPEC.md` were not in the repo
+at all — they existed only in session uploads, so "open the reference" was impossible for any
+future session. Now committed. `public/sop.html` staff notes remain owed at merge (spec §1
+fences that file off).
+
+
+### August 5, 2026 — HR & payroll protocols, My Day layer, Workplace Violence Prevention Plan
+
+**No code written, no schema changes.** Ten business documents produced and committed to
+`docs/hr/`, plus the technical spec at `docs/HR-SPEC.md`. Queued behind the WO regressions and
+the dashboard redesign.
+
+**Context.** Fernando (Studio & Administration Manager) is taking on HR and payroll alongside
+operations. Lynair remains payroll processor and CalSavers administrator. Four problems in
+scope: daily timecard checking, onboarding/termination, missed punch accountability, and
+required training compliance.
+
+**Produced.** `PRG-P01`–`P04` working protocols (2–5 pages each, steps only) · `PRG-R01`–`R04`
+reference documents carrying legal basis and reasoning · `PRG-WVPP`, a complete 17-page
+Workplace Violence Prevention Plan that doubles as the training material and includes the
+acknowledgment form and hazard inspection checklist · `docs/HR-SPEC.md` with schemas · an HTML
+briefing sent to Lynair for review.
+
+**The P/R split.** Protocols carry no legal prose — Fernando gets steps. The reference documents
+hold the law and the reasoning and get read once by someone new, or when something unusual comes
+up. Every protocol also carries an "Until PRSFlo ships" box with the manual fallback, so nothing
+in the set waits on software.
+
+**Three corrections to the prior ADP instructions.**
+1. **Final pay timing was wrong.** The old LYNAIR document said 72 hours across the board.
+   Correct: **immediate at time of termination** for involuntary (LC 201); last day worked for a
+   quit with 72+ hours notice; within 72 hours for a quit with less (LC 202). Accrued unused PTO
+   included in all three. Waiting time penalties under LC 203 run up to 30 days of wages and
+   apply even when the delay was an honest administrative miss. P02 now requires 48 hours'
+   notice to Eli and Lynair before any planned involuntary termination so the check exists
+   before the conversation happens. **This is the highest-dollar item in the set.**
+2. **CalSavers at hire was an add, not a remove** — the termination action had been pasted into
+   the onboarding section. Corrected further after Lynair's review: enrolment cannot happen at
+   hire because it needs the employee's address and SSN, which only exist once onboarding
+   completes. The trigger is **onboarding completion**; the 30-day statutory clock still runs
+   from the hire date, so a slow onboarding compresses the window rather than extending it.
+3. **Hire date seven days early** confirmed as the standing convention — it also drives payroll
+   eligibility, benefits eligibility, and the CalSavers window, so it must be applied uniformly.
+
+**From Lynair's review (accepted).** Fernando does not hold ADP hire/fire permissions and should
+not — Eli initiates, Fernando monitors progress and approves uploaded documents including the
+I-9, Eli does the final approve. Fernando to call ADP during the next onboarding to confirm that
+access. **Employee timecard approval** is being reinstated as a hard requirement — compliance was
+good at WFN rollout and has slipped. What ADP already delivers at hire is visible at
+`Setup › Manage Onboarding › Standard › Tasks`, to be deduped against our notices list. ADP has
+a **Manager classification** usable as a first pass for supervisor training status. ADP's
+training workflow is not being used — per Lynair it amounts to reminders inside a convoluted
+process built for a much larger audience, same as the performance review flow.
+
+**Compliance findings.**
+- **Harassment prevention (Gov. Code 12950.1): all staff due by January 1, 2027.** ~15
+  employees, well over the 5-employee threshold. 2 hrs supervisory / 1 hr non-supervisory, every
+  2 years. Internal target December 1. Free CRD courses chosen over a paid vendor for this
+  cycle — compliant, six languages, manageable at our size. Note CRD does not store or reissue
+  certificates: close the browser without saving and the course is retaken.
+- **Workplace violence (LC 6401.9, enforceable since July 1, 2024):** the existing 2024 plan
+  covered definitions, reporting and non-retaliation, robbery response, suspicious persons, and
+  active shooter. **Eleven required elements were absent** — employee involvement,
+  multi-employer coordination, compliance procedures, communication, emergency alerting,
+  training procedures, hazard identification and inspection, hazard correction, post-incident
+  investigation, annual review, and the violent incident log. All eleven written into
+  `PRG-WVPP`. Hazard inspections set to **annual**, timed to precede the annual plan review;
+  the plan states plainly that the scheduled walk-through is a backstop and that
+  employee-reported hazards and incident-triggered evaluation are what actually find things.
+- **Whether the studios fall under the WPV mandate at all:** the exemption is fewer than 10
+  employees at a location *not accessible to the public*. Clients, artists, and guests pass
+  through all four rooms, so the exemption is assumed not to apply despite small per-studio
+  headcount. Flagged for legal confirmation.
+- **Cal/OSHA adopts formal WPV standards by December 31, 2026** — the plan should be reviewed
+  against them in early 2027.
+
+**Open items.** Confirm owner names in `PRG-WVPP` §3 (Mike Kerns, Adam Beilenson — taken from
+the 2024 plan) · Fernando to confirm ADP review-and-approve access · dedupe the notices list
+against the ADP STANDARD onboarding tasks · confirm the COD/Billing client flag is populated and
+that "Billing" means Net 30 · confirm exact WFN menu paths for company code 4DA and write them
+into P01 · confirm the Time Card Exceptions dashboard is enabled in our instance · legal review
+before go-live on final pay, WPV coverage, the notices list, and the missed punch ladder against
+the handbook.
+
+### August 6, 2026 — Design session sign-off: dashboard + side nav + Flo designed; F/O relay retired (design-only session)
+
+Design-session sign-off, scoped accordingly: no app code shipped, so no CHANGELOG
+version, no SOP release note, no test batch (nothing testable), no migrations. The
+deliverables are docs + reference mockups; this entry is the record.
+
+**What was decided and why:**
+
+- **Dashboard + side nav design is COMPLETE.** Reference law:
+  `docs/design-refs/dashboard-final.html`; spec ruling **§14** (rail structure,
+  console layout, 12-room order with Nadine's as PRS's 6th room, Flo box recipe,
+  packing law). Reached over seven mockup rounds (v1–v7 in design-refs); Eli
+  designed the console architecture himself — Flo briefing → My Day duties → Tasks
+  in ONE pane, first thing you see is immediate attention from yesterday.
+- **The Flo box: Aurora motion, dialed.** Bake-off history: round 1
+  (comet/aurora/twin-orbit/quick-breath), round 2 (living-wave/heartbeat/
+  passing-light/ripple/ember). Aurora won, then dialed 30% subtler (peak .32,
+  base .06, halo .045, 8s). Rejected: comet (too tracked by the eye next to a
+  work list), all round-2 options. **New app-wide law: glow = AI presence,
+  exclusively** — Flo's ring/halo is the only glow permitted (spec §7 exception);
+  the moment anything else glows, the signal dies. Flo's surface is FLAT (no
+  carving either theme) — a presence outlined in light, not a hole — because
+  Eli read the carved version as "a deep pool" in light mode.
+- **Rejected during dashboard rounds (do not re-litigate):** stretching small
+  info into large boxes (twice called "worst one yet" — became the packing law:
+  panes hug content, layout is packing not inflating); calendar/sessions in the
+  middle column (scanning breaks — sessions live RIGHT); big My Day center pane.
+- **WORKING MODE CHANGED — the F/O two-chat relay is RETIRED (2026-08-06).**
+  Both chats (design/Fable, implementation/Opus) had grown too large, and Cowork
+  gives one session direct repo file access, removing the reason for the split.
+  Going forward ONE chat designs + builds; **Eli still runs all git** via
+  copy-paste one-liners (the 2026-07-30 sandbox-git corruption rule stands).
+  Entry point for the incoming session: **`docs/BUILD-HANDOFF.md`**. A drafted
+  F-27 message was never sent and is void.
+- **Scope correction recorded:** runner hub, WO hub, mic inventory, flags, tasks,
+  daily ops are BUILT and working — they need layout redesign + reskin only
+  (Eli explicitly opened their layouts for rethinking, superseding the
+  "restyle-only" default for these pages). HR pages (Punches/Hiring/Training)
+  are design + build from nothing per HR-SPEC. Build order: §14 frame first,
+  then existing pages one at a time, then HR. Calendar stays frozen.
+
+**Files:** `docs/BUILD-HANDOFF.md` (new entry point), `docs/PRSFLO-DESIGN-SPEC.md`
+(§14 added; §7/§12 amended), `docs/design-refs/` (dashboard-final.html,
+dashboard-sidenav-v1–v7, flo-console-options/final, flo-motion-options(-2),
+flo-aurora-final, DESIGN-SESSION-HANDOFF.md superseded-header).
+
+### August 6, 2026 — Carved redesign: calendar frozen, Work Order migrated (sign-off)
+
+Long session, one branch (`redesign/carved`), ~45 commits. Two surfaces finished — the
+calendar is **frozen** by ruling, the Work Order popup is migrated end to end. One
+production hotfix cherry-picked to `main` (the only thing that has left the branch).
+
+**The single most expensive lesson of the session — CSS specificity, three times.**
+`globals.css` carries scoped defaults for sheets and panels:
+`.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)`.
+Six `:not()` clauses make that **(0,7,1)**. Three separate features were written against
+it and lost silently:
+
+1. **Segmented controls.** `.c-seg button` is (0,1,1). Every option rendered with the
+   sheet's own raised pill styling — Eli's "bubbles in bubbles" — and the housing was
+   invisible behind them. `.c-seg button.c-on.c-fill-booked` (0,3,1) also lost, which is
+   why status colours on the status selector were requested three times and appeared to
+   be ignored. They were being computed correctly and overpainted.
+2. **Wells.** `.c-sheet input:not([type="file"]):not(.c-input)` (0,3,1) beat `.c-well input`
+   (0,2,1), so every input inside a well got its own carved box — a well inside a well,
+   10px of padding on top of the well's 14. That is what shaved the first character off
+   the email field.
+3. **Bare table cells.** `.c-tin` (0,1,0) lost to the same input rule, so the "remove all
+   bubbles" commit changed the markup correctly and had no visible effect at all.
+
+**Rule going forward: any new recipe that targets an element inside `.c-sheet`/`.c-panel`
+must either be added to that rule's `:not()` exclusion list or be written to outrank
+(0,7,1) deliberately.** Both mechanisms are now in place for seg, well and `.c-tin`, with
+the specificity arithmetic written in the CSS as a comment. A first attempt at the `.c-tin`
+override was (0,4,0), which still loses to (0,4,1) on element count — it would have shipped
+looking fixed and broken again on the next edit. **Check the arithmetic, don't estimate it.**
+
+**Rejected: growing calendar rows to fit stacked sessions.** Two or three sessions in one
+room on one day were splitting a fixed cell, collapsing the card to its footer strip. The
+first fix grew the row. Eli rejected it: a doubled row is permanent damage to the grid's
+rhythm, paid every day of the year, to solve something occasional that never exceeds three.
+Rows stay fixed; stacked cards shed content from the bottom up instead — footer first,
+then the client line, then the times. The COD bar *shrinks to a 4px sliver* rather than
+leaving, because the red edge is the signal and the method is one hover away. That trade
+is what buys the times line back on a two-up cell.
+
+**Rejected: per-cell wells in data tables.** Wells were applied to studio-time cells, then
+removed one commit later under a new ruling (spec §8 TABLE EXEMPTION). A well costs ~12px
+of horizontal room per cell, which a form can afford and a 14-column table cannot — it
+showed up immediately as "6:00 P" and truncated staff names. **Inside a data table the grid
+is the container; cells are bare, delineation is the zebra, and the edit affordance is a
+wash on hover/focus.** Applies to studio time, rentals, payments and equipment condition.
+
+**One session card, four surfaces.** The calendar grid, day view, studio view and the
+dashboard room grid each had their own copy of the card and had already drifted — different
+fonts on the client line, staff stacked in one place and inline in another, invoice shown
+in two of four. Now `components/calendar/SessionCard.tsx`. Two byte-identical copies of
+`fmtTime` and `initials` collapsed into it as well.
+
+**Status colour is one decision in one place.** The dashboard was choosing fill with
+`status === 'tentative' ? amber : green`, so tech, tour, open hours **and cancelled** all
+fell down the green branch. `sessionFillClass()` in the card module is now the only place
+that decision is made. `--c-st-tech` (orchid `#b5a3ef`) was added so tech, tour and open
+hours are three distinct statuses — **this makes seven status colours where spec §3 lists
+six.**
+
+**Sticky month rail (§10b).** Segments derive from the same `days` array the grid renders
+from, so an infinite-scroll re-anchor re-renders them for free. Deliberate: O-10 (the
+long-bar payload incident, three failed attempts) happened because a feature derived
+position from `scrollLeft`, which survives a re-anchor while the grid's origin moves. The
+tint alternates on the **absolute month number**, not array index — index parity flips on
+every re-anchor across a boundary and the tint would blink while scrolling.
+
+**`overflow: hidden` kills sticky, learned twice.** The rail's month name didn't stick
+because each segment clipped its overflow, making it the scroll container for its sticky
+child. Same trap that made CSS sticky impossible for the long-bar chip payload. Sticky is
+already clamped to its containing block, so the clip was never needed — that clamping *is*
+the push-out at the month boundary.
+
+**Light-theme regression, and why dark-first recipes are dangerous here.** Every well on
+the WO rendered as a white bordered input in light mode. Cause: `[data-theme="light"]
+[style*="position: fixed"] input { background:#f8fafc !important; border:1px solid #cbd5e1
+!important }`. The WO popup's root carries inline `position: fixed`, so it captured every
+input inside it, `!important`, light only. Not deleted — `/admin`, `/wo-hub`, `/tasks`,
+`/clients`, the runner pages, `DailyOpsModal` and `LocationStrip` all still render
+un-migrated fixed modals that need it. Scoped to exclude carved classes instead, with a
+note saying it can go when the last of those migrates. **Three of its six selectors were
+`[style*="position:fixed"]` with no space — React writes inline styles through the CSSOM
+and the browser serialises the attribute *with* a space, so they could never match. Dead
+code, deleted.** A scripted sweep for carved recipes that paint a shadow but have no
+light-side rule found two more (`.c-control:active`, `.c-row.c-selected`).
+
+**`.c-mono` carries `font-size: 12.5px`.** Not just a typeface. Both halves of the card
+footer wore it, so both rendered at 12.5 regardless of the band's own font-size — which is
+why two attempts to shrink that text did nothing. A guard now pins `.c-mono` inside the
+footer to `font-size: inherit`.
+
+**Runner had no sign out.** The PIN login mints a real Supabase session, but `/runner/*`
+sits outside the nav by design, and `Nav.tsx` was the only place in the app that called
+`signOut`. A phone signed into the Runner PWA was signed in permanently — `/login` redirects
+already-authenticated users to `/`, so there was no route out. Added to the Runner Hub
+landing and **cherry-picked to `main` as `4b74ae2`** — the only commit from this branch that
+has gone to production. Worth a pass over the runner subtree for other things that assume
+someone else's chrome is present.
+
+**Also landed:** WO print was blank since `2e67ec0` un-portaled the popup (print CSS
+required `body > [data-wo-portal]`) — fixed with visibility-based isolation, then the print
+flatten rule was changed from a hand-written class list to a prefix match, because the list
+went stale the moment the WO body migrated. Continuous horizontal calendar zoom (trackpad
+pinch) replaced Week/2 Wks/Month, which were only ever three fixed column widths. Row
+height dropped from a five-step ladder to two modes — four steps were useless because
+'Fit' was floored at one card's height and so never actually squeezed. IdWell pattern
+(§8): short identifier fields share a row with their label inside the well.
+
+**Owed at merge:** `public/sop.html` → `VERSIONS` staff-facing notes for v1.6.0. Spec §12
+fences that file off for the duration of the redesign, so it is deliberately not updated
+per-session — but it must be written before this branch merges, or staff get a new-looking
+app with no explanation.
+
+### August 6, 2026 (cont.) — dark by default, splash fix, inquiry email alert
+
+Addendum to the sign-off above; same session, three more pieces plus one production
+hotfix.
+
+**Default theme flipped to DARK.** The pre-paint script in `app/layout.tsx` now sets
+`data-theme="light"` only when the user has explicitly saved it, instead of setting light
+unless `dark` was saved. `Nav.tsx`'s mount effect flipped to match — **those two must always
+agree, or the page paints one theme and flips on hydration.** Anyone who has already toggled
+keeps their preference; only fresh devices change. Also caught: `theme_color` in both PWA
+manifests and in `app/layout.tsx` metadata was still the legacy `#0d0f14` blue-black, so
+every launch of the installed app flashed the old ground before the new one painted. Both
+on `#1b1a17`.
+
+**The splash was never unmigrated — it was being overridden.** A legacy rule painted both
+`[data-splash]` and `[data-auth-hold]` with `linear-gradient(135deg,#dbeafe,#ffe4e6)
+!important` — the retired blue→rose page background. In light mode the login splash showed
+the OLD app's colours full-screen on the way into the new one. The rule existed because the
+AuthGuard hold used `var(--bg)`, which is **transparent** in light and so needed something
+opaque behind it. Hold moved to `var(--c-bg)` (opaque in both registers) and the override
+was **deleted** — last consumer migrated. Two more legacy light rules gone; 21 left.
+
+**Inquiry email alert (v1.6.2, cherry-picked to `main` as `95dfe98`).** The inquiry form used
+to live on Squarespace and emailed the team, so a new lead arrived as a phone notification.
+Moving it into PRSFlo removed that — the lead lands in the CRM and nothing tells anyone.
+`lib/sendMail.ts` (plain `fetch` to Resend, no npm dependency) + a send from
+`/api/inquiry` to `info@paramountrecording.com`.
+
+Design decisions worth keeping:
+- **The send is after the insert and its result is ignored.** A lead that saved without an
+  email is a missed notification; a lead lost because the mail provider was down is a lost
+  customer. `sendMail` swallows and logs its own failures.
+- **It is `await`ed, not fire-and-forget.** A serverless function can be frozen the instant
+  it returns a response, so a dangling promise may simply never run.
+- **`reply_to` is the customer**, so staff hitting Reply reach them rather than the shared
+  inbox.
+- The verified sender was a private const inside `/api/send-campaign`; hoisted to
+  `MAIL_FROM_DEFAULT` in `lib/sendMail.ts` so there is one place to change it.
+
+**Operational finding: the Resend setup had never been completed.** `/api/send-campaign` has
+existed for some time and reads `RESEND_API_KEY`, which led me to state that Resend was
+"already wired up and the domain already verified". **That was inferred from the code
+existing, not from evidence it had ever worked.** In fact `RESEND_API_KEY` was never added
+to Vercel and the domain had been filled in but never submitted for verification — so the
+email-campaigns feature has never sent anything either. Now: domain verified, key in Vercel
+(Production + Preview), inquiry alerts live.
+
+**Diagnostic lesson, worth more than the feature.** When the first test failed I listed the
+causes in the right order — "is it deployed?" was first — then abandoned that line the moment
+Eli said "we're definitely deployed" and sent him into Resend to check accounts and DNS. The
+code was never on `main` at all; `lib/sendMail.ts` did not exist in production. **A one-second
+`git cat-file -e origin/main:<file>` would have settled it before any of that.** Verify the
+cheap mechanical thing yourself instead of accepting a reasonable-sounding answer to it —
+especially when the person answering is reporting on a branch model with two deployment
+targets.
+
+### August 7–10, 2026 — Phase A built: rail + command-row dashboard; carved retired for SOFT (build session)
+
+**What shipped (all `redesign/carved`, v1.7.0 UNRELEASED — see CHANGELOG for mechanics):**
+the §14 frame (rail app-wide, placeholders, console dashboard), the §2b density law, and —
+the big one — the **soft skin replacing carved app-wide** (§7c).
+
+**Why the layout changed twice in one session.** The §14 console shipped per the approved
+mock, then Eli used it and re-ruled: Needs Action names aren't actionable on the dashboard
+(you work leads in the CRM), so it demoted to the PIPELINE indicator; the four studio cards
+returned; My Day + My Tasks went side-by-side because two stacked to-do lists bury the
+bottom one; the staff name-tabs on tasks were shelved ("not a good system") for a personal
+list — the roster logic stays in `lib/tasks.ts`, unrendered, don't delete it. Mock-first
+worked both times (`dashboard-console-v2-options.html` option A; `dashboard-flat-skins.html`
+option C).
+
+**Why carved died.** Eli lived with it and found the depth distracting at density. Three
+flat skins were mocked against carved; SOFT won (flat raised surfaces + faint drop shadow).
+Implementation is ONE override block at the END of globals.css — deliberately reversible,
+and deliberately not a `data-skin` toggle (Eli decided by looking; a permanent toggle is
+maintenance for a decision already made). **Rejected:** wash (A — things float) and
+hairline (B — repeals the no-lines law entirely).
+
+**Decisions rejected / deferred:**
+- Nadine's as a bookable room — no data model for it; card is display-only until then.
+- Flags/Tasks/WO-Hub rail badges — need shared version-channel hooks (useClientsVersion
+  pattern) to respect the one-channel-per-table rule; CRM reg badge only for now.
+- SOP `VERSIONS` entry — deliberately NOT written this session: the branch is unreleased,
+  and that file is staff-facing per RELEASE. Write it when this merges.
+- Side-by-side Activity/Tags folds on the lead profile — tried, reverted same session
+  (tag chips stacked vertically in the half-width column, folds opened wrong). Stacked, tight, summaries in view.
+
+**Corrections to earlier entries:** the two sandbox-git incidents repeated in miniature —
+even read-only `git status` from the sandbox drops an `index.lock` it can't delete. This
+session switched to `git --no-optional-locks` for ALL read-only git; future sessions should
+do the same from the first command.
+
+**Operational note:** the WO regressions remain the standing top priority per memory/HR-SPEC
+queue rules; nothing in this session touched WO logic (surface only — atomic RPC paths
+untouched).
+
+### August 10, 2026 (cont.) — My Day scoped: full operational duties layer (brief written, build handed to next session)
+
+Eli re-scoped My Day from HR compliance to the FULL daily-ops layer for manager +
+billing (ruling recorded in HR-SPEC §2 banner; build brief = docs/MYDAY-BUILD.md).
+Aaron is leaving — "billing" is deliberately a ROLE card, so his successor inherits it.
+Inputs: FD Daily Notes Template.pdf + Billing Coordinator Procedures (EDITED BY AARON).
+**Fernando's verbal explanation of his checklist (kept verbatim as source material):**
+daily per-studio check-in (opener/closer, sessions, yesterday's Slack, check-in;
+office stock list Wednesdays); general to-dos incl. clock-in and runner timecards in
+ADP; deliverables (schedule, QC emails when running); Valley checks Tue+Fri (Valley =
+ARS/ERS/TRK); calendar look-ahead; balances to collect; sessions needing work orders;
+session leads/updates progress tracking; holds list and booked list (each with per-
+session steps — email/calendar/QB/staff for holds; calendar/QB/WO for booked); open
+hours (log/calendar); free-space shift notes. Design insight that shaped the brief:
+his sheet is three things — DUTIES (checkable, cadenced), QUEUES (computable from app
+data — these also feed the Flo briefing, no AI), SCRATCHPAD (leave free). Aaron's doc
+review notes honored: office stock is NOT billing's (he deleted it — stays with
+manager); session-info collection falls to billing when eng/asst leave it blank.
+**Rejected:** building this in the same session (Eli at Fable usage limit — brief
+written here, execution handed to a fresh Opus session per the model-split decision).
+
+### August 10, 2026 (cont. 2) — My Day BUILT: migration, library, dashboard, /my-day workspace
+
+Execution of `docs/MYDAY-BUILD.md` in a fresh Cowork session. Shipped: the four-table
+migration + seed, `lib/myday.ts`, the dashboard card + Flo briefing wired to real data,
+the live 14-day staff grid, and the `/my-day` Workbench page. Also `lib/woTotals.ts`
+and `lib/woValidation.ts`, both of which fell out of the work rather than being planned.
+
+**Why the WO files exist.** MYDAY-BUILD §3 defines a balance as "studio + rentals + eng
+total > payments sum — reuse the WO total math, never re-derive locally." That math was
+not extractable: it lived inline in `WorkOrderPopup.tsx`'s derived-totals block. Rather
+than write a second copy (the #1 audited defect class), it was lifted to
+`lib/woTotals.ts` and the popup now imports it. Behaviour-preserving — same fallback
+chain, same rounding, proved by unit test.
+
+**Rulings made this session, in the order they happened.** Each reversed or narrowed the
+one before it; the sequence matters more than any single ruling:
+
+1. **Captured numbers widened to jsonb.** §4 specced `captured_count numeric`, but §2's
+   billing COD duty captures THREE figures (outstanding · chased · 31+). One slot could
+   not hold them. *Rejected:* splitting COD into three duties — it fragments one real
+   action into three ticks and lengthens the card, which HR-SPEC §2.2 rule 2 warns about.
+2. **Valley checks + office stock made `cumulative` and `always_available`** so they could
+   be ticked any day. **Reversed hours later** (`20260810140000`): "I don't want Friday's
+   task cluttering Monday's list." `dtype` stayed cumulative — that is the tracking, not
+   the scheduling. The `always_available` COLUMN survives, unused; `isDutyShownOn` vs
+   `isDutyDueOn` in `lib/myday.ts` is the modelling it left behind, and that split is
+   worth keeping.
+3. **Flo gained a LOOKAHEAD tier** — one neutral line, `Tomorrow: Valley checks`. It buys
+   back the warning that day-scoping costs. Daily duties are excluded: a nightly
+   "tomorrow: ADP timecards" is exactly the noise the ruling exists to prevent. Dot is
+   `--c-st-dead`, NOT warm — warm is lead-temp/tentative only, and a routine heads-up in
+   orange teaches people to ignore orange.
+4. **The full-page auto-completion model was proposed and CUT.** Sub-steps would roll up,
+   an override with a required reason would cover edge cases. Eli: "no logic. i got too
+   much to build to sort through bugs and special case scenarios here." *The lazy-tick
+   risk is accepted knowingly* — `sub_items` renders as grey reference text, one checkbox.
+5. **Duties retired as paper-era fiction.** `bil_create_wos` (work orders have been
+   automatic since June 30 — a checkbox always already true) and `mgr_calendar_lookahead`.
+   Both source documents described the pre-PRSFlo workflow. Retired via `is_active=false`,
+   never deleted, so completion history survives.
+6. **INDICATOR vs CHECKBOX — the rule worth keeping.** If PRSFlo can determine it, it is a
+   derived light; only what the app cannot know stays a pill. Consequences: no WO light
+   ("I want to move away from the idea that the calendar and work order are different
+   things" — matches the standing rule that the Work Order IS the booking); no Cal light
+   (both queues are built FROM bookings, so it could never be off); Staff derives from
+   `studio_time_rows.eng_name`, NOT `bookings.engineer_name`, because staffing lives only
+   in the Studio Time table. **Holds lost all steps** — "it's all happening in text and
+   email, no need to create more work." A checkbox nobody maintains goes stale and lies.
+7. **Monthly duties STICK and ESCALATE** rather than accruing a backlog count. They stay on
+   the card past their due date and go red with an ASAP tag. When several months are
+   missed the OLDEST is reported — saying "5 days late" when August's invoices were 36
+   days late is how a thing stays missed. Weekly/daily keep the backlog tally.
+8. **Overdue shows IN PLACE.** An Overdue band was drawn and rejected: relocating a late
+   item tells you something is late and then makes you hunt for it.
+9. **needs-a-work-order pane removed from `/my-day`.** Eli: "we'll never have to make a
+   WO." Correct — in normal operation it is always empty, and a permanently-zero pane
+   teaches people to skip that column. When it is non-empty something BROKE, and that
+   belongs in the briefing (`composeBriefing` already raises it), not a queue.
+
+**Bugs caught by testing that would otherwise have shipped:**
+- **Launch day would have been a wall of red.** Every cumulative duty would have reported
+  a full 30-day backlog the morning My Day went live, because nothing had ever been
+  ticked. `dutyExistedOn` now bounds every retrospective judgement by `created_at` —
+  applies to the briefing and the 14-day grid too, which would have shown two solid weeks
+  of red.
+- **The Flo lookahead repeated what the alert had just said.** Dedup compared against text
+  that had already been through `lowerFirst`, so it never matched. Now keyed on duty id.
+- **The mock's role toggle silently did nothing.** The handler was named `role()`, and
+  every button has a built-in `role` property (ARIA reflection) — an inline `onclick`
+  resolves against the element before the page, so it read the button's role and threw.
+- **Monthly duties would have shown a meaningless backlog** — the 30-day scan can only
+  reach one prior occurrence of a monthly duty, so "covering 2 days" was arbitrary.
+  Sticky cadences now skip the tally entirely.
+
+**Two things surfaced that are NOT built and matter:**
+- **The nightly backup does not cover uploaded files.** `scripts/backup.mjs` copies 17
+  tables; it never touches Supabase storage. Discovered while scoping AR (see below) —
+  Eli wants to replace the Dropbox invoice archive entirely, which would leave the only
+  copy of financial documents unbacked. Also true today of client ID scans and checklist
+  photos. **Prerequisite for the AR work, not a nice-to-have.**
+- **AR / accounts receivable was scoped, not built** — `docs/AR-SCOPING.md`. Eli's Dropbox
+  folder taxonomy (COD paid / COD with balance; billing needing approval / approved
+  awaiting PO / sent open / sent paid) is a hand-maintained state machine, and the
+  scan-and-combine step only exists because the WO used to be paper. Interim architecture
+  agreed: **PRSFlo owns the workflow and the documents, QuickBooks keeps owning the
+  money** — which dissolves the two-sets-of-books risk, because they track different
+  things. COD buckets are derivable from existing payment data; billing buckets stay
+  manual until QBO. *Still open:* who owns truth long-term, written-off/voided states,
+  and whether the existing archive is imported or PRSFlo starts clean.
+
+**Rejected this session:** wiring the times check into the runner as a BLOCK (that page's
+only action is Save, and a session in progress legitimately has no end time — it warns
+instead); adding a `quarterly` cadence (nothing quarterly exists yet, and it needs a
+month+day `due_days` shape rather than day-of-month — add both together); building the
+merged studio-and-rooms dashboard card now (Eli's spitball; deferred deliberately so the
+decision comes from living with `/my-day` for a week rather than from a mock).
+
+**Process note:** an early drift was caught by Eli — the WO times work was started off the
+back of a side-observation while My Day was mid-build. Flagged, parked, then done with his
+explicit go-ahead. Worth repeating: state the connection to the current chunk before
+opening a file in another subsystem.
+
+---
+
+### Aug 11–12, 2026 — The Billing Hub, and the work order becomes a document
+
+**What this replaced.** `/wo-hub` and, more importantly, the Dropbox folder system. Those
+folders — COD paid / COD with balance / needing approval / approved-awaiting-PO / sent &
+open / sent & paid — were a status field Eli maintained by hand, in an app that had no idea
+they existed. Here they are derived from the work order, so the filing disappears and the
+window he already looks at becomes the app.
+
+**The one rule everything else hangs off:** PRSFlo owns the workflow and the documents;
+QuickBooks keeps owning the money. That is what dissolves the two-sets-of-books worry —
+the two systems track different things, and nothing here claims to be the accounting.
+
+#### The design mistake worth remembering: nine tabs
+
+v1 shipped with nine tabs, and Eli's question unmade it: *"maybe these tabs combine to one
+with status indicators… the whole point of this app is to seamlessly flow."*
+
+He was right, and the diagnosis matters more than the fix. **Open / Needs invoice / Needs
+approval / Ready to send were never four PLACES.** They are one package being assembled, and
+v1 modelled each rung of the ladder as its own room. Every serious AR tool separates by WHO
+IS WAITING, not by which step something is on, and puts the steps on the row as a
+completeness indicator. Few destinations, rich rows.
+
+The other half of the bloat was forcing two unrelated processes through one set of tabs.
+Billing assembles over days or weeks; COD money is already in and just needs checking —
+*"the majority of COD do not go through a billing process, they are just checked for
+accuracy, approved and then they are done."* They share a work order and nothing else, so
+they got a toggle. Nine tabs became four and three.
+
+#### Rejected, and why
+
+- **A footer row for upcoming sessions.** Rejected — a footer row inside a paginated list
+  falls onto page 3. It became a sub-view pinned BELOW the pager, and clicking it SWITCHES
+  the list rather than expanding under it: ten paginated rows followed by twelve
+  un-paginated ones would make "page 2" mean two different things.
+- **Search within the current tab.** Rejected — you would have to guess the right folder
+  before you could find anything, which is the exact Dropbox problem this page removes.
+  Search spans both pipelines and every bucket, closed included.
+- **A per-client `requires_po` flag** (shipped, then retired the same day). The exception is
+  per-JOB, not per-client: a client who normally needs a PO can waive it once. `no_po_needed`
+  lives on the work order. The column is kept but dormant, commented as such.
+- **An "Add PO" button on the row.** Rejected on Eli's ruling — *"adding a PO is done on the
+  WO. One place, easily understood."* Two doors to one field is how the two drift.
+- **A separate "Open WO" button.** Removed. Opening a record to read it is navigation, not an
+  action, and a button for it appeared on nearly every row doing the same thing as clicking
+  the row — which crowded out the one control that actually advanced something. Double-click
+  opens it.
+- **`Re-open WO`.** Removed from the work order footer. With the hub owning the invoice
+  lifecycle it was an undo for a state nothing reads, and it sat one slip away from the
+  button people press to save an edit.
+- **A merged single PDF, deferred then un-deferred.** Initially two files ("I'm ok with two
+  files for now"). Eli's later reasoning collapsed it: if the ONLY way to get a work order
+  document is the generator, the print stylesheet can be deleted and the layout exists in one
+  place again. His instinct removed the drift risk I had been warning him about.
+
+#### Where I was wrong, twice, and he corrected it
+
+**Download & send as one press.** I argued for it: one button fails noisily and slightly
+(the aging clock is a few days early), two buttons fail silently and badly (someone forgets
+to press Sent and the invoice never enters AR). Eli named the failure I had not weighed:
+*"we've done all the work to prepare the package and it lands in someone's downloads folder
+and never goes out."* And his worst case — it gets sent, stays In progress, someone says
+"hey, I already sent this" — is loud and recoverable, where mine was silent. My design was
+only safer on the assumption that nobody would ever fix it. Split, with a stale-download
+reminder as the net.
+
+**Hiding the button when a package was blocked on a PO.** An approved invoice showed no
+control at all and nothing said why. Hiding the only button on a row does not communicate a
+blocker; it communicates a broken screen. It renders greyed now, with the reason in the flag
+column — and it keeps the label `Approve` rather than relabelling to "Needs PO", which put
+the same fact in two places and made it look like a different control.
+
+#### The archive, built in the wrong order
+
+Eli: *"once a package leaves In progress, it needs to be the actual PDF… we need to see
+what's actually going out."* Correct, and it exposed a hole rather than a display bug: the
+merged PDF was built fresh on every download and thrown away, so the package window could only
+ever re-render what a package would look like TODAY. Edit a rate next month and the
+"package" silently becomes a document that was never sent — and the moment you go looking is
+precisely when something is wrong, which is the worst possible time to be shown a
+reconstruction. Download now stores the exact bytes it served.
+
+**But it shipped before the PDF layout was right**, which Eli caught immediately: the
+snapshot faithfully preserves a document we are about to throw away. Sequencing error, mine.
+The plumbing is independent of the layout and stands; the snapshots do not.
+
+#### Open
+
+**The PDF is a generic invoice, not the work order.** Eli's ruling closes the question of
+what it should be: *"we have two versions — digital WO, and then black and white flat one
+that is exact representation."* Rebuilding `lib/woPdf.ts` section by section against the WO
+screen is the next job, and **every `invoice_package_path` snapshot taken before it ships
+must be wiped** so no test download can pretend to be a record of what a client received.
+
+#### Process note
+
+Two edits to `app/(main)/billing/page.tsx` this session removed more than intended — a
+text-range deletion aimed at the PO modal also took the package window and the ⋯ menu's
+render blocks, which is what produced "nothing happens when I click the three dots." Both
+components still existed; nothing rendered them. **Edit that file with explicit,
+uniquely-anchored replacements, never by cutting between two matched strings.**
+
+---
+
+### Aug 12, 2026 — Decision: the billing page gets a BLANK WORK ORDER PDF, not a create button
+
+**Decided before any code was written. Build it this way.**
+
+**The requirement was misread first, and the correction matters more than the
+answer.** Eli asked for a "create WO" button on `/billing`, and the first reading
+was that he wanted work orders in the billing pipeline before the calendar
+migration. That produced a design where the button created a `bookings` row and
+its work order through `createWorkOrderForBooking` — architecturally sound, and
+solving a problem he did not have.
+
+What he actually wants is the **paper copy, replaced**: *"just in case we need to
+create one for a client… I just want to avoid having to create a fake session, go
+through the whole process to make the work order, and then remember to delete it
+from the calendar. These are gonna be rare occasions."*
+
+**So: a button that generates a BLANK work order PDF.** Nothing is created,
+nothing is stored, nothing lands on the calendar. `lib/woPdf.ts` already does it —
+feed it an empty record and it draws the same black-and-white form with the
+letterhead, field labels and empty rows. Print it, fill it in by hand.
+
+**Why not the create-a-session version** (recorded here because it was nearly
+built): it puts a fake session on the calendar that somebody then has to remember
+to delete, which is precisely the chore being avoided. It was the right answer to
+"let us use the billing pipeline early" and the wrong answer to "give me a blank
+form". Both rules it was designed to protect still stand and still matter —
+`work_orders.booking_id` is load-bearing, and `createWorkOrderForBooking` is the
+ONLY path that may insert a work order — they simply are not in play here, because
+nothing is inserted at all.
+
+**The fork to watch.** A blank PDF is safe while it is a FORM. If someone works a
+real, paid session on one, that job never gets invoiced, never enters AR and never
+appears in a total unless the work order is entered properly afterwards. If these
+start being filled in for real work rather than handed over as a form, that is the
+signal it needs to become a real session — not before.
+
+---
+
+### Aug 18, 2026 — The work order becomes two columns: words left, numbers right
+
+Task #11, the WO reorganization. One commit, two files, zero logic.
+
+**Why the shape.** The work order had become one long scroll: branding, then the
+session top, then studio time, then rentals, then a two-column footer of notes
+and money, then needs-attention. Everything on it is either a WORD (who the
+client is, what was agreed, what to remember) or a NUMBER (hours, rates, OT,
+rentals, payments). A single column forces you to travel past all the words to
+reach the money and back again to check who it's for. Splitting them at
+`0.72fr / 1.28fr` means the identity of the job is permanently beside the
+arithmetic of it, which is how the job is actually read.
+
+**Lineage of the mock, same day.** A "compact" pass was rejected — everything
+must stay visible and editable. Pair-block grids were rejected ("looks like the
+table"). Card language was accepted. Option 2 (words-left / numbers-right)
+became the base. "The merge" — folding contact and booking into one top band —
+was rejected. `docs/design-refs/wo-compact-options.html` is the survivor and its
+header comment is the ruling list.
+
+#### Two decisions that went against the mock, and why
+
+**The list view stays the full editable table.** The mock draws a slim
+read-only audit table (Studio·Date·Info·From·To·Hrs·OT·Total, staff as
+sub-rows), which is genuinely nicer to scan and fits the column with no
+sideways scroll. It loses cell editing. Eli's standing rule for this screen —
+"every field stays visible AND editable, this is the admin view, it must be
+robust" — outranks the mock's slimness, so list is still the 14-column table
+with every cell typeable. **The cost is real and was accepted knowingly:** the
+table needs 848px, the numbers column gets ~800 at the 1320 cap, so list slides
+~50px sideways. A third "slim by default, ✎ toggles the full table" option was
+offered and declined — it would have been a third view state to keep in step
+with List and Cards.
+
+**No Complete pill in the letterhead.** The mock puts `● OPEN` and `✓ Complete`
+under the big WO number. The action bar already has Complete WO, and on
+2026-08-13 Eli removed exactly this duplication ("there are a million buttons up
+here"). Building it from the mock would have re-litigated a ruling the mock's
+author didn't know about. The letterhead carries the status badge; the act stays
+in one place.
+
+#### The technique that protects mobile
+
+The rule is that mobile and runner are byte-identical to before. The obvious
+implementation — two branches, one desktop, one mobile — would have duplicated
+~900 lines of money-bearing markup, and a transcription slip in there is a
+mis-billed session. The obvious alternative — extracting every block into JSX
+consts — meant retyping the same 900 lines once.
+
+What shipped instead: the two column wrappers are real DOM when `wide`, and
+`display: contents` when not. Off `wide` every child falls back into the body's
+flex column exactly as before, and an explicit `order` from the `ORD` map
+restores the original sequence for the four blocks that genuinely moved
+(Session Notes, the COD legal block, payments/totals, needs-attention). The
+markup itself was moved, never rewritten. **The trap for the next person:** a
+new child of either column with no `ORD` entry lands at the TOP of the phone
+layout, because `order` defaults to 0.
+
+#### Totals
+
+Standing rule: totals always come from `studio_time_rows`, no view invents
+math. The new pinned panel itemizes per person, which is a shape `computeWoTotals`
+doesn't return — so it regroups `engChargeForRow`, the same per-row function the
+totals already use, keyed by role + name. Sum(staff lines) is Eng Total by
+construction rather than by coincidence, so the card, the table and the PDF
+cannot drift apart.
+
+#### Open, going out of this session
+
+- **The days bin is 322px (~3–4 days), and the recorded want was ~8.** The Aug
+  13 note says the 420px cap showed ~5 and Eli wanted ~8, i.e. ~690px. The
+  two-column layout can't spend that: the itemized total, the rentals bin and
+  payments/totals all sit under the bin and the ruling is that they never scroll
+  away. `ST_BIN_H` is the single constant to change if the trade is wrong. This
+  is also the whole reason `ScrollHints` exists — a capped bin that doesn't
+  announce what's below it is how a billable day gets missed.
+- **Nobody has looked at it.** tsc clean, selftest PASS, full production build
+  green — none of which can see a layout. Open one 3-day label WO and one 1-day
+  COD WO before trusting it.
+- The `[data-wo-portal]` print block in `globals.css` still matches on inline
+  style substrings including `gridTemplateColumns: '1fr 1fr'`. It is dead code
+  (`window.print()` went in v1.9.0; the PDF is drawn server-side in
+  `lib/woPdf.ts`), and this layout changed which elements it would match. Worth
+  deleting the block outright rather than maintaining a fiction.
+
+### Aug 17, 2026 — Launch prep: the SOPs take shape, hints go app-wide, day never night
+
+Ships as v1.13.0. The queue from Aug 16's "Rolling toward launch" got worked
+in order; several rulings landed along the way.
+
+#### The SOPs: chapters, flow, and real renders
+
+The billing SOP started as a flat markdown draft; Eli's correction reshaped
+everything after it: **not one long "how things work" page — chapters, and
+the spine is THE FLOW**, a session's life start to finish ("that's why I
+named it Flo"). Both admin manuals (mocks:
+`docs/design-refs/billing-sop.html`, `manager-sop.html`) follow that
+architecture — billing follows a session hold→paid, the manager follows a
+day tasks-posted→"Yesterday is done".
+
+Two more corrections that now bind future manual work: **renders must be the
+REAL thing, not approximations** — the WO chapter became a click-through of
+the actual WorkOrderPopup layout (14 columns, day blocks, letterhead) after
+Eli rejected an invented one; the Flo chapter carries an exact port of the
+ring-animated Flo box; the manager's runner chapter shows the actual hub.
+And a **new procedural fact recorded in the flow: the QB invoice is created
+the moment a session CONFIRMS**, so the invoice number is referenced on the
+work order from day one (amounts trued up after review).
+
+**Oversight, not duplication (ruling).** The manager supervises billing, so
+their manual needs billing content — but as *oversight* chapters ("Billing,
+from where you sit": the coordinator's cadence, the four peek numbers, four
+walk-over triggers), never a copy of procedures. One item, one home; the
+manager's question is "is it being done", not "how do I do it". **Rejected:**
+duplicating the billing manual's procedure sections into the manager SOP
+(would drift), and bare "go read the other manual" (too thin for a
+supervisor). Also ruled: **all admin manuals are visible to all admin staff;
+runners see only theirs.**
+
+**Runner SOP ≠ runner manual.** The in-app guide (`/runner/sop`,
+`public/runner-sop.html`) is HOW TO USE THE APP only. Eli has an existing
+paper RUNNER MANUAL (the job); digitizing it is a separate later project and
+keeps its "Coming soon" slot on the hub. Do not merge the two.
+
+**HR is post-launch, deliberately.** No HR chapters in any SOP until the HR
+section exists — "my focus is just to get the meat and potatoes out."
+
+#### Helpful hints: an app feature, not a manual feature
+
+First built into the SOP mocks; Eli's correction — he meant **first-time-user
+coach marks across the live app**. Now real: `components/ui/Hint.tsx`,
+default ON, per-device persistence, toggles in the rail Settings and the
+runner hub header, seeded ×9. The SOP-embedded markers stay as illustrations
+of the same mechanic; the toggles are independent on purpose.
+
+#### Other rulings this session
+
+- **Day, never night** — the studios run 24/7; every term at every staff
+  level says day/yesterday/shift. Applied to app copy + all three SOPs; the
+  clock-driven dayPart greetings stay (evening genuinely is "tonight"). The
+  `myday_duties` label "Update last night's invoices in QB" needs the
+  one-liner: `update myday_duties set label = replace(label, 'last night''s',
+  'yesterday''s') where label ilike '%last night%';`
+- **Settings disclosure** in the rail foot absorbs SOP/DEV/hints/theme/Sign
+  Out. **Admin is de-nav'd** — everything it held is retired except
+  Engineers, now `/engineers` under Operations (rebuilt in the current skin,
+  with the realtime pairing and dbResult checks the Admin copy lacked).
+  Admin's full rebuild is a later phase.
+- **Daily Ops**: queue paginates at 10 so studio tasks never scroll away;
+  the sweep leads with the DATE as hero and pages by ‹ ›/swipe — which is
+  the replacement for the retired daily-ops log.
+- **Runner accounts: create, don't send.** `scripts/create-runners.mjs`
+  provisions all 10 (roster in-file), prints credentials for Eli to hand out
+  personally. Readable Word-Word-## passwords — runners type them on phones.
+- **Launch-reset SQL** (`supabase/launch_reset_20260817.sql`): Eli ruled ALL
+  bookings/WOs are test data — wiped; CRM untouched; dashboard tasks kept.
+  The My Day re-anchor is `created_at = now()` because that is exactly what
+  lib/myday.ts clamps every retrospective judgement to.
+- `/preview` + `DeviceToggle` deleted; rail Runner Hub → `/runner`. SOP
+  VERSIONS v1.10.0–v1.13.0 added (the owed set). Office announcement drafted
+  (`docs/sop-drafts/LAUNCH-ANNOUNCEMENT.md`).
+
+#### Late addition: the self-test (Eli: "test everything yourself")
+
+`scripts/selftest.mjs` — run before every hand-off line from now on
+(CLAUDE.md → Commands). tsc + high-confidence security fails (service-role
+key inside a `'use client'` file, env files tracked by git, SOP VERSIONS
+parse, optional `--build`) + landmine WARNS with recorded baselines
+(`.maybeSingle()` ×25, dead `bookings.engineer_rate` reads ×2, no-dbResult
+writers ×23 — all pre-existing legacy; a session answers for its DELTA).
+First run caught its own false positive: matching the `'use client'`
+substring flagged comments *saying* "no 'use client'" — the check now matches
+the directive line only. **The production build runs in the Claude sandbox**
+(`.env.local` is mounted), so build-level verification no longer depends on
+the broken local dev server. What the script deliberately does NOT do: DB
+end-state checks (SQL editor, Eli's) and clicking the UI — the browser-level
+answer, if wanted later, is the Claude in Chrome extension driving the
+preview URL with a test login, not resurrecting `npm run dev`.
+
+#### Third sitting: the wipe ran, the browser test ran, two bugs died
+
+**The launch reset executed clean** — all 25 operational tables ✓ wiped (467
+rows), CRM ✓ untouched (3,865 leads / 674 clients / 155 contacts), anchor
+re-set. It took three attempts, each failing SAFELY before any delete:
+**`expense_rows` and `stock_items` are documented in CLAUDE.md but DO NOT
+EXIST in the live DB.** The final script was cut against an
+`information_schema` existence check instead of the docs — the July 17/Aug 14
+lesson applied to our own tooling. **`stock_items` is also a live app bug**:
+the runner Stock page + dailyOps sweep query it (tracked; fix or retire the
+tile). CLAUDE.md's data model corrected.
+
+**First Claude-driven browser test** (Chrome extension + preview URL).
+Verdict on the method, from Eli, accepted: too slow for TOURING — a human
+clicks faster. Where it earned its keep: console-error reading on every page
+(zero errors), systematic clean-state verification, and one end-to-end
+session build that found a real bug. Division of labor going forward: Eli
+clicks, Claude diagnoses (console/network/code) when something breaks.
+
+Found and FIXED same sitting (both in `WorkOrderPopup.tsx`):
+- **Venue guard (Eli's ruling: block the save).** A dated studio row with no
+  venue saved fine, showed in Billing, but projected a card the calendar
+  cannot place — an invisible session. Save now refuses (office only; runners
+  can't edit venue so they're exempt) with the red banner + row highlight.
+- **Day sheet on admin desktop** rendered as the phone bottom-sheet — full
+  bleed under the rail, looked broken. Now a centered 620px card on desktop;
+  phones unchanged.
+
+**Hardening review** (Eli: "treat this like a financial institution") →
+**`docs/HARDENING.md`** — the standing checklist. RULE FOR FUTURE SESSIONS:
+when Eli asks "what else should we do", read HARDENING.md first and surface
+its open items. Date-critical: offboarding the departing billing coordinator.
+`npm audit`: 6 high-severity transitive vulns noted, deliberately deferred to
+week one post-launch (dependency churn the night before launch was rejected).
+
+Still open for launch: Eli finishes his own click-through (test batches in
+DEV → Testing), **deletes test session WO-1032 (Atlantic Records)**, runs
+create-runners, reviews both admin SOP mocks (billing's with the departing
+coordinator — her window is the deadline), merge. The mic-inventory / tasks /
+flags re-skins are queued for a fresh session — 2,200 lines of old-skin ports
+deserve full attention, not session-end scraps.
+
+---
+
+### Aug 16, 2026 (second sitting) — The day sheet grows up; OT becomes a designation; the open work order goes live
+
+Same day, after the v1.11.0 wrap-up — Eli tested on his phone and the session
+turned into a rapid mock→rule→build loop. Ships as v1.12.0.
+
+#### The day sheet, redesigned from his screenshots
+
+First shipped version wasted a row on the assistant's name, had small time
+boxes, no hours total, and staff times detached from studio times. Two mock
+rounds (`runner-wo-day-sheet.html` A/B → Eli picked B; `runner-wo-ot-options.html`)
+converged on `runner-wo-day-sheet-final.html`: **pair blocks** — the studio and
+each staffer get the SAME shape (name + hours chip, two big mono time wells),
+staff times directly under studio times and auto-following them until edited.
+Time wells accept typing (TimeInput parser) OR a ▾ half-hour dropdown that
+**opens scrolled to the shown time** — starting at 12:00 AM was a long crawl
+and the AM/PM mistake factory. A **>14h tripwire warns, never blocks** ("long
+sessions happen") on both studio and staff times. **Swipe (or ‹ ›) moves
+between days** for reference; approved days open view-only (👁 View pill) —
+approval stays the ONLY lock. Runner always defaults to cards now (the 1–3-day
+rule survives only for admin phones); the phone LIST's 44px input rule is
+scoped down to 30px inside the table (it's a reference view, not an entry
+surface). Studio leads the card far-left as a slight hero.
+
+#### OT: "as little room for math error as possible"
+
+Eli's ruling, over one option round: **OT is a DESIGNATION — time beyond what
+was agreed** (booked from/to on hourly days, 12h on lockouts), shown as its own
+line so anyone can see agreed vs overage. COD collects it at the desk in the
+moment; billing sends it after. The "OT pre-approved" flag + Extend&collect
+card were mocked and then **dropped by ruling mid-build** ("not necessary") —
+so as shipped: OT always derives from the clock. In runner mode, editing times
+on an hourly row recomputes `ot_hours` as actual minus booked hours — typed by
+nobody, so it can't disagree with the clock or double-bill (the old model let a
+runner extend the end time AND type OT hours; both billed). Day-rate keeps its
+automatic past-12h rule. Admin list-view OT stays manual — overriding is the
+office's call. Billing block: plain itemized list (the mocked Agreed/Beyond
+sub-headings were also cut), OT appearing only when it exists, and **staff
+rates got a home** — office-editable wells, runner-read-only text. No
+migration; the flag died before it needed a column.
+
+#### "I want EVERYTHING live" — the open work order merges
+
+The popup was strictly local-first (load once, edit, one atomic save) with a
+status-only subscription — so an office rate fix made while a runner sat in
+the day sheet was invisible, and worse, the runner's save would write the
+stale rate back over it. Now: `wo-live-<id>` channel on all six tables the
+popup renders, debounced into `refreshFromDb()`, which merges on the rule
+**your unsaved edits win, per field** — "touched" derived by comparing local
+state to the load-time original (covers single edits, batch and seed with no
+bookkeeping). Locked fields can never be "yours", so office changes always
+land live on a runner's screen. Rentals/payments merge as whole tables only
+while untouched (coarse guard, deliberate). Foreground-return triggers the
+same refresh (phones sleep; events aren't replayed). **The stale-closure trap
+was found before it shipped:** the channel callbacks close over first-render
+state, so `loading`/`dirtyFields`/`openNoteKey` are read through ref mirrors —
+without that the guard saw `loading=true` forever and the merge never ran.
+Accepted edge, stated to Eli: same field edited on both sides before either
+saves = last save wins that field.
+
+Also this sitting: hub pill now answers the runner's question (**Not
+submitted / Submitted / Approved**, office Completed outranking) instead of
+the office's "OPEN"; `useReloadOnReturn` hook wired across five runner pages;
+hub card COD strip made flush (grid, not flex — the body fell short of the
+chip and green peeked under the red); cards freed from the horizontal-scroll
+container that clipped their corners; the sheet moved out of the scrollable
+body (iOS breaks fixed-position inside momentum scroll); dates read "August
+17th, 2026"; A&R phone + Edit/View pills.
+
+#### Rolling toward launch
+
+- `studio_time_rows.status` **verified in the live DB** (86 rows, all
+  in_progress) — migration record `20260816120000` kept regardless.
+- Next session, in order: **billing SOP** (brief in `docs/SOP-REWORK-BRIEF.md`;
+  the coordinator leaves end of next week — her review window is the
+  deadline) → **launch-reset SQL** (shared DB means test data is already in
+  prod; wipe operational tables, keep CRM, re-anchor My Day duties so the Flo
+  box starts clean) → **runner accounts** (Eli sending names/emails/phones)
+  → merge. `/preview` tooling removal + SOP VERSIONS still owed at merge
+  (now v1.9.1 through v1.12.0).
+
+### Aug 16, 2026 — The runner work order stops being a second work order
+
+#### The build: WorkOrderPopup gains `mode="runner"`; the 1,595-line duplicate dies
+
+The runner work order is now the admin `WorkOrderPopup` with a runner mode —
+`app/runner/[studio]/wo/[id]/page.tsx` went from 1,595 lines (a drifting second
+description of the work order, the same disease `/wo/[id]/print` had) to a
+136-line wrapper that resolves the WO id, fetches its booking, and renders the
+shared component. Net −800 lines. Mock-first per convention:
+`docs/design-refs/runner-wo-views.html`, approved before build.
+
+The feasibility read's verdict held: `readOnly` (tech) is all-or-nothing, so
+runner mode is **field-level locking** — the Session Info card replaces the
+editable top ("🔒 Set by the office", with the A&R phone as a tel: pill —
+calling is always allowed even when the block is locked, Eli's addition at
+mock review — and a hot "Balance due" chip), rates render as read-only text
+(list cells, eng sub-row, and the sheet's billing block), admin-locked rows go
+fully inert, and batch edit / seed / add-delete rows / date pickers /
+Complete WO don't exist on the runner surface. Everything else — times, staff
+names and roles, OT hours, equipment condition, song titles, payments,
+session notes, needs-attention + photos, COD signature — stays live, per
+Eli's "hide nothing" correction to §15.
+
+**One claimed cost evaporated:** the Aug 14 entry said expenses + receipt OCR
+existed only on the runner page, so the shared component would GROW. Wrong by
+the time of building — nothing in the codebase references `expense_rows` or
+the OCR route any more; the runner page had already lost them. The component
+grew for the card view, not for expenses. (The other honest cost stands:
+runner saves now ride `save_work_order_atomic` + the booking projection — the
+deliberate unification — and the new test batch covers it.)
+
+#### Submitted is a signal, not a seal (Eli's ruling)
+
+Eli, asked what happens when a runner submits then needs to fix something:
+*"im ok with them updating a submittal, theres no penalty for editting it. i
+want it to be correct and often times things can change towards the end of a
+session."* So: Submit = the same atomic save, plus today's dated rows →
+`'submitted'`. The rows stay fully editable; the footer button flips to
+**"Update submission"** (same act); realtime means the office always sees the
+current version. The only lock is **approval** — `admin_locked`, an office
+act, reversible by the office's own lock toggle. The rule a runner learns is
+one sentence: *you can always fix your day until the office approves it.*
+No new columns; `studio_time_rows.status` already existed.
+
+**Deviation from the Aug 13 "buttons at the top" ruling, on purpose:** Submit
+lives in a fixed bottom bar. That ruling was about the long desktop sheet;
+on a phone the thumb-reach fixed footer is the pattern every other runner
+page already uses. Cancel/Save stay in the top bar.
+
+#### The view toggle: cards ⇄ list, for everyone
+
+Eli's interview: the §16 day-block table is fine for long runs but "it's hard
+to see this long line on a phone" for the typical 1–3 day session — he wanted
+a Finder-style toggle, list and cards. Built into the shared component for
+**both** modes (Eli: "should we add the toggle to the admin one too? why
+not?" — and the honest answer was that gating it OFF would be the extra
+code). One day = one card: date + submit-state dot, times, staff, §18
+equipment pills (cycle logic shared via helpers, not re-implemented), song
+title, day total. Tap → a bottom **day sheet** with the five things a runner
+actually types: start, end, OT hours, engineer, song title — plus the pills.
+Admin's sheet shows rate inputs; the runner's shows the read-only "Billing ·
+set by the office" block. **Defaults:** phones (and runner mode, which always
+takes the phone layout) open in cards for 1–3 day sessions, list for longer;
+desktop admin always opens in list. Decided once per open; the toggle
+overrides.
+
+Also ported rather than lost: the runner's LIVE missing-times warning (warns,
+never blocks — a runner mid-session has no end time yet; the hard stop stays
+on admin Complete, same `lib/woValidation` rule both sides). The engineer-rate
+and duplicate-staff warnings are now **hidden in runner mode** — rates are
+locked there, so the banner would name a problem the runner cannot fix and
+train them to ignore banners.
+
+**Decisions worth recording, and what was rejected:**
+- **Rentals stay fully editable for runners.** "Lock the client block, lock
+  rates, lock checked days" was the complete list; a rental added at the desk
+  is a real event. If a runner abuses rental rates, lock those two cells then.
+- **Row DATE changes are locked for runners** (schedule is the office's); the
+  room select was left editable — moving a session to another room mid-shift
+  is a thing that actually happens at the desk.
+- **Runner mode is adopt-only inside the popup** — the create-fallback path
+  is gated off, preserving the June 30 rule without a second resolver.
+- **`StRow.status` is carried in state but deliberately NOT in the save
+  payload** — a save must never clobber a submit/approve status set by
+  someone's explicit act.
+
+#### 24/7 copy: "tonight" now reads the clock
+
+Eli: runners aren't just in at night — the studios run 24/7, so "Where are
+you tonight?" at 7am is wrong. New `dayPart`/`dayPartLabel`/
+`dayPartPossessive` in `lib/time.ts` (4am–noon morning · noon–5pm day ·
+5pm–4am night), used by the studio picker, the hub's duties section, the
+shift-notes page, and the punch form's shift button. In the shared lib per
+the standing rule — four pages with private time-of-day logic would drift.
+
+#### Open, going into the next session
+
+- **Verify `studio_time_rows.status` in the LIVE DB** (`select status from
+  studio_time_rows limit 1;`) before trusting Submit — the column is
+  documented and was shipped for the old Finish flow, but this project's
+  repeated lesson is that documentation is not the database.
+- The **runner-mode save path test pass** (atomic RPC + projection from a
+  runner's phone) is what the Aug 16 test batch exists for.
+- SOP `VERSIONS` still owed at merge — now covering v1.9.1, v1.10.0 AND
+  v1.11.0.
+- `/preview` + `DeviceToggle` + the rail's phone-frame link remain TEMPORARY.
+- Individual runner accounts still pending (punch quiet-row stays "coming
+  soon").
+
+### Aug 14, 2026 — The runner hub grows up; the security lockdown that never ran; two worlds
+
+#### The finding that mattered most: RLS was never actually enforced
+
+Auditing runner-role permissions before creating individual runner logins,
+the live DB showed **~40 legacy wide-open policies still standing** —
+`authenticated access` (ALL) on ~20 tables, plus `Public access` / `open
+access` reaching **anon**, including on `user_profiles`. The July 2 hardening
+created the tiered policies but only dropped the five legacy `Public access`
+ones it named; everything older survived. **Postgres RLS policies are
+PERMISSIVE — they OR together, so one open policy silently voids the entire
+tiered model.** For six weeks the app had a security system that was fully
+written, fully documented, and not in effect.
+
+Fixed by `20260814130000_drop_legacy_open_policies.sql`, which is deliberately
+**dynamic** (drops every policy whose `qual`/`with_check` is literally `true`,
+minus a five-table allowlist) rather than a list of names — a name list would
+have missed exactly what the first one missed. Verified after: only the five
+intended tables remain open. Anon reads confirmed dead.
+
+**The generalisable lesson, and it is the same one as July 17's
+`leads.created_by`:** a migration file in the repo is not evidence it ran, and
+*a migration that ran is not evidence it achieved its goal.* The July 2 script
+succeeded — it just didn't drop what it didn't know about. Verify the END
+STATE (`select … from pg_policies`), not the artifact.
+
+**Rejected:** hand-listing the policies to drop (fragile, and the reason we
+were here); dropping ALL policies and re-running the July script blind (would
+have left a window with no policies at all).
+
+#### Two worlds — the architecture ruling (spec §19)
+
+Eli, on feeling the app was fragmenting: *"I really need help here from a
+broader perspective."* Surveying Billing, My Day, the dashboard, flags and
+admin showed the split he was reaching for was **already ~80% true in code**;
+what remained was leftovers from earlier builds.
+
+- **BILLING** (billing coordinator) owns money — payments, rentals, AR/AP,
+  and **work-order review, which the hub's `review` bucket already did**.
+  Nothing was built for this world; the correct move was to *stop putting WOs
+  anywhere else.*
+- **OPERATIONS** (studio manager) owns the building — `/daily-ops`, which
+  existed as an empty rail placeholder and is now the morning review.
+- **MY DAY** is the personal cadence layer over both. It **links, never
+  copies** — Fernando's review duty opens `/daily-ops`; the items live there.
+
+The redundancy test that settles future arguments: *one item, one home.* Eli's
+own framing is why three surfaces isn't bloat — dashboard = "what's happening
+today", daily-ops = "did last night go right", my-day = "what do I owe" — the
+three questions his 24/7 operation actually asks.
+
+**Diagnosis worth keeping:** the four dashboard ops cards failed because they
+tried to be a GLANCE and a CHORE at once. A glance wants to be ambient; a
+chore wants to be a queue you can finish. "Yesterday is done" is a finish line
+the card-and-drawer model could never give.
+
+**ABSENCE IS THE LOUDEST SIGNAL.** A checklist that never came in previously
+rendered as *nothing at all* — the one state that most needs attention was the
+one state with no pixels. It is now a hot queue item.
+
+#### Rulings, and what they cost
+
+- **Runner hub keeps its shape** (Eli: it "works well"). Additions only —
+  option A · Sections from `runner-hub-additions.html`: studio tasks as a
+  section ABOVE sessions (the opener's first question is "anything waiting for
+  me"), punch + manual as a quiet bottom register. **Rejected:** B (tiles —
+  gave "blow the parking lot" the same weight as the stock list), C (banner —
+  buried the punch report, and same-day reports are the ones that protect the
+  runner).
+- **Nothing is assigned to a runner.** They rotate between studios, so
+  everything is scoped STUDIO + SHIFT. `studio_tasks` is deliberately NOT the
+  `dashboard_tasks` person system.
+- **Individual runner logins** (retires the shared PIN). This dissolved the
+  punch form's "who are you" picker — identity comes from the session. Also
+  the prerequisite for scheduling. Until the accounts exist the punch form
+  refuses the shared login rather than filing an unattributable legal record.
+- **Punch tracking is COUNTS, NOT POINTS**, and deliberately not a percentage:
+  a "% of shifts punched correctly" needs shift counts the app won't have
+  until scheduling ships. Faking a denominator would have been a number that
+  looked rigorous and wasn't.
+- **Shift notes are a LOG, not a text box.** Eli's Slack example (Mathew's
+  5/20 ERS post) settled it: 15 bullets, a mid-shift handoff to another
+  runner, a photo. Append-only — an entry is a record, not a draft.
+- **One-landing merge on `/runner`:** the picker is skipped when the phone
+  remembers its studio; the header carries switcher pills. The ← un-remembers,
+  which is the floating runner's "I'm moving" gesture.
+
+#### Where I was wrong
+
+- **Told Eli no model switch had happened** when his UI said otherwise. I have
+  no introspective access to a mid-session switch — I answered from "I don't
+  perceive one" rather than from what I could actually check. He was right; it
+  was a safety-classifier fallback (Fable → Opus), plausibly tripped by the
+  RLS/lockout security discussion.
+- **Restructured the CRM lead card when asked to fix padding.** Eli: *"i dont
+  want to chagne arrangemetn of the lead card at all… it seems like you just
+  moved things around."* Correct. And the diagnosis was wrong too: the dates
+  weren't short of space, they were pinned to `width: 92` inside a well that
+  was already wide enough — the empty gap was visible in his own screenshot.
+  Unpinned them; arrangement untouched. **Read the screenshot for what it
+  shows, not for what confirms the first theory.**
+- **Dashboard room cards changed size with content** — booked 120px, empty 76,
+  so any row holding a session grew and the grid shifted. Same object, same
+  height, regardless of what's in it.
+
+#### Open, going into the next session
+
+- **The runner work order is still the 1,595-line duplicate.** Verdict from
+  the feasibility read: reuse `WorkOrderPopup` with a `mode="runner"` — but
+  `readOnly` is computed internally from the tech role, not a prop, and it is
+  all-or-nothing; runner mode needs FIELD-LEVEL locking. Eli's corrections to
+  the §15 assumption: **runners need totals and payments** (they take COD at
+  the desk), so hide nothing — lock the client block at the top, lock rates,
+  lock any day admin has checked off, and Submit ≠ Complete. Two honest costs:
+  the runner's writes move onto the admin's atomic-RPC save path (a
+  deliberate unification, needs its own test pass), and expenses + receipt OCR
+  exist only on the runner page, so the shared component GROWS.
+- **Individual runner accounts** — profile row + PIN each; then the punch form
+  and shift-log authorship stop being typed.
+- **`/preview` + `DeviceToggle` + the rail's Runner Hub → phone-frame link are
+  TEMPORARY** build-phase tooling. Remove before go-live; the rail entry
+  reverts to `/runner`.
+- Admin → Ops Log and `/daily-ops-log` are superseded by `/daily-ops` but not
+  yet removed.
+- SOP `VERSIONS` still owed at merge (spec §12 fences the file while the
+  branch is unreleased) — now covering v1.9.1 AND v1.10.0.
+
+### Aug 13, 2026 — The PDF becomes the work order; five bugs the trace found; the runner redesign starts
+
+#### The sequencing error from v1.9.0, corrected
+
+v1.9.0 shipped the package ARCHIVE before the package LAYOUT was right, so every
+stored snapshot was a faithful copy of a document we were about to throw away.
+Today rebuilt `lib/woPdf.ts` against the work order screen, section by section,
+and wiped the snapshots. The plumbing was always independent of the layout and
+stood; only the artifacts were wrong.
+
+**Rendering it and LOOKING was the whole difference.** `tsc` was clean on a
+generator that never drew engineer sub-rows (the `subRows` argument was simply
+not passed), clipped four columns, and struck a rule through the first row of
+every table. None of that is a type error. Compiling proves a document exists,
+not that it is readable — for anything that produces a document, render it and
+open it.
+
+#### Where I was wrong, and Eli corrected it
+
+**The engineer-rate "money bug" that wasn't.** I read the WO screen's
+`r.eng_rate || booking.engineer_rate` fallback as a live rule, concluded billing
+was under-counting, and "fixed" billing and the PDF to match. Eli: *"we deleted
+the booking page long ago… engineer rates and hours only live in the studio time
+table."* He was right. `bookings.engineer_rate` is vestigial — nothing writes it
+since the booking form was deleted, and `buildBookingProjection` never touched
+it. My fix was worse than the bug: it made two more surfaces READ a dead column,
+so a stale pre-rebuild rate would have ADDED engineering cost to invoices that
+correctly had none.
+
+Reverted, then fixed in the correct direction: five reads removed (two on the WO
+screen, three on the runner WO page) so the row's own `eng_rate` is the only
+source anywhere. Confirmed against live data first — three work orders carried
+the retired $55, all open, none invoiced.
+
+**The lesson generalises past this instance.** A fallback in code is not evidence
+the thing it falls back to is alive. Check what WRITES a column before trusting
+what reads it. And Eli's firsthand account of how the app works outranks my
+reading of it — that rule is already in memory and I should have applied it
+before writing the fix, not after.
+
+**Buttons and warnings at the bottom of the work order.** I argued the footer was
+right because the click that triggers a warning happens down there. Eli: *"move
+the red banner to the top and move all buttons to the top… that was a bad call
+for me."* He is right — the work order is long and you scroll it, so a bar pinned
+under a metre of table is a bar you have to go looking for. Moved, same markup.
+
+#### The bugs, and what they have in common
+
+Tracing the admin workflow end to end found five, and four share a shape: **a
+control that looks available and does nothing.**
+
+- **A drifted invoice could never be approved.** Approving wrote `approved`
+  (step 3) and `deriveStep` instantly demoted it to 2, because `invoice_total`
+  still held the pre-edit figure. Pressing Approve appeared to do nothing,
+  forever, with no error. The fix is also the honest semantics: approving
+  re-snapshots the total, because an owner is signing off on the numbers as they
+  stand, not as they were when the invoice was attached.
+- **Complete WO never saved or closed** — while a comment written on Aug 11
+  asserted it did. A comment is not a test. It now returns a boolean from the
+  save and refuses to stamp a work order whose save just failed.
+- **Four fields never marked the record dirty**, so Complete WO stayed greyed
+  after editing them and the close prompt never appeared.
+- **Equipment condition only accepted clicks on day one.** Rows are seeded at
+  creation for the dates the booking had THEN; add a day later — which is normal,
+  sessions run long — and the cells had no row behind them, with the handler
+  gated on `row &&`. Silent by construction.
+- Double-clicking a row button opened the work order behind it.
+
+#### Duplicate staff lines — a real double-billing, found in live data
+
+WO-1018 had, on 29 and 30 July, the engineer on the studio row AND an identical
+standalone staff row: same name, same $55, same 2:00 PM–10:00 PM. Both feed the
+engineer total, so the session billed him twice. On screen it merely looks like
+two lines.
+
+Nothing creates these automatically. `+ Add Engineer` deliberately pre-fills the
+previous staff line's name, rate and times as a convenience — so pressing it on a
+session that already has that engineer produces an exact duplicate. Easy to do,
+invisible afterwards.
+
+Deleted with a predicate that requires the HOURS to match exactly, so a genuine
+second call at different hours could not be caught by it. Two rows; $880 came off
+WO-1018. The work order now warns live when it sees the pattern.
+
+**Rejected: blocking Complete on it.** Two lines for one person on one day is
+sometimes real, and only the person looking can tell. Same reasoning excluded
+assistants from the no-rate warning — assistants are never rated, so warning on
+them would fire on the majority of sessions and train everyone to ignore the
+banner. A warning that cries wolf is worse than no warning.
+
+#### Table chrome — the fix that chased the symptom
+
+The day-block grouping (§16) exposed that every table had a SQUARE header strip
+and footer bar inside a rounded container. I rounded the strips' outer corners
+(§16b). Eli: *"looks like headers and footers are half round and half square."*
+Right — two filled bars sandwiching filled blocks means three fills competing for
+one edge, and the corner only MOVES.
+
+His diagnosis dissolved it: *"for the headers and footers, there are no bars or
+pills, just text. that way entries have the rounded bubbles."* If only one thing
+is filled, only one thing needs a radius. §16b is superseded but kept, because
+the reasoning for why the first fix was wrong is worth more than the fix.
+
+The same conversation produced the sharper insight about **grouping axis**:
+Studio Time bubbles a DAY (a day and its staff are one fact); Equipment bubbles a
+PIECE OF GEAR across every night. Equipment looked worst precisely because it had
+borrowed Studio Time's axis.
+
+**And the "square" search bar was not square.** Eli sent the CRM field as the
+correct reference: it is `.c-input` — radius 12. Billing's was a 99px capsule,
+left over from the carved geometry that the soft skin and the density ruling
+replaced. The eye was catching a shape mismatch, not a corner.
+
+#### Rejected, with reasons
+
+- **A "create WO" button on billing** (already logged Aug 12) stayed rejected;
+  the blank PDF shipped instead, now with 188 fillable fields after Eli asked to
+  be able to type into it before printing.
+- **Deleting `.claude/worktrees/`.** An abandoned June worktree, 23MB. Verified it
+  holds no unique commits and that its uncommitted changes are features long
+  since shipped. Eli chose to leave it and delete later — correct, because it is
+  gitignored, skipped by tsc (dot-folders are not matched by `**/*`), and never
+  bundled. Documented as an ONBOARDING landmine instead: the hazard is a grep
+  hitting a two-month-old duplicate, not the folder itself.
+  - I also told him it contained no unsaved work based on a command that had
+    ERRORED, and had to correct that. Read the output, not the exit you expected.
+- **Deleting storage objects in SQL.** Not a choice — Supabase's
+  `protect_delete()` trigger rejects it. Pointers cleared, files orphaned.
+
+#### Open
+
+- **The runner work order page is not built.** `/runner/[studio]` is ported;
+  `/runner/[studio]/wo/[id]` (1,591 lines) still has the twelve-column
+  sideways-scrolling table. That is tomorrow, per spec §15 option A.
+- Billing has not been tested by a human on preview — everything today was
+  verified at source and by rendering PDFs.
+- Four AR questions still open (approver set, deposits, Dropbox history import,
+  `SUPABASE_SERVICE_ROLE_KEY` in the Preview environment) — see `docs/AR-SCOPING.md`.
+
+#### Later the same day — the design pass, and a pattern worth naming
+
+After the wrap-up we kept going on the work order's surface. Six of the fixes
+turned out to be **one failure mode wearing different clothes: a scoped default
+quietly out-specifying a component's own style.**
+
+- The billing search bar looked like "a box in a bubble". Nothing was square —
+  a global `input:not(.c-input)` rule paints a sunken inset on any unclassed
+  field, so the input drew a recessed box inside the rounded bar.
+- The `ClientPanel` fields rendered as pale boxes for the same reason, one rule
+  along: `.c-sheet input:not(…)` gives them a wash fill. They carry `.c-tin` now.
+- The equipment pills rendered oversized AND refused to change colour on tap.
+  Same shape again: `.c-sheet button:not(…)` gives raw buttons carved padding,
+  their own background and a raised shadow, and beats a plain class. The colour
+  was being painted over — which is why tapping appeared to do nothing except
+  move a dot.
+
+**The generalisation, which is worth more than the three fixes:** the scoped
+sheet/panel defaults are a deliberate compromise (documented at the rule itself)
+that lets ~38 one-off controls look right without converting each to a primitive.
+The cost is that every NEW control inside a sheet is opted IN by default and must
+be opted out by name. Nothing announces that. When a new control looks wrong in a
+way that inline styles cannot explain, check the `:not()` list before anything
+else.
+
+**Section headers going to text had the same shape in reverse.** Removing
+`.c-lozenge`'s fill broke three things that had quietly depended on it: the count
+badge inverted against the fill (so on no fill it painted in the page colour and
+disappeared), the action link took the bar's contrast colour, and `SectionHeader`
+also carries `.c-anchor`, whose drop shadow had nothing left to cast and became a
+smudge. A fill is never only a fill — things lean on it.
+
+**Where I was wrong again, and it is the same lesson as this morning.** I "fixed"
+the half-round/half-square table strips by rounding their outer corners. Eli:
+*"looks like headers and footers are half round and half square."* Two filled
+bars sandwiching filled blocks means three fills competing for one edge; the
+corner only MOVES. His fix dissolved it — headers and footers become text, so
+only entries are filled and only one thing needs a radius. §16b is kept as
+superseded rather than deleted, because the reasoning for why the first attempt
+chased the symptom is worth more than the fix.
+
+**Rejected:** a "PO req'd Yes/No" segment beside the PO field (option D of
+`wo-po-food-options.html`) — kept the control but not the width. Option A won:
+the field answers its own question with a chip inside the well. Also rejected,
+for equipment: B (toggles crammed into the twelve-column row), C (a chip that
+opens), D (one "All OK" tap). D was tempting and Eli nearly had it — one tap
+settling three items matches how the work goes — but it is one tap away from
+clicking through without looking, which is the exact failure the mic-inventory
+pre-fill rule exists to prevent.
+
+**The equipment tap cycle is deliberately one-way:** blank → OK → Not OK → OK →
+… It never returns to blank. Blank means NOBODY HAS ANSWERED, which is
+information, and a third tap must not be able to destroy it. This also keeps
+"not checked" honestly distinct from "checked and fine".
+
+#### Open, going into the runner session
+
+- **`/runner/[studio]/wo/[id]` (1,595 lines) is untouched** — still the
+  twelve-column horizontally-scrolling table, still the old skin. Spec §15
+  option A is the ruling; the hub landing is already ported.
+- **Equipment must fold into the day on the runner page too**, or the two
+  screens edit the same `equipment_condition_notes` rows through different
+  shapes. They already share that table, so notes round-trip today.
+- **Unverified:** whether marking Not OK from the ADMIN line raises a flag the
+  way a runner's Not OK submission does. Check before calling equipment done.
+- The studio-time scroll cap (420px) shows ~5 days now that blocks are ~86px.
+  Eli wants ~8. Deliberately not changed yet.

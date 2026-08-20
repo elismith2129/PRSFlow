@@ -641,6 +641,226 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.14.0', date:'Aug 18, 2026',
+    headline:'The work order is laid out in two halves now — who the job is for on the left, what it costs on the right.',
+    desc:'On a computer, the work order used to be one long page you scrolled top to bottom. It is now two columns side by side: everything about the client and the session on the left, and every number — days, staff, rentals, payments, totals — on the right. Nothing was removed and nothing became read-only; it is the same work order, arranged so you can see the client and the money at the same time. On a phone it is completely unchanged.',
+    changes:[
+      'Two columns on a computer: the client and the notes on the left, all the money on the right. You no longer scroll past the client to get to the total and back again to check who it was for.',
+      'The top of the page is now a proper letterhead — our name and address on the left, the work order number large on the right with the invoice number and OPEN/COMPLETED under it. The WO number is always visible now.',
+      'The client card is locked to the top left. For a label job the LABEL is the big name (it is who we bill), with the artist under it and the A&R and the Admin side by side — both with their full email and phone. Email, call and text are now small ✉ ☎ 💬 buttons beside each name.',
+      'Invoice #, PO # and Food budget sit in one row directly under the client card.',
+      'The notes now read in order and look different from each other on purpose: Booking notes (internal, orange tag) → Session notes (the client-facing one, plain) → Needs attention.',
+      'Needs attention is now a single slim strip at the bottom of the left column instead of a big empty box. It opens the moment there is something in it, and "+ Add" opens it when you want to write something. Notes and photos work exactly as before.',
+      'The days list and the rentals list now scroll separately, so a long session no longer squashes the rentals and a long rentals list no longer pushes the days off screen.',
+      'If there is more below in either list, the app tells you — the bottom fades and a "↓ 2 more days" tag appears, and it disappears when you reach the end. No more wondering whether you have seen every day.',
+      'The running total under the days list is itemized now: Studio, then a line for each engineer and assistant by name, then any overtime, then the big total. It was a small chip before.',
+      'Payments and the totals stay pinned at the bottom right — they never scroll away while you work.',
+      'On a session card, the song / session notes for that day now have their own space in the middle of the card instead of trailing off the bottom line.',
+      'Anywhere the app has to name a room on its own it now says the venue too — PRS B, ARS A, TRS North — never just "B".'
+    ],
+    affects:'Everything you could type into before, you can still type into — this changed where things sit, not what they do. The printed/emailed PDF is completely unaffected. Two things to know: the days list now shows about three or four days at a time and you scroll for the rest (watch for the "↓ more" tag at the bottom), and in the table view you may need to scroll sideways a little to reach the last columns. On a phone nothing has changed at all.',
+    dev:[
+      'Two columns 0.72fr / 1.28fr gated on `const wide = !isMobile && !isBlock`; blocks (Tour/Tech/Open Hours) keep the single column; sheet cap 920 → 1320 for `wide` only.',
+      'LEFT: open-space letterhead (replaces the centred masthead) → ★ locked contact card → Invoice/PO/Food row (PO gets 1.35 — it carries the Not-req\'d toggle) → Booking notes (INTERNAL + wash2) → Session notes (plain) → Needs attention as a `margin-top:auto` strip that grows only on content (`naOpen` UI state + `naHasContent`).',
+      'RIGHT: studio-time bin → pinned itemized total → rentals bin → payments/totals. New module-scope `ScrollHints`: fade + "↓ N more" pill, rendered only while content remains below, N counted from the DOM, re-measured by a scroll listener plus a ResizeObserver + MutationObserver set up once.',
+      'Itemized total regroups `engChargeForRow` by role+name — the same per-row function `computeWoTotals` uses — so the staff lines sum to Eng Total by construction. No view invents math.',
+      '`ClientPanel` gains `layout?: \'stack\' | \'wide\'` (default stack, all other callers untouched): LABEL-as-hero for billing, content-sized artist well, A&R beside Admin, ellipsizing emails, icon actions.',
+      'Mobile/runner byte-identical via `display: contents` on both column wrappers + an explicit ORD flex-order map. WATCH-OUT: a new child of either column with no ORD entry lands at the TOP of the phone layout.',
+      '`ST_MINW = 848` on both the header grid and the row scroller — the inner scroller\'s `overflow-y:auto` computes `overflow-x` to auto, and without a matching min-width it grows a second scrollbar and the header stops lining up.',
+      '`ST_BIN_H = 322` is the days-bin height and the one constant to change. Recorded tension: the old cap was 420 (~5 days), Eli wanted ~8 (~690px); the two-column layout can\'t spend it because the itemized total, rentals and payments sit under the bin and must not scroll away. This is why the scroll indicator is not optional.',
+      'List stays the full 14-column editable table by ruling (the mock\'s slim read-only audit table was declined) — hence ~50px of sideways scroll at the 1320 cap. The mock\'s letterhead Complete pill was also declined: the action bar already has one, per the 2026-08-13 duplicate-actions ruling.',
+      'Zero logic: no save, query, realtime, atomic RPC, projection or lib/woPdf.ts change. No migrations. NOT verified in a browser — tsc clean, selftest PASS, production build green.'
+    ]
+  },
+  {
+    ver:'v1.13.0', date:'Aug 17, 2026',
+    headline:'Manuals, helpful hints, a Settings home — and the app now says "day", never "night".',
+    desc:'Getting ready for launch: runners get an in-app guide to the app, small helpful hints appear across every page (you can turn them off), rarely-used buttons moved into Settings at the bottom of the menu, and Engineers got its own page.',
+    changes:[
+      'Runners now have an App Guide on their studio page — short chapters on how to use every screen. The Runners Manual slot (the job itself) stays "coming soon".',
+      'Helpful hints: small blue ? markers now appear next to things worth knowing — tap one for a tip. They are ON for everyone to start. To turn them off: Settings at the bottom of the left menu (or the 💡 on the runner page).',
+      'Settings: light/dark mode, hints, the SOP and Sign Out now live under one ⚙ Settings button at the bottom of the left menu. Your everyday pages stay where they were.',
+      'Engineers has its own page under Operations — the roster with add, edit and deactivate. The old Admin page is out of the menu; everything it held has moved or is being rebuilt.',
+      'Daily Ops: the "Needs you" list now shows 10 at a time (with page arrows) so studio tasks never scroll out of view, and the studio cards lead with the DATE — use the ‹ › arrows or swipe to look back at any previous day. That replaces the old ops log.',
+      'Wording: the app now says "day" and "yesterday" instead of "night" and "last night" everywhere — the studios run 24/7 and the words now match.',
+      'Every runner is getting their own personal login (email + password) — what you check off and submit is recorded under your name.',
+      'A session can no longer be saved without picking a VENUE for each studio day (the studio dropdown, e.g. "Paramount · A"). Without one, the session could exist but never show on the calendar.',
+      'Editing a day from the card view on a desktop now opens a proper centered window instead of a phone-style sheet.'
+    ],
+    affects:'If the little blue ? circles bother you, Settings → Hints turns them off in one tap and the app remembers. And if you are used to finding light/dark mode at the bottom of the menu — it is still there, just inside Settings now.',
+    dev:[
+      'components/ui/Hint.tsx + useHints/setHintsEnabled — coach marks app-wide, default ON, persisted to localStorage[prsflo-hints]; stopPropagation so a hint inside a clickable row never triggers the row. Seeded ×9 (dashboard, billing, daily-ops, runner hub).',
+      'Rail foot collapsed into a Settings disclosure (SOP, DEV, hints, theme, Sign Out); Admin de-nav\'d (route alive for bookmarks); Engineers rebuilt at /engineers — soft skin, realtime channel engineers-page, dbResult on writes (the Admin copy had neither).',
+      'Runner app SOP at /runner/sop (iframe over public/runner-sop.html); hub quiet register gains a live App-guide row; the Runners-manual slot untouched.',
+      'Daily Ops: queue paginated at QUEUE_PAGE=10 (pager renders only on overflow); sweep date hero + ‹ ›/touch-swipe night… day paging; "Last night"→"Yesterday"; dailyOps queue sub copy de-nighted.',
+      'Billing + manager SOP design mocks (docs/design-refs/billing-sop.html, manager-sop.html): chaptered, flow-first, real Flo box port (ring animation), real WO click-through walkthrough, oversight chapters; all admin manuals visible to all admin staff, runners see only theirs.',
+      'scripts/create-runners.mjs — 10 individual runner accounts, adopt-or-create auth, role runner, readable passwords, prints credentials, emails nothing.',
+      '/preview + DeviceToggle deleted at go-live; rail Runner Hub reverted to /runner.',
+      'supabase/launch_reset_20260817.sql — one-shot operational wipe (keeps CRM, re-anchors myday_duties.created_at) with built-in before/after verification.',
+      'Venue guard in WorkOrderPopup handleClose (office only — runners exempt): dated studio rows with empty resolved location block the save via the missing-times banner mechanism. Found in launch browser testing: venue-less cards are calendar-invisible while visible in Billing.',
+      'Day sheet: centered 620px card on admin desktop (was the phone bottom-sheet full-bleed under the rail); phones unchanged.',
+      'Ghost tables found by the launch reset: expense_rows and stock_items do not exist in the live DB despite docs; stock_items is still queried by the runner Stock page + dailyOps — tracked. docs/HARDENING.md added (standing security checklist).'
+    ]
+  },
+  {
+    ver:'v1.12.0', date:'Aug 16, 2026',
+    headline:'The runner day sheet grew up, overtime figures itself out, and the open work order is live in both directions.',
+    desc:'The day sheet was redesigned around big, honest time entry; overtime is now computed from the clock instead of typed; and while a work order is open, changes made by the office and the runner appear on each other\'s screens live.',
+    changes:[
+      'The day sheet now pairs the studio\'s times with each staffer\'s times in matching blocks — staff times follow the studio\'s until you change them. Big time boxes you can type into ("930p" works) or pick from a dropdown that opens AT the time already shown.',
+      'Overtime is automatic for runners: if the session ran past what was booked (or past 12 hours on a lockout), the OT line appears on its own, computed from the clock. Nobody types OT math any more, so it cannot disagree with the times or double-bill.',
+      'If a day runs past 14 hours the app asks "really?" — it warns but never blocks. Long sessions happen; typos get caught.',
+      'Swipe (or use ‹ ›) to flip between the days of a session. Days the office already approved open in view-only.',
+      'While a work order is open, office edits land on the runner\'s screen live and vice versa — your own unsaved edits always win on your screen.',
+      'The status pill on the runner\'s session card now answers the runner\'s question: Not submitted / Submitted / Approved.',
+      'Dates on the work order read like dates — "August 17th, 2026".'
+    ],
+    affects:'For runners: stop calculating overtime — enter the real start and end times and the OT line takes care of itself. For the office: a rate fix you make while a runner has the work order open reaches their phone immediately; no more "close and reopen".',
+    dev:[
+      'Pair-block day sheet per runner-wo-day-sheet-final.html; time wells accept TimeInput parsing OR a half-hour dropdown opening at the shown time; >14h tripwire warns only.',
+      'OT model: runner time edits recompute ot_hours = actual − booked (from booking.from_time/to_time); day-rate keeps auto past-12h; admin list OT stays manual; the pre-approval flag and Extend&collect were mocked and dropped by ruling.',
+      'Live-merge: wo-live-<id> channel over six tables → debounced refreshFromDb(); per-field "your unsaved edits win" derived by comparing local state to load-time original; rentals/payments merge as whole tables only while untouched; foreground-return refreshes. Channel callbacks read ref mirrors — the stale-closure trap was caught pre-ship.',
+      'Hub pill: Not submitted / Submitted / Approved with office Completed outranking; useReloadOnReturn across five runner pages; card COD strip flush via grid; sheet moved out of the scrollable body (iOS fixed-position inside momentum scroll).'
+    ]
+  },
+  {
+    ver:'v1.11.0', date:'Aug 16, 2026',
+    headline:'The runner work order and the office work order are now the same work order.',
+    desc:'Runners and the office now look at the identical document — the runner just sees the office-only parts locked. Plus a cards view for phones, and the app greets by time of day because the studios never close.',
+    changes:[
+      'The runner work order is the same screen the office uses, with the office\'s parts locked: the client block says "Set by the office", rates show as plain text, and approved days are untouchable. Everything a runner actually does — times, staff, equipment, song titles, payments, signature — stays fully live.',
+      'A new cards view shows one card per day; tap it to open the day sheet with just the things you type. Phones start in cards for short sessions; the office desktop keeps the full table. A toggle flips either.',
+      'Submit sends your day to the office — and you can keep fixing it afterwards. The button just becomes "Update submission". The only thing that locks a day is the office approving it. The rule: you can always fix your day until the office approves it.',
+      'Calling the A&R is always allowed — the phone number is a tap-to-call button even inside the locked block.',
+      'The app now greets by the clock — "this morning", "today", "tonight" — because a 7am shift is not "tonight".'
+    ],
+    affects:'Runners: submitting is not final — if something changes at the end of the session, fix it and press Update submission. Correct beats frozen. Office: a runner\'s save now updates the calendar cards too, same as yours.',
+    dev:[
+      'WorkOrderPopup gains mode="runner" — field-level locking, not the all-or-nothing readOnly; the 1,595-line runner WO page became a 136-line wrapper (net −800 lines, one description of the work order).',
+      'Runner mode: forced phone layout, Session Info card replaces META/client, rates read-only + stripped from updateStRow as defence in depth, admin_locked rows inert, create-fallback gated (adopt-only), batch/seed/dates/Complete hidden.',
+      'Submit = the same atomic save + today\'s dated rows → status submitted; StRow.status carried in state but deliberately NOT in the save payload so a save can never clobber a submit/approve.',
+      'View toggle both modes; defaults once per open (phones cards ≤3 days, desktop list). Missing-times warning ported (warn-only); eng-rate + duplicate-staff warnings hidden in runner mode (unfixable there).',
+      'dayPart/dayPartLabel/dayPartPossessive in lib/time.ts, used by picker, hub, shift notes, punch form.'
+    ]
+  },
+  {
+    ver:'v1.10.0', date:'Aug 14, 2026',
+    headline:'The runner app becomes a real product, managers get a morning Daily Ops page — and security is now actually on.',
+    desc:'Studio tasks from the office, missed-punch reports, shift notes replacing the Slack post, one-tap studio memory — and a new Daily Ops page that answers "did yesterday go right?" in one look.',
+    changes:[
+      'The office can leave tasks for a studio — they appear at the top of the runner\'s page, because "anything waiting for me?" is the first question of a shift. Tasks belong to a studio and shift, never a person.',
+      'Missed a punch? Report it in the app the same day — clock in, clock out or meal, the shift date and the real time. Managers get a Punches page to approve and enter them in ADP. This is the written confirmation the law requires, and it protects the runner.',
+      'Shift notes replace the end-of-shift Slack post: write entries through the shift, each stamped with who and when, photos welcome, handoffs supported. Entries are permanent — records, not drafts.',
+      'The app remembers your studio — no more picking it every time. The pills at the top switch studios; ← forgets.',
+      'New Daily Ops page for managers: everything from yesterday that needs a decision on the left (worst first — and a checklist that NEVER came in is now the loudest thing on it), all four studios at a glance on the right. When the list is empty it says "Yesterday is done."',
+      'Security tightened across the whole app — every table is now properly locked to the roles that should see it.'
+    ],
+    affects:'Runners: the punch report only works from your own login — and do it the same day. Managers: Daily Ops is your morning door now; the flags, the missing checklists and the missing mics all come to you there.',
+    dev:[
+      'RLS was never actually in effect — ~40 legacy open policies survived July 2 (permissive policies OR together). 20260814130000 drops every qual=true policy dynamically minus a five-table allowlist; re-run the July 2 hardening after and verify pg_policies. A migration having run is not evidence it achieved its goal.',
+      'studio_tasks (studio+shift scoped, no assignment), punch_correction_requests (report class derived server-side by trigger; no DELETE policy — legal record), shift_log_entries (append-only, no UPDATE/DELETE), daily_ops_reviews ((date,item_key) seen markers — keys are load-bearing, never rename).',
+      '/daily-ops: queue (flags → absences → missing mics → notes) + 2×2 sweep + shift-log popup; lib/dailyOps.ts data layer; flags clear by acknowledging the flag, everything else by review marker.',
+      'One-landing /runner with remembered studio; soft-skin port of checklists/mics/petty-cash/stock (surface only — queries, dirtyRef guards, instant saves untouched); AdminReturn bar for office visitors; SessionCardBody `large` (opt-in only).',
+      'Punch form refuses the shared runner login rather than filing an unattributable record; counts-not-points by design.'
+    ]
+  },
+  {
+    ver:'v1.9.1', date:'Aug 13, 2026',
+    headline:'The work order PDF now looks like the work order — and a few things that quietly did nothing now work.',
+    desc:'When you download a work order it is finally the real thing: the same sections, the same columns, the same totals you see on screen, in black and white. There is also a blank one you can generate and fill in. And several buttons that looked available but did nothing have been fixed.',
+    changes:[
+      'Download a work order and it now matches what is on your screen — studio time with every day and who worked it, rentals, notes, payments and the totals. Before, it was a generic invoice that did not look like the work order at all.',
+      'Song names and session details typed into Session Info now print IN FULL. The line grows as tall as it needs to. On screen it still shortens to keep the window manageable, but nothing is hidden on the paper copy.',
+      'Booking Notes and Needs Attention / Runner Notes NEVER appear on the PDF. They are internal, and they are now locked out of it rather than just left off it.',
+      'New: "Generate WO" in the ⋯ menu at the top of Billing. It makes an empty work order you can type into and print, or print and fill in by hand — for the rare time you need a paper one. It does not create a session and nothing appears on the calendar. If the session is real, still enter it properly.',
+      'When you download a package, the invoice comes first and the work order behind it — that is the order a client expects to open it in.',
+      'The studio column now says PRS A or TRS North instead of just "A". Every venue has a Studio A, so on paper the letter alone meant nothing.',
+      'Approve was stuck on any invoice that had been edited after the invoice was attached — you could press it and nothing happened, forever. Fixed. Approving now signs off on the numbers as they stand right now.',
+      'Complete WO now actually saves and closes. Before it only marked the work order complete and left you sitting there, so you had to press Close afterwards.',
+      'Editing Session Notes, Print Name, Needs Attention or the signature now counts as a change, so Complete WO stops being greyed out.',
+      'Equipment Condition: you can now tick OK or ✗ on EVERY day, not just the first one. If a session ran longer than first booked, the extra days were unclickable.',
+      'The buttons and the red warning bar on the work order have moved to the TOP, next to the title. On a long work order a bar at the bottom is a bar you have to go looking for.',
+      'The work order will now warn you if an ENGINEER has hours but no rate — that line would bill nothing. It will also warn you if the same person is on two lines for the same day, which charges them twice. Assistants are not included, because they are never rated.',
+      'Studio Time now groups each day together with the engineer or assistant who worked it, in one shaded block, instead of stripes.',
+      'Equipment Condition has moved INTO the day. Each day now has an Equipment line with Speakers, Microphone and Console on it. Tap once for OK (green), tap again for Not OK (red) — and Not OK opens a box to say what was wrong and add a photo. The old separate equipment grid is gone.',
+      'Tapping never puts an item back to blank. Blank means nobody has checked it yet, which is worth knowing, so it cannot be undone by accident.',
+      'The buttons at the top of a work order are now just Cancel, Complete WO and Save — and they stay on screen while you scroll down the work order.',
+      'PO: instead of a separate Yes/No, the PO box itself has a small "Not req\'d" button inside it. Press it when a client does not use POs. Food budget is now just an amount box — leave it empty if there is none.',
+      'On the Billing page, Billing and COD are now both in the big title at the top, each with a count. If COD has money that was never collected, its number turns red. It is there so COD does not get forgotten.'
+    ],
+    affects:'Two habits worth keeping. First: if you see the red bar at the top of a work order, read it — it is telling you something will bill wrong, not that you did something wrong. Second: the blank "Generate WO" form is for handing someone a piece of paper. If a real, paid session ends up on one, it still has to be entered as a proper session afterwards or it never gets invoiced.',
+    dev:[
+      'lib/woPdf.ts rebuilt as a section-by-section replica of WorkOrderPopup — same twelve studio-time columns, engineer sub-rows, rentals, notes, payments, six totals, COD terms. Verified by rendering and inspecting: tsc was clean on a generator that never drew engineer sub-rows.',
+      'Session Info wraps with no line cap — the one deliberate divergence from the screen, and it shows MORE. A six-line cap was tried for ten minutes and silently ate the end of a song list.',
+      'Internal fields are STRIPPED from the record before drawing (INTERNAL_ONLY), not merely omitted from the layout, so a future edit cannot leak them.',
+      'Blank form at /api/wo-package?blank=1 — 188 AcroForm text fields, invisible widgets over the hairlines. Creates nothing, stores nothing.',
+      'A drifted invoice could never be approved: approving wrote step 3 and deriveStep demoted it to 2 off the stale invoice_total. approveInvoice re-snapshots the total now.',
+      'Complete WO never called the save path despite a comment asserting it did since Aug 11. handleClose returns a boolean; Complete refuses to stamp a failed save.',
+      'Equipment rows are seeded at WO creation for the dates the booking had THEN — later days had no row and the handler was gated on `row &&`. First tap creates it; the write is dbResult-checked.',
+      'bookings.engineer_rate is vestigial and five surfaces still read it, showing engineer charges billing would never bill. All removed; woTotals.fallbackEngRate deleted.',
+      'Duplicate staff rows found in live data (WO-1018, 29–30 July, both at the retired $55) double-billed the engineer. Cleaned via migration; the screen now warns live.',
+      'Table chrome ruling (spec §16c): headers and footers lose their fill, subtotals get a result chip, only entries are filled and rounded. Equipment regrouped per GEAR, not per day.',
+      'Runner hub landing ported to the soft skin; spec §15 rules the WO page becomes one card per day. That page is not built yet.',
+      '/wo/[id]/print deleted — CLAUDE.md had claimed so since June while the route still shipped.'
+    ]
+  },
+  {
+    ver:'v1.9.0', date:'Aug 12, 2026',
+    headline:'Billing — one page for every work order and invoice. Dropbox folders are gone.',
+    desc:'Everything that used to live in the Dropbox folders — needs approval, awaiting PO, sent, paid — now happens on one Billing page in the left menu. You do not file anything any more. The page works out where each job is from the work order itself.',
+    changes:[
+      'A Billing page replaces the old WO Hub. It has a Billing / COD switch at the top, because the two work completely differently — billing gets invoiced and chased, COD is already paid and just needs checking.',
+      'Every line shows three little lights: Reviewed, Invoiced, Approved. Amber is the one it is waiting on. In the morning, the amber "Reviewed" lines are last night\'s work orders that nobody has looked at yet.',
+      'Double-click any line to open it. Before an invoice is attached that opens the work order; after, it opens the whole package so you can see the work order and the invoice together.',
+      'Drag a QuickBooks invoice PDF straight onto a line to attach it. No uploading, no filing, no remembering which folder.',
+      'Only Eli and Adam-Mike can approve, and nothing can be approved until it has been reviewed, has an invoice attached, and the PO is sorted.',
+      'The PO now lives on the work order, next to the invoice number, with a "PO req\'d — Yes / No" switch beside it. If a client never needs one, set it to No there and the job stops waiting.',
+      'Download and Mark sent are two separate buttons. Download builds the package; Mark sent is you confirming it actually went to the client. Anything downloaded but not marked sent for two days turns red so a finished package cannot sit forgotten in someone\'s downloads.',
+      'Made a mistake? "Pull it back" in the ⋯ menu takes it out of Awaiting payment, removes the invoice and the approval, and puts it back at the start so you can redo it properly.',
+      'Change a work order after it was approved and the approval clears itself — an approval is for a set of numbers, not for the job in general.',
+      'On the work order: Close & Save is now just Close. If you changed nothing it simply closes; if you did, it asks whether to save or discard. Complete WO saves and closes, and greys out when there is nothing to save.',
+      'COD sessions have their own side, and Balance due is first — those are the rare ones where money was not collected, and they matter most.'
+    ],
+    affects:'You never file anything again. If a line has no button, nothing is waiting on you — double-click it to look. If a button is greyed out, the flag beside it says why. The one habit to build: put the PO on the work order, or press No if the client does not use one, because nothing gets approved until that is answered.',
+    dev:[
+      'Two pipelines (Billing / COD) with 4 and 3 tabs, replacing v1\'s nine. Open / Needs invoice / Needs approval / Ready to send were never four places — they are one package being assembled, so they collapse into In progress with three derived lights per row.',
+      'Approval is owners-only in the UI and enforced by a Postgres trigger that fires on any change to invoice_approved_at/_by in either direction, so an approval cannot be stripped either.',
+      'Awaiting-PO is DERIVED from work_orders.po_number / no_po_needed, not stored. clients.requires_po is dormant — the exception is per-job, not per-client.',
+      'Download and Mark sent are separate acts: PRSFlo builds the file, a person emails it. invoice_downloaded_at drives a stale-download alert at 2 days.',
+      '/api/wo-package draws the work order as a black-and-white PDF (lib/woPdf.ts, pdf-lib) and staples the invoice pages on, then stores the exact bytes at invoice_package_path so the package window shows the artifact rather than a re-render.',
+      'window.print() and the ~90-line print stylesheet are deleted — one generator, so the layout is described in one place.',
+      'Editing an approved package voids the approval (derived), but not once sent, where the drift flag plus a deliberate pull-back is the honest path.',
+      'Known gap: the PDF layout is still a generic invoice, not a replica of the work order screen. Rebuild pending; snapshots taken before it ships must be wiped.'
+    ]
+  },
+  {
+    ver:'v1.8.0', date:'Aug 10, 2026',
+    headline:'My Day — your daily checklist, on the dashboard and its own page',
+    desc:'The things your role is responsible for every day now live in PRSFlo instead of on paper. There is a short checklist on your dashboard, and a fuller "My Day" page in the left menu with your holds, balances and shift notes. Fernando, Aaron and Eli only.',
+    changes:[
+      'A "My day — duties" list on your dashboard. Tick things off as you do them.',
+      'A new My Day page in the left menu, under Dashboard, with more detail — holds, balances, and a place for shift notes that saves itself as you type.',
+      'A few duties ask for a number when you tick them (timecard exceptions cleared, Ramp transactions, COD accounts). The box appears after you tick.',
+      'Weekly and monthly jobs only appear on the day they are due, so Friday\'s work never clutters Monday\'s list.',
+      'The Flo box at the top of your dashboard now writes a real summary from all of this, instead of the example text it has been showing.',
+      'Anything monthly that gets missed — like tenant rent invoices — stays on your list and turns red until it is done, rather than disappearing until next month.',
+      'Two duties were removed because the app now does them for you: creating work orders (they are made automatically when a session goes on the calendar) and the daily calendar look-ahead.',
+      'New for billing: a reminder on the 1st of each month to round up SRS bookings for payment.',
+      'Work orders now need a start and end time on every row before they can be completed. If one is blank you get a message and the row is highlighted. Runners get the same warning but can still save.'
+    ],
+    affects:'Your list is fixed by your role — you cannot add to it, and it resets each morning. Ticking is safe and you can untick. If your list has something on it that is not really your job any more, say so and it can be removed in a couple of minutes. If a work order will not complete, look for the red message above the buttons — it names the row that is missing a time.',
+    dev:[
+      '<b>My Day — the operational duties layer.</b> Four tables (<code>myday_duties</code>, <code>myday_entries</code>, <code>myday_queue_steps</code>, <code>myday_notes</code>) plus <code>lib/myday.ts</code>: duty fetch/complete, backlog, five COMPUTED queues, the 14-day grid, and <code>composeBriefing</code> — template sentences over real numbers, <b>no AI</b>. Live on the dashboard card, the Flo box and the staff grid (all three placeholders deleted), and on the new <code>/my-day</code> Workbench page.',
+      '<b>Two role cards, manager + billing.</b> Billing is a ROLE, not a person — a successor inherits the card untouched. Dashboard view-as gained a third option where <code>eli</code> is oversight and has <b>no duty card of his own</b>.',
+      '<b>Rulings that shape it:</b> plain checkboxes — no roll-up from sub-steps, no auto-completion, no override (the lazy-tick risk is knowingly accepted). Day-scoped duties show only on their day, with a Flo lookahead the day before. Overdue shows IN PLACE, never relocated to a band. Monthly duties STICK and escalate rather than tally, and report the OLDEST missed occurrence so lateness is not understated. <b>Indicator vs checkbox:</b> if the app can determine it, it is a derived light; only what it cannot know stays a pill — which is why there is no WO light (the Work Order IS the booking) and no Cal light (the queues are built from bookings).',
+      '<b>Two extractions from the work-order screen.</b> <code>lib/woTotals.ts</code> — the money math, lifted out of <code>WorkOrderPopup</code> so the balances queue reuses it instead of re-deriving (behaviour-preserving). <code>lib/woValidation.ts</code> — session + staff times required before Complete WO; blocks on admin, warns only on the runner, one file so the two cannot disagree.',
+      '<b>Watch-out:</b> the seed migration upserts with <code>ON CONFLICT DO UPDATE</code>, so any hand-tweak to a seeded duty must also be written back into that file or a replay silently reverts it. <code>is_active</code> is excluded from the update list on purpose — that is what makes "retired" survive.',
+      '<b>Watch-out:</b> retire duties with <code>is_active=false</code>, never DELETE — <code>myday_entries</code> cascades and the completion history goes with it.',
+      '<b>Watch-out:</b> every retrospective judgement is bounded by <code>duty.created_at</code>. Without it, day one reports a month of misses for everybody.',
+      '<b>Watch-out:</b> the billing brief\'s "payments received" counts PRSFlo payments only — anything zeroed straight into QuickBooks never touches <code>payment_rows</code>. The UI says so; remove the note when QBO lands.'
+    ]
+  },
+  {
     ver:'v1.5.1', date:'Jul 30, 2026',
     headline:'Runner work orders open properly on multi-day sessions',
     desc:'If a session ran over more than one day, or moved between rooms, tapping it on the runner sometimes said "Work order not yet created — contact office" even though the work order existed. That is fixed.',

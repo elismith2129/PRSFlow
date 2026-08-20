@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Syne:wght@400;500;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Syne:wght@400;500;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -55,6 +55,76 @@
   --dead: #94a3b8;
 }
 
+/* ═══ CARVED DESIGN SYSTEM — TOKENS ═════════════════════════════════════════
+   The redesign token set (docs/PRSFLO-DESIGN-SPEC.md §3, mock: prsflo-final-mock.html).
+   Additive and inert: nothing consumes these yet, so the live app is unchanged.
+
+   NAMING — every token carries the `--c-` prefix (c = carved), permanently.
+   Two reasons: (1) `--bg` already exists and means something incompatible here
+   (#0d0f14 dark / `transparent` light, with 66 override rules and the page
+   gradient depending on that) — redefining it in place would break the app
+   instantly; (2) one prefix makes the whole new system greppable. There is NO
+   planned rename sweep to reclaim the bare names. Legacy tokens keep their
+   names and are deleted individually as their last consumer migrates.
+
+   THEME POLARITY — inverted from the spec, deliberately. The spec/mock put light
+   on `:root` and dark on `[data-theme="dark"]`. This app is the other way round:
+   dark is the ABSENCE of the attribute (Nav.tsx calls removeAttribute; app/layout.tsx
+   only ever sets "light"), so `[data-theme="dark"]` would match nothing. Dark values
+   therefore live on `:root` and light overrides in `[data-theme="light"]`.
+   Equal specificity — the light block MUST stay after this one.
+
+   LAWS (spec §2, enforced by review not by CSS): no borders/dividers; containers
+   carve IN, controls raise OUT; colour is status only; dark has no large bright
+   surfaces. There is no accent colour in this system.                        */
+
+:root {
+  /* DARK — the dim room (attribute absent) */
+  --c-bg:       #1b1a17;
+  --c-fg:       #d9d6cd;              /* warm ivory, NOT white */
+  --c-wash:     rgba(217, 214, 205, .07);   /* grouping fill, level 1 */
+  --c-wash2:    rgba(217, 214, 205, .13);   /* grouping fill, level 2 */
+  --c-chip-ink: #1c2626;              /* text ON status fills — same both themes */
+
+  /* Status palette — Lagoon. Identical values in both themes: dark dims them by
+     rule (spec §6), never by substituting a second palette. */
+  --c-st-hot:    #ff5a4d;             /* signal red   — hot lead / urgent / cancelled */
+  --c-st-warm:   #ffa94d;             /* amber        — warm lead / tentative session ONLY (never warnings; see §5) */
+  --c-st-cold:   #5fc9e8;             /* lagoon       — cold lead */
+  --c-st-booked: #43dfae;             /* sea green    — booked / confirmed / live room */
+  --c-st-uncon:  #7fb2e5;             /* harbor       — uncontacted / tour */
+  --c-st-tech:   #b5a3ef;             /* orchid       — tech work ONLY */
+  --c-st-dead:   #cfd6d4;             /* driftglass   — DNB / open hours */
+
+  /* Muted ink steps. The spec works in opacity, which is right for whole elements
+     but useless when only the text colour should drop — these give the legacy
+     --text2/--text3/--cold tokens a 1:1 carved equivalent during migration. */
+  --c-fg-2: rgba(217, 214, 205, .72);
+  --c-fg-3: rgba(217, 214, 205, .45);
+
+  /* Semantic aliases — components reference these, never a raw slot. */
+  --c-ivory:    #d5d0c2;              /* dark-mode SMALL accents only (spec Law 5) */
+  --c-hot-text: #fff4f2;              /* text on --c-st-hot fills; all others use --c-chip-ink */
+
+  /* Flo ring/halo ink (spec §14c) — bare RGB triplet, consumed via
+     rgba(var(--c-flo-ink), a). The Flo box is the ONLY glow in the app. */
+  --c-flo-ink: 213, 208, 194;         /* ivory in dark */
+}
+
+[data-theme="light"] {
+  /* LIGHT — warm paper, soft charcoal ink */
+  --c-bg:    #f5f3ee;
+  --c-fg:    #2a2722;
+  --c-wash:  rgba(42, 39, 34, .05);
+  --c-wash2: rgba(42, 39, 34, .095);
+  --c-fg-2:  rgba(42, 39, 34, .72);
+  --c-fg-3:  rgba(42, 39, 34, .45);
+  --c-flo-ink: 42, 39, 34;            /* dark ink in light mode */
+  /* --c-chip-ink, the status palette and the aliases are theme-independent. */
+}
+
+/* ═══ END CARVED TOKENS ═════════════════════════════════════════════════════ */
+
 /* (STEP 2) Page gradient on <html> (which carries data-theme). The body must be
    transparent in light mode, otherwise its opaque --bg would hide the gradient. */
 html[data-theme="light"] {
@@ -85,101 +155,31 @@ html[data-theme="light"] {
   -webkit-backdrop-filter: none !important;
 }
 
-/* (DECISION 2) Nav becomes white glass in light mode; its text switches to dark.
-   Overrides the inline dark gradient/box-shadow set in Nav.tsx (needs !important). */
-[data-theme="light"] nav {
-  background: rgba(255, 255, 255, 1) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border-bottom: 1px solid #e2e8f0 !important;
-  box-shadow: 0 1px 8px rgba(0,0,0,0.08) !important;
-}
-[data-theme="light"] nav a,
-[data-theme="light"] nav button {
-  color: var(--text) !important;
-}
-/* Keep the Feedback link lime and Sign Out red even in light mode — higher
-   specificity than the blanket nav-text rule above, so these two win. */
-[data-theme="light"] nav [data-feedback] { color: #c8f04e !important; }
-[data-theme="light"] nav [data-signout] { color: #ef4444 !important; }
+/* The four light-mode nav rules (white-glass bar, blanket text colour, lime
+   Feedback, red Sign Out) were removed 2026-07-30 with the nav's carved
+   migration. The bar now paints --c-bg and its links carry --c-fg, both of which
+   already invert per theme, so there is nothing left to patch. The lime and red
+   went with the accent colour (Law 3). */
 
-/* (PART 3) Unique per-panel gradients in light mode. Declared after the glass-card
-   rule so they win at equal specificity; the frosted border/shadow still apply. */
-[data-theme="light"] [data-panel="needs-action"]   { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="today-sessions"] { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="tasks"]          { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="flags"]          { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="crm-leads"]      { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="crm-detail"]     { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="crm-registrations"] { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="clients-list"]   { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
-[data-theme="light"] [data-panel="clients-detail"] { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
+/* The CRM and Clients per-panel gradients were removed 2026-07-30 with the CRM
+   migration — those panels are carved containers now. Only admin-sidebar remains,
+   until the admin page migrates. */
 [data-theme="light"] [data-panel="admin-sidebar"]  { background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important; }
 
-/* (FIX 2) Dashboard session room cells: clean white slots with visible borders in
-   light mode. Empty cells get a faint grey; occupied cells win via the
-   [data-session-active] rule below (light blue). */
-[data-theme="light"] [data-room-cell] {
-  background: #f8fafc !important;
-  border-color: #e2e8f0 !important;
-}
+/* [data-room-cell] and [data-session-active] rules were removed on 2026-07-30 with
+   the dashboard's carved migration. Room cards are now carved pools (.c-pool +
+   status fill) and empty rooms are second-level cuts (.c-inset2), both of which
+   handle their own light/dark registers — so these light-only patches are dead.
+   Both attributes were dashboard-only; nothing else referenced them. */
 
-/* (PART 2.6) Active/occupied session cards read light-blue in light mode instead of
-   the dark-teal accent used in dark mode (dashboard room cards + calendar chips). */
-[data-theme="light"] [data-session-active] {
-  background: #eff6ff !important;
-  border-color: #3b82f6 !important;
-  box-shadow: inset 0 0 18px rgba(59, 130, 246, 0.10) !important;
-}
+/* [data-ops-modal] and the two [data-ops-col] rules were removed 2026-07-30 with
+   the daily-ops drawer + DailyOpsModal migration. Both are carved sheets now and
+   paint --c-bg in either theme, so the light-only gradients are dead. */
 
-/* (FIX 4) Daily-ops modal + drawer cards are solid white in light mode (their inline
-   background is var(--bg) = transparent, which was showing the dark overlay). */
-[data-theme="light"] [data-ops-modal] { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
-
-/* (FIX 4) Yesterday vs Today: Today reads brighter/whiter to mark the current day. */
-[data-theme="light"] [data-ops-col="yesterday"] {
-  background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%);
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 12px;
-}
-[data-theme="light"] [data-ops-col="today"] {
-  background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%);
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 8px rgba(0,0,0,0.05);
-  border-radius: 12px;
-  padding: 12px;
-}
-
-/* (LIGHT LOGIN) Clean the login controls in light mode — the glass-card rule would
-   otherwise frost the PIN keys / inputs (they use var(--surface)). */
-[data-theme="light"] [data-login-key] {
-  background: #ffffff !important;
-  border-color: #e2e8f0 !important;
-  color: #1e293b !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-[data-theme="light"] .auth-input {
-  background: #ffffff !important;
-  border-color: #e2e8f0 !important;
-  color: #1e293b !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-[data-theme="light"] [data-login-submit] {
-  background: #3b82f6 !important;
-  border-color: #3b82f6 !important;
-  color: #ffffff !important;
-}
-
-/* (LIGHT) The welcome splash + AuthGuard hold use var(--bg) (transparent in light),
-   so give them the app's light gradient to stay opaque full-screen covers. */
-[data-theme="light"] [data-splash],
-[data-theme="light"] [data-auth-hold] {
-  background: linear-gradient(135deg, #dbeafe 0%, #ffe4e6 100%) !important;
-}
+/* The three light-mode login patches ([data-login-key], .auth-input,
+   [data-login-submit]) were removed 2026-07-30 with the login page's carved
+   migration. PIN keys are raised controls, inputs are carved .c-input, and the
+   submit is a .c-btn — all of which already invert per theme. */
 
 
 /* (FIX 1/6) Text set to color:var(--bg) is "contrast text on an accent fill" — but
@@ -193,25 +193,44 @@ html[data-theme="light"] {
   color: #ffffff !important;
 }
 
-/* The active staffing mode (Eng / Asst) reads as solid blue with white text in
-   light mode — the accent tint alone is too faint against the glass panels.
-   (Was [data-eng-needed], the old Engineer Needed boolean button.) */
-[data-theme="light"] [data-staff-mode-on] {
-  background: #3b82f6 !important;
-  color: #ffffff !important;
-  border-color: #3b82f6 !important;
-}
+/* [data-staff-mode-on] removed 2026-07-30 with the CRM migration. It existed to
+   force the staffing toggle's accent tint to solid blue in light mode; the toggle
+   is now a carved pressed/filled control that reads the same in both registers. */
 
-/* (FIX 5) Inputs inside modals (fixed-overlay descendants) get a faint fill + a
-   visible slate border so they stand out from the white modal card in light mode. */
-[data-theme="light"] [style*="position:fixed"] input,
-[data-theme="light"] [style*="position:fixed"] textarea,
-[data-theme="light"] [style*="position:fixed"] select,
-[data-theme="light"] [style*="position: fixed"] input,
-[data-theme="light"] [style*="position: fixed"] textarea,
-[data-theme="light"] [style*="position: fixed"] select {
+/* (FIX 5) Inputs inside LEGACY modals (fixed-overlay descendants) get a faint
+   fill + a slate border so they stand out from the white modal card in light.
+   Still live: /admin, /wo-hub, /tasks, /clients, the runner pages, DailyOpsModal
+   and LocationStrip all render un-migrated fixed modals. It can be deleted when
+   the last of those migrates — not before.
+
+   CARVED SURFACES ARE EXCLUDED. The WO popup's root carries inline
+   `position: fixed`, so this rule captured every input inside it and painted it
+   #f8fafc with a 1px slate border — !important, light-only. That is the entire
+   light-theme regression: a Law-1 border and a white fill on every well.
+
+   The three no-space variants (`[style*="position:fixed"]`) are DELETED as dead
+   code: React writes inline styles through the CSSOM, and the browser serialises
+   the style attribute as `position: fixed` WITH a space. They could never match
+   anything this app renders. */
+[data-theme="light"] [style*="position: fixed"] input:not(.c-input):not(.c-area):not(.c-tin),
+[data-theme="light"] [style*="position: fixed"] textarea:not(.c-textarea):not(.c-area):not(.c-tin),
+[data-theme="light"] [style*="position: fixed"] select:not(.c-tin) {
   background: #f8fafc !important;
   border: 1px solid #cbd5e1 !important;
+}
+/* Bare controls inside a well can't be excluded by class — a caller drops a
+   plain <input> in and the well IS the box. They're excluded by outranking
+   instead: the rule above is (0,5,1) !important, so this is written to (0,6,1)
+   !important. The `:not()` padding is load-bearing arithmetic, not decoration.
+   Complex `:not(.c-well > *)` would have been tidier, but an unsupported
+   complex :not() invalidates the ENTIRE rule it sits in, which would silently
+   strip the legacy modal styling those un-migrated surfaces still need. */
+[data-theme="light"] .c-well > input:not([type="file"]):not(.c-input):not(.c-x):not(.c-btn),
+[data-theme="light"] .c-well > textarea:not(.c-textarea):not(.c-area):not(.c-x):not(.c-btn),
+[data-theme="light"] .c-well > select:not(.c-tin):not(.c-x):not(.c-btn):not(.c-soft) {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* (FIX 2/3) Finarrow-style gradient on the booking / new-lead modal cards in light
@@ -230,46 +249,23 @@ html[data-theme="light"] {
   border-radius: 6px;
 }
 
-/* (FIX 4) Distinct glass treatment for the dashboard studio cards in light mode. */
-[data-theme="light"] [data-studio-card] {
-  background: rgba(255, 255, 255, 0.7) !important;
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.9) !important;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06) !important;
-}
+/* [data-studio-card] removed 2026-07-30 — the LocationStrip cards are carved
+   raised controls now and carry their own light/dark treatment. */
 
-/* (FIX 5) Selected lead row: subtle blue tint + a blue left bar (inset shadow, so no
-   layout shift) in light mode. */
-[data-theme="light"] [data-selected] {
-  background: rgba(59, 130, 246, 0.08) !important;
-  box-shadow: inset 3px 0 0 #3b82f6 !important;
-}
+/* [data-selected] removed 2026-07-30 — a selected lead row is a CARVE now, not a
+   blue tint with a blue bar, and it reads the same in both themes. */
 
-/* (FIX 1) Unique alternating gradients per studio card in light mode. Declared after
-   [data-studio-card] so the gradient replaces the bg while the glass backdrop-filter /
-   border / shadow remain. */
-[data-theme="light"] [data-studio-index="0"] { background: linear-gradient(135deg, #dbeafe 0%, rgba(255,255,255,0.7) 100%) !important; }
-[data-theme="light"] [data-studio-index="1"] { background: linear-gradient(135deg, #ffe4e6 0%, rgba(255,255,255,0.7) 100%) !important; }
-[data-theme="light"] [data-studio-index="2"] { background: linear-gradient(135deg, #dbeafe 0%, rgba(255,255,255,0.7) 100%) !important; }
-[data-theme="light"] [data-studio-index="3"] { background: linear-gradient(135deg, #ffe4e6 0%, rgba(255,255,255,0.7) 100%) !important; }
+/* The four per-studio alternating gradients ([data-studio-index]) were removed
+   2026-07-30 with the LocationStrip migration. Per-studio colour coding was
+   already retired once before; the carved system has no place for it (Law 3). */
 
-/* (FIX 2) Daily Ops session cards — Yesterday blue / Today rose. Fixed-overlay
-   context so they outrank the modal-opaque rule (equal specificity, later → wins). */
-[data-theme="light"] [style*="position:fixed"] [data-session-card="yesterday"],
-[data-theme="light"] [style*="position: fixed"] [data-session-card="yesterday"] { background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%) !important; }
-[data-theme="light"] [style*="position:fixed"] [data-session-card="today"],
-[data-theme="light"] [style*="position: fixed"] [data-session-card="today"] { background: linear-gradient(135deg, #ffe4e6 0%, #ffffff 100%) !important; }
+/* The [data-session-card] and [data-checklist-section] rules were removed
+   2026-07-30 with the same migration. These were six of the inline-style
+   SUBSTRING matchers — the fragile class the redesign exists to delete — so this
+   is the first real drop in the §11 metric. */
 
-/* (FIX 3) Daily Ops grouped-checklist containers — subtle light-blue gradient. */
-[data-theme="light"] [style*="position:fixed"] [data-checklist-section],
-[data-theme="light"] [style*="position: fixed"] [data-checklist-section] { background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%) !important; }
-
-/* (light) CRM lead cards read stronger: bolder names, and darker secondary/tertiary
-   metadata. The scoped --text2/--text3 override darkens only this card's text
-   (secondary → #334155, tertiary → #475569) without touching those tokens elsewhere. */
-[data-theme="light"] [data-lead-name] { font-weight: 600 !important; }
-[data-theme="light"] [data-lead-content] { --text2: #334155; --text3: #475569; }
+/* [data-lead-name] / [data-lead-content] removed 2026-07-30 — the carved lead row
+   sets its own weight and muted-ink steps directly, in both themes. */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -307,9 +303,17 @@ body {
   z-index: -1;
 }
 
+/* Scrollbars. These were painting the legacy --border (#2a2e3d dark / #cbd5e1
+   light) — both desaturated BLUE, which read as a stray blue bar down the edge of
+   every scrolling surface once the ground went warm. Carved ink instead, and the
+   track is transparent so it disappears into whatever it's sitting on rather than
+   drawing a second vertical line beside the thumb. */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: var(--surface); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--c-fg-3); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--c-fg-2); }
+/* Firefox equivalent (it has no thumb/track pseudo-elements). */
+* { scrollbar-width: thin; scrollbar-color: var(--c-fg-3) transparent; }
 
 /* Visually hide the scrollbar while keeping the element scrollable */
 .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
@@ -336,16 +340,29 @@ select {
   outline: none;
 }
 
-/* (5) INPUT DEPTH — recessed inset shadow on all form fields */
-input, textarea, select {
+/* Native widget chrome (dropdown lists, the date picker panel) is drawn by the OS
+   from color-scheme, not from our tokens — pinned to dark it renders a dark panel
+   on light paper. Same class of bug as the blue scrollbar: global chrome that
+   never got a light register. */
+[data-theme="light"] select,
+[data-theme="light"] input[type="date"] { color-scheme: light; }
+
+/* (5) INPUT DEPTH — recessed inset shadow on all form fields.
+   `.c-input` is excluded: the carved system supplies its own inset via .c-inset2,
+   and this rule would otherwise sit on top of it. */
+input:not(.c-input), textarea:not(.c-input), select:not(.c-input) {
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 /* (FIX 1) In light mode the dark inset shadow reads as a distracting box outline —
-   remove it on all inputs. */
-[data-theme="light"] input,
-[data-theme="light"] textarea,
-[data-theme="light"] select {
+   remove it on all inputs. `.c-input` excluded for the same reason as above: this
+   rule is !important and would flatten the carved input in light mode. */
+/* Kills leftover legacy shadows in light. `.c-area` and `.c-tin` join
+   `.c-input` on the exclusion list — this rule was flattening the carved inset
+   off the notes box and the studio-time cells in light mode only. */
+[data-theme="light"] input:not(.c-input):not(.c-area):not(.c-tin),
+[data-theme="light"] textarea:not(.c-input):not(.c-area):not(.c-tin),
+[data-theme="light"] select:not(.c-input):not(.c-tin) {
   box-shadow: none !important;
 }
 
@@ -391,175 +408,1882 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 /* ── Print styles for Work Order modal ──────────────────────────────────────
    [data-wo-portal] is only in the DOM when the WO popup is open, so these
    rules only activate when printing with the WO visible.               */
-@media print {
-  /* Hide all body children except the WO portal */
-  body > * { display: none !important; }
+/* THE PRINT STYLESHEET IS DELETED (ruling 2026-08-11).
+   ~90 lines of !important overrides used to repaint the work order black-and-
+   white for window.print(). It is gone along with the Print button, because a
+   work order now becomes a document exactly one way: /api/wo-package draws it
+   server-side (lib/woPdf) and staples the invoice on.
+   Why that matters beyond tidiness — while BOTH existed, the work order's
+   appearance was described twice, and the copy that drifted would have been the
+   one clients receive. One description cannot disagree with itself.
+   If you ever need on-screen printing back, do NOT resurrect this: point the
+   button at the generator. */
 
-  /* Portal root: static, full width, white */
-  body > [data-wo-portal] {
-    display: block !important;
-    position: static !important;
-    overflow: visible !important;
-    background: white !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    inset: auto !important;
-  }
 
-  /* Flatten the centering flex wrapper */
-  body > [data-wo-portal] > * {
-    display: block !important;
-    position: static !important;
-    overflow: visible !important;
-    background: white !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    min-height: 0 !important;
-  }
-
-  /* WO card: full page width, no dark bg, no transform, no border */
-  body > [data-wo-portal] > * > * {
-    width: 100% !important;
-    max-width: none !important;
-    min-width: 0 !important;
-    background: white !important;
-    border: none !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    position: static !important;
-    overflow: visible !important;
-    padding: 4px 8px !important;
-    margin: 0 !important;
-    transform: none !important;
-  }
-
-  /* All inner content: black text, transparent bg, light borders, 10px */
-  [data-wo-portal] * {
-    background-color: transparent !important;
-    color: #111 !important;
-    border-color: #ccc !important;
-    box-shadow: none !important;
-    font-size: 10px !important;
-    line-height: 1.3 !important;
-  }
-
-  /* De-sticky the header */
-  [data-wo-portal] [style*="sticky"] {
-    position: static !important;
-    border-radius: 0 !important;
-  }
-
-  /* Hide internal-only sections (e.g. Needs Attention) */
-  [data-wo-portal] [data-no-print] { display: none !important; }
-
-  /* Hide all buttons, radio/checkbox inputs, select elements */
-  [data-wo-portal] button { display: none !important; }
-  [data-wo-portal] input[type="radio"],
-  [data-wo-portal] input[type="checkbox"] { display: none !important; }
-
-  /* Text inputs and textareas: underline only, no border box */
-  [data-wo-portal] input,
-  [data-wo-portal] textarea {
-    background: transparent !important;
-    color: #111 !important;
-    border: none !important;
-    border-bottom: 1px solid #aaa !important;
-    font-size: 10px !important;
-    padding: 1px 2px !important;
-    resize: none !important;
-  }
-
-  /* Textarea: limit height so notes don't overflow a page */
-  [data-wo-portal] textarea { max-height: 60px !important; overflow: hidden !important; }
-
-  /* Tighten all gaps */
-  [data-wo-portal] [style*="gap: 28"],
-  [data-wo-portal] [style*="gap: 24"],
-  [data-wo-portal] [style*="gap: 20"] { gap: 8px !important; }
-  [data-wo-portal] [style*="gap: 16"] { gap: 5px !important; }
-  [data-wo-portal] [style*="gap: 12"],
-  [data-wo-portal] [style*="gap: 10"],
-  [data-wo-portal] [style*="gap: 9"],
-  [data-wo-portal] [style*="gap: 8"]  { gap: 3px !important; }
-
-  /* Tighten section padding */
-  [data-wo-portal] [style*="padding: 24px"],
-  [data-wo-portal] [style*="padding: 20px"] { padding: 4px 6px !important; }
-  [data-wo-portal] [style*="padding: 16px"],
-  [data-wo-portal] [style*="padding: 14px"] { padding: 3px 5px !important; }
-  [data-wo-portal] [style*="padding: 12px"],
-  [data-wo-portal] [style*="padding: 10px"],
-  [data-wo-portal] [style*="padding: 8px"]  { padding: 2px 4px !important; }
-
-  /* Collapse empty table rows — rows with only empty inputs take minimal space */
-  [data-wo-portal] [style*="padding: 7px 10px"],
-  [data-wo-portal] [style*="padding: 8px 10px"] { padding: 1px 4px !important; }
-
-  /* Keep the bottom two-column section (notes + signature + payments) together */
-  [data-wo-portal] [style*="gridTemplateColumns: '1fr 1fr'"],
-  [data-wo-portal] [style*='gridTemplateColumns: "1fr 1fr"'] {
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
-
-  /* Normalize all accent/dark colors to black */
-  [data-wo-portal] [style*="color: #c8f04e"],
-  [data-wo-portal] [style*="color: #f0f0f0"],
-  [data-wo-portal] [style*="color: #8a8fa0"],
-  [data-wo-portal] [style*="color: #4a4f64"],
-  [data-wo-portal] [style*="color: #4ade80"],
-  [data-wo-portal] [style*="color: #f87171"],
-  [data-wo-portal] [style*="color: #96A9FF"],
-  [data-wo-portal] [style*="color: #7BBFFF"],
-  [data-wo-portal] [style*="color: rgb"] { color: #111 !important; }
-
-  /* Normalize dark background colors */
-  [data-wo-portal] [style*="background: #13161d"],
-  [data-wo-portal] [style*="background: #1a1e28"],
-  [data-wo-portal] [style*="background: #1a1d27"],
-  [data-wo-portal] [style*="background: rgba"] { background: transparent !important; }
-
-  /* Section title labels: slightly smaller */
-  [data-wo-portal] [style*="letterSpacing"] { font-size: 8px !important; }
-
-  /* marginBottom compression */
-  [data-wo-portal] [style*="marginBottom: 20"],
-  [data-wo-portal] [style*="marginBottom: 16"] { margin-bottom: 6px !important; }
-  [data-wo-portal] [style*="marginBottom: 12"],
-  [data-wo-portal] [style*="marginBottom: 8"]  { margin-bottom: 3px !important; }
-
-  /* Studio time scroll container: show all rows in print/PDF, no clipping */
-  [data-st-scroll] { max-height: none !important; overflow: visible !important; }
-
-  /* Session notes: expand cell to show full content in print */
-  [data-wo-portal] [data-si-cell] {
-    display: block !important;
-    overflow: visible !important;
-    height: auto !important;
-    white-space: normal !important;
-  }
-  [data-wo-portal] [data-si-input] { display: none !important; }
-  [data-wo-portal] [data-si-print] {
-    display: block !important;
-    white-space: pre-wrap !important;
-    word-break: break-word !important;
-    font-family: 'DM Mono', monospace !important;
-    font-size: 9px !important;
-    color: #111 !important;
-    padding: 0 !important;
-  }
+/* Defeat the browser's autofill background so desktop autofill keeps the carved
+   styling. Retargeted from .auth-input to .c-input when the login page migrated;
+   the inset box-shadow trick has to repaint --c-bg now, and it deliberately does
+   NOT restore the carved inset (autofill state reading slightly flat is fine). */
+.c-input:-webkit-autofill,
+.c-input:-webkit-autofill:hover,
+.c-input:-webkit-autofill:focus,
+.c-input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--c-fg);
+  -webkit-box-shadow: 0 0 0 1000px var(--c-bg) inset;
+  box-shadow: 0 0 0 1000px var(--c-bg) inset;
+  caret-color: var(--c-fg);
+  transition: background-color 9999s ease-out 0s;
 }
 
-/* Login (auth) inputs: muted placeholder + defeat the browser autofill light
-   background so desktop autofill keeps the dark-theme styling. */
-.auth-input::placeholder { color: #6B7280; }
-.auth-input:-webkit-autofill,
-.auth-input:-webkit-autofill:hover,
-.auth-input:-webkit-autofill:focus,
-.auth-input:-webkit-autofill:active {
-  -webkit-text-fill-color: var(--text);
-  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
-  box-shadow: 0 0 0 1000px var(--surface) inset;
-  caret-color: var(--text);
-  transition: background-color 9999s ease-out 0s;
+/* ═══════════════════════════════════════════════════════════════════════════
+   CARVED DESIGN SYSTEM — PRIMITIVES
+   docs/PRSFLO-DESIGN-SPEC.md §7/§8/§9 · mock: prsflo-final-mock.html
+   Consumed by components/carved/index.tsx. Nothing else in the app uses these
+   yet, so this section is inert — it only renders on /dev-style.
+
+   POLARITY: dark is the base (attribute absent); light is the override. Every
+   recipe below is written dark-first, with the light values in a following
+   [data-theme="light"] rule. The spec prints them the other way round.
+
+   LAWS: no borders/dividers anywhere (border-radius only); containers carve IN,
+   controls raise OUT and press IN on :active; colour is status only; dark gets
+   no large bright surfaces; nothing animates except .c-newpulse.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Page ground ────────────────────────────────────────────────────────── */
+/* A migrated route adds `c-page` to <html> on mount (and removes it on unmount),
+   so the ground under it is carved paper edge to edge. Without this the OLD
+   ground frames the new surface in BOTH registers: in light the legacy --bg is
+   `transparent` and the blue→rose html gradient shows around the page; in dark
+   the legacy #0d0f14 sits visibly darker than the carved #1b1a17.
+
+   Declared here, at the end of the file, so it beats the legacy rules on source
+   order at equal specificity — no !important needed. The :root.c-page:not(...)
+   selector on the glow is deliberately heavier than the (0,2,1) rule it kills. */
+html.c-page,
+html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
+:root.c-page:not([data-theme="light"]) body::before { content: none; display: none; }
+
+/* ── Surface + type ─────────────────────────────────────────────────────── */
+.c-root {
+  background: var(--c-bg);
+  color: var(--c-fg);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14.5px;
+  line-height: 1.6;
+  min-height: 100%;
+}
+/* Carved sheets are portalled outside .c-root, so they need the scale too. */
+.c-sheet, .c-modal { font-size: 14.5px; line-height: 1.6; }
+.c-arch { font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 400; }
+.c-mono { font-family: 'DM Mono', ui-monospace, monospace; font-size: 12.5px; }
+.c-label {
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.11em;
+  text-transform: uppercase; opacity: 0.45;
+}
+.c-sub { font-size: 13px; opacity: 0.6; }
+
+/* ── Containers: carved IN ──────────────────────────────────────────────── */
+.c-panel {
+  background: var(--c-bg);
+  border-radius: 40px;
+  padding: 12px; /* was 17 — §2b density */
+  box-shadow: inset 5px 5px 15px rgba(0, 0, 0, .4),
+              inset -5px -5px 15px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-panel {
+  box-shadow: inset 5px 5px 14px rgba(42, 39, 34, .08),
+              inset -5px -5px 14px rgba(255, 255, 255, .7);
+}
+
+/* second-level cuts: inputs, empty room cards, tasks, alternating rows */
+.c-inset2 {
+  background: var(--c-bg);
+  box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .34),
+              inset -3px -3px 9px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-inset2 {
+  box-shadow: inset 3px 3px 8px rgba(42, 39, 34, .07),
+              inset -3px -3px 8px rgba(255, 255, 255, .65);
+}
+
+/* colored pools: a status fill set INTO the surface */
+.c-pool {
+  color: var(--c-chip-ink);
+  box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .35),
+              inset -2px -2px 6px rgba(255, 255, 255, .06);
+}
+[data-theme="light"] .c-pool {
+  box-shadow: inset 3px 3px 8px rgba(0, 0, 0, .16),
+              inset -2px -2px 6px rgba(255, 255, 255, .25);
+}
+
+/* ── Controls: raised OUT ───────────────────────────────────────────────── */
+.c-raised { box-shadow: 2px 2px 7px rgba(0, 0, 0, .38), -1px -1px 3px rgba(255, 255, 255, .03); }
+[data-theme="light"] .c-raised { box-shadow: 2px 2px 6px rgba(42, 39, 34, .09), -2px -2px 6px rgba(255, 255, 255, .7); }
+
+.c-raised-primary { box-shadow: 3px 3px 10px rgba(0, 0, 0, .55); }
+[data-theme="light"] .c-raised-primary { box-shadow: 3px 3px 9px rgba(42, 39, 34, .28), -2px -2px 6px rgba(255, 255, 255, .5); }
+
+.c-raised-chip { box-shadow: 2.5px 2.5px 8px rgba(0, 0, 0, .5); }
+[data-theme="light"] .c-raised-chip { box-shadow: 2.5px 2.5px 7px rgba(42, 39, 34, .2), -1px -1px 4px rgba(255, 255, 255, .35); }
+
+/* Display anchors — rest ON the surface. Objects, not holes, not pressable. */
+.c-anchor { box-shadow: 2px 2px 8px rgba(0, 0, 0, .5); }
+[data-theme="light"] .c-anchor { box-shadow: 2px 2px 7px rgba(42, 39, 34, .22); }
+
+/* A control that is LATCHED ON stays pressed into the material — the same
+   geometry as :active, but persistent. Sign-offs use this: checking something off
+   is an act of pressing, so a completed sign-off reads as a pressed, filled
+   control rather than a raised one. Pair with .c-on for the fill. */
+.c-pressed { box-shadow: inset 3px 3px 7px rgba(0, 0, 0, .38); }
+[data-theme="light"] .c-pressed { box-shadow: inset 3px 3px 7px rgba(42, 39, 34, .22); }
+
+/* THE PRESS — every control depresses into the material while held. */
+.c-control {
+  cursor: pointer;
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.c-control:hover { transform: translateY(-1px); }
+.c-control:active {
+  transform: translateY(1px);
+  box-shadow: inset 3px 3px 7px rgba(0, 0, 0, .28);
+}
+/* Light needs its own press. A 28% black inset is a smudge on paper, not a
+   press — found by the F-25 sweep for dark-first recipes with no light rule. */
+[data-theme="light"] .c-control:active {
+  box-shadow: inset 3px 3px 7px rgba(42, 39, 34, .14);
+}
+
+/* ── Button (primary) ───────────────────────────────────────────────────── */
+.c-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border-radius: 99px; padding: 7px 15px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  background: var(--c-ivory); color: #1b1a17;
+}
+[data-theme="light"] .c-btn { background: var(--c-fg); color: var(--c-bg); }
+
+/* ── SoftButton / Pill ──────────────────────────────────────────────────── */
+.c-soft {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border-radius: 99px; padding: 6px 13px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  background: var(--c-bg); color: var(--c-fg);
+}
+.c-soft.c-on { background: var(--c-ivory); color: #1b1a17; }
+[data-theme="light"] .c-soft.c-on { background: var(--c-fg); color: var(--c-bg); }
+
+/* ── Input ──────────────────────────────────────────────────────────────── */
+.c-input {
+  display: block; width: 100%;
+  border-radius: 12px; padding: 0 10px; height: 32px;
+  background: var(--c-bg); color: var(--c-fg);
+  font-family: inherit; font-size: 12.5px; font-weight: 500;
+}
+.c-input::placeholder { color: var(--c-fg); opacity: 0.35; }
+/* Focus is a depth change, not an outline (Law 1). */
+.c-input:focus { outline: none; background: var(--c-wash2); }
+
+/* ── Panel header lozenge / table head / section header ─────────────────── */
+/* SECTION HEADERS ARE TEXT (RULING 2026-08-13, spec §16c extended app-wide).
+   This was a filled capsule bar — an ink fill in light, wash2 in dark. Eli, on
+   seeing the tables go to text chrome: "five headers still have bubbles… I
+   really just see it mostly on dashboard and my day. duties, billing the
+   period, shift notes. don't think we need those. just the text."
+   Right, and it is the same law: a header holds nothing, so it is not an object
+   and takes no surface. Only ENTRIES are filled. Dropping the fill here is what
+   makes the rest of the surface legible as content rather than as more chrome.
+   Kept: the flex row, the micro-caps type, the action on the right. */
+.c-lozenge {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 0 3px 7px; margin-bottom: 6px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--c-fg); opacity: 0.45;
+}
+.c-lozenge a, .c-lozenge button,
+.c-lz-action {
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+  /* Was `color: inherit` + opacity .55, because the lozenge used to be an INK
+     FILL in light mode and the action had to take the bar's contrast colour.
+     The bar is gone (2026-08-13), and the header itself now carries opacity
+     .45 — inheriting that AND dimming again made the action nearly invisible.
+     Full colour, own opacity, and it out-reads the label on purpose: the label
+     is a name, the action is the only thing here you can press. */
+  color: var(--c-fg); opacity: 0.75; text-decoration: none; cursor: pointer;
+  background: none; box-shadow: none; padding: 0; border-radius: 0; font-family: inherit;
+}
+.c-lz-action:hover { opacity: 1; }
+
+/* ── StatusPill / StatusDot ─────────────────────────────────────────────── */
+/* Status is INFORMATION, not an affordance — it is never pressed, so it must not
+   look raised (Law 2). It gets the minimal contact shadow from spec §7 and
+   nothing else. Do not add .c-raised-chip to this. */
+.c-pill {
+  display: inline-flex; align-items: center; flex-shrink: 0;
+  border-radius: 99px; padding: 4px 11px;
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--c-chip-ink);
+  box-shadow: 1.5px 1.5px 4px rgba(0, 0, 0, .35);
+}
+[data-theme="light"] .c-pill { box-shadow: 1.5px 1.5px 4px rgba(42, 39, 34, .14); }
+[data-theme="dark"] .c-pill,
+:root:not([data-theme="light"]) .c-pill { filter: saturate(.82) brightness(.88); }
+.c-pill.c-pill-hot { color: var(--c-hot-text); }
+/* Any hot fill carries pale text — chip ink is unreadable on signal red. */
+.c-fill-hot { color: var(--c-hot-text); }
+
+.c-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  display: inline-block; flex-shrink: 0;
+}
+
+/* ── Count badge ────────────────────────────────────────────────────────── */
+.c-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 17px; height: 17px; padding: 0 5px; border-radius: 99px;
+  font-size: 9.5px; font-weight: 800; line-height: 1; margin-left: 6px;
+  background: var(--c-ivory); color: #1b1a17;
+}
+[data-theme="light"] .c-count { background: var(--c-fg); color: var(--c-bg); }
+/* The badge used to INVERT inside a lozenge, because the lozenge was an ink fill
+   and an ink badge on it was invisible. The fill is gone (2026-08-13), so
+   inverting now paints the badge in the PAGE colour and it disappears against
+   the background. It takes the standard .c-count treatment again; only the
+   contact shadow stays dropped, since a count in a header is not an object. */
+.c-lozenge .c-count { box-shadow: none; opacity: 1; }
+/* SectionHeader renders `c-lozenge c-anchor`, and .c-anchor carries a drop
+   shadow for a display anchor resting ON the surface. With the fill removed
+   there is nothing left to cast it, so it painted as a smudge under bare text.
+   A header is not an anchor any more; it is a label. */
+.c-lozenge.c-anchor { box-shadow: none; }
+
+/* ── RoomCard ───────────────────────────────────────────────────────────── */
+.c-room {
+  position: relative; display: flex; flex-direction: column;
+  border-radius: 26px; min-height: 92px; padding: 11px 13px;
+}
+.c-room.c-room-empty { opacity: 0.6; }
+/* Explicit line-heights throughout: the card clips its own overflow, and both
+   Archivo Black (artist) and Inter at small sizes have descenders that a tight
+   or inherited line box guillotines — this is what cut the "y" in Skilla Baby
+   and the "p" in Interscope. Every value here is descender-safe. */
+.c-room .c-room-name {
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.08em;
+  text-transform: uppercase; opacity: 0.45; line-height: 1.3;
+}
+/* Standalone twin of .c-room-name, for the room tag on a BOOKED dashboard card.
+   That card is no longer a .c-room — it's the calendar's chip, so a rule nested
+   under .c-room can't reach it. The dashboard grid is organised by room, so the
+   tag is the one thing the dashboard adds to the shared card. */
+.c-roomtag {
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.08em;
+  text-transform: uppercase; opacity: 0.55; line-height: 1.3;
+  padding: 7px 8px 0; flex-shrink: 0;
+}
+.c-room .c-room-artist { font-size: 16px; margin-top: 4px; line-height: 1.35; }
+.c-room .c-room-meta { font-size: 11px; opacity: 0.7; line-height: 1.45; }
+.c-room .c-room-eng { position: absolute; right: 13px; bottom: 9px; font-size: 9.5px; opacity: 0.5; line-height: 1.35; }
+/* Dark: pools are alpha washes of the status colour with normal ink (Law 5). */
+:root:not([data-theme="light"]) .c-room.c-pool { color: var(--c-fg); }
+:root:not([data-theme="light"]) .c-room.c-pool .c-room-name { opacity: 1; }
+
+/* ── EventChip (calendar) ───────────────────────────────────────────────── */
+.c-ev {
+  border-radius: 14px; padding: 5px 10px; min-width: 0; overflow: hidden;
+  color: var(--c-chip-ink);
+}
+.c-ev .c-ev-title {
+  font-size: 12px; display: block;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.c-ev .c-ev-meta { font-size: 10.5px; opacity: 0.75; display: block; white-space: nowrap; overflow: hidden; }
+.c-ev .c-ev-eng { font-size: 9px; opacity: 0.6; text-align: right; display: block; }
+.c-ev.c-ev-cancelled .c-ev-title { text-decoration: line-through; }
+
+/* ── List row (capsule) ─────────────────────────────────────────────────── */
+.c-row {
+  display: flex; align-items: center; gap: 9px;
+  padding: 6px 12px; border-radius: 99px; margin-bottom: 2px;
+  font-size: 12.5px;
+}
+/* The primary identifier in a list row (lead name, client name). */
+.c-row-name { font-size: 13px; font-weight: 700; line-height: 1.35; }
+[data-theme="light"] .c-row.c-selected {
+  box-shadow: inset 3px 3px 7px rgba(42, 39, 34, .11);
+}
+.c-row.c-selected {
+  box-shadow: inset 3px 3px 8px rgba(0, 0, 0, .22);
+  background: var(--c-wash2);
+}
+
+/* ── Table ──────────────────────────────────────────────────────────────── */
+.c-table { width: 100%; }
+.c-table-row {
+  display: grid; align-items: baseline;
+  padding: 10px 18px; border-radius: 26px;
+  font-size: 12.5px;
+}
+.c-table-row:nth-child(odd) {
+  background: var(--c-bg);
+  box-shadow: inset 2px 2px 8px rgba(0, 0, 0, .3),
+              inset -2px -2px 8px rgba(255, 255, 255, .025);
+}
+[data-theme="light"] .c-table-row:nth-child(odd) {
+  box-shadow: inset 2px 2px 7px rgba(42, 39, 34, .05),
+              inset -2px -2px 7px rgba(255, 255, 255, .55);
+}
+
+/* ── Modal ──────────────────────────────────────────────────────────────── */
+/* The one permitted outer shadow besides raised controls: a floating carved
+   panel needs to read as lifted off the page. Derived from the raised family. */
+.c-modal-backdrop {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  background: rgba(0, 0, 0, .55);
+}
+[data-theme="light"] .c-modal-backdrop { background: rgba(42, 39, 34, .35); }
+.c-modal {
+  background: var(--c-bg); border-radius: 40px; padding: 24px;
+  max-width: 520px; width: 100%;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .6),
+              inset 5px 5px 15px rgba(0, 0, 0, .4),
+              inset -5px -5px 15px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-modal {
+  box-shadow: 0 18px 50px rgba(42, 39, 34, .22),
+              inset 5px 5px 14px rgba(42, 39, 34, .08),
+              inset -5px -5px 14px rgba(255, 255, 255, .7);
+}
+
+/* ── THE FLO BOX (§14c) + console pieces (§14b) ─────────────────────────────
+   Ported from docs/design-refs/dashboard-final.html. Flat surface — NO carving
+   in either theme: Flo is a presence outlined in light, never a hole in the
+   material (deliberate contrast with Law 2, permitted only here). The ring +
+   halo are THE ONLY GLOW IN THE APP — glow means AI, exclusively (§7). */
+.c-ringwrap {
+  position: relative; border-radius: 15px; overflow: hidden; padding: 1.5px;
+  margin-bottom: 6px;
+  box-shadow: 0 0 16px 3px rgba(var(--c-flo-ink), .045);
+}
+.c-ringwrap::before {
+  content: ""; position: absolute; inset: -120%;
+  background: conic-gradient(
+    rgba(var(--c-flo-ink), .06) 0deg, rgba(var(--c-flo-ink), .32) 90deg,
+    rgba(var(--c-flo-ink), .06) 200deg, rgba(var(--c-flo-ink), .06) 360deg);
+  animation: c-flospin 8s linear infinite;
+}
+@keyframes c-flospin { to { transform: rotate(360deg); } }
+.c-ringwrap .c-flo-inner { position: relative; border-radius: 13.5px; background: var(--c-bg); padding: 10px 12px; }
+@media (prefers-reduced-motion: reduce) { .c-ringwrap::before { animation: none; } }
+.c-flohead { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.c-flohead .c-fname { font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 400; font-size: 13px; letter-spacing: -.01em; }
+.c-flohead .c-ftag { font-size: 7.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; opacity: .45; }
+.c-flob { display: flex; gap: 8px; align-items: baseline; font-size: 12px; line-height: 1.45; margin-bottom: 4px; }
+.c-flob .c-flodot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; position: relative; top: -1px; }
+.c-flob.c-alert { color: var(--c-st-hot); font-weight: 600; }
+.c-flosyn { font-size: 11px; opacity: .55; font-style: italic; margin-top: 3px; }
+.c-askflo { margin-top: 7px; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .4; cursor: pointer; }
+
+/* Console subheads + My Day rows (static stub until the HR layer ships). */
+.c-subhead { display: flex; align-items: center; justify-content: space-between; padding: 8px 3px 4px; }
+.c-subhead b { font-size: 8.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; opacity: .4; }
+.c-myday-item { display: flex; align-items: center; gap: 9px; padding: 4px 3px; font-size: 12.5px; }
+.c-myday-bx { width: 15px; height: 15px; border-radius: 6px; flex-shrink: 0; box-shadow: inset 2px 2px 5px rgba(0, 0, 0, .35); }
+[data-theme="light"] .c-myday-bx { box-shadow: inset 2px 2px 5px rgba(42, 39, 34, .2); }
+.c-myday-item.c-done .c-myday-bx { background: var(--c-st-booked); box-shadow: none; position: relative; }
+.c-myday-item.c-done .c-myday-bx::after {
+  content: "✓"; position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; font-size: 9px; font-weight: 800; color: var(--c-chip-ink);
+}
+.c-myday-item.c-done .c-myday-tx { text-decoration: line-through; opacity: .45; }
+.c-myday-tx { flex: 1; min-width: 0; }
+.c-myday-ct { font-family: 'DM Mono', ui-monospace, monospace; font-size: 9.5px; opacity: .5; flex-shrink: 0; }
+.c-myday-due {
+  background: var(--c-st-hot); color: var(--c-hot-text); border-radius: 99px; padding: 2px 7px;
+  font-size: 7.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; flex-shrink: 0;
+}
+.c-myday-prog {
+  font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px;
+  background: rgba(255, 169, 77, .2); color: var(--c-st-warm); border-radius: 99px; padding: 2px 8px;
+}
+.c-myday-backlog {
+  background: rgba(255, 90, 77, .15); border-radius: 10px; margin: 3px 0 6px;
+  padding: 6px 10px; font-size: 10.5px; color: var(--c-st-hot); font-weight: 600;
+}
+
+/* ── COMMAND ROW (§14b, ruling 2026-08-07 — dashboard-console-v2-options.html
+   option A). Pipeline indicator + studio cards, ported with polarity flip. */
+.c-pipe {
+  display: flex; flex-direction: column; gap: 8px; padding: 14px 16px;
+  border-radius: 20px; cursor: pointer; background: var(--c-bg);
+  box-shadow: inset 5px 5px 14px rgba(0, 0, 0, .35), inset -5px -5px 14px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-pipe {
+  box-shadow: inset 5px 5px 14px rgba(42, 39, 34, .08), inset -5px -5px 14px rgba(255, 255, 255, .7);
+}
+.c-pipe .c-pipe-num { font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 400; font-size: 44px; letter-spacing: -.02em; line-height: 1; }
+.c-pipe .c-pipe-name { font-size: 10px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; opacity: .55; }
+.c-pipe .c-pipe-sub { font-size: 11px; opacity: .6; margin-top: 2px; }
+.c-pipe .c-pipe-go { font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; opacity: .4; flex-shrink: 0; align-self: flex-start; }
+/* THE LOUD BAR — solid hot + pulse dot, only when unacked inquiries exist.
+   Sanctioned: hot = needs-you-now (§14a badge law / §5 hot-as-critical). */
+.c-inqbar {
+  display: flex; align-items: center; gap: 9px;
+  background: var(--c-st-hot); color: var(--c-hot-text);
+  border-radius: 12px; padding: 8px 12px;
+  font-size: 11.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+}
+.c-inqbar .c-newpulse { background: var(--c-hot-text); }
+.c-inqbar.c-quiet {
+  background: var(--c-wash); color: var(--c-fg); opacity: .5;
+  font-weight: 600; text-transform: none; letter-spacing: 0;
+}
+
+.c-stud {
+  display: flex; flex-direction: column; gap: 2px; padding: 11px 13px;
+  border-radius: 16px; cursor: pointer; background: var(--c-bg);
+  box-shadow: inset 4px 4px 12px rgba(0, 0, 0, .35), inset -4px -4px 12px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-stud {
+  box-shadow: inset 4px 4px 12px rgba(42, 39, 34, .08), inset -4px -4px 12px rgba(255, 255, 255, .7);
+}
+.c-stud .c-stud-code { font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 400; font-size: 15px; letter-spacing: -.01em; }
+.c-stud .c-stud-vn { font-size: 8px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; opacity: .4; }
+.c-stud .c-stud-cnt { display: flex; align-items: baseline; gap: 6px; margin-top: 5px; }
+.c-stud .c-stud-n { font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 400; font-size: 22px; line-height: 1; }
+.c-stud .c-stud-u { font-size: 8.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; opacity: .45; }
+.c-stud .c-stud-live {
+  margin-left: auto; font-size: 7.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  background: rgba(67, 223, 174, .2); color: var(--c-st-booked); border-radius: 99px; padding: 2px 7px;
+}
+.c-stud.c-off .c-stud-n { opacity: .35; }
+
+.c-flagmini {
+  display: flex; align-items: center; gap: 11px; padding: 9px 13px;
+  border-radius: 14px; cursor: pointer; background: var(--c-bg);
+  box-shadow: inset 4px 4px 12px rgba(0, 0, 0, .35), inset -4px -4px 12px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-flagmini {
+  box-shadow: inset 4px 4px 12px rgba(42, 39, 34, .08), inset -4px -4px 12px rgba(255, 255, 255, .7);
+}
+.c-flagmini .c-fm-num { font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 400; font-size: 20px; line-height: 1; }
+.c-flagmini .c-fm-name { font-size: 8.5px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; opacity: .5; }
+.c-flagmini .c-fm-sub { font-size: 10.5px; opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.c-flagmini .c-fm-go { font-size: 8.5px; font-weight: 800; text-transform: uppercase; opacity: .4; flex-shrink: 0; cursor: pointer; }
+
+/* My Day | My Tasks side by side (two stacked lists bury the bottom one). */
+.c-twoup { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+@media (max-width: 768px) { .c-twoup { grid-template-columns: 1fr; } }
+
+/* Location counts in the sessions pane header (the old location strip is retired). */
+.c-loccount { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+.c-loccount span {
+  font-size: 7.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  border-radius: 99px; padding: 2.5px 7px; background: var(--c-wash2); opacity: .7;
+}
+.c-loccount span.c-live { background: rgba(67, 223, 174, .2); color: var(--c-st-booked); opacity: 1; }
+
+/* Staff 14-day grid (§2.7 HR-SPEC — static stub until punches exist). */
+.c-dgrid table { border-collapse: separate; border-spacing: 2px; }
+.c-dgrid .c-who { font-size: 10px; font-weight: 600; text-align: left; padding-right: 7px; white-space: nowrap; }
+.c-dgrid td.c-sq { width: 10px; height: 10px; border-radius: 3px; background: var(--c-wash2); }
+.c-dgrid td.c-sq.c-g { background: var(--c-st-booked); }
+.c-dgrid td.c-sq.c-r { background: var(--c-st-hot); }
+.c-dgrid .c-bk { font-size: 8px; font-weight: 800; color: var(--c-st-hot); white-space: nowrap; padding-left: 5px; }
+
+/* ── Side nav rail (spec §14a, ported from docs/design-refs/dashboard-final.html) ──
+   The rail replaces the top nav as the app frame. Wash fill, full height,
+   sticky. Active item = filled pill (ivory-on-charcoal dark / ink-on-paper
+   light — same treatment as every selected control). Badges are functional
+   counts only: hot = needs-you-now, warm = attention, dim wash = neutral. */
+/* The frame paints the page colour (fix 2026-08-11).
+   `<html>` still carries the RETIRED glassmorphism gradient (blue→pink) in light
+   mode, with `body` transparent so it shows through. Every carved page sets
+   --c-bg on its own .c-root, but that only covers the content box — so a SHORT
+   page (My Day, Billing) leaked the old gradient below the fold while a tall one
+   (the dashboard) happened to hide it. Painting it here covers the whole
+   internal app regardless of page height, and is one rule rather than a patch
+   per page. The gradient itself is dead law (spec §3: light mode is warm paper,
+   the accent/glass system is retired) and should eventually be deleted — but
+   that lives on `html`, which the login/inquiry/runner surfaces share, so it
+   goes when those are migrated, not now. */
+.c-frame { display: flex; min-height: 100vh; background: var(--c-bg); }
+@media (max-width: 768px) { .c-frame { flex-direction: column; } }
+.c-rail {
+  /* Slimmed from the mock's 212px (Eli ruling 2026-08-07 — less real estate). */
+  width: 176px; flex-shrink: 0; padding: 14px 8px 12px 10px;
+  display: flex; flex-direction: column; gap: 2px;
+  background: var(--c-wash);
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  z-index: 99999; /* the frame stays above modals, as the top nav did */
+}
+.c-rail-wm { padding: 2px 10px 10px; }
+.c-rail-grp {
+  margin-top: 10px; padding: 0 10px 4px;
+  font-size: 9px; font-weight: 800; letter-spacing: .11em;
+  text-transform: uppercase; opacity: .45;
+}
+.c-rail-link {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 6px 10px; border-radius: 11px;
+  font-size: 12.5px; font-weight: 600; font-family: inherit; text-align: left;
+  color: var(--c-fg); opacity: .6; text-decoration: none; cursor: pointer;
+  background: none;
+  transition: opacity .16s ease, background .16s ease;
+}
+.c-rail-link:hover { opacity: .85; background: var(--c-wash); }
+.c-rail-link.c-on {
+  opacity: 1; background: var(--c-ivory); color: #1b1a17;
+  box-shadow: 2px 2px 7px rgba(0, 0, 0, .35);
+}
+[data-theme="light"] .c-rail-link.c-on { background: var(--c-fg); color: var(--c-bg); }
+.c-rail-ic { width: 16px; text-align: center; opacity: .75; flex-shrink: 0; font-size: 13px; }
+.c-rail-badge {
+  margin-left: auto; min-width: 19px; height: 17px; border-radius: 99px; padding: 0 6px;
+  font-size: 9.5px; font-weight: 800;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.c-rail-badge.c-hot { background: var(--c-st-hot); color: var(--c-hot-text); }
+.c-rail-badge.c-warm { background: var(--c-st-warm); color: var(--c-chip-ink); }
+.c-rail-badge.c-dim { background: var(--c-wash2); }
+.c-rail-foot { margin-top: auto; padding-top: 12px; }
+
+/* Mobile: 52px top bar + the rail as a slide-in drawer over a dimmed backdrop. */
+.c-mobilebar {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 52px; padding: 0 12px;
+  position: sticky; top: 0; z-index: 99999; background: var(--c-bg);
+}
+.c-rail-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, .4); z-index: 99998; }
+.c-rail.c-drawer {
+  position: fixed; top: 0; left: 0; bottom: 0; height: 100dvh;
+  background: var(--c-bg); /* solid — the wash is translucent and would show the backdrop through it */
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
+  animation: railIn .2s ease;
+}
+[data-theme="light"] .c-rail.c-drawer { box-shadow: 0 18px 40px rgba(42, 39, 34, .18); }
+@keyframes railIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@media (prefers-reduced-motion: reduce) { .c-rail.c-drawer { animation: none; } }
+
+/* ── Nav (LEGACY top bar — replaced by the rail; dies with Nav.tsx) ─────── */
+/* The bar is just ground — no border, no gradient, no accent-tinted shadow
+   (Law 1 + §7). Separation from the content comes from the carved panels below
+   it having their own depth, not from a rule across the top. */
+.c-nav { background: var(--c-bg); }
+.c-navlink {
+  display: flex; align-items: center;
+  padding: 7px 13px; border-radius: 99px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--c-fg); opacity: 0.5; text-decoration: none; white-space: nowrap;
+  transition: opacity .16s ease, background .16s ease;
+}
+.c-navlink:hover { opacity: 0.8; }
+/* Active tab is a small ink/ivory pill — the lime underline is retired with the
+   accent colour. Small element, so ivory in dark is allowed (Law 5). */
+.c-navlink.c-on { opacity: 1; background: var(--c-ivory); color: #1b1a17; }
+[data-theme="light"] .c-navlink.c-on { background: var(--c-fg); color: var(--c-bg); }
+
+.c-navbtn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: none; cursor: pointer; padding: 0;
+  color: var(--c-fg); opacity: 0.5;
+  font-family: inherit; font-size: 10px; font-weight: 800;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  transition: opacity .16s ease;
+}
+.c-navbtn:hover { opacity: 1; }
+
+/* Mobile dropdown: a carved sheet floating on the permitted drop shadow. */
+.c-navmenu {
+  background: var(--c-bg);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
+}
+[data-theme="light"] .c-navmenu { box-shadow: 0 18px 40px rgba(42, 39, 34, .18); }
+.c-navmenu-item {
+  display: flex; align-items: center; gap: 10px;
+  height: 48px; padding: 0 18px; width: 100%;
+  background: none; cursor: pointer; text-align: left;
+  font-family: inherit; font-size: 13px; text-decoration: none;
+  color: var(--c-fg); opacity: 0.6;
+}
+.c-navmenu-item.c-on { opacity: 1; font-weight: 700; }
+
+
+/* ── Inline auto-size field ─────────────────────────────────────────────── */
+/* NOTE: renamed from .c-well on 2026-07-31 — `.c-well` now means the standard
+   field recipe from lead-profile-final.html. This one is the narrow variant used
+   by fields that size themselves from a hidden mirror span (the lead name, label,
+   artist). */
+/* Affordance law applied to forms: a fillable field is a RECESS whether or not
+   it holds a value. Before this, empty inline fields rendered as bare grey
+   placeholder text floating on the panel — nothing signalled they were editable.
+   The carve goes on the auto-size WRAPPER, not the <input>: these fields size
+   themselves from a hidden mirror span, so changing the input's own padding
+   would desynchronise the measured width. */
+.c-field-inline {
+  border-radius: 12px;
+  padding: 3px 12px;
+  background: var(--c-bg);
+  box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .34), inset -3px -3px 9px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-field-inline {
+  box-shadow: inset 3px 3px 8px rgba(42, 39, 34, .07), inset -3px -3px 8px rgba(255, 255, 255, .65);
+}
+.c-field-inline:focus-within { background: var(--c-wash2); }
+
+
+/* ── Wordmark ───────────────────────────────────────────────────────────── */
+/* Rendered ONLY by components/layout/Wordmark.tsx. Monochrome in both themes —
+   `--c-fg` is warm ivory in dark and soft charcoal in light, so the mark simply
+   inverts with the ground. No accent colour, by design (Law 3). */
+.c-wordmark {
+  font-family: 'Archivo Black', system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--c-fg);
+  display: inline-flex;
+  align-items: baseline;
+  line-height: 1;
+  white-space: nowrap;
+}
+.c-wordmark-flo { opacity: 0.45; }
+
+/* ── Display anchors + small utilities ──────────────────────────────────── */
+/* Date chip: an object resting on the surface, not a hole and not pressable. */
+.c-datechip {
+  border-radius: 99px; padding: 9px 16px; text-align: center;
+  font-size: 14px; line-height: 1.15;
+  background: var(--c-wash2); color: var(--c-fg);
+}
+[data-theme="light"] .c-datechip { background: var(--c-fg); color: var(--c-bg); }
+.c-datechip small {
+  display: block; font-size: 11px; opacity: 0.6;
+  font-family: 'Inter', sans-serif; font-weight: 800; letter-spacing: 0.1em;
+}
+
+/* Full-width control (panel footers: + new lead / + add task / + add flag). */
+.c-block { display: flex; width: 100%; }
+/* Compact pill for dense tab rows. min-width:0 lets it shrink inside a grid
+   track instead of forcing the column wider than its share. */
+.c-soft-sm {
+  padding: 6px 8px; font-size: 8.5px; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
+}
+/* Bare dismiss affordance — not a raised control, so it gets no shadow. */
+.c-x {
+  background: none; cursor: pointer; flex-shrink: 0;
+  color: var(--c-fg); opacity: 0.4; font-size: 15px; line-height: 1; padding: 0 2px;
+}
+.c-x:hover { opacity: 0.8; }
+/* Empty room cards hint they're clickable without lifting — containers don't lift. */
+.c-room-empty { transition: opacity .16s ease; }
+.c-room-empty:hover { opacity: 0.85; }
+
+/* Daily-ops row: a carved-in slot holding a checklist category. It's a container
+   (it HOLDS the sign-off controls), so it stays carved and never lifts — the
+   hover is a brightness hint only, replacing the JS background swaps it used to
+   carry. Circular sign-off toggles pair with .c-pressed when latched. */
+.c-oprow {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  border-radius: 20px; padding: 12px 16px; cursor: pointer;
+  transition: opacity .16s ease;
+}
+.c-oprow:hover { opacity: 0.85; }
+.c-signoff {
+  display: inline-flex; align-items: center; gap: 6px;
+  border-radius: 99px; padding: 5px 12px;
+  background: var(--c-bg); color: var(--c-fg);
+  font-family: inherit; font-size: 9px; font-weight: 800;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.c-signoff.c-on { background: var(--c-ivory); color: #1b1a17; }
+[data-theme="light"] .c-signoff.c-on { background: var(--c-fg); color: var(--c-bg); }
+
+/* ── Calendar hover card (F-11) ───────────────────────────────────────────
+   Floating ABOVE the surface, which is the sanctioned outer-shadow exception
+   class (§7): raised controls, modals, and this. Drop shadow plus the standard
+   inset top sheen so it reads as a lifted sheet rather than a flat tooltip.
+   pointer-events:none is load-bearing — the card must never intercept the click
+   that opens the WO. */
+.c-hovercard {
+  position: fixed; z-index: 9998; pointer-events: none;
+  background: var(--c-bg); border-radius: 20px; padding: 15px;
+  min-width: 210px; max-width: 300px;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .04);
+  animation: c-hovercard-in .12s ease both;
+}
+[data-theme="light"] .c-hovercard {
+  box-shadow: 0 10px 30px -10px rgba(42, 39, 34, .35), inset 0 1px 0 rgba(255, 255, 255, .7);
+}
+@keyframes c-hovercard-in { from { opacity: 0 } to { opacity: 1 } }
+@media (prefers-reduced-motion: reduce) { .c-hovercard { animation: none } }
+.c-hovercard-hint {
+  font-size: 9.5px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase;
+  opacity: .4; margin-top: 10px;
+}
+
+/* ── MONTH RAIL (§10b) — ported from docs/design-refs/calendar-month-orientation.html
+   option A (`.mrail` / `.mseg` / `.mname`). Chrome, not status: ink and wash
+   only, no colour. The tint is deliberately at the reference's level — you
+   should sense the month change, not see a stripe. */
+.c-monthname {
+  font-family: 'Archivo Black', sans-serif; font-weight: 400;
+  font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--c-fg-2);
+  padding: 4px 10px; white-space: nowrap;
+  /* TRANSPARENT, not `inherit`. `background: inherit` re-paints the parent's
+     tint on top of itself, so on a tinted month the name sits in a slightly
+     darker patch that slides around with it. The name never leaves its own
+     segment, so it has nothing to mask. */
+  background: transparent;
+}
+
+/* ── Calendar grid (§10 GRID EXEMPTION, ruling 2026-08-01) ────────────────
+   The calendar is EXEMPT from Law 1. Position is information on this surface and
+   the grid that encodes it is functional, not decorative — 11 studios at density
+   are unreadable without it. The earlier "carved zebra, no rules" pass came from
+   the superseded §10 and is replaced here.
+   Separator: --c-fg at 12% light / 16% dark. Day ticks are painted by the row's
+   inline repeating-linear-gradient (needs colW, which only the component knows). */
+:root { --c-grid-line: rgba(217, 214, 205, .16); --c-grid-tick: rgba(217, 214, 205, .09); --c-grid-tick-strong: rgba(217, 214, 205, .2);
+        /* Alternating-month ground. Barely-there by design — you should sense the
+           month change the way you sense a paper-stock change, not see a stripe. */
+        --c-month-tint: rgba(217, 214, 205, .045); }
+[data-theme="light"] { --c-grid-line: rgba(42, 39, 34, .12); --c-grid-tick: rgba(42, 39, 34, .07); --c-grid-tick-strong: rgba(42, 39, 34, .18);
+        --c-month-tint: rgba(42, 39, 34, .04); }
+
+/* NO border-bottom here. It ran edge to edge, straight through the sticky room-
+   label column, so the labels read as cells in the grid rather than as the rail
+   the grid hangs off. The row line is now painted as a background layer on the
+   row itself, offset by the label width, so it starts where the grid starts —
+   same trick the day ticks already use. See the room-row style in the calendar
+   page; the offset has to live there because it depends on labelW. */
+.c-calrow { }
+/* Faint zebra is kept as a secondary cue but no longer carries the job alone. */
+.c-calrow-alt { background: var(--c-wash); }
+
+/* Location header — a FULL-WIDTH bar, not a floating lozenge (§10 ruling).
+   Ink bar with bg text in light; wash2 with fg text in dark. */
+.c-calloc {
+  display: flex; align-items: center; gap: 6;
+  padding: 6px 12px; width: 100%;
+  font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+  background: var(--c-wash2); color: var(--c-fg);
+  /* The band's left-edge treatment is OPEN (Eli, 2026-08-17): plain radius was
+     invisible, an inset pill striped margin-gaps across the whole grid — both
+     reverted. Next round is MOCK-FIRST (docs/design-refs) before any further
+     change here. Until then: square, as it always was. */
+}
+[data-theme="light"] .c-calloc { background: var(--c-fg); color: var(--c-bg); }
+/* The label inherits the bar's contrast colour — setting it to --c-fg paints dark
+   text on the dark ink bar and the name disappears. This was the bug. */
+.c-calloc, .c-calloc * { color: inherit; }
+
+/* Chip payload: ALL text is chip ink. Secondary lines at 70% of chip ink — never
+   the muted INK steps, which are light-grey and fail against a status fill. */
+.c-ev, .c-ev * { color: var(--c-chip-ink); }
+.c-ev-2 { opacity: .85; font-weight: 500; }
+/* The client line is Inter, which has 600/700 loaded — the mono lines can't go
+   past 500 because DM Mono only ships 400/500 (see the @import at the top). */
+.c-ev-meta { font-weight: 700; opacity: .85; }
+.c-ev.c-ev-cancelled, .c-ev.c-ev-cancelled * { color: var(--c-hot-text); }
+
+/* ── The session card body (§10b) ───────────────────────────────────────── */
+/* Container-agnostic on purpose. The calendar wraps it in a raised chip (.c-ev)
+   and the dashboard in a carved pool (.c-pool) — the CARD is the same object in
+   both, so its rules can't hang off either container's class. */
+.c-evbody {
+  display: flex; flex-direction: column;
+  height: 100%; min-width: 0; overflow: hidden;
+  color: var(--c-chip-ink);
+}
+.c-evbody * { color: var(--c-chip-ink); }
+
+/* ── Chip footer band + COD strip (§10b) ────────────────────────────────── */
+/* The footer is the chip's operational deck: WO#/invoice# left, staff right.
+   It is a SHADE of the chip, not a second surface — rgba black over the status
+   fill, so it works against every fill without a per-status variant, and it is
+   not a border (Law 1): the tone step is the separation.
+
+   It exists because the codes had no permanent home. WO# lived only in the hover
+   card, and hover-only information is now forbidden outright (§13): the TV wall
+   has no cursor, so anything a card doesn't show is invisible on the wall. */
+.c-ev-foot {
+  background: rgba(0, 0, 0, .22);
+  display: flex; align-items: center; gap: 6px;
+  padding: 2px 8px;
+  /* NEITHER HALF MAY CARRY .c-mono. That class sets font-family AND
+     `font-size: 12.5px`, and a child's own font-size beats an inherited one — so
+     anything wearing it renders at 12.5 no matter what this rule says. The
+     invoice had it from the start (which is why it always looked oversized next
+     to the staff tags), and adding it to the staff tag to match the typefaces
+     dragged that one up too. Both inherit from here now.
+     9px/800 is exactly what the staff tag rendered at before any of this. */
+  font-size: 9px; font-weight: 800; line-height: 1.35;
+  white-space: nowrap; overflow: hidden;
+  flex-shrink: 0;
+}
+:root:not([data-theme="light"]) .c-ev-foot { background: rgba(0, 0, 0, .3); }
+/* Both halves shrink with ellipsis. The staff tags are pinned right but must be
+   allowed to truncate too — flex-shrink:0 on them clipped the tag mid-word at
+   narrow columns, which is worse than an ellipsis. */
+/* Both halves are the same typeface, size, weight and opacity — they're two
+   codes on one strip, and the invoice reading lighter and in a different face
+   made it look like a smaller, lesser field. Only their alignment differs. */
+.c-ev-foot .c-ev-wo    { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.c-ev-foot .c-ev-staff { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Belt and braces: if either span ever gets .c-mono again, it still can't
+   change size — only the typeface. */
+.c-ev-foot .c-mono { font-size: inherit; }
+
+/* COD strip — full-width hot bar on the chip's bottom edge, COD only.
+   Sanctioned under §5 hot-as-critical: money to collect at the door is a
+   critical condition, not a temperature. Billing renders NOTHING — silence
+   means billing, which is why there is no billing variant of this rule. */
+.c-ev-cod {
+  background: var(--c-st-hot);
+  padding: 1px 8px;
+  font-size: 8.5px; font-weight: 800; letter-spacing: .07em;
+  line-height: 1.35; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+/* Beats `.c-ev *` above on source order at equal specificity — pale text, since
+   chip ink is unreadable on hot. */
+.c-ev .c-ev-cod, .c-ev .c-ev-cod *,
+.c-evbody .c-ev-cod, .c-evbody .c-ev-cod * { color: var(--c-hot-text); }
+
+/* Sliver — the COD bar with the words taken out, for cards sharing a cell with
+   another session. The red edge is doing the work; the method is a detail you
+   read on hover. Costs 4px instead of 14, which is what buys back the times
+   line on a stacked card. */
+.c-ev-cod.c-ev-cod-sliver {
+  height: 4px; padding: 0; font-size: 0; line-height: 0;
+}
+
+/* ── Status fills (§5) — the only colour in the system ──────────────────── */
+/* Solid fills at full brightness. Light mode uses them as-is; dark dims by rule
+   (§6) — pills via filter, chips and pools via alpha, never a second palette. */
+.c-fill-hot    { background: var(--c-st-hot); }
+.c-fill-warm   { background: var(--c-st-warm); }
+.c-fill-cold   { background: var(--c-st-cold); }
+.c-fill-booked { background: var(--c-st-booked); }
+.c-fill-uncon  { background: var(--c-st-uncon); }
+.c-fill-tech   { background: var(--c-st-tech); }
+.c-fill-dead   { background: var(--c-st-dead); }
+
+/* Dark register — calendar chips become alpha fills so they sit in the room. */
+:root:not([data-theme="light"]) .c-ev.c-fill-booked { background: rgba(67, 223, 174, .72); }
+:root:not([data-theme="light"]) .c-ev.c-fill-warm   { background: rgba(255, 169, 77, .68); }
+:root:not([data-theme="light"]) .c-ev.c-fill-uncon  { background: rgba(127, 178, 229, .68); }
+:root:not([data-theme="light"]) .c-ev.c-fill-tech   { background: rgba(181, 163, 239, .62); }
+:root:not([data-theme="light"]) .c-ev.c-fill-dead   { background: rgba(204, 209, 207, .5); }
+:root:not([data-theme="light"]) .c-ev.c-fill-hot    { background: rgba(255, 90, 77, .7); }
+:root:not([data-theme="light"]) .c-ev.c-fill-cold   { background: rgba(95, 201, 232, .68); }
+
+/* Dark register — room pools are faint washes with normal ink, not bright slabs. */
+:root:not([data-theme="light"]) .c-room.c-fill-booked { background: rgba(67, 223, 174, .18); }
+:root:not([data-theme="light"]) .c-room.c-fill-warm   { background: rgba(255, 169, 77, .18); }
+:root:not([data-theme="light"]) .c-room.c-fill-uncon  { background: rgba(127, 178, 229, .18); }
+:root:not([data-theme="light"]) .c-room.c-fill-dead   { background: rgba(204, 209, 207, .14); }
+:root:not([data-theme="light"]) .c-room.c-fill-hot    { background: rgba(255, 90, 77, .18); }
+:root:not([data-theme="light"]) .c-room.c-fill-cold   { background: rgba(95, 201, 232, .18); }
+
+/* ── Modal sheet ────────────────────────────────────────────────────────── */
+/* Like .c-modal but without the fixed max-width/padding, for modals that own
+   their own header / scrolling body / footer layout. Same recipe: a carved panel
+   floating on the one permitted outer drop shadow (§8). */
+.c-sheet {
+  background: var(--c-bg);
+  color: var(--c-fg);
+  border-radius: 40px;
+  overflow: hidden;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .6),
+              inset 5px 5px 15px rgba(0, 0, 0, .4),
+              inset -5px -5px 15px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-sheet {
+  box-shadow: 0 18px 50px rgba(42, 39, 34, .22),
+              inset 5px 5px 14px rgba(42, 39, 34, .08),
+              inset -5px -5px 14px rgba(255, 255, 255, .7);
+}
+/* Full-screen on mobile: the carve and the floating shadow are meaningless when
+   the sheet IS the viewport, and the 40px radius would clip content at the edges. */
+@media (max-width: 768px) {
+  .c-sheet { border-radius: 0; box-shadow: none; }
+}
+
+/* Scoped control defaults inside a sheet.
+   A DELIBERATE compromise, worth understanding before extending it: the ideal is
+   every control being an explicit primitive. These modals hold ~38 one-off
+   buttons and inputs, and converting each by hand is a large, error-prone diff
+   for no behavioural gain. So sheets give their raw <button>/<input>/<textarea>
+   carved defaults instead.
+
+   This is NOT the pattern the redesign is replacing. The old override layer
+   matched on inline-style SUBSTRINGS across the whole document — invisible
+   coupling that broke when an unrelated inline style changed. These are ordinary
+   component-scoped element selectors: they apply only inside .c-sheet, and they
+   are visible from the markup. Still, prefer primitives in NEW code; this exists
+   to migrate what's already written.
+
+   Inline backgrounds were stripped from those controls so these rules can win
+   without !important. */
+.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore),
+.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) {
+  border-radius: 99px; padding: 8px 16px; cursor: pointer;
+  background: var(--c-bg); color: var(--c-fg);
+  font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+  transition: transform .16s ease, box-shadow .16s ease;
+  box-shadow: 2px 2px 7px rgba(0, 0, 0, .38), -1px -1px 3px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore),
+[data-theme="light"] .c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) {
+  box-shadow: 2px 2px 6px rgba(42, 39, 34, .09), -2px -2px 6px rgba(255, 255, 255, .7);
+}
+.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):active,
+.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):active {
+  transform: translateY(1px);
+  box-shadow: inset 3px 3px 7px rgba(0, 0, 0, .28);
+}
+.c-sheet button:disabled, .c-panel button:disabled { opacity: 0.5; cursor: default; }
+
+
+.c-sheet input:not([type="file"]):not(.c-input):not(.c-tin),
+.c-sheet select:not(.c-tin),
+.c-sheet textarea:not(.c-textarea):not(.c-tin),
+.c-panel input:not([type="file"]):not(.c-input):not(.c-tin),
+.c-panel select:not(.c-tin),
+.c-panel textarea:not(.c-textarea):not(.c-tin) {
+  border-radius: 14px; padding: 10px 14px; width: 100%;
+  background: var(--c-bg); color: var(--c-fg);
+  font-family: inherit; font-size: 13px; box-sizing: border-box;
+  box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .34), inset -3px -3px 9px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-sheet input:not([type="file"]):not(.c-input):not(.c-tin),
+[data-theme="light"] .c-sheet select:not(.c-tin),
+[data-theme="light"] .c-sheet textarea:not(.c-textarea):not(.c-tin),
+[data-theme="light"] .c-panel input:not([type="file"]):not(.c-input):not(.c-tin),
+[data-theme="light"] .c-panel select:not(.c-tin),
+[data-theme="light"] .c-panel textarea:not(.c-textarea):not(.c-tin) {
+  box-shadow: inset 3px 3px 8px rgba(42, 39, 34, .07), inset -3px -3px 8px rgba(255, 255, 255, .65);
+}
+.c-sheet input:focus, .c-sheet select:focus, .c-sheet textarea:focus,
+.c-panel input:focus, .c-panel select:focus, .c-panel textarea:focus {
+  outline: none; background: var(--c-wash2);
+}
+
+/* Multi-line input. Same carve as .c-input, but a rectangle needs a real radius
+   rather than a capsule. Pair with .c-inset2, exactly like .c-input. */
+.c-textarea {
+  display: block; width: 100%;
+  border-radius: 14px; padding: 11px 14px; min-height: 56px;
+  background: var(--c-bg); color: var(--c-fg);
+  font-family: inherit; font-size: 13px;
+  resize: none; box-sizing: border-box;
+}
+.c-textarea::placeholder { color: var(--c-fg); opacity: 0.35; }
+.c-textarea:focus { outline: none; background: var(--c-wash2); }
+
+
+/* ═══ LEAD-PROFILE V3 RECIPES ═══════════════════════════════════════════════
+   Source of truth: lead-profile-final.html (approved 2026-07-31). Translated to
+   --c- tokens and this app's polarity (dark on :root, light as the override). */
+
+/* WELL — the standard field. ONE recipe: empty and filled look identical, so an
+   empty field still reads as somewhere you can type. Holds content, so it carves
+   IN. Radius 14 / height 40 supersedes spec §7's "inputs 99px" (mock wins). */
+/* ── WELL — ported from docs/design-refs/wo-meta-compact.html `.well` ───────
+   Token + polarity translation only (the ref is light-first; this app is
+   dark-first). Height 40 / padding 14 per F-22 §3, superseding the ref's 38/13.
+
+   SPECIFICITY, READ BEFORE EDITING. `.c-sheet input:not([type="file"]):not(.c-input)`
+   (0,3,1) beat the old `.c-well input` (0,2,1), so every input inside a well got
+   the sheet's own carved box — a well inside a well, with 10px of its own padding
+   stacked on the well's 14. That is what shaved the first character off the email
+   field. The child rules below are written to outrank it. */
+.c-well {
+  /* Compact per §2b density ruling (2026-08-07) — was h40 / r14 / p14 / f13.5. */
+  display: flex; align-items: center; gap: 7px;
+  background: var(--c-bg); border-radius: 12px; height: 32px; padding: 0 10px;
+  font-size: 12.5px; box-sizing: border-box;
+  box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .34), inset -3px -3px 9px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-well {
+  box-shadow: inset 3px 3px 8px rgba(42, 39, 34, .07), inset -3px -3px 8px rgba(255, 255, 255, .65);
+}
+/* The control inside a well is BARE — no box, no padding, no shadow of its own.
+   The well is the box. */
+.c-well > input:not([type="file"]):not(.c-input),
+.c-well > textarea:not(.c-textarea),
+.c-well > select {
+  width: 100%; height: 100%; min-width: 0;
+  font-family: inherit; font-size: 12.5px; font-weight: 500; line-height: 1.4;
+  background: none; color: var(--c-fg);
+  border: none; outline: none; box-shadow: none;
+  padding: 0; margin: 0; border-radius: 0;
+}
+.c-well > input::placeholder, .c-well > textarea::placeholder { color: var(--c-fg); opacity: .3; }
+.c-well > input:focus, .c-well > textarea:focus, .c-well > select:focus {
+  outline: none; background: none; box-shadow: none;
+}
+.c-well > select { appearance: none; -webkit-appearance: none; cursor: pointer; }
+.c-well > select option { background: var(--c-bg); color: var(--c-fg); }
+.c-well .c-ico { opacity: .4; font-size: 13px; flex-shrink: 0; }
+
+/* ── DATA TABLE CELLS — TABLE EXEMPTION (§8) ───────────────────────────────
+   Inside a data table the GRID is the container. Cells are BARE: no wells, no
+   carving, no per-cell bubbles.
+
+   This supersedes the cell-well experiment. A well costs ~12px of horizontal
+   room per cell in padding and radius, which a form can afford and a 14-column
+   table cannot — the tax showed up immediately as "6:00 P" and truncated staff
+   names. Delineation comes from the zebra, not from drawing a box around every
+   value.
+
+   The edit affordance moves to interaction: a cell fills with wash on hover and
+   a step darker on focus. At rest it is text on the row.
+
+   Applies to studio time, rentals, payments and equipment condition. */
+.c-tin {
+  width: 100%; min-width: 0; box-sizing: border-box;
+  background: transparent; border: none; outline: none; box-shadow: none;
+  padding: 3px 6px; border-radius: 6px;
+  font-family: inherit; font-size: 11px; font-weight: 500; line-height: 1.4;
+  color: var(--c-fg);
+  transition: background .12s ease;
+}
+/* Written with padding :not()s so they outrank the scoped sheet defaults
+   (.c-sheet input… is (0,3,1)) even if that exclusion list is ever edited. The
+   resting state must stay transparent — that is the whole rule. */
+.c-tin:not(.c-input):not(.c-well):not(.c-area):not(.c-x) {
+  background: transparent; border: none; box-shadow: none;
+  /* 6px matches TCELL_X in WorkOrderPopup — headers, text cells and inputs all
+     start on the same vertical line. If one moves, move both. */
+  border-radius: 6px; padding: 3px 6px; height: auto;
+}
+.c-tin:hover:not(:disabled):not(.c-input):not(.c-well):not(.c-area):not(.c-x) { background: var(--c-wash); }
+.c-tin:focus:not(.c-input):not(.c-well):not(.c-area):not(.c-x) { background: var(--c-wash2); }
+.c-tin::placeholder { color: var(--c-fg); opacity: .3; font-weight: 400; }
+.c-tin:disabled { opacity: .4; }
+/* Mono for times and numbers. NOT `.c-mono` — that class carries its own
+   `font-size: 12.5px`, which is the trap that oversized the card footer. */
+.c-tin-mono { font-family: 'DM Mono', ui-monospace, monospace; }
+
+/* Zebra. Parity is passed in as a class rather than :nth-child because rows are
+   emitted through fragments and conditional sub-rows, so DOM position and row
+   number are not the same thing. */
+.c-trow-alt { background: var(--c-surface-band); }
+/* The zebra band, as an opaque colour rather than a wash — a sticky first column
+   has to paint the same band, and an alpha wash over the scrolling cells beneath
+   it lets them show through. */
+:root { --c-surface-band: #201f1c; }
+[data-theme="light"] { --c-surface-band: #efece5; }
+
+/* Row totals and the section total — bare bold mono, no container. */
+.c-tnum {
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 11px; font-weight: 500; text-align: right;
+}
+
+/* ── AREA — ported from the reference `.area`. A textarea IS the well; it is
+   never nested inside one. Nesting gave the inner textarea `height: 100%`
+   against a flex parent, which clipped the top of line one. NO fixed height:
+   min-height plus its own padding, so the first line always clears the edge. */
+.c-area {
+  /* Compact per §2b density ruling — was p11×14 / min-h 110. */
+  display: block; width: 100%; box-sizing: border-box;
+  background: var(--c-bg); border-radius: 12px;
+  padding: 7px 10px; min-height: 52px;
+  font-family: inherit; font-size: 12.5px; font-weight: 500; line-height: 1.5;
+  color: var(--c-fg); resize: vertical;
+  border: none; outline: none;
+  box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .34), inset -3px -3px 9px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-area {
+  box-shadow: inset 3px 3px 8px rgba(42, 39, 34, .07), inset -3px -3px 8px rgba(255, 255, 255, .65);
+}
+.c-area::placeholder { color: var(--c-fg); opacity: .3; }
+/* IdWell prefix (§8) — the field's LABEL, living inside the well.
+   For short identifiers (invoice #, PO #, WO #) a label stacked above a
+   full-width row spends a whole line and the width of the panel on five
+   characters. In the well it costs nothing and the fields can share a row.
+   General law: field width follows content width. */
+.c-pfx {
+  font-size: 9px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
+  opacity: .4; flex-shrink: 0; white-space: nowrap;
+}
+
+/* NEEDS CONTACT — flat tracked micro-caps toggle in the lead status strip
+   (F-2 ruling). Deliberately NOT a pill: it sits beside the temperature pill and
+   must not compete with it. Active = full ink, inactive = 40%. */
+.c-nc-toggle {
+  background: none; box-shadow: none; padding: 0; cursor: pointer; flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 4;
+  font-family: 'Inter', sans-serif; font-weight: 800; font-size: 9.5px;
+  letter-spacing: .11em; text-transform: uppercase; color: var(--c-fg);
+  opacity: .4; transition: opacity .16s ease;
+}
+.c-nc-toggle.c-on { opacity: 1; }
+.c-nc-toggle:hover { opacity: .75; }
+
+/* RETURNING BADGE — reference .returning. Sits at the far right of the status
+   strip. Booked green is correct here: a returning client IS a booked-history
+   state, which is inside the §5 colour scope. */
+.c-returning {
+  border-radius: 99px; padding: 5px 12px; margin-left: auto;
+  font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  background: var(--c-st-booked); color: var(--c-chip-ink);
+  cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+  box-shadow: 1.5px 1.5px 4px rgba(0, 0, 0, .35);
+}
+[data-theme="light"] .c-returning { box-shadow: 1.5px 1.5px 4px rgba(42, 39, 34, .14); }
+.c-returning small { font-weight: 600; opacity: .7; letter-spacing: .04em; }
+
+/* AKA SUB-FIELD — reference .artist-sub / .aw. Deliberately NOT the 40px well:
+   a stage name is secondary to the legal name, so it gets a shallower, shorter
+   recess (height 28, radius 10) that sits under the name without competing. */
+.c-artist-sub { display: inline-flex; align-items: center; gap: 7px; margin-top: 5px; font-size: 12px; }
+.c-aw {
+  background: var(--c-bg); border-radius: 10px; height: 28px;
+  display: flex; align-items: center; padding: 0 10px;
+  box-shadow: inset 2px 2px 6px rgba(0, 0, 0, .3), inset -2px -2px 6px rgba(255, 255, 255, .03);
+}
+[data-theme="light"] .c-aw {
+  box-shadow: inset 2px 2px 6px rgba(42, 39, 34, .06), inset -2px -2px 6px rgba(255, 255, 255, .55);
+}
+.c-artist-sub input {
+  font-size: 12.5px; width: 140px; background: none; color: var(--c-fg);
+  font-family: inherit; box-shadow: none; outline: none;
+}
+.c-artist-sub input::placeholder { color: var(--c-fg); opacity: .35; }
+
+/* BAND — grouping ground. One tone step, NO border and NO depth. This is the
+   third grouping level: carved container > band > nothing. Bands must NOT carve,
+   or nested groups turn into a hall of dents. */
+.c-band { background: var(--c-wash); border-radius: 16px; padding: 8px 10px; margin-top: 6px; }
+.c-band-head {
+  font-size: 9.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+  opacity: .5; margin-bottom: 4px;
+}
+
+/* CALCLINE — derived result under the session fields. Mono, muted, bare on the
+   band: it is an output, not an input, so it must not look like a field. */
+.c-calcline { font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; opacity: .55; margin-top: 5px; }
+
+/* SEGMENTED CONTROL — raised housing, selected segment pressed IN and filled.
+   Supersedes the loose individual pills used before. */
+/* ── SEGMENTED CONTROL — ported from docs/design-refs/wo-meta-compact.html
+   `.seg` / `.seg button` / `.seg button.on`. Token + polarity translation only.
+
+   ONE capsule carrying background + raised shadow. Options are TRANSPARENT
+   low-opacity text inside it. Only the selected option gets a fill and an inset
+   pressed shadow. (§8)
+
+   ══ SPECIFICITY — THE BUG THIS FIXES. READ BEFORE EDITING. ══
+   `.c-sheet button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action)`
+   is (0,7,1) and applies to any bare <button> inside a sheet or panel. Segment
+   options ARE bare buttons, so on the WO popup every option was being painted
+   with that rule's own background and RAISED shadow: the housing vanished behind
+   six individual pills, and `.c-seg button.c-on.c-fill-booked` (0,3,1) never got
+   near the status colours. Two review passes were spent on this.
+   The rules below repeat that same :not() chain so they match at (0,7,1) and,
+   sitting later in the file, win. Do not "simplify" the chain away. */
+.c-seg {
+  display: inline-flex; background: var(--c-bg); border-radius: 99px;
+  padding: 4px; gap: 2px; box-sizing: border-box;
+  box-shadow: 3px 3px 9px rgba(0, 0, 0, .5), -3px -3px 9px rgba(255, 255, 255, .04);
+}
+[data-theme="light"] .c-seg { box-shadow: 3px 3px 8px rgba(42, 39, 34, .14), -3px -3px 8px rgba(255, 255, 255, .7); }
+/* inline-flex, NOT flex: a block-level housing stretches to the panel width and
+   stops reading as a control. It still wraps. */
+.c-seg-wrap { display: inline-flex; flex-wrap: wrap; max-width: 100%; }
+
+.c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) {
+  border-radius: 99px; padding: 6px 14px;
+  font-family: inherit; font-size: 10px; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase;
+  cursor: pointer; opacity: .5;
+  background: none; color: var(--c-fg);
+  box-shadow: none; border: none; transform: none;
+  white-space: nowrap; transition: opacity .16s ease;
+}
+[data-theme="light"] .c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) { box-shadow: none; }
+.c-seg > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):active { transform: none; }
+
+/* SELECTED — filled + pressed IN.
+   THE :not() CHAIN HERE MUST MATCH THE BASE RULE ABOVE, PLUS .c-on.
+   Specificity, not source order, decides this — and the base rule sets
+   `background: none`. On 2026-08-11 the billing work added :not(.c-bact) and
+   :not(.c-bmore) to the BASE rule only, which put it one class ahead and killed
+   the selected fill outright. It stayed invisible because the light-mode variant
+   gets a ninth class from [data-theme] and ties, and status-filled segments
+   (.c-fill-*) tie too — so only PLAIN selected segments in DARK mode were dead,
+   and dark only became the default on 2026-08-06. Found 2026-08-13: Recording /
+   Filming / COD / Label-Billing all sat black.
+   If you ever extend the base rule's chain, extend these to match. */
+.c-seg > button.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) {
+  opacity: 1; background: var(--c-ivory); color: #1b1a17;
+  box-shadow: inset 2px 2px 5px rgba(0, 0, 0, .35);
+}
+[data-theme="light"] .c-seg > button.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) {
+  background: var(--c-fg); color: var(--c-bg);
+}
+
+/* STATUS-FILLED SEGMENT (§5 + §8). Where the field IS status, the pressed
+   segment fills with its own status colour rather than ink/ivory — there the
+   colour is the meaning, not decoration. Non-status groups stay ink/ivory. */
+.c-seg > button.c-on.c-fill-booked:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) { background: var(--c-st-booked); color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-warm:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)   { background: var(--c-st-warm);   color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-cold:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)   { background: var(--c-st-cold);   color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-uncon:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)  { background: var(--c-st-uncon);  color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-tech:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)   { background: var(--c-st-tech);   color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-dead:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)   { background: var(--c-st-dead);   color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-hot:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)    { background: var(--c-st-hot);    color: var(--c-hot-text); }
+/* TINY — the housing variant for segments that sit inside an already-raised
+   panel (the batch editor). No shadow of its own: a raised housing inside a
+   raised panel is the nesting §8 forbids; the tone step alone reads as a
+   housing there. Same :not() chain as above — see the specificity note. */
+.c-seg-tiny { padding: 3px; box-shadow: none; background: var(--c-wash); }
+[data-theme="light"] .c-seg-tiny { box-shadow: none; }
+.c-seg-tiny > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) { padding: 4px 10px; font-size: 9px; }
+
+/* MINI — small raised control for in-well adornments (Call / Text / ✉). */
+.c-mini {
+  background: var(--c-bg); border-radius: 99px; padding: 4px 10px;
+  font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  cursor: pointer; flex-shrink: 0; color: var(--c-fg); font-family: inherit;
+  box-shadow: 2px 2px 7px rgba(0, 0, 0, .45), -2px -2px 7px rgba(255, 255, 255, .035);
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+[data-theme="light"] .c-mini { box-shadow: 2px 2px 6px rgba(42, 39, 34, .14), -2px -2px 6px rgba(255, 255, 255, .7); }
+.c-mini:active { transform: translateY(1px); box-shadow: inset 2px 2px 5px rgba(0, 0, 0, .25); }
+
+/* FOLD — <details> disclosure for secondary content (activity, tags). */
+.c-fold { margin-top: 6px; }
+.c-fold summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+  font-size: 9.5px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase;
+  opacity: .45; padding: 4px 0;
+}
+.c-fold summary::-webkit-details-marker { display: none; }
+.c-fold summary::before { content: "\203A"; font-size: 14px; transition: transform .15s; display: inline-block; }
+.c-fold[open] summary::before { transform: rotate(90deg); }
+.c-fold .c-fold-body { padding: 6px 0 2px; }
+
+/* IDENTITY META LINE — payment type (clickable) · source · last-touch age. */
+.c-metaline {
+  display: flex; gap: 8px; align-items: baseline; margin-top: 4px; flex-wrap: wrap;
+  font-size: 9.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+}
+.c-metaline .c-pay { cursor: pointer; }
+.c-metaline .c-sep { opacity: .35; font-weight: 600; }
+.c-metaline .c-src { opacity: .45; font-weight: 700; }
+.c-metaline .c-age {
+  font-family: 'DM Mono', ui-monospace, monospace; font-size: 10.5px; opacity: .5;
+  text-transform: none; letter-spacing: 0; font-weight: 400;
+}
+
+/* DESTRUCTIVE — sanctioned by the §5 ruling that --c-st-hot is dual-purpose
+   (hot lead temperature AND critical/destructive). */
+.c-danger {
+  color: var(--c-st-hot); font-size: 10px; font-weight: 800; letter-spacing: .06em;
+  text-transform: uppercase; cursor: pointer; opacity: .8; background: none; box-shadow: none;
+}
+.c-danger:hover { opacity: 1; }
+
+/* ── New-lead pulse (§9) — the ONLY animated element in the system ──────── */
+.c-newpulse {
+  width: 9px; height: 9px; border-radius: 50%;
+  display: inline-block; flex-shrink: 0;
+  background: #f0ede4;
+  animation: c-newpulse 1.6s ease-in-out infinite;
+}
+[data-theme="light"] .c-newpulse { background: rgba(42, 39, 34, .85); }
+@keyframes c-newpulse { 0%, 100% { opacity: .25 } 50% { opacity: 1 } }
+
+/* ── /MY-DAY WORKSPACE (docs/design-refs/my-day-final.html, ruling 2026-08-10)
+   Ported from the approved Workbench mock. Sits BEFORE the soft-skin block so
+   that block's cascade still governs surfaces (spec §7c).
+   Reuses .c-myday-* for duty rows — this is only what the page adds. */
+
+/* Count on a lozenge. Mono because it's a number, quiet because the label leads. */
+.c-ct {
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 10px; opacity: .7; letter-spacing: 0; flex-shrink: 0;
+}
+
+/* Sub-steps under a duty: REFERENCE TEXT, never ticks. The no-logic ruling
+   means one checkbox per duty, but a multi-step duty shouldn't be a black box. */
+.c-myday-sub { font-size: 10.5px; opacity: .5; margin-top: 1px; line-height: 1.45; }
+
+/* Inline overdue. No band at the top of the page: relocating a late item tells
+   you something is late and then makes you hunt for it. It stays where it lives
+   and says so. Fill, not border — Law 1. Hot is the sanctioned critical colour. */
+.c-myday-item.c-late { background: rgba(255, 90, 77, .11); border-radius: 9px; padding: 4px 7px; }
+.c-mdlate {
+  font-size: 8px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--c-st-hot); flex-shrink: 0;
+}
+.c-mdscope { font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px; opacity: .55; }
+
+/* Queue row. */
+.c-qrow {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 6px; font-size: 11.5px; border-radius: 8px;
+}
+.c-qrow:hover { background: var(--c-wash); }
+.c-who { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .85; }
+
+/* MANUAL step — a pill, because it is pressable. Only for what PRSFlo cannot
+   determine for itself (ruling 2026-08-10). */
+.c-mdstep {
+  font-size: 9.5px; font-weight: 700; padding: 2px 8px; border-radius: 99px;
+  background: var(--c-wash2); color: var(--c-fg); opacity: .55;
+  flex-shrink: 0; cursor: pointer; border: none;
+}
+.c-mdstep.c-on { background: var(--c-st-booked); color: var(--c-chip-ink); opacity: 1; }
+
+/* DERIVED indicator — a light, not a control. No pill, no cursor: nothing to
+   press and nothing to fake. Quieter than a step so the eye goes to whatever
+   still needs a human. */
+.c-mdind {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9.5px; font-weight: 700; opacity: .4; flex-shrink: 0; padding: 2px;
+}
+.c-mdind i {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; opacity: .4; flex-shrink: 0;
+}
+.c-mdind.c-on { opacity: .8; }
+.c-mdind.c-on i { background: var(--c-st-booked); opacity: 1; }
+
+/* Billing brief stat block — read-only, manager's peek. */
+.c-mdstat { background: var(--c-wash); border-radius: 12px; padding: 9px 11px; }
+
+.c-mdnotes {
+  width: 100%; min-height: 60px; border-radius: 11px; background: var(--c-wash);
+  padding: 9px 11px; font-family: 'Inter', sans-serif; font-size: 12px; line-height: 1.55;
+  color: var(--c-fg); resize: vertical; outline: none; border: none; box-sizing: border-box;
+}
+.c-mdnotes:focus { background: var(--c-wash2); }
+
+/* ── BILLING HUB (docs/design-refs/billing-hub-final.html, ruling 2026-08-11)
+   Ported from the approved mock. Sits BEFORE the soft-skin block so that
+   block's cascade still governs surfaces (spec §7c). Reuses .c-fill-* for the
+   status pills — no new colour is introduced. */
+
+.c-bstat { background: var(--c-srf, var(--c-bg)); box-shadow: var(--c-softsh); border-radius: 14px; padding: 10px 12px; }
+
+/* SEARCH — above the tabs, because it outranks them. */
+/* MATCHES `.c-input` (fix, 2026-08-13). This was a 99px capsule, which is the
+   OLD carved geometry for inputs (§7). The soft skin + the density ruling
+   (§2b) moved every field to a 12px rounded rectangle 32px tall — see
+   `.c-input`, which is what the CRM's "Search 16 leads…" field uses, and which
+   Eli sent as the reference. A lone capsule among 12-radius fields is what read
+   as "a square in a rounded" — the eye was catching the mismatch, not a corner.
+   Any new search field copies .c-input; do not reintroduce a pill. */
+.c-bsearch {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  background: var(--c-wash); border-radius: 12px; padding: 0 10px; height: 32px;
+}
+.c-bsearch:focus-within { background: var(--c-wash2); }
+.c-bsearch input {
+  flex: 1; outline: none; border: none; background: none;
+  color: var(--c-fg); font-family: 'Inter', sans-serif; font-size: 12.5px;
+  /* THE BOX IN THE BUBBLE (fix, 2026-08-13). Rule (5) up at line ~353 gives
+     `input:not(.c-input)` a recessed inset shadow, and this input carries no
+     class — so it painted a sunken rectangle INSIDE the rounded search bar.
+     The BAR is the field here; the input is only the text layer, so it must
+     carry no depth of its own. Any wrapper-styled field needs this line. */
+  box-shadow: none;
+}
+.c-bclr { opacity: .45; font-size: 11px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+.c-bclr:hover { opacity: .9; }
+
+.c-btabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+/* Dimmed while searching: search ignores the tab entirely, so leaving them lit
+   would imply the results are filtered by the open one. */
+.c-btabs.c-dim { opacity: .35; pointer-events: none; }
+.c-btab {
+  display: flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 99px;
+  background: var(--c-wash); font-size: 12px; font-weight: 700; cursor: pointer;
+  box-shadow: var(--c-ctlsh); color: var(--c-fg);
+}
+.c-btab.c-on { background: var(--c-ivory); color: #1b1a17; }
+[data-theme="light"] .c-btab.c-on { background: var(--c-fg); color: var(--c-bg); }
+.c-bn { font-family: 'DM Mono', ui-monospace, monospace; font-size: 10.5px; opacity: .65; }
+
+/* LOCKED GRID (Eli, 2026-08-11): "these status areas are all over the place —
+   they need to be locked into a grid so they show in the same place."
+   Right. The row was a flex line, so an inline Awaiting-PO tag shoved the lights
+   sideways and nothing lined up down the column. A fixed template means lights /
+   flag / amount / age / action land in the same place on every row whether or
+   not that row has a flag, which is what makes the column scannable. */
+.c-brow, .c-browhd {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) 124px 210px 84px 46px 120px 26px;
+  align-items: center; gap: 10px;
+}
+/* AGE IS ONLY MEANINGFUL ONCE SOMETHING HAS BEEN SENT (Eli, 2026-08-11). On
+   In progress, Needs review and Upcoming it is a column of dashes, so the
+   column is dropped rather than filled with nothing. */
+.c-bage-off .c-brow, .c-bage-off .c-browhd {
+  grid-template-columns: 76px minmax(0, 1fr) 124px 210px 84px 120px 26px;
+}
+/* COD LATCHED BINS (2026-08-19): with 2+ bins merged into one list, a leading
+   badge column says each row's home bin. The class only exists on desktop —
+   mobile rows never carry the badge. */
+.c-bmulti .c-brow, .c-bmulti .c-browhd {
+  grid-template-columns: 88px 76px minmax(0, 1fr) 124px 210px 84px 46px 120px 26px;
+}
+.c-bmulti.c-bage-off .c-brow, .c-bmulti.c-bage-off .c-browhd {
+  grid-template-columns: 88px 76px minmax(0, 1fr) 124px 210px 84px 120px 26px;
+}
+.c-bbin {
+  font-size: 8px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  border-radius: 5px; padding: 3px 6px; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* FIXED ROW HEIGHT. A button is taller than a line of text, so rows that had
+   one grew and rows that didn't stayed short — which is why the one Approve in
+   a list read as floating between its neighbours rather than sitting in a
+   column (Eli, 2026-08-11). Locking the height is the vertical half of the
+   locked grid; without it the columns line up and the rows still don't. */
+.c-brow { padding: 4px 10px; min-height: 38px; border-radius: 11px; font-size: 12px; }
+.c-brow .c-bact { line-height: 1.2; }
+.c-brow:hover { background: var(--c-wash); }
+/* Header strip, so the columns are readable AS columns. */
+.c-browhd {
+  padding: 2px 10px 6px; font-size: 9px; font-weight: 800;
+  letter-spacing: .09em; text-transform: uppercase; opacity: .35;
+}
+.c-browhd .c-r { text-align: right; }
+.c-binv { font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; opacity: .6; }
+.c-bwho { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-bwho span { opacity: .5; font-size: 11px; }
+.c-bamt { font-family: 'DM Mono', ui-monospace, monospace; font-size: 11.5px; text-align: right; }
+.c-bage { font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px; opacity: .45; text-align: right; }
+.c-bflagcell { display: flex; justify-content: flex-end; min-width: 0; }
+/* CENTRED IN ITS COLUMN (Eli, 2026-08-13). Right-aligning pills of different
+   widths — "Approve", "Mark sent", "Attach invoice" — lined up their right edges
+   and left their left edges ragged down the list. Centring makes the column read
+   as one stack of buttons instead of a jagged edge. */
+.c-bactcell { display: flex; justify-content: center; gap: 6px; }
+.c-browhd .c-bacthd { text-align: center; }
+/* The ⋯ overflow gets its OWN column at the far right edge (fix, 2026-08-11).
+   It used to share the action cell, so on a row with no button it drifted into
+   the middle of the gap and on a row with one it crowded the primary. A control
+   that means "everything else" belongs at the end, in the same place on every
+   row, out of the flow. */
+.c-bmorecell { display: flex; justify-content: flex-end; }
+.c-bmore {
+  font-size: 12px; line-height: 1; padding: 4px 2px; border: none; background: none;
+  color: var(--c-fg); opacity: .3; cursor: pointer;
+}
+.c-bmore:hover { opacity: .9; }
+/* Past due: the amount goes hot. Hot is dual-purpose for critical (spec §5). */
+.c-brow.c-od .c-bamt { color: var(--c-st-hot); font-weight: 700; }
+
+/* THE THREE LIGHTS — the assembly line, on the row instead of in the nav.
+   Reviewed › Invoiced › Approved. Each is DERIVED; the button beside them is
+   the only thing you press. COD shows two: no approval, nothing to send. */
+.c-blights { display: flex; align-items: center; gap: 2px; justify-content: flex-start; min-width: 0; }
+.c-blt {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 8px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase;
+  opacity: .28; padding: 2px 5px; border-radius: 99px; white-space: nowrap;
+}
+.c-blt i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .45; }
+.c-blt.c-done { opacity: .85; }
+.c-blt.c-done i { background: var(--c-st-booked); opacity: 1; }
+/* The step being waited on: the only one that reads as live. This is how
+   billing spots last night's unreviewed work orders in the morning. */
+.c-blt.c-next { opacity: 1; background: var(--c-wash2); }
+.c-blt.c-next i { background: var(--c-st-warm); opacity: 1; }
+.c-barrow { opacity: .2; font-size: 9px; flex-shrink: 0; }
+
+/* PINNED below the pager, never a row inside the list — a footer row in a
+   paginated list falls onto page 3 (Eli). Clicking SWITCHES the list rather
+   than expanding under it: ten paginated rows followed by twelve un-paginated
+   ones would make "page 2" mean two different things. */
+.c-bup {
+  display: flex; align-items: center; gap: 8px; margin-top: 8px;
+  padding: 9px 12px; border-radius: 12px; background: var(--c-wash);
+  font-size: 11.5px; font-weight: 700; cursor: pointer; opacity: .75; width: 100%;
+  color: var(--c-fg); border: none; text-align: left;
+}
+.c-bup:hover { opacity: 1; background: var(--c-wash2); }
+.c-bup .c-bn { margin-left: 0; }
+.c-bup .c-go { margin-left: auto; opacity: .5; }
+
+/* `.c-bsegdot` removed 2026-08-13. It was the hot dot on the COD side of the old
+   top-right pill switch — binary, and silent about ordinary COD work. Superseded
+   by the hot COUNT in the page heading (spec §17), which says how many. */
+
+.c-bpill {
+  display: inline-flex; align-items: center; border-radius: 99px; padding: 2px 9px;
+  font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--c-chip-ink); flex-shrink: 0; white-space: nowrap;
+}
+/* Which bucket a search hit lives in — rendered only while searching. */
+.c-binbucket, .c-breason {
+  font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  opacity: .42; flex-shrink: 0;
+}
+.c-bdoc { font-size: 9px; font-weight: 700; opacity: .4; flex-shrink: 0; }
+.c-bdoc.c-on { opacity: .8; }
+/* Awaiting PO / Changed since invoiced / Written off — the flag column. */
+.c-bflag {
+  font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+  flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.c-bflag.c-po { color: var(--c-st-cold); }
+.c-bflag.c-soon { opacity: .4; }
+
+.c-bacts { display: flex; gap: 6px; flex-shrink: 0; }
+/* ROW BUTTONS OPT OUT OF THE CARVED TREATMENT.
+   `.c-panel button:not(...)` gives every button inside a panel the raised,
+   pill-shaped soft-skin look — which is right for a footer action and very
+   wrong for a 9px control at the end of a table row. Download & send and Mark
+   paid rendered as big floating bubbles because `.c-bact` was not in that
+   rule's exclusion list (Eli, 2026-08-11). It is now, along with `.c-bmore`. */
+.c-bact {
+  font-size: 9.5px; font-weight: 700; padding: 4px 10px; border-radius: 99px;
+  background: var(--c-wash2); color: var(--c-fg); border: none; cursor: pointer; opacity: .8;
+}
+.c-bact:hover { opacity: 1; }
+.c-bact.c-bmuted { background: transparent; opacity: .45; }
+.c-bact.c-bmuted:hover { opacity: .85; }
+.c-bact.c-bblock { display: block; width: 100%; text-align: left; padding: 10px 12px; margin-bottom: 6px; font-size: 12px; }
+
+.c-bpager { display: flex; align-items: center; gap: 8px; justify-content: flex-end; padding: 9px 6px 2px; font-size: 11px; }
+.c-binfo { margin-right: auto; opacity: .45; font-family: 'DM Mono', ui-monospace, monospace; font-size: 10.5px; }
+.c-bpg { padding: 3px 9px; border-radius: 99px; background: var(--c-wash2); font-size: 10.5px; font-weight: 700; cursor: pointer; opacity: .7; }
+.c-bpg.c-on { background: var(--c-ivory); color: #1b1a17; opacity: 1; }
+[data-theme="light"] .c-bpg.c-on { background: var(--c-fg); color: var(--c-bg); }
+
+/* Drop target for the QuickBooks PDF. A tint, not a border — Law 1. */
+.c-brow.c-drop { background: rgba(67, 223, 174, .16); border-radius: 11px; }
+/* The drag target is invisible unless you are told about it — so a row that is
+   waiting on its invoice says so, in the flag column, in plain words. */
+.c-bhint {
+  font-size: 9.5px; opacity: .4; font-style: italic; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.c-brow.c-drop .c-bhint { opacity: .95; font-style: normal; }
+
+/* Edited after invoicing. Hot = critical (spec §5): the cost of missing this
+   is the client finding the discrepancy first. */
+.c-bdrift {
+  font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--c-st-hot); flex-shrink: 0; cursor: help;
+}
+
+.c-bnote { font-size: 11px; opacity: .5; padding: 9px 4px 0; line-height: 1.5; }
+.c-bempty { padding: 18px 10px; font-size: 12px; opacity: .5; text-align: center; }
+
+.c-bmodal-wrap {
+  position: fixed; inset: 0; z-index: 10004;
+  background: rgba(0, 0, 0, .5); display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.c-bmodal {
+  background: var(--c-srf, var(--c-bg)); box-shadow: var(--c-softsh);
+  border-radius: 18px; padding: 14px; width: 100%; max-width: 420px;
+}
+
+/* THE PACKAGE WINDOW — the work order and the invoice in one place, so you can
+   see what the client is about to receive before sending it. Wide and tall by
+   design: this is a reading surface, not a dialogue. */
+.c-bpkg {
+  background: var(--c-srf, var(--c-bg)); box-shadow: var(--c-softsh);
+  border-radius: 18px; width: 100%; max-width: 1120px; height: 90vh;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.c-bpkghd {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 14px; flex-shrink: 0;
+}
+.c-bpkgbody { flex: 1; min-height: 0; overflow: auto; padding: 0 14px 14px; }
+
+@media (max-width: 768px) {
+  .c-bmodal-wrap { padding: 0; }
+  .c-bpkg { max-width: none; height: 100dvh; border-radius: 0; }
+}
+
+@media (max-width: 768px) {
+  /* The locked grid is a desktop instrument — seven columns on a phone would
+     be seven slivers. On mobile the row folds back to a wrapping line, and the
+     header strip is hidden because it would label nothing. */
+  .c-brow { display: flex; flex-wrap: wrap; gap: 6px; }
+  .c-browhd { display: none; }
+  .c-bwho { flex-basis: 100%; }
+  .c-blights { flex-wrap: wrap; }
+  .c-bflagcell, .c-bactcell { justify-content: flex-start; }
+  .c-bamt, .c-bage { text-align: left; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c-newpulse { animation: none; opacity: 1; }
+  .c-control { transition: none; }
+  .c-control:hover, .c-control:active { transform: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SOFT SKIN — RULING 2026-08-07 (spec §7c). SUPERSEDES the carved recipes.
+   Chosen from docs/design-refs/dashboard-flat-skins.html option C.
+   One block, at the END on purpose: equal-specificity cascade beats every
+   carved rule above, so the whole app flips here and can flip back by
+   deleting this block. Carved rules above are dead law kept for history.
+   Law 1 (no lines) still stands; the Flo ring stays (glow = AI).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* DARK — surfaces lift slightly off the ground */
+  --c-srf:    #242320;
+  --c-softsh: 0 2px 5px rgba(0, 0, 0, .25), 0 8px 22px rgba(0, 0, 0, .22);
+  --c-ctlsh:  0 1px 4px rgba(0, 0, 0, .3);
+}
+[data-theme="light"] {
+  --c-srf:    #ffffff;
+  --c-softsh: 0 1px 3px rgba(42, 39, 34, .08), 0 5px 16px rgba(42, 39, 34, .07);
+  --c-ctlsh:  0 1px 3px rgba(42, 39, 34, .15);
+}
+
+/* Containers: flat raised surfaces. */
+.c-panel, .c-pipe, .c-stud, .c-flagmini,
+[data-panel="admin-sidebar"] {
+  background: var(--c-srf);
+  box-shadow: var(--c-softsh);
+}
+[data-theme="light"] .c-panel, [data-theme="light"] .c-pipe,
+[data-theme="light"] .c-stud, [data-theme="light"] .c-flagmini,
+[data-theme="light"] [data-panel="admin-sidebar"] {
+  background: var(--c-srf);
+  box-shadow: var(--c-softsh);
+}
+/* Floating containers (modals/sheets/hovercards) get extra distance. */
+.c-sheet, .c-modal, .c-hovercard {
+  background: var(--c-srf);
+  box-shadow: var(--c-softsh), 0 18px 50px rgba(0, 0, 0, .3);
+}
+[data-theme="light"] .c-sheet, [data-theme="light"] .c-modal, [data-theme="light"] .c-hovercard {
+  background: var(--c-srf);
+  box-shadow: var(--c-softsh), 0 18px 50px rgba(42, 39, 34, .16);
+}
+
+/* Second-level holders: flat wash fills, no depth. Focus stays a fill change. */
+.c-inset2, .c-well, .c-area, .c-field-inline, .c-aw,
+.c-panel textarea:not(.c-textarea):not(.c-tin) {
+  background: var(--c-wash);
+  box-shadow: none;
+}
+[data-theme="light"] .c-inset2, [data-theme="light"] .c-well,
+[data-theme="light"] .c-area, [data-theme="light"] .c-field-inline,
+[data-theme="light"] .c-aw,
+[data-theme="light"] .c-panel textarea:not(.c-textarea):not(.c-tin) {
+  background: var(--c-wash);
+  box-shadow: none;
+}
+.c-input { background: var(--c-wash); box-shadow: none; }
+.c-input:focus { background: var(--c-wash2); }
+.c-well:focus-within, .c-field-inline:focus-within { background: var(--c-wash2); }
+/* Guard: well contents may never bleed into a neighbour, whatever the width. */
+.c-well { overflow: hidden; }
+
+/* Status pools keep their alpha fills — shadowless. */
+.c-pool, [data-theme="light"] .c-pool { box-shadow: none; }
+
+/* Selected states are fills, not carves. */
+.c-row.c-selected, [data-theme="light"] .c-row.c-selected {
+  background: var(--c-wash2); box-shadow: none;
+}
+.c-pressed, [data-theme="light"] .c-pressed { box-shadow: none; }
+.c-seg > button.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore),
+[data-theme="light"] .c-seg > button.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) {
+  box-shadow: none;
+}
+.c-myday-bx, [data-theme="light"] .c-myday-bx { background: var(--c-wash2); box-shadow: none; }
+.c-myday-item.c-done .c-myday-bx { background: var(--c-st-booked); }
+
+/* Controls: raised meaning, flat treatment — small drop shadow; press is a
+   nudge + fill, never an inner shadow. */
+.c-raised, .c-raised-chip, .c-raised-primary, .c-mini, .c-pill, .c-seg,
+.c-anchor, .c-returning, .c-datechip {
+  box-shadow: var(--c-ctlsh);
+}
+[data-theme="light"] .c-raised, [data-theme="light"] .c-raised-chip,
+[data-theme="light"] .c-raised-primary, [data-theme="light"] .c-mini,
+[data-theme="light"] .c-pill, [data-theme="light"] .c-seg,
+[data-theme="light"] .c-anchor, [data-theme="light"] .c-returning,
+[data-theme="light"] .c-datechip {
+  box-shadow: var(--c-ctlsh);
+}
+.c-seg.c-seg-tiny, [data-theme="light"] .c-seg.c-seg-tiny { box-shadow: none; }
+.c-control:active, .c-mini:active,
+[data-theme="light"] .c-control:active,
+.c-panel button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):active {
+  box-shadow: none;
+  background: var(--c-wash2);
+}
+
+/* Table zebra stays a flat band — retuned for the soft surfaces (bands sit on
+   --c-srf now, not the page ground) and given rounded ends so rows have a
+   defined left/right edge instead of running flush into the panel. */
+:root { --c-surface-band: #1e1d1a; }
+[data-theme="light"] { --c-surface-band: #f3f0e9; }
+.c-trow-alt { border-radius: 8px; }
+.c-table-row:nth-child(odd), [data-theme="light"] .c-table-row:nth-child(odd) { box-shadow: none; }
+
+/* Flo's inner surface rides on the panel surface now. */
+.c-ringwrap .c-flo-inner { background: var(--c-srf); }
+
+/* Bare fields caught by the sheet/panel catch-alls: flat wash, no carve. */
+.c-sheet input:not([type="file"]):not(.c-input):not(.c-tin),
+.c-sheet select:not(.c-tin),
+.c-sheet textarea:not(.c-textarea):not(.c-tin),
+.c-panel input:not([type="file"]):not(.c-input):not(.c-tin),
+.c-panel select:not(.c-tin),
+.c-panel textarea:not(.c-textarea):not(.c-tin) {
+  background: var(--c-wash);
+  box-shadow: none;
+}
+[data-theme="light"] .c-sheet input:not([type="file"]):not(.c-input):not(.c-tin),
+[data-theme="light"] .c-sheet select:not(.c-tin),
+[data-theme="light"] .c-sheet textarea:not(.c-textarea):not(.c-tin),
+[data-theme="light"] .c-panel input:not([type="file"]):not(.c-input):not(.c-tin),
+[data-theme="light"] .c-panel select:not(.c-tin),
+[data-theme="light"] .c-panel textarea:not(.c-textarea):not(.c-tin) {
+  box-shadow: none;
+}
+
+/* NO BUBBLES IN BUBBLES: a control inside a well is BARE — the well is the box.
+   These come AFTER the catch-alls above and carry the extra :not() so they
+   outrank them (the documented specificity war, re-fought for the soft skin). */
+.c-well > input:not([type="file"]):not(.c-input):not(.c-tin),
+.c-well > textarea:not(.c-textarea):not(.c-tin),
+.c-well > select:not(.c-tin),
+.c-artist-sub .c-aw input:not(.c-input):not(.c-tin),
+[data-theme="light"] .c-well > input:not([type="file"]):not(.c-input):not(.c-tin),
+[data-theme="light"] .c-well > textarea:not(.c-textarea):not(.c-tin),
+[data-theme="light"] .c-well > select:not(.c-tin),
+[data-theme="light"] .c-artist-sub .c-aw input:not(.c-input):not(.c-tin) {
+  background: none;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* Always-visible cell fields (Eli 2026-08-07): an empty rentals/payments row
+   read as one long blank bar — nothing said "five fields live here". These
+   inputs keep a persistent wash2 chip in every state so the criteria to fill
+   are obvious; hover/focus don't dim it back to transparent. */
+.c-tin.c-tin-show,
+.c-tin.c-tin-show:hover:not(:disabled),
+.c-tin.c-tin-show:focus {
+  background: var(--c-wash2);
+}
+
+/* ═══ END SOFT SKIN ═════════════════════════════════════════════════════════ */
+/* ── BILLING: the pipeline IS the title (RULING 2026-08-13, spec §17) ───────
+   Both pipelines live in the page heading, so the page cannot be read without
+   reading "COD". The inactive one stays fully legible at low opacity — dimmed
+   is not hidden; that is the entire point of the ruling. */
+.c-btitle { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
+.c-btitle > button {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: inherit; letter-spacing: -0.03em; line-height: 1.05;
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: var(--c-fg); opacity: 0.28;
+  transition: opacity .14s ease;
+}
+.c-btitle > button:hover { opacity: 0.6; }
+.c-btitle > button.c-on, .c-btitle > button.c-on:hover { opacity: 1; }
+/* The count. Mono, quiet — it is a fact about the word beside it, not a badge. */
+.c-btitlen {
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 12px; font-weight: 400; letter-spacing: 0; opacity: 0.5;
+}
+.c-btitle > button.c-on .c-btitlen { opacity: 0.6; }
+/* HOT = money nobody is chasing. Full strength even on the INACTIVE side —
+   that is the case the whole ruling exists for. */
+.c-btitlen.c-hot,
+.c-btitle > button.c-on .c-btitlen.c-hot {
+  background: var(--c-st-hot); color: var(--c-hot-text);
+  border-radius: 99px; padding: 2px 8px;
+  font-size: 11px; font-weight: 700; opacity: 1;
+}
+
+/* ── "Not required" — the PO field answers its own question (spec option A,
+   2026-08-13). Lives INSIDE the .c-well at its right end, so the answer sits on
+   the thing it is about instead of beside it as a separate segment.
+   Off = a quiet chip you can read past. On = filled, because a job that needs no
+   PO is a fact worth seeing at a glance from across the row. */
+.c-poreq:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin) {
+  margin-left: auto; flex-shrink: 0; white-space: nowrap; cursor: pointer;
+  border: none; font-family: inherit;
+  font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 99px;
+  background: var(--c-wash2); color: var(--c-fg); opacity: .45;
+  transition: opacity .14s ease, background .14s ease;
+}
+.c-poreq:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin):hover:not(:disabled) { opacity: .8; }
+.c-poreq.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin), .c-poreq.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin):hover { opacity: 1; background: var(--c-ivory); color: #1b1a17; }
+[data-theme="light"] .c-poreq.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin), [data-theme="light"] .c-poreq.c-on:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin):hover { background: var(--c-fg); color: var(--c-bg); }
+.c-poreq:disabled { cursor: default; }
+
+/* ── Equipment pill — the studio day's third line (spec §18) ────────────────
+   One pill per item; tap cycles blank → OK → Not OK → OK → … It never returns
+   to blank, because blank means nobody has answered yet and a third tap must
+   not be able to destroy that. Colour is status only (§5). */
+.c-eqpill:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin) {
+  display: inline-flex; align-items: center; gap: 5px;
+  /* Matched to the mock (Eli preferred that size). The app's first pass looked
+     far bigger than this because the sheet's generic <button> defaults were
+     winning — see the :not() padding on the rules below. */
+  padding: 3px 9px; border-radius: 99px; border: none; cursor: pointer;
+  font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 700;
+  line-height: 1.5; white-space: nowrap; box-shadow: none;
+  background: var(--c-wash2); color: var(--c-fg); opacity: .45;
+  transition: opacity .12s ease, background .12s ease;
+}
+/* No focus ring — Law 1. Focus is a fill change, as everywhere else. */
+.c-eqpill:focus { outline: none; }
+.c-eqpill:focus-visible { outline: none; opacity: 1; }
+.c-eqpill > i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; opacity: .5; }
+.c-eqpill > b { font-weight: 800; opacity: .75; }
+.c-eqpill:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin):hover:not(:disabled) { opacity: .75; }
+.c-eqpill:disabled { cursor: default; }
+/* Answered: OK recedes (it is the normal night), Not OK shouts. */
+.c-eqpill.c-ok:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin) { opacity: 1; color: var(--c-st-booked); }
+.c-eqpill.c-ok > i { opacity: 1; }
+.c-eqpill.c-bad:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin), .c-eqpill.c-bad:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore):not(.c-input):not(.c-tin):hover { opacity: 1; background: var(--c-st-hot); color: var(--c-hot-text); }
+.c-eqpill.c-bad > i { opacity: 1; }
+
+/* ── Helpful hints — first-time coach marks (Eli, 2026-08-17) ──────────────
+   Rendered by components/ui/Hint.tsx. ON by default; toggled from the rail
+   ("Helpful hints") or the runner hub's 💡; persisted to
+   localStorage['prsflo-hints']. Cold blue = informational, never status. */
+.c-hint {
+  display: inline-flex; position: relative; width: 15px; height: 15px;
+  border-radius: 50%; background: var(--c-st-cold); color: var(--c-bg);
+  font-family: Inter, sans-serif; font-size: 9.5px; font-weight: 800;
+  align-items: center; justify-content: center; cursor: pointer;
+  flex-shrink: 0; vertical-align: middle; margin-left: 6px; line-height: 1;
+  letter-spacing: 0; text-transform: none;
+  animation: c-hintpulse 2.4s ease-in-out infinite;
+}
+@keyframes c-hintpulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-st-cold) 45%, transparent); }
+  50% { box-shadow: 0 0 0 5px transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .c-hint { animation: none; } }
+.c-hint-tip {
+  position: absolute; bottom: 135%; left: -12px; width: 230px; z-index: 10050;
+  background: var(--c-fg); color: var(--c-bg); border-radius: 11px;
+  padding: 9px 12px; font-size: 11px; font-weight: 500; line-height: 1.5;
+  text-align: left; letter-spacing: 0; text-transform: none;
+  box-shadow: var(--c-softsh); cursor: default;
 }

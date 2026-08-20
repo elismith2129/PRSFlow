@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Billing latch tabs + bucket badges</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  BILLING LATCH TABS (Eli, 2026-08-19): "toggles for different bins be latch
+  so you can view multiple at once. say COD in progress and balance due. that
+  way we dont miss anything. same for billing. and maybe a badge of some sort
+  on the left hand side to differentiate."
+
+  Rules proposed here (same family as the CRM multi-select status tabs):
+  · Each tab is an independent LATCH — click toggles it on/off. Latched tabs
+    press in and fill; multiple can be on.
+  · The last latched tab cannot be un-latched (a zero-bin list means nothing).
+  · With 2+ bins latched the list is ONE merged list, ordered by tab order
+    (Balance due leads, then In progress, …), each bin keeping its own
+    internal sort. A left-hand BUCKET BADGE on every row says which bin it
+    came from — colored to match the tab's pill.
+  · With ONE bin latched the badge column collapses — the tab already says it.
+  · Counts stay on the tabs; the pager runs over the merged list.
+  · Selection persists per pipeline (sessionStorage), like the CRM tabs.
+  THE TOGGLE BELOW IS LIVE — click the tabs.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --hot:#ff5a4d; --warm:#ffa94d; --booked:#43dfae; --uncon:#8fb7c9; --dead:#cfd6d4;
+  --chip-ink:#1c2626; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:22px 26px 60px;max-width:960px;margin:0 auto}
+.arch{font-family:'Archivo Black',sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,monospace}
+.bar{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.bar h1{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-.02em}
+.ctl{margin-left:auto;padding:5px 12px;border-radius:99px;background:var(--wash);
+  font-size:11px;font-weight:700;cursor:pointer;border:none;font-family:inherit;color:var(--fg)}
+.sheet{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:16px 18px}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:99px;background:var(--wash);margin-bottom:12px}
+.seg button{border:none;font:inherit;color:var(--fg);font-size:9.5px;font-weight:800;
+  letter-spacing:.05em;text-transform:uppercase;padding:6px 14px;border-radius:99px;
+  cursor:pointer;background:transparent;opacity:.5;display:inline-flex;gap:6px;align-items:center}
+.seg button.on{opacity:1;color:var(--chip-ink)}
+.seg button.on.t-hot{background:var(--hot);color:#fff4f2}
+.seg button.on.t-uncon{background:var(--uncon)}
+.seg button.on.t-warm{background:var(--warm)}
+.seg button.on.t-booked{background:var(--booked)}
+.cnt{font-size:8.5px;background:rgba(0,0,0,.18);border-radius:99px;padding:1px 6px}
+.row{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;background:var(--wash);margin-bottom:6px;font-size:11.5px}
+.badge{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:5px;padding:3px 7px;flex-shrink:0;width:84px;text-align:center;color:var(--chip-ink)}
+.b-hot{background:var(--hot);color:#fff4f2}
+.b-uncon{background:var(--uncon)}
+.inv{font-family:ui-monospace,monospace;font-size:10.5px;opacity:.6;width:64px}
+.who b{font-weight:700}
+.who span{opacity:.55}
+.money{margin-left:auto;font-family:ui-monospace,monospace;font-weight:700}
+.chip{font-size:8.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  background:var(--wash2);border-radius:99px;padding:3px 9px;opacity:.7}
+.note{font-size:11px;opacity:.5;line-height:1.6;max-width:640px;margin-top:12px}
+.k{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.4}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <h1>Billing tabs as latches — COD side shown · toggle is live</h1>
+  <button class="ctl" onclick="flip()" id="themeBtn">View light</button>
+</div>
+
+<div class="sheet">
+  <div class="seg" id="tabs">
+    <button class="t-hot on" data-bin="balance" onclick="latch(this)">Balance due <span class="cnt">1</span></button>
+    <button class="t-uncon on" data-bin="progress" onclick="latch(this)">In progress <span class="cnt">3</span></button>
+    <button class="t-warm" data-bin="review" onclick="latch(this)">Needs review <span class="cnt">2</span></button>
+    <button class="t-booked" data-bin="paid" onclick="latch(this)">Paid <span class="cnt">6</span></button>
+  </div>
+
+  <div id="list"></div>
+
+  <div class="note" id="legend"></div>
+</div>
+
+<div class="note">
+Latch rules: every tab toggles independently — press two, see both bins as one list,
+ordered the way the tabs are (Balance due always leads). The colored badge on the left
+is each row's home bin, matching its tab color; with only one bin latched the badge
+column disappears since the tab already says it. The last latched tab refuses to turn
+off. Selection remembered per pipeline, like the CRM status tabs.
+</div>
+
+<script>
+const ROWS = [
+  { bin:'balance',  inv:'1029', who:'Death Row · BloodHound', sub:'Aug 15–16 · B', money:'$2,340.00', chip:'Record payment on the WO' },
+  { bin:'progress', inv:'1036', who:'Rostrum · Kikoshai',     sub:'Aug 19 · A',    money:'$1,240.00', chip:'' },
+  { bin:'progress', inv:'1035', who:'EMPIRE · UntilJapan',    sub:'Aug 18–19 · B', money:'$3,410.00', chip:'' },
+  { bin:'progress', inv:'1038', who:'COD · M. Reyes',         sub:'Aug 24 · C',    money:'$980.00',   chip:'Not started' },
+  { bin:'review',   inv:'1033', who:'COD · T. Okafor',        sub:'Aug 17 · D',    money:'$1,085.00', chip:'Drop invoice here' },
+  { bin:'review',   inv:'1031', who:'COD · Sight Sounds',     sub:'Aug 16 · A',    money:'$760.00',   chip:'Drop invoice here' },
+]
+const BADGE = { balance:['b-hot','Balance due'], progress:['b-uncon','In progress'], review:['','Needs review'], paid:['','Paid'] }
+function active(){ return [...document.querySelectorAll('#tabs button.on')].map(b=>b.dataset.bin) }
+function latch(btn){
+  const on = document.querySelectorAll('#tabs button.on')
+  if (btn.classList.contains('on') && on.length === 1) return // last latch stays
+  btn.classList.toggle('on'); render()
+}
+function render(){
+  const bins = active()
+  const multi = bins.length > 1
+  const order = ['balance','progress','review','paid']
+  const rows = ROWS.filter(r=>bins.includes(r.bin))
+    .sort((a,b)=>order.indexOf(a.bin)-order.indexOf(b.bin))
+  document.getElementById('list').innerHTML = rows.map(r=>{
+    const [cls,label] = BADGE[r.bin]
+    return `<div class="row">
+      ${multi?`<span class="badge ${cls}">${label}</span>`:''}
+      <span class="inv">${r.inv}</span>
+      <span class="who"><b>${r.who.split(' · ')[0]}</b><span> · ${r.who.split(' · ')[1]} · ${r.sub}</span></span>
+      ${r.chip?`<span class="chip">${r.chip}</span>`:''}
+      <span class="money">${r.money}</span>
+    </div>`
+  }).join('')
+  document.getElementById('legend').textContent = multi
+    ? `Viewing ${bins.length} bins as one list — badges say which is which. Bin order fixed: the critical bin always leads.`
+    : `One bin latched — no badges needed, the tab names it.`
+}
+function flip(){
+  const h=document.documentElement, d=h.getAttribute('data-theme')==='dark'
+  h.setAttribute('data-theme',d?'light':'dark')
+  document.getElementById('themeBtn').textContent=d?'View dark':'View light'
+}
+render()
+</script>
+</body>
+</html>

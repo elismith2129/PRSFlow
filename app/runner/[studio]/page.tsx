@@ -3,7 +3,11 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import type { Booking } from '@/lib/supabase'
-import { getLocalToday } from '@/lib/time'
+import { getLocalToday, dayPartLabel } from '@/lib/time'
+import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
+import { dbResult } from '@/lib/db'
+import { SessionCardBody, sessionFillClass, initials } from '@/components/calendar/SessionCard'
+import { Hint, useHints, setHintsEnabled } from '@/components/ui/Hint'
 
 
 
@@ -13,11 +17,27 @@ const STUDIO_META: Record<string, { label: string; abbr: string }> = {
   encore: { label: 'Encore', abbr: 'ERS' },
   track: { label: 'Track', abbr: 'TRS' },
 }
+const STUDIO_ORDER = ['paramount', 'ameraycan', 'encore', 'track'] as const
 
-type WOStatus = { id: string; status: string } | null
+// `today` is the runner's own question — "have I turned in yet?" — derived from
+// today's studio_time_rows statuses. The WO's open/completed lifecycle is the
+// OFFICE's state and only shows here once completed (Eli, 2026-08-16).
+type WOStatus = { id: string; status: string; today?: 'none' | 'submitted' | 'approved' } | null
+
+// Studio tasks (spec §15b): left by the office on a STUDIO, checked off by
+// whoever is on shift. Never assigned to a person — runners rotate.
+type StudioTask = {
+  id: string
+  studio: string
+  task: string
+  created_by_name: string | null
+  created_at: string
+  done_at: string | null
+}
 
 export default function StudioDailyOpsPage() {
   const router = useRouter()
+  const hintsOn = useHints()
   const { studio } = useParams<{ studio: string }>()
   const meta = STUDIO_META[studio] ?? { label: studio, abbr: '?' }
 
@@ -25,9 +45,19 @@ export default function StudioDailyOpsPage() {
   const [woMap, setWoMap] = useState<Record<string, WOStatus>>({})
   const [loading, setLoading] = useState(true)
   const [submittedCategories, setSubmittedCategories] = useState<Set<string>>(new Set())
+  const [tasks, setTasks] = useState<StudioTask[]>([])
+  const [shiftEntryCount, setShiftEntryCount] = useState(0)
 
   // Stable today string — local calendar date matching how bookings are stored
   const today = getLocalToday()
+
+  // One-landing merge (2026-08-14): remember this studio so the next launch of
+  // /runner comes straight here, skipping the picker. Same key the picker uses.
+  useEffect(() => {
+    if (STUDIO_META[studio]) {
+      try { localStorage.setItem('prsflo-runner-studio', studio) } catch {}
+    }
+  }, [studio])
 
   const load = useCallback(async () => {
     // ── Today ──────────────────────────────────────────────────────────────
@@ -93,6 +123,27 @@ export default function StudioDailyOpsPage() {
           ?? legacyByBooking[b.id]
         if (found) map[b.id] = found
       }
+
+      // Today's submit state per WO (the pill): all approved → approved, all
+      // sent (submitted or approved) → submitted, anything else → none.
+      const allWoIds = Array.from(new Set(Object.values(map).map(w => w!.id)))
+      if (allWoIds.length > 0) {
+        const { data: stStatus } = await supabase
+          .from('studio_time_rows')
+          .select('work_order_id, status')
+          .eq('date', today)
+          .in('work_order_id', allWoIds)
+        const byWo: Record<string, string[]> = {}
+        for (const r of stStatus ?? []) {
+          (byWo[r.work_order_id] = byWo[r.work_order_id] ?? []).push(r.status ?? 'in_progress')
+        }
+        for (const key of Object.keys(map)) {
+          const sts = byWo[map[key]!.id] ?? []
+          map[key]!.today = sts.length > 0 && sts.every(s => s === 'approved') ? 'approved'
+            : sts.length > 0 && sts.every(s => s === 'submitted' || s === 'approved') ? 'submitted'
+            : 'none'
+        }
+      }
       setWoMap(map)
     } else {
       setWoMap({})
@@ -121,10 +172,58 @@ export default function StudioDailyOpsPage() {
         .map((s: { category: string }) => s.category),
     ])
     setSubmittedCategories(submitted)
+
+    // ── Studio tasks (§15b) — open ones + anything checked off today ────────
+    const { data: taskData } = await supabase
+      .from('studio_tasks')
+      .select('*')
+      .eq('studio', studio)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: true })
+    const visibleTasks = ((taskData ?? []) as StudioTask[]).filter(
+      t => !t.done_at || t.done_at.slice(0, 10) === today,
+    )
+    // Open tasks first, done-today sink to the bottom of the section.
+    visibleTasks.sort((a, b) => Number(!!a.done_at) - Number(!!b.done_at))
+    setTasks(visibleTasks)
+
+    // Shift-log entry count for tonight — the shift-notes tile's status line.
+    const { count } = await supabase
+      .from('shift_log_entries')
+      .select('id', { count: 'exact', head: true })
+      .eq('studio', studio)
+      .eq('date', today)
+    setShiftEntryCount(count ?? 0)
   }, [studio, today, meta.abbr]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initial load
   useEffect(() => { load() }, [load])
+
+  // iOS suspends the realtime socket while the phone is locked/backgrounded and
+  // missed events are never replayed — re-fetch on return so a session added or
+  // confirmed while the phone was asleep appears without a manual refresh.
+  useReloadOnReturn(load)
+
+  // Real-time: studio tasks — the office can drop a task mid-shift and the
+  // opener's phone updates without a refresh (hard rule: fetch pairs w/ channel).
+  useEffect(() => {
+    const channel = supabase
+      .channel(`runner-tasks-${studio}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_tasks' }, () => { load() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [studio, load])
+
+  // Check a task off (or un-check a same-shift mistake). Optimistic, verified.
+  async function toggleTask(t: StudioTask) {
+    const nextDone = t.done_at ? null : new Date().toISOString()
+    setTasks(prev => prev.map(x => x.id === t.id ? { ...x, done_at: nextDone } : x))
+    const { error } = await supabase
+      .from('studio_tasks')
+      .update({ done_at: nextDone })
+      .eq('id', t.id)
+    if (!dbResult('Saving task', error)) load()
+  }
 
   // Real-time: re-run load on any booking change
   useEffect(() => {
@@ -149,6 +248,9 @@ export default function StudioDailyOpsPage() {
         console.log(`[RT] Real-time event received on /runner/${studio}, work_orders:`, payload)
         load()
       })
+      // The pill derives from today's row statuses — a runner Submit or an
+      // office approval must flip it live (same table drives the WO's dots).
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_time_rows' }, () => { load() })
       .subscribe((status, err) => {
         console.log(`[RT] work_orders subscription status on /runner/${studio}:`, status, err ?? '')
       })
@@ -159,166 +261,234 @@ export default function StudioDailyOpsPage() {
   }, [studio, today, load])
 
 
-  function statusBadge(status: string) {
-    const colors: Record<string, string> = {
-      confirmed: 'var(--accent)',
-      tentative: '#f0a24e',
-      tour: 'var(--accent2)',
-      tech: '#a24ef0',
-      open_hours: 'var(--text2)',
+  // ── Presentation ───────────────────────────────────────────────────────────
+  // SOFT SKIN PORT, 2026-08-13 (spec §15, option A "Day card"). Everything above
+  // this line — the queries, the booking→WO resolution, both realtime channels —
+  // is UNTOUCHED. This half was the old skin: legacy --bg/--surface tokens, 1px
+  // borders everywhere (Law 1), DM Serif Display and Syne (both retired, §4),
+  // per-studio colour, and emoji tiles.
+  //
+  // Phone-first: every tap target clears 44px, nothing scrolls sideways.
+
+  /** The work order's state, as a status pill. Same three cases as before. */
+  // The pill answers the RUNNER's question — "have I turned in today?" — not
+  // the office's. It used to show the WO lifecycle ('open'/'completed'), and
+  // "OPEN" meant nothing to a runner (Eli, 2026-08-16). Completed still wins:
+  // once the office closes the WO into billing, that outranks tonight's state.
+  function woPill(wo: WOStatus) {
+    if (!wo) return <span className="c-pill" style={dimPill}>No WO</span>
+    if (wo.status === 'completed') {
+      return <span className="c-pill c-fill-booked">Completed</span>
     }
-    return (
-      <span style={{
-        fontSize: 9,
-        fontWeight: 700,
-        letterSpacing: '0.08em',
-        textTransform: 'uppercase',
-        color: colors[status] ?? 'var(--text2)',
-        background: (colors[status] ?? 'var(--text2)') + '22',
-        padding: '2px 7px',
-        borderRadius: 4,
-        fontFamily: 'Inter',
-      }}>
-        {status}
-      </span>
-    )
+    if (wo.today === 'approved') return <span className="c-pill c-fill-booked">Approved</span>
+    if (wo.today === 'submitted') return <span className="c-pill c-fill-warm">Submitted</span>
+    return <span className="c-pill" style={dimPill}>Not submitted</span>
   }
 
-  function woStatusBadge(wo: WOStatus) {
-    if (!wo) return <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>No WO</span>
-    if (wo.status === 'completed') return null
-    const colors: Record<string, string> = { draft: 'var(--text2)', submitted: '#f0a24e', approved: 'var(--accent)' }
-    const c = colors[wo.status] ?? 'var(--text2)'
-    return (
-      <span style={{
-        fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
-        color: c, background: c + '22', padding: '2px 7px', borderRadius: 4,
-        fontFamily: 'Inter',
-      }}>
-        {wo.status}
-      </span>
-    )
+  const dimPill: React.CSSProperties = {
+    background: 'var(--c-wash2)', color: 'var(--c-fg)', opacity: 0.7,
   }
+
+  // A card surface. Flat + soft shadow (§7c) — no carving, no borders.
+  const surface: React.CSSProperties = {
+    background: 'var(--c-srf, var(--c-bg))',
+    boxShadow: 'var(--c-softsh)',
+    borderRadius: 18,
+    padding: '13px 14px',
+  }
+
+  const TILES = [
+    { label: 'Opening checklist', route: `/runner/${studio}/checklist/opening`, category: 'opening' },
+    { label: 'Closing checklist', route: `/runner/${studio}/checklist/closing`, category: 'closing' },
+    { label: 'Mic inventory', route: `/runner/${studio}/mics`, category: 'mic_inventory' },
+    { label: 'Petty cash', route: `/runner/${studio}/petty-cash`, category: 'petty_cash' },
+    { label: 'Stock list', route: `/runner/${studio}/stock`, category: 'stock' },
+    // Shift notes (spec §19) — the Slack post's replacement. No submitted
+    // state: a log is never "done", so its tile shows the entry count instead.
+    { label: 'Shift notes', route: `/runner/${studio}/shift-notes`, category: 'shift_notes' },
+  ]
 
   return (
     <div style={{
       minHeight: '100dvh',
       maxWidth: '100vw',
       overflowX: 'hidden',
-      background: 'var(--bg)',
-      fontFamily: 'Syne, sans-serif',
-      padding: '0 0 80px',
+      background: 'var(--c-bg)',
+      color: 'var(--c-fg)',
+      paddingBottom: 'calc(28px + env(safe-area-inset-bottom))',
     }}>
-      {/* Header */}
+
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div style={{
-        background: 'var(--surface)',
-        borderBottom: '1px solid var(--border)',
-        padding: '16px 20px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 14,
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
+        display: 'flex', alignItems: 'center', gap: 11,
+        padding: '14px 16px 10px',
+        position: 'sticky', top: 0, zIndex: 10,
+        background: 'var(--c-bg)',
       }}>
         <button
-          onClick={() => router.push('/runner')}
-          style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}
-        >
-          ←
-        </button>
-        <div style={{
-          width: 40, height: 40, borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 800, color: 'rgba(232,234,240,0.7)', fontFamily: 'Inter',
-        }}>
-          {meta.abbr}
-        </div>
-        <div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{meta.label}</div>
-          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
-            {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+          onClick={() => router.push('/runner?choose=1')}
+          aria-label="Back to studio list"
+          className="c-control c-raised"
+          style={{
+            width: 38, height: 38, borderRadius: 99, flexShrink: 0,
+            background: 'var(--c-wash)', color: 'var(--c-fg)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 16, cursor: 'pointer',
+          }}
+        >←</button>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div className="c-arch" style={{ fontSize: 18, letterSpacing: '-0.02em', lineHeight: 1.15 }}>
+            {meta.label}
           </div>
+          <div style={{ fontSize: 11.5, opacity: 0.5 }}>
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+          </div>
+        </div>
+        {/* Studio switcher (one-landing merge): floating runners move studios
+            in one tap, no picker round-trip. Switching re-remembers. */}
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+          {STUDIO_ORDER.map(k => {
+            const on = k === studio
+            return (
+              <button
+                key={k}
+                onClick={() => { if (!on) router.push(`/runner/${k}`) }}
+                aria-label={STUDIO_META[k].label}
+                style={{
+                  minWidth: 34, minHeight: 30, borderRadius: 99,
+                  padding: '0 7px',
+                  background: on ? 'var(--c-wash2)' : 'transparent',
+                  color: 'var(--c-fg)', opacity: on ? 1 : 0.45,
+                  border: 'none', font: 'inherit',
+                  fontSize: 10, fontWeight: 800, letterSpacing: '0.04em',
+                  cursor: on ? 'default' : 'pointer',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                {STUDIO_META[k].abbr}
+              </button>
+            )
+          })}
+          {/* Helpful-hints toggle (Eli, 2026-08-17) — runners get the same
+              coach marks as the office; this is their on/off. */}
+          <button
+            onClick={() => setHintsEnabled(!hintsOn)}
+            aria-label="Toggle helpful hints"
+            style={{
+              minWidth: 30, minHeight: 30, borderRadius: 99, padding: '0 5px',
+              background: hintsOn ? 'var(--c-wash2)' : 'transparent',
+              opacity: hintsOn ? 1 : 0.4, border: 'none', font: 'inherit',
+              fontSize: 13, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+            }}
+          >💡</button>
         </div>
       </div>
 
-      <div style={{ padding: '20px 16px' }}>
-        {/* Today's Sessions */}
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)', marginBottom: 12 }}>
-            Today's Sessions{!loading && ` · ${bookings.length}`}
+      <div style={{ padding: '4px 14px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+        {/* ── Studio tasks (§15b — option A · Sections) ───────────────────── */}
+        {/* Above sessions: the opener's first question walking in is "anything
+            waiting for me". A studio with no OPEN tasks skips the section. */}
+        {/* Slimmed 2026-08-14 (Eli: "too big and there may be multiple") —
+            tighter paddings, single-line rows, meta inline after the task. */}
+        {tasks.some(t => !t.done_at) && (
+          <div style={{ ...surface, padding: '8px 12px' }}>
+            <div className="c-label" style={{ marginBottom: 2, display: 'flex', alignItems: 'center', gap: 7 }}>
+              From the office
+              <span className="c-pill c-fill-warm">{tasks.filter(t => !t.done_at).length}</span>
+            </div>
+            {tasks.map((t, i) => (
+              <div key={t.id} style={{
+                display: 'flex', alignItems: 'center', gap: 9, padding: '6px 0',
+                boxShadow: i > 0 ? '0 -1px 0 var(--c-wash)' : undefined,
+              }}>
+                <button
+                  onClick={() => toggleTask(t)}
+                  aria-label={t.done_at ? 'Mark not done' : 'Mark done'}
+                  style={{
+                    width: 22, height: 22, borderRadius: 99, flexShrink: 0,
+                    background: t.done_at ? 'var(--c-st-booked)' : 'var(--c-wash2)',
+                    color: t.done_at ? 'var(--c-chip-ink)' : 'var(--c-fg)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, cursor: 'pointer', border: 'none', font: 'inherit',
+                  }}
+                >{t.done_at ? '✓' : ''}</button>
+                <div style={{ minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span style={{
+                    fontSize: 12.5, fontWeight: 700,
+                    opacity: t.done_at ? 0.4 : 1,
+                    textDecoration: t.done_at ? 'line-through' : undefined,
+                  }}>{t.task}</span>
+                  <span style={{ fontSize: 10.5, opacity: 0.45, marginLeft: 7 }}>
+                    {t.done_at
+                      ? `done ${new Date(t.done_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                      : t.created_by_name ?? ''}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Today's sessions ────────────────────────────────────────────── */}
+        <div>
+          <div className="c-label" style={{ marginBottom: 9 }}>
+            Today{!loading && ` · ${bookings.length} ${bookings.length === 1 ? 'session' : 'sessions'}`}
+            <Hint tip="Tap a session card to open its work order — times, staff, equipment, and payments all go there. You can keep fixing your day until the office approves it." />
           </div>
 
           {loading ? (
-            <div style={{ color: 'var(--text2)', fontSize: 13, textAlign: 'center', padding: 32 }}>Loading…</div>
+            <div style={{ ...surface, textAlign: 'center', opacity: 0.5, fontSize: 13, padding: 28 }}>
+              Loading…
+            </div>
           ) : bookings.length === 0 ? (
-            <div style={{ color: 'var(--text2)', fontSize: 13, textAlign: 'center', padding: 32, background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)' }}>
+            <div style={{ ...surface, textAlign: 'center', opacity: 0.5, fontSize: 13, padding: 28 }}>
               No sessions today
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {bookings.map(b => {
                 const wo = woMap[b.id] ?? null
-                const completed = wo?.status === 'completed'
                 return (
-                  <div
-                    key={b.id}
-                    onClick={() => {
-                      if (wo) {
-                        router.push(`/runner/${studio}/wo/${wo.id}`)
-                      } else {
-                        router.push(`/runner/${studio}/wo/new?booking_id=${b.id}`)
-                      }
-                    }}
-                    style={{
-                      background: 'var(--surface)',
-                      border: completed ? '1px solid var(--booked)' : '1px solid var(--border)',
-                      borderRadius: 12,
-                      padding: '14px 16px',
-                      cursor: 'pointer',
-                      WebkitTapHighlightColor: 'transparent',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                      <div>
-                        {/* Studio is the hero: a runner's first question on any card
-                            is "which room", and it was buried in the small meta
-                            row below with the times. Artist/client drop to the
-                            sub-line. */}
-                        {/* No "Studio " prefix — bookings.studio already holds the
-                            full room label from STUDIO_LOCATIONS ("Studio X",
-                            "North"). Prefixing gave "Studio Studio X", and would
-                            have mislabelled Track's rooms as "Studio North". */}
-                        {b.studio && (
-                          <div style={{ fontFamily: 'DM Serif Display', fontSize: 22, lineHeight: 1.1, color: 'var(--text)', marginBottom: 3 }}>
-                            {b.studio}
-                          </div>
-                        )}
-                        <div style={{ fontSize: 13, fontWeight: 700, color: b.studio ? 'var(--text2)' : 'var(--text)', marginBottom: 2 }}>
-                          {b.artist || b.client_name || '—'}
-                        </div>
-                        {b.artist && b.client_name && (
-                          <div style={{ fontSize: 11, color: 'var(--text3)' }}>{b.client_name}</div>
-                        )}
+                  <div key={b.id}>
+                    {/* The ROOM is still the hero — a runner's first question on
+                        any card is "which one". It sits above the chip, with the
+                        WO state pill; the chip itself is the ONE shared session
+                        card (spec §10b), so colour coding and info match the
+                        calendar exactly — just bigger (`large`). */}
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 5, padding: '0 2px' }}>
+                      <div className="c-arch" style={{ fontSize: 17, letterSpacing: '-0.02em', lineHeight: 1.1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {b.studio || '—'}
                       </div>
-                      {completed && (
-                        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--booked)', background: '#14B8A622', padding: '2px 7px', borderRadius: 4, fontFamily: 'Inter' }}>COMPLETED</span>
-                      )}
+                      {woPill(wo)}
                     </div>
-
-                    <div style={{ display: 'flex', gap: 16, marginBottom: 10, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
-                        {b.from_time ?? '?'} – {b.to_time ?? '?'}
-                      </span>
-                      {/* Studio moved to the hero above — not repeated here. */}
-                      {b.engineer_name && (
-                        <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>
-                          Eng: {b.engineer_name}
-                        </span>
-                      )}
+                    <div
+                      onClick={() => {
+                        if (wo) router.push(`/runner/${studio}/wo/${wo.id}`)
+                        else router.push(`/runner/${studio}/wo/new?booking_id=${b.id}`)
+                      }}
+                      className={`c-ev c-control c-raised-chip ${sessionFillClass(b.status)}`}
+                      style={{
+                        // GRID, not flex-column (fix 2026-08-16): .c-evbody uses
+                        // height: 100%, which resolves to AUTO against a flex
+                        // parent whose height comes from min-height — so the body
+                        // sat a few px short of the chip and the chip's green
+                        // showed as a sliver UNDER the red COD strip. A grid
+                        // item stretches to the track by default, so the body
+                        // fills the chip and the COD strip IS the bottom edge.
+                        padding: 0, overflow: 'hidden', cursor: 'pointer',
+                        display: 'grid',
+                        minHeight: 84, WebkitTapHighlightColor: 'transparent',
+                      }}
+                    >
+                      <SessionCardBody
+                        booking={b}
+                        height={90}
+                        large
+                        eng={initials(b.engineer_name)}
+                        asst={initials(b.assistant_name)}
+                      />
                     </div>
-
-                    {woStatusBadge(wo)}
                   </div>
                 )
               })}
@@ -326,41 +496,93 @@ export default function StudioDailyOpsPage() {
           )}
         </div>
 
-        {/* Quick Actions */}
+        {/* ── This morning / Today / Tonight — the studio runs 24/7 (Eli,
+            2026-08-15), so the label tracks the clock via dayPartLabel. */}
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)', marginBottom: 12 }}>
-            Quick Actions
+          <div className="c-label" style={{ marginBottom: 9 }}>{dayPartLabel()}
+            <Hint tip="Everything here saves as you tap — no save button. Found a problem? Use needs-attention with a note and photo; that reports it to the office automatically. Submitted-with-a-problem always beats never-submitted." />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {[
-              { label: 'Opening Checklist', icon: '☑', route: `/runner/${studio}/checklist/opening`, category: 'opening' },
-              { label: 'Closing Checklist', icon: '☑', route: `/runner/${studio}/checklist/closing`, category: 'closing' },
-              { label: 'Petty Cash', icon: '$', route: `/runner/${studio}/petty-cash`, category: 'petty_cash' },
-              { label: 'Stock List', icon: '📦', route: `/runner/${studio}/stock`, category: 'stock' },
-              { label: 'Mic Inventory', icon: '🎙', route: `/runner/${studio}/mics`, category: 'mic_inventory' },
-            ].map(a => (
-              <button
-                key={a.route}
-                onClick={() => router.push(a.route)}
-                style={{
-                  background: 'var(--surface)',
-                  border: submittedCategories.has(a.category) ? '1px solid var(--booked)' : '1px solid var(--border)',
-                  borderRadius: 12,
-                  padding: '16px 12px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  color: 'var(--text)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                }}
-              >
-                <span style={{ fontSize: 20 }}>{a.icon}</span>
-                <span style={{ fontSize: 12, fontWeight: 600 }}>{a.label}</span>
-              </button>
-            ))}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
+            {TILES.map(t => {
+              const isLog = t.category === 'shift_notes'
+              const done = isLog ? shiftEntryCount > 0 : submittedCategories.has(t.category)
+              const statusText = isLog
+                ? (shiftEntryCount > 0
+                    ? `${shiftEntryCount} ${shiftEntryCount === 1 ? 'entry' : 'entries'}`
+                    : 'Nothing logged')
+                : (done ? 'Submitted' : 'Not started')
+              return (
+                <button
+                  key={t.route}
+                  onClick={() => router.push(t.route)}
+                  style={{
+                    ...surface,
+                    minHeight: 72,
+                    display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                    textAlign: 'left', cursor: 'pointer', color: 'var(--c-fg)',
+                    border: 'none', font: 'inherit',
+                  }}
+                >
+                  <span style={{ fontSize: 12.5, fontWeight: 700 }}>{t.label}</span>
+                  {/* Status is the only colour on this surface (§5) — done is
+                      booked-green, everything else is just quiet text. */}
+                  <span style={{
+                    fontSize: 10, marginTop: 4,
+                    color: done ? 'var(--c-st-booked)' : 'var(--c-fg)',
+                    opacity: done ? 1 : 0.45,
+                    fontWeight: done ? 700 : 400,
+                  }}>
+                    {statusText}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </div>
+
+        {/* ── Quiet register (§15b) — always here, never shouting ─────────── */}
+        {/* Manual is the future slot the AI surface later joins. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+          <button
+            onClick={() => router.push('/runner/punch')}
+            style={{
+              ...surface, display: 'flex', alignItems: 'center', gap: 11, minHeight: 52,
+              border: 'none', font: 'inherit', color: 'var(--c-fg)', textAlign: 'left',
+              cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700 }}>Missed a punch?</div>
+              <div style={{ fontSize: 10.5, opacity: 0.6 }}>Report it — takes 30 seconds</div>
+            </div>
+            <span style={{ opacity: 0.35, fontSize: 16 }}>›</span>
+          </button>
+          {/* App guide = how to use THIS APP (public/runner-sop.html). The
+              runners MANUAL below stays its own slot — that's the JOB (Eli's
+              existing paper doc; digital version is a later project). */}
+          <button
+            onClick={() => router.push('/runner/sop')}
+            style={{
+              ...surface, display: 'flex', alignItems: 'center', gap: 11, minHeight: 52,
+              border: 'none', font: 'inherit', color: 'var(--c-fg)', textAlign: 'left',
+              cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700 }}>App guide</div>
+              <div style={{ fontSize: 10.5, opacity: 0.6 }}>How to use PRSFlo — two minutes</div>
+            </div>
+            <span style={{ opacity: 0.35, fontSize: 16 }}>›</span>
+          </button>
+          <div style={{ ...surface, display: 'flex', alignItems: 'center', gap: 11, minHeight: 52, opacity: 0.55 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700 }}>Runners manual</div>
+              <div style={{ fontSize: 10.5, opacity: 0.6 }}>Coming soon</div>
+            </div>
+            <span style={{ opacity: 0.35, fontSize: 16 }}>›</span>
+          </div>
+        </div>
+
       </div>
     </div>
   )

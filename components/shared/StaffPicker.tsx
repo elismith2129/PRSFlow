@@ -82,34 +82,30 @@ export function StaffPicker({ role, name, onChange, disabled, listId = 'staff-ro
     onChange({ role: next, name: next === 'none' ? '' : '' })
   }
 
-  const modeBtn = (on: boolean, isNone: boolean): React.CSSProperties => ({
-    padding: '5px 12px',
-    background: on ? (isNone ? 'var(--surface2)' : 'rgba(var(--accent-rgb),0.12)') : 'var(--surface2)',
-    color: on ? (isNone ? 'var(--text2)' : 'var(--accent)') : 'var(--text3)',
-    border: `1px solid ${on ? (isNone ? 'var(--border)' : 'rgba(var(--accent-rgb),0.35)') : 'var(--border)'}`,
-    borderRadius: 5,
-    fontSize: 10,
-    fontFamily: 'Syne',
-    fontWeight: 700,
-    letterSpacing: '0.05em',
-    textTransform: 'uppercase' as const,
+  // ENG / ASST / NO STAFF. V3: a segmented control is ONE raised housing with the
+  // selected segment pressed in and filled — not three separate raised pills side
+  // by side. No colour: selecting is an act of pressing, and the pressed state
+  // carries the meaning in both registers.
+  const modeCls = (on: boolean) => (on ? 'c-on' : '')
+
+  const modeBtn = (_on: boolean, _isNone: boolean): React.CSSProperties => ({
     cursor: disabled ? 'default' : 'pointer',
     whiteSpace: 'nowrap' as const,
   })
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      <div style={{ display: 'flex', gap: 4 }}>
+      <div className="c-seg">
         {MODES.map(m => (
           <button
             key={m.key}
             type="button"
             disabled={disabled}
             onClick={() => pickRole(m.key)}
-            // Light mode overrides the accent tint to solid blue — see globals.css.
-            // "No Staff" is deliberately neutral even when active; it's the absence
-            // of a choice, not an accent-worthy one.
-            data-staff-mode-on={active === m.key && m.key !== 'none' ? '' : undefined}
+            // `data-staff-mode-on` is gone with its light-mode rule: it existed only
+            // to force the accent tint to solid blue in light mode, and the carved
+            // pressed/filled state now reads identically in both registers.
+            className={modeCls(active === m.key)}
             style={modeBtn(active === m.key, m.key === 'none')}
           >
             {m.label}
@@ -125,11 +121,8 @@ export function StaffPicker({ role, name, onChange, disabled, listId = 'staff-ro
             disabled={disabled}
             onChange={e => onChange({ role: active, name: e.target.value })}
             placeholder={active === 'engineer' ? 'Engineer (optional)' : 'Assistant (optional)'}
-            style={{
-              flex: 1, minWidth: 140, background: 'var(--surface2)', border: '1px solid var(--border)',
-              borderRadius: 4, color: 'var(--text)', fontFamily: 'Inter', fontSize: 11,
-              padding: '5px 9px', outline: 'none',
-            }}
+            className="c-input c-inset2"
+            style={{ flex: 1, minWidth: 150 }}
           />
           <datalist id={listId}>
             {options.map(n => <option key={n} value={n} />)}

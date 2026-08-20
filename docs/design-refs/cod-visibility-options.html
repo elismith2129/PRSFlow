@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Keeping COD visible from the Billing side</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  COD VISIBILITY — four options (2026-08-13).
+
+  THE ASK (Eli): "I want the billing/COD toggle more accessible… the switch is
+  fine, the version we have now is really clean. I just don't want staff to
+  forget about COD."
+
+  So the toggle STAYS. The problem is not the control, it is that a toggle shows
+  you the side you are on and says nothing about the side you are not on. Today
+  the only cross-pipeline signal is a hot dot when a COD balance exists — which
+  is binary, and silent about the ordinary work (COD sessions needing review).
+  Someone living on the Billing tab can go a week without thinking about COD.
+
+  THE REAL RISK IS ASYMMETRIC. A forgotten billing invoice is late. A forgotten
+  COD balance is money that was supposed to be collected at the desk and wasn't
+  — nobody is going to chase it, because nobody knows. That is the thing worth
+  spending screen space on.
+
+  A · COUNTS ON THE SWITCH   each side carries its live count, hot when it matters
+  B · COD STRIP              a slim always-there line under the header
+  C · SUMMARY CARD           one of the four stat cards belongs to the OTHER side
+  D · BOTH LISTS             COD as a second section under the billing list
+
+  Soft skin (§7c). Section headers are text, not bars (§16c). Mock polarity is
+  INVERTED vs the app.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626; --hot-text:#fff4f2;
+  --st-hot:#ff5a4d; --st-warm:#ffa94d; --st-booked:#43dfae; --st-uncon:#7fb2e5; --st-dead:#cfd6d4;
+  --ivory:#d5d0c2; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+  --ctlsh:0 1px 2px rgba(42,39,34,.10);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  --ctlsh:0 1px 3px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 14px/1.5 system-ui,-apple-system,sans-serif;padding:20px;-webkit-font-smoothing:antialiased}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+h1{font-family:'Archivo Black',sans-serif;font-size:21px;letter-spacing:-.03em}
+.sw{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);margin:12px 8px 16px 0}
+.sw button{padding:6px 14px;border-radius:99px;font:inherit;font-size:12px;font-weight:700;border:none;background:none;color:var(--fg);opacity:.55;cursor:pointer}
+.sw button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .sw button.on{background:var(--fg);color:var(--bg)}
+.why{max-width:1000px;font-size:12.5px;line-height:1.65;opacity:.72;margin-bottom:18px}
+.why b{opacity:1}
+.opt{display:none}.opt.on{display:block}
+
+.page{max-width:1000px}
+.hbar{display:flex;align-items:center;gap:16px;padding:2px 4px 14px}
+.hbar h2{font-family:'Archivo Black',sans-serif;font-size:24px;letter-spacing:-.03em}
+.lab{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45;display:block;margin-bottom:3px}
+.grow{flex:1}
+
+/* the live toggle */
+.seg{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);box-shadow:var(--ctlsh)}
+.seg button{display:flex;align-items:center;gap:7px;padding:5px 16px;border-radius:99px;font:inherit;font-size:12px;font-weight:700;border:none;background:none;color:var(--fg);opacity:.6;cursor:pointer}
+.seg button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .seg button.on{background:var(--fg);color:var(--bg)}
+.segdot{width:7px;height:7px;border-radius:50%;background:var(--st-hot);flex-shrink:0}
+.segn{font-family:ui-monospace,monospace;font-size:10.5px;opacity:.6}
+.seg button.on .segn{opacity:.75}
+.segn.hot{background:var(--st-hot);color:var(--hot-text);border-radius:99px;padding:1px 6px;opacity:1;font-weight:700}
+
+.sum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--srf);box-shadow:var(--softsh);border-radius:14px;padding:10px 12px;cursor:pointer}
+.stat .n{font-family:'Archivo Black',sans-serif;font-size:20px;letter-spacing:-.02em}
+.stat .k{font-size:10px;opacity:.55;margin-top:1px}
+.stat.alert .n{color:var(--st-hot)}
+.stat.cross{background:var(--wash);box-shadow:none}
+.stat.cross .k{opacity:.8;font-weight:700}
+
+.search{display:flex;align-items:center;gap:8px;background:var(--wash);border-radius:12px;padding:0 10px;height:32px;margin-bottom:10px;font-size:12.5px;opacity:.5}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tab{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;background:var(--wash);font-size:12px;font-weight:700;box-shadow:var(--ctlsh);cursor:pointer}
+.tab.on{background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .tab.on{background:var(--fg);color:var(--bg)}
+.tab .n{font-family:ui-monospace,monospace;font-size:10.5px;opacity:.65}
+
+.pane{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:12px;margin-bottom:14px}
+.hd{display:flex;align-items:baseline;justify-content:space-between;padding:0 3px 7px;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.45}
+.row{display:grid;grid-template-columns:76px minmax(0,1fr) 150px 90px 110px;align-items:center;gap:10px;padding:7px 10px;border-radius:11px;font-size:12px}
+.row:hover{background:var(--wash)}
+.row .inv{font-family:ui-monospace,monospace;font-size:11px;opacity:.6}
+.row .amt{font-family:ui-monospace,monospace;text-align:right}
+.row .act{justify-self:center}
+.bact{font-size:9.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--wash2);border:none;color:var(--fg);cursor:pointer}
+.lt{display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;opacity:.28;padding:2px 5px;border-radius:99px}
+.lt i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.45}
+.lt.done{opacity:.85}.lt.done i{background:var(--st-booked);opacity:1}
+.lt.next{opacity:1;background:var(--wash2)}.lt.next i{background:var(--st-warm);opacity:1}
+
+/* ── B · the strip ─────────────────────────────────────────────────────── */
+.strip{display:flex;align-items:center;gap:10px;padding:9px 13px;border-radius:12px;background:var(--wash);margin-bottom:12px;cursor:pointer;font-size:12px}
+.strip:hover{background:var(--wash2)}
+.strip .t{font-weight:800;letter-spacing:.06em;text-transform:uppercase;font-size:9.5px;opacity:.5}
+.strip .hot{background:var(--st-hot);color:var(--hot-text);border-radius:99px;padding:2px 9px;font-size:10px;font-weight:800}
+.strip .go{margin-left:auto;opacity:.45}
+</style>
+</head>
+<body>
+
+<h1>Keeping COD visible</h1>
+<div class="sw">
+  <button class="on" onclick="pick('a',this)">A · Counts on the switch</button>
+  <button onclick="pick('b',this)">B · COD strip</button>
+  <button onclick="pick('c',this)">C · Summary card</button>
+  <button onclick="pick('d',this)">D · Both lists</button>
+</div>
+<div class="sw">
+  <button class="on" onclick="th('dark',this)">Dark</button>
+  <button onclick="th('light',this)">Light</button>
+</div>
+<p class="why" id="why"></p>
+
+<!-- ══ A ══ -->
+<div class="opt on" id="o-a"><div class="page">
+  <div class="hbar">
+    <div><span class="lab">Work orders &amp; invoices</span><h2>Billing</h2></div>
+    <div class="grow"></div>
+    <div class="seg">
+      <button class="on">Billing <span class="segn">14</span></button>
+      <button>COD <span class="segn hot">3</span></button>
+    </div>
+    <span style="opacity:.3;font-size:15px">⋯</span>
+  </div>
+  <div class="sum">
+    <div class="stat"><div class="n">$68,921</div><div class="k">Outstanding</div></div>
+    <div class="stat"><div class="n">$24,400</div><div class="k">Received this month</div></div>
+    <div class="stat"><div class="n">4</div><div class="k">Waiting on approval</div></div>
+    <div class="stat alert"><div class="n">2</div><div class="k">Over 31 days</div></div>
+  </div>
+  <div class="search">⌕ Search everything — client, artist, invoice #, WO #, PO…</div>
+  <div class="tabs">
+    <span class="tab on">In progress <span class="n">7</span></span>
+    <span class="tab">Awaiting payment <span class="n">5</span></span>
+    <span class="tab">Paid <span class="n">2</span></span>
+    <span class="tab">Closed <span class="n">0</span></span>
+  </div>
+  <div class="pane">
+    <div class="hd"><b>In progress</b><span class="mono" style="opacity:.7;letter-spacing:0">7</span></div>
+    <div class="row"><span class="inv">WO-1042</span><span>Kendrick Lamar <span style="opacity:.5">· Interscope</span></span><span><span class="lt done"><i></i>Reviewed</span><span class="lt next"><i></i>Invoiced</span></span><span class="amt">$4,840.00</span><span class="act"><button class="bact">Attach invoice</button></span></div>
+    <div class="row"><span class="inv">WO-1041</span><span>Skilla Baby <span style="opacity:.5">· Warner</span></span><span><span class="lt done"><i></i>Reviewed</span><span class="lt done"><i></i>Invoiced</span></span><span class="amt">$1,950.00</span><span class="act"><button class="bact">Approve</button></span></div>
+    <div class="row"><span class="inv">WO-1039</span><span>Nia Rowe <span style="opacity:.5">· 10K Projects</span></span><span><span class="lt done"><i></i>Reviewed</span><span class="lt next"><i></i>Invoiced</span></span><span class="amt">$1,240.00</span><span class="act"><button class="bact">Attach invoice</button></span></div>
+  </div>
+</div></div>
+
+<!-- ══ B ══ -->
+<div class="opt" id="o-b"><div class="page">
+  <div class="hbar">
+    <div><span class="lab">Work orders &amp; invoices</span><h2>Billing</h2></div>
+    <div class="grow"></div>
+    <div class="seg"><button class="on">Billing</button><button>COD <i class="segdot"></i></button></div>
+    <span style="opacity:.3;font-size:15px">⋯</span>
+  </div>
+  <div class="sum">
+    <div class="stat"><div class="n">$68,921</div><div class="k">Outstanding</div></div>
+    <div class="stat"><div class="n">$24,400</div><div class="k">Received this month</div></div>
+    <div class="stat"><div class="n">4</div><div class="k">Waiting on approval</div></div>
+    <div class="stat alert"><div class="n">2</div><div class="k">Over 31 days</div></div>
+  </div>
+
+  <!-- ALWAYS THERE, even when COD is quiet. A line that only appears when
+       something is wrong teaches nobody the tab exists. -->
+  <div class="strip">
+    <span class="t">COD</span>
+    <span class="hot">1 balance due · $1,850</span>
+    <span style="opacity:.6">3 need review</span>
+    <span class="go">Go to COD →</span>
+  </div>
+
+  <div class="search">⌕ Search everything — client, artist, invoice #, WO #, PO…</div>
+  <div class="tabs">
+    <span class="tab on">In progress <span class="n">7</span></span>
+    <span class="tab">Awaiting payment <span class="n">5</span></span>
+    <span class="tab">Paid <span class="n">2</span></span>
+    <span class="tab">Closed <span class="n">0</span></span>
+  </div>
+  <div class="pane">
+    <div class="hd"><b>In progress</b><span class="mono" style="opacity:.7;letter-spacing:0">7</span></div>
+    <div class="row"><span class="inv">WO-1042</span><span>Kendrick Lamar <span style="opacity:.5">· Interscope</span></span><span><span class="lt done"><i></i>Reviewed</span><span class="lt next"><i></i>Invoiced</span></span><span class="amt">$4,840.00</span><span class="act"><button class="bact">Attach invoice</button></span></div>
+    <div class="row"><span class="inv">WO-1041</span><span>Skilla Baby <span style="opacity:.5">· Warner</span></span><span><span class="lt done"><i></i>Reviewed</span><span class="lt done"><i></i>Invoiced</span></span><span class="amt">$1,950.00</span><span class="act"><button class="bact">Approve</button></span></div>
+  </div>
+</div></div>
+
+<!-- ══ C ══ -->
+<div class="opt" id="o-c"><div class="page">
+  <div class="hbar">
+    <div><span class="lab">Work orders &amp; invoices</span><h2>Billing</h2></div>
+    <div class="grow"></div>
+    <div class="seg"><button class="on">Billing</button><button>COD</button></div>
+    <span style="opacity:.3;font-size:15px">⋯</span>
+  </div>
+  <!-- The fourth card belongs to the OTHER pipeline, always. -->
+  <div class="sum">
+    <div class="stat"><div class="n">$68,921</div><div class="k">Outstanding</div></div>
+    <div class="stat"><div class="n">$24,400</div><div class="k">Received this month</div></div>
+    <div class="stat"><div class="n">4</div><div class="k">Waiting on approval</div></div>
+    <div class="stat cross alert"><div class="n">$1,850</div><div class="k">COD balance due →</div></div>
+  </div>
+  <div class="search">⌕ Search everything — client, artist, invoice #, WO #, PO…</div>
+  <div class="tabs">
+    <span class="tab on">In progress <span class="n">7</span></span>
+    <span class="tab">Awaiting payment <span class="n">5</span></span>
+    <span class="tab">Paid <span class="n">2</span></span>
+    <span class="tab">Closed <span class="n">0</span></span>
+  </div>
+  <div class="pane">
+    <div class="hd"><b>In progress</b><span class="mono" style="opacity:.7;letter-spacing:0">7</span></div>
+    <div class="row"><span class="inv">WO-1042</span><span>Kendrick Lamar <span style="opacity:.5">· Interscope</span></span><span><span class="lt done"><i></i>Reviewed</span><span class="lt next"><i></i>Invoiced</span></span><span class="amt">$4,840.00</span><span class="act"><button class="bact">Attach invoice</button></span></div>
+    <div class="row"><span class="inv">WO-1041</span><span>Skilla Baby <span style="opacity:.5">· Warner</span></span><span><span class="lt done"><i></i>Reviewed</span><span class="lt done"><i></i>Invoiced</span></span><span class="amt">$1,950.00</span><span class="act"><button class="bact">Approve</button></span></div>
+  </div>
+</div></div>
+
+<!-- ══ D ══ -->
+<div class="opt" id="o-d"><div class="page">
+  <div class="hbar">
+    <div><span class="lab">Work orders &amp; invoices</span><h2>Billing</h2></div>
+    <div class="grow"></div>
+    <div class="seg"><button class="on">Billing</button><button>COD</button></div>
+    <span style="opacity:.3;font-size:15px">⋯</span>
+  </div>
+  <div class="sum">
+    <div class="stat"><div class="n">$68,921</div><div class="k">Outstanding</div></div>
+    <div class="stat"><div class="n">$24,400</div><div class="k">Received this month</div></div>
+    <div class="stat"><div class="n">4</div><div class="k">Waiting on approval</div></div>
+    <div class="stat alert"><div class="n">2</div><div class="k">Over 31 days</div></div>
+  </div>
+  <div class="search">⌕ Search everything — client, artist, invoice #, WO #, PO…</div>
+  <div class="tabs">
+    <span class="tab on">In progress <span class="n">7</span></span>
+    <span class="tab">Awaiting payment <span class="n">5</span></span>
+    <span class="tab">Paid <span class="n">2</span></span>
+    <span class="tab">Closed <span class="n">0</span></span>
+  </div>
+  <div class="pane">
+    <div class="hd"><b>Billing · in progress</b><span class="mono" style="opacity:.7;letter-spacing:0">7</span></div>
+    <div class="row"><span class="inv">WO-1042</span><span>Kendrick Lamar <span style="opacity:.5">· Interscope</span></span><span><span class="lt done"><i></i>Reviewed</span><span class="lt next"><i></i>Invoiced</span></span><span class="amt">$4,840.00</span><span class="act"><button class="bact">Attach invoice</button></span></div>
+    <div class="row"><span class="inv">WO-1041</span><span>Skilla Baby <span style="opacity:.5">· Warner</span></span><span><span class="lt done"><i></i>Reviewed</span><span class="lt done"><i></i>Invoiced</span></span><span class="amt">$1,950.00</span><span class="act"><button class="bact">Approve</button></span></div>
+  </div>
+  <div class="pane">
+    <div class="hd"><b style="color:var(--st-hot)">COD · needs you</b><span class="mono" style="opacity:.7;letter-spacing:0">4</span></div>
+    <div class="row"><span class="inv">WO-1044</span><span>Marcus Hall <span style="opacity:.5">· COD Zelle</span></span><span><span class="lt done"><i></i>Reviewed</span><span class="lt next"><i></i>Invoiced</span></span><span class="amt" style="color:var(--st-hot);font-weight:700">$1,850.00</span><span class="act"><button class="bact">Open</button></span></div>
+    <div class="row"><span class="inv">WO-1043</span><span>Tasha Lane <span style="opacity:.5">· COD Cash</span></span><span><span class="lt next"><i></i>Reviewed</span></span><span class="amt">$640.00</span><span class="act"><button class="bact">Attach invoice</button></span></div>
+    <div class="row" style="opacity:.55"><span class="inv">WO-1040</span><span>Dre Voss <span style="opacity:.5">· COD Card</span></span><span><span class="lt done"><i></i>Reviewed</span><span class="lt done"><i></i>Invoiced</span></span><span class="amt">$0.00</span><span class="act"></span></div>
+    <button class="bact" style="width:100%;margin-top:8px;padding:9px">All COD →</button>
+  </div>
+</div></div>
+
+<script>
+const WHY={
+ a:"<b>A · Counts on the switch.</b> Each side of the toggle carries its live count, and COD's goes HOT the moment a balance exists. Cheapest change, keeps the switch exactly as clean as it is, and the number is where your eye already goes when you reach for the control. <b>Cost:</b> a count tells you there is something, not what — you still have to switch to find out whether it is three routine reviews or a missed collection.",
+ b:"<b>B · COD strip.</b> A slim line under the summary, ALWAYS present — never only when something is wrong, because a line that appears only in trouble teaches nobody the tab exists. It names the two things that matter: money not collected (hot) and sessions needing review. Click it and you are on the COD side. <b>Cost:</b> one more horizontal band on a page that already has a header, a summary row, a search and tabs.",
+ c:"<b>C · Summary card.</b> The fourth stat card stops belonging to the pipeline you are on and always reports the OTHER one — on Billing it shows COD balance due, on COD it shows billing outstanding. No new furniture at all; it reuses a row you already read every morning. <b>Cost:</b> you lose a billing stat to gain it, and a card that changes what it is about depending on the tab is a little sly.",
+ d:"<b>D · Both lists.</b> COD appears as a second, shorter section beneath the billing list — only the rows that need something, capped, with an \"All COD →\" out. Impossible to forget, because it is literally on the page. <b>Cost:</b> the biggest departure, and it partly undoes the two-pipeline split that fixed the nine-tab problem: one screen showing two processes is how that mess started.",
+}
+function pick(k,el){
+ document.querySelectorAll('.opt').forEach(o=>o.classList.remove('on'))
+ document.getElementById('o-'+k).classList.add('on')
+ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));el.classList.add('on')
+ document.getElementById('why').innerHTML=WHY[k]
+}
+function th(t,el){document.documentElement.setAttribute('data-theme',t)
+ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));el.classList.add('on')}
+document.getElementById('why').innerHTML=WHY.a
+</script>
+</body>
+</html>

@@ -31,23 +31,23 @@ interface Props {
 
 // ─── Shared button styles ─────────────────────────────────────────────────────
 
-const accentBtn: React.CSSProperties = {
-  background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 4,
-  padding: '5px 12px', fontSize: 10, fontFamily: 'Syne', fontWeight: 700,
+// Primary-ish action inside a carved panel. Depth comes from the scoped
+// `.c-panel button` rule; this only carries type and spacing. Formerly
+// `primaryBtn` — there is no accent colour in this system (Law 3).
+const primaryBtn: React.CSSProperties = {
+  color: 'var(--c-fg)', borderRadius: 99,
+  padding: '7px 14px', fontSize: 10.5, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400,
   letterSpacing: '0.08em', cursor: 'pointer',
 }
 const ghostBtn: React.CSSProperties = {
-  background: 'transparent', color: 'var(--text3)', border: '1px solid var(--border)',
-  borderRadius: 4, padding: '5px 12px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer',
+  background: 'transparent', color: 'var(--c-fg-3)', borderRadius: 4, padding: '5px 12px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer',
 }
 const dangerBtn: React.CSSProperties = {
-  background: 'rgba(239,68,68,0.15)', color: 'var(--hot)', border: '1px solid rgba(239,68,68,0.3)',
-  borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer',
+  background: 'rgba(239,68,68,0.15)', color: 'var(--c-st-hot)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer',
 }
 
 const aBtn = (color: string): React.CSSProperties => ({
-  padding: '2px 7px', borderRadius: 3, border: '1px solid var(--border)',
-  background: 'var(--surface)', color, fontFamily: 'Inter', fontSize: 9,
+  padding: '2px 7px', borderRadius: 3, background: 'var(--c-bg)', color, fontFamily: 'Inter', fontSize: 9,
   textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap' as const,
 })
 
@@ -56,7 +56,7 @@ const aBtn = (color: string): React.CSSProperties => ({
 function SectionHeader({ label, action, mt = 16 }: { label: string; action?: React.ReactNode; mt?: number }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, marginTop: mt }}>
-      <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text3)' }}>
+      <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>
         {label}
       </div>
       {action}
@@ -73,14 +73,13 @@ function InlineField({ label, value, onSave, multiline = false, placeholder = '�
   useEffect(() => { setLocal(value ?? '') }, [value])
 
   const sharedStyle: React.CSSProperties = {
-    width: '100%', background: 'transparent', border: 'none',
-    borderBottom: '1px solid transparent', outline: 'none',
-    color: 'var(--text)', fontFamily: 'Inter', fontSize: 11,
+    width: '100%', background: 'transparent', outline: 'none',
+    color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11,
     padding: '2px 0', lineHeight: 1.5, resize: 'none' as const,
     transition: 'border-color 0.15s',
   }
   const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    e.currentTarget.style.borderBottomColor = 'var(--border)'
+    e.currentTarget.style.borderBottomColor = 'var(--c-wash2)'
   }
   const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     e.currentTarget.style.borderBottomColor = 'transparent'
@@ -90,7 +89,7 @@ function InlineField({ label, value, onSave, multiline = false, placeholder = '�
   return (
     <div>
       {label && (
-        <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>
+        <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>
           {label}
         </div>
       )}
@@ -116,7 +115,7 @@ function PhoneInlineField({ value, onSave }: { value: string | null; onSave: (v:
   useEffect(() => { setLocal(value ?? '') }, [value])
   return (
     <div>
-      <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Phone</div>
+      <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>Phone</div>
       <PhoneInput
         value={local}
         onChange={v => setLocal(v)}
@@ -143,63 +142,63 @@ function ContactRow({ contact, onSave, onDelete }: {
   useEffect(() => { setDraft({ ...contact }); setLocalArtists(contact.artists || []) }, [contact])
 
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', marginBottom: 5 }}>
-      <div onClick={() => setExpanded(e => !e)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'var(--surface2)', cursor: 'pointer' }}>
+    <div style={{ borderRadius: 6, overflow: 'hidden', marginBottom: 5 }}>
+      <div onClick={() => setExpanded(e => !e)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'var(--c-wash)', cursor: 'pointer' }}>
         <div>
           <span style={{ fontSize: 11, fontWeight: 500 }}>
             {[contact.fname, contact.lname].filter(Boolean).join(' ') || 'Unnamed contact'}
           </span>
           {contact.email && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
-              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>{contact.email}</span>
-              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('var(--text2)')}>Email</a>
+              <span style={{ fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>{contact.email}</span>
+              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('var(--c-fg-2)')}>Email</a>
             </div>
           )}
           {contact.phone && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>{contact.phone}</span>
-              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--text2)')}>Call</a>
-              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--text2)')}>Text</a>
+              <span style={{ fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>{contact.phone}</span>
+              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--c-fg-2)')}>Call</a>
+              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--c-fg-2)')}>Text</a>
             </div>
           )}
           {localArtists.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 4 }}>
               {localArtists.map((a, i) => (
-                <span key={i} style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '1px 5px', borderRadius: 3, lineHeight: 1.6 }}>
+                <span key={i} style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'var(--c-bg)', padding: '1px 5px', borderRadius: 3, lineHeight: 1.6 }}>
                   {a}
                 </span>
               ))}
             </div>
           )}
         </div>
-        <span style={{ fontSize: 9, color: 'var(--text3)', flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
+        <span style={{ fontSize: 9, color: 'var(--c-fg-3)', flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
       </div>
 
       {expanded && (
-        <div style={{ padding: '10px 10px 8px', background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
+        <div style={{ padding: '10px 10px 8px', background: 'var(--c-bg)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 14px', marginBottom: 8 }}>
             {(['fname', 'lname'] as const).map(f => (
               <div key={f}>
-                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>
+                <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>
                   {f === 'fname' ? 'First' : 'Last'}
                 </div>
                 <input type="text" value={draft[f] ?? ''} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
-                  style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
+                  style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
               </div>
             ))}
             <div>
-              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Email</div>
+              <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>Email</div>
               <input type="text" value={draft.email ?? ''} onChange={e => setDraft(d => ({ ...d, email: e.target.value }))}
-                style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
+                style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
             </div>
             <div>
-              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Phone</div>
+              <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>Phone</div>
               <PhoneInput value={draft.phone ?? ''} onChange={v => setDraft(d => ({ ...d, phone: v }))} variant="inline" placeholder="—" />
             </div>
           </div>
           {/* Artists */}
-          <div style={{ borderTop: '1px solid var(--border)', marginTop: 4, paddingTop: 8, marginBottom: 8 }}>
-            <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>Artists</div>
+          <div style={{ marginTop: 4, paddingTop: 8, marginBottom: 8 }}>
+            <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 6 }}>Artists</div>
             {localArtists.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 6 }}>
                 {localArtists.map((a, i) => (
@@ -212,7 +211,7 @@ function ContactRow({ contact, onSave, onDelete }: {
                 type="text" placeholder="Artist name" value={newArtistInput}
                 onChange={e => setNewArtistInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { const n = newArtistInput.trim(); if (n) { setLocalArtists(p => [...p, n]); setNewArtistInput('') } } }}
-                style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 8px', color: 'var(--text)', fontFamily: 'Inter', fontSize: 10, outline: 'none' }}
+                style={{ flex: 1, background: 'var(--c-wash)', borderRadius: 4, padding: '4px 8px', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 10, outline: 'none' }}
               />
               <button onClick={() => { const n = newArtistInput.trim(); if (n) { setLocalArtists(p => [...p, n]); setNewArtistInput('') } }} style={{ ...ghostBtn, fontSize: 9, padding: '3px 8px' }}>+ Add</button>
             </div>
@@ -220,15 +219,15 @@ function ContactRow({ contact, onSave, onDelete }: {
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
             {confirmDelete ? (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10, color: 'var(--hot)', fontFamily: 'Inter' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10, color: 'var(--c-st-hot)', fontFamily: 'Inter' }}>
                 Remove?
                 <button onClick={() => onDelete(contact.id)} style={dangerBtn}>Yes</button>
                 <button onClick={() => setConfirmDelete(false)} style={ghostBtn}>Cancel</button>
               </div>
             ) : (
-              <button onClick={() => setConfirmDelete(true)} style={{ ...ghostBtn, color: 'var(--hot)', fontSize: 10 }}>Remove</button>
+              <button onClick={() => setConfirmDelete(true)} style={{ ...ghostBtn, color: 'var(--c-st-hot)', fontSize: 10 }}>Remove</button>
             )}
-            <button onClick={() => { onSave(contact.id, { ...draft, artists: localArtists }); setExpanded(false) }} style={accentBtn}>Save</button>
+            <button onClick={() => { onSave(contact.id, { ...draft, artists: localArtists }); setExpanded(false) }} style={primaryBtn}>Save</button>
           </div>
         </div>
       )}
@@ -244,23 +243,23 @@ function AddContactForm({ onAdd, onCancel }: { onAdd: (data: Partial<ClientConta
     ['fname', 'First'], ['lname', 'Last'], ['email', 'Email'],
   ]
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '10px 10px 8px', background: 'var(--surface2)', marginTop: 5 }}>
+    <div style={{ borderRadius: 6, padding: '10px 10px 8px', background: 'var(--c-wash)', marginTop: 5 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 14px', marginBottom: 8 }}>
         {fields.map(([f, lbl]) => (
           <div key={f}>
-            <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>{lbl}</div>
+            <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>{lbl}</div>
             <input type="text" value={draft[f]} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
-              style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
+              style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
           </div>
         ))}
         <div>
-          <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Phone</div>
+          <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>Phone</div>
           <PhoneInput value={draft.phone} onChange={v => setDraft(d => ({ ...d, phone: v }))} variant="inline" placeholder="—" />
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button onClick={onCancel} style={ghostBtn}>Cancel</button>
-        <button onClick={() => { if (draft.fname || draft.lname || draft.email) onAdd(draft) }} style={accentBtn}>Add</button>
+        <button onClick={() => { if (draft.fname || draft.lname || draft.email) onAdd(draft) }} style={primaryBtn}>Add</button>
       </div>
     </div>
   )
@@ -279,68 +278,68 @@ function AdminRow({ contact, onSave, onDelete }: {
   useEffect(() => { setDraft({ ...contact }) }, [contact])
 
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', marginBottom: 5 }}>
-      <div onClick={() => setExpanded(e => !e)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'var(--surface2)', cursor: 'pointer' }}>
+    <div style={{ borderRadius: 6, overflow: 'hidden', marginBottom: 5 }}>
+      <div onClick={() => setExpanded(e => !e)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'var(--c-wash)', cursor: 'pointer' }}>
         <div>
           <span style={{ fontSize: 11, fontWeight: 500 }}>
             {[contact.fname, contact.lname].filter(Boolean).join(' ') || 'Unnamed admin'}
           </span>
           {contact.role && (
-            <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginLeft: 7 }}>
+            <span style={{ fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginLeft: 7 }}>
               {contact.role}
             </span>
           )}
           {contact.email && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
-              <span style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>{contact.email}</span>
-              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('var(--text2)')}>Email</a>
+              <span style={{ fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>{contact.email}</span>
+              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('var(--c-fg-2)')}>Email</a>
             </div>
           )}
           {contact.phone && (
             <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--text2)')}>Call</a>
-              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--text2)')}>Text</a>
+              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--c-fg-2)')}>Call</a>
+              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--c-fg-2)')}>Text</a>
             </div>
           )}
         </div>
-        <span style={{ fontSize: 9, color: 'var(--text3)', flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
+        <span style={{ fontSize: 9, color: 'var(--c-fg-3)', flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
       </div>
 
       {expanded && (
-        <div style={{ padding: '10px 10px 8px', background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
+        <div style={{ padding: '10px 10px 8px', background: 'var(--c-bg)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 14px', marginBottom: 8 }}>
             {(['fname', 'lname'] as const).map(f => (
               <div key={f}>
-                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>
+                <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>
                   {f === 'fname' ? 'First' : 'Last'}
                 </div>
                 <input type="text" value={draft[f] ?? ''} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
-                  style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
+                  style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
               </div>
             ))}
             {(['role', 'email'] as const).map(f => (
               <div key={f}>
-                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>{f}</div>
+                <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>{f}</div>
                 <input type="text" value={draft[f] ?? ''} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
-                  style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
+                  style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
               </div>
             ))}
             <div>
-              <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Phone</div>
+              <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>Phone</div>
               <PhoneInput value={draft.phone ?? ''} onChange={v => setDraft(d => ({ ...d, phone: v }))} variant="inline" placeholder="—" />
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
             {confirmDelete ? (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10, color: 'var(--hot)', fontFamily: 'Inter' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10, color: 'var(--c-st-hot)', fontFamily: 'Inter' }}>
                 Remove?
                 <button onClick={() => onDelete(contact.id)} style={dangerBtn}>Yes</button>
                 <button onClick={() => setConfirmDelete(false)} style={ghostBtn}>Cancel</button>
               </div>
             ) : (
-              <button onClick={() => setConfirmDelete(true)} style={{ ...ghostBtn, color: 'var(--hot)', fontSize: 10 }}>Remove</button>
+              <button onClick={() => setConfirmDelete(true)} style={{ ...ghostBtn, color: 'var(--c-st-hot)', fontSize: 10 }}>Remove</button>
             )}
-            <button onClick={() => { onSave(contact.id, draft); setExpanded(false) }} style={accentBtn}>Save</button>
+            <button onClick={() => { onSave(contact.id, draft); setExpanded(false) }} style={primaryBtn}>Save</button>
           </div>
         </div>
       )}
@@ -356,23 +355,23 @@ function AddAdminForm({ onAdd, onCancel }: { onAdd: (data: Partial<ClientContact
     ['fname', 'First'], ['lname', 'Last'], ['role', 'Role'], ['email', 'Email'],
   ]
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '10px 10px 8px', background: 'var(--surface2)', marginTop: 5 }}>
+    <div style={{ borderRadius: 6, padding: '10px 10px 8px', background: 'var(--c-wash)', marginTop: 5 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 14px', marginBottom: 8 }}>
         {fields.map(([f, lbl]) => (
           <div key={f}>
-            <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>{lbl}</div>
+            <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>{lbl}</div>
             <input type="text" value={draft[f]} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
-              style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
+              style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
           </div>
         ))}
         <div>
-          <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Phone</div>
+          <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>Phone</div>
           <PhoneInput value={draft.phone} onChange={v => setDraft(d => ({ ...d, phone: v }))} variant="inline" placeholder="—" />
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button onClick={onCancel} style={ghostBtn}>Cancel</button>
-        <button onClick={() => { if (draft.fname || draft.lname || draft.email) onAdd(draft) }} style={accentBtn}>Add</button>
+        <button onClick={() => { if (draft.fname || draft.lname || draft.email) onAdd(draft) }} style={primaryBtn}>Add</button>
       </div>
     </div>
   )
@@ -384,17 +383,17 @@ function ArtistChip({ name, onRemove }: { name: string; onRemove: () => void }) 
   const [confirming, setConfirming] = useState(false)
   if (confirming) {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontFamily: 'Inter', color: 'var(--hot)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', padding: '2px 7px', borderRadius: 4 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontFamily: 'Inter', color: 'var(--c-st-hot)', background: 'rgba(239,68,68,0.08)', padding: '2px 7px', borderRadius: 4 }}>
         Remove {name}?
-        <button onClick={onRemove} style={{ background: 'none', border: 'none', color: 'var(--hot)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'Inter', fontWeight: 700 }}>Yes</button>
-        <button onClick={() => setConfirming(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'Inter' }}>Cancel</button>
+        <button onClick={onRemove} style={{ background: 'none', color: 'var(--c-st-hot)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'Inter', fontWeight: 700 }}>Yes</button>
+        <button onClick={() => setConfirming(false)} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'Inter' }}>Cancel</button>
       </span>
     )
   }
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', background: 'var(--surface2)', border: '1px solid var(--border)', padding: '2px 7px', borderRadius: 4 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'var(--c-wash)', padding: '2px 7px', borderRadius: 4 }}>
       {name}
-      <button onClick={() => setConfirming(true)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 0, fontSize: 11, lineHeight: 1 }} title="Remove">×</button>
+      <button onClick={() => setConfirming(true)} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', padding: 0, fontSize: 11, lineHeight: 1 }} title="Remove">×</button>
     </span>
   )
 }
@@ -404,8 +403,8 @@ function ArtistChip({ name, onRemove }: { name: string; onRemove: () => void }) 
 function BookingHistory({ leads }: { leads: BookingLead[] }) {
   if (leads.length === 0) {
     return (
-      <div style={{ padding: '10px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6 }}>
-        <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>No bookings linked yet.</span>
+      <div style={{ padding: '10px 12px', background: 'var(--c-wash)', borderRadius: 6 }}>
+        <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>No bookings linked yet.</span>
       </div>
     )
   }
@@ -415,11 +414,11 @@ function BookingHistory({ leads }: { leads: BookingLead[] }) {
         const dateStr = l.session_date || new Date(l.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
         const name = [l.fname, l.lname].filter(Boolean).join(' ') || '—'
         return (
-          <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', background: 'var(--surface2)', borderRadius: 5, border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', minWidth: 72, flexShrink: 0 }}>{dateStr}</div>
-            <div style={{ fontSize: 10, color: 'var(--text)', flex: 1 }}>{name}</div>
+          <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', background: 'var(--c-wash)', borderRadius: 5 }}>
+            <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', minWidth: 72, flexShrink: 0 }}>{dateStr}</div>
+            <div style={{ fontSize: 10, color: 'var(--c-fg)', flex: 1 }}>{name}</div>
             {l.booking && (
-              <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '2px 5px', borderRadius: 3, flexShrink: 0 }}>
+              <span style={{ fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', background: 'var(--c-bg)', padding: '2px 5px', borderRadius: 3, flexShrink: 0 }}>
                 {l.booking}
               </span>
             )}
@@ -637,16 +636,16 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   // ── Loading skeleton ───────────────────────────────────────────────────────
   if (loading && !client) {
     return (
-      <div data-panel="clients-detail" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
-        <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ height: 18, borderRadius: 4, background: 'var(--surface2)', animation: 'shimmer 1.4s ease-in-out infinite', width: '52%', marginBottom: 10 }} />
-          <div style={{ height: 12, borderRadius: 3, background: 'var(--surface2)', animation: 'shimmer 1.4s ease-in-out infinite', width: '28%' }} />
+      <div className="c-panel" style={{ display: 'flex', flexDirection: 'column', background: 'var(--c-bg)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
+        <div style={{ padding: '14px 18px 12px' }}>
+          <div style={{ height: 18, borderRadius: 4, background: 'var(--c-wash)', animation: 'shimmer 1.4s ease-in-out infinite', width: '52%', marginBottom: 10 }} />
+          <div style={{ height: 12, borderRadius: 3, background: 'var(--c-wash)', animation: 'shimmer 1.4s ease-in-out infinite', width: '28%' }} />
         </div>
         <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
           {[80, 55, 70, 45].map((w, i) => (
             <div key={i}>
-              <div style={{ height: 8, borderRadius: 3, background: 'var(--surface2)', animation: 'shimmer 1.4s ease-in-out infinite', width: '22%', marginBottom: 6 }} />
-              <div style={{ height: 11, borderRadius: 3, background: 'var(--surface2)', animation: 'shimmer 1.4s ease-in-out infinite', width: `${w}%` }} />
+              <div style={{ height: 8, borderRadius: 3, background: 'var(--c-wash)', animation: 'shimmer 1.4s ease-in-out infinite', width: '22%', marginBottom: 6 }} />
+              <div style={{ height: 11, borderRadius: 3, background: 'var(--c-wash)', animation: 'shimmer 1.4s ease-in-out infinite', width: `${w}%` }} />
             </div>
           ))}
         </div>
@@ -657,7 +656,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   // ── Empty state ────────────────────────────────────────────────────────────
   if (!client) {
     return (
-      <div data-panel="clients-detail" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--text3)', fontSize: 11, fontFamily: 'Inter' }}>
+      <div className="c-panel" style={{ display: 'flex', flexDirection: 'column', background: 'var(--c-bg)', borderRadius: 10, alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--c-fg-3)', fontSize: 11, fontFamily: 'Inter' }}>
         Select a client to view their profile
       </div>
     )
@@ -666,20 +665,19 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   const isLabel = client.type === 'label'
   const typeLabel = CLIENT_TYPE_LABELS[client.type].toUpperCase()
   const typeBadgeStyle: React.CSSProperties = {
-    fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em',
+    fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em',
     padding: '3px 7px', borderRadius: 3,
     background: 'rgba(139,144,168,0.12)',
-    color: 'var(--text2)',
-    border: '1px solid var(--border)',
-  }
+    color: 'var(--c-fg-2)',
+    }
 
   return (
-    <div data-panel="clients-detail" style={{ display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
+    <div className="c-panel" style={{ display: 'flex', flexDirection: 'column', background: 'var(--c-bg)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
 
       {/* Header */}
-      <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+      <div style={{ padding: '14px 18px 12px', flexShrink: 0 }}>
         {onBack && (
-          <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontFamily: 'Inter', fontSize: 10, cursor: 'pointer', padding: 0, marginBottom: 8, display: 'block' }}>
+          <button onClick={onBack} style={{ background: 'none', color: 'var(--c-fg-3)', fontFamily: 'Inter', fontSize: 10, cursor: 'pointer', padding: 0, marginBottom: 8, display: 'block' }}>
             ← Back
           </button>
         )}
@@ -707,7 +705,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                       setEditingName(false)
                     }
                   }}
-                  style={{ fontFamily: 'DM Serif Display', fontSize: 20, lineHeight: 1.2, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', padding: '0 2px', width: '100%', minWidth: 0 }}
+                  style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 20, lineHeight: 1.2, background: 'transparent', outline: 'none', color: 'var(--c-fg)', padding: '0 2px', width: '100%', minWidth: 0 }}
                 />
               ))}
             </div>
@@ -722,20 +720,20 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                 if (e.key === 'Enter') { saveClient({ name: nameVal.trim() || client.name || '' }); setEditingName(false) }
                 if (e.key === 'Escape') { setNameVal(client.name || ''); setEditingName(false) }
               }}
-              style={{ fontFamily: 'DM Serif Display', fontSize: 20, lineHeight: 1.2, background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', outline: 'none', color: 'var(--text)', padding: '0 2px', width: '100%' }}
+              style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 20, lineHeight: 1.2, background: 'transparent', outline: 'none', color: 'var(--c-fg)', padding: '0 2px', width: '100%' }}
             />
           ) : (
             <div
               onClick={() => setEditingName(true)}
               title="Click to edit name"
-              style={{ fontFamily: 'DM Serif Display', fontSize: 20, lineHeight: 1.2, cursor: 'text', borderBottom: '1px solid transparent', padding: '0 2px', color: 'var(--text)' }}
+              style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 20, lineHeight: 1.2, cursor: 'text', padding: '0 2px', color: 'var(--c-fg)' }}
             >
               {client.name}
             </div>
           )}
           <button
             onClick={() => router.push(`/calendar?newBooking=1&clientId=${client.id}`)}
-            style={{ ...accentBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0, background: 'transparent', color: 'var(--text)' }}
+            style={{ ...primaryBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0, background: 'transparent', color: 'var(--c-fg)' }}
           >
             Start Booking
           </button>
@@ -743,12 +741,12 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const, alignItems: 'center' }}>
           <span style={typeBadgeStyle}>{typeLabel}</span>
           {bookingCount > 0 && (
-            <span style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--text3)', background: 'var(--surface2)', padding: '3px 7px', borderRadius: 3, border: '1px solid var(--border)' }}>
+            <span style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'var(--c-wash)', padding: '3px 7px', borderRadius: 3 }}>
               {bookingCount} booking{bookingCount !== 1 ? 's' : ''}
             </span>
           )}
           {client.registered_at && (
-            <button onClick={() => setRegViewOpen(true)} style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', padding: '3px 7px', borderRadius: 3, background: 'rgba(20,184,166,0.12)', color: 'var(--booked)', border: '1px solid rgba(20,184,166,0.3)', cursor: 'pointer' }}>
+            <button onClick={() => setRegViewOpen(true)} style={{ fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.08em', padding: '3px 7px', borderRadius: 3, background: 'rgba(20,184,166,0.12)', color: 'var(--c-st-booked)', cursor: 'pointer' }}>
               ✓ REGISTERED
             </button>
           )}
@@ -757,10 +755,10 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
 
       {/* Start Booking toast */}
       {bookingToast && (
-        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 2000, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 4px 24px rgba(0,0,0,0.5)', maxWidth: 320, fontFamily: 'Inter', fontSize: 11 }}>
-          <span style={{ color: 'var(--accent)', fontSize: 14 }}>🗓</span>
-          <span style={{ color: 'var(--text)', flex: 1 }}>Booking flow coming in Chunk 6.</span>
-          <button onClick={() => setBookingToast(false)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 16, lineHeight: 1, flexShrink: 0 }}>×</button>
+        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 2000, background: 'var(--c-bg)', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 4px 24px rgba(0,0,0,0.5)', maxWidth: 320, fontFamily: 'Inter', fontSize: 11 }}>
+          <span style={{ color: 'var(--c-fg)', fontSize: 14 }}>🗓</span>
+          <span style={{ color: 'var(--c-fg)', flex: 1 }}>Booking flow coming in Chunk 6.</span>
+          <button onClick={() => setBookingToast(false)} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 16, lineHeight: 1, flexShrink: 0 }}>×</button>
         </div>
       )}
 
@@ -786,9 +784,9 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                 <ContactRow key={ct.id} contact={ct} onSave={saveContact} onDelete={deleteContact} />
               ))}
               {anrContacts.length === 0 && !showAddContact && (
-                <div style={{ padding: '10px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>No A&Rs or reps on file yet.</span>
-                  <button onClick={() => setShowAddContact(true)} style={{ ...accentBtn, fontSize: 9, padding: '3px 10px' }}>Add Contact</button>
+                <div style={{ padding: '10px 12px', background: 'var(--c-wash)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>No A&Rs or reps on file yet.</span>
+                  <button onClick={() => setShowAddContact(true)} style={{ ...primaryBtn, fontSize: 9, padding: '3px 10px' }}>Add Contact</button>
                 </div>
               )}
               {showAddContact && <AddContactForm onAdd={addContact} onCancel={() => setShowAddContact(false)} />}
@@ -807,9 +805,9 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                 <AdminRow key={ct.id} contact={ct} onSave={saveContact} onDelete={deleteContact} />
               ))}
               {adminContacts.length === 0 && !showAddAdmin && (
-                <div style={{ padding: '10px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>No admins on file yet.</span>
-                  <button onClick={() => setShowAddAdmin(true)} style={{ ...accentBtn, fontSize: 9, padding: '3px 10px' }}>Add Admin</button>
+                <div style={{ padding: '10px 12px', background: 'var(--c-wash)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>No admins on file yet.</span>
+                  <button onClick={() => setShowAddAdmin(true)} style={{ ...primaryBtn, fontSize: 9, padding: '3px 10px' }}>Add Admin</button>
                 </div>
               )}
               {showAddAdmin && <AddAdminForm onAdd={addAdmin} onCancel={() => setShowAddAdmin(false)} />}
@@ -826,7 +824,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                 <InlineField label="Email" value={client.email} onSave={v => saveClient({ email: v })} />
                 {client.email && (
                   <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-                    <a href={`mailto:${client.email}`} style={aBtn('var(--text2)')}>Email</a>
+                    <a href={`mailto:${client.email}`} style={aBtn('var(--c-fg-2)')}>Email</a>
                   </div>
                 )}
               </div>
@@ -834,8 +832,8 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                 <PhoneInlineField value={client.phone} onSave={v => saveClient({ phone: v })} />
                 {client.phone && (
                   <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-                    <a href={`tel:${client.phone.replace(/\D/g, '')}`} style={aBtn('var(--text2)')}>Call</a>
-                    <a href={`sms:${client.phone.replace(/\D/g, '')}`} style={aBtn('var(--text2)')}>Text</a>
+                    <a href={`tel:${client.phone.replace(/\D/g, '')}`} style={aBtn('var(--c-fg-2)')}>Call</a>
+                    <a href={`sms:${client.phone.replace(/\D/g, '')}`} style={aBtn('var(--c-fg-2)')}>Text</a>
                   </div>
                 )}
               </div>
@@ -867,7 +865,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                 <InlineField label="Zip" value={client.address_zip} onSave={v => saveClient({ address_zip: v })} />
               </div>
             ) : (
-              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginBottom: 4 }}>
+              <div style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginBottom: 4 }}>
                 {client.address_street
                   ? `${client.address_street}${client.address_city ? ', ' + client.address_city : ''}`
                   : 'No address on file.'}
@@ -876,16 +874,16 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
 
             <SectionHeader label="Verification" />
             {client.registered_at ? (
-              <button onClick={() => setRegViewOpen(true)} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--booked)', lineHeight: 1.8, marginBottom: 4, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' as const }}>
+              <button onClick={() => setRegViewOpen(true)} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-st-booked)', lineHeight: 1.8, marginBottom: 4, background: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' as const }}>
                 ✓ Registered {new Date(client.registered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 {client.terms_accepted && <span> · Terms accepted</span>}
                 {client.id_file_url && <span> · ID on file</span>}
-                <span style={{ marginLeft: 6, fontSize: 9, color: 'var(--text3)' }}>View →</span>
+                <span style={{ marginLeft: 6, fontSize: 9, color: 'var(--c-fg-3)' }}>View →</span>
               </button>
             ) : (
               <div style={{ marginBottom: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: regLinkUrl ? 6 : 0 }}>
-                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter' }}>Not yet registered</span>
+                  <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>Not yet registered</span>
                   <button
                     onClick={generateRegLink}
                     disabled={regLinkGenerating || !!regLinkUrl}
@@ -895,11 +893,11 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                   </button>
                 </div>
                 {regLinkUrl && (
-                  <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 5, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--text2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                  <div style={{ background: 'var(--c-wash)', borderRadius: 5, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                       {regLinkUrl}
                     </span>
-                    <button onClick={copyRegLink} style={{ ...accentBtn, fontSize: 8, padding: '2px 8px', flexShrink: 0 }}>
+                    <button onClick={copyRegLink} style={{ ...primaryBtn, fontSize: 8, padding: '2px 8px', flexShrink: 0 }}>
                       {regLinkCopied ? 'Copied!' : 'Copy'}
                     </button>
                     <button onClick={emailRegLink} style={{ ...ghostBtn, fontSize: 8, padding: '2px 8px', flexShrink: 0 }}>
@@ -926,16 +924,16 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
           {clientTags.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
               {clientTags.map(tag => (
-                <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter' }}>
+                <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--c-wash)', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>
                   {tag}
-                  <button onClick={() => removeClientTag(tag)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text3)', lineHeight: 1, fontSize: 11 }}>×</button>
+                  <button onClick={() => removeClientTag(tag)} style={{ background: 'none', padding: 0, cursor: 'pointer', color: 'var(--c-fg-3)', lineHeight: 1, fontSize: 11 }}>×</button>
                 </span>
               ))}
             </div>
           )}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
             {STARTER_TAGS.filter(t => !clientTags.includes(t)).map(tag => (
-              <button key={tag} onClick={() => addClientTag(tag)} style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', cursor: 'pointer' }}>
+              <button key={tag} onClick={() => addClientTag(tag)} style={{ background: 'transparent', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', cursor: 'pointer' }}>
                 + {tag}
               </button>
             ))}
@@ -950,13 +948,13 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
               }}
               onBlur={() => setTimeout(() => setClientTagDDOpen(false), 150)}
               placeholder="Add custom tag…"
-              style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', fontSize: 10, color: 'var(--text)', fontFamily: 'Inter', outline: 'none', boxSizing: 'border-box' }}
+              style={{ width: '100%', background: 'var(--c-wash)', borderRadius: 4, padding: '5px 8px', fontSize: 10, color: 'var(--c-fg)', fontFamily: 'Inter', outline: 'none', boxSizing: 'border-box' }}
             />
             {clientTagDDOpen && clientTagInput.trim() && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, zIndex: 100, marginTop: 2 }}>
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--c-bg)', borderRadius: 4, zIndex: 100, marginTop: 2 }}>
                 <button
                   onMouseDown={() => { addClientTag(clientTagInput); setClientTagInput(''); setClientTagDDOpen(false) }}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '6px 10px', fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter', cursor: 'pointer' }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', padding: '6px 10px', fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter', cursor: 'pointer' }}
                 >
                   Add &ldquo;{clientTagInput.trim()}&rdquo;
                 </button>
@@ -966,8 +964,8 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
         </div>
 
         {/* Footer */}
-        <div style={{ marginTop: 16, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'Inter' }}>
+        <div style={{ marginTop: 16, paddingTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>
             {!client.registered_at ? 'Migrated · ' : ''}
             Added {client.created_at ? new Date(client.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
           </div>
@@ -979,10 +977,10 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
 
       {/* Delete confirm modal */}
       {showDeleteConfirm && (
-        <div onClick={() => setShowDeleteConfirm(false)} style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px', maxWidth: 400, width: '100%' }}>
-            <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 14, marginBottom: 8 }}>Delete {client.name}?</div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', lineHeight: 1.7, marginBottom: 20 }}>
+        <div onClick={() => setShowDeleteConfirm(false)} className="c-modal-backdrop" style={{ zIndex: 2000 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--c-bg)', borderRadius: 12, padding: '20px 24px', maxWidth: 400, width: '100%' }}>
+            <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 14, marginBottom: 8 }}>Delete {client.name}?</div>
+            <div style={{ fontSize: 11, color: 'var(--c-fg-2)', fontFamily: 'Inter', lineHeight: 1.7, marginBottom: 20 }}>
               This will permanently delete this client and all associated contacts. Any linked leads will be unlinked but not deleted. This action cannot be undone.
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

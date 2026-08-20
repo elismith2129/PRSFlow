@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRG — HR &amp; Payroll Protocols, August 2026</title>
+<style>
+  :root{ --ink:#12161d; --body:#2a2f38; --muted:#6b7280; --line:#dfe4ea;
+         --accent:#0e6f62; --accentbg:#eaf5f2; --flag:#8a5a12; --flagbg:#fdf4e6;
+         --stop:#8f2323; --stopbg:#fcecec; }
+  *{box-sizing:border-box}
+  body{margin:0 auto; max-width:820px; padding:42px 32px 70px;
+       font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       color:var(--body); background:#fff;}
+  h1{font-size:24px; line-height:1.25; margin:0 0 6px; color:var(--ink); font-weight:600;}
+  .sub{color:var(--muted); font-size:14px; margin:0;}
+  h2{font-size:17px; margin:36px 0 10px; color:var(--ink); font-weight:600;
+     border-bottom:2px solid var(--accent); padding-bottom:5px;}
+  h3{font-size:15px; margin:24px 0 7px; color:var(--accent); font-weight:600;}
+  p{margin:0 0 11px;}
+  ul,ol{margin:0 0 12px; padding-left:20px;} li{margin-bottom:6px;}
+  table{width:100%; border-collapse:collapse; margin:10px 0 16px; font-size:14px;}
+  th{background:var(--ink); color:#fff; text-align:left; padding:8px 10px; font-weight:600; font-size:13px;}
+  td{border-bottom:1px solid var(--line); padding:8px 10px; vertical-align:top;}
+  tr:nth-child(even) td{background:#fafbfc;}
+  .box{border-left:4px solid var(--accent); background:var(--accentbg); padding:12px 15px; margin:14px 0;}
+  .box.flag{border-left-color:var(--flag); background:var(--flagbg);}
+  .box.stop{border-left-color:var(--stop); background:var(--stopbg);}
+  .box p{margin:0 0 7px;} .box p:last-child{margin:0;}
+  .box .lbl{font-weight:600; color:var(--ink); display:block; margin-bottom:5px;}
+  .rule{border:0; border-top:1px solid var(--line); margin:30px 0;}
+  .lead{font-size:16px; color:var(--ink);}
+  .cap{font-size:12.5px; color:var(--muted); margin:16px 0 6px; font-style:italic;}
+  /* mockups */
+  .mk{border:1px solid #cfd6dd; border-radius:7px; background:#fff; margin:0 0 6px; overflow:hidden;}
+  .mk .bar{background:#f4f6f8; border-bottom:1px solid var(--line); padding:8px 13px; display:flex; align-items:baseline; gap:9px;}
+  .mk .bar b{font-size:13.5px; color:var(--ink); font-weight:600;}
+  .mk .bar .r{margin-left:auto; font-size:12px; color:var(--muted);}
+  .mk .bd{padding:4px 13px 11px;}
+  .ln{display:flex; align-items:center; gap:9px; padding:8px 0; border-bottom:1px solid #eef1f4; font-size:13.5px;}
+  .ln:last-child{border-bottom:none;}
+  .ln .rt{margin-left:auto; font-size:12px; color:var(--muted); text-align:right; white-space:nowrap;}
+  .cb{width:13px;height:13px;border:1.5px solid #b3bbc4;border-radius:3px;flex:none;background:#fff;}
+  .cb.on{background:var(--accent);border-color:var(--accent);}
+  .tag{font-size:11px; padding:2px 7px; border-radius:3px; white-space:nowrap;}
+  .tag.g{background:#e6f2e9;color:#1e5c31;} .tag.a{background:var(--flagbg);color:var(--flag);}
+  .tag.r{background:var(--stopbg);color:var(--stop);} .tag.n{background:#eef1f4;color:var(--muted);}
+  .due{font-size:11.5px; color:var(--stop);}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; background:#f4f6f8;
+        border:1px solid var(--line); border-radius:4px; padding:7px 10px; color:var(--ink);}
+  .btn{display:inline-block; font-size:11.5px; border:1px solid #b3bbc4; border-radius:4px; padding:3px 9px; color:var(--body); background:#fff;}
+  .btn.p{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .phone{max-width:250px; border:1px solid #cfd6dd; border-radius:14px; padding:11px 12px 13px; margin:0 auto;}
+  .fl{font-size:11.5px; color:var(--muted); margin:9px 0 3px;}
+  .fv{border:1px solid #d8dee4; border-radius:4px; padding:6px 9px; font-size:13px; color:var(--ink);}
+  .why{border-left:3px solid #cfd6dd; padding-left:13px; margin:10px 0 16px; font-size:14px; color:var(--body);}
+  @media print{ body{padding:0 12px; max-width:none; font-size:12.5px;} h2{page-break-after:avoid;}
+                .box,table,.mk,.why{page-break-inside:avoid;} }
+</style>
+</head>
+<body>
+
+<h1>Payroll &amp; HR protocols</h1>
+<p class="sub">Paramount Recording Group · August 2026 · Rev. 2, updated from Lynair's review</p>
+<hr class="rule">
+
+<p class="lead">Fernando is taking over daily timecard review, hiring, separations, and training records. Eli creates hires and starts terminations in ADP; Lynair keeps payroll processing and CalSavers. Eight documents, attached.</p>
+
+<p>This briefing covers what changed and how each procedure is designed to work in practice.</p>
+
+<div class="box">
+  <span class="lbl">Revision 2 — updated from Lynair's review, August 2026</span>
+  <p><strong>The ADP hire and terminate actions stay with Eli.</strong> Fernando doesn't hold those permissions and won't be given them. He runs everything around it — prep, notices, monitoring onboarding progress, approving uploaded documents including the I-9, day one, and offboarding. Eli does the final approve. Fernando to call ADP during the next onboarding to confirm his review-and-approve access.</p>
+  <p><strong>CalSavers is triggered by onboarding completion, not hire date</strong> — enrolment needs address and SSN, which don't exist until the employee finishes. The 30-day clock still runs from hire, so Fernando emails Lynair the moment onboarding closes.</p>
+  <p><strong>Employee timecard approval is now a hard requirement</strong> and a condition of closing the pay period. See Procedure 1.</p>
+  <p><strong>Hire date seven days early is confirmed</strong> as the standing convention.</p>
+</div>
+
+<h2>The document set</h2>
+
+<p>Four procedures, each paired with a reference document. The <strong>P</strong> version is the working procedure — steps only, what Fernando uses day to day. The <strong>R</strong> version carries the legal basis and the reasoning, and gets read once by someone new or when something unusual comes up.</p>
+
+<table>
+  <tr><th style="width:36%">Procedure</th><th>Reference</th></tr>
+  <tr><td>PRG-P01 — Daily Timecards</td><td>PRG-R01 — Timecards &amp; Time Records</td></tr>
+  <tr><td>PRG-P02 — Hiring &amp; Separation</td><td>PRG-R02 — Hiring &amp; Separation</td></tr>
+  <tr><td>PRG-P03 — Missed Punches</td><td>PRG-R03 — Time Record Accountability</td></tr>
+  <tr><td>PRG-P04 — Required Training Records</td><td>PRG-R04 — Required Training</td></tr>
+</table>
+
+<h2>Three things we changed in the old ADP instructions</h2>
+
+<div class="box">
+  <span class="lbl">1. Final pay timing</span>
+  <p>The prior instructions said final pay was due within 72 hours of termination. We've rewritten it as immediate at time of termination for involuntary separations (LC 201); last day worked for a quit with 72+ hours notice; within 72 hours for a quit with shorter notice (LC 202) — accrued unused PTO included in all three.</p>
+  <p>Because involuntary means the check has to exist before the conversation, PRG-P02 now requires 48 hours' notice to Eli and Lynair before any planned involuntary termination.</p>
+</div>
+
+<div class="box">
+  <span class="lbl">2. CalSavers</span>
+  <p>The onboarding steps said to email Lynair to <em>remove</em> the employee from CalSavers — the termination action, in the wrong section. It's an add at hire, a remove at separation.</p>
+  <p>Corrected further after review: enrolment can't happen until onboarding is complete, since it needs the employee's address and SSN. So the trigger is onboarding completion, and Fernando emails Lynair the moment it closes. The 30-day statutory clock still runs from the hire date, which means a slow onboarding compresses the window rather than extending it.</p>
+</div>
+
+<div class="box">
+  <span class="lbl">3. Hire date convention</span>
+  <p>Setting the ADP hire date seven days before the start date gets the onboarding invite out in time for paperwork to finish before day one. Confirmed as the standing convention.</p>
+  <p>Worth applying uniformly rather than case by case — the hire date also drives payroll eligibility, benefits eligibility, and the CalSavers window above.</p>
+</div>
+
+<h2>How the systems divide up</h2>
+
+<p><strong>ADP Workforce Now remains the system of record for pay.</strong> Every punch correction is entered in ADP by hand. There is no integration and that's deliberate — a sync that silently drifts from ADP would be worse than no sync.</p>
+
+<p><strong>PRSFlo is the platform we use internally for operations.</strong> Its role in these procedures is narrow: it collects what staff report, timestamps it, and holds the record. It never writes to ADP. If the two ever disagree, ADP is right about what was paid and PRSFlo is right about what was requested and confirmed.</p>
+
+<p>The screens below are mockups, not built software. Where a feature isn't finished, each procedure carries the manual fallback — so nothing waits on the build.</p>
+
+<h2>Procedure 1 — Daily timecards</h2>
+
+<p>Daily review by 11 AM rather than a scramble in the 48 hours before payroll. The reasoning is simple: reconstructing a punch from three days ago is guesswork, reconstructing yesterday's is a two-minute conversation. It's the same total work, moved to where it's cheap and accurate.</p>
+
+<h3>The rule everything hangs on</h3>
+
+<p>No punch is edited without written confirmation from the employee. Not because we distrust anyone — because a corrected timecard with no employee sign-off behind it is unverifiable, and a manager editing time with no confirmation looks, on paper, exactly like a manager shaving hours.</p>
+
+<p>So the confirmation has to be captured somewhere durable. The mechanism is a form on the employee's phone:</p>
+
+<p class="cap">What an employee sees — two taps from their dashboard, usable at 1 AM in a parking lot</p>
+<div class="phone">
+  <div style="font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:2px;">Missed a punch</div>
+  <div class="fl">Which shift</div><div class="fv">Tue, Aug 4 — Studio B</div>
+  <div class="fl">Which punch</div><div class="fv">Clock out</div>
+  <div class="fl">Correct time</div><div class="fv">11:47 PM</div>
+  <div class="fl">Note (optional)</div><div class="fv" style="color:var(--muted);">Session ran long</div>
+  <div style="margin-top:11px;"><span class="btn p" style="display:block;text-align:center;padding:6px;">Submit</span></div>
+  <div style="margin-top:10px;padding-top:9px;border-top:1px solid #eef1f4;font-size:11.5px;color:var(--muted);">18 clean shifts · 0 counted misses in 90 days</div>
+</div>
+
+<div class="why">The submission is timestamped. That single fact does two jobs — it's the written confirmation the procedure requires, and it's what determines whether the employee reported the miss themselves or the manager had to find it. More on why that matters under Procedure 2.</div>
+
+<p class="cap">What Fernando sees the next morning</p>
+<div class="mk">
+  <div class="bar"><b>Punch corrections</b><span class="r">3 pending</span></div>
+  <div class="bd">
+    <div class="ln"><span>Tom W. — clock out, Tue Aug 4 · claims <b>11:47 PM</b></span><span class="rt"><span class="tag g">same day</span></span></div>
+    <div class="ln" style="border-bottom:none;padding-bottom:3px;"><span>Sierra L. — meal out, Mon Aug 3 · claims <b>6:15 PM</b></span><span class="rt"><span class="tag a">late</span></span></div>
+    <div style="background:var(--flagbg);border-left:3px solid var(--flag);padding:8px 11px;margin:0 0 9px;font-size:12.5px;color:var(--flag);">
+      Shift started 12:30 PM — a 6:15 PM meal start is past the end of hour 5. Flag a one-hour premium. Do not adjust the punch.
+    </div>
+    <div class="ln"><span><span class="btn p">Approve</span> <span class="btn">Adjust</span> <span class="btn">Reject</span></span></div>
+  </div>
+</div>
+
+<div class="why">The system knows the shift start, so it can spot a non-compliant meal and say so before the manager acts. This is the guardrail we care most about: the procedure forbids adjusting a punch to make a break look compliant, and the screen reinforces it at the moment of decision rather than in a document nobody rereads. The premium gets flagged to Lynair and paid in that period.</div>
+
+<p>Once approved, the ADP comment is composed for him to copy — date, corrected value, source, initials — and he marks it entered. That closes the loop and logs the miss without a second step.</p>
+
+<div class="mk"><div class="bd" style="padding-top:11px;">
+  <div style="font-size:13px;margin-bottom:6px;">Quinn R. — clock out, Mon Aug 3 · approved, set to 1:15 AM</div>
+  <div class="mono">Corrected clock out 1:15 AM per employee request 8/3. — FA</div>
+  <div style="margin-top:8px;"><span class="btn">Copy</span> <span class="btn">Mark entered in ADP</span></div>
+</div></div>
+
+<h3>Employee timecard approval</h3>
+
+<p>Added at Lynair's suggestion, and it strengthens the whole procedure. Every employee approves their own timecard in ADP each period — compliance was good at WFN rollout and has slipped since.</p>
+
+<div class="box">
+  <p><strong>An approved timecard is the employee confirming their own hours.</strong> A text confirms one punch; an approved timecard affirms every hour in the period, in the system of record, with a timestamp. It's the single most useful document we could produce in a dispute.</p>
+</div>
+
+<p>Fernando chases outstanding approvals during the daily review rather than at period end — a same-day nudge is easy, a two-week-old one is a chore. A manager never approves on an employee's behalf; that produces something that looks like employee confirmation and isn't, which is worse than no approval. And a refusal to approve is useful information, since it usually means the employee disputes the hours — better surfaced before payroll runs.</p>
+
+<h3>Closing the period</h3>
+
+<p>The handoff to Lynair used to be implicit — Fernando did what he could, Lynair found what was left, and neither knew where the boundary sat. It's now explicit and binary. Fernando doesn't hand over a period until seven things are true: every day reviewed, zero open exceptions, <strong>every employee timecard approved</strong>, every edit commented with confirmation on file, meal premiums listed, PTO and sick entered, and the punch log current.</p>
+
+<div class="box">
+  <span class="lbl">Until the software is ready</span>
+  <p>Staff text or email instead of submitting in the app, and <strong>those messages get saved</strong> — they are the written confirmation and there's no substitute. Misses are logged by hand and ADP comments typed manually. The procedure is identical; only the storage changes.</p>
+</div>
+
+<h2>Procedure 2 — Missed punches</h2>
+
+<p>Staff forget to punch. Sessions run long, a client wants one more pass, and the clock-out never happens. The aim isn't to eliminate that — it's to move responsibility for a missed punch back to the person who missed it, at the moment they missed it.</p>
+
+<h3>Two rules that don't bend</h3>
+
+<div class="box stop">
+  <p><strong>All hours worked are always paid.</strong> A missed punch never delays or reduces pay, regardless of how many times someone has forgotten.</p>
+  <p><strong>Pay and discipline are separate tracks.</strong> Never dock pay, withhold a check, delay a check, or cut hours over a missed punch. Accountability is a performance conversation and nothing else.</p>
+</div>
+
+<p>The second is where well-meaning managers get companies sued. Docking pay feels proportionate and reads as an unlawful deduction from wages — turning a coaching issue into a wage claim, and making every prior correction look suspect. It's stated this bluntly in the procedure on purpose.</p>
+
+<h3>The mechanism</h3>
+
+<p>The whole design rests on one distinction: a miss the employee reports, versus a miss the manager discovers.</p>
+
+<table>
+  <tr><th style="width:44%">How it surfaced</th><th>Effect</th></tr>
+  <tr><td>Employee reports it in writing, same day</td><td>Logged, corrected, no conversation, no count</td></tr>
+  <tr><td>Employee reports it late</td><td>Half a miss — two late reports equal one counted</td></tr>
+  <tr><td>Manager finds it in the daily review</td><td>Counted — enters the coaching ladder</td></tr>
+</table>
+
+<p>Staff work out that arithmetic within a pay period or two. And because the submission is timestamped, the classification is computed rather than judged — no memory, no argument, and no tally for Fernando to maintain. The behaviour we want isn't "never forget a punch," which is unrealistic here. It's "own your own time record." Someone who forgets four punches a month and reports all four the same day is a success.</p>
+
+<h3>The ladder</h3>
+
+<p>Counted misses only, rolling 90 days, reset by a clean 90.</p>
+
+<table>
+  <tr><th style="width:12%">Count</th><th>Action</th></tr>
+  <tr><td>1st</td><td>Quick word in person, 60 seconds. Re-state the standard.</td></tr>
+  <tr><td>2nd</td><td>Same conversation plus a written recap emailed to the employee, copied to Eli.</td></tr>
+  <tr><td>3rd</td><td>Documented meeting with Eli. Written expectation, 30-day check-in.</td></tr>
+  <tr><td>4th+</td><td>Formal performance action per the handbook.</td></tr>
+</table>
+
+<p>It escalates on pattern, not incident. A formal track starting at the first miss would be disproportionate and would kill the self-reporting incentive outright — if the first miss produces a warning, nobody volunteers anything and the system inverts.</p>
+
+<p>Separately, and not on this ladder: buddy punching, reporting hours not worked, refusing to confirm hours, and misses that cluster around overtime or meal-break thresholds. Those go straight to Eli.</p>
+
+<h2>Procedure 3 — Hiring and separation</h2>
+
+<p>This is checklist work with hard legal deadlines attached, which makes it a bad fit for memory. The design intent is that deadlines are dated automatically off the start date or last day worked, rather than remembered.</p>
+
+<p>Eli creates the record in ADP — a name, mobile, email, start date, plus position and rate. Because he enters the rate himself, nobody needs to review it afterwards. Fernando runs everything around it, including reviewing and approving the new hire's uploaded documents.</p>
+
+<p class="cap">Onboarding — generated when a hire is opened, deadlines already dated</p>
+<div class="mk">
+  <div class="bar"><b>Onboarding — J. Ruiz</b><span class="r">start Aug 18 · 6 of 14 done</span></div>
+  <div class="bd">
+    <div class="ln"><span class="cb on"></span><span>Offer accepted in writing · filed</span></div>
+    <div class="ln"><span class="cb on"></span><span>ADP hire created — 4DA, non-exempt, I-9 electronic</span></div>
+    <div class="ln"><span class="cb on"></span><span>Welcome email sent, Lynair copied</span></div>
+    <div class="ln"><span class="cb"></span><span>Wage Theft Prevention Act notice</span><span class="rt">by Aug 18</span></div>
+    <div class="ln"><span class="cb"></span><span>Harassment policy — signed acknowledgment</span><span class="rt">by Aug 18</span></div>
+    <div class="ln"><span class="cb"></span><span><b>I-9 Section 2 — document review</b></span><span class="rt"><span class="due">by Aug 21 · 3 business days</span></span></div>
+    <div class="ln"><span class="cb"></span><span><b>Email Lynair — onboarding complete, CalSavers</b></span><span class="rt"><span class="due">by Sep 17 · 30 days</span></span></div>
+    <div class="ln"><span class="cb"></span><span>Harassment training assigned</span><span class="rt">by Feb 18 · 6 months</span></div>
+    <div class="ln"><span class="cb"></span><span>Workplace violence training</span><span class="rt">at hire</span></div>
+  </div>
+</div>
+
+<div class="why">Every date is calculated, not typed. The three that carry statutory consequences — I-9 Section 2, CalSavers enrolment, and the training clocks — are the ones most easily lost in a busy week, so they're the ones the system dates and surfaces. Note that CalSavers is gated on onboarding <em>completion</em> rather than the hire date, since enrolment needs address and SSN — but the 30-day clock still runs from hire, so a slow onboarding compresses the window rather than extending it. Until it's built, PRG-P02 is the checklist: printed, worked, filed in the personnel record, with deadlines diarised by hand.</div>
+
+<h3>Separation — one question first</h3>
+
+<p>The separation flow asks how the employment is ending before anything else, because that single answer sets the final pay deadline and nothing downstream is correct without it.</p>
+
+<div class="mk">
+  <div class="bar"><b>Separation — how is this ending?</b></div>
+  <div class="bd">
+    <div class="ln"><span class="cb on"></span><span><b>We are terminating</b> — fired or laid off</span><span class="rt"><span class="tag r">pay due immediately</span></span></div>
+    <div class="ln"><span class="cb"></span><span>They quit, 72+ hours notice</span><span class="rt"><span class="tag n">pay on last day</span></span></div>
+    <div class="ln"><span class="cb"></span><span>They quit, under 72 hours notice</span><span class="rt"><span class="tag n">pay within 72 hrs</span></span></div>
+  </div>
+</div>
+<div style="background:var(--stopbg);border-left:4px solid var(--stop);padding:11px 14px;margin:0 0 6px;font-size:13.5px;color:var(--stop);">
+  <strong>Final check must be ready before the termination conversation.</strong> Includes all accrued unused PTO. Requires Eli's approval and 48 hours' notice to Lynair. Cannot proceed until both are recorded.
+</div>
+
+<div class="why">This is the highest-dollar item in the whole set — waiting time penalties under LC 203 run up to 30 days of wages, and they apply even when the delay was an honest administrative miss. So it's built as a block rather than a reminder. The rest of the separation checklist — separation packet, ADP steps, CalSavers removal, final timecard, access and equipment, personnel file — only opens once that gate is satisfied.</div>
+
+<p>One further rule: a voluntary resignation is never processed on a verbal notice. Written resignation is required, both because a verbal one is ambiguous and because the date and time notice was given is what sets the deadline above.</p>
+
+<h2>Procedure 4 — Training records</h2>
+
+<p>Two mandates, two regulators, two different clocks. Conflating them is the common failure, so the tracker holds both on one row.</p>
+
+<table>
+  <tr><th style="width:26%"></th><th>Harassment prevention</th><th>Workplace violence</th></tr>
+  <tr><td>Authority</td><td>Gov. Code 12950.1</td><td>Labor Code 6401.9</td></tr>
+  <tr><td>Regulator</td><td>Civil Rights Department</td><td>Cal/OSHA</td></tr>
+  <tr><td>Cycle</td><td>Every 2 years</td><td>Every year</td></tr>
+  <tr><td>New hires</td><td>Within 6 months</td><td>At hire</td></tr>
+</table>
+
+<p class="cap">The tracker — one row per employee, both clocks</p>
+<div class="mk">
+  <div class="bar"><b>Training tracker</b><span class="r">3 overdue · 2 due soon</span></div>
+  <div class="bd">
+    <div class="ln" style="font-size:12px;color:var(--muted);border-bottom:1px solid var(--line);">
+      <span style="width:118px;">Employee</span><span style="width:52px;">Course</span><span style="width:118px;">Harassment</span><span style="width:104px;">Workplace viol.</span><span class="rt">Status</span></div>
+    <div class="ln"><span style="width:118px;">Fernando A.</span><span style="width:52px;color:var(--muted);">2 hr</span><span style="width:118px;color:var(--muted);">due Jan 1</span><span style="width:104px;color:var(--muted);">due Mar 12</span><span class="rt"><span class="tag a">due soon</span></span></div>
+    <div class="ln"><span style="width:118px;">Aaron D.</span><span style="width:52px;color:var(--muted);">1 hr</span><span style="width:118px;" class="due">no record</span><span style="width:104px;color:var(--muted);">due Feb 2</span><span class="rt"><span class="tag r">overdue</span></span></div>
+    <div class="ln"><span style="width:118px;">Quinn R.</span><span style="width:52px;color:var(--muted);">2 hr</span><span style="width:118px;color:var(--muted);">Mar 2025</span><span style="width:104px;" class="due">no record</span><span class="rt"><span class="tag r">overdue</span></span></div>
+    <div class="ln"><span style="width:118px;">Isaac M.</span><span style="width:52px;color:var(--muted);">2 hr</span><span style="width:118px;color:var(--muted);">Jun 2025</span><span style="width:104px;color:var(--muted);">Jan 2026</span><span class="rt"><span class="tag g">current</span></span></div>
+    <div class="ln"><span style="width:118px;">Sierra L.</span><span style="width:52px;color:var(--muted);">1 hr</span><span style="width:118px;color:var(--muted);">Nov 2025</span><span style="width:104px;color:var(--muted);">Nov 2025</span><span class="rt"><span class="tag g">current</span></span></div>
+  </div>
+</div>
+
+<div class="why">A row with no certificate reads as <strong>overdue rather than blank</strong> — training we can't evidence is training we can't demonstrate, so it shouldn't look fine on a screen. Certificates attach to the row. The quarterly audit becomes opening this page and working the reds, and the same columns run in a spreadsheet until it's built, structured identically so it imports rather than gets re-keyed.</div>
+
+<p>Triggers are dated from the tracker: new hire, promotion into a supervisory role (which requires the two-hour course even if the one-hour was recent), short-term hires at 30 days or 100 hours worked, and the two- and one-year anniversaries.</p>
+
+<h2>Notices at hire</h2>
+
+<p>PRG-P02 lists these as a checklist: Wage Theft Prevention Act notice · harassment, discrimination and retaliation policy with acknowledgment · CRD fact sheet · paid sick leave notice · workers' comp Time of Hire pamphlet and DWC-1 · DE 2515 and DE 2511 · workplace violence plan and training · IIPP · handbook acknowledgment · I-9.</p>
+
+<p>Per Lynair, what ADP already delivers is visible at <strong>Setup › Manage Onboarding › Standard</strong>, under Tasks. Fernando to work through that once and delete duplicates from the list above rather than double-sending.</p>
+
+<h2>Retention</h2>
+
+<table>
+  <tr><th style="width:52%">Record</th><th>Held for</th></tr>
+  <tr><td>Personnel records</td><td>4 years</td></tr>
+  <tr><td>Payroll and time records</td><td>3 years</td></tr>
+  <tr><td>Harassment training records</td><td>4 years (2-year minimum, matched to personnel files)</td></tr>
+  <tr><td>Form I-9</td><td>3 years after hire or 1 year after termination, whichever is later</td></tr>
+  <tr><td>Violent incident log, hazard records, investigations</td><td>5 years</td></tr>
+</table>
+
+<h2>Harassment training — January 1, 2027</h2>
+
+<div class="box flag">
+  <p><strong>All staff trained by January 1, 2027.</strong> We're working to an internal December 1 date for a month of buffer. Roughly 15 employees, so we're covered by the mandate.</p>
+  <p>Plan: build the roster and classify everyone supervisory or non-supervisory in August, assign in September, chase through November. Anyone with no record on file is treated as untrained.</p>
+  <p>We're proposing the free CRD courses rather than a paid vendor for this cycle — compliant and manageable to track at our size. Happy to use a vendor instead if you'd prefer, particularly one that bundles the annual workplace violence training.</p>
+</div>
+
+<p>On classification, we've read supervisory as anyone who can hire, assign, discipline, or direct another person's work — owners, managers, assistant managers, and anyone directing runners, techs, or engineers. Where it's unclear we default to supervisory and the two-hour course. We'll use ADP's Manager classification as the first pass on the roster, then check it against that definition, since the legal test is broader than an org chart.</p>
+
+<p>We're not attempting to run this through ADP. Its training workflow amounts to reminders inside a convoluted process built for a much larger audience — the same experience as the performance review process. The obligation here is a fifteen-row list with two date columns, and the risk is losing track of a due date, not lacking a sophisticated system. Keeping it simple.</p>
+
+<div class="box flag">
+  <span class="lbl">Workplace violence — confirmed gaps</span>
+  <p>The violent incident log doesn't exist and the annual training isn't set up. Both are required under Labor Code 6401.9 and both need building rather than locating. Eli owns this and is handling it separately.</p>
+</div>
+
+<hr class="rule">
+<p class="sub">Attached: PRG-P01 through P04 · PRG-R01 through R04.</p>
+
+</body>
+</html>

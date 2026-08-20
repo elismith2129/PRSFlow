@@ -11,19 +11,16 @@ interface Props {
 }
 
 const inputStyle: React.CSSProperties = {
-  width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
-  color: 'var(--text)', padding: '7px 10px', borderRadius: 6,
+  width: '100%', background: 'var(--c-wash)', color: 'var(--c-fg)', padding: '7px 10px', borderRadius: 6,
   fontFamily: 'Inter', fontSize: 12, outline: 'none',
 }
 const ddWrap: React.CSSProperties = {
   position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
-  background: 'var(--surface)', border: '1px solid var(--border)',
-  borderRadius: 6, marginTop: 2, overflow: 'hidden',
+  background: 'var(--c-bg)', borderRadius: 6, marginTop: 2, overflow: 'hidden',
   boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
 }
 const ddRow: React.CSSProperties = {
   padding: '8px 10px', cursor: 'pointer',
-  borderBottom: '1px solid var(--border)',
   fontSize: 12, fontFamily: 'Inter',
 }
 
@@ -88,14 +85,14 @@ export function ContactPicker({ clientId, value, onChange, onContactAdded, place
             >
               <span>{c.fname} {c.lname}</span>
               {c.role && (
-                <span style={{ fontSize: 10, color: 'var(--text3)', marginLeft: 8 }}>{c.role}</span>
+                <span style={{ fontSize: 10, color: 'var(--c-fg-3)', marginLeft: 8 }}>{c.role}</span>
               )}
             </div>
           ))}
           {showAddNew && (
             <div
               onMouseDown={addContact}
-              style={{ ...ddRow, fontFamily: 'Syne', fontWeight: 700, fontSize: 11, color: 'var(--accent)', letterSpacing: '0.04em', borderBottom: 'none' }}
+              style={{ ...ddRow, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, color: 'var(--c-fg)', letterSpacing: '0.04em' }}
             >
               {adding ? 'Adding…' : `+ Add "${value}" as new contact`}
             </div>

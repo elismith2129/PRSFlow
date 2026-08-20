@@ -21,7 +21,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#0d0f14',
+  themeColor: '#1b1a17',  // --c-bg dark. Was the legacy #0d0f14 blue-black.
 }
 
 export default function RootLayout({
@@ -36,6 +36,11 @@ export default function RootLayout({
             route — including login/splash, which have no Nav to set data-theme.
             Runs BEFORE paint deliberately, so there's no flash of the wrong theme.
 
+            DEFAULT IS DARK (Aug 6, 2026). Dark is the absence of data-theme, so
+            this now sets 'light' ONLY when the user has explicitly chosen it.
+            It used to be the reverse — light unless 'dark' was saved — which
+            meant every new device and every cleared browser opened light.
+
             CLIENT-FACING PAGES ARE FORCED DARK: the public registration form
             (/register/:token) and the public enquiry form (/inquiry) are the only
             things an actual client ever sees, and they must look intentional rather
@@ -47,7 +52,7 @@ export default function RootLayout({
             Forcing dark there would ruin the export. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var p=location.pathname;var clientFacing=(/^\\/register\\/(?!view(\\/|$))/.test(p)||/^\\/inquiry(\\/|$)/.test(p));if(!clientFacing){var t=localStorage.getItem('prsflo-theme');if(t!=='dark'){document.documentElement.setAttribute('data-theme','light')}}}catch(e){}`,
+            __html: `try{var p=location.pathname;var clientFacing=(/^\\/register\\/(?!view(\\/|$))/.test(p)||/^\\/inquiry(\\/|$)/.test(p));if(!clientFacing){var t=localStorage.getItem('prsflo-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light')}}}catch(e){}`,
           }}
         />
         <ErrorReporter />

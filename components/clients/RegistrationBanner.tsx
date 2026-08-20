@@ -82,21 +82,20 @@ export function RegistrationBanner({ onNavigate }: {
         onClick={() => setOpen(true)}
         style={{
           marginBottom: 12, padding: '10px 16px', flexShrink: 0,
-          background: 'rgba(var(--accent-rgb),0.08)', border: '1px solid rgba(var(--accent-rgb),0.3)',
-          borderRadius: 8, cursor: 'pointer',
+          background: 'var(--c-wash2)', borderRadius: 8, cursor: 'pointer',
           display: 'flex', alignItems: 'center', gap: 10,
         }}
       >
         <span style={{ fontSize: 16 }}>↗</span>
         <div style={{ flex: 1 }}>
-          <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 11, color: 'var(--accent)', letterSpacing: '0.06em' }}>
+          <span style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, color: 'var(--c-fg)', letterSpacing: '0.06em' }}>
             {pendingRegs.length} new registration{pendingRegs.length !== 1 ? 's' : ''} need{pendingRegs.length === 1 ? 's' : ''} review
           </span>
-          <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 1 }}>
+          <div style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 1 }}>
             Click to confirm client profiles
           </div>
         </div>
-        <span style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'Inter' }}>Review →</span>
+        <span style={{ fontSize: 11, color: 'var(--c-fg)', fontFamily: 'Inter' }}>Review →</span>
       </div>
 
       {open && (
@@ -146,25 +145,25 @@ function RegistrationReviewModal({ regs, onClose, onNavigate }: {
   }
 
   const ghostBtn: React.CSSProperties = {
-    background: 'none', border: '1px solid var(--border)', color: 'var(--text2)',
-    borderRadius: 6, padding: '7px 16px', fontFamily: 'Syne', fontWeight: 700,
+    background: 'none', color: 'var(--c-fg-2)',
+    borderRadius: 6, padding: '7px 16px', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400,
     fontSize: 10, letterSpacing: '0.06em', cursor: 'pointer',
   }
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <div onClick={e => e.stopPropagation()} data-modal-gradient="" style={{ width: '100%', maxWidth: 580, maxHeight: '88vh', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}>
+      <div onClick={onClose} className="c-modal-backdrop" style={{ zIndex: 1000 }}>
+        <div onClick={e => e.stopPropagation()} data-modal-gradient="" style={{ width: '100%', maxWidth: 580, maxHeight: '88vh', overflowY: 'auto', background: 'var(--c-bg)', borderRadius: 12 }}>
 
           {/* Header */}
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 1 }}>
+          <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: 'var(--c-bg)', zIndex: 1 }}>
             <div>
-              <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15 }}>New Registrations</div>
-              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'Inter', marginTop: 2 }}>
+              <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15 }}>New Registrations</div>
+              <div style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 2 }}>
                 {regs.length} pending — review ID and confirm to create client profile
               </div>
             </div>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
+            <button onClick={onClose} style={{ background: 'none', color: 'var(--c-fg-3)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
           </div>
 
           {/* Registration cards */}
@@ -180,48 +179,48 @@ function RegistrationReviewModal({ regs, onClose, onNavigate }: {
               const cityLine = [reg.address_city, [reg.address_state, reg.address_zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')
 
               return (
-                <div key={reg.id} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                <div key={reg.id} style={{ background: 'var(--c-wash)', borderRadius: 10, overflow: 'hidden' }}>
 
                   {/* Top: ID thumb + identity */}
                   <div style={{ display: 'flex', gap: 14, padding: '14px 14px 12px' }}>
                     {/* ID thumbnail — always shown */}
                     <div style={{ flexShrink: 0 }}>
                       {!reg.id_file_url ? (
-                        <div style={{ width: 80, height: 80, borderRadius: 7, background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                        <div style={{ width: 80, height: 80, borderRadius: 7, background: 'var(--c-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                           <span style={{ fontSize: 22, opacity: 0.25 }}>🪪</span>
-                          <span style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--text3)', textAlign: 'center' as const }}>No ID{'\n'}uploaded</span>
+                          <span style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--c-fg-3)', textAlign: 'center' as const }}>No ID{'\n'}uploaded</span>
                         </div>
                       ) : hasImage && signedUrl ? (
                         <img
                           src={signedUrl}
                           onClick={() => setLightboxUrl(signedUrl)}
                           title="Click to view full size"
-                          style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 7, cursor: 'pointer', border: '1px solid var(--border)', display: 'block' }}
+                          style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 7, cursor: 'pointer', display: 'block' }}
                         />
                       ) : hasImage && !signedUrl ? (
-                        <div style={{ width: 80, height: 80, borderRadius: 7, background: 'var(--surface)', border: '1px solid var(--border)', animation: 'shimmer 1.4s ease-in-out infinite' }} />
+                        <div style={{ width: 80, height: 80, borderRadius: 7, background: 'var(--c-bg)', animation: 'shimmer 1.4s ease-in-out infinite' }} />
                       ) : hasPdf && signedUrl ? (
-                        <a href={signedUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: 80, height: 80, borderRadius: 7, background: 'var(--surface)', border: '1px solid var(--border)', textDecoration: 'none', gap: 4 }}>
+                        <a href={signedUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: 80, height: 80, borderRadius: 7, background: 'var(--c-bg)', textDecoration: 'none', gap: 4 }}>
                           <span style={{ fontSize: 24 }}>📄</span>
-                          <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text3)', letterSpacing: '0.06em' }}>PDF — tap to open</span>
+                          <span style={{ fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, color: 'var(--c-fg-3)', letterSpacing: '0.06em' }}>PDF — tap to open</span>
                         </a>
                       ) : (
-                        <div style={{ width: 80, height: 80, borderRadius: 7, background: 'var(--surface)', border: '1px solid var(--border)', animation: 'shimmer 1.4s ease-in-out infinite' }} />
+                        <div style={{ width: 80, height: 80, borderRadius: 7, background: 'var(--c-bg)', animation: 'shimmer 1.4s ease-in-out infinite' }} />
                       )}
                       {hasImage && signedUrl && (
-                        <div style={{ textAlign: 'center' as const, marginTop: 4, fontSize: 8, color: 'var(--text3)', fontFamily: 'Inter' }}>tap to enlarge</div>
+                        <div style={{ textAlign: 'center' as const, marginTop: 4, fontSize: 8, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>tap to enlarge</div>
                       )}
                     </div>
 
                     {/* Identity + contact */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: 'DM Serif Display', fontSize: 18, lineHeight: 1.2, marginBottom: 6 }}>{reg.name}</div>
-                      <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.8 }}>
+                      <div style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 18, lineHeight: 1.2, marginBottom: 6 }}>{reg.name}</div>
+                      <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', lineHeight: 1.8 }}>
                         {reg.email && <div>{reg.email}</div>}
                         {reg.phone && <div>{reg.phone}</div>}
                         {reg.instagram && <div>@{reg.instagram.replace(/^@/, '')}</div>}
                       </div>
-                      <div style={{ marginTop: 6, fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)' }}>
+                      <div style={{ marginTop: 6, fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>
                         Registered {regDate}
                       </div>
                     </div>
@@ -229,35 +228,35 @@ function RegistrationReviewModal({ regs, onClose, onNavigate }: {
 
                   {/* Address + how heard */}
                   {(addressLine || cityLine || reg.how_heard) && (
-                    <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', background: 'rgba(0,0,0,0.15)' }}>
+                    <div style={{ padding: '10px 14px', background: 'rgba(0,0,0,0.15)' }}>
                       {(addressLine || cityLine) && (
-                        <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.6, marginBottom: reg.how_heard ? 6 : 0 }}>
+                        <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', lineHeight: 1.6, marginBottom: reg.how_heard ? 6 : 0 }}>
                           {addressLine && <div>{addressLine}</div>}
                           {cityLine && <div>{cityLine}</div>}
                         </div>
                       )}
                       {reg.how_heard && (
-                        <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)' }}>
-                          How heard: <span style={{ color: 'var(--text2)' }}>{reg.how_heard}</span>
+                        <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>
+                          How heard: <span style={{ color: 'var(--c-fg-2)' }}>{reg.how_heard}</span>
                         </div>
                       )}
                     </div>
                   )}
 
                   {/* Footer: badges + confirm button */}
-                  <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' as const }}>
+                  <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' as const }}>
                     <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
                       {reg.terms_accepted && (
-                        <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--booked)', background: 'rgba(20,184,166,0.1)', border: '1px solid rgba(20,184,166,0.3)', padding: '2px 6px', borderRadius: 3 }}>
+                        <span style={{ fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.08em', color: 'var(--c-st-booked)', background: 'rgba(20,184,166,0.1)', padding: '2px 6px', borderRadius: 3 }}>
                           TERMS ACCEPTED
                         </span>
                       )}
                       {reg.id_file_url ? (
-                        <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--accent)', background: 'rgba(var(--accent-rgb),0.08)', border: '1px solid rgba(var(--accent-rgb),0.25)', padding: '2px 6px', borderRadius: 3 }}>
+                        <span style={{ fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.08em', color: 'var(--c-fg)', background: 'var(--c-wash2)', padding: '2px 6px', borderRadius: 3 }}>
                           ID ON FILE
                         </span>
                       ) : (
-                        <span style={{ fontSize: 8, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '2px 6px', borderRadius: 3 }}>
+                        <span style={{ fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.08em', color: 'var(--c-fg-3)', background: 'var(--c-bg)', padding: '2px 6px', borderRadius: 3 }}>
                           NO ID
                         </span>
                       )}
@@ -265,7 +264,7 @@ function RegistrationReviewModal({ regs, onClose, onNavigate }: {
                     <button
                       onClick={() => confirm(reg.id)}
                       disabled={isConfirming}
-                      style={{ background: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: 5, padding: '7px 16px', fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: isConfirming ? 'default' : 'pointer', opacity: isConfirming ? 0.7 : 1, flexShrink: 0 }}
+                      style={{ background: 'var(--c-fg)', color: 'var(--c-bg)', borderRadius: 5, padding: '7px 16px', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: isConfirming ? 'default' : 'pointer', opacity: isConfirming ? 0.7 : 1, flexShrink: 0 }}
                     >
                       {isConfirming ? 'Creating…' : 'Create Client Profile →'}
                     </button>
@@ -276,7 +275,7 @@ function RegistrationReviewModal({ regs, onClose, onNavigate }: {
           </div>
 
           {/* Footer */}
-          <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ padding: '12px 20px', display: 'flex', justifyContent: 'flex-end' }}>
             <button onClick={onClose} style={ghostBtn}>Close</button>
           </div>
         </div>
@@ -284,10 +283,10 @@ function RegistrationReviewModal({ regs, onClose, onNavigate }: {
 
       {/* Lightbox */}
       {lightboxUrl && (
-        <div onClick={() => setLightboxUrl(null)} style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div onClick={() => setLightboxUrl(null)} className="c-modal-backdrop" style={{ zIndex: 2000 }}>
           <div onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '92vw', maxHeight: '90vh' }}>
             <img src={lightboxUrl} alt="ID document" style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: 8, display: 'block' }} />
-            <button onClick={() => setLightboxUrl(null)} style={{ position: 'absolute', top: -16, right: -16, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, fontFamily: 'Inter', flexShrink: 0 }}>×</button>
+            <button onClick={() => setLightboxUrl(null)} style={{ position: 'absolute', top: -16, right: -16, background: 'var(--c-bg)', color: 'var(--c-fg)', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, fontFamily: 'Inter', flexShrink: 0 }}>×</button>
           </div>
         </div>
       )}

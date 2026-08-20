@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — PO required &amp; Food budget, four ways</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  THE WORK ORDER META ROW — PO required + Food budget (2026-08-13).
+
+  Eli: "still really don't like the food budget and PO req'd area."
+
+  WHAT IS ACTUALLY WRONG. Four things share one line: two FIELDS you type into
+  (Inv #, PO #) and two QUESTIONS you answer (PO required? Food budget?). They
+  look alike but behave nothing alike, and the two questions are the loud ones —
+  each is a label floating outside a housing, so a yes/no answer occupies as much
+  width as a whole field. The row reads as four controls of equal weight when it
+  is really two fields and two footnotes.
+
+  Worth remembering WHY each exists, because it constrains the fix:
+   · PO REQUIRED cannot be dropped. Approval is gated on it (spec / billing hub):
+     a package waits in Awaiting PO until there is a PO number OR someone says
+     none is needed. It is the one thing PRSFlo cannot work out for itself, and
+     Eli asked for the HABIT of answering it — so it must be visible on every
+     work order, not hidden behind a disclosure.
+   · FOOD BUDGET is rarer and carries an amount when on.
+
+  A · IN THE FIELD      the PO well answers its own question; food is just a well
+  B · QUIET CHECKS      two fields on top, two plain checkbox lines beneath
+  C · ONE ANSWER LINE   one sentence you complete, in plain English
+  D · LABEL INSIDE      keep the segments, pull the label into the housing (§8)
+
+  §8 IdWell: field width follows content, short fields share rows. §2b density:
+  fields are 32px. Law 1: no borders — grouping is fill and space.
+  Mock polarity INVERTED vs the app.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --st-hot:#ff5a4d; --st-warm:#ffa94d; --st-booked:#43dfae;
+  --ivory:#d5d0c2; --srf:#ffffff; --hot-text:#fff4f2;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+  --ctlsh:0 1px 2px rgba(42,39,34,.10);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  --ctlsh:0 1px 3px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 14px/1.5 system-ui,-apple-system,sans-serif;padding:20px;-webkit-font-smoothing:antialiased}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:'DM Mono',ui-monospace,monospace}
+h1{font-family:'Archivo Black',sans-serif;font-size:21px;letter-spacing:-.03em}
+.sw{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);margin:12px 8px 16px 0}
+.sw button{padding:6px 14px;border-radius:99px;font:inherit;font-size:12px;font-weight:700;border:none;background:none;color:var(--fg);opacity:.55;cursor:pointer}
+.sw button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .sw button.on{background:var(--fg);color:var(--bg)}
+.why{max-width:820px;font-size:12.5px;line-height:1.65;opacity:.72;margin-bottom:18px}
+.why b{opacity:1}
+.opt{display:none}.opt.on{display:block}
+
+/* the panel these live in — 0.85fr of the WO sheet, so ~390px */
+.panel{width:400px;background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:16px}
+.mlab{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.42;margin-bottom:7px}
+.row{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:11px}
+
+.well{display:flex;align-items:center;gap:7px;background:var(--wash);border-radius:12px;height:32px;padding:0 10px;font-size:12.5px;min-width:0}
+.well .pfx{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.4;flex-shrink:0}
+.well .val{font-family:'DM Mono',ui-monospace,monospace;opacity:.9;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.well .val.ph{opacity:.3}
+.well.inv{flex:0 1 128px}
+.well.po{flex:1 1 200px}
+
+/* segments */
+.seg{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--bg);box-shadow:var(--ctlsh);height:32px;align-items:center}
+.seg button{padding:5px 13px;border-radius:99px;font:inherit;font-size:10px;font-weight:800;letter-spacing:.04em;border:none;background:none;color:var(--fg);opacity:.5;cursor:pointer}
+.seg button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .seg button.on{background:var(--fg);color:var(--bg)}
+.seg .segpfx{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.4;padding:0 8px 0 10px}
+
+/* A — the toggle lives INSIDE the po well */
+.well .inchip{margin-left:auto;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  padding:3px 9px;border-radius:99px;background:var(--wash2);opacity:.5;cursor:pointer;flex-shrink:0;white-space:nowrap}
+.well .inchip.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .well .inchip.on{background:var(--fg);color:var(--bg)}
+
+/* B — quiet checkbox lines */
+.check{display:flex;align-items:center;gap:9px;font-size:12px;padding:6px 2px;cursor:pointer}
+.check .box{width:15px;height:15px;border-radius:5px;background:var(--wash2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:transparent}
+.check.on .box{background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .check.on .box{background:var(--ivory);color:#1b1a17}
+.check .amt{margin-left:6px;background:var(--wash);border-radius:9px;height:26px;display:flex;align-items:center;padding:0 9px;gap:5px;font-size:12px}
+.check .amt .pfx{font-size:9px;font-weight:800;opacity:.4}
+
+/* C — one sentence */
+.sent{font-size:13px;line-height:2.1;opacity:.85}
+.sent .pick{background:var(--wash2);border-radius:99px;padding:3px 11px;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap}
+.sent .pick.warn{background:var(--st-hot);color:var(--hot-text)}
+.sent .blank{background:var(--wash);border-radius:8px;padding:3px 12px;font-family:'DM Mono',ui-monospace,monospace;font-size:12px}
+</style>
+</head>
+<body>
+
+<h1>PO required &amp; Food budget</h1>
+<div class="sw">
+  <button class="on" onclick="pick('a',this)">A · In the field</button>
+  <button onclick="pick('b',this)">B · Quiet checks</button>
+  <button onclick="pick('c',this)">C · One answer line</button>
+  <button onclick="pick('d',this)">D · Label inside</button>
+</div>
+<div class="sw">
+  <button class="on" onclick="th('dark',this)">Dark</button>
+  <button onclick="th('light',this)">Light</button>
+</div>
+<p class="why" id="why"></p>
+
+<!-- ══ A ══ -->
+<div class="opt on" id="o-a"><div class="panel">
+  <div class="mlab">Session type</div>
+  <div class="row"><div class="seg"><button class="on">Recording</button><button>Filming</button><button>Event</button></div></div>
+  <div class="row">
+    <div class="well inv"><span class="pfx">Inv #</span><span class="val ph">—</span></div>
+  </div>
+  <div class="row">
+    <div class="well po"><span class="pfx">PO #</span><span class="val">4500-2291-8837</span><span class="inchip">Not required</span></div>
+  </div>
+  <div class="row">
+    <div class="well" style="flex:0 1 168px"><span class="pfx">Food $</span><span class="val ph">none</span></div>
+  </div>
+</div></div>
+
+<!-- ══ B ══ -->
+<div class="opt" id="o-b"><div class="panel">
+  <div class="mlab">Session type</div>
+  <div class="row"><div class="seg"><button class="on">Recording</button><button>Filming</button><button>Event</button></div></div>
+  <div class="row">
+    <div class="well inv"><span class="pfx">Inv #</span><span class="val ph">—</span></div>
+    <div class="well po"><span class="pfx">PO #</span><span class="val">4500-2291-8837</span></div>
+  </div>
+  <div style="padding-top:2px">
+    <div class="check"><span class="box">✓</span><span>No PO required for this job</span></div>
+    <div class="check on"><span class="box">✓</span><span>Food budget</span>
+      <span class="amt"><span class="pfx">$</span><span class="mono">250.00</span></span>
+    </div>
+  </div>
+</div></div>
+
+<!-- ══ C ══ -->
+<div class="opt" id="o-c"><div class="panel">
+  <div class="mlab">Session type</div>
+  <div class="row"><div class="seg"><button class="on">Recording</button><button>Filming</button><button>Event</button></div></div>
+  <div class="row">
+    <div class="well inv"><span class="pfx">Inv #</span><span class="val ph">—</span></div>
+    <div class="well po"><span class="pfx">PO #</span><span class="val">4500-2291-8837</span></div>
+  </div>
+  <div class="sent" style="margin-top:4px">
+    This job <span class="pick">needs a PO</span> and has
+    <span class="pick">a food budget</span> of <span class="blank">$250.00</span>.
+  </div>
+  <div class="sent" style="margin-top:10px;opacity:.4;font-size:12px">
+    Unanswered reads: This job <span class="pick warn">needs a PO?</span> and has
+    <span class="pick">no food budget</span>.
+  </div>
+</div></div>
+
+<!-- ══ D ══ -->
+<div class="opt" id="o-d"><div class="panel">
+  <div class="mlab">Session type</div>
+  <div class="row"><div class="seg"><button class="on">Recording</button><button>Filming</button><button>Event</button></div></div>
+  <div class="row">
+    <div class="well inv"><span class="pfx">Inv #</span><span class="val ph">—</span></div>
+    <div class="well po"><span class="pfx">PO #</span><span class="val">4500-2291-8837</span></div>
+  </div>
+  <div class="row">
+    <div class="seg"><span class="segpfx">PO req'd</span><button class="on">Yes</button><button>No</button></div>
+    <div class="seg"><span class="segpfx">Food</span><button class="on">No</button><button>Yes</button></div>
+  </div>
+</div></div>
+
+<script>
+const WHY={
+ a:"<b>A · In the field.</b> The PO well answers its own question — a chip at the right end reading \"Not required\", which fills when on and blanks the field. Food stops being a yes/no at all and becomes one well: an amount, or empty. Four controls become three, and both questions disappear into the thing they are about. <b>Cost:</b> the PO answer is only discoverable once you look at the PO field — fine, since that is where you would look, but it is quieter than a standing question.",
+ b:"<b>B · Quiet checks.</b> The two typed FIELDS get a clean row of their own; the two ANSWERS drop to plain checkbox lines beneath, written as sentences. Different behaviour finally looks different. Cheapest to read and the easiest to scan for \"has anyone answered the PO question?\" <b>Cost:</b> checkboxes are the one primitive the system does not otherwise use, so it introduces a new shape.",
+ c:"<b>C · One answer line.</b> Both answers become a sentence you complete — \"This job needs a PO and has a food budget of $250.\" Unanswered, the PO word goes hot, so an unanswered question is legible as a gap in a sentence rather than as an untouched control. Best at producing the HABIT Eli asked for. <b>Cost:</b> the most unusual, and sentences are harder to scan than a column when you are checking twenty work orders.",
+ d:"<b>D · Label inside.</b> Keep exactly the controls you have, but pull each label INSIDE its housing so \"PO req'd  Yes No\" is one object rather than a floating word beside a pill — which is what §8 already says a segmented control should be. Smallest possible change and the least risk. <b>Cost:</b> it is still two chunky segments on their own line; tidier, not lighter.",
+}
+function pick(k,el){
+ document.querySelectorAll('.opt').forEach(o=>o.classList.remove('on'))
+ document.getElementById('o-'+k).classList.add('on')
+ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));el.classList.add('on')
+ document.getElementById('why').innerHTML=WHY[k]
+}
+function th(t,el){document.documentElement.setAttribute('data-theme',t)
+ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));el.classList.add('on')}
+document.getElementById('why').innerHTML=WHY.a
+</script>
+</body>
+</html>

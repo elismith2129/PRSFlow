@@ -1,7 +1,12 @@
 'use client'
+// SOFT SKIN PORT, 2026-08-14 (one-pass runner redesign). All queries, the
+// dirtyRef realtime guard, save flow and error surfacing are UNTOUCHED —
+// surface only. Old skin retired (legacy tokens, 1px borders, Syne). Colour is
+// status only (§5): cash in booked-green, cash out hot, closing balance plain.
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
+import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 
 const STUDIO_META: Record<string, { label: string }> = {
   paramount: { label: 'Paramount' },
@@ -45,6 +50,8 @@ export default function PettyCashPage() {
   }, [studio])
 
   useEffect(() => { load() }, [load])
+  // Same dirty-guard as the realtime channel: never clobber a half-typed entry.
+  useReloadOnReturn(useCallback(() => { if (!dirtyRef.current) load() }, [load]))
 
   // Real-time: refetch entries/balance live when clean; skip while the runner is mid-edit.
   useEffect(() => {
@@ -108,69 +115,126 @@ export default function PettyCashPage() {
   const totalOut = entries.filter(e => e.type === 'out').reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)
   const closing = (parseFloat(openingBalance) || 0) + totalIn - totalOut
 
-  if (loading) return <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text2)', fontFamily: 'Syne, sans-serif' }}>Loading…</div>
+  const surface: React.CSSProperties = {
+    background: 'var(--c-srf, var(--c-bg))',
+    boxShadow: 'var(--c-softsh)',
+    borderRadius: 16,
+    padding: '13px 14px',
+  }
+  const input: React.CSSProperties = {
+    background: 'var(--c-wash)', border: 'none', borderRadius: 10,
+    padding: '9px 11px', color: 'var(--c-fg)', fontSize: 13,
+    font: 'inherit', outline: 'none', minHeight: 40,
+  }
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100dvh', background: 'var(--c-bg)', color: 'var(--c-fg)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5, fontSize: 13 }}>
+        Loading…
+      </div>
+    )
+  }
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)', fontFamily: 'Syne, sans-serif', paddingBottom: 100 }}>
-      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 }}>
-        <button onClick={() => router.push(`/runner/${studio}`)} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>←</button>
+    <div style={{
+      minHeight: '100dvh', maxWidth: '100vw', overflowX: 'hidden',
+      background: 'var(--c-bg)', color: 'var(--c-fg)', paddingBottom: 130,
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 11,
+        padding: '14px 16px 10px', position: 'sticky', top: 0, zIndex: 10,
+        background: 'var(--c-bg)',
+      }}>
+        <button
+          onClick={() => router.push(`/runner/${studio}`)}
+          aria-label="Back"
+          className="c-control c-raised"
+          style={{
+            width: 38, height: 38, borderRadius: 99, flexShrink: 0,
+            background: 'var(--c-wash)', color: 'var(--c-fg)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 16, cursor: 'pointer',
+          }}
+        >←</button>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>Petty Cash</div>
-          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>{meta.label} · Running Ledger</div>
+          <div className="c-arch" style={{ fontSize: 18, letterSpacing: '-0.02em', lineHeight: 1.15 }}>Petty cash</div>
+          <div style={{ fontSize: 11.5, opacity: 0.5 }}>{meta.label} · running ledger</div>
         </div>
       </div>
 
-      <div style={{ padding: '16px' }} onChangeCapture={() => { dirtyRef.current = true }}>
+      <div style={{ padding: '4px 14px', display: 'flex', flexDirection: 'column', gap: 14 }} onChangeCapture={() => { dirtyRef.current = true }}>
         {/* Balances */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px', marginBottom: 16 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)', marginBottom: 12 }}>Balances</div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span style={{ fontSize: 12, color: 'var(--text2)' }}>Opening Balance</span>
+        <div style={surface}>
+          <div className="c-label" style={{ marginBottom: 10 }}>Balances</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9 }}>
+            <span style={{ fontSize: 12.5, opacity: 0.6 }}>Opening balance</span>
             <input
               type="number"
               value={openingBalance}
               onChange={e => setOpeningBalance(e.target.value)}
               placeholder="0.00"
-              style={{ width: 80, textAlign: 'right', background: 'var(--border)', border: 'none', borderRadius: 6, padding: '4px 8px', color: 'var(--text)', fontSize: 12, fontFamily: 'Inter', outline: 'none' }}
+              className="c-mono"
+              style={{ ...input, width: 92, textAlign: 'right', minHeight: 36, padding: '6px 10px' }}
             />
           </div>
-          {[['Cash In', `+$${totalIn.toFixed(2)}`, 'var(--booked)'], ['Cash Out', `-$${totalOut.toFixed(2)}`, 'var(--hot)'], ['Closing Balance', `$${closing.toFixed(2)}`, 'var(--accent)']].map(([l, v, c]) => (
-            <div key={String(l)} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontSize: 12, color: 'var(--text2)' }}>{l}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: String(c), fontFamily: 'Inter' }}>{v}</span>
+          {([
+            ['Cash in', `+$${totalIn.toFixed(2)}`, 'var(--c-st-booked)'],
+            ['Cash out', `-$${totalOut.toFixed(2)}`, 'var(--c-st-hot)'],
+            ['Closing balance', `$${closing.toFixed(2)}`, 'var(--c-fg)'],
+          ] as const).map(([l, v, c]) => (
+            <div key={l} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+              <span style={{ fontSize: 12.5, opacity: 0.6 }}>{l}</span>
+              <span className="c-mono" style={{ fontSize: 13, fontWeight: 700, color: c }}>{v}</span>
             </div>
           ))}
         </div>
 
         {/* Entries */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px', marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)' }}>Transactions</div>
-            <button onClick={addEntry} style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>+ Add</button>
+        <div style={surface}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div className="c-label" style={{ marginBottom: 0 }}>Transactions</div>
+            <button
+              onClick={addEntry}
+              style={{
+                background: 'var(--c-wash)', border: 'none', borderRadius: 99,
+                padding: '6px 14px', minHeight: 32, color: 'var(--c-fg)',
+                fontSize: 12, fontWeight: 700, cursor: 'pointer', font: 'inherit',
+              }}
+            >+ Add</button>
           </div>
 
-          {entries.length === 0 && <div style={{ fontSize: 12, color: 'var(--text2)', textAlign: 'center', padding: '12px 0' }}>No entries yet</div>}
+          {entries.length === 0 && <div style={{ fontSize: 12.5, opacity: 0.5, textAlign: 'center', padding: '12px 0' }}>No entries yet</div>}
 
           {entries.map((e, i) => (
-            <div key={i} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: i < entries.length - 1 ? '1px solid var(--border)' : 'none' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, marginBottom: 6 }}>
+            <div key={i} style={{
+              padding: '8px 0',
+              boxShadow: i > 0 ? '0 -1px 0 var(--c-wash)' : undefined,
+            }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8 }}>
                 <input
                   placeholder="Description"
                   value={e.description}
                   onChange={ev => setEntries(prev => prev.map((x, j) => j === i ? { ...x, description: ev.target.value } : x))}
-                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', color: 'var(--text)', fontSize: 12, fontFamily: 'Inter', outline: 'none' }}
+                  style={input}
                 />
                 <input
                   type="number"
                   placeholder="$"
                   value={e.amount}
                   onChange={ev => setEntries(prev => prev.map((x, j) => j === i ? { ...x, amount: ev.target.value } : x))}
-                  style={{ width: 70, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 8px', color: 'var(--text)', fontSize: 12, fontFamily: 'Inter', outline: 'none' }}
+                  className="c-mono"
+                  style={{ ...input, width: 76 }}
                 />
                 <button
                   type="button"
                   onClick={() => { dirtyRef.current = true; setEntries(prev => prev.map((x, j) => j === i ? { ...x, type: x.type === 'in' ? 'out' : 'in' } : x)) }}
-                  style={{ background: 'var(--bg)', border: `1px solid ${e.type === 'in' ? 'var(--booked)' : 'var(--hot)'}`, borderRadius: 8, padding: '7px 10px', color: e.type === 'in' ? 'var(--booked)' : 'var(--hot)', fontSize: 12, fontWeight: 700, fontFamily: 'Inter', cursor: 'pointer', minWidth: 44 }}
+                  className="c-pill"
+                  style={{
+                    border: 'none', font: 'inherit', cursor: 'pointer', minWidth: 48, minHeight: 40,
+                    background: e.type === 'in' ? 'var(--c-st-booked)' : 'var(--c-st-hot)',
+                    color: e.type === 'in' ? 'var(--c-chip-ink)' : 'var(--c-hot-text)',
+                    justifyContent: 'center',
+                  }}
                 >
                   {e.type === 'in' ? 'In' : 'Out'}
                 </button>
@@ -180,13 +244,32 @@ export default function PettyCashPage() {
         </div>
       </div>
 
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: 'var(--bg)', borderTop: '1px solid var(--border)' }}>
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        padding: '12px 14px calc(16px + env(safe-area-inset-bottom))',
+        background: 'linear-gradient(to top, var(--c-bg) 68%, transparent)',
+      }}>
         {saveError && (
-          <div style={{ fontSize: 11, color: '#f87171', fontFamily: 'Inter', textAlign: 'center', marginBottom: 8, padding: '6px 10px', background: '#f8717122', borderRadius: 8 }}>
+          <div style={{
+            fontSize: 12, color: 'var(--c-st-hot)', fontWeight: 700, textAlign: 'center',
+            marginBottom: 8, padding: '7px 10px',
+            background: 'var(--c-srf, var(--c-bg))', boxShadow: 'var(--c-softsh)', borderRadius: 10,
+          }}>
             {saveError}
           </div>
         )}
-        <button onClick={save} disabled={saving} style={{ width: '100%', padding: '14px 0', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'Syne, sans-serif' }}>
+        <button
+          onClick={save}
+          disabled={saving}
+          className="c-control c-raised"
+          style={{
+            width: '100%', minHeight: 52, borderRadius: 14,
+            background: 'var(--c-wash2)', color: 'var(--c-fg)',
+            border: 'none', font: 'inherit', fontSize: 14, fontWeight: 800,
+            cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1,
+            boxShadow: 'var(--c-softsh)',
+          }}
+        >
           {saving ? 'Saving…' : 'Save'}
         </button>
       </div>

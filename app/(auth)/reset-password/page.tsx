@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
+import { Wordmark } from '@/components/layout/Wordmark'
+import { StatusPill } from '@/components/carved'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -35,9 +37,9 @@ export default function ResetPasswordPage() {
 
   return (
     <div
+      className="c-root"
       style={{
         minHeight: '100vh',
-        background: 'var(--bg)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -54,33 +56,13 @@ export default function ResetPasswordPage() {
           maxWidth: 380,
         }}
       >
-        <div
-          style={{
-            fontFamily: 'Inter',
-            fontSize: 11,
-            letterSpacing: '0.2em',
-            color: 'var(--cold)',
-            textTransform: 'uppercase',
-            textAlign: 'center',
-          }}
-        >
+        <div className="c-label" style={{ letterSpacing: '0.2em', textAlign: 'center' }}>
           Paramount Recording Group
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, marginTop: 26 }}>
           <PRSFloIcon size={72} />
-          <div
-            style={{
-              fontFamily: 'Syne',
-              fontWeight: 800,
-              fontSize: 48,
-              letterSpacing: -0.5,
-              lineHeight: 1,
-            }}
-          >
-            <span style={{ color: 'var(--accent)' }}>PRS</span>
-            <span style={{ color: 'var(--text)', opacity: 0.45, fontWeight: 500 }}>Flo</span>
-          </div>
+          <Wordmark size={48} />
         </div>
 
         <form
@@ -99,9 +81,7 @@ export default function ResetPasswordPage() {
             onChange={(e) => setNewPassword(e.target.value)}
             placeholder="New Password"
             autoComplete="new-password"
-            style={authInputStyle}
-            onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
-            onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
+            className="c-input c-inset2"
           />
           <input
             type="password"
@@ -109,66 +89,25 @@ export default function ResetPasswordPage() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Confirm Password"
             autoComplete="new-password"
-            style={authInputStyle}
-            onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
-            onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
+            className="c-input c-inset2"
           />
 
           <button
             type="submit"
             disabled={loading}
-            style={authButtonStyle}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+            className="c-btn c-control c-raised-primary c-block"
+            style={{ padding: '13px', justifyContent: 'center' }}
           >
             {loading ? 'Updating…' : 'Update Password'}
           </button>
 
           {error && (
-            <div
-              style={{
-                fontFamily: 'Inter',
-                fontSize: 11,
-                color: 'var(--hot)',
-                textAlign: 'center',
-              }}
-            >
-              {error}
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <StatusPill status="hot" label={error} />
             </div>
           )}
         </form>
       </div>
     </div>
   )
-}
-
-const authInputStyle: React.CSSProperties = {
-  width: '100%',
-  maxWidth: 380,
-  background: 'var(--surface)',
-  border: '1px solid rgba(255,255,255,0.1)',
-  borderRadius: 6,
-  padding: '12px 14px',
-  color: 'var(--text)',
-  fontFamily: 'Inter',
-  fontSize: 13,
-  outline: 'none',
-  boxSizing: 'border-box',
-}
-
-const authButtonStyle: React.CSSProperties = {
-  width: '100%',
-  maxWidth: 380,
-  background: 'var(--accent)',
-  color: 'var(--bg)',
-  fontFamily: 'Inter',
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: '0.1em',
-  textTransform: 'uppercase',
-  padding: '13px',
-  borderRadius: 6,
-  border: 'none',
-  cursor: 'pointer',
-  boxSizing: 'border-box',
 }

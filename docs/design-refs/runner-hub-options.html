@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Runner hub, three phone layouts</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  RUNNER HUB — three layout options (2026-08-13). Phase B, mock-first.
+  Pick one, then it gets ported. Click the A / B / C switcher; the day pager,
+  the sheet and the accordions are all live.
+
+  WHAT IS ACTUALLY BROKEN. The runner pages work — data flow, realtime, features
+  are all fine and must not be rebuilt. Two things are wrong:
+    1. They are in the OLD SKIN. Legacy --bg/--surface/--border tokens, 1px
+       borders everywhere (Law 1), Syne and DM Serif Display (both retired §4),
+       emoji tiles. They predate the whole carved→soft migration.
+    2. THE WORK ORDER IS NOT USABLE ON A PHONE. It is a twelve-column table
+       (Studio·Date·Session info·From·To·Hrs·Type·Rate·OT hrs·OT rate·OT chg·
+       Total) with two frozen columns and horizontal scroll, on a 390px screen,
+       one-handed, in a dark control room. The runner then has to find the two
+       cells they actually own.
+
+  THE INSIGHT THE THREE OPTIONS ARGUE ABOUT: a runner does NOT do what the admin
+  does. The admin owns rates, charges, OT rates and totals. The runner owns
+  times, equipment condition, payments taken at the desk, and notes. The twelve
+  columns exist for the admin screen. Putting the same twelve on a phone is the
+  bug — the question is what replaces them.
+
+    A · DAY CARD    the row becomes a card, one day at a time, no sideways scroll
+    B · JOB STRIP   only the fields the runner owns are on the surface at all
+    C · TAP-TO-SHEET  compact summary rows, a bottom sheet per day to edit
+
+  WORKFLOW (post-v1.9.0) — the runner's terminal act is SUBMIT TODAY, which sets
+  today's studio_time_rows to 'submitted'. It is NOT "Complete WO": completing is
+  the admin act that starts the billing pipeline (enterInvoicePipeline). All
+  three options say Submit, and none of them offer Complete.
+
+  Soft skin (§7c): flat --srf surfaces + --softsh, wash fills for holders, no
+  inset carving, no borders. Status colour only (§5). Mock polarity INVERTED vs
+  the app (mock dark = data-theme="dark"; app dark = no attribute).
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626;
+  --st-hot:#ff5a4d; --hot-text:#fff4f2;
+  --st-warm:#ffa94d; --st-cold:#5fc9e8; --st-booked:#43dfae;
+  --st-uncon:#7fb2e5; --st-dead:#cfd6d4;
+  --ivory:#d5d0c2; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+  --ctlsh:0 1px 2px rgba(42,39,34,.10);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  --ctlsh:0 1px 3px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;padding:18px}
+button,input,textarea,select{font:inherit;color:var(--fg);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.label{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45}
+
+/* ── Page chrome (not part of the design) ─────────────────────────────────── */
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.top h1{font-family:'Archivo Black',sans-serif;font-size:22px;letter-spacing:-.03em}
+.switch{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);box-shadow:var(--ctlsh)}
+.switch button{padding:6px 16px;border-radius:99px;font-size:12px;font-weight:700;opacity:.55;cursor:pointer}
+.switch button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .switch button.on{background:var(--fg);color:var(--bg)}
+.note{max-width:760px;font-size:12.5px;line-height:1.6;opacity:.65;margin-bottom:18px}
+.note b{opacity:1}
+.opt{display:none}
+.opt.on{display:block}
+.phones{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+.phonewrap{width:392px}
+.phonewrap > .cap{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.4;margin-bottom:7px}
+/* The phone. 390px is an iPhone 15; the runner's actual screen. */
+.phone{width:390px;height:780px;border-radius:34px;background:var(--bg);box-shadow:var(--softsh);overflow:hidden;display:flex;flex-direction:column;position:relative}
+
+/* ── Runner shell ─────────────────────────────────────────────────────────── */
+.rbar{display:flex;align-items:center;gap:11px;padding:14px 16px 10px;flex-shrink:0;background:var(--bg)}
+.rbar .back{width:34px;height:34px;border-radius:99px;background:var(--wash);box-shadow:var(--ctlsh);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;flex-shrink:0}
+.rbar .ttl{font-family:'Archivo Black',sans-serif;font-size:16px;letter-spacing:-.02em;line-height:1.15}
+.rbar .sub{font-size:11px;opacity:.5;margin-top:1px}
+.rbody{flex:1;overflow-y:auto;padding:4px 14px 96px;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:13px 14px}
+.sechd{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45;margin-bottom:9px;display:flex;align-items:center;justify-content:space-between}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:99px;padding:3px 10px;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--chip-ink)}
+.pill.booked{background:var(--st-booked)}
+.pill.warm{background:var(--st-warm)}
+.pill.hot{background:var(--st-hot);color:var(--hot-text)}
+.pill.dim{background:var(--wash2);color:var(--fg);opacity:.7}
+/* Every tappable thing clears 44px. A runner is standing up, one-handed. */
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;min-height:48px;border-radius:14px;background:var(--wash);box-shadow:var(--ctlsh);font-size:13px;font-weight:700;cursor:pointer;padding:0 16px}
+.btn:active{transform:translateY(1px);background:var(--wash2)}
+.btn.primary{background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .btn.primary{background:var(--fg);color:var(--bg)}
+.well{display:flex;align-items:center;gap:7px;background:var(--wash);border-radius:12px;padding:0 11px;min-height:44px}
+.well .pfx{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.4;flex-shrink:0}
+.well input{flex:1;min-width:0;outline:none;font-size:14px}
+.seg{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);box-shadow:var(--ctlsh)}
+.seg button{padding:7px 14px;border-radius:99px;font-size:11.5px;font-weight:700;opacity:.55;cursor:pointer;white-space:nowrap}
+.seg button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .seg button.on{background:var(--fg);color:var(--bg)}
+.seg button.on.ok{background:var(--st-booked);color:var(--chip-ink)}
+.seg button.on.bad{background:var(--st-hot);color:var(--hot-text)}
+/* The fixed footer. The one act on the screen, always reachable by thumb. */
+.foot{position:absolute;left:0;right:0;bottom:0;padding:12px 14px 18px;background:linear-gradient(to top,var(--bg) 68%,transparent);display:flex;gap:9px}
+.foot .btn{flex:1}
+.ro{font-size:14px;opacity:.85}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:12.5px}
+.kv .k{opacity:.45;font-size:11px;align-self:center}
+
+/* ── Hub ──────────────────────────────────────────────────────────────────── */
+.sess{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:13px 14px;cursor:pointer}
+.sess .room{font-family:'Archivo Black',sans-serif;font-size:21px;letter-spacing:-.02em;line-height:1.1}
+.sess .who{font-size:13px;font-weight:700;margin-top:2px}
+.sess .cl{font-size:11.5px;opacity:.5}
+.sess .meta{display:flex;gap:12px;margin-top:9px;font-size:11.5px;opacity:.6}
+.sess .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin:0}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.tile{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:13px;min-height:70px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;text-align:left}
+.tile .t{font-size:12.5px;font-weight:700}
+.tile .s{font-size:10px;opacity:.45;margin-top:3px}
+.tile.done .s{color:var(--st-booked);opacity:1;font-weight:700}
+
+/* ── A · day card ─────────────────────────────────────────────────────────── */
+.daypager{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.daypager .d{flex:1;text-align:center;padding:8px 4px;border-radius:12px;background:var(--wash);font-size:11.5px;font-weight:700;opacity:.5;cursor:pointer}
+.daypager .d.on{opacity:1;background:var(--wash2)}
+.daypager .d .dt{font-size:9px;opacity:.6;display:block;font-weight:800;letter-spacing:.06em}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.adm{background:var(--wash);border-radius:12px;padding:9px 11px}
+.adm .label{margin-bottom:6px}
+.adm .row{display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0}
+.adm .row b{font-family:ui-monospace,monospace}
+
+/* ── B · job strip ────────────────────────────────────────────────────────── */
+.strip{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;overflow:hidden}
+.strip .hd{padding:12px 14px;background:var(--wash2);display:flex;justify-content:space-between;align-items:center}
+.strip .hd .r{font-family:'Archivo Black',sans-serif;font-size:16px}
+.strip .bd{padding:13px 14px;display:flex;flex-direction:column;gap:12px}
+.job{display:flex;align-items:center;gap:11px}
+.job .ic{width:30px;height:30px;border-radius:99px;background:var(--wash);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0}
+.job .tx{flex:1;min-width:0}
+.job .tx .t{font-size:13px;font-weight:700}
+.job .tx .s{font-size:11px;opacity:.5}
+.job .go{opacity:.35;font-size:16px}
+.job.done .ic{background:var(--st-booked);color:var(--chip-ink)}
+.acc{background:var(--wash);border-radius:14px;overflow:hidden}
+.acc > summary{list-style:none;padding:13px 14px;font-size:12.5px;font-weight:700;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.acc > summary::-webkit-details-marker{display:none}
+.acc .in{padding:0 14px 13px;display:flex;flex-direction:column;gap:10px}
+
+/* ── C · tap-to-sheet ─────────────────────────────────────────────────────── */
+.srow{display:flex;align-items:center;gap:11px;padding:11px 4px;cursor:pointer}
+.srow + .srow{box-shadow:0 -1px 0 var(--wash)}
+.srow .dt{width:44px;flex-shrink:0}
+.srow .dt .m{font-size:9px;font-weight:800;letter-spacing:.08em;opacity:.45;text-transform:uppercase}
+.srow .dt .n{font-family:'Archivo Black',sans-serif;font-size:17px;line-height:1}
+.srow .mid{flex:1;min-width:0}
+.srow .mid .t{font-size:13px;font-weight:700}
+.srow .mid .s{font-size:11px;opacity:.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srow .st{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.srow .st.sub{background:var(--st-warm)}
+.srow .st.app{background:var(--st-booked)}
+.srow .st.open{background:var(--wash2)}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:78px;background:var(--srf);border-radius:24px 24px 0 0;box-shadow:0 -8px 40px rgba(0,0,0,.4);display:flex;flex-direction:column;transform:translateY(0);transition:transform .22s ease;z-index:5}
+.sheet.hide{transform:translateY(110%)}
+.sheet .shd{padding:14px 16px 10px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.sheet .shd .g{width:34px;height:4px;border-radius:99px;background:var(--wash2);position:absolute;top:7px;left:50%;transform:translateX(-50%)}
+.sheet .sbd{flex:1;overflow-y:auto;padding:2px 16px 92px;display:flex;flex-direction:column;gap:13px}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.42);z-index:4}
+.scrim.hide{display:none}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>Runner hub</h1>
+  <div class="switch">
+    <button class="on" onclick="pick('a',this)">A · Day card</button>
+    <button onclick="pick('b',this)">B · Job strip</button>
+    <button onclick="pick('c',this)">C · Tap-to-sheet</button>
+  </div>
+  <div class="switch">
+    <button class="on" onclick="theme('dark',this)">Dark</button>
+    <button onclick="theme('light',this)">Light</button>
+  </div>
+</div>
+
+<p class="note" id="blurb"></p>
+
+<!-- ══ A · DAY CARD ═══════════════════════════════════════════════════════ -->
+<div class="opt on" id="opt-a">
+<div class="phones">
+
+  <div class="phonewrap"><div class="cap">Hub — one studio, today</div>
+  <div class="phone">
+    <div class="rbar">
+      <div class="back">←</div>
+      <div><div class="ttl">Paramount</div><div class="sub">Thu, Aug 13</div></div>
+    </div>
+    <div class="rbody">
+      <div>
+        <div class="sechd">Today · 2 sessions</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="sess">
+            <div class="top">
+              <div><div class="room">Studio A</div><div class="who">Kendrick Lamar</div><div class="cl">Interscope Records</div></div>
+              <span class="pill warm">In progress</span>
+            </div>
+            <div class="meta"><span>6:00 PM – 2:00 AM</span><span>1ST Tom R.</span></div>
+          </div>
+          <div class="sess">
+            <div class="top">
+              <div><div class="room">Studio C</div><div class="who">Nia Rowe</div><div class="cl">COD · Zelle</div></div>
+              <span class="pill booked">Submitted</span>
+            </div>
+            <div class="meta"><span>12:00 PM – 6:00 PM</span><span>2ND Sierra K.</span></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="sechd">Tonight</div>
+        <div class="tiles">
+          <button class="tile done"><span class="t">Opening</span><span class="s">Submitted 5:12 PM</span></button>
+          <button class="tile"><span class="t">Closing</span><span class="s">Not started</span></button>
+          <button class="tile"><span class="t">Mic inventory</span><span class="s">271 to check</span></button>
+          <button class="tile"><span class="t">Petty cash</span><span class="s">$240 on hand</span></button>
+          <button class="tile"><span class="t">Stock</span><span class="s">2 low</span></button>
+        </div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="phonewrap"><div class="cap">Work order — the day IS the card</div>
+  <div class="phone">
+    <div class="rbar">
+      <div class="back">←</div>
+      <div><div class="ttl">Work order</div><div class="sub">Studio A · Kendrick Lamar</div></div>
+    </div>
+    <div class="rbody">
+
+      <!-- The whole point: pick a day, then everything below is that day. -->
+      <div class="daypager">
+        <div class="d"><span class="dt">Mon</span>Aug 11</div>
+        <div class="d on"><span class="dt">Tue</span>Aug 12</div>
+        <div class="d"><span class="dt">Wed</span>Aug 13</div>
+      </div>
+
+      <div class="card">
+        <div class="sechd">Studio time <span class="pill dim">Aug 12</span></div>
+        <div class="grid2" style="margin-bottom:10px">
+          <div><div class="label" style="margin-bottom:4px">From</div><div class="well"><input class="mono" value="6:00 PM"></div></div>
+          <div><div class="label" style="margin-bottom:4px">To</div><div class="well"><input class="mono" value="2:00 AM"></div></div>
+        </div>
+        <div class="grid2" style="margin-bottom:10px">
+          <div><div class="label" style="margin-bottom:4px">Room</div><div class="well"><input value="A"></div></div>
+          <div><div class="label" style="margin-bottom:4px">OT hours</div><div class="well"><input class="mono" value="1"></div></div>
+        </div>
+        <div><div class="label" style="margin-bottom:4px">Session info</div><div class="well"><input value="Vocals — main tracking"></div></div>
+
+        <!-- READ-ONLY, and it says so. The runner does not set rates. Showing
+             them as text instead of inputs removes six tappable things that
+             were never theirs, and removes the fear of touching one. -->
+        <div class="adm" style="margin-top:11px">
+          <div class="label">Billing · set by the office</div>
+          <div class="row"><span style="opacity:.6">Rate</span><b>$150 / hr</b></div>
+          <div class="row"><span style="opacity:.6">OT rate</span><b>$225 / hr</b></div>
+          <div class="row"><span style="opacity:.6">Day total</span><b>$1,425.00</b></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="sechd">Staff on Aug 12</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <span class="pill dim">1ST</span><span style="font-size:13px;font-weight:700">Tom Rivera</span>
+            </div>
+            <div class="grid2">
+              <div class="well"><span class="pfx">In</span><input class="mono" value="6:00 PM"></div>
+              <div class="well"><span class="pfx">Out</span><input class="mono" value="2:00 AM"></div>
+            </div>
+          </div>
+          <button class="btn" style="min-height:44px">+ Add staff</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="sechd">Equipment · Aug 12</div>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <span style="font-size:13px">Speakers</span>
+            <div class="seg"><button class="on ok">OK</button><button>Not OK</button></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <span style="font-size:13px">Microphone</span>
+            <div class="seg"><button class="on ok">OK</button><button>Not OK</button></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <span style="font-size:13px">Console</span>
+            <div class="seg"><button>OK</button><button class="on bad">Not OK</button></div>
+          </div>
+          <div class="well" style="min-height:52px"><input value="Ch 14 fader intermittent — flagged"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="sechd">Payments taken</div>
+        <div class="grid2" style="margin-bottom:9px">
+          <div class="well"><span class="pfx">Type</span><input value="Zelle"></div>
+          <div class="well"><span class="pfx">$</span><input class="mono" value="1,500.00"></div>
+        </div>
+        <button class="btn" style="min-height:44px">+ Add payment</button>
+        <div class="adm" style="margin-top:11px">
+          <div class="row"><span style="opacity:.6">Total</span><b>$4,780.00</b></div>
+          <div class="row"><span style="opacity:.6">Paid</span><b>$2,500.00</b></div>
+          <div class="row"><span style="font-weight:700">Balance due</span><b style="color:var(--st-hot)">$2,280.00</b></div>
+        </div>
+      </div>
+
+    </div>
+    <div class="foot">
+      <button class="btn" style="flex:0 0 34%">Notes</button>
+      <button class="btn primary">Submit Aug 12</button>
+    </div>
+  </div></div>
+
+</div>
+</div>
+
+<!-- ══ B · JOB STRIP ══════════════════════════════════════════════════════ -->
+<div class="opt" id="opt-b">
+<div class="phones">
+
+  <div class="phonewrap"><div class="cap">Hub — the night as a list of jobs</div>
+  <div class="phone">
+    <div class="rbar">
+      <div class="back">←</div>
+      <div><div class="ttl">Paramount</div><div class="sub">Thu, Aug 13 · 3 jobs left</div></div>
+    </div>
+    <div class="rbody">
+      <div class="strip">
+        <div class="hd"><span class="r">Studio A</span><span class="pill warm">In progress</span></div>
+        <div class="bd">
+          <div style="font-size:13px;font-weight:700">Kendrick Lamar<span style="opacity:.45;font-weight:400"> · Interscope</span></div>
+          <div style="font-size:11.5px;opacity:.55;margin-top:-6px">6:00 PM – 2:00 AM · 1ST Tom R.</div>
+          <div class="job done"><span class="ic">✓</span><span class="tx"><span class="t">Times logged</span><span class="s">6:00 PM – 2:00 AM, 1h OT</span></span></div>
+          <div class="job done"><span class="ic">✓</span><span class="tx"><span class="t">Equipment checked</span><span class="s">Console flagged — Ch 14</span></span></div>
+          <div class="job"><span class="ic">3</span><span class="tx"><span class="t">Take payment</span><span class="s">$2,280.00 balance due</span></span><span class="go">›</span></div>
+          <button class="btn primary">Submit Studio A</button>
+        </div>
+      </div>
+
+      <div class="strip">
+        <div class="hd"><span class="r">Studio C</span><span class="pill booked">Submitted</span></div>
+        <div class="bd">
+          <div style="font-size:13px;font-weight:700">Nia Rowe<span style="opacity:.45;font-weight:400"> · COD</span></div>
+          <div style="font-size:11.5px;opacity:.55;margin-top:-6px">12:00 PM – 6:00 PM · paid in full</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="sechd">Tonight</div>
+        <div class="card" style="padding:4px 14px">
+          <div class="job done" style="padding:11px 0"><span class="ic">✓</span><span class="tx"><span class="t">Opening checklist</span><span class="s">Submitted 5:12 PM</span></span></div>
+          <div class="job" style="padding:11px 0"><span class="ic">☐</span><span class="tx"><span class="t">Mic inventory</span><span class="s">271 mics — not started</span></span><span class="go">›</span></div>
+          <div class="job" style="padding:11px 0"><span class="ic">☐</span><span class="tx"><span class="t">Closing checklist</span><span class="s">Not started</span></span><span class="go">›</span></div>
+          <div class="job" style="padding:11px 0"><span class="ic">$</span><span class="tx"><span class="t">Petty cash</span><span class="s">$240 on hand</span></span><span class="go">›</span></div>
+          <div class="job" style="padding:11px 0"><span class="ic">▤</span><span class="tx"><span class="t">Stock</span><span class="s">2 items low</span></span><span class="go">›</span></div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="phonewrap"><div class="cap">Work order — only what the runner owns</div>
+  <div class="phone">
+    <div class="rbar">
+      <div class="back">←</div>
+      <div><div class="ttl">Studio A</div><div class="sub">Kendrick Lamar · Aug 12</div></div>
+    </div>
+    <div class="rbody">
+
+      <div class="card">
+        <div class="sechd">Your part</div>
+        <div style="display:flex;flex-direction:column;gap:11px">
+          <div class="grid2">
+            <div><div class="label" style="margin-bottom:4px">In</div><div class="well"><input class="mono" value="6:00 PM"></div></div>
+            <div><div class="label" style="margin-bottom:4px">Out</div><div class="well"><input class="mono" value="2:00 AM"></div></div>
+          </div>
+          <div><div class="label" style="margin-bottom:4px">Overtime</div><div class="well"><span class="pfx">Hrs</span><input class="mono" value="1"></div></div>
+          <div><div class="label" style="margin-bottom:4px">What happened</div><div class="well" style="min-height:56px"><input value="Vocals — main tracking"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="sechd">Equipment</div>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="font-size:13px">Speakers</span><div class="seg"><button class="on ok">OK</button><button>Not OK</button></div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="font-size:13px">Microphone</span><div class="seg"><button class="on ok">OK</button><button>Not OK</button></div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="font-size:13px">Console</span><div class="seg"><button>OK</button><button class="on bad">Not OK</button></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="sechd">Money at the desk</div>
+        <div class="grid2" style="margin-bottom:9px">
+          <div class="well"><span class="pfx">Type</span><input value="Zelle"></div>
+          <div class="well"><span class="pfx">$</span><input class="mono" value="1,500.00"></div>
+        </div>
+        <button class="btn" style="min-height:44px">+ Add payment</button>
+      </div>
+
+      <!-- EVERYTHING ELSE IS BEHIND ONE DOOR. It is still reachable — a runner
+           occasionally needs to see a rate to answer a client — but it is not
+           on the surface, because none of it is theirs to change. -->
+      <details class="acc">
+        <summary>Session details &amp; charges <span style="opacity:.4">▾</span></summary>
+        <div class="in">
+          <div class="kv">
+            <span class="k">Rate</span><span class="mono">$150 / hr</span>
+            <span class="k">OT rate</span><span class="mono">$225 / hr</span>
+            <span class="k">Rentals</span><span class="mono">$630.00</span>
+            <span class="k">Total</span><span class="mono">$4,780.00</span>
+            <span class="k">Paid</span><span class="mono">$2,500.00</span>
+            <span class="k">Balance</span><span class="mono" style="color:var(--st-hot);font-weight:700">$2,280.00</span>
+          </div>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>Other days on this work order <span style="opacity:.4">▾</span></summary>
+        <div class="in">
+          <div class="kv">
+            <span class="k">Aug 11</span><span>6:00 PM – 1:00 AM · submitted</span>
+            <span class="k">Aug 13</span><span>Not started</span>
+          </div>
+        </div>
+      </details>
+
+    </div>
+    <div class="foot">
+      <button class="btn" style="flex:0 0 34%">Notes</button>
+      <button class="btn primary">Submit Aug 12</button>
+    </div>
+  </div></div>
+
+</div>
+</div>
+
+<!-- ══ C · TAP-TO-SHEET ═══════════════════════════════════════════════════ -->
+<div class="opt" id="opt-c">
+<div class="phones">
+
+  <div class="phonewrap"><div class="cap">Work order — days as rows</div>
+  <div class="phone">
+    <div class="rbar">
+      <div class="back">←</div>
+      <div><div class="ttl">Work order</div><div class="sub">Studio A · Kendrick Lamar</div></div>
+    </div>
+    <div class="rbody">
+      <div class="card">
+        <div class="sechd">Studio time <span class="pill dim">3 days</span></div>
+        <div class="srow" onclick="openSheet()">
+          <div class="dt"><div class="m">Aug</div><div class="n">11</div></div>
+          <div class="mid"><div class="t">Studio A · 6:00 PM – 1:00 AM</div><div class="s">Tom Rivera · $1,050.00</div></div>
+          <div class="st app"></div>
+        </div>
+        <div class="srow" onclick="openSheet()">
+          <div class="dt"><div class="m">Aug</div><div class="n">12</div></div>
+          <div class="mid"><div class="t">Studio A · 6:00 PM – 2:00 AM</div><div class="s">Tom Rivera · 1h OT · $1,425.00</div></div>
+          <div class="st sub"></div>
+        </div>
+        <div class="srow" onclick="openSheet()">
+          <div class="dt"><div class="m">Aug</div><div class="n">13</div></div>
+          <div class="mid"><div class="t">Studio A · times not set</div><div class="s">Tap to fill in</div></div>
+          <div class="st open"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="sechd">Equipment</div>
+        <div class="kv"><span class="k">Aug 11</span><span>All OK</span><span class="k">Aug 12</span><span>Console flagged</span><span class="k">Aug 13</span><span style="opacity:.45">Not checked</span></div>
+      </div>
+
+      <div class="card">
+        <div class="sechd">Payments</div>
+        <div class="kv"><span class="k">Zelle</span><span class="mono">$1,500.00</span><span class="k">Card ·4412</span><span class="mono">$1,000.00</span></div>
+        <div class="adm" style="margin-top:11px"><div class="row"><span style="font-weight:700">Balance due</span><b style="color:var(--st-hot)">$2,280.00</b></div></div>
+      </div>
+    </div>
+    <div class="foot">
+      <button class="btn" style="flex:0 0 34%">Notes</button>
+      <button class="btn primary">Submit today</button>
+    </div>
+  </div></div>
+
+  <div class="phonewrap"><div class="cap">Tap a day → the sheet (tap a row to try it)</div>
+  <div class="phone">
+    <div class="rbar">
+      <div class="back">←</div>
+      <div><div class="ttl">Work order</div><div class="sub">Studio A · Kendrick Lamar</div></div>
+    </div>
+    <div class="rbody">
+      <div class="card">
+        <div class="sechd">Studio time</div>
+        <div class="srow"><div class="dt"><div class="m">Aug</div><div class="n">12</div></div><div class="mid"><div class="t">Studio A · 6:00 PM – 2:00 AM</div><div class="s">Tom Rivera · 1h OT</div></div><div class="st sub"></div></div>
+      </div>
+    </div>
+    <div class="scrim" id="scrim" onclick="closeSheet()"></div>
+    <div class="sheet" id="sheet">
+      <div class="g"></div>
+      <div class="shd">
+        <div style="flex:1"><div class="arch" style="font-size:16px">Tue, Aug 12</div><div style="font-size:11px;opacity:.5">Studio A</div></div>
+        <span class="pill warm">Submitted</span>
+      </div>
+      <div class="sbd">
+        <div class="grid2">
+          <div><div class="label" style="margin-bottom:4px">From</div><div class="well"><input class="mono" value="6:00 PM"></div></div>
+          <div><div class="label" style="margin-bottom:4px">To</div><div class="well"><input class="mono" value="2:00 AM"></div></div>
+        </div>
+        <div class="grid2">
+          <div><div class="label" style="margin-bottom:4px">Room</div><div class="well"><input value="A"></div></div>
+          <div><div class="label" style="margin-bottom:4px">OT hours</div><div class="well"><input class="mono" value="1"></div></div>
+        </div>
+        <div><div class="label" style="margin-bottom:4px">Session info</div><div class="well" style="min-height:52px"><input value="Vocals — main tracking"></div></div>
+        <div>
+          <div class="label" style="margin-bottom:6px">Staff</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><span class="pill dim">1ST</span><span style="font-size:13px;font-weight:700">Tom Rivera</span></div>
+          <div class="grid2"><div class="well"><span class="pfx">In</span><input class="mono" value="6:00 PM"></div><div class="well"><span class="pfx">Out</span><input class="mono" value="2:00 AM"></div></div>
+        </div>
+        <div class="adm">
+          <div class="label">Billing · set by the office</div>
+          <div class="row"><span style="opacity:.6">Rate</span><b>$150 / hr</b></div>
+          <div class="row"><span style="opacity:.6">OT rate</span><b>$225 / hr</b></div>
+          <div class="row"><span style="opacity:.6">Day total</span><b>$1,425.00</b></div>
+        </div>
+      </div>
+      <div class="foot">
+        <button class="btn" style="flex:0 0 34%" onclick="closeSheet()">Cancel</button>
+        <button class="btn primary" onclick="closeSheet()">Done</button>
+      </div>
+    </div>
+  </div></div>
+
+</div>
+</div>
+
+<script>
+const BLURB = {
+  a: "<b>A · Day card.</b> The twelve-column row becomes a CARD for one day, and a day pager sits above it. No horizontal scrolling anywhere. Rates, OT rates and day totals render as READ-ONLY text in a wash block labelled “set by the office” — the runner keeps six fewer tappable things that were never theirs. <b>Cost:</b> a multi-day work order takes as many taps as it has days, and you cannot see two days at once.",
+  b: "<b>B · Job strip.</b> Starts from what a runner actually owns — times, equipment, money at the desk — and puts ONLY that on the surface. Rates and totals live behind one accordion, still reachable when a client asks. The hub becomes the night's jobs rather than a list of links, so “what's left to do” is the screen. <b>Cost:</b> the biggest departure from what exists, and it hides real information one tap deep.",
+  c: "<b>C · Tap-to-sheet.</b> Days stay a compact list — you can see the whole work order at a glance, with a status dot per day — and tapping one opens a full-height sheet to edit it. Closest to today's structure, so the smallest port, and the best thumb ergonomics of the three. <b>Cost:</b> editing is always one tap away; nothing is directly editable on the main screen.",
+}
+function pick(k, el){
+  document.querySelectorAll('.opt').forEach(o => o.classList.remove('on'))
+  document.getElementById('opt-' + k).classList.add('on')
+  el.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('on'))
+  el.classList.add('on')
+  document.getElementById('blurb').innerHTML = BLURB[k]
+}
+function theme(t, el){
+  document.documentElement.setAttribute('data-theme', t)
+  el.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('on'))
+  el.classList.add('on')
+}
+function openSheet(){
+  document.getElementById('sheet').classList.remove('hide')
+  document.getElementById('scrim').classList.remove('hide')
+}
+function closeSheet(){
+  document.getElementById('sheet').classList.add('hide')
+  document.getElementById('scrim').classList.add('hide')
+}
+document.getElementById('blurb').innerHTML = BLURB.a
+closeSheet()
+</script>
+</body>
+</html>

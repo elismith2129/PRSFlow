@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Table chrome: headers and footers as text, not bars</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  TABLE CHROME — three treatments (2026-08-13).
+
+  THE PROBLEM. Rounding the header's top corners and the footer's bottom corners
+  left both strips half-round and half-square, meeting the rounded day blocks at
+  a seam. Eli: "looks like headers and footers are half round and half square."
+  Correct — the fix chased the symptom. Two filled bars sandwiching filled blocks
+  means three fills fighting for the same edge, and SOME corner is always wrong.
+
+  ELI'S IDEA, and it dissolves the problem rather than patching it: "for the
+  headers and footers, there are no bars or pills — just text. that way entries
+  have the rounded bubbles."
+
+  Exactly. If only ONE thing on the surface is filled, only one thing needs a
+  radius. A column header is a LABEL, not an object — §7's display-anchor rule
+  was always about things that hold content, and a header holds nothing.
+
+  THE PARALLEL WORTH NOTICING: on Studio Time the bubble is the DAY (a day and
+  its staff are one fact). On Equipment the bubble is the EQUIPMENT LINE (a mic
+  across every night is one fact). Same idea, different axis — which is why the
+  equipment table never looked right sharing the studio-time treatment.
+
+  A · Text chrome        headers and footers are bare text. Eli's.
+  B · Text + result chip  same, but the total sits in a small chip.
+  C · Filled bars        what is live now, for comparison.
+
+  Law 1 (no lines) and the TABLE EXEMPTION (§8) hold throughout: grouping is
+  fill and space, never a rule.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --st-hot:#ff5a4d; --st-warm:#ffa94d; --st-booked:#43dfae;
+  --ivory:#d5d0c2; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 14px/1.5 system-ui,-apple-system,sans-serif;padding:20px;-webkit-font-smoothing:antialiased}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+h1{font-family:'Archivo Black',sans-serif;font-size:21px;letter-spacing:-.03em}
+.sw{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);margin:12px 8px 16px 0}
+.sw button{padding:6px 14px;border-radius:99px;font:inherit;font-size:12px;font-weight:700;border:none;background:none;color:var(--fg);opacity:.55;cursor:pointer}
+.sw button.on{opacity:1;background:var(--ivory);color:#1b1a17}
+[data-theme="light"] .sw button.on{background:var(--fg);color:var(--bg)}
+.why{max-width:1040px;font-size:12.5px;line-height:1.65;opacity:.72;margin-bottom:20px}
+.why b{opacity:1}
+
+.pane{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:14px;max-width:1040px;margin-bottom:16px}
+.sec{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45;margin-bottom:9px}
+
+/* grid shared by header + rows */
+.hd,.r{display:grid;grid-template-columns:60px 48px minmax(110px,1fr) 60px 60px 32px 42px 58px 38px 54px 54px 68px;align-items:center}
+.hd{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.36;padding:0 10px 7px}
+.r{padding:5px 10px;font-size:11.5px;min-height:29px}
+.r .c{opacity:.55}
+.n{font-family:ui-monospace,monospace;text-align:right}
+.tot{font-family:ui-monospace,monospace;text-align:right;font-weight:700}
+.role{font-size:8px;font-weight:800;opacity:.75}
+.role.a{color:var(--st-warm)}
+.day{background:var(--wash);border-radius:12px;margin-bottom:7px;overflow:hidden}
+
+/* equipment */
+.ehd,.er{display:grid;grid-template-columns:118px repeat(6,1fr);align-items:center}
+.ehd{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.36;padding:0 10px 7px;text-align:center}
+.ehd span:first-child{text-align:left}
+.er{padding:6px 10px;font-size:12px;background:var(--wash);border-radius:12px;margin-bottom:6px}
+.er .cell{display:flex;gap:5px;justify-content:center}
+.er .ok,.er .no{font-size:9px;font-weight:800;letter-spacing:.04em;opacity:.3;cursor:pointer;padding:2px 6px;border-radius:99px}
+.er .ok.on{opacity:1;color:var(--st-booked)}
+.er .no.on{opacity:1;color:var(--st-hot)}
+
+/* footers */
+.ft{display:flex;justify-content:space-between;align-items:center;padding:9px 10px 0;font-size:11px}
+.ft .adds{display:flex;gap:14px}
+.ft .adds span{opacity:.55;cursor:pointer}
+.ft .adds span.a{color:var(--st-warm);opacity:.85}
+.ft .sum{font-family:ui-monospace,monospace;font-weight:700;font-size:12px}
+.ft.chip .sum{background:var(--wash2);border-radius:99px;padding:5px 12px}
+/* option C — the live treatment */
+.cbar{background:var(--wash);border-radius:12px 12px 0 0;padding:6px 10px}
+.cfoot{background:var(--wash);border-radius:0 0 12px 12px}
+.opt{display:none}.opt.on{display:block}
+</style>
+</head>
+<body>
+
+<h1>Table chrome</h1>
+<div class="sw">
+  <button class="on" onclick="pick('a',this)">A · Text chrome</button>
+  <button onclick="pick('b',this)">B · Text + result chip</button>
+  <button onclick="pick('c',this)">C · Filled bars (live now)</button>
+</div>
+<div class="sw">
+  <button class="on" onclick="th('dark',this)">Dark</button>
+  <button onclick="th('light',this)">Light</button>
+</div>
+<p class="why" id="why"></p>
+
+<!-- ══════════ A ══════════ -->
+<div class="opt on" id="o-a">
+  <div class="pane">
+    <div class="sec">Studio time</div>
+    <div class="hd"><span>Studio</span><span>Date</span><span>Session info</span><span>From</span><span>To</span><span>Hrs</span><span>Type</span><span>Rate</span><span>OT hrs</span><span>OT rate</span><span>OT chg</span><span style="text-align:right">Total</span></div>
+    <div class="day">
+      <div class="r"><span>PRS A</span><span class="c">Aug 4</span><span>Vocals — main tracking</span><span class="mono">6:00 PM</span><span class="mono">2:00 AM</span><span class="n">8</span><span class="c">Hr</span><span class="n">$150</span><span class="n">1</span><span class="n">$225</span><span class="n">$225.00</span><span class="tot">$1,425.00</span></div>
+      <div class="r"><span class="role">1ST</span><span></span><span style="opacity:.9">Tom Rivera</span><span class="mono">6:00 PM</span><span class="mono">2:00 AM</span><span class="n">8</span><span></span><span class="n">$85</span><span></span><span></span><span></span><span class="tot">$680.00</span></div>
+    </div>
+    <div class="day">
+      <div class="r"><span>TRS North</span><span class="c">Aug 5</span><span>Mix rev. 2</span><span class="mono">12:00 PM</span><span class="mono">8:00 PM</span><span class="n">8</span><span class="c">Day</span><span class="n">$629</span><span class="n">—</span><span class="n">—</span><span class="n">—</span><span class="tot">$629.00</span></div>
+      <div class="r"><span class="role a">2ND</span><span></span><span style="opacity:.9">Sam Lorimore</span><span class="mono">12:00 PM</span><span class="mono">8:00 PM</span><span class="n">8</span><span></span><span class="n">—</span><span></span><span></span><span></span><span class="tot c">—</span></div>
+    </div>
+    <div class="ft"><div class="adds"><span>+ Add Studio Time</span><span>+ Add Engineer</span><span class="a">+ Add Assistant</span></div><div class="sum">Studio: $2,054.00</div></div>
+  </div>
+
+  <div class="pane">
+    <div class="sec">Equipment condition</div>
+    <div class="ehd"><span>Equipment</span><span>Jul 1</span><span>Jul 2</span><span>Jul 3</span><span>Jul 4</span><span>Jul 5</span><span>Jul 6</span></div>
+    <div class="er"><span>Speakers</span>
+      <span class="cell"><span class="ok on">OK</span><span class="no">✗</span></span><span class="cell"><span class="ok on">OK</span><span class="no">✗</span></span><span class="cell"><span class="ok on">OK</span><span class="no">✗</span></span><span class="cell"><span class="ok">OK</span><span class="no">✗</span></span><span class="cell"><span class="ok">OK</span><span class="no">✗</span></span><span class="cell"><span class="ok">OK</span><span class="no">✗</span></span></div>
+    <div class="er"><span>Microphone</span>
+      <span class="cell"><span class="ok on">OK</span><span class="no">✗</span></span><span class="cell"><span class="ok on">OK</span><span class="no">✗</span></span><span class="cell"><span class="ok">OK</span><span class="no on">✗</span></span><span class="cell"><span class="ok">OK</span><span class="no">✗</span></span><span class="cell"><span class="ok">OK</span><span class="no">✗</span></span><span class="cell"><span class="ok">OK</span><span class="no">✗</span></span></div>
+    <div class="er"><span>Console</span>
+      <span class="cell"><span class="ok on">OK</span><span class="no">✗</span></span><span class="cell"><span class="ok">OK</span><span class="no">✗</span></span><span class="cell"><span class="ok">OK</span><span class="no">✗</span></span><span class="cell"><span class="ok">OK</span><span class="no">✗</span></span><span class="cell"><span class="ok">OK</span><span class="no">✗</span></span><span class="cell"><span class="ok">OK</span><span class="no">✗</span></span></div>
+  </div>
+
+  <div class="pane">
+    <div class="sec">Rentals</div>
+    <div class="hd" style="grid-template-columns:46px minmax(160px,1fr) 120px 110px 64px 78px"><span>Qty</span><span>Item</span><span>Supplier</span><span>Date(s) used</span><span style="text-align:right">Rate</span><span style="text-align:right">Charge</span></div>
+    <div class="day"><div class="r" style="grid-template-columns:46px minmax(160px,1fr) 120px 110px 64px 78px"><span class="mono">2</span><span>Neumann U67</span><span>Vintage King</span><span>Aug 4–5</span><span class="n">$225</span><span class="tot">$450.00</span></div></div>
+    <div class="day"><div class="r" style="grid-template-columns:46px minmax(160px,1fr) 120px 110px 64px 78px"><span class="mono">1</span><span>Fender Rhodes Mk I</span><span>SIR</span><span>Aug 5</span><span class="n">$180</span><span class="tot">$180.00</span></div></div>
+    <div class="ft"><div class="adds"><span>+ Add row</span></div><div class="sum">Total: $630.00</div></div>
+  </div>
+</div>
+
+<!-- ══════════ B ══════════ -->
+<div class="opt" id="o-b">
+  <div class="pane">
+    <div class="sec">Studio time</div>
+    <div class="hd"><span>Studio</span><span>Date</span><span>Session info</span><span>From</span><span>To</span><span>Hrs</span><span>Type</span><span>Rate</span><span>OT hrs</span><span>OT rate</span><span>OT chg</span><span style="text-align:right">Total</span></div>
+    <div class="day">
+      <div class="r"><span>PRS A</span><span class="c">Aug 4</span><span>Vocals — main tracking</span><span class="mono">6:00 PM</span><span class="mono">2:00 AM</span><span class="n">8</span><span class="c">Hr</span><span class="n">$150</span><span class="n">1</span><span class="n">$225</span><span class="n">$225.00</span><span class="tot">$1,425.00</span></div>
+      <div class="r"><span class="role">1ST</span><span></span><span style="opacity:.9">Tom Rivera</span><span class="mono">6:00 PM</span><span class="mono">2:00 AM</span><span class="n">8</span><span></span><span class="n">$85</span><span></span><span></span><span></span><span class="tot">$680.00</span></div>
+    </div>
+    <div class="day">
+      <div class="r"><span>TRS North</span><span class="c">Aug 5</span><span>Mix rev. 2</span><span class="mono">12:00 PM</span><span class="mono">8:00 PM</span><span class="n">8</span><span class="c">Day</span><span class="n">$629</span><span class="n">—</span><span class="n">—</span><span class="n">—</span><span class="tot">$629.00</span></div>
+      <div class="r"><span class="role a">2ND</span><span></span><span style="opacity:.9">Sam Lorimore</span><span class="mono">12:00 PM</span><span class="mono">8:00 PM</span><span class="n">8</span><span></span><span class="n">—</span><span></span><span></span><span></span><span class="tot c">—</span></div>
+    </div>
+    <div class="ft chip"><div class="adds"><span>+ Add Studio Time</span><span>+ Add Engineer</span><span class="a">+ Add Assistant</span></div><div class="sum">Studio: $2,054.00</div></div>
+  </div>
+
+  <div class="pane">
+    <div class="sec">Rentals</div>
+    <div class="hd" style="grid-template-columns:46px minmax(160px,1fr) 120px 110px 64px 78px"><span>Qty</span><span>Item</span><span>Supplier</span><span>Date(s) used</span><span style="text-align:right">Rate</span><span style="text-align:right">Charge</span></div>
+    <div class="day"><div class="r" style="grid-template-columns:46px minmax(160px,1fr) 120px 110px 64px 78px"><span class="mono">2</span><span>Neumann U67</span><span>Vintage King</span><span>Aug 4–5</span><span class="n">$225</span><span class="tot">$450.00</span></div></div>
+    <div class="day"><div class="r" style="grid-template-columns:46px minmax(160px,1fr) 120px 110px 64px 78px"><span class="mono">1</span><span>Fender Rhodes Mk I</span><span>SIR</span><span>Aug 5</span><span class="n">$180</span><span class="tot">$180.00</span></div></div>
+    <div class="ft chip"><div class="adds"><span>+ Add row</span></div><div class="sum">Total: $630.00</div></div>
+  </div>
+</div>
+
+<!-- ══════════ C ══════════ -->
+<div class="opt" id="o-c">
+  <div class="pane">
+    <div class="sec">Studio time</div>
+    <div class="cbar"><div class="hd" style="padding:0"><span>Studio</span><span>Date</span><span>Session info</span><span>From</span><span>To</span><span>Hrs</span><span>Type</span><span>Rate</span><span>OT hrs</span><span>OT rate</span><span>OT chg</span><span style="text-align:right">Total</span></div></div>
+    <div class="day" style="border-radius:0">
+      <div class="r"><span>PRS A</span><span class="c">Aug 4</span><span>Vocals — main tracking</span><span class="mono">6:00 PM</span><span class="mono">2:00 AM</span><span class="n">8</span><span class="c">Hr</span><span class="n">$150</span><span class="n">1</span><span class="n">$225</span><span class="n">$225.00</span><span class="tot">$1,425.00</span></div>
+      <div class="r"><span class="role">1ST</span><span></span><span style="opacity:.9">Tom Rivera</span><span class="mono">6:00 PM</span><span class="mono">2:00 AM</span><span class="n">8</span><span></span><span class="n">$85</span><span></span><span></span><span></span><span class="tot">$680.00</span></div>
+    </div>
+    <div class="cfoot"><div class="ft" style="padding:9px 10px"><div class="adds"><span>+ Add Studio Time</span><span>+ Add Engineer</span><span class="a">+ Add Assistant</span></div><div class="sum">Studio: $2,054.00</div></div></div>
+    <p style="font-size:11.5px;opacity:.5;margin-top:12px">The seam Eli spotted: the header bar's bottom corners and the footer bar's top corners are square, and they meet rounded blocks. Whichever corner you round, one of the three fills is wrong.</p>
+  </div>
+</div>
+
+<script>
+const WHY={
+ a:"<b>A · Text chrome.</b> Headers and footers lose their fill entirely — column labels are just small caps above the rows, and the footer is plain text with the total on the right. Only the ENTRIES are filled and rounded, so there is exactly one radius on the surface and no seam to get wrong. Equipment follows the same idea on its own axis: each piece of gear is one bubble across every night, which is why it never looked right sharing the studio-time treatment. <b>Cost:</b> the total is quieter than it is today.",
+ b:"<b>B · Text + result chip.</b> Identical to A, except the total sits in a small rounded chip. The chip says \"this is a result, not another label\" — useful because the footer is also where the + Add controls live, and those are text too. <b>Cost:</b> one more filled shape, which is the thing A was getting rid of. Worth it only if the total reads as too quiet in A.",
+ c:"<b>C · Filled bars.</b> What is live right now. Shown so the seam is visible rather than described: the header bar's bottom corners and the footer bar's top corners are square where they meet the rounded day blocks. Rounding those too would leave a pill-shaped bar floating over square-topped blocks — the corner just moves.",
+}
+function pick(k,el){
+ document.querySelectorAll('.opt').forEach(o=>o.classList.remove('on'))
+ document.getElementById('o-'+k).classList.add('on')
+ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));el.classList.add('on')
+ document.getElementById('why').innerHTML=WHY[k]
+}
+function th(t,el){document.documentElement.setAttribute('data-theme',t)
+ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));el.classList.add('on')}
+document.getElementById('why').innerHTML=WHY.a
+</script>
+</body>
+</html>

@@ -1,4 +1,9 @@
 'use client'
+// SOFT SKIN PORT, 2026-08-14 (one-pass runner redesign). Everything above the
+// render — loads, the clIdRef/creatingRef instant-save pattern, the dirtyRef
+// realtime guard, attention sync, flag raising — is UNTOUCHED byte-for-byte.
+// Old skin retired (legacy tokens, 1px borders, Syne, lime literals). Colour is
+// status only (§5): checked = booked green, attention = warm.
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
@@ -228,62 +233,98 @@ export default function ChecklistPage() {
     router.push(`/runner/${studio}`)
   }
 
+  // ── Presentation (soft skin) ──────────────────────────────────────────────────
+  const surface: React.CSSProperties = {
+    background: 'var(--c-srf, var(--c-bg))',
+    boxShadow: 'var(--c-softsh)',
+    borderRadius: 16,
+    padding: '13px 14px',
+  }
+  const hasAttentionNow = notes.trim().length > 0 || photos.length > 0
+
   if (pageLoading) return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Syne, sans-serif', color: 'var(--text2)' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--c-bg)', color: 'var(--c-fg)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5, fontSize: 13 }}>
       Loading…
     </div>
   )
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)', fontFamily: 'Syne, sans-serif', paddingBottom: 120 }} onChangeCapture={() => { dirtyRef.current = true }}>
+    <div style={{
+      minHeight: '100dvh', maxWidth: '100vw', overflowX: 'hidden',
+      background: 'var(--c-bg)', color: 'var(--c-fg)', paddingBottom: 130,
+    }} onChangeCapture={() => { dirtyRef.current = true }}>
 
       {/* Sticky header */}
-      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 }}>
-        <button onClick={() => router.push(`/runner/${studio}`)} style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>←</button>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>{isOpening ? 'Opening' : 'Closing'} Checklist</span>
-            {isSubmitted && <span style={{ fontSize: 10, color: 'var(--booked)', fontFamily: 'Inter' }}>● submitted</span>}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 11,
+        padding: '14px 16px 10px', position: 'sticky', top: 0, zIndex: 10,
+        background: 'var(--c-bg)',
+      }}>
+        <button
+          onClick={() => router.push(`/runner/${studio}`)}
+          aria-label="Back"
+          className="c-control c-raised"
+          style={{
+            width: 38, height: 38, borderRadius: 99, flexShrink: 0,
+            background: 'var(--c-wash)', color: 'var(--c-fg)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 16, cursor: 'pointer',
+          }}
+        >←</button>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span className="c-arch" style={{ fontSize: 18, letterSpacing: '-0.02em', lineHeight: 1.15 }}>
+              {isOpening ? 'Opening' : 'Closing'}
+            </span>
+            {isSubmitted && <span style={{ fontSize: 10.5, color: 'var(--c-st-booked)', fontWeight: 700 }}>Submitted</span>}
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter' }}>{meta.label} · {completedCount}/{allItems.length} checked</div>
+          <div style={{ fontSize: 11.5, opacity: 0.5 }}>{meta.label} · {completedCount}/{allItems.length} checked</div>
         </div>
-        <div style={{ width: 60, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${allItems.length > 0 ? (completedCount / allItems.length) * 100 : 0}%`, background: 'var(--accent)', transition: 'width 0.2s' }} />
+        <div style={{ width: 56, height: 5, background: 'var(--c-wash)', borderRadius: 99, overflow: 'hidden', flexShrink: 0 }}>
+          <div style={{
+            height: '100%', borderRadius: 99,
+            width: `${allItems.length > 0 ? (completedCount / allItems.length) * 100 : 0}%`,
+            background: 'var(--c-st-booked)', transition: 'width 0.2s',
+          }} />
         </div>
       </div>
 
-      <div style={{ padding: '16px' }}>
+      <div style={{ padding: '4px 14px' }}>
 
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 11, color: 'var(--text2)', fontFamily: 'Inter', lineHeight: 1.5 }}>
+        <div style={{ fontSize: 11, opacity: 0.45, lineHeight: 1.5, margin: '0 2px 14px' }}>
           Tap items as you complete them — saves instantly. Only check what&apos;s done.
         </div>
 
         {sections.map(sec => (
-          <div key={sec.section} style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text2)', fontFamily: 'Inter', marginBottom: 8, paddingLeft: 4 }}>
+          <div key={sec.section} style={{ marginBottom: 16 }}>
+            <div className="c-label" style={{ marginBottom: 7, paddingLeft: 2 }}>
               {sec.section}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              {sec.items.map(item => {
+            <div style={{ ...surface, padding: '4px 12px' }}>
+              {sec.items.map((item, i) => {
                 const on = checked[item] ?? false
                 return (
                   <button key={item} onClick={() => toggle(item)} style={{
-                    background: on ? '#c8f04e15' : 'var(--surface)',
-                    border: `1px solid ${on ? '#c8f04e55' : 'var(--border)'}`,
-                    borderRadius: 10, padding: '11px 14px', cursor: 'pointer',
-                    display: 'flex', alignItems: 'flex-start', gap: 12, textAlign: 'left',
-                    transition: 'all 0.12s',
+                    width: '100%', background: 'transparent', border: 'none', font: 'inherit',
+                    color: 'var(--c-fg)', padding: '10px 0', cursor: 'pointer',
+                    display: 'flex', alignItems: 'flex-start', gap: 11, textAlign: 'left',
+                    boxShadow: i > 0 ? '0 -1px 0 var(--c-wash)' : undefined,
+                    WebkitTapHighlightColor: 'transparent', minHeight: 44,
                   }}>
                     <div style={{
-                      width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 1,
-                      background: on ? 'var(--accent)' : 'var(--border)',
+                      width: 22, height: 22, borderRadius: 99, flexShrink: 0, marginTop: 1,
+                      background: on ? 'var(--c-st-booked)' : 'var(--c-wash2)',
+                      color: on ? 'var(--c-chip-ink)' : 'transparent',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 13, color: 'var(--bg)', fontWeight: 700,
-                      transition: 'background 0.12s',
+                      fontSize: 12, fontWeight: 700, transition: 'background 0.12s',
                     }}>
-                      {on ? '✓' : ''}
+                      ✓
                     </div>
-                    <span style={{ fontSize: 13, color: on ? 'var(--text)' : 'var(--text2)', lineHeight: 1.45, textDecoration: on ? 'line-through' : 'none', flex: 1 }}>
+                    <span style={{
+                      fontSize: 13, lineHeight: 1.45, flex: 1,
+                      opacity: on ? 0.45 : 1,
+                      textDecoration: on ? 'line-through' : 'none',
+                    }}>
                       {item}
                     </span>
                   </button>
@@ -294,32 +335,39 @@ export default function ChecklistPage() {
         ))}
 
         {/* Needs Attention */}
-        <div style={{ background: 'var(--surface)', border: `1px solid ${(notes.trim() || photos.length > 0) ? '#f9731640' : 'var(--border)'}`, borderRadius: 12, padding: '16px', marginTop: 8 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: (notes.trim() || photos.length > 0) ? 'var(--warm)' : 'var(--text2)', marginBottom: 14 }}>
-            Needs Attention / Runner Notes
+        <div style={{ ...surface, marginTop: 4 }}>
+          <div className="c-label" style={{
+            marginBottom: 12,
+            color: hasAttentionNow ? 'var(--c-st-warm)' : undefined,
+            opacity: hasAttentionNow ? 1 : undefined,
+          }}>
+            Needs attention / runner notes
           </div>
 
-          {(notes.trim() || photos.length > 0) && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f9731615', border: '1px solid #f9731640', borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
-              <span style={{ fontSize: 14, color: 'var(--warm)', flexShrink: 0 }}>⚠</span>
+          {hasAttentionNow && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              background: 'var(--c-wash)', borderRadius: 12, padding: '10px 13px', marginBottom: 12,
+            }}>
+              <span style={{ width: 8, height: 8, borderRadius: 99, background: 'var(--c-st-warm)', flexShrink: 0 }} />
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--warm)', fontFamily: 'Syne, sans-serif' }}>Flagged for management attention</div>
-                <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'Inter', marginTop: 2 }}>Management will be notified when you submit</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-st-warm)' }}>Flagged for management attention</div>
+                <div style={{ fontSize: 10.5, opacity: 0.5, marginTop: 1 }}>Management will be notified when you submit</div>
               </div>
             </div>
           )}
 
           <textarea
-            placeholder="Notes / Issues / Incomplete items — anything you couldn't complete, found damaged, or needs attention..."
+            placeholder="Notes / issues / incomplete items — anything you couldn't complete, found damaged, or needs attention…"
             value={notes}
             onChange={e => { attentionChangedRef.current = true; setNotes(e.target.value) }}
             rows={4}
             style={{
               width: '100%', boxSizing: 'border-box',
-              background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10,
-              padding: '12px 14px', color: 'var(--text)', fontSize: 13,
-              fontFamily: 'Inter', outline: 'none', resize: 'vertical',
-              lineHeight: 1.5, marginBottom: 12,
+              background: 'var(--c-wash)', border: 'none', borderRadius: 12,
+              padding: '11px 13px', color: 'var(--c-fg)', fontSize: 13,
+              font: 'inherit', outline: 'none', resize: 'vertical',
+              lineHeight: 1.5, marginBottom: 11,
             }}
           />
 
@@ -328,10 +376,11 @@ export default function ChecklistPage() {
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
             style={{
-              background: 'var(--border)', border: '1px solid #3a3e4d', borderRadius: 8,
-              padding: '10px 16px', color: 'var(--text)', fontSize: 12, fontWeight: 600,
-              cursor: uploading ? 'not-allowed' : 'pointer', fontFamily: 'Syne, sans-serif',
-              opacity: uploading ? 0.7 : 1,
+              background: 'var(--c-wash)', border: 'none', borderRadius: 99,
+              padding: '9px 16px', minHeight: 40, color: 'var(--c-fg)',
+              fontSize: 12, fontWeight: 700, font: 'inherit',
+              cursor: uploading ? 'not-allowed' : 'pointer',
+              opacity: uploading ? 0.6 : 1,
             }}
           >
             {uploading ? 'Uploading…' : '+ Add photos'}
@@ -341,10 +390,15 @@ export default function ChecklistPage() {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
               {photos.map((url, i) => (
                 <div key={i} style={{ position: 'relative' }}>
-                  <SignedImage path={url} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
+                  <SignedImage path={url} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 10 }} />
                   <button
                     onClick={() => { dirtyRef.current = true; attentionChangedRef.current = true; setPhotos(prev => prev.filter((_, j) => j !== i)) }}
-                    style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: 9, background: 'var(--hot)', border: 'none', color: '#fff', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}
+                    style={{
+                      position: 'absolute', top: -5, right: -5, width: 19, height: 19, borderRadius: 99,
+                      background: 'var(--c-st-hot)', border: 'none', color: 'var(--c-hot-text)',
+                      fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', fontWeight: 700,
+                    }}
                   >✕</button>
                 </div>
               ))}
@@ -355,29 +409,51 @@ export default function ChecklistPage() {
 
       {/* Fixed footer — submitted state shows back button, not Submit */}
       {isSubmitted ? (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: 'var(--bg)', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--booked)', fontFamily: 'Inter' }}>
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0,
+          padding: '12px 14px calc(16px + env(safe-area-inset-bottom))',
+          background: 'linear-gradient(to top, var(--c-bg) 68%, transparent)',
+          display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+          <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'var(--c-st-booked)' }}>
             ✓ Shift complete · {completedCount}/{allItems.length} checked
           </div>
           <button
             onClick={() => router.push(`/runner/${studio}`)}
-            style={{ width: '100%', padding: '14px 0', background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
+            className="c-control c-raised"
+            style={{
+              width: '100%', minHeight: 52, borderRadius: 14,
+              background: 'var(--c-wash2)', color: 'var(--c-fg)',
+              border: 'none', font: 'inherit', fontSize: 14, fontWeight: 800,
+              cursor: 'pointer', boxShadow: 'var(--c-softsh)',
+            }}
           >
             Back to {meta.label}
           </button>
         </div>
       ) : (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--bg)', borderTop: '1px solid var(--border)', padding: '12px 20px', display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0,
+          padding: '12px 14px calc(16px + env(safe-area-inset-bottom))',
+          background: 'linear-gradient(to top, var(--c-bg) 68%, transparent)',
+          display: 'flex', gap: 9, alignItems: 'center',
+        }}>
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <input
               value={staffName}
               onChange={e => { setStaffName(e.target.value.toUpperCase()); if (e.target.value.trim()) setShowInitialsHint(false) }}
               placeholder="Initials"
               maxLength={4}
-              style={{ width: 70, padding: '10px 8px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontSize: 13, fontFamily: 'Inter', textAlign: 'center', outline: 'none' }}
+              className="c-mono"
+              style={{
+                width: 70, minHeight: 48, padding: '10px 8px',
+                background: 'var(--c-wash)', border: 'none', borderRadius: 12,
+                color: 'var(--c-fg)', fontSize: 13, textAlign: 'center', outline: 'none',
+                boxShadow: 'var(--c-softsh)',
+              }}
             />
             {showInitialsHint && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, fontSize: 9, color: 'var(--hot)', fontFamily: 'Inter', marginTop: 3, whiteSpace: 'nowrap' }}>
+              <div style={{ position: 'absolute', top: '100%', left: 0, fontSize: 9.5, color: 'var(--c-st-hot)', fontWeight: 700, marginTop: 3, whiteSpace: 'nowrap' }}>
                 Required to submit
               </div>
             )}
@@ -385,16 +461,29 @@ export default function ChecklistPage() {
           <button
             onClick={handleSave}
             disabled={submitting}
-            style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 12, color: 'var(--text2)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
+            style={{
+              flex: '0 0 26%', minHeight: 48, borderRadius: 14,
+              background: 'var(--c-wash)', color: 'var(--c-fg)', opacity: 0.8,
+              border: 'none', font: 'inherit', fontSize: 13, fontWeight: 700,
+              cursor: 'pointer', boxShadow: 'var(--c-ctlsh, var(--c-softsh))',
+            }}
           >
             Save
           </button>
           <button
             onClick={() => { if (!staffName.trim()) { setShowInitialsHint(true); return } handleSubmit() }}
             disabled={submitting}
-            style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 12, color: staffName.trim() ? 'var(--text)' : 'var(--text3)', fontSize: 13, fontWeight: 800, cursor: staffName.trim() ? 'pointer' : 'default', opacity: staffName.trim() ? 1 : 0.6, fontFamily: 'Syne, sans-serif' }}
+            className="c-control c-raised"
+            style={{
+              flex: 1, minHeight: 48, borderRadius: 14,
+              background: 'var(--c-wash2)', color: 'var(--c-fg)',
+              border: 'none', font: 'inherit', fontSize: 13, fontWeight: 800,
+              cursor: staffName.trim() ? 'pointer' : 'default',
+              opacity: staffName.trim() ? 1 : 0.55,
+              boxShadow: 'var(--c-softsh)',
+            }}
           >
-            {submitting ? 'Submitting…' : `Submit ${isOpening ? 'Opening' : 'Closing'} Checklist`}
+            {submitting ? 'Submitting…' : `Submit ${isOpening ? 'opening' : 'closing'}`}
           </button>
         </div>
       )}

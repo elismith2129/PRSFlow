@@ -10,6 +10,8 @@ import { createWorkOrderForBooking, bookingShouldHaveWorkOrder } from '@/lib/cre
 import { deleteSessionAndWO } from '@/lib/deleteSession'
 import { dateRange } from '@/lib/time'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { SessionCardBody, CARD_FULL_H, initials, sessionFillClass } from '@/components/calendar/SessionCard'
+import { StatusDot, StatusPill } from '@/components/carved'
 
 // ─── LOCATIONS ───────────────────────────────────────────────────────────────
 
@@ -25,20 +27,63 @@ const LOCATION_CODES: Record<string, string> = {
 
 // ─── COLOR TOKENS ────────────────────────────────────────────────────────────
 
-const STATUS_TOP_COLORS: Record<string, string> = {
-  confirmed:  'var(--booked)',
-  tentative:  'var(--warm)',
-  cancelled:  'var(--hot)',
-  tour:       '#a855f7',
-  tech:       'var(--cold)',
-  open_hours: '#e2e8f0',
+// Booking status -> carved status slot (§5). The calendar is the one surface
+// where every slot appears, so this is the canonical mapping.
+// Only the hover card's StatusPill still needs this — it takes a status NAME,
+// not a fill class. Chip colour comes from sessionFillClass (one decision, one
+// place). Do not reintroduce a second status→colour map here.
+const STATUS_SLOT: Record<string, string> = {
+  confirmed:  'confirmed',
+  tentative:  'tentative',
+  cancelled:  'cancelled',
+  tour:       'tour',
+  tech:       'tech',
+  open_hours: 'open_hours',
 }
 
 // ─── LAYOUT CONSTANTS ────────────────────────────────────────────────────────
 
-const LABEL_W = 148
+// 148 → 112 (Eli, 2026-08-16: "lots of unused padding" in the rail). The
+// widest occupants — "AMERAYCAN" in Archivo 10px + arrow, "Studio X" + arrow —
+// clear 112 comfortably; the rest was dead air the grid could use.
+const LABEL_W = 112
 const COL_W = 120  // minimum day-column width; forces horizontal scroll when cols × days > viewport
-const ZOOM_FIXED = [60, 80, 88, 110, 132] // zoom levels 1–5; level 0 = fit-all (≈44px)
+// ROW HEIGHT — two modes, not a ladder. VERTICAL ONLY (column width is the
+// horizontal zoom, below; the two were confused once and bumping this made every
+// row taller instead of the cells wider).
+//
+// The old five-step ladder went because four steps were useless: 'Fit' and the
+// 80px step looked identical (the fit calculation was floored at one card's
+// height, so it never actually squeezed anything), and taller than 80 bought
+// nothing — the card's content is fixed, so extra height is just empty chip.
+// The only direction anyone wanted was SMALLER.
+//   'card'  — one card's natural height. The default. Never changes.
+//   'rooms' — divide the viewport by the visible room count so the whole
+//             calendar fits with no vertical scrolling; cards shed content
+//             through the ladder in SessionCardBody as they shrink.
+const ROW_H_CARD = 80
+type RowMode = 'card' | 'rooms'
+// Mobile row height — one full card, since mobile has no mode switch.
+const CHIP_MIN_H = 79
+
+// COLUMN WIDTH — the horizontal zoom, in px per day.
+// This replaced the Week / 2 Wks / Month buttons. Those were only ever three
+// fixed column widths wearing different names, and picking a named window is a
+// worse fit for the actual question ("how much do I want to see at once?") than
+// simply spreading the days apart. Pinch on a trackpad drives it directly.
+//   MIN — below this a card can't show its anatomy legibly.
+//   MAX — beyond this you're reading one day at a time; use Day view.
+const COL_ZOOM_MIN = 48
+const COL_ZOOM_MAX = 320
+const COL_ZOOM_DEFAULT = 120  // ≈ the old 2-week feel, which was the default view
+const COL_ZOOM_STEP = 24      // one press of the +/- buttons or [ / ]
+const clampColZoom = (w: number) => Math.min(COL_ZOOM_MAX, Math.max(COL_ZOOM_MIN, Math.round(w)))
+// Mobile has no pinch (the whole page zooms instead), so it keeps fit-to-width
+// with a floor.
+const COL_FLOOR_MOBILE = 76
+// Height of the month rail. The day header sticks BELOW it, so this has to be a
+// constant both can read — a mismatch overlaps the two sticky rows.
+const MONTH_RAIL_H = 22
 const BUFFER_WEEKS = 2 // weeks of buffer rendered on each side for endless horizontal scroll
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -90,11 +135,6 @@ function isToday(d: Date) {
   return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate()
 }
 
-function initials(name: string | null): string {
-  if (!name?.trim()) return ''
-  const p = name.trim().split(/\s+/)
-  return p.length === 1 ? p[0].slice(0, 2).toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase()
-}
 
 function genInvoice(): string {
   return String(Math.floor(1000 + Math.random() * 9000))
@@ -112,6 +152,13 @@ function fmtTime(t: string): string {
   if (h > 12) h -= 12
   if (h === 0) h = 12
   return `${h}${min !== '00' ? ':' + min : ''}${suf}`
+}
+
+// "Aug 6" from a YYYY-MM-DD string. Parsed at noon so a timezone offset can't
+// roll the date backwards, the same guard the runner pages use.
+function shortDate(d: string): string {
+  if (!d) return ''
+  return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 function rangeLabel(start: Date, totalDays: number): string {
@@ -182,10 +229,18 @@ function assignLanes(bookings: Booking[]): Map<string, { lane: number; numLanes:
 // ─── BOOKING BLOCK ───────────────────────────────────────────────────────────
 
 function BookingBlock({
-  booking, gridStart, totalDays, lane, numLanes, rowH, onClick, isMobile = false,
+  booking, gridStart, totalDays, lane, numLanes, rowH, onClick, isMobile = false, staffByDay = {},
+  onHover, onHoverEnd, colW = 0,
 }: {
   booking: Booking; gridStart: Date; totalDays: number
   lane: number; numLanes: number; rowH: number; onClick: () => void
+  // work_order_id|date -> staff for that day (F-9 Option B). Empty for legacy rows.
+  staffByDay?: Record<string, { eng?: string; asst?: string }>
+  onHover?: (booking: Booking, day: string, rect: DOMRect, cursorX: number) => void
+  onHoverEnd?: () => void
+  // Horizontal scroll offset + day-column width, so a long bar can slide its
+  // payload along to stay on screen.
+  colW?: number
   isMobile?: boolean
 }) {
   const bStart = parse(booking.start_date)
@@ -197,20 +252,15 @@ function BookingBlock({
   const dur = dayDiff(visStart, visEnd) + 1
   const left = (offset / totalDays) * 100
   const width = (dur / totalDays) * 100
+  // Visible span in days — used to map the cursor's x-position to a day column
+  // for the hover card.
+  const spanDays = dur
 
+  const isCancelled = booking.status === 'cancelled'
   const isBilling = booking.payment_type === 'billing'
-  const nameColor = 'var(--text)' // chip name text — white regardless of payment type
-  const topColor = STATUS_TOP_COLORS[booking.status] ?? STATUS_TOP_COLORS.confirmed
-  const sessionBorder = booking.session_type !== 'recording'
-  // Chip glow: orange (open WO / attention) or teal (confirmed); subtle, no layout impact
-  const chipGlowBorder = topColor === 'var(--warm)' ? 'rgba(249, 115, 22, 0.4)'
-    : topColor === 'var(--booked)' ? 'rgba(20, 184, 166, 0.4)'
-    : 'rgba(255,255,255,0.08)'
-  const chipGlow = topColor === 'var(--warm)' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
-    : topColor === 'var(--booked)' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
-    : 'none'
 
-  // Line 1: artist (billing) or client name (COD)
+  // Only needed for the repeated payload copies on long bars; the card itself
+  // derives its own.
   const primaryName = isBilling
     ? (booking.artist || booking.label || booking.client_name || '')
     : (booking.client_name || '')
@@ -223,137 +273,83 @@ function BookingBlock({
     ? `${fmtTime(booking.from_time)}–${fmtTime(booking.to_time)}`
     : booking.from_time ? fmtTime(booking.from_time) : ''
 
-  const eng = initials(booking.engineer_name)
-  const asst = initials(booking.assistant_name)
-  const engColor = 'var(--cold)' // chip engineer initials — muted
-  const asstColor = 'var(--cold)' // chip assistant initials — muted
+  // Per-day staffing (F-9 Option B). A chip can span days, so it shows the staff
+  // for its FIRST day; the hover card reports the exact day under the cursor.
+  // Falls back to the projection's collapsed names when the booking has no
+  // studio_time_rows at all (legacy / pre-WO) — never blank.
+  function staffFor(dateStr: string): { eng: string; asst: string } {
+    const hit = booking.work_order_id ? staffByDay[`${booking.work_order_id}|${dateStr}`] : undefined
+    if (hit) return { eng: initials(hit.eng ?? null), asst: initials(hit.asst ?? null) }
+    return { eng: initials(booking.engineer_name), asst: initials(booking.assistant_name) }
+  }
+  const { eng, asst } = staffFor(booking.start_date)
 
   const slotH = rowH / numLanes
   const blockTop = lane * slotH + 2
   const blockHeight = slotH - 3
-  const micro = blockHeight < 30
-  const compact = !micro && blockHeight < 60
-  const codLabel = booking.cod_method === 'Credit Card' ? 'CC' : (booking.cod_method ?? '').toUpperCase()
+  // Fields drop by HEIGHT inside SessionCardBody — see the ladder there. This
+  // component only supplies the measurement.
+
+  // ── Long bars: repeat the payload, don't chase the scroll ─────────────────
+  // Three attempts to slide the payload with the scroll position all drifted and
+  // dropped it mid-scroll. The cause is that the calendar re-anchors its grid as
+  // you scroll (infinite scroll), so any position derived from scroll offset can
+  // desync. A static repeat has NO scroll dependency, so it cannot drift: the
+  // payload is simply drawn again every 7 days along the bar. Whatever part of a
+  // long bar is on screen, a copy is within a week of it.
+  const REPEAT_DAYS = 7
+  const repeatOffsets = spanDays > REPEAT_DAYS * 1.5
+    ? Array.from({ length: Math.floor(spanDays / REPEAT_DAYS) }, (_, i) => (i + 1) * REPEAT_DAYS)
+        .filter(d => d < spanDays - 1)
+    : []
 
   return (
     <div
       onClick={e => { e.stopPropagation(); onClick() }}
+      onMouseMove={onHover ? e => {
+        // Which day column is under the cursor — so a month-long bar reports the
+        // day being pointed at, not the day the bar happens to start on.
+        const r = e.currentTarget.getBoundingClientRect()
+        const frac = (e.clientX - r.left) / Math.max(1, r.width)
+        const idx = Math.min(spanDays - 1, Math.max(0, Math.floor(frac * spanDays)))
+        onHover(booking, fmt(addDays(visStart, idx)), r, e.clientX)
+      } : undefined}
+      onMouseLeave={onHoverEnd}
+      className={`c-ev c-control c-raised-chip ${sessionFillClass(booking.status)}${isCancelled ? ' c-ev-cancelled' : ''}`}
       style={{
         position: 'absolute', top: blockTop, height: blockHeight,
         minHeight: isMobile ? 44 : undefined,
         left: `calc(${left}% + 2px)`, width: `calc(${width}% - 4px)`,
-        background: 'var(--bg)', boxSizing: 'border-box',
-        borderTop: `${micro ? 3 : 4}px solid ${topColor}`,
-        borderLeft: sessionBorder ? '2px solid rgba(var(--accent-rgb),0.7)' : `1px solid ${chipGlowBorder}`,
-        borderRight: sessionBorder ? '2px solid rgba(var(--accent-rgb),0.7)' : `1px solid ${chipGlowBorder}`,
-        borderBottom: sessionBorder ? '2px solid rgba(var(--accent-rgb),0.7)' : `1px solid ${chipGlowBorder}`,
-        borderRadius: 4,
-        boxShadow: chipGlow,
-        padding: micro ? '1px 4px' : compact ? '3px 5px' : '4px 6px',
+        boxSizing: 'border-box',
+        // Padding moves to the payload: the footer band and COD strip are
+        // full-bleed to the chip's edges, so the chip itself can't be inset.
+        padding: 0,
         cursor: 'pointer', overflow: 'hidden',
-        display: 'flex', flexDirection: micro ? 'row' : 'column',
-        alignItems: micro ? 'center' : undefined,
-        justifyContent: micro ? 'flex-start' : 'space-between',
-        gap: micro ? 4 : undefined,
         zIndex: 2, minWidth: 0,
+        display: 'flex', flexDirection: 'column',
       }}
     >
-      {micro ? (
-        <>
-          <div style={{ color: nameColor, fontSize: 8, fontFamily: 'DM Serif Display', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 1 auto', minWidth: 0 }}>
-            {primaryName}
-          </div>
-          {timeStr && (
-            <div style={{ fontSize: 7, fontFamily: 'Inter', color: 'var(--cold)', whiteSpace: 'nowrap', flexShrink: 0 }}>
-              {timeStr}
-            </div>
-          )}
-        </>
-      ) : compact ? (
-        <>
-          {/* Row 1: name + inline COD badge + invoice# */}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, minWidth: 0, overflow: 'hidden' }}>
-            <div style={{
-              color: nameColor, fontSize: isMobile ? 11 : (blockHeight >= 48 ? 12 : 10),
-              fontFamily: 'DM Serif Display', lineHeight: 1.2,
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              flex: '1 1 0', minWidth: 0,
-            }}>
-              {primaryName}
-            </div>
-            {!isBilling && codLabel && (
-              <span style={{ fontSize: 7, fontFamily: 'Inter', fontWeight: 700, color: '#f87171', flexShrink: 0, lineHeight: 1, letterSpacing: '0.03em' }}>
-                {codLabel}
-              </span>
-            )}
-          </div>
-          {/* Row 2: time + eng/asst */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', overflow: 'hidden' }}>
-            <div style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--cold)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
-              {timeStr}
-            </div>
-            {(eng || asst) && (
-              <div style={{ display: 'flex', gap: 3, flexShrink: 0, marginLeft: 4 }}>
-                {eng  && <div style={{ fontSize: 8, fontFamily: 'Inter', color: engColor, whiteSpace: 'nowrap' }}>1ST-{eng}</div>}
-                {asst && <div style={{ fontSize: 8, fontFamily: 'Inter', color: asstColor, whiteSpace: 'nowrap' }}>2ND-{asst}</div>}
-              </div>
-            )}
-          </div>
-        </>
-      ) : (
-        <>
-          <div style={{
-            color: nameColor, fontSize: isMobile ? 11 : 13, fontFamily: 'DM Serif Display', lineHeight: 1.2,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      <SessionCardBody booking={booking} height={blockHeight} eng={eng} asst={asst} isMobile={isMobile}>
+        {/* Repeated copies of the payload every 7 days along a long bar, so the
+            session stays identifiable wherever you're scrolled. Static — no
+            scroll maths, nothing to drift. */}
+        {repeatOffsets.map(d => (
+          <div key={d} aria-hidden style={{
+            position: 'absolute', top: 4, left: `calc(${(d / spanDays) * 100}% + 6px)`,
+            pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 0,
           }}>
-            {primaryName}
+            <div className="c-arch" style={{ fontSize: 12, lineHeight: 1.3 }}>{primaryName}</div>
+            {labelLine && <div className="c-ev-meta" style={{ fontSize: 10, lineHeight: 1.2 }}>{labelLine}</div>}
+            <div className="c-ev-2 c-mono" style={{ fontSize: 9.5, lineHeight: 1.25 }}>{timeStr}</div>
           </div>
-          {labelLine && (
-            <div style={{
-              fontSize: 10, fontFamily: 'Inter', lineHeight: 1.2, marginTop: 1,
-              color: 'var(--text2)',
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>
-              {labelLine}
-            </div>
-          )}
-          {timeStr && (
-            <div style={{ fontSize: 9, fontFamily: 'Inter', lineHeight: 1.2, marginTop: 2, color: 'var(--cold)' }}>
-              {timeStr}
-            </div>
-          )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto' }}>
-            <div>
-              {!isBilling && booking.cod_method && (
-                <div style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, lineHeight: 1.3, color: '#f87171' }}>
-                  {booking.cod_method.toUpperCase()}
-                </div>
-              )}
-            </div>
-            {(eng || asst) && (
-              <div style={{ textAlign: 'right' }}>
-                {eng  && <div style={{ fontSize: 8, fontFamily: 'Inter', lineHeight: 1.3, color: engColor }}>1ST-{eng}</div>}
-                {asst && <div style={{ fontSize: 8, fontFamily: 'Inter', lineHeight: 1.3, color: asstColor }}>2ND-{asst}</div>}
-              </div>
-            )}
-          </div>
-        </>
-      )}
+        ))}
+      </SessionCardBody>
     </div>
   )
 }
 
 
 // ─── DAY VIEW ────────────────────────────────────────────────────────────────
-
-const DAY_STATUS_BG: Record<string, string> = {
-  confirmed:  '#1e40af',
-  tentative:  '#c2410c',
-  cancelled:  '#b91c1c',
-  tour:       '#6d28d9',
-  tech:       '#374151',
-  open_hours: '#111827',
-}
 
 function DayView({
   dayViewDate,
@@ -409,29 +405,28 @@ function DayView({
       {!isMobile && (
       <div style={{
         width: 216, flexShrink: 0, overflowY: 'auto',
-        background: 'var(--surface)',
-        borderRight: '1px solid rgba(255,255,255,0.08)',
+        background: 'var(--c-bg)',
         padding: '16px 14px',
       }}>
         {/* Month nav */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <button
             onClick={() => setMiniMonthStart(new Date(miniMonthStart.getFullYear(), miniMonthStart.getMonth() - 1, 1))}
-            style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 16, padding: '0 2px', lineHeight: 1 }}
+            style={{ background: 'none', color: 'var(--c-fg-2)', cursor: 'pointer', fontSize: 16, padding: '0 2px', lineHeight: 1 }}
           >‹</button>
-          <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 12, color: 'var(--text)', letterSpacing: '0.04em' }}>
+          <span style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 12, color: 'var(--c-fg)', letterSpacing: '0.04em' }}>
             {miniMonthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </span>
           <button
             onClick={() => setMiniMonthStart(new Date(miniMonthStart.getFullYear(), miniMonthStart.getMonth() + 1, 1))}
-            style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 16, padding: '0 2px', lineHeight: 1 }}
+            style={{ background: 'none', color: 'var(--c-fg-2)', cursor: 'pointer', fontSize: 16, padding: '0 2px', lineHeight: 1 }}
           >›</button>
         </div>
 
         {/* Weekday labels */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 2 }}>
           {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
-            <div key={d} style={{ textAlign: 'center', fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)', padding: '2px 0' }}>
+            <div key={d} style={{ textAlign: 'center', fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-3)', padding: '2px 0' }}>
               {d}
             </div>
           ))}
@@ -451,8 +446,8 @@ function DayView({
                   width: 24, height: 24, borderRadius: '50%', margin: '0 auto',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, fontFamily: 'Inter',
-                  background: isSelected ? 'var(--accent)' : isTodayCell ? 'rgba(255,255,255,0.1)' : 'transparent',
-                  color: isSelected ? 'var(--bg)' : 'var(--text2)',
+                  background: isSelected ? 'var(--c-fg)' : isTodayCell ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  color: isSelected ? 'var(--c-bg)' : 'var(--c-fg-2)',
                   fontWeight: isSelected || isTodayCell ? 700 : 400,
                   outline: isTodayCell && !isSelected ? '1px solid rgba(255,255,255,0.2)' : 'none',
                 }}>
@@ -472,20 +467,19 @@ function DayView({
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '10px 16px', flexShrink: 0,
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
-        }}>
-          <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
+          }}>
+          <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15, color: 'var(--c-fg)' }}>
             {dayViewDate.toLocaleDateString('en-US', isMobile
               ? { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }
               : { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <button onClick={() => setDayViewDate(addDays(dayViewDate, -1))}
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}>‹</button>
+              style={{ background: 'var(--c-wash)', color: 'var(--c-fg)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}>‹</button>
             <button onClick={() => setDayViewDate(new Date())}
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}>Today</button>
+              style={{ background: 'var(--c-wash)', color: 'var(--c-fg-2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}>Today</button>
             <button onClick={() => setDayViewDate(addDays(dayViewDate, 1))}
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}>›</button>
+              style={{ background: 'var(--c-wash)', color: 'var(--c-fg)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}>›</button>
           </div>
         </div>
 
@@ -499,80 +493,38 @@ function DayView({
               return (
                 <div key={`${loc}|${room}`} style={{
                   position: 'relative',
-                  background: 'var(--surface)',
+                  background: 'var(--c-bg)',
                   borderRadius: 6, overflow: 'hidden',
-                  border: cards.length > 0 ? '1px solid rgba(20, 184, 166, 0.2)' : '1px solid rgba(255,255,255,0.08)',
-                }}>
+                  }}>
                   {cards.length > 0 && (
                     /* 2px teal top bar */
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'var(--booked)', zIndex: 3 }} />
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'var(--c-st-booked)', zIndex: 3 }} />
                   )}
                   {/* Card header */}
-                  <div style={{ padding: '6px 10px', background: 'var(--surface2)', borderBottom: cards.length > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
-                    <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 11, color: 'var(--text2)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  <div style={{ padding: '6px 10px', background: 'var(--c-wash)' }}>
+                    <span style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, color: 'var(--c-fg-2)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                       {loc} {room}
                     </span>
                   </div>
 
                   {/* Booking blocks */}
                   {cards.map(b => {
-                    const isBilling = b.payment_type === 'billing'
-                    const nameColor = 'var(--text)' // chip name text — white regardless of payment type
-                    const displayName = isBilling
-                      ? (b.artist && b.label ? `${b.label} / ${b.artist}` : b.artist || b.label || b.client_name || '')
-                      : (b.client_name || '')
-                    const timeStr = b.from_time && b.to_time
-                      ? `${fmtTime(b.from_time)}–${fmtTime(b.to_time)}`
-                      : b.from_time ? fmtTime(b.from_time) : ''
-                    const eng = b.engineer_name ? `1ST-${initials(b.engineer_name)}` : ''
-                    const asst = b.assistant_name ? `2ND-${initials(b.assistant_name)}` : ''
-                    const codLabel = !isBilling && b.cod_method ? `COD ${b.cod_method.toUpperCase()}` : null
-                    const hasSessionBorder = b.session_type !== 'recording'
-                    const topColor = STATUS_TOP_COLORS[b.status] ?? STATUS_TOP_COLORS.confirmed
-                    const chipGlowBorder = topColor === 'var(--warm)' ? 'rgba(249, 115, 22, 0.4)'
-                      : topColor === 'var(--booked)' ? 'rgba(20, 184, 166, 0.4)'
-                      : 'rgba(255,255,255,0.08)'
-                    const chipGlow = topColor === 'var(--warm)' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
-                      : topColor === 'var(--booked)' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
-                      : 'none'
-
+                    const isCancelled = b.status === 'cancelled'
+                    // Height is fixed here — the day view has room, so the card
+                    // always renders its full anatomy.
                     return (
-                      <div key={b.id} onClick={() => onOpenEdit(b)} style={{
-                        padding: '7px 10px', cursor: 'pointer',
-                        background: 'var(--bg)',
-                        borderTop: `3px solid ${topColor}`,
-                        borderLeft: hasSessionBorder ? '3px solid rgba(var(--accent-rgb),0.7)' : `1px solid ${chipGlowBorder}`,
-                        borderRight: `1px solid ${chipGlowBorder}`,
-                        borderBottom: `1px solid ${chipGlowBorder}`,
-                        boxShadow: chipGlow,
-                      }}>
-                        {/* Name */}
-                        <div style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: nameColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {displayName}
-                        </div>
-                        {/* Time */}
-                        {timeStr && (
-                          <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--cold)', marginTop: 2 }}>
-                            {timeStr}
-                          </div>
-                        )}
-                        {/* COD method */}
-                        {codLabel && (
-                          <div style={{ fontFamily: 'Inter', fontSize: 9, fontWeight: 700, color: '#f87171', marginTop: 2 }}>
-                            {codLabel}
-                          </div>
-                        )}
-                        {/* Invoice + engineer */}
-                        {(b.invoice_num || eng || asst) && (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5 }}>
-                            <span style={{ fontFamily: 'Inter', fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>
-                              {b.invoice_num ? `#${b.invoice_num}` : ''}
-                            </span>
-                            <span style={{ fontFamily: 'Inter', fontSize: 9, color: 'var(--cold)' }}>
-                              {[eng, asst].filter(Boolean).join(' ')}
-                            </span>
-                          </div>
-                        )}
+                      <div
+                        key={b.id}
+                        onClick={() => onOpenEdit(b)}
+                        className={`c-ev c-control c-raised-chip ${sessionFillClass(b.status)}${isCancelled ? ' c-ev-cancelled' : ''}`}
+                        style={{ padding: 0, cursor: 'pointer', minHeight: CARD_FULL_H }}
+                      >
+                        <SessionCardBody
+                          booking={b}
+                          height={CARD_FULL_H}
+                          eng={initials(b.engineer_name)}
+                          asst={initials(b.assistant_name)}
+                        />
                       </div>
                     )
                   })}
@@ -638,35 +590,34 @@ function StudioView({
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '10px 16px', flexShrink: 0,
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
-      }}>
-        <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
-          <span style={{ color: 'var(--accent)', textTransform: 'uppercase' }}>{loc} {room}</span>
-          <span style={{ color: 'var(--text3)', margin: '0 8px' }}>—</span>
+        }}>
+        <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15, color: 'var(--c-fg)' }}>
+          <span style={{ color: 'var(--c-fg)', textTransform: 'uppercase' }}>{loc} {room}</span>
+          <span style={{ color: 'var(--c-fg-3)', margin: '0 8px' }}>—</span>
           {monthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <button
             onClick={() => setMonthStart(new Date(year, month - 1, 1))}
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
+            style={{ background: 'var(--c-wash)', color: 'var(--c-fg)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
           >‹</button>
           <button
             onClick={() => { const t = new Date(); setMonthStart(new Date(t.getFullYear(), t.getMonth(), 1)) }}
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}
+            style={{ background: 'var(--c-wash)', color: 'var(--c-fg-2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}
           >Today</button>
           <button
             onClick={() => setMonthStart(new Date(year, month + 1, 1))}
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
+            style={{ background: 'var(--c-wash)', color: 'var(--c-fg)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
           >›</button>
         </div>
       </div>
 
       {/* Weekday labels */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', flexShrink: 0 }}>
         {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
           <div key={d} style={{
             textAlign: 'center', padding: '5px 0',
-            fontFamily: 'Inter', fontSize: 10, color: 'var(--text3)',
+            fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-3)',
             letterSpacing: '0.05em', textTransform: 'uppercase',
           }}>{d}</div>
         ))}
@@ -683,8 +634,6 @@ function StudioView({
         {cells.map((cell, i) => {
           if (!cell) return (
             <div key={`empty-${i}`} style={{
-              borderRight: i % 7 < 6 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-              borderBottom: '1px solid rgba(255,255,255,0.05)',
               background: 'rgba(0,0,0,0.15)',
               minHeight: 80,
             }} />
@@ -699,83 +648,40 @@ function StudioView({
               key={cellStr}
               onDoubleClick={() => onOpenNew(loc, room, cellStr)}
               style={{
-                borderRight: i % 7 < 6 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                borderBottom: '1px solid rgba(255,255,255,0.05)',
                 padding: '4px 5px',
-                background: isTodayCell ? 'rgba(var(--accent-rgb),0.04)' : 'transparent',
+                background: isTodayCell ? 'var(--c-wash2)' : 'transparent',
               }}
             >
               {/* Date number */}
               <div style={{
                 width: 22, height: 22, borderRadius: '50%', marginBottom: 2,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: isTodayCell ? 'var(--accent)' : 'transparent',
-                color: isTodayCell ? 'var(--bg)' : 'var(--text3)',
+                background: isTodayCell ? 'var(--c-fg)' : 'transparent',
+                color: isTodayCell ? 'var(--c-bg)' : 'var(--c-fg-3)',
                 fontSize: 11, fontFamily: 'Inter', fontWeight: isTodayCell ? 700 : 400,
               }}>
                 {cell.getDate()}
               </div>
               {/* Booking blocks */}
               {cellBookings.map(b => {
-                const isBilling = b.payment_type === 'billing'
-                const nameColor = 'var(--text)' // chip name text — white regardless of payment type
-                const displayName = isBilling
-                  ? (b.artist && b.label ? `${b.label} / ${b.artist}` : b.artist || b.label || b.client_name || '')
-                  : (b.client_name || '')
-                const timeStr = b.from_time && b.to_time
-                  ? `${fmtTime(b.from_time)}–${fmtTime(b.to_time)}`
-                  : b.from_time ? fmtTime(b.from_time) : ''
-                const codLabel = !isBilling && b.cod_method
-                  ? (b.cod_method === 'Credit Card' ? 'CC' : b.cod_method.toUpperCase())
-                  : null
-                const eng = b.engineer_name ? `1ST-${initials(b.engineer_name)}` : ''
-                const asst = b.assistant_name ? `2ND-${initials(b.assistant_name)}` : ''
-                const engColor = 'var(--cold)' // chip engineer initials — muted
-                const asstColor = 'var(--cold)' // chip assistant initials — muted
-                const topColor = STATUS_TOP_COLORS[b.status] ?? STATUS_TOP_COLORS.confirmed
-                const chipGlowBorder = topColor === 'var(--warm)' ? 'rgba(249, 115, 22, 0.4)'
-                  : topColor === 'var(--booked)' ? 'rgba(20, 184, 166, 0.4)'
-                  : 'rgba(255,255,255,0.08)'
-                const chipGlow = topColor === 'var(--warm)' ? 'inset 0 0 18px rgba(249, 115, 22, 0.06)'
-                  : topColor === 'var(--booked)' ? 'inset 0 0 18px rgba(20, 184, 166, 0.06)'
-                  : 'none'
+                // §10b anatomy, as in the grid and day views. Name/time/payment
+                // derivation lives in SessionCardBody now — this view used to
+                // build a different display name ("Label / Artist") from the
+                // grid's, which is exactly the drift the shared card ends.
+                const isCancelled = b.status === 'cancelled'
                 return (
                   <div
                     key={b.id}
                     onClick={e => { e.stopPropagation(); onOpenEdit(b) }}
-                    style={{
-                      marginBottom: 3, padding: '5px 7px', borderRadius: 3,
-                      background: 'var(--bg)',
-                      cursor: 'pointer',
-                      borderTop: `3px solid ${topColor}`,
-                      borderLeft: b.session_type !== 'recording' ? '2px solid rgba(var(--accent-rgb),0.7)' : `1px solid ${chipGlowBorder}`,
-                      borderRight: `1px solid ${chipGlowBorder}`,
-                      borderBottom: `1px solid ${chipGlowBorder}`,
-                      boxShadow: chipGlow,
-                    }}
+                    className={`c-ev c-control c-raised-chip ${sessionFillClass(b.status)}${isCancelled ? ' c-ev-cancelled' : ''}`}
+                    style={{ marginBottom: 3, padding: 0, cursor: 'pointer', minHeight: CARD_FULL_H }}
                   >
-                    {/* Name */}
-                    <div style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: nameColor, wordBreak: 'break-word' }}>
-                      {displayName}
-                    </div>
-                    {/* Time */}
-                    {timeStr && (
-                      <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--cold)', marginTop: 2 }}>
-                        {timeStr}
-                      </div>
-                    )}
-                    {/* COD method + engineer/assistant row */}
-                    {(codLabel || eng || asst) && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                        <span style={{ fontFamily: 'Inter', fontSize: 9, fontWeight: 700, color: '#f87171' }}>
-                          {codLabel ?? ''}
-                        </span>
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          {eng  && <span style={{ fontFamily: 'Inter', fontSize: 9, color: engColor }}>{eng}</span>}
-                          {asst && <span style={{ fontFamily: 'Inter', fontSize: 9, color: asstColor }}>{asst}</span>}
-                        </div>
-                      </div>
-                    )}
+                    <SessionCardBody
+                      booking={b}
+                      height={CARD_FULL_H}
+                      eng={initials(b.engineer_name)}
+                      asst={initials(b.assistant_name)}
+                    />
                   </div>
                 )
               })}
@@ -789,7 +695,9 @@ function StudioView({
 
 // ─── MAIN PAGE ───────────────────────────────────────────────────────────────
 
-type ViewType = 'day' | 'studio' | 'week' | '2wks' | 'month'
+// 'grid' replaced 'week' | '2wks' | 'month' — those were three fixed column
+// widths, and the horizontal zoom covers all of them continuously.
+type ViewType = 'day' | 'studio' | 'grid'
 
 export default function CalendarPage() {
   return <Suspense><CalendarPageInner /></Suspense>
@@ -805,7 +713,7 @@ function CalendarPageInner() {
   const [view, setView] = useState<ViewType>(() => {
     if (typeof window !== 'undefined' && typeof window.matchMedia === 'function'
       && window.matchMedia('(max-width: 768px)').matches) return 'day'
-    return '2wks'
+    return 'grid'
   })
   const [startDate, setStartDate] = useState(() => getSunday(new Date()))
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -822,21 +730,51 @@ function CalendarPageInner() {
   const [dayViewDate, setDayViewDate] = useState<Date>(() => new Date())
   const [reloadKey, setReloadKey] = useState(0)
   const [woWarning, setWoWarning] = useState<string | null>(null)
-  const [zoomLevel, setZoomLevel] = useState(0) // 0 = fit-all; 1–6 = ZOOM_FIXED steps
+  const [rowMode, setRowMode] = useState<RowMode>('card')
+  // COLUMN WIDTH — px per day. Driven by trackpad pinch, the +/- buttons, and
+  // [ / ]. Persisted so the calendar reopens at the density you left it at.
+  const [colZoom, setColZoom] = useState<number>(() => {
+    if (typeof window === 'undefined') return COL_ZOOM_DEFAULT
+    const saved = Number(window.localStorage.getItem('prsflo-cal-colzoom'))
+    return saved >= COL_ZOOM_MIN && saved <= COL_ZOOM_MAX ? saved : COL_ZOOM_DEFAULT
+  })
+  useEffect(() => {
+    try { window.localStorage.setItem('prsflo-cal-colzoom', String(colZoom)) } catch {}
+  }, [colZoom])
   const [gridH, setGridH] = useState(700)
   const [gridW, setGridW] = useState(1200)
   const gridRef = useRef<HTMLDivElement>(null)
+  // Horizontal scroll offset, used only to keep long-bar payloads visible.
+  const [scrollX, setScrollX] = useState(0)
+  // Visible width of the DAY area (grid minus the sticky label column).
+  const [viewportW, setViewportW] = useState(0)
+  const scrollRaf = useRef<number | null>(null)
+  useEffect(() => () => { if (scrollRaf.current) cancelAnimationFrame(scrollRaf.current) }, [])
   const lastWheelStep = useRef(0)
   const scrollCorrectionRef = useRef<number | null>(null)
   const shiftingRef = useRef(false)
   const isMobile = useIsMobile()
+
+  // Carved ground for this route — without it the page sits on the legacy
+  // background while its content is carved paper.
+  useEffect(() => {
+    document.documentElement.classList.add('c-page')
+    return () => document.documentElement.classList.remove('c-page')
+  }, [])
   // Narrower room-label column on mobile so day columns keep usable width
   const labelW = isMobile ? 80 : LABEL_W
 
 
-  const totalDays = view === 'month'
-    ? new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate()
-    : view === 'week' ? 7 : 14
+  // The window is derived from the zoom, not chosen: enough whole weeks to fill
+  // the viewport at the current column width. WHOLE weeks matters — startDate
+  // stays a Sunday, which is what keeps the heavy week ticks landing on real week
+  // boundaries and the infinite-scroll shift (±7 days) aligned.
+  const zoomColW = isMobile
+    ? 0 // computed below from viewport; mobile doesn't zoom
+    : Math.min(COL_ZOOM_MAX, Math.max(COL_ZOOM_MIN, colZoom))
+  const totalDays = isMobile
+    ? 7
+    : Math.max(7, Math.ceil(Math.ceil(Math.max(1, gridW - labelW) / zoomColW) / 7) * 7)
   // No horizontal-scroll buffer on mobile: the week fits the viewport exactly, so
   // there's no native horizontal scroll or infinite-scroll shifting to fight with
   // the touch swipe handler (which is then the sole, discrete week navigator).
@@ -845,13 +783,56 @@ function CalendarPageInner() {
   const gridRenderStart = addDays(startDate, -bufDays)
   const days = Array.from({ length: totalRenderDays }, (_, i) => addDays(gridRenderStart, i))
 
-  // Column width fills the viewport for the canonical window; month uses a smaller fixed size
   const usableW = Math.max(gridW - labelW, isMobile ? 200 : 400)
-  const colW = view === 'week'
-    ? Math.max(isMobile ? 40 : 80, Math.floor(usableW / 7))
-    : view === '2wks'
-    ? Math.max(60, Math.floor(usableW / 14))
-    : Math.max(44, Math.floor(usableW / totalDays))
+  // Desktop: the zoom IS the column width. Mobile: fit a week to the viewport.
+  const colW = isMobile
+    ? Math.max(COL_FLOOR_MOBILE, Math.floor(usableW / 7))
+    : zoomColW
+  // How many days are actually on screen — used for the header label, so it
+  // describes what you're looking at rather than the rendered window.
+  const visibleDays = Math.max(1, Math.round(usableW / colW))
+
+  // ── Hover card (F-11) ─────────────────────────────────────────────────────
+  // Built entirely from data already on the page (projection + the Option B
+  // per-day staffing map) — no new queries. `position: fixed` so the card can
+  // never be clipped by the calendar's overflow, and clamped to the viewport.
+  const [hoverCard, setHoverCard] = useState<
+    { booking: Booking; day: string; x: number; y: number; below: boolean } | null
+  >(null)
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastHoverEnd = useRef<number>(0)
+  const canHover = useRef(false)
+  useEffect(() => {
+    // Touch devices get no hover behaviour at all — tap stays click-to-open.
+    canHover.current = typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches
+  }, [])
+
+  function showHover(booking: Booking, day: string, rect: DOMRect, cursorX: number) {
+    if (!canHover.current) return
+    const CARD_H = 190, CARD_W = 300, GAP = 10
+    const below = rect.top - CARD_H - GAP < 8
+    // Anchored to the CURSOR, not the chip's left edge — on a long bar that edge
+    // can be weeks off-screen, which pinned the card to the far left and clipped
+    // it. Nudged left so the pointer sits just inside the card, then clamped.
+    const x = Math.min(Math.max(8, cursorX - 24), window.innerWidth - CARD_W - 8)
+    const y = below ? rect.bottom + GAP : rect.top - GAP
+    const next = { booking, day, x, y, below }
+    // Moving between chips inside 300ms shows the next card immediately.
+    const immediate = Date.now() - lastHoverEnd.current < 300
+    if (hoverTimer.current) clearTimeout(hoverTimer.current)
+    if (immediate) { setHoverCard(next); return }
+    hoverTimer.current = setTimeout(() => setHoverCard(next), 250)
+  }
+  function hideHover() {
+    if (hoverTimer.current) { clearTimeout(hoverTimer.current); hoverTimer.current = null }
+    lastHoverEnd.current = Date.now()
+    setHoverCard(null)
+  }
+  useEffect(() => () => { if (hoverTimer.current) clearTimeout(hoverTimer.current) }, [])
+
+  // work_order_id|date -> { eng, asst } for the visible range. Empty when a
+  // booking predates the WO rebuild; the chip falls back to the projection names.
+  const [staffByDay, setStaffByDay] = useState<Record<string, { eng?: string; asst?: string }>>({})
 
   const load = useCallback(async () => {
     const buf = BUFFER_WEEKS * 7
@@ -864,16 +845,49 @@ function CalendarPageInner() {
       .lte('start_date', fmt(end))
       .gte('end_date', fmt(renderStart))
     setBookings(data ?? [])
+
+    // ── Per-day staffing (F-9 / Option B) ──────────────────────────────────
+    // §10 BEHAVIOURAL EXCEPTION, Eli-approved, DISPLAY ONLY.
+    //
+    // A `bookings` row is a projection card and the projection deliberately FOLDS
+    // every studio-time row's staff into one card — so a Mon–Wed run with LR on
+    // Monday and JC on Tuesday stores both names, and the chip showed both on
+    // every day. Per-day truth lives in `studio_time_rows` (the WO is source of
+    // truth), so this is a display problem and gets a display-layer fix.
+    //
+    // Option A (splitting the run in projectBookingCards) was REJECTED: it edits
+    // the atomic WO save path and rewrites booking data to correct a label, and
+    // WO regressions are the standing top hazard on this project.
+    //
+    // ONE batched read for the whole visible range — never per-chip queries.
+    const woIds = Array.from(new Set((data ?? []).map((b: any) => b.work_order_id).filter(Boolean)))
+    if (woIds.length) {
+      const { data: stRows } = await supabase
+        .from('studio_time_rows')
+        .select('work_order_id, date, eng_name, eng_role')
+        .in('work_order_id', woIds)
+      const map: Record<string, { eng?: string; asst?: string }> = {}
+      for (const r of stRows ?? []) {
+        const name = (r as any).eng_name
+        if (!name || !(r as any).date) continue
+        const key = `${(r as any).work_order_id}|${(r as any).date}`
+        const slot = (r as any).eng_role === 'engineer' ? 'eng' : 'asst'
+        map[key] = { ...(map[key] || {}), [slot]: name }
+      }
+      setStaffByDay(map)
+    } else {
+      setStaffByDay({})
+    }
   }, [startDate, view])
 
   useEffect(() => { load() }, [load])
 
   // On mobile, default to Day view (all rooms as rows, vertically scrollable).
   // Fires once when the breakpoint resolves to mobile; only overrides the initial
-  // '2wks' default, never a view the user has since chosen.
+  // 'grid' default, never a view the user has since chosen.
   const didSetMobileDefaultView = useRef(false)
   useEffect(() => {
-    if (isMobile && !didSetMobileDefaultView.current && view === '2wks') {
+    if (isMobile && !didSetMobileDefaultView.current && view === 'grid') {
       didSetMobileDefaultView.current = true
       setView('day')
     }
@@ -892,7 +906,15 @@ function CalendarPageInner() {
         loadRef.current()
       })
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    // Staffing edits land on studio_time_rows, not bookings — without this the
+    // per-day names would go stale until something else touched a booking.
+    const stChannel = supabase
+      .channel('calendar-studio-time-rows')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_time_rows' }, () => {
+        loadRef.current()
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel); supabase.removeChannel(stChannel) }
   }, [])
 
   // Restore collapse state on mount (client only — must be useEffect to avoid SSR hydration mismatch)
@@ -941,21 +963,34 @@ function CalendarPageInner() {
 
   // Zoom: keyboard (+/-/0) and Cmd+trackpad scroll
   useEffect(() => {
-    const MAX = ZOOM_FIXED.length
     function onKey(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      if (e.key === '=' || e.key === '+') { e.preventDefault(); setZoomLevel(z => Math.min(z + 1, MAX)) }
-      if (e.key === '-') { e.preventDefault(); setZoomLevel(z => Math.max(z - 1, 0)) }
-      if (e.key === '0') { e.preventDefault(); setZoomLevel(0) }
+      if (e.key === '=' || e.key === '+') { e.preventDefault(); setRowMode('card') }
+      if (e.key === '-') { e.preventDefault(); setRowMode('rooms') }
+      if (e.key === '0') { e.preventDefault(); setRowMode('rooms') }
+      // [ / ] — the horizontal twin of - / +, for anyone without a trackpad.
+      if (e.key === '[') { e.preventDefault(); setColZoom(w => clampColZoom(w - COL_ZOOM_STEP)) }
+      if (e.key === ']') { e.preventDefault(); setColZoom(w => clampColZoom(w + COL_ZOOM_STEP)) }
     }
     function onWheel(e: WheelEvent) {
+      // TRACKPAD PINCH. A pinch gesture arrives as a wheel event with ctrlKey
+      // set — that's how browsers report it, and it's the same signal the page's
+      // own zoom listens for, so preventDefault is required or the whole page
+      // scales instead of the calendar. Continuous, not stepped: pinch is an
+      // analogue gesture and stepping it feels broken.
+      if (e.ctrlKey) {
+        e.preventDefault()
+        // Multiplicative so the gesture feels the same at every density —
+        // a fixed px delta crawls when columns are wide and lurches when narrow.
+        setColZoom(w => clampColZoom(Math.round(w * (1 - e.deltaY * 0.012))))
+        return
+      }
       if (!e.metaKey) return
       e.preventDefault()
       const now = Date.now()
       if (now - lastWheelStep.current < 200) return
       lastWheelStep.current = now
-      if (e.deltaY > 0) setZoomLevel(z => Math.max(z - 1, 0))
-      else if (e.deltaY < 0) setZoomLevel(z => Math.min(z + 1, MAX))
+      setRowMode(e.deltaY > 0 ? 'rooms' : 'card')
     }
     window.addEventListener('keydown', onKey)
     window.addEventListener('wheel', onWheel, { passive: false })
@@ -964,6 +999,22 @@ function CalendarPageInner() {
       window.removeEventListener('wheel', onWheel)
     }
   }, [])
+
+  // ZOOM ANCHORING. Changing the column width changes the whole content width,
+  // so a fixed scrollLeft would land on a different date every pinch step and the
+  // grid would appear to fly sideways while you zoom. Scaling scrollLeft by the
+  // same ratio as the column keeps the leftmost visible day put.
+  // Runs BEFORE paint (layout effect), so the corrected position is never drawn.
+  const prevColW = useRef(colW)
+  useLayoutEffect(() => {
+    const el = gridRef.current
+    if (!el || prevColW.current === colW || prevColW.current <= 0) { prevColW.current = colW; return }
+    const ratio = colW / prevColW.current
+    prevColW.current = colW
+    const next = el.scrollLeft * ratio
+    el.scrollLeft = next
+    setScrollX(next)
+  }, [colW])
 
   // Scroll to put startDate (Sunday) at the left edge whenever startDate/view changes
   useEffect(() => {
@@ -975,6 +1026,14 @@ function CalendarPageInner() {
       const target = scrollCorrectionRef.current
       scrollCorrectionRef.current = null
       el.scrollLeft = target
+      // Infinite scroll re-anchors the grid: startDate moves, every chip's offset
+      // is recomputed, and scrollLeft is corrected imperatively here. scrollX must
+      // be re-synced in the SAME breath or it stays measured against the previous
+      // origin — an error of 7*colW per shift that ACCUMULATES, which is what made
+      // long-bar payloads drift off the chip and vanish. Any feature reading
+      // scrollLeft inherits this bug unless it's fixed here.
+      setScrollX(target)
+      setViewportW(Math.max(0, el.clientWidth - labelW))
     } else {
       // View/date switch: block scroll handler until rAF sets the correct position,
       // preventing transitional scroll events (from content-width change) from
@@ -982,25 +1041,39 @@ function CalendarPageInner() {
       shiftingRef.current = true
       const target = bufDays * colW
       requestAnimationFrame(() => {
+        setScrollX(target)
+        setViewportW(Math.max(0, (gridRef.current?.clientWidth ?? 0) - labelW))
         if (el) el.scrollLeft = target
         shiftingRef.current = false
       })
     }
   }, [startDate, view]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Week navigation, shared by the prev/next buttons and mobile swipe.
-  function goPrev() {
-    if (view === 'month') setStartDate(d => addDays(d, -totalDays))
-    else setStartDate(d => addDays(d, -7))
-  }
-  function goNext() {
-    if (view === 'month') setStartDate(d => addDays(d, totalDays))
-    else setStartDate(d => addDays(d, 7))
-  }
+  // Navigation, shared by the prev/next buttons and mobile swipe. One screenful
+  // per press — which used to be "one week" or "one month" and now follows the
+  // zoom, since there is no named window any more. totalDays is already a whole
+  // number of weeks, so startDate stays a Sunday.
+  function goPrev() { setStartDate(d => addDays(d, -totalDays)) }
+  function goNext() { setStartDate(d => addDays(d, totalDays)) }
 
   function handleGridScroll() {
     if (!gridRef.current) return
     const el = gridRef.current
+
+    // Long-bar readability: publish scrollLeft so each chip can slide its payload
+    // to stay on screen. rAF-throttled and quantised to 4px — this re-renders
+    // every visible chip, so it must not fire per scroll event.
+    if (!scrollRaf.current) {
+      scrollRaf.current = requestAnimationFrame(() => {
+        scrollRaf.current = null
+        const el2 = gridRef.current
+        if (!el2) return
+        const next = el2.scrollLeft
+        setScrollX(prev => (Math.abs(prev - next) > 4 ? next : prev))
+        const vw = Math.max(0, el2.clientWidth - labelW)
+        setViewportW(prev => (Math.abs(prev - vw) > 4 ? vw : prev))
+      })
+    }
 
     // Infinite extension: shift window when nearing edges
     if (bufDays > 0 && !shiftingRef.current) {
@@ -1036,12 +1109,16 @@ function CalendarPageInner() {
     if (collapsed.has(l.name)) return s
     return s + l.rooms.filter(r => collapsedRooms.has(`${l.name}|${r}`)).length
   }, 0)
-  const fitRowH = Math.max(20, Math.floor(
+  // NO FLOOR. The floor was CHIP_MIN_H, which is precisely why 'fit' never
+  // looked different from the fixed step — it refused to go below one card's
+  // height, so it never fit anything that didn't already fit. Squeezing is the
+  // entire point of this mode; the card handles being short.
+  const roomsRowH = Math.max(24, Math.floor(
     (gridH - DAY_HDR_H - filteredLocations.length * LOC_HDR_H - indivCollapsedCount * COLLAPSED_ROOM_H) / Math.max(1, expandedRoomCount)
   ))
   // Mobile uses a fixed comfortable row height (zoom is hidden) so single-lane
   // booking chips clear the 44px tap target; the grid scrolls vertically instead.
-  const rowH = isMobile ? 56 : (zoomLevel === 0 ? fitRowH : ZOOM_FIXED[zoomLevel - 1])
+  const rowH = isMobile ? CHIP_MIN_H : (rowMode === 'rooms' ? roomsRowH : ROW_H_CARD)
 
   // (Step 8: the old cal_form_draft restore died with BookingForm.)
 
@@ -1244,23 +1321,100 @@ function CalendarPageInner() {
     // rendered window equals the fetched range, so this filter is a no-op there.
     const winStart = fmt(gridRenderStart)
     const winEnd = fmt(addDays(gridRenderStart, DAYS - 1))
+
+    // ── MONTH RAIL (§10b) ────────────────────────────────────────────────────
+    // Segments are derived from `days` — the exact array the header and grid
+    // render from, which is itself rebuilt from gridRenderStart on every
+    // infinite-scroll re-anchor. That is deliberate: the scrollX desync bug
+    // (O-10) happened because a feature derived a position from scrollLeft,
+    // which survives a re-anchor while the grid's origin moves underneath it.
+    // O-10 is the long-bar payload incident — three failed attempts at sliding
+    // the payload with the scroll position, written up in docs/PROJECT_LOG.md;
+    // search the log for O-10 before reworking anything on this axis.
+    // Anything measured in DAYS re-renders correctly for free; anything measured
+    // in scroll pixels does not. Do not "optimise" this into a scroll listener.
+    const monthSegs: { key: string; label: string; count: number; alt: boolean }[] = []
+    days.forEach(d => {
+      const key = `${d.getFullYear()}-${d.getMonth()}`
+      const last = monthSegs[monthSegs.length - 1]
+      if (last && last.key === key) { last.count++; return }
+      monthSegs.push({
+        key,
+        label: `${d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()} ${d.getFullYear()}`,
+        count: 1,
+        // Parity of the absolute month number, not of the array index — index
+        // parity flips every time the window re-anchors across a boundary, which
+        // would make the tint blink as you scroll.
+        alt: (d.getFullYear() * 12 + d.getMonth()) % 2 === 1,
+      })
+    })
+    const monthTint = (d: Date) =>
+      (d.getFullYear() * 12 + d.getMonth()) % 2 === 1 ? 'var(--c-month-tint)' : 'transparent'
     return (
       <div
         ref={gridRef}
         onScroll={handleGridScroll}
-        style={{ flex: 1, overflow: 'auto', minHeight: 0, border: '1px solid var(--border)', borderRadius: 6, WebkitOverflowScrolling: 'touch' }}
+        // flex '0 1 auto', not 1 (Eli, 2026-08-16: "too much padding on the
+        // bottom") — the grid hugs its rows when they're shorter than the
+        // viewport instead of stretching dead space below TRACK; when content
+        // is taller it still shrinks to fit and scrolls exactly as before.
+        style={{ flex: '0 1 auto', overflow: 'auto', minHeight: 0, borderRadius: 6, WebkitOverflowScrolling: 'touch' }}
       >
         <div style={{ minWidth: labelW + DAYS * colW }}>
+        {/* MONTH RAIL — one segment per month, each exactly as wide as its days.
+            The name is position:sticky inside its own segment, so it pins to the
+            viewport's left edge while any of that month's days are visible and
+            is then pushed out by the next segment: the contact-list header
+            mechanic. Offset by labelW the same way the day ticks are. */}
+        <div style={{
+          display: 'flex', position: 'sticky', top: 0, zIndex: 12,
+          height: MONTH_RAIL_H, background: 'var(--c-bg)',
+        }}>
+          {/* Spacer under the sticky room-label column, so the rail starts where
+              the grid starts rather than under the labels. */}
+          <div style={{
+            width: labelW, flexShrink: 0, position: 'sticky', left: 0, zIndex: 13,
+            background: 'var(--c-bg)',
+          }} />
+          {monthSegs.map(m => (
+            <div
+              key={m.key}
+              style={{
+                width: m.count * colW, flexShrink: 0, display: 'flex', alignItems: 'center',
+                background: m.alt ? 'var(--c-month-tint)' : 'transparent',
+                boxShadow: 'inset -2px 0 0 var(--c-grid-tick-strong)',
+                // NO `overflow: hidden` HERE. An ancestor with a clipping
+                // overflow becomes the scroll container for a sticky descendant,
+                // and since this box doesn't scroll, the name gets zero sticky
+                // range and just scrolls away — which is exactly what happened.
+                // (Same trap as the long-bar chip payload: chips clip, so CSS
+                // sticky could never have worked there either.)
+                // Clipping isn't needed anyway: a sticky element is already
+                // clamped to its containing block, so the name stops at this
+                // segment's right edge on its own. That IS the push-out.
+                position: 'relative',
+              }}
+            >
+              <span
+                className="c-monthname"
+                // `left` is the label column: the rail scrolls under it, so
+                // pinning at 0 would park month names beneath the room labels.
+                style={{ position: 'sticky', left: labelW + 8 }}
+              >
+                {m.label}
+              </span>
+            </div>
+          ))}
+        </div>
+
         {/* Day header row */}
         <div style={{
-          display: 'flex', position: 'sticky', top: 0, zIndex: 10,
-          background: 'var(--surface)', borderBottom: '2px solid var(--border)',
-        }}>
-          <div style={{ width: labelW, flexShrink: 0, borderRight: '1px solid var(--border)', position: 'sticky', left: 0, zIndex: 11, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 600, color: 'var(--cold)', letterSpacing: '0.05em' }}>
-              {startDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
-            </span>
-          </div>
+          display: 'flex', position: 'sticky', top: MONTH_RAIL_H, zIndex: 10,
+          background: 'var(--c-bg)', }}>
+          {/* Empty corner. It used to print the month abbreviation; the month
+              rail above is the single authority on month position now, so that
+              was redundant chrome saying the same thing twice. */}
+          <div style={{ width: labelW, flexShrink: 0, position: 'sticky', left: 0, zIndex: 11, background: 'var(--c-bg)' }} />
           {days.map((d, i) => {
             const todayFlag = isToday(d)
             const wknd = isWeekend(d)
@@ -1268,37 +1422,36 @@ function CalendarPageInner() {
             const isWeekStart = d.getDay() === 1 && i > 0
             // inset box-shadow draws a left-edge stripe without affecting layout
             const shadow = isMonthStart
-              ? 'inset 2px 0 0 var(--accent)'
+              ? 'inset 2px 0 0 var(--c-fg)'
               : isWeekStart ? 'inset 2px 0 0 rgba(255,255,255,0.35)' : 'none'
             return (
               <div key={fmt(d)} style={{
                 flex: 1, minWidth: colW, textAlign: 'center', padding: '2px 2px',
-                background: wknd ? 'rgba(255,255,255,0.015)' : 'transparent',
-                borderRight: '1px solid var(--border)',
+                background: wknd ? 'rgba(255,255,255,0.015)' : monthTint(d),
                 boxShadow: shadow,
                 position: 'relative',
               }}>
                 {isMonthStart && (
                   <div style={{
                     position: 'absolute', top: 2, left: 5,
-                    fontSize: 6, fontFamily: 'Inter', color: 'var(--accent)',
+                    fontSize: 6, fontFamily: 'Inter', color: 'var(--c-fg)',
                     letterSpacing: '0.1em', textTransform: 'uppercase', lineHeight: 1,
                   }}>
                     {d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
                   </div>
                 )}
                 <div style={{
-                  fontSize: isMobile ? 9 : 8, fontFamily: 'Inter', color: 'var(--text3)',
+                  fontSize: isMobile ? 9 : 8, fontFamily: 'Inter', color: 'var(--c-fg-3)',
                   letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1.2,
                 }}>
                   {d.toLocaleDateString('en-US', { weekday: 'short' })}
                 </div>
                 <div style={{
                   width: 22, height: 22, borderRadius: '50%', margin: '2px auto 0',
-                  background: todayFlag ? 'var(--accent)' : 'transparent',
+                  background: todayFlag ? 'var(--c-fg)' : 'transparent',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, fontFamily: 'Inter', fontWeight: todayFlag ? 700 : 400,
-                  color: todayFlag ? 'var(--bg)' : wknd ? 'var(--text2)' : 'var(--text)',
+                  color: todayFlag ? 'var(--c-bg)' : wknd ? 'var(--c-fg-2)' : 'var(--c-fg)',
                 }}>
                   {d.getDate()}
                 </div>
@@ -1311,25 +1464,24 @@ function CalendarPageInner() {
         {filteredLocations.map(loc => (
           <div key={loc.name}>
             {/* Location header — collapsible */}
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
+            <div className="c-calloc">
               {/* Sticky label cell — always visible in the left column */}
               <div
                 onClick={() => toggleCollapse(loc.name)}
                 style={{
                   width: labelW, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '5px 10px', cursor: 'pointer', userSelect: 'none',
-                  background: 'var(--surface2)',
+                  cursor: 'pointer', userSelect: 'none',
                   position: 'sticky', left: 0, zIndex: 6,
                 }}
               >
                 <span style={{
-                  fontSize: 8, fontFamily: 'Inter', color: 'var(--text3)',
+                  fontSize: 8, fontFamily: 'Inter', color: 'var(--c-fg-3)',
                   display: 'inline-block', transition: 'transform 0.15s', flexShrink: 0,
                   transform: collapsed.has(loc.name) ? 'rotate(-90deg)' : 'rotate(0deg)',
                 }}>▼</span>
                 <span style={{
-                  fontSize: 10, fontFamily: 'Syne', fontWeight: 700,
-                  color: 'var(--text2)', letterSpacing: '0.06em', textTransform: 'uppercase',
+                  fontSize: 10, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400,
+                  color: 'var(--c-fg-2)', letterSpacing: '0.06em', textTransform: 'uppercase',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>{isMobile ? (LOCATION_CODES[loc.name] ?? loc.name) : loc.name}</span>
               </div>
@@ -1338,7 +1490,7 @@ function CalendarPageInner() {
             </div>
 
             {/* Room rows */}
-            {!collapsed.has(loc.name) && loc.rooms.map(room => {
+            {!collapsed.has(loc.name) && loc.rooms.map((room, roomIdx) => {
               const roomKey = `${loc.name}|${room}`
               const isRoomCollapsed = collapsedRooms.has(roomKey)
               const roomBookings = bookings.filter(b =>
@@ -1346,10 +1498,27 @@ function CalendarPageInner() {
                 b.start_date <= winEnd && b.end_date >= winStart
               )
               const laneMap = assignLanes(roomBookings)
+              // ROW HEIGHT IS FIXED. Growing the row to fit stacked sessions was
+              // tried and rejected: a doubled row is permanent visual damage to
+              // the grid's rhythm, paid every day of the year, to solve something
+              // that happens occasionally and never exceeds three. Stacked cards
+              // share the normal cell and shed content instead — see the tier
+              // ladder in BookingBlock.
+              const roomRowH = isRoomCollapsed ? COLLAPSED_ROOM_H : rowH
               return (
-                <div key={room} style={{
-                  display: 'flex', borderBottom: '1px solid var(--border)',
-                  height: isRoomCollapsed ? COLLAPSED_ROOM_H : rowH,
+                <div key={room} className={roomIdx % 2 === 0 ? 'c-calrow c-calrow-alt' : 'c-calrow'} style={{
+                  display: 'flex',
+                  height: roomRowH,
+                  // Three background layers, all offset by the label column so the
+                  // grid's ink starts where the grid does:
+                  //   1. the row's bottom line (was a border-bottom, which ran
+                  //      through the label column — see .c-calrow in globals.css)
+                  //   2. heavy tick every 7th column (week boundary)
+                  //   3. light tick every column
+                  backgroundImage: `linear-gradient(var(--c-grid-line), var(--c-grid-line)), repeating-linear-gradient(to right, var(--c-grid-tick-strong) 0 1px, transparent 1px ${colW * 7}px), repeating-linear-gradient(to right, var(--c-grid-tick) 0 1px, transparent 1px ${colW}px)`,
+                  backgroundPosition: `${labelW}px bottom, ${labelW}px 0, ${labelW}px 0`,
+                  backgroundSize: '100% 1px, auto, auto',
+                  backgroundRepeat: 'repeat-x',
                 }}>
                   {/* Room label — click to collapse/expand. On mobile the column is
                       only 80px, so trim padding/gap so "Studio A" fits without truncating. */}
@@ -1361,14 +1530,14 @@ function CalendarPageInner() {
                     })}
                     style={{
                       width: labelW, flexShrink: 0, display: 'flex', alignItems: 'center', gap: isMobile ? 3 : 5,
-                      padding: isMobile ? '0 6px' : '0 12px', fontSize: 10, fontFamily: 'Inter', color: 'var(--text2)',
-                      borderRight: '1px solid var(--border)', cursor: 'pointer', userSelect: 'none',
+                      padding: isMobile ? '0 6px' : '0 12px', fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)',
+                      cursor: 'pointer', userSelect: 'none',
                       whiteSpace: 'nowrap', overflow: 'hidden',
-                      position: 'sticky', left: 0, zIndex: 5, background: 'var(--surface)',
+                      position: 'sticky', left: 0, zIndex: 5, background: 'var(--c-bg)',
                     }}
                   >
                     <span style={{
-                      fontSize: 7, color: 'var(--text3)', flexShrink: 0,
+                      fontSize: 7, color: 'var(--c-fg-3)', flexShrink: 0,
                       display: 'inline-block', transition: 'transform 0.15s',
                       transform: isRoomCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
                     }}>▼</span>
@@ -1389,10 +1558,9 @@ function CalendarPageInner() {
                             style={{
                               position: 'absolute', top: 0, bottom: 0,
                               left: `${(i / DAYS) * 100}%`, width: `${(1 / DAYS) * 100}%`,
-                              background: isWeekend(d) ? 'rgba(255,255,255,0.012)' : 'transparent',
-                              borderRight: '1px solid var(--border)',
+                              background: isWeekend(d) ? 'rgba(255,255,255,0.012)' : monthTint(d),
                               boxShadow: cellIsMonthStart
-                                ? 'inset 2px 0 0 rgba(var(--accent-rgb),0.3)'
+                                ? 'inset 2px 0 0 var(--c-wash2)'
                                 : cellIsWeekStart ? 'inset 2px 0 0 rgba(255,255,255,0.12)' : 'none',
                               cursor: 'crosshair',
                             }}
@@ -1407,9 +1575,13 @@ function CalendarPageInner() {
                           <BookingBlock
                             key={b.id} booking={b}
                             gridStart={gridRenderStart} totalDays={DAYS}
-                            lane={lane} numLanes={numLanes} rowH={rowH}
+                            lane={lane} numLanes={numLanes} rowH={roomRowH}
                             onClick={() => openEdit(b)}
                             isMobile={isMobile}
+                            staffByDay={staffByDay}
+                            onHover={showHover}
+                            onHoverEnd={hideHover}
+                            colW={colW}
                           />
                         )
                       })}
@@ -1427,21 +1599,28 @@ function CalendarPageInner() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
+  // maxHeight, not height: the fixed height dated from the top-nav frame and
+  // forced the grid to stretch past its last row, leaving a black slab of dead
+  // ground below TRACK. Cap = fills tall content, hugs short content.
+  // (44px ≈ the rail-era page-main padding.)
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 52px - 48px)', overflow: 'hidden' }}>
+    // marginLeft -12: the frame gives every page a 20px gutter off the nav
+    // rail; the calendar's label column adds its own insets on top, which read
+    // as dead space (Eli, 2026-08-17). The calendar alone pulls itself closer —
+    // the shared frame padding stays untouched for every other page.
+    <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 44px)', overflow: 'hidden', marginLeft: -12 }}>
 
       {/* Work-order creation warning — booking saved, but its WO failed to create (non-blocking) */}
       {woWarning && (
         <div style={{
           flexShrink: 0, marginBottom: 12, padding: '10px 14px', borderRadius: 8,
-          background: 'rgba(240,78,122,0.10)', border: '1px solid rgba(240,78,122,0.35)',
-          color: 'var(--text)', fontFamily: 'Inter', fontSize: 12,
+          background: 'rgba(240,78,122,0.10)', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12,
           display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
         }}>
           <span>{woWarning}</span>
           <button
             onClick={() => setWoWarning(null)}
-            style={{ background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 14, lineHeight: 1, flexShrink: 0 }}
+            style={{ background: 'none', color: 'var(--c-fg-2)', cursor: 'pointer', fontSize: 14, lineHeight: 1, flexShrink: 0 }}
           >×</button>
         </div>
       )}
@@ -1464,7 +1643,7 @@ function CalendarPageInner() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <button
             onClick={goPrev}
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
+            style={{ background: 'var(--c-wash)', color: 'var(--c-fg)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
           >‹</button>
           <button
             onClick={() => {
@@ -1482,11 +1661,11 @@ function CalendarPageInner() {
                 }
               }
             }}
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}
+            style={{ background: 'var(--c-wash)', color: 'var(--c-fg-2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}
           >Today</button>
           <button
             onClick={goNext}
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
+            style={{ background: 'var(--c-wash)', color: 'var(--c-fg)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
           >›</button>
         </div>
 
@@ -1497,8 +1676,8 @@ function CalendarPageInner() {
         {isMobile ? (
           <div style={{ flex: 1, position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
             <span style={{
-              fontSize: 14, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text)',
-              textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.3)', textUnderlineOffset: 3,
+              fontSize: 14, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, color: 'var(--c-fg)',
+              textDecoration: 'underline', textDecorationColor: 'var(--c-fg-3)', textUnderlineOffset: 3,
               cursor: 'pointer',
             }}>
               {rangeLabel(startDate, totalDays)}
@@ -1513,11 +1692,11 @@ function CalendarPageInner() {
                 setStartDate(getSunday(picked))
                 setDayViewDate(picked)
               }}
-              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, padding: 0, margin: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, padding: 0, margin: 0, background: 'transparent', cursor: 'pointer' }}
             />
           </div>
         ) : (
-          <div style={{ flex: 1, fontSize: 14, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text)' }}>
+          <div style={{ flex: 1, fontSize: 14, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, color: 'var(--c-fg)' }}>
             {rangeLabel(startDate, totalDays)}
           </div>
         )}
@@ -1532,11 +1711,10 @@ function CalendarPageInner() {
         {/* "All" pill — only shown when a specific studio is selected */}
         {locFilter.includes('|') && (
           <button
-            onClick={() => { setLocFilter('All'); setView('2wks') }}
+            onClick={() => { setLocFilter('All'); setView('grid') }}
             style={{
               padding: '4px 14px', borderRadius: 20, fontSize: 10, fontFamily: 'Inter',
-              fontWeight: 700, cursor: 'pointer', border: '1px solid var(--border)',
-              background: 'var(--surface2)', color: 'var(--text2)',
+              fontWeight: 700, cursor: 'pointer', background: 'var(--c-wash)', color: 'var(--c-fg-2)',
               letterSpacing: '0.04em',
             }}
           >All</button>
@@ -1552,9 +1730,8 @@ function CalendarPageInner() {
             else if (view === 'studio') setView('day')
           }}
           style={{
-            background: locFilter.includes('|') ? 'rgba(var(--accent-rgb),0.08)' : 'var(--surface2)',
-            border: locFilter.includes('|') ? '1px solid rgba(var(--accent-rgb),0.4)' : '1px solid var(--border)',
-            color: locFilter.includes('|') ? 'var(--accent)' : 'var(--text2)',
+            background: locFilter.includes('|') ? 'var(--c-wash2)' : 'var(--c-wash)',
+            color: locFilter.includes('|') ? 'var(--c-fg)' : 'var(--c-fg-2)',
             borderRadius: 4, padding: '4px 10px',
             fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', outline: 'none',
           }}
@@ -1572,10 +1749,10 @@ function CalendarPageInner() {
 
         {/* View switcher */}
         <div style={{
-          display: 'flex', background: 'var(--surface2)',
-          borderRadius: 6, border: '1px solid var(--border)', overflow: 'hidden',
+          display: 'flex', background: 'var(--c-wash)',
+          borderRadius: 6, overflow: 'hidden',
         }}>
-          {(['day', 'week', '2wks', 'month'] as ViewType[]).map(v => (
+          {(['day', 'grid'] as ViewType[]).map(v => (
             <button key={v} onClick={() => {
               const today = new Date()
               const thisSunday = getSunday(today)
@@ -1590,33 +1767,52 @@ function CalendarPageInner() {
               }
             }} style={{
               padding: '4px 12px', fontSize: 10, fontFamily: 'Inter',
-              cursor: 'pointer', border: 'none',
-              background: view === v ? 'var(--border)' : 'transparent',
-              color: view === v ? 'var(--accent)' : 'var(--text2)',
+              cursor: 'pointer', background: view === v ? 'var(--c-wash2)' : 'transparent',
+              color: view === v ? 'var(--c-fg)' : 'var(--c-fg-2)',
               fontWeight: view === v ? 700 : 400,
             }}>
-              {v === '2wks' ? '2 Wks' : v.charAt(0).toUpperCase() + v.slice(1)}
+              {v === 'grid' ? 'Grid' : 'Day'}
             </button>
           ))}
         </div>
 
-        {/* Zoom controls — hidden on mobile (fixed fit; use scroll) */}
-        <div style={{ display: isMobile ? 'none' : 'flex', alignItems: 'center', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+        {/* HORIZONTAL zoom — days across. The pinch gesture's visible twin, so
+            the feature is discoverable without knowing the gesture exists.
+            Hidden in Day view, which has no columns to spread. */}
+        <div style={{ display: isMobile || view !== 'grid' ? 'none' : 'flex', alignItems: 'center', background: 'var(--c-wash)', borderRadius: 6, overflow: 'hidden' }}>
           <button
-            onClick={() => setZoomLevel(z => Math.max(z - 1, 0))}
-            title="Zoom out (−)"
-            style={{ padding: '4px 9px', fontSize: 14, lineHeight: 1, background: 'transparent', border: 'none', color: zoomLevel === 0 ? 'var(--text3)' : 'var(--text)', cursor: zoomLevel === 0 ? 'default' : 'pointer' }}
+            onClick={() => setColZoom(w => clampColZoom(w - COL_ZOOM_STEP))}
+            title="Show more days (pinch in, or [)"
+            style={{ padding: '4px 9px', fontSize: 14, lineHeight: 1, background: 'transparent', color: colZoom <= COL_ZOOM_MIN ? 'var(--c-fg-3)' : 'var(--c-fg)', cursor: colZoom <= COL_ZOOM_MIN ? 'default' : 'pointer' }}
           >−</button>
           <span
-            onClick={() => setZoomLevel(0)}
-            title="Reset to fit all (0)"
-            style={{ fontSize: 9, fontFamily: 'Inter', color: zoomLevel === 0 ? 'var(--accent)' : 'var(--text2)', minWidth: 26, textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}
-          >{zoomLevel === 0 ? 'Fit' : `${rowH}px`}</span>
+            onClick={() => setColZoom(COL_ZOOM_DEFAULT)}
+            title="Reset density"
+            style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-2)', minWidth: 30, textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}
+          >{visibleDays}d</span>
           <button
-            onClick={() => setZoomLevel(z => Math.min(z + 1, ZOOM_FIXED.length))}
-            title="Zoom in (+)"
-            style={{ padding: '4px 9px', fontSize: 14, lineHeight: 1, background: 'transparent', border: 'none', color: zoomLevel === ZOOM_FIXED.length ? 'var(--text3)' : 'var(--text)', cursor: zoomLevel === ZOOM_FIXED.length ? 'default' : 'pointer' }}
+            onClick={() => setColZoom(w => clampColZoom(w + COL_ZOOM_STEP))}
+            title="Show fewer, wider days (pinch out, or ])"
+            style={{ padding: '4px 9px', fontSize: 14, lineHeight: 1, background: 'transparent', color: colZoom >= COL_ZOOM_MAX ? 'var(--c-fg-3)' : 'var(--c-fg)', cursor: colZoom >= COL_ZOOM_MAX ? 'default' : 'pointer' }}
           >+</button>
+        </div>
+
+        {/* VERTICAL — two modes. See ROW_H_CARD / RowMode for why this stopped
+            being a five-step ladder. */}
+        <div style={{ display: isMobile || view !== 'grid' ? 'none' : 'flex', alignItems: 'center', background: 'var(--c-wash)', borderRadius: 6, overflow: 'hidden' }}>
+          {([['card', 'Card'], ['rooms', 'All rooms']] as [RowMode, string][]).map(([m, label]) => (
+            <button
+              key={m}
+              onClick={() => setRowMode(m)}
+              title={m === 'card' ? 'Full-height cards (+)' : 'Squeeze every room onto one screen (−)'}
+              style={{
+                padding: '4px 10px', fontSize: 9, fontFamily: 'Inter',
+                background: rowMode === m ? 'var(--c-wash2)' : 'transparent',
+                color: rowMode === m ? 'var(--c-fg)' : 'var(--c-fg-2)',
+                fontWeight: rowMode === m ? 700 : 400, cursor: 'pointer',
+              }}
+            >{label}</button>
+          ))}
         </div>
         </div>{/* end mobile row 2 */}
 
@@ -1628,9 +1824,8 @@ function CalendarPageInner() {
             borderRadius: isMobile ? 8 : 4,
             fontSize: isMobile ? 13 : 11, fontFamily: 'Inter',
             fontWeight: 700, cursor: 'pointer',
-            background: isMobile ? 'var(--accent)' : '#1e40af',
-            border: 'none',
-            color: isMobile ? 'var(--bg)' : '#fff',
+            background: 'var(--c-fg)',
+            color: 'var(--c-bg)',
             width: isMobile ? '100%' : undefined,
             minHeight: isMobile ? 44 : undefined,
             letterSpacing: isMobile ? '0.04em' : undefined,
@@ -1639,7 +1834,7 @@ function CalendarPageInner() {
       </div>
 
       {/* Calendar content */}
-      {(view === '2wks' || view === 'week' || view === 'month') && renderGrid()}
+      {view === 'grid' && renderGrid()}
 
       {view === 'day' && (
         <DayView
@@ -1660,6 +1855,73 @@ function CalendarPageInner() {
           reloadKey={reloadKey}
         />
       )}
+
+      {/* ── Hover card (F-11) ────────────────────────────────────────────────
+          Glanceable summary for anyone near a screen, so deliberately NO
+          financial data — no rate, quote or invoice number. Staffing follows the
+          day column under the cursor via the Option B map. Fixed-positioned and
+          pointer-events:none so it can never be clipped by the calendar's
+          overflow, and can never intercept the click that opens the WO. */}
+      {hoverCard && (() => {
+        const b = hoverCard.booking
+        const bill = b.payment_type === 'billing'
+        const artist = bill ? (b.artist || b.label || b.client_name || '—') : (b.client_name || '—')
+        const client = bill && b.label && b.label !== artist ? b.label : (bill ? '' : (b.artist || ''))
+        const st = hoverCard.booking.work_order_id
+          ? staffByDay[`${b.work_order_id}|${hoverCard.day}`]
+          : undefined
+        const engN = st?.eng ?? b.engineer_name
+        const asstN = st?.asst ?? b.assistant_name
+        const times = b.from_time ? `${fmtTime(b.from_time)}${b.to_time ? `–${fmtTime(b.to_time)}` : ''}` : ''
+        const dates = b.start_date === b.end_date
+          ? shortDate(b.start_date)
+          : `${shortDate(b.start_date)} – ${shortDate(b.end_date)}`
+        return (
+          <div
+            className="c-hovercard"
+            style={{
+              left: hoverCard.x,
+              top: hoverCard.below ? hoverCard.y : undefined,
+              bottom: hoverCard.below ? undefined : `calc(100vh - ${hoverCard.y}px)`,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span className="c-arch" style={{ fontSize: 15, letterSpacing: '-0.02em' }}>{artist}</span>
+              <StatusPill status={STATUS_SLOT[b.status] ?? 'confirmed'} />
+            </div>
+            {client && <div className="c-sub" style={{ marginTop: 2 }}>{client}</div>}
+            <div className="c-label" style={{ marginTop: 8 }}>{b.location} · {b.studio}</div>
+            <div className="c-mono" style={{ fontSize: 11.5, opacity: .75, marginTop: 4 }}>
+              {dates}{times ? ` · ${times}` : ''}
+            </div>
+            {(engN || asstN) && (
+              <div className="c-mono" style={{ fontSize: 11.5, opacity: .75, marginTop: 3 }}>
+                {[engN && `1ST ${engN}`, asstN && `2ND ${asstN}`].filter(Boolean).join('   ')}
+              </div>
+            )}
+            {/* Identifiers (F-18/5). WO# and Invoice# are IDs, not amounts — the
+                no-financials rule bars rates and totals, not identifiers. Both are
+                already on the booking projection, so no extra query. */}
+            {(b.wo_number || b.invoice_num) && (
+              <div className="c-mono" style={{ fontSize: 11, opacity: .55, marginTop: 6 }}>
+                {[b.wo_number && `WO ${b.wo_number}`, b.invoice_num && `INV ${b.invoice_num}`]
+                  .filter(Boolean).join('   ')}
+              </div>
+            )}
+            {/* Payment, COD only — same silence-means-billing rule as the card.
+                The card already carries this; the hover repeats it with the full
+                method spelled out rather than abbreviated. */}
+            {!bill && (
+              <div style={{ marginTop: 8 }}>
+                <span className="c-pill c-pill-hot c-fill-hot">
+                  {b.cod_method ? `COD · ${b.cod_method} — collect` : 'COD — collect'}
+                </span>
+              </div>
+            )}
+            <div className="c-hovercard-hint">Click to open WO</div>
+          </div>
+        )
+      })()}
 
       {/* Work Order — opened directly from the calendar (Step 6; Step 8 made it
           the ONLY session/block editor — BookingForm deleted) */}

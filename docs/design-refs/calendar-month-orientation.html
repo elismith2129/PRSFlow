@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Month orientation: 3 options (scroll each!)</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626; --st-booked:#43dfae; --st-warm:#ffa94d;
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);
+  font:400 14.5px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;
+  max-width:1200px;margin:0 auto;padding:0 24px 90px;transition:background .2s,color .2s}
+button{font:inherit;color:var(--fg);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,Menlo,monospace}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.sub{font-size:12.5px;opacity:.6}
+.board{display:flex;align-items:center;gap:14px;padding:22px 0 16px}
+.board h1{font-size:22px;letter-spacing:-.03em}
+.actbtn{background:var(--fg);color:var(--bg);border-radius:99px;padding:9px 19px;
+  font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+  box-shadow:3px 3px 9px rgba(0,0,0,.35)}
+.opt{margin:36px 0}
+.opt h2{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.45;margin-bottom:6px}
+.opt .why{font-size:12.5px;opacity:.6;margin-bottom:12px;max-width:820px}
+
+.scroller{overflow-x:auto;border-radius:16px;background:var(--wash);position:relative}
+.inner{width:max-content;position:relative}
+/* month rail */
+.mrail{display:flex}
+.mseg{display:flex;align-items:center;border-right:2px solid rgba(127,127,127,.35)}
+.mseg .mname{position:sticky;left:8px;font-family:'Archivo Black',sans-serif;font-size:13px;
+  letter-spacing:.12em;padding:7px 12px;white-space:nowrap}
+.mseg.alt{background:var(--wash)}
+/* day header */
+.days{display:flex}
+.day{width:90px;flex-shrink:0;text-align:center;padding:6px 0 8px;
+  border-right:1px solid rgba(127,127,127,.14)}
+.day .dw{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.4}
+.day .dn{font-size:14px;font-weight:700}
+.day.m1st .dn::before{content:attr(data-m);font-size:8px;font-weight:800;letter-spacing:.08em;
+  opacity:.55;margin-right:3px;vertical-align:2px}
+.day.wknd{background:rgba(127,127,127,.06)}
+/* grid rows */
+.grow{display:flex;height:64px;border-top:1px solid rgba(127,127,127,.14)}
+.gcell{width:90px;flex-shrink:0;border-right:1px solid rgba(127,127,127,.14)}
+.gcell.mb{border-right:2px solid rgba(127,127,127,.4)}
+.gcell.wknd{background:rgba(127,127,127,.06)}
+.chipx{position:absolute;border-radius:10px;background:var(--st-booked);color:var(--chip-ink);
+  padding:5px 9px;font-size:11px;box-shadow:2px 2px 6px rgba(0,0,0,.3)}
+.chipx b{font-family:'Archivo Black',sans-serif;font-weight:400;display:block;font-size:12px}
+/* B: live chip */
+.livechip{position:absolute;top:8px;left:10px;z-index:5;background:var(--fg);color:var(--bg);
+  border-radius:99px;padding:6px 15px;font-family:'Archivo Black',sans-serif;font-size:12px;
+  letter-spacing:.12em;box-shadow:2px 2px 8px rgba(0,0,0,.4);pointer-events:none}
+/* C tint */
+.tintA{background:transparent}
+.tintB{background:rgba(127,127,127,.075)}
+</style>
+</head>
+<body>
+
+<div class="board">
+  <div style="flex:1">
+    <h1 class="arch">Month Orientation — 3 Options</h1>
+    <p class="sub" style="margin-top:6px;max-width:820px">The infinite strip has no "page," so the
+    eye needs an anchor. Scroll each demo sideways (Jul → Aug → Sep) and feel the difference.
+    They can also combine.</p>
+  </div>
+  <button class="actbtn" id="themeBtn" onclick="flip()">View light</button>
+</div>
+
+<!-- A — STICKY MONTH RAIL -->
+<div class="opt">
+  <h2>A — Sticky month rail</h2>
+  <p class="why">A thin band above the days: each month is a segment as wide as its days, and its
+  name STAYS PINNED at the left edge while you're inside it — then the next month's name pushes
+  it out, exactly like section headers in a phone contact list. You always know where you are
+  without reading a date. (Alternating months get a whisper of tint here too.)</p>
+  <div class="scroller" id="scA"><div class="inner" id="inA"></div></div>
+</div>
+
+<!-- B — LIVE MONTH CHIP -->
+<div class="opt">
+  <h2>B — Live month chip</h2>
+  <p class="why">No new band: a single floating Archivo chip pinned top-left of the calendar that
+  live-updates to whatever month is under the viewport as you scroll. Zero vertical cost;
+  the answer is always in one fixed place. (Chip could live in the toolbar instead.)</p>
+  <div class="scroller" id="scB">
+    <div class="livechip" id="chipB">JUL</div>
+    <div class="inner" id="inB"></div>
+  </div>
+</div>
+
+<!-- C — TINTED MONTHS + INLINE INITIALS -->
+<div class="opt">
+  <h2>C — Tinted months, passive</h2>
+  <p class="why">No band, no chip: alternate months sit on a slightly different ground tone, the
+  boundary line is heavier, and each month's "1" carries its initials ("AUG 1"). Purely passive —
+  you sense the month change like a paper stock change. Subtlest; weakest for the "scroll fast to
+  October" case on its own, best as a companion to A or B.</p>
+  <div class="scroller" id="scC"><div class="inner" id="inC"></div></div>
+</div>
+
+<p class="sub" style="max-width:820px">Recommendation: A is the strongest single answer (the name
+is glued to the viewport while its days pass). A + C's tint together is the full fix. B is the
+cheapest to build if vertical space is precious.</p>
+
+<script>
+var DW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var MONTHS=[['JUL',31,3],['AUG',31,6],['SEP',30,2]]; // name, days, startDow(1st of month)
+var COLW=90;
+
+function buildDays(){ // returns array of {m, d, dow}
+  var out=[];
+  MONTHS.forEach(function(M,mi){
+    var start = mi===0?26:1; // start Jul 26
+    for(var d=start; d<=M[1]; d++){
+      var dow=(M[2]+d-1)%7;
+      out.push({m:M[0], d:d, dow:dow, first:d===1});
+    }
+  });
+  return out;
+}
+var days=buildDays();
+
+function grid(days, withTint){
+  var h='<div class="days">';
+  days.forEach(function(x,i){
+    var wknd=(x.dow===0||x.dow===6)?' wknd':'';
+    var tint=withTint?((x.m==='AUG')?' tintB':' tintA'):'';
+    h+='<div class="day'+(x.first?' m1st':'')+wknd+tint+'" data-m="'+x.m+'"><div class="dw">'+DW[x.dow]+'</div><div class="dn" data-m="'+x.m+'">'+x.d+'</div></div>';
+  });
+  h+='</div>';
+  for(var r=0;r<2;r++){
+    h+='<div class="grow">';
+    days.forEach(function(x,i){
+      var mb=(i<days.length-1 && days[i+1].first)?' mb':'';
+      var wknd=(x.dow===0||x.dow===6)?' wknd':'';
+      var tint=withTint?((x.m==='AUG')?' tintB':' tintA'):'';
+      h+='<div class="gcell'+mb+wknd+tint+'"></div>';
+    });
+    h+='</div>';
+  }
+  return h;
+}
+function rail(days){
+  var h='<div class="mrail">';
+  MONTHS.forEach(function(M,mi){
+    var count=days.filter(function(x){return x.m===M[0]}).length;
+    h+='<div class="mseg'+(mi%2?' alt':'')+'" style="width:'+(count*COLW)+'px"><span class="mname">'+M[0]+' 2026</span></div>';
+  });
+  h+='</div>';
+  return h;
+}
+// A: rail + tinted grid
+document.getElementById('inA').innerHTML = rail(days)+grid(days,true);
+// B: plain grid + live chip
+document.getElementById('inB').innerHTML = grid(days,false);
+var scB=document.getElementById('scB'), chip=document.getElementById('chipB');
+scB.addEventListener('scroll',function(){
+  var idx=Math.min(days.length-1, Math.floor((scB.scrollLeft+60)/COLW));
+  chip.textContent=days[idx].m;
+});
+// C: tinted grid only
+document.getElementById('inC').innerHTML = grid(days,true);
+// sample chips
+function drop(id, left, top, title, sub, cls){
+  var el=document.createElement('div');
+  el.className='chipx'; el.style.left=left+'px'; el.style.top=top+'px';
+  if(cls) el.style.background=cls;
+  el.innerHTML='<b>'+title+'</b>'+sub;
+  document.getElementById(id).appendChild(el);
+}
+['inA','inB','inC'].forEach(function(id){
+  var railOff = id==='inA'?34:0;
+  drop(id, 5*COLW+6, railOff+58, 'Skilla Baby','2P–10P');
+  drop(id, 12*COLW+6, railOff+58+66, 'UntilJapan','8P–4A','var(--st-warm)');
+  drop(id, 41*COLW+6, railOff+58, 'Loui Reed','6P–1A');
+});
+</script>
+</body>
+</html>
