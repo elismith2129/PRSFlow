@@ -550,17 +550,21 @@ export function WorkOrderPopup({
       sheetSnapRef.current = stRows
         .filter(r => (r.date || '') === daySheetDate)
         .map(r => ({ ...r }))
-      // A DAY ALWAYS HAS A STAFF LINE (Eli, 2026-08-20: "the ass/eng line
-      // always there under the studio time and you select eng or ass. there
-      // is always one so no need for the step of adding one"). Opening a day
-      // with no staff row seeds ONE, in state only — it saves with the rest
-      // on Save, and Cancel drops it because the snapshot above was taken
-      // first. Role defaults to assistant, the standing default everywhere
-      // (migration 20260728210000); the 1ST/2ND toggle promotes it. "+ Add"
-      // survives for the rare second staffer.
-      const hasStaff = stRows.some(r =>
-        (r.date || '') === daySheetDate && r.eng_visible !== false && (r.eng_name || r.eng_rate || r.studio === ''))
-      if (!hasStaff && !readOnly && !runner) addEngRowForDate('assistant', daySheetDate)
+      // A DAY ALWAYS HAS A STAFF LINE (Eli, 2026-08-20) — but it is the STUDIO
+      // ROW'S OWN staff slot, not a new row. The first version seeded a
+      // standalone row here, which broke staff-time inheritance (a standalone
+      // row has no room times of its own to fall back to) and left an empty
+      // row behind on every day anyone opened. Revealing the slot that already
+      // exists on the room row costs nothing, inherits times for free, and
+      // saves nothing until someone types. "+ Add" still creates standalone
+      // rows for the rare second staffer.
+      const already = stRows.some(r =>
+        (r.date || '') === daySheetDate && r.eng_visible !== false
+        && (r.eng_name || r.eng_rate || r.studio === ''))
+      if (!already && !readOnly && !runner) {
+        const roomRow = stRows.find(r => (r.date || '') === daySheetDate && r.studio !== '')
+        if (roomRow && roomRow.eng_visible === false) updateStRow(roomRow.id, { eng_visible: true })
+      }
     }
     // Deliberately NOT depending on stRows: the baseline is the moment the
     // sheet opened, not every keystroke since.
@@ -1452,18 +1456,29 @@ export function WorkOrderPopup({
   // ── Equipment condition ────────────────────────────────────────────────────
 
   /**
-   * ONE PILL, TAPPED (RULING 2026-08-13, spec §18).
+   * ONE PILL, TAPPED (RULING 2026-08-13, spec §18 — REVISED 2026-08-20).
    *
-   *   blank → OK → Not OK → OK → Not OK → …
+   *   blank → OK → Not OK → blank → …
    *
-   * It never returns to blank. Blank means NOBODY HAS ANSWERED YET, which is
-   * information — a third tap must not be able to destroy it, and it keeps
-   * "not checked" honestly distinct from "checked and fine". There is
-   * deliberately no way back to unanswered from the UI.
+   * The cycle now RETURNS TO BLANK. The original rule was that blank means
+   * "nobody has answered yet" and a tap must not be able to destroy that. Real
+   * use overruled it (Eli: "my staff is just clicking everything… need to be
+   * able to zero it out if it gets touched before a session"): a day that was
+   * tapped through by accident before the session had no way back to
+   * unanswered, so "checked and fine" became the lie instead. An honest
+   * unanswered state you can restore beats one nobody can correct.
+   *
+   * Both surfaces (runner + admin) get this — the runner is the likeliest
+   * person to fat-finger a pill mid-load-in. Clearing a Not OK leaves its note
+   * row in place; re-flagging the item shows the note again rather than
+   * silently losing what someone wrote.
    */
   function cycleEquip(equipment: string, date: string) {
     const existing = equipRows.find(r => r.equipment === equipment && r.date === date)
-    return setEquipCondition(equipment, date, existing?.condition === 'ok' ? 'not_ok' : 'ok')
+    const next = existing?.condition === 'ok' ? 'not_ok'
+      : existing?.condition === 'not_ok' ? null
+      : 'ok'
+    return setEquipCondition(equipment, date, next)
   }
 
   async function setEquipCondition(equipment: string, date: string, nextCond: 'ok' | 'not_ok' | null) {
@@ -1621,6 +1636,24 @@ export function WorkOrderPopup({
    * leaving the sheet. Same shape as addEngRow, but dated and returning the
    * new row's id so the sheet's snapshot can include it.
    */
+  /**
+   * A staff line's effective times (2026-08-20 fix). Staff times follow the
+   * ROOM's times until someone overrides them — but "the room" is the studio
+   * row for that DATE, which for a standalone staff row (studio: '') is a
+   * different row entirely. The old fallback read the row's own from_time,
+   * which on a standalone row is always empty, so added staff showed blank
+   * times forever. Looked up live rather than copied at creation, so entering
+   * the room's times later fills the staff line in by itself.
+   */
+  function staffTimes(r: StRow): { from: string; to: string } {
+    if (r.eng_from_time || r.eng_to_time) {
+      return { from: r.eng_from_time || '', to: r.eng_to_time || '' }
+    }
+    if (r.studio !== '') return { from: r.from_time || '', to: r.to_time || '' }
+    const room = stRows.find(x => x.studio !== '' && (x.date || '') === (r.date || ''))
+    return { from: room?.from_time || '', to: room?.to_time || '' }
+  }
+
   function addEngRowForDate(role: 'engineer' | 'assistant', date: string) {
     const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
     const dayStudio = stRows.find(r => (r.date || '') === date && r.studio !== '')
@@ -2426,7 +2459,7 @@ export function WorkOrderPopup({
               type="button"
               disabled={readOnly || disabled}
               onClick={e => { e.stopPropagation(); cycleEquip(eq, date) }}
-              title={cond === null ? 'Not checked — tap to mark OK' : cond === 'ok' ? 'OK — tap if it was not' : 'Not OK — tap to mark OK'}
+              title={cond === null ? 'Not checked — tap to mark OK' : cond === 'ok' ? 'OK — tap if it was not' : 'Not OK — tap to clear back to not checked'}
               className={`c-eqpill${cond ? ` c-${cond === 'ok' ? 'ok' : 'bad'}` : ''}`}
             >
               <i />
@@ -4220,7 +4253,7 @@ export function WorkOrderPopup({
                                 type="button"
                                 disabled={readOnly}
                                 onClick={() => cycleEquip(eq, r.date)}
-                                title={cond === null ? 'Not checked — tap to mark OK' : cond === 'ok' ? 'OK — tap if it was not' : 'Not OK — tap to mark OK'}
+                                title={cond === null ? 'Not checked — tap to mark OK' : cond === 'ok' ? 'OK — tap if it was not' : 'Not OK — tap to clear back to not checked'}
                                 className={`c-eqpill${cond ? ` c-${cond === 'ok' ? 'ok' : 'bad'}` : ''}`}
                               >
                                 <i />
@@ -4304,7 +4337,12 @@ export function WorkOrderPopup({
                   }
                   return groups.map(g => {
                     const studioRows = g.rows.filter(r => r.studio !== '')
-                    const staffRows = g.rows.filter(r => r.eng_visible !== false && (r.eng_name || r.eng_rate || r.studio === ''))
+                    // THE SLOT SHOWS EVEN WHEN EMPTY (2026-08-20). This used to
+                    // require a name or a rate, which hid the legitimate
+                    // "engineer, TBD" state and meant a fresh session showed no
+                    // staffing at all. eng_visible === false is still an
+                    // explicit "this day runs unstaffed" and stays hidden.
+                    const staffRows = g.rows.filter(r => r.eng_visible !== false)
                     const cardLocked = runner && g.rows.length > 0 && g.rows.every(r => r.admin_locked)
                     const allApproved = g.rows.length > 0 && g.rows.every(r => r.status === 'approved')
                     const anySubmitted = g.rows.some(r => r.status === 'submitted')
@@ -4413,7 +4451,8 @@ export function WorkOrderPopup({
                               </div>
                             )}
                             {staffRows.map(r => {
-                              const engHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
+                              const st = staffTimes(r)
+                              const engHrs = calcHours(st.from, st.to)
                               return (
                                 /* One line per staffer, same as the mock: role
                                    chip, name, their window, their hours. It was
@@ -4426,7 +4465,7 @@ export function WorkOrderPopup({
                                     {r.eng_name || <span style={{ color: 'var(--c-fg-3)' }}>TBD</span>}
                                   </span>
                                   <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 10.5, color: 'var(--c-fg-2)', opacity: 0.75 }}>
-                                    {(r.eng_from_time || r.from_time) || '—'} – {(r.eng_to_time || r.to_time) || '—'}
+                                    {st.from || '—'} – {st.to || '—'}
                                     {engHrs != null && engHrs > 0 ? ` · ${engHrs}h` : ''}
                                   </span>
                                   {/* Their rate, same reason as the studio rate
@@ -4852,7 +4891,9 @@ export function WorkOrderPopup({
           }
           const sheetRows = stRows.filter(r => (r.date || '') === daySheetDate)
           const sheetStudioRows = sheetRows.filter(r => r.studio !== '')
-          const sheetStaffRows = sheetRows.filter(r => r.eng_visible !== false && (r.eng_name || r.eng_rate || r.studio === ''))
+          // Same rule as the card (2026-08-20): the slot exists whether or not
+          // anyone is in it, so a day can be staffed from the day sheet.
+          const sheetStaffRows = sheetRows.filter(r => r.eng_visible !== false)
           const sheetDot = sheetRows.length > 0 && sheetRows.every(r => r.status === 'approved')
             ? 'var(--c-st-booked)'
             : sheetRows.some(r => r.status === 'submitted') ? 'var(--c-st-warm)' : null
@@ -4979,6 +5020,31 @@ export function WorkOrderPopup({
                           {timeWell(r, 'from_time', 'Start', r.from_time)}
                           {timeWell(r, 'to_time', 'End', r.to_time)}
                         </div>
+                        {/* THE ROOM'S RATE, BESIDE THE ROOM'S TIMES (Eli,
+                            2026-08-20: "still not a good place for the rate to
+                            be entered"). It lived only in the Billing block at
+                            the very bottom of this sheet, under equipment —
+                            nobody building a session ever scrolled to it. A
+                            rate belongs with the thing it prices. The Billing
+                            block keeps the OT rate and the computed summary;
+                            these are the same fields, bound to the same row,
+                            so editing either place is identical. Office only —
+                            runners see rates as read-only text down below. */}
+                        {!runner && !readOnly && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                            <div className="c-seg c-seg-tiny" style={{ flexShrink: 0 }}>
+                              <button type="button" className={r.row_rate_type !== 'day' ? 'c-on' : ''}
+                                onClick={() => r.row_rate_type === 'day' && toggleRowRateType(r.id)}
+                                style={{ cursor: 'pointer' }}>/ HR</button>
+                              <button type="button" className={r.row_rate_type === 'day' ? 'c-on' : ''}
+                                onClick={() => r.row_rate_type !== 'day' && toggleRowRateType(r.id)}
+                                style={{ cursor: 'pointer' }}>/ DAY</button>
+                            </div>
+                            {r.row_rate_type === 'day'
+                              ? <input value={r.rate_daily} onChange={e => updateStRow(r.id, { rate_daily: e.target.value })} placeholder="$0/day" className="c-tin c-tin-mono" style={{ flex: 1, minWidth: 0, minHeight: 34 }} />
+                              : <input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} placeholder="$0/hr" className="c-tin c-tin-mono" style={{ flex: 1, minWidth: 0, minHeight: 34 }} />}
+                          </div>
+                        )}
                         {/* AM/PM tripwire (Eli, 2026-08-16): a wrong meridiem
                             reads as a 14h+ day. Sessions genuinely run that
                             long sometimes, so this WARNS and never blocks. */}
@@ -4995,7 +5061,7 @@ export function WorkOrderPopup({
                       studio's, auto-following them until edited. */}
                   {sheetStaffRows.map(r => {
                     const rowLocked = runner && r.admin_locked
-                    const staffHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
+                    const staffHrs = calcHours(staffTimes(r).from, staffTimes(r).to)
                     return (
                       <div key={r.id + '-sheetstaff'} style={{ background: 'var(--c-wash)', borderRadius: 14, padding: '11px 12px', marginBottom: 9, pointerEvents: rowLocked ? 'none' : undefined, opacity: rowLocked ? 0.62 : 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
@@ -5012,9 +5078,31 @@ export function WorkOrderPopup({
                           <span style={hrsChip}>{staffHrs != null ? `${staffHrs}h` : '—'}</span>
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
-                          {timeWell(r, 'eng_from_time', 'Start', r.eng_from_time || r.from_time)}
-                          {timeWell(r, 'eng_to_time', 'End', r.eng_to_time || r.to_time)}
+                          {timeWell(r, 'eng_from_time', 'Start', staffTimes(r).from)}
+                          {timeWell(r, 'eng_to_time', 'End', staffTimes(r).to)}
                         </div>
+                        {/* Their rate, on their own block — same reasoning as
+                            the room rate above. Warm tint when a NAMED engineer
+                            has no rate: that is the likeliest way a session
+                            quietly under-bills. Assistants are excluded (often
+                            unpaid seconds), matching the table and the banner. */}
+                        {!runner && !readOnly && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                            <span style={{ ...fldK, flexShrink: 0 }}>Rate</span>
+                            <input
+                              value={r.eng_rate || ''}
+                              onChange={e => updateStRow(r.id, { eng_rate: e.target.value })}
+                              placeholder="$/hr"
+                              className="c-tin c-tin-mono"
+                              style={{
+                                flex: 1, minWidth: 0, minHeight: 34,
+                                ...(r.eng_role !== 'assistant' && (r.eng_name || '').trim() && !r.eng_rate
+                                  ? { background: 'color-mix(in srgb, var(--c-st-warm) 20%, transparent)' }
+                                  : {}),
+                              }}
+                            />
+                          </div>
+                        )}
                         {staffHrs != null && staffHrs > 14 && (
                           <div style={{ fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-st-hot)', marginTop: 7 }}>
                             ⚠ That&apos;s {staffHrs}h — double-check AM/PM on the times.
@@ -5117,7 +5205,7 @@ export function WorkOrderPopup({
                       )
                     })}
                     {sheetStaffRows.map(r => {
-                      const staffHrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
+                      const staffHrs = calcHours(staffTimes(r).from, staffTimes(r).to)
                       return (
                         <div key={r.id + '-billeng'} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, fontFamily: 'Inter', color: 'var(--c-fg-2)', padding: '2px 0', gap: 8 }}>
                           {runner ? (
