@@ -1141,7 +1141,7 @@ body.hints .hint{display:inline-flex}
 <script>
 /* ── WO walkthrough ── */
 const WSTEPS=[
- {t:['brand','meta','client','seed','st','rent','notes','pay'],h:'One document per session',
+ {all:true,t:[],h:'One document per session',
   b:'<p>This is the work order, exactly as it looks in PRSFlo: <b>words on the left</b> (who, what kind, the notes), <b>numbers on the right</b> (days, rentals, money). The calendar card, the runner\'s phone, the hub row and the PDF the client receives are all windows onto <b>this same document</b>. There is no separate booking — change a date here and the calendar follows by itself. Click Next and each part lights up as it\'s explained.</p>'},
  {t:['brand'],h:'The letterhead and the WO number',
   b:'<p>Top-left is who we are; top-right is <b>which work order</b> — the WO number at size with the <b>invoice number</b> right under it, because that number exists from the moment the session confirmed (chapter 02) and every document about this session carries it. The status pill and the ✓ Complete button live up here too — Complete is the act that starts your pipeline.</p>'},
@@ -1172,6 +1172,10 @@ function wrender(scroll){
   document.getElementById('wprev').style.visibility=wi===0?'hidden':'visible';
   document.getElementById('wnext').textContent=wi===WSTEPS.length-1?'Start over ↺':'Next →';
   const doc=document.getElementById('wodoc');
+  // Step 1 shows the WHOLE document plainly — ringing every section at once
+  // turned the page into a grid of green boxes (Eli, 2026-08-20). `all` steps
+  // just lift the touring dim; no rings.
+  doc.classList.toggle('touring',!s.all);
   const nested=s.t.some(t=>WNESTED.includes(t));
   doc.querySelectorAll('[data-sec]').forEach(el=>{
     el.classList.remove('hl','open','subdim');
