@@ -633,7 +633,16 @@ export default function CRMPage() {
   const needsActionCount = naUncontacted.length + naHot.length + naWarm.length
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 52px - 24px)' }}>
+    // 90% ZOOM ON DESKTOP (Eli, 2026-08-20): at 100% "it's too large and
+    // things are getting cut off" — he ran his browser at 90% and preferred
+    // every proportion of it. CSS zoom reproduces exactly that rendering,
+    // typography ramp and all, without touching a single component. Height is
+    // divided by the zoom so the page still fills the viewport (vh units
+    // measure the real viewport, then get scaled with the element). Mobile
+    // keeps 100% — the phone layout was built for its own width.
+    <div style={{ display: 'flex', flexDirection: 'column', ...(isMobile
+      ? { height: 'calc(100vh - 52px - 24px)' }
+      : { zoom: 0.9, height: 'calc((100vh - 52px - 24px) / 0.9)' }) }}>
       {emailModal && selected && <EmailModal lead={selected} onClose={() => setEmailModal(false)} />}
       {newLeadOpen && (
         <NewLeadModal
