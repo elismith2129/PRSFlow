@@ -9,7 +9,6 @@ import { PRSFloIcon } from '@/components/PRSFloIcon'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useClientsVersion } from '@/hooks/useClientsVersion'
 import { Sun, Moon } from 'lucide-react'
-import { useHints, setHintsEnabled } from '@/components/ui/Hint'
 
 /**
  * SIDE NAV RAIL — spec §14a, ported from docs/design-refs/dashboard-final.html.
@@ -58,12 +57,12 @@ const HR: RailItem[] = [
   { href: '/training', label: 'Training', ic: '✦' },
 ]
 // Rarely-used items live behind the foot's Settings disclosure (Eli,
-// 2026-08-17): SOP, DEV, the theme + hints toggles, Sign Out. Admin is OUT of
-// the nav entirely — the page still exists for bookmarks, but everything it
-// held is retired except Engineers (now under Operations); its rebuild is a
-// later phase.
+// 2026-08-17): DEV, the theme toggle, Sign Out. Admin is OUT of the nav
+// entirely — the page still exists for bookmarks, but everything it held is
+// retired except Engineers (now under Operations); its rebuild is a later
+// phase. SOP + the hints toggle MOVED TO /training (Eli, 2026-08-20) — they
+// are learning tools, not settings, and Training was an empty placeholder.
 const SETTINGS_LINKS: RailItem[] = [
-  { href: '/sop', label: 'SOP', ic: '✧' },
   // TEMPORARY nav item (rollout feedback board) — dimmed like the mock's DEV entry.
   { href: '/feedback', label: 'DEV', ic: '∴', dim: true },
 ]
@@ -74,7 +73,6 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
   const isMobile = useIsMobile()
   const [menuOpen, setMenuOpen] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
-  const hintsOn = useHints()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [unreviewedRegs, setUnreviewedRegs] = useState(0)
   const { profile } = useUserProfile()
@@ -191,10 +189,6 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
         {settingsOpen && (
           <>
             {!isRunner && filterItems(SETTINGS_LINKS).map(renderItem)}
-            <button onClick={() => setHintsEnabled(!hintsOn)} className="c-rail-link" aria-label="Toggle helpful hints">
-              <span className="c-rail-ic">💡</span>
-              {hintsOn ? 'Hints: on' : 'Hints: off'}
-            </button>
             <button onClick={toggleTheme} className="c-rail-link" aria-label="Toggle light/dark theme">
               <span className="c-rail-ic">{theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}</span>
               {theme === 'dark' ? 'Light mode' : 'Dark mode'}
