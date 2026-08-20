@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import type { Booking } from '@/lib/supabase'
-import { getLocalToday, dayPartLabel } from '@/lib/time'
+import { getLocalToday, shiftLogDate, dayPartLabel } from '@/lib/time'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { dbResult } from '@/lib/db'
 import { SessionCardBody, sessionFillClass, initials } from '@/components/calendar/SessionCard'
@@ -188,11 +188,13 @@ export default function StudioDailyOpsPage() {
     setTasks(visibleTasks)
 
     // Shift-log entry count for tonight — the shift-notes tile's status line.
+    // shiftLogDate, not today: the log's day rolls at 8:50 AM, so an
+    // after-midnight count still belongs to the night in progress.
     const { count } = await supabase
       .from('shift_log_entries')
       .select('id', { count: 'exact', head: true })
       .eq('studio', studio)
-      .eq('date', today)
+      .eq('date', shiftLogDate())
     setShiftEntryCount(count ?? 0)
   }, [studio, today, meta.abbr]) // eslint-disable-line react-hooks/exhaustive-deps
 

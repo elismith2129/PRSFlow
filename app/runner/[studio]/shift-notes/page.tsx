@@ -7,14 +7,21 @@
 // relieved mid-shift). So: append an entry any time, stamped with who and
 // when; the night's entries stack newest-last like the Slack thread did.
 //
-// Append-only — an entry is a record, not a draft (no edit, no delete; the
-// table has no policies for either). Write another entry to correct one.
+// EDITABLE WHILE LIVE, SEALED AT 8:50 AM (Eli, 2026-08-20 — replaced the
+// original append-only rule, whose "write another entry to correct a typo"
+// bred confusing correction-chains). The log's day runs 8:50 AM → 8:49 AM
+// (lib/time shiftLogDate — which also fixed the old midnight split, where a
+// 1 AM note filed under tomorrow's page). While the log is live, any entry
+// can be tapped and fixed and wears an "edited" marker; at 8:50 AM it seals —
+// enforced server-side by the shift_log_entries UPDATE policy (migration
+// 20260820130000), not just hidden in the UI. No submit button exists:
+// entries are live the moment they're added, and 8:50 AM is the submission.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { dbResult } from '@/lib/db'
-import { getLocalToday, dayPartLabel, dayPartPossessive } from '@/lib/time'
+import { shiftLogDate, dayPartLabel, dayPartPossessive } from '@/lib/time'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 
@@ -32,13 +39,16 @@ type Entry = {
   author_name: string
   text: string
   created_at: string
+  edited_at: string | null
 }
 
 export default function ShiftNotesPage() {
   const router = useRouter()
   const { studio } = useParams<{ studio: string }>()
   const meta = STUDIO_META[studio] ?? { label: studio }
-  const today = getLocalToday()
+  // The log's day, NOT the calendar's — before 8:50 AM this is yesterday's
+  // date, so an after-midnight entry stays on the night it belongs to.
+  const today = shiftLogDate()
   const { profile } = useUserProfile()
 
   const [entries, setEntries] = useState<Entry[]>([])
@@ -46,6 +56,8 @@ export default function ShiftNotesPage() {
   const [author, setAuthor] = useState('')
   const [saving, setSaving] = useState(false)
   const [hint, setHint] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editDraft, setEditDraft] = useState('')
 
   // Prefill the author from the profile when there is a real person behind the
   // session; the shared runner login has none, so it stays typed. Individual
@@ -90,6 +102,22 @@ export default function ShiftNotesPage() {
     setSaving(false)
     if (!dbResult('Saving shift note', error)) return
     setDraft('')
+    load()
+  }
+
+  // Fix a typo while the log is live. The 8:50 AM seal is enforced by the
+  // UPDATE policy — after it, this write returns zero rows and the log stays
+  // as the office will review it.
+  async function saveEdit(id: string) {
+    const text = editDraft.trim()
+    if (!text) return
+    const { error } = await supabase
+      .from('shift_log_entries')
+      .update({ text, edited_at: new Date().toISOString() })
+      .eq('id', id)
+    if (!dbResult('Editing shift note', error)) return
+    setEditingId(null)
+    setEditDraft('')
     load()
   }
 
@@ -178,7 +206,9 @@ export default function ShiftNotesPage() {
           {hint && <div style={{ fontSize: 11.5, color: 'var(--c-st-hot)', fontWeight: 700, marginTop: 8 }}>{hint}</div>}
           <div style={{ fontSize: 10.5, opacity: 0.45, marginTop: 8, lineHeight: 1.5 }}>
             Add as many entries as you like through the night — handing off to
-            someone else just means they add their own.
+            someone else just means they add their own. Tap any entry to fix a
+            typo. The log submits itself at 8:50 AM — after that it&apos;s sealed
+            for the office&apos;s review and a fresh log starts.
           </div>
         </div>
 
@@ -196,8 +226,45 @@ export default function ShiftNotesPage() {
             }}>
               <div className="c-mono" style={{ fontSize: 10.5, fontWeight: 800, opacity: 0.5, marginBottom: 4 }}>
                 {e.author_name.toUpperCase()} · {new Date(e.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                {e.edited_at && <span style={{ fontWeight: 400, opacity: 0.8 }}> · edited</span>}
               </div>
-              <div style={{ fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{e.text}</div>
+              {editingId === e.id ? (
+                <div>
+                  <textarea
+                    value={editDraft}
+                    onChange={ev => setEditDraft(ev.target.value)}
+                    rows={4}
+                    autoFocus
+                    style={{
+                      width: '100%', boxSizing: 'border-box',
+                      background: 'var(--c-wash)', border: 'none', borderRadius: 10,
+                      padding: '9px 11px', color: 'var(--c-fg)', fontSize: 13,
+                      font: 'inherit', outline: 'none', resize: 'vertical',
+                      lineHeight: 1.6, marginBottom: 8,
+                    }}
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => saveEdit(e.id)}
+                      className="c-control"
+                      style={{ minHeight: 40, padding: '0 20px', borderRadius: 12, background: 'var(--c-wash2)', color: 'var(--c-fg)', border: 'none', font: 'inherit', fontSize: 12.5, fontWeight: 800, cursor: 'pointer' }}
+                    >Save fix</button>
+                    <button
+                      onClick={() => { setEditingId(null); setEditDraft('') }}
+                      className="c-control"
+                      style={{ minHeight: 40, padding: '0 16px', borderRadius: 12, background: 'transparent', color: 'var(--c-fg)', opacity: 0.6, border: 'none', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}
+                    >Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                /* Tap to fix a typo — live-log only; the 8:50 AM seal is
+                   enforced by the DB policy, so this is convenience, not the
+                   boundary. */
+                <div
+                  onClick={() => { setEditingId(e.id); setEditDraft(e.text) }}
+                  style={{ fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', cursor: 'pointer' }}
+                >{e.text}</div>
+              )}
             </div>
           ))}
         </div>
