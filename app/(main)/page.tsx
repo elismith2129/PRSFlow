@@ -71,7 +71,11 @@ function fullscreenCardOnMobile(isMobile: boolean, viewportHeight: number | null
 // (engInitials/fmtSessionTime lived here as byte-identical twins of the
 //  calendar's — both now come from the shared card module.)
 const ROOM_NAME_H = 20
-const ROOM_CARD_H = 120
+// 120 → 84 (Eli, 2026-08-20: "cal cards on the dashboard are a little big.
+// lots of scrolling… 30% smaller"). At 84 the body is 64px, which per the
+// SessionCardBody tier ladder keeps artist/client/times but drops the staff-
+// initials footer (needs 74px) — accepted trade; the booking is one click away.
+const ROOM_CARD_H = 84
 
 // §14b: rooms are 12, in this order — PRS A,B,C,E,X,Nadine's → ARS A,B →
 // ERS A,B → TRS N,S. Nadine's is PRS's sixth room but is not yet a bookable
