@@ -3204,6 +3204,116 @@ signal it needs to become a real session — not before.
 
 ---
 
+### Aug 19–20, 2026 — LAUNCH. And the day-one wave that followed it
+
+The merge to `main` happened Aug 20 — production now runs the redesign. The
+session around it was a launch-day pattern worth naming: every fix below was
+found by REAL use (Eli setting up a tablet, texting a client, watching staff
+log in), not by testing plans. Day one in production finds what no click-through
+does.
+
+#### The env-var outage, and the login page that lied
+
+Staff logged out en masse and couldn't get back in; every login said "Invalid
+email or password". Cause: `NEXT_PUBLIC_SUPABASE_URL` in Vercel ended up wrong
+around an edit meant for `NEXT_PUBLIC_BASE_URL` (the names are one word apart),
+and the next deploy pointed auth at the wrong host. Two lessons recorded as
+code: (1) the login page's catch-all error was rewritten — "Invalid email or
+password" may now ONLY claim that when credentials were actually rejected;
+server-unreachable failures name themselves a system problem and carry the raw
+error for screenshots. (2) An env-var mistake is a landmine, not an explosion —
+it detonates on the NEXT deploy, by anyone, which is why "I changed X and Y
+broke" timelines mislead. Verify all values before leaving that Vercel screen.
+
+#### Billing: Upcoming is dead; COD tabs latch
+
+A WO for a session on its own day, after its start time, sat in "Upcoming" —
+indefensible to anyone standing in the building. Rather than derive "has it
+started" ever more cleverly, the bucket died (Eli: "ditch the upcoming bin and
+just organize all WO into in progress based on date"). Everything pre-send is
+In progress; not-yet-started rows sort BELOW started work with a "Not started"
+chip; COD gained its own In progress tab, and on COD a session that hasn't
+ended can no longer read as a missed collection. Then the COD tabs became
+LATCHES (multi-select, merged list in tab order, per-row bin badges, persisted,
+last latch refuses to turn off) — Billing deliberately kept single tabs; its
+buckets are sequential stages, not parallel queues. Rejected: latching both
+pipelines.
+
+#### The SOPs that never shipped, and the copy convention
+
+Launch morning found the Billing and Manager SOPs missing from production: they
+were committed but only ever existed in `docs/design-refs/` — nothing copied
+them to `public/` or routed them. Now: `public/billing-sop.html` +
+`public/manager-sop.html`, served at `/sop/billing` + `/sop/manager`, carded on
+the Training page. **Convention: `public/` is the SERVED copy; the design-refs
+original is the working mock — edit there, then re-copy** (except `sop.html`,
+which is edited directly and stays canonical). The billing SOP's WO walkthrough
+was redrawn to the launched two-column layout (copy re-synced, logic text
+unchanged; the intro step now shows the document plainly — ringing every
+section at once made a grid of green boxes), and `public/sop.html` was
+re-skinned to the launched design (palette/fonts/accent only; content and the
+VERSIONS machinery untouched — the selftest parser proves it).
+
+#### The runner subtree gets a door; identity becomes visible; PINs return at six digits
+
+Tablet setup exposed that `/runner/*` had NO login gate — public since the
+pre-RLS era, and RLS made it LOOK safe by returning empty data, so a stranger
+saw a hollow-but-rendering app. `RunnerGuard` (client guard, same pattern as
+AuthGuard) now gates the subtree; `/runner/sop` alone stays public.
+
+Then the shift-change question ("we don't have set schedules — how do I make
+runners log in as themselves?") produced the day's biggest decision: **the PIN
+system came back, at SIX digits** — exactly what the July 29 post-attack plan
+prescribed ("flip back to true when 6-digit PINs are re-issued"). The honest
+math was told straight: 4 digits × ~18 accounts is guessable in hours without
+the rate limiter; 6 digits with the escalating lockout makes online guessing a
+non-starter. `scripts/set-pins.mjs` deals fresh UNIQUE PINs to EVERYONE in one
+run (uniqueness can only be guaranteed inside one run — hashes can't be
+compared after) and rotates every auth password, making the PIN the key.
+Rejected: strong per-person passwords on shared tablets — a credential nobody
+types is a shared eternal login with no attribution; the weak-but-used beats
+the strong-but-routed-around. With PINs cheap, runner sessions now EXPIRE — 4
+hours after sign-in or on crossing the 8:50 AM seal, checked only on
+mount/wake/interval (never mid-keystroke), runner-role only (staff sessions
+visiting runner pages are exempt). And identity went visible everywhere it
+matters: the landing greets by name, the hub header names the session, and the
+punch form says "Filing as / Submit as {name}" so HR can never get a mystery
+punch.
+
+#### The shift log learns to forgive typos — until 8:50 AM
+
+The shift log was append-only by design ("an entry is a record, not a draft").
+Real use said otherwise: typo'd entries could only be "fixed" by follow-up
+correction entries that read worse than the typo. New model: tap-to-edit while
+the log is LIVE (with an "· edited" marker), sealed at **8:50 AM** — enforced
+by an RLS UPDATE policy, not just UI, so what the office reviews cannot change
+under it. The 8:50 boundary also became the log's DAY (`lib/time.ts
+shiftLogDate`), fixing the midnight split where a 1 AM note filed under
+tomorrow's page. **The policy and shiftLogDate must stay in step — change the
+seal time in BOTH or attribution and editability disagree.** There is still no
+submit button; entries are live on save and 8:50 IS the submission.
+
+#### Sundry launch-day polish
+
+WO desktop: title band deleted (letterhead IS the header), overlay clears the
+176px rail (the "see-through" — the rail is deliberately above modals) and the
+stale top-nav offset, action buttons doubled and flattened, one-row segs
+(c-seg-tiny), mock density, visible Complete pill, day-card left region fixed
+at 340px, and admin-only delete ×s (day cards two-step, staff lines one-tap;
+Cancel still reverts via the existing deletedRowsRef path). Dashboard room
+cards 120→84 (the tier ladder drops the initials footer below 74px of body —
+accepted; 94 is the fallback if missed). CRM renders at 90% zoom on desktop
+(Eli picked the density by running his browser at 90%; `zoom: 0.9` + height
+compensation reproduces it exactly — the pattern is one line per page if
+others want it). Registration links preview as "Paramount Client Registration"
+(`app/register/layout.tsx` metadata) and `NEXT_PUBLIC_BASE_URL` is finally
+set, so links carry the paramountrecording.com domain. Training became the
+learning corner (SOP link + hints toggle moved out of Settings). My Day was
+re-anchored twice as launch slipped a day — the standing instruction is to run
+the re-anchor ONCE, the morning staff actually start.
+
+---
+
 ### Aug 18, 2026 — The work order becomes two columns: words left, numbers right
 
 Task #11, the WO reorganization. One commit, two files, zero logic.

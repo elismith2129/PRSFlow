@@ -55,6 +55,81 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'launch-day-2026-08-20',
+    title: 'Launch day — PINs, names everywhere, shift notes, billing tabs',
+    version: 'v1.15.0 (production)',
+    date: 'Aug 20, 2026',
+    intro:
+      'The app is LIVE now, so this batch runs on the real site, not a preview. It covers the launch-day wave: six-digit PIN login, your name showing wherever work is filed, editable shift notes that seal at 8:50 AM, the reorganized billing tabs, and the work order polish. You will need your own PIN (Eli hands those out), a computer, and one of the runner tablets. One item can only be checked the MORNING AFTER a shift note is written — leave it open until then.',
+    items: [
+      {
+        id: 'ld-pin-login', area: 'Login',
+        what: 'The number pad takes your six-digit PIN and logs you in as YOU',
+        how: 'Sign out, then on the login screen tap your six-digit PIN on the number pad. It should log you in without asking for anything else. Check the dashboard greets you with YOUR name. A wrong PIN should shake and say incorrect.',
+      },
+      {
+        id: 'ld-runner-gate', area: 'Runner (phone)',
+        what: 'The runner app demands a login when nobody is signed in',
+        how: 'On a tablet or phone that is signed out, go to the runner app address. It must land you on the LOGIN screen, not an empty-looking runner app. PIN in as a runner and it should go straight to the runner hub.', device: 'phone',
+      },
+      {
+        id: 'ld-runner-name', area: 'Runner (phone)',
+        what: 'The runner app shows whose session the tablet is',
+        how: 'Signed in as a runner, look at the studio-picker screen: it should greet by first name and say "signed in as [full name]" under the date. Pick a studio: the hub header should also show the name next to the date.', device: 'phone',
+      },
+      {
+        id: 'ld-punch-as', area: 'Runner (phone)',
+        what: 'The missed-punch form names who it files under, on the button itself',
+        how: 'From the runner hub open Missed a punch. Under the title it should say "Filing as [name]", and the submit button should read "Submit as [name]". Confirm the name is the person actually signed in.', device: 'phone',
+      },
+      {
+        id: 'ld-shift-edit', area: 'Runner (phone)',
+        what: 'A shift note can be tapped and fixed, and shows an "edited" tag after',
+        how: 'Open Shift notes, add an entry with a deliberate typo, then tap the entry text. It should turn into a text box. Fix the typo, tap Save fix. The entry should show the fixed text with a small "· edited" next to the initials and time.', device: 'phone',
+      },
+      {
+        id: 'ld-shift-seal', area: 'Runner (phone)',
+        what: 'After 8:50 AM, yesterday\'s shift note refuses to be edited',
+        how: 'THE MORNING AFTER writing a shift note (any time after 8:50 AM): open Shift notes — the log should be a fresh empty page. Ask the office to open Daily Ops and find last night\'s note there. If you can still edit last night\'s entry from anywhere after 8:50, report it.', device: 'phone',
+      },
+      {
+        id: 'ld-upcoming-gone', area: 'Billing',
+        what: 'There is no Upcoming list — future sessions sit in In progress with a "Not started" tag',
+        how: 'On a computer open Billing. There should be NO "Upcoming sessions" bar anywhere. Book a throwaway session for next week, come back to Billing: the new work order should appear at the BOTTOM of In progress with a "Not started" tag on the row. Delete the throwaway after.',
+      },
+      {
+        id: 'ld-cod-latch', area: 'Billing',
+        what: 'COD tabs latch — two on at once shows one combined list with colored tags',
+        how: 'In Billing switch to COD. Click Balance due and In progress so BOTH look pressed. The list should show rows from both, Balance due rows first, each row carrying a small colored tag naming its bin. Click one tab off — the tags disappear when only one bin is shown. The last lit tab should refuse to turn off.',
+      },
+      {
+        id: 'ld-wo-top', area: 'Work order',
+        what: 'The work order opens at the top of the screen with big Cancel / Complete / Save buttons',
+        how: 'Open any work order on a computer. It should start just under the top of the window — no "Work Order · WO-x" bar above the letterhead — with the three buttons top right, comfortably large. The status pills (Confirmed / Tentative / …) should fit on ONE row in the left column.',
+      },
+      {
+        id: 'ld-wo-delete-day', area: 'Work order',
+        what: 'A day card can be deleted with the × (with a confirm), and Cancel brings it back',
+        how: 'On a multi-day work order in card view, click the small × next to "✎ edit" on one day. It should ask "Delete day?" — click Delete. The card disappears. Now click Cancel on the work order and re-open it: the day should be BACK (cancel undoes the delete). Repeat and press Save instead: the day should stay gone. Use a test session.',
+      },
+      {
+        id: 'ld-crm-density', area: 'CRM',
+        what: 'The CRM fits comfortably on screen — nothing important cut off',
+        how: 'Open the CRM on a computer at normal (100%) browser zoom. The lead list and the detail panel should both fit without things overlapping or getting clipped, matching how it used to look at 90% zoom. Scan the detail panel: session fields, notes and buttons all visible.',
+      },
+      {
+        id: 'ld-training', area: 'Training',
+        what: 'Training holds all three guides and the hints switch',
+        how: 'Open Training in the sidebar. There should be cards for App guide (SOP), Billing SOP and Studio Manager SOP — each opens its guide — plus the Helpful hints on/off switch. The app guide should be in the new dark look with the version history at the end showing v1.15.0 on top.',
+      },
+      {
+        id: 'ld-reg-preview', area: 'CRM',
+        what: 'A texted registration link previews as "Paramount Client Registration"',
+        how: 'Send YOURSELF a registration link by text (or paste one into iMessage). The link preview should say "Paramount Client Registration" with our paramountrecording.com address — not "PRSFlo" and not a vercel address. New links only; an old thread may show a cached preview.',
+      },
+    ],
+  },
+  {
     id: 'wo-two-column-2026-08-18',
     title: 'The work order in two columns — words left, numbers right',
     version: 'v1.14.0 (preview branch)',

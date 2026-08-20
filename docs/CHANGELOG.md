@@ -19,6 +19,31 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.15.0 — LAUNCHED TO PRODUCTION (merged to `main`) — Aug 20, 2026
+
+**Launch day: the redesign went live, and the day-one wave of fixes real use
+demanded.** From here on, shipping = commit to `redesign/carved` AND merge to
+`main` — production only sees what reaches main.
+
+**Migrations (run by Eli in the SQL editor):**
+- `supabase/migrations/20260820130000_shift_log_edit.sql` — `shift_log_entries.edited_at` + the `shift_log_edit_live` UPDATE policy (edits allowed only while the log is live; seals 8:50 AM America/Los_Angeles). Verify: `select policyname from pg_policies where tablename='shift_log_entries';`
+- One-offs, already run: `supabase/myday_reanchor_20260819.sql` (My Day wipe + re-anchor; run ONCE more the morning staff start), and the launch reset (Aug 19 re-run).
+- Operational, not SQL: `scripts/set-pins.mjs` (requires `npm i -D bcryptjs`) — deals unique 6-digit PINs to every active profile and **rotates every auth password**.
+
+**Watch-outs:**
+- **The 8:50 AM seal lives in TWO places** — `lib/time.ts shiftLogDate()` and the `shift_log_edit_live` policy. Change the time in both or date-attribution and editability disagree.
+- **`PIN_LENGTH` (login page) must match `set-pins.mjs`** (both 6). The script rotates ALL passwords — after running it, PINs are the way in; email fallback requires "Forgot password". Re-running rotates everyone.
+- **`public/billing-sop.html` / `public/manager-sop.html` are SERVED COPIES** of the `docs/design-refs/` mocks — edit the mock, re-copy. `public/sop.html` is edited directly (canonical) and its VERSIONS parse is selftest-checked.
+- **The `'upcoming'` BucketKey no longer exists.** Everything pre-send is `progress` (COD included — COD gained the tab); `InvoiceRow.notStarted` drives the chip and the split sort. Anything reintroducing an upcoming bucket fights `deriveBucket`.
+- **`RunnerGuard` gates `/runner/*`** (any session passes; `/runner/sop` public) and expires RUNNER-role sessions (4h or crossing 8:50) — staff sessions are exempt on purpose; don't "fix" that.
+- **CRM desktop renders at `zoom: 0.9`** with height compensated by `/0.9` — copy that pair together or the page under-fills the viewport.
+- Dashboard room cards are 84px — below the 74px body threshold the card tier ladder drops the staff-initials footer (deliberate; 94 restores it).
+- The login page's "Invalid email or password" is now ONLY allowed for real credential rejections; other failures name themselves system problems and embed the raw error.
+
+**Files:** `lib/billing.ts`, `app/(main)/billing/page.tsx`, `styles/globals.css`, `components/calendar/WorkOrderPopup.tsx`, `components/shared/ClientPanel.tsx`, `app/(auth)/login/page.tsx`, `app/register/layout.tsx`, `app/(main)/crm/page.tsx`, `app/(main)/page.tsx`, `components/layout/Rail.tsx`, `app/(main)/training/page.tsx`, `app/(main)/sop/{billing,manager}/page.tsx`, `public/{sop,billing-sop,manager-sop}.html`, `components/runner/RunnerGuard.tsx`, `app/runner/layout.tsx`, `app/runner/page.tsx`, `app/runner/[studio]/page.tsx`, `app/runner/[studio]/shift-notes/page.tsx`, `app/runner/punch/page.tsx`, `lib/time.ts`, `scripts/set-pins.mjs`, `CLAUDE.md`.
+
+---
+
 ## v1.14.0 — UNRELEASED (branch `redesign/carved`) — Aug 18, 2026
 
 **The admin desktop work order is two columns: words left, numbers right.**
