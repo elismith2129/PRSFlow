@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
 import { Wordmark } from '@/components/layout/Wordmark'
 import { getLocalToday, dayPartLabel } from '@/lib/time'
+import { useUserProfile } from '@/hooks/useUserProfile'
 
 // Shared with the hub page by literal value — both use 'prsflo-runner-studio'.
 // (Not exported: Next.js App Router restricts page-file exports.)
@@ -31,6 +32,10 @@ const STUDIOS = [
 
 export default function RunnerPage() {
   const router = useRouter()
+  // With per-person PINs (2026-08-20) every session has a real name — greet
+  // with it, so whoever picked up the tablet can SEE who it's signed in as.
+  const { profile } = useUserProfile()
+  const firstName = (profile?.display_name || '').split(' ')[0]
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   // Hold rendering until the remembered-studio check resolves, so the picker
@@ -125,10 +130,11 @@ export default function RunnerPage() {
         </div>
         <div className="c-label" style={{ marginBottom: 8 }}>Paramount Recording Group</div>
         <div className="c-arch" style={{ fontSize: 23, letterSpacing: '-0.02em' }}>
-          Where are you {dayPartLabel().toLowerCase()}?
+          Where are you {dayPartLabel().toLowerCase()}{firstName ? `, ${firstName}` : ''}?
         </div>
         <div style={{ fontSize: 12, opacity: 0.5, marginTop: 4 }}>
           {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          {profile?.display_name ? ` · signed in as ${profile.display_name}` : ''}
         </div>
       </div>
 

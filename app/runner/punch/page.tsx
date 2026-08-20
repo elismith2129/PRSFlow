@@ -161,7 +161,12 @@ export default function RunnerPunchPage() {
           <div className="c-arch" style={{ fontSize: 18, letterSpacing: '-0.02em', lineHeight: 1.15 }}>
             Missed a punch
           </div>
-          <div style={{ fontSize: 11.5, opacity: 0.5 }}>Goes straight to the manager queue</div>
+          {/* WHOSE report this is, before anything is typed (Eli, 2026-08-20:
+              a punch filed under the wrong person "would be very confusing
+              for HR"). Repeated on the submit button itself. */}
+          <div style={{ fontSize: 11.5, opacity: 0.5 }}>
+            {profile?.display_name ? `Filing as ${profile.display_name} · ` : ''}goes straight to the manager queue
+          </div>
         </div>
       </div>
 
@@ -231,11 +236,15 @@ export default function RunnerPunchPage() {
                   boxShadow: 'var(--c-softsh)',
                 }}
               >
-                {saving ? 'Sending…' : 'Submit report'}
+                {saving
+                  ? `Sending as ${profile?.display_name ?? 'you'}…`
+                  : `Submit as ${profile?.display_name ?? 'you'}`}
               </button>
               <div style={{ fontSize: 10.5, opacity: 0.45, lineHeight: 1.5, marginTop: 9 }}>
-                This is your written confirmation — it's timestamped and kept.
-                Same-day reports are the good kind: report it the night it happens.
+                This files under <b>{profile?.display_name ?? 'your name'}</b> —
+                if that&apos;s not you, sign out on the hub and log in with your own
+                PIN first. It&apos;s timestamped and kept. Same-day reports are the
+                good kind: report it the night it happens.
               </div>
             </div>
 
