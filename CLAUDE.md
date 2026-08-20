@@ -105,7 +105,7 @@ Supabase Auth login is live. **As of July 2, 2026 RLS is enforced on every table
 - `app/(auth)/reset-password/page.tsx` — `updateUser({ password })`.
 - `components/auth/AuthGuard.tsx` — **client-side** guard wrapping `app/(main)/layout.tsx`: checks `getSession()`, redirects unauthenticated users to `/login`, listens to `onAuthStateChange`, renders nothing until the session resolves. Login page redirects already-authed users to `/`.
 - **Why a client guard, not SSR middleware:** the project has no `@supabase/ssr`/`middleware.ts`, every page is `'use client'`, and `signInWithPassword` stores the session in **localStorage** (cookie-reading middleware wouldn't see it). The guard fits the existing architecture; no new dependency.
-- **Scope:** only the internal `(main)` route group is gated. `/runner/*`, `/register`, and the `(auth)` pages stay public. The nav has a Sign Out button (`supabase.auth.signOut()` → `/login`).
+- **Scope:** the internal `(main)` route group is gated by `AuthGuard`, and **as of 2026-08-20 `/runner/*` is gated too** — `components/runner/RunnerGuard.tsx` in `app/runner/layout.tsx` (any authenticated session passes; none → `/login`; `/runner/sop` alone stays public as the training page). `/runner/*` had been public since the pre-RLS era, which RLS made LOOK safe by returning empty data — a stranger saw a hollow-but-rendering app. `/register` and the `(auth)` pages stay public. The nav has a Sign Out button (`supabase.auth.signOut()` → `/login`).
 
 ### Route structure
 
