@@ -279,7 +279,22 @@ export default function LoginPage() {
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
     if (signInError) {
-      setError('Invalid email or password')
+      // TELL THE TRUTH ABOUT WHICH KIND OF FAILURE (2026-08-20). This was a
+      // catch-all "Invalid email or password" for ANY error — including the
+      // auth server being unreachable. During the env-var incident the whole
+      // staff saw "invalid password" and reasonably concluded their passwords
+      // had broken, when the app was knocking on the wrong door entirely. A
+      // wrong password is the ONLY case that message is allowed to claim now;
+      // everything else names itself a system problem and carries the raw
+      // error so a screenshot from staff is diagnosable.
+      const msg = (signInError.message || '').toLowerCase()
+      if (msg.includes('invalid login credentials')) {
+        setError('Invalid email or password')
+      } else if (msg.includes('email not confirmed')) {
+        setError('This account has not been activated yet — tell the office.')
+      } else {
+        setError(`Can't reach the login server — this is a system problem, not your password. Try again in a minute; if it keeps up, tell the office. (${signInError.message || 'no response'})`)
+      }
       return
     }
     // Same role-aware landing as the PIN path (email/password is the fallback
