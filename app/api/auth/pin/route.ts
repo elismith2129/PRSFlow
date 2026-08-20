@@ -87,8 +87,16 @@ export async function POST(req: NextRequest) {
   }
 
   // Validate shape only — never log or echo the PIN itself.
+  //
+  // SIX digits (2026-08-20). This was `\d{4}` and was MISSED when PINs were
+  // re-issued at six — so every correct PIN was rejected here, before the
+  // lookup, with a bare 400. The client showed "something went wrong" and the
+  // real cause was invisible for an hour; that is what earned the PIN pad its
+  // error codes. If the PIN length ever changes again, THREE places move
+  // together: this regex, PIN_LENGTH in app/(auth)/login/page.tsx, and the
+  // digit count in scripts/set-pins.mjs.
   const pin = typeof body.pin === 'string' ? body.pin.trim() : ''
-  if (!/^\d{4}$/.test(pin)) {
+  if (!/^\d{6}$/.test(pin)) {
     return NextResponse.json({ error: 'bad_request' }, { status: 400 })
   }
 
