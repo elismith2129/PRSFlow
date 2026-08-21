@@ -43,11 +43,12 @@ import { formatCurrency } from '@/lib/format'
 import { getLocalToday } from '@/lib/time'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import {
-  fetchFinancialLines, fetchHistory, buildSeries, roomOptions, scopeMatches, scopeLabel,
-  pctChange, compareLabel, monthLabel,
+  fetchFinancialLines, fetchHistory, fetchSeries, buildSeries, buildDrawPoints,
+  roomOptions, scopeMatches, scopeLabel, autoGrain, shiftBack, bucketStart,
+  pctChange, compareLabel, monthLabel, GRAINS,
   METRICS,
   type FinLine, type HistMonth, type Metric, type RoomScope, type Compare,
-  type SeriesPoint,
+  type SeriesPoint, type Grain, type DrawPoint,
 } from '@/lib/financials'
 
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -112,6 +113,13 @@ export function FinancialsView() {
   const [mode, setMode] = useState<'timeline' | 'years'>('timeline')
   const [activeYears, setActiveYears] = useState<Set<string>>(new Set())
 
+  // null = follow the zoom. The archive is DAILY for nine years, and the first
+  // build reduced all of it to 116 monthly points — Eli: "I have you day by day
+  // numbers for 9 years, should be much clearer." So the grain follows the
+  // window, with a manual override for when you want a specific one.
+  const [grainOverride, setGrainOverride] = useState<Grain | null>(null)
+  const [series, setSeries] = useState<DrawPoint[]>([])
+
   const today = getLocalToday()
   const from = startOfSpan(today, SPAN_MONTHS)
 
@@ -169,6 +177,47 @@ export function FinancialsView() {
     [scoped, hist, metric, from, today, latest, compare],
   )
 
+  // Land on the last three years — enough to read the arc without the 2017 tail
+  // squeezing recent months into noise. `all` is MONTHLY: it drives the brush
+  // and the year overlay, and the brush window is expressed as indices into it.
+  const bounds = win ?? { a: Math.max(0, all.length - 37), b: all.length - 1 }
+
+  // The visible window, as real dates. `all` is monthly and drives the brush;
+  // the DRAWN line is fetched separately at whatever grain suits this window.
+  const winFrom = all[Math.max(0, Math.min(bounds.a, all.length - 1))]?.key ?? from.slice(0, 7)
+  const winToKey = all[Math.max(0, Math.min(bounds.b, all.length - 1))]?.key ?? today.slice(0, 7)
+  const fromISO = `${winFrom}-01`
+  // End of the last month in the window, clamped to today — asking the archive
+  // for future dates is harmless but asking for a partial month's real end is
+  // what makes the partial-period comparison line up.
+  const toISO = winToKey >= today.slice(0, 7)
+    ? today
+    : new Date(Date.UTC(Number(winToKey.slice(0, 4)), Number(winToKey.slice(5, 7)), 0))
+        .toISOString().slice(0, 10)
+
+  const monthsInWindow = bounds.b - bounds.a + 1
+  const grain: Grain = grainOverride ?? autoGrain(monthsInWindow)
+
+  // Refetch the drawn line whenever the window, grain, metric or room changes.
+  // Each request is bounded by construction (see the migration header) so it
+  // can never hit the 1,000-row cap regardless of how far the archive grows.
+  useEffect(() => {
+    if (mode !== 'timeline') return
+    let cancelled = false
+    const priorFrom = shiftBack(fromISO, grain)
+    const priorTo = shiftBack(toISO, grain)
+    Promise.all([
+      fetchSeries(scope, metric, grain, fromISO, toISO),
+      compare ? fetchSeries(scope, metric, grain, priorFrom, priorTo) : Promise.resolve([]),
+    ]).then(([cur, prev]) => {
+      if (cancelled) return
+      setSeries(buildDrawPoints(
+        cur, prev, scoped, metric, grain, fromISO, toISO, latest || today,
+      ))
+    })
+    return () => { cancelled = true }
+  }, [mode, scope, metric, grain, fromISO, toISO, compare, scoped, latest, today])
+
   /** Years the data actually covers, newest first. */
   const years = useMemo(() => {
     const seen = new Set<string>()
@@ -198,10 +247,15 @@ export function FinancialsView() {
     return m
   }, [all])
 
-  // Land on the last three years — enough to read the arc without the 2017 tail
-  // squeezing recent months into noise.
-  const bounds = win ?? { a: Math.max(0, all.length - 37), b: all.length - 1 }
-  const view = all.slice(bounds.a, bounds.b + 1)
+  // THE DRAWN LINE is the fetched variable-grain series. It falls back to the
+  // monthly rollup when that has not arrived — on first paint, or on a database
+  // where `financial_series` has not been created yet. A chart that blanks
+  // because a finer grain is unavailable is worse than a coarser one.
+  const view: DrawPoint[] = series.length > 0
+    ? series
+    : all.slice(bounds.a, bounds.b + 1).map(p => ({
+        key: p.key, label: p.label, value: p.value, prior: p.prior, partial: p.partial,
+      }))
 
   const totalShown = view.reduce((s, p) => s + p.value, 0)
   const priorShown = view.reduce((s, p) => s + (p.prior ?? 0), 0)
@@ -344,6 +398,35 @@ export function FinancialsView() {
 
         <span style={{ flex: 1 }} />
 
+        {/* GRAIN. Auto follows the zoom, which is what you want almost always;
+            the explicit buttons are for pinning it. The auto choice is shown on
+            the button so the chart never silently changes resolution under you
+            without saying which one it picked. */}
+        {mode === 'timeline' && (
+          <span style={{ display: 'flex', gap: 4 }}>
+            <button
+              className={`c-control c-soft${grainOverride === null ? ' c-on' : ''}`}
+              style={chip}
+              onClick={() => setGrainOverride(null)}
+              aria-pressed={grainOverride === null}
+              title="Pick the resolution automatically from how far you are zoomed in"
+            >
+              Auto · {grain}
+            </button>
+            {GRAINS.map(g => (
+              <button
+                key={g.key}
+                className={`c-control c-soft${grainOverride === g.key ? ' c-on' : ''}`}
+                style={chip}
+                onClick={() => setGrainOverride(g.key)}
+                aria-pressed={grainOverride === g.key}
+              >
+                {g.label}
+              </button>
+            ))}
+          </span>
+        )}
+
         <span style={{ display: 'flex', gap: 4 }}>
           {(['timeline', 'years'] as const).map(m => (
             <button
@@ -480,10 +563,12 @@ export function FinancialsView() {
           <>
             <Field
               k={hover !== null ? 'Hovering' : 'Latest'}
-              v={active.partial
-                ? `${monthLabel(active.key)} 1–${active.throughDay}`
-                : `${monthLabel(active.key)} ${active.year}`}
-              note={active.partial ? 'partial month' : undefined}
+              v={grain === 'month'
+                ? `${monthLabel(active.key)} ${active.key.slice(0, 4)}`
+                : grain === 'week'
+                  ? `Week of ${active.label}`
+                  : `${active.label} ${active.key.slice(0, 4)}`}
+              note={active.partial ? `partial ${grain}` : undefined}
             />
             <Field k={METRICS.find(m => m.key === metric)?.label ?? ''} v={usd(active.value)} />
             <Field
@@ -496,19 +581,18 @@ export function FinancialsView() {
               small
             />
             <Field
-              k="vs last month"
+              k={`vs previous ${grain}`}
               v={(() => {
-                const i = all.findIndex(p => p.key === active.key)
-                const prev = i > 0 ? all[i - 1] : null
-                // A partial month against a whole previous month would report a
-                // fall that is only the calendar. Compared like for like or not
-                // at all.
+                const i = view.findIndex(p => p.key === active.key)
+                const prev = i > 0 ? view[i - 1] : null
+                // A partial period against a whole previous one would report a
+                // fall that is only the calendar. Like for like, or not at all.
                 if (!prev || active.partial) return '—'
                 return pctText(pctChange(active.value, prev.value))
               })()}
               tone={(() => {
-                const i = all.findIndex(p => p.key === active.key)
-                const prev = i > 0 ? all[i - 1] : null
+                const i = view.findIndex(p => p.key === active.key)
+                const prev = i > 0 ? view[i - 1] : null
                 if (!prev || active.partial) return undefined
                 return pctColor(pctChange(active.value, prev.value))
               })()}
@@ -617,25 +701,39 @@ export function FinancialsView() {
                   · short ranges label months, with the year on each January
                 so a year marker is always present either way. */}
             {(() => {
-              const januaries = view.filter(p => p.key.slice(5) === '01').length
-              const yearStep = Math.max(1, Math.ceil(januaries / 8))
-              const monthStep = Math.max(1, Math.ceil(n / 13))
-              let seenJan = -1
+              // Label the BOUNDARY that matters at this grain — years on a long
+              // month view, months on a week or day view — rather than every
+              // Nth point, so there is always a fixed landmark to read position
+              // against. (The first version filtered by `i % every` and THEN
+              // tested for January, which discarded almost every January before
+              // it could be drawn and left the axis with no years on it at all.)
+              const isBoundary = (p: DrawPoint) =>
+                grain === 'month' ? p.key.slice(5, 7) === '01' : p.key.slice(8, 10) <= '07'
+              const boundaries = view.filter(isBoundary).length
+              const bStep = Math.max(1, Math.ceil(boundaries / 9))
+              const plainStep = Math.max(1, Math.ceil(n / 13))
+              let seen = -1
               return view.map((p, i) => {
-                const isJan = p.key.slice(5) === '01'
-                if (isJan) seenJan += 1
+                const b = isBoundary(p)
+                if (b) seen += 1
                 let label = ''
-                if (n > 30) {
-                  if (isJan && seenJan % yearStep === 0) label = p.year
-                } else {
-                  if (i % monthStep === 0) label = isJan ? `${p.label} ${p.year}` : p.label
+                if (n > 26) {
+                  if (b && seen % bStep === 0) {
+                    label = grain === 'month'
+                      ? p.key.slice(0, 4)
+                      : monthLabel(p.key) + (p.key.slice(5, 7) === '01' ? ` ${p.key.slice(0, 4)}` : '')
+                  }
+                } else if (i % plainStep === 0) {
+                  label = grain === 'month'
+                    ? (p.key.slice(5, 7) === '01' ? `${p.label} ${p.key.slice(0, 4)}` : p.label)
+                    : p.label
                 }
                 if (!label) return null
                 return (
                   <text key={p.key} x={xOf(i)} y={H - 6} textAnchor="middle"
                     fontSize={9.5} fill="var(--c-fg)"
-                    fillOpacity={hover === i ? 0.85 : isJan ? 0.6 : 0.42}
-                    fontWeight={isJan && n > 30 ? 700 : 400}>
+                    fillOpacity={hover === i ? 0.85 : b ? 0.6 : 0.42}
+                    fontWeight={b && n > 26 ? 700 : 400}>
                     {label}
                   </text>
                 )

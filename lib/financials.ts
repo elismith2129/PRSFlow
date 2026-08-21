@@ -259,6 +259,195 @@ export async function fetchFinancialLines(fromISO: string, toISO: string): Promi
 
 // ─── History (pre-aggregated in Postgres) ────────────────────────────────────
 
+// ─── Variable-grain series ───────────────────────────────────────────────────
+
+export type Grain = 'day' | 'week' | 'month'
+
+export const GRAINS: { key: Grain; label: string }[] = [
+  { key: 'day', label: 'Day' },
+  { key: 'week', label: 'Week' },
+  { key: 'month', label: 'Month' },
+]
+
+/**
+ * Which grain suits a window of this many months.
+ *
+ * SEMANTIC ZOOM — the grain follows the zoom, the way every serious charting
+ * tool does it. The thresholds are chosen so the chart lands between roughly 40
+ * and 200 points: below 40 it looks blocky, above ~200 the line turns to noise
+ * on a 1000-unit-wide viewBox and neighbouring days sit inside a pixel of each
+ * other.
+ *
+ *   ≤ 4 months   →  day    (≈ 120 points)
+ *   ≤ 36 months  →  week   (≈ 17–156 points)
+ *   beyond       →  month
+ */
+export function autoGrain(months: number): Grain {
+  if (months <= 4) return 'day'
+  if (months <= 36) return 'week'
+  return 'month'
+}
+
+/** One bucket of the main line. `bucket` is the period's START date, ISO. */
+export type SeriesRow = { bucket: string; amount: number }
+
+/**
+ * A windowed, single-metric series at the requested grain.
+ *
+ * The window and the metric are NOT optional refinements — they are what keeps
+ * the response under PostgREST's silent 1,000-row cap. Daily across nine years
+ * for all four categories is 14,600 rows and would truncate to 2017 without
+ * saying so, which is the exact bug migration 20260820150000 exists to prevent.
+ */
+export async function fetchSeries(
+  scope: RoomScope, metric: Metric, grain: Grain, fromISO: string, toISO: string,
+): Promise<SeriesRow[]> {
+  const res = await supabase.rpc('financial_series', {
+    p_scope: scope || '',
+    p_metric: metric,
+    p_grain: grain,
+    p_from: fromISO,
+    p_to: toISO,
+  })
+  // Absent on a database where the migration has not run yet — the live half is
+  // still true, so this degrades rather than blanking the page.
+  if (res.error) {
+    const code = res.error.code
+    if (code !== '42883' && code !== '42P01' && code !== 'PGRST202') {
+      dbResult('Loading revenue series', res.error)
+    }
+    return []
+  }
+  return (res.data ?? []).map((r: { bucket: string; amount: number | string }) => ({
+    bucket: String(r.bucket).slice(0, 10),
+    amount: money(r.amount),
+  }))
+}
+
+/**
+ * The bucket one year earlier, at this grain.
+ *
+ * Weeks use 364 days, NOT a calendar year. 364 is exactly 52 weeks, so the
+ * comparison lands on the same weekday — the retail convention, and the only
+ * one that makes weekly year-over-year meaningful. A calendar year would drift
+ * the comparison one or two weekdays every year and quietly compare a week
+ * containing a weekend against one that does not.
+ */
+export function priorBucket(iso: string, grain: Grain): string {
+  if (grain === 'week') {
+    const d = new Date(iso + 'T12:00:00Z')
+    d.setUTCDate(d.getUTCDate() - 364)
+    return d.toISOString().slice(0, 10)
+  }
+  // Day and month both map cleanly onto the same date a year back. Noon UTC
+  // keeps the shift away from any midnight boundary.
+  return String(Number(iso.slice(0, 4)) - 1) + iso.slice(4)
+}
+
+/** Human label for a bucket at a given grain. */
+export function bucketLabel(iso: string, grain: Grain): string {
+  const mon = MONTHS[Number(iso.slice(5, 7)) - 1] ?? ''
+  if (grain === 'month') return mon
+  return `${mon} ${Number(iso.slice(8, 10))}`
+}
+
+/** Any date shifted back one comparison period. See priorBucket for the 364. */
+export function shiftBack(iso: string, grain: Grain): string {
+  return priorBucket(iso, grain)
+}
+
+/**
+ * The start of the bucket a date falls in.
+ *
+ * Week start MUST match Postgres `date_trunc('week', …)`, which is ISO — Monday.
+ * If these two disagree the archive's buckets and the live ones land a day
+ * apart and every week is drawn twice.
+ */
+export function bucketStart(iso: string, grain: Grain): string {
+  if (grain === 'month') return iso.slice(0, 7) + '-01'
+  if (grain === 'day') return iso.slice(0, 10)
+  const d = new Date(iso.slice(0, 10) + 'T12:00:00Z')
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7))
+  return d.toISOString().slice(0, 10)
+}
+
+function nextBucket(iso: string, grain: Grain): string {
+  const d = new Date(iso + 'T12:00:00Z')
+  if (grain === 'day') d.setUTCDate(d.getUTCDate() + 1)
+  else if (grain === 'week') d.setUTCDate(d.getUTCDate() + 7)
+  else d.setUTCMonth(d.getUTCMonth() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
+/** One point on the drawn line. */
+export type DrawPoint = {
+  key: string          // bucket start, ISO
+  label: string
+  value: number
+  prior: number | null
+  /** The period has not finished — data stops inside it. */
+  partial: boolean
+}
+
+/**
+ * The drawn line: archive + live, at one grain, with its comparison.
+ *
+ * Empty buckets are EMITTED, not skipped. A closed Tuesday earned nothing and
+ * the chart should say so; closing the gap would draw a line straight over it
+ * and turn a dark week into a smooth one.
+ *
+ * The caller fetches the prior window with its end already shifted back, so the
+ * final prior bucket is truncated to the same portion of the period as the
+ * partial one it is compared against. That is what keeps a half-finished month
+ * from reporting a collapse, and it needs no day-capping here.
+ */
+export function buildDrawPoints(
+  current: SeriesRow[],
+  priorRows: SeriesRow[],
+  live: FinLine[],
+  metric: Metric,
+  grain: Grain,
+  fromISO: string,
+  toISO: string,
+  latestISO: string,
+): DrawPoint[] {
+  const hist = new Map<string, number>()
+  for (const r of current) hist.set(r.bucket, (hist.get(r.bucket) ?? 0) + r.amount)
+
+  const prior = new Map<string, number>()
+  for (const r of priorRows) prior.set(r.bucket, (prior.get(r.bucket) ?? 0) + r.amount)
+
+  // Live rows are bucketed once, across their whole span, so the same map
+  // answers both the current window and the comparison window.
+  const liveBuckets = new Map<string, number>()
+  for (const l of live) {
+    if (!l.date || (metric !== 'total' && l.category !== metric)) continue
+    const b = bucketStart(l.date, grain)
+    liveBuckets.set(b, (liveBuckets.get(b) ?? 0) + l.amount)
+  }
+
+  const at = (m: Map<string, number>, key: string) => (m.get(key) ?? 0) + (liveBuckets.get(key) ?? 0)
+
+  const out: DrawPoint[] = []
+  let cursor = bucketStart(fromISO, grain)
+  // Guarded: ~11 years of days is under 4,100, and a bad range must not hang.
+  for (let guard = 0; guard < 4200; guard++) {
+    if (cursor > toISO) break
+    const end = nextBucket(cursor, grain)
+    const pk = priorBucket(cursor, grain)
+    const priorVal = prior.has(pk) || liveBuckets.has(pk) ? at(prior, pk) : null
+    out.push({
+      key: cursor,
+      label: bucketLabel(cursor, grain),
+      value: at(hist, cursor),
+      prior: priorVal,
+      partial: latestISO >= cursor && latestISO < end && end > toISO.slice(0, 10),
+    })
+    cursor = end
+  }
+  return out
+}
+
 /** One month of archived revenue, already summed by the database. */
 export type HistMonth = {
   month: string       // 'YYYY-MM'
