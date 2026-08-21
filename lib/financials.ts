@@ -124,6 +124,34 @@ export function priorYearKey(key: string): string {
   return String(Number(key.slice(0, 4)) - 1) + key.slice(4)
 }
 
+/**
+ * What the dashed comparison line is drawing.
+ *
+ *   null    → no comparison
+ *   'prev'  → the month one year earlier, whatever month you are on
+ *   '2019'  → the same month-of-year in that FIXED year
+ *
+ * The two modes answer different questions and both are wanted. 'prev' is
+ * "are we up on last year", and it slides along with the data. A fixed year is
+ * "how do we compare to 2019", which is a baseline — Eli's peak years are worth
+ * measuring against directly, and asking that of a rolling offset would mean
+ * counting backwards in your head every time you zoom.
+ */
+export type Compare = 'prev' | string | null
+
+/** The month a given point should be compared against, or null for none. */
+export function compareKey(key: string, compare: Compare): string | null {
+  if (!compare) return null
+  if (compare === 'prev') return priorYearKey(key)
+  return compare + key.slice(4)
+}
+
+/** How the comparison should be named in the readout and the label. */
+export function compareLabel(key: string, compare: Compare): string {
+  if (!compare) return ''
+  return compare === 'prev' ? priorYearKey(key).slice(0, 4) : compare
+}
+
 /** Every month key between two dates, inclusive, in order. */
 export function monthKeys(fromISO: string, toISO: string): string[] {
   const out: string[] = []
@@ -369,6 +397,7 @@ export function buildSeries(
   fromISO: string,
   toISO: string,
   latestISO: string,
+  compare: Compare = 'prev',
 ): SeriesPoint[] {
   // month → { whole month, month capped at `dayCap` }. The two halves arrive in
   // different shapes — history pre-summed by Postgres, live as daily rows — and
@@ -403,7 +432,8 @@ export function buildSeries(
   return monthKeys(fromISO, toISO).map(key => {
     const partial = key === latestMonth && dayCap > 0 && dayCap < daysInMonth(key)
     const here = byMonth.get(key)
-    const prev = byMonth.get(priorYearKey(key))
+    const cmp = compareKey(key, compare)
+    const prev = cmp ? byMonth.get(cmp) : undefined
     return {
       key,
       label: monthLabel(key),
