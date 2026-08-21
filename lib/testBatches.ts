@@ -55,6 +55,66 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'financials-2026-08-20',
+    title: 'Financials — the revenue graph in the Billing hub',
+    version: 'v1.16.0 (production)',
+    date: 'Aug 20, 2026',
+    intro:
+      'A new owner-only screen holding every dollar Paramount has billed since 2017, plus what the app records now. OWNERS ONLY — if you are not an owner, the word "Financials" should not appear for you at all, and item 1 is the only thing you can check. Do this at a computer.',
+    items: [
+      {
+        id: 'fin-visible', area: 'Financials',
+        what: 'Financials appears in the Billing hub — and only for owners',
+        how: 'Open Billing from the side rail. Along the top you should see "Billing", "COD" and "Financials". If you are NOT an owner, "Financials" must not be there — that is a pass, and you are done with this batch.',
+      },
+      {
+        id: 'fin-history', area: 'Financials',
+        what: 'The old years are actually there',
+        how: 'Click Financials. Drag the LEFT handle of the bar under the graph all the way to the left. The line should run from 2017 to now — roughly $200k to $650k a month, not a flat line and not one bump.',
+      },
+      {
+        id: 'fin-metric', area: 'Financials',
+        what: 'The line changes subject',
+        how: 'Click ENGINEERING in the row of buttons at the top left. The whole graph should redraw showing engineering only, with much smaller numbers up the left side. Click TOTAL to go back.',
+      },
+      {
+        id: 'fin-room', area: 'Financials',
+        what: 'One room can be picked out',
+        how: 'From the "All rooms" dropdown choose any single room. The line should drop to that room\'s share alone. Choose a "— all rooms" option for a whole building and it should rise again. Set it back to All rooms.',
+      },
+      {
+        id: 'fin-hover', area: 'Financials',
+        what: 'Hovering answers "how does this month compare to last year"',
+        how: 'Move the mouse across the graph. The bar above it should follow, showing the month, its figure, the same month a year earlier with a green or red percentage, and the change from the month before.',
+      },
+      {
+        id: 'fin-compare', area: 'Financials',
+        what: 'The dashed line can be pinned to a chosen year',
+        how: 'In the "Compare to" dropdown pick 2019. The dashed line should redraw against 2019, and the hover bar should now say "vs 2019". Choose "Nothing" and the dashed line should disappear entirely.',
+      },
+      {
+        id: 'fin-years', area: 'Financials',
+        what: 'Years mode stacks the years on one Jan–Dec axis',
+        how: 'Click YEARS at the top right. The bottom of the graph should read Jan through Dec, with one line per year labelled at its right-hand end and the newest drawn brightest. Click a year button underneath to add or remove it.',
+      },
+      {
+        id: 'fin-partial', area: 'Financials',
+        what: 'This month is marked unfinished, not shown as a crash',
+        how: 'Back in TIMELINE, look at the far right of the line. The last stretch should be DASHED with a hollow dot, and the readout should say something like "Aug 1–20, partial month". Its comparison should say "same days" — it must NOT look like revenue fell off a cliff.',
+      },
+      {
+        id: 'fin-zoom', area: 'Financials',
+        what: 'Zooming and sliding behave',
+        how: 'Drag the handles at each end of the bar under the graph to squeeze the range, then drag the MIDDLE of the lit section to slide it along. The graph should follow smoothly and the months along the bottom should stay in order.',
+      },
+      {
+        id: 'fin-export', area: 'Financials',
+        what: 'Export gives you a file you can open',
+        how: 'Click EXPORT CSV. A file should download. Open it in Excel or Numbers — it should have a row per month with columns for each stream.',
+      },
+    ],
+  },
+  {
     id: 'launch-night-2026-08-20b',
     title: 'Launch night — PIN login, building a session, equipment, registrations',
     version: 'v1.15.1 (production)',

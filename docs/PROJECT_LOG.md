@@ -3204,6 +3204,114 @@ signal it needs to become a real session — not before.
 
 ---
 
+### Aug 20, 2026 (later) — Financials: nine years of revenue, and three bugs that all looked like something else
+
+**What shipped:** an owner-only revenue chart in the billing hub, and the
+2017–2026 archive imported out of the "PRS Daily Numbers" spreadsheet —
+55,601 rows, $51,744,630. v1.16.0.
+
+#### The decision that shaped everything: history does NOT become work orders
+
+The obvious move was to synthesise work orders for the spreadsheet years so one
+query covers everything. **Rejected.** `work_orders` carries invoice state,
+package state, approval triggers, projection cards and realtime subscriptions;
+nine years of dead rows would flow into the billing pipeline, the calendar and
+My Day, and every one of those surfaces would then need an "except the fake
+ones" clause. CLAUDE.md's standing rule is that the WO is the source of truth
+post-creation — history has no WO and never will, so inventing one makes the
+rule a lie.
+
+Instead: a frozen `financial_history` table the app never writes, joined to live
+money at read time in `lib/financials.ts`. The seam is one file. When the
+historical window ages out, drop the table and no screen changes.
+
+#### The spreadsheet was not the shape anyone described
+
+Eli described per-session data with four cost categories. The workbook is
+**day × room**, wide, 92 columns, with three money columns per room (Studio /
+Rental Profit / Engineer) plus two derived ones and four levels of roll-up.
+**There is no assistant column in nine years**, and no client or artist either —
+so those years can never be sliced by client, and the Assistant metric is empty
+before Aug 2026.
+
+Reading it first, before writing any import code, is what caught that. The
+importer's column mapping was a guess until the file arrived; had it been
+committed as designed it would have silently imported nothing.
+
+**The reconciliation caught a real thing.** Extraction is checked day-by-day
+against the sheet's own GROUP TOTAL columns. 124 days disagree — room cells vs
+roll-up formula — netting −$19,368 of $51.7M (0.04%), several as adjacent
+offsetting pairs (2019-01-15 short $150, 2019-01-16 over by $150: a value on the
+wrong row). The import takes the room cells; the roll-up is what drifted.
+
+**A false start worth recording:** the first reconciliation used the
+`TOTAL <year>` ROWS at the bottom of each tab. Those are stale or blank in
+2024/2025/2026, which produced fifteen confident false alarms before it became
+clear the baseline was wrong, not the mapping. Reconcile against the live
+roll-up COLUMNS.
+
+#### Three bugs, each of which looked like a different bug
+
+1. **PostgREST caps responses at 1,000 rows and does not say so.** A straight
+   select against 55,601 returned 2017 and reported success, so the chart drew
+   nine years as one bump in 2017. The symptom — page renders, no data, no
+   error — is indistinguishable from an RLS denial, and that is where the
+   diagnosis went first. It was only resolved by noticing the bump on the LEFT
+   of the brush strip. Fixed with `financial_monthly()` etc.
+   (migration `20260820150000`), **SECURITY INVOKER** so the owner-only policy
+   still governs the aggregate. Pagination was considered and rejected: 56 round
+   trips and ~5MB to draw one line, growing every year.
+2. **`.c-table-row` is `display: grid`.** Putting it on a `<tr>` destroyed the
+   table and stacked every cell into column one. There is no `<table>` in the
+   view now.
+3. **CRLF.** Python's `csv.writer` emits `\r\n`; the Node loader split on `\n`,
+   so every last field kept a `\r` and Postgres was asked for `source_key\r`.
+
+#### The chart was rebuilt once, on Eli's ruling
+
+v1 stacked the four streams with a table under it. Eli: *"I don't really need to
+see engineering against the room or rentals against the engineering."* He was
+right, and the stack was actively harmful — room is ~85% of the total, so
+engineering and rentals were flat smears against the axis and their movement,
+the thing he wants to read, was invisible. **One line, swappable subject.**
+
+Then two additions from him: the comparison line became a **picker** (previous
+year, or any year pinned as a baseline), and a **Years overlay** mode — one
+Jan–Dec axis, a line per year. December 2024 and December 2025 are twelve
+columns apart on a timeline and the eye cannot hold them together; on the
+overlay they are the same column. Single-hue ramp rather than a colour per year:
+hues imply categories, years are ordered, and it keeps the carved law that
+colour is status.
+
+**The partial month is why the archive stays DAILY.** August had run to the 18th
+and was being compared against all 31 days of August 2025 — a reported 60%
+collapse that did not happen. Now compared against the same day range
+(`amount_to_day`). No projection or run-rate: a forecast drawn in the same ink
+as measured data is worse than an obvious gap.
+
+#### Two things found that were not this project
+
+- **`srv2129@gmail.com` was hardcoded in nine `isEli` checks.** Eli confirms the
+  address is used nowhere — not PRSFlo, GitHub, Vercel or Supabase. As written
+  it granted owner-level UI across eight surfaces to an address nobody controls.
+  Removed on his instruction.
+- **Seven rooms carry $2.5M of history and are not in `STUDIO_LOCATIONS`** —
+  PRS D/F/H, ARS C, ERS C/D/E. Eli: "we still have those." The calendar cannot
+  book them. Not touched; flagged.
+
+#### What is NOT settled — see `docs/BILLING-MODEL-OPEN-QUESTIONS.md`
+
+Written this session because three of the four revenue streams do not mean what
+the app models them as. **Assistant is not an itemized cost** (Eli: "not an
+itemized cost per session, just included") yet `eng_role` defaults to
+`'assistant'` and bills rate × hours, so an assistant number may be payroll
+sitting inside a revenue total. **Rentals are two businesses in one column** —
+PRS-owned gear earns 100%, contracted gear earns a 30% fee, and the archive's
+"Rental Profit" is already net while `rental_rows.charge` is gross. The
+framing question underneath both: is this chart revenue or margin?
+
+---
+
 ### Aug 20, 2026 (launch night) — The PIN outage, and the staffing fix that had to be audited first
 
 #### Three faults, one symptom, an hour lost to guessing

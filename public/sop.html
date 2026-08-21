@@ -645,6 +645,31 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.16.0', date:'Aug 20, 2026',
+    headline:'Financials — nine years of the studio\'s numbers, in one graph.',
+    desc:'Everything Paramount has billed since 2017 now lives in the app, alongside what the app records today. It sits in the Billing hub next to Billing and COD, and only owners can see it.',
+    changes:[
+      'The numbers that used to live only in the "PRS Daily Numbers" spreadsheet — 2017 through this month — are now in PRSFlo, and the graph keeps filling in on its own from work orders going forward.',
+      'One line, and you choose what it shows: the total, or just room, engineering, assistant or rentals on their own.',
+      'Pick any room, or a whole building, from the dropdown — including the older rooms that are still in the books.',
+      'Drag the bar underneath to zoom into a stretch of months, or drag the middle to slide along the years.',
+      'The dashed line is a comparison. Leave it on "Previous year" and it always shows the same months a year earlier, or pick a specific year to measure everything against — 2019, say.',
+      'Hover any month and it tells you that month\'s figure, the same month a year before, and how it moved from the month before that.',
+      'Switch to "Years" and every year stacks on one Jan-to-December axis, so this July sits directly on top of last July and the one before. Turn individual years on and off underneath.',
+      'The current month is drawn with a dashed line and a hollow dot because it is not finished yet — and it is compared against the same run of days last year, not the whole month, so a half-finished August does not look like a collapse.',
+    ],
+    affects:'Nothing changes in how you build a work order. This is a reading screen for owners — but it is fed by the work orders everyone fills in, so the rates and staff lines you enter are what it draws.',
+    dev:[
+      'History lives in a frozen <code>financial_history</code> table, NOT synthesised work orders — a WO carries invoice state, approval triggers, projections and realtime, and nine years of dead rows would flow into every one of those surfaces. Joined to live money at read time in <code>lib/financials.ts</code>.',
+      '<strong>Never <code>select</code> raw rows from <code>financial_history</code>.</strong> PostgREST caps a response at 1,000 rows and does not tell you — 55,601 rows returned 2017 and reported success, drawing nine years as a single bump. Rollup functions (<code>financial_monthly</code> etc., SECURITY INVOKER so the owner-only policy still governs) aggregate in Postgres instead.',
+      'Storage is DAILY on purpose: the partial current month compares against the same day range a year earlier (<code>amount_to_day</code>). Roll it up to months and that comparison becomes a false ~60% collapse every month.',
+      'Chart rebuilt from stacked bars to one line with a swappable metric on Eli\'s ruling — room is ~85% of the total, so a stack made engineering and rentals unreadable smears against the axis.',
+      'Bugs fixed alongside: <code>.c-table-row</code> is <code>display:grid</code> and destroyed a <code>&lt;tr&gt;</code> layout (no table in the view now); axis year labels were thinned before being tested for January so nearly every January was discarded; the brush read its window from a stale closure; the CSV loader split on <code>\\n</code> while Python emits CRLF.',
+      '<code>srv2129@gmail.com</code> removed from all nine <code>isEli</code> checks — confirmed unused, and it granted owner-level UI across eight surfaces.',
+      'Open modelling questions in <code>docs/BILLING-MODEL-OPEN-QUESTIONS.md</code>: assistant is not an itemized cost yet <code>eng_role</code> defaults to it and bills rate × hours; rentals mix PRS-owned (100%) with contracted (30% fee) in one gross column while the archive is already net.',
+    ],
+  },
+  {
     ver:'v1.15.1', date:'Aug 20, 2026',
     headline:'Launch-night fixes — PIN login works, and building a session now has the rate and the engineer right where you need them.',
     desc:'Everything here came from actually using the app on launch day. If you tried a PIN earlier and it would not let you in, that is fixed — use the same PIN you were given.',
