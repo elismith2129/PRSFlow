@@ -2287,3 +2287,12 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   text-align: left; letter-spacing: 0; text-transform: none;
   box-shadow: var(--c-softsh); cursor: default;
 }
+
+/* Returned-registration banner dot (2026-08-20). Same idea as
+   webInquiryPulse — an expanding ring rather than a blink, so it reads as
+   "live" at the edge of vision without flickering at someone all day. Teal:
+   a returned registration is a person waiting, not a problem. */
+@keyframes regPulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-st-booked) 55%, transparent); }
+  50%      { box-shadow: 0 0 0 7px color-mix(in srgb, var(--c-st-booked) 0%, transparent); }
+}

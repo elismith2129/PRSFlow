@@ -31,6 +31,21 @@ export interface PendingReg {
   terms_accepted: boolean | null
 }
 
+// "2h ago" / "yesterday" — how long this person has been waiting on us. A
+// duration answers the question a timestamp doesn't: is this fresh, or has it
+// been sitting all week?
+function timeAgo(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(ms / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days === 1) return 'yesterday'
+  return `${days}d ago`
+}
+
 function isImagePath(path: string | null): boolean {
   if (!path) return false
   return /\.(jpg|jpeg|png|heic|webp)$/i.test(path)
@@ -78,24 +93,87 @@ export function RegistrationBanner({ onNavigate }: {
 
   return (
     <>
+      {/* OPTION D + C's PULSE (Eli's pick, 2026-08-20 — mock
+          docs/design-refs/reg-banner-options.html). The old banner was a grey
+          strip in the same wash as every panel around it, saying only a
+          number; it read as page furniture and got skimmed past. This names
+          the PEOPLE — a name is harder to ignore than a count — and gives each
+          one its own action, so the usual one-or-two case is handled without
+          opening anything. Teal, not hot: nothing is wrong, a client did their
+          part and is waiting on us. Past three, the rest collapse into a
+          "+N more" that opens the full review modal.
+          The click targets are deliberate: each row's button confirms THAT
+          person (same handleNavigate the modal calls); the header and the
+          overflow line open the modal. */}
       <div
-        onClick={() => setOpen(true)}
         style={{
-          marginBottom: 12, padding: '10px 16px', flexShrink: 0,
-          background: 'var(--c-wash2)', borderRadius: 8, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 10,
+          marginBottom: 12, padding: '12px 14px', flexShrink: 0,
+          background: 'var(--c-wash2)', borderRadius: 14,
+          boxShadow: 'inset 0 0 0 1.5px color-mix(in srgb, var(--c-st-booked) 45%, transparent)',
         }}
       >
-        <span style={{ fontSize: 16 }}>↗</span>
-        <div style={{ flex: 1 }}>
-          <span style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, color: 'var(--c-fg)', letterSpacing: '0.06em' }}>
-            {pendingRegs.length} new registration{pendingRegs.length !== 1 ? 's' : ''} need{pendingRegs.length === 1 ? 's' : ''} review
+        <div
+          onClick={() => setOpen(true)}
+          style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 9, cursor: 'pointer' }}
+        >
+          {/* Same slow pulse as the Web Inquiry alert — it reads as live
+              rather than decorated. */}
+          <span
+            style={{
+              width: 9, height: 9, borderRadius: '50%', flexShrink: 0,
+              background: 'var(--c-st-booked)',
+              animation: 'regPulse 2s ease-in-out infinite',
+            }}
+          />
+          <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)', padding: '3px 9px', borderRadius: 99 }}>
+            Registration{pendingRegs.length !== 1 ? 's' : ''} back
           </span>
-          <div style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginTop: 1 }}>
-            Click to confirm client profiles
-          </div>
+          <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>
+            waiting on {pendingRegs.length === 1 ? 'their' : 'their'} client profile
+          </span>
         </div>
-        <span style={{ fontSize: 11, color: 'var(--c-fg)', fontFamily: 'Inter' }}>Review →</span>
+
+        {pendingRegs.slice(0, 3).map(reg => {
+          const initials = (reg.name || '')
+            .split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '—'
+          return (
+            <div
+              key={reg.id}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 9,
+                padding: '7px 9px', borderRadius: 9,
+                background: 'var(--c-bg)', marginBottom: 5,
+              }}
+            >
+              <span style={{ width: 24, height: 24, borderRadius: '50%', flexShrink: 0, background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9.5, fontFamily: 'Inter', fontWeight: 800 }}>
+                {initials}
+              </span>
+              <span style={{ fontSize: 12, fontFamily: 'Inter', fontWeight: 700, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {reg.name}
+              </span>
+              <span style={{ fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-fg-3)', marginLeft: 'auto', flexShrink: 0 }}>
+                {timeAgo(reg.registered_at)}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleNavigate(reg.id)}
+                className="c-control"
+                style={{ flexShrink: 0, fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', background: 'var(--c-wash2)', color: 'var(--c-fg)', padding: '6px 11px', borderRadius: 99, cursor: 'pointer' }}
+              >
+                Create profile
+              </button>
+            </div>
+          )
+        })}
+
+        {pendingRegs.length > 3 && (
+          <div
+            onClick={() => setOpen(true)}
+            style={{ fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-fg-2)', cursor: 'pointer', padding: '4px 2px 0' }}
+          >
+            + {pendingRegs.length - 3} more — review all →
+          </div>
+        )}
       </div>
 
       {open && (
