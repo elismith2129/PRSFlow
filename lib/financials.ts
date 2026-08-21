@@ -278,13 +278,25 @@ export const GRAINS: { key: Grain; label: string }[] = [
  * on a 1000-unit-wide viewBox and neighbouring days sit inside a pixel of each
  * other.
  *
- *   ≤ 4 months   →  day    (≈ 120 points)
- *   ≤ 36 months  →  week   (≈ 17–156 points)
- *   beyond       →  month
+ * FIRST ATTEMPT WAS FAR TOO FINE (2026-08-20). It allowed week up to 36 months
+ * — around 156 points on a 1000-unit viewBox, roughly six units apart — and the
+ * line became a solid field of noise with no readable shape at all. Eli, on
+ * seeing it: "whatever you just did made it much worse."
+ *
+ * The ceiling that matters is POINTS, not periods. Past ~90 points a line stops
+ * being a trend and starts being texture, so the thresholds are set to keep the
+ * chart under that at every zoom:
+ *
+ *   ≤ 2 months   →  day    (≈ 60 points)
+ *   ≤ 18 months  →  week   (≈ 78 points)
+ *   beyond       →  month  (36 points at three years)
+ *
+ * A finer grain is always one click away — this only decides the DEFAULT, and
+ * the default should be readable.
  */
 export function autoGrain(months: number): Grain {
-  if (months <= 4) return 'day'
-  if (months <= 36) return 'week'
+  if (months <= 2) return 'day'
+  if (months <= 18) return 'week'
   return 'month'
 }
 

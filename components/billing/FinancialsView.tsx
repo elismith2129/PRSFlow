@@ -190,10 +190,15 @@ export function FinancialsView() {
   // End of the last month in the window, clamped to today — asking the archive
   // for future dates is harmless but asking for a partial month's real end is
   // what makes the partial-period comparison line up.
-  const toISO = winToKey >= today.slice(0, 7)
+  const winEnd = winToKey >= today.slice(0, 7)
     ? today
     : new Date(Date.UTC(Number(winToKey.slice(0, 4)), Number(winToKey.slice(5, 7)), 0))
         .toISOString().slice(0, 10)
+  // STOP AT THE LAST REAL DAY. Running the window to today when the data ends
+  // on the 18th emitted a run of empty buckets, which drew the line down to
+  // zero and along the floor — a flat tail that reads as a collapse rather than
+  // as an absence.
+  const toISO = latest && latest < winEnd ? latest : winEnd
 
   const monthsInWindow = bounds.b - bounds.a + 1
   const grain: Grain = grainOverride ?? autoGrain(monthsInWindow)
@@ -300,6 +305,66 @@ export function FinancialsView() {
   const priorPts = view
     .map((p, i) => (p.prior === null ? null : [xOf(i), yOf(p.prior)] as [number, number]))
     .filter((p): p is [number, number] => p !== null)
+
+  // ── Pinch / scroll to zoom ────────────────────────────────────────────────
+  //
+  // Eli, 2026-08-20: "i want to be able to zoom in zoom out with pinching and
+  // spreading my touch pad."
+  //
+  // A trackpad pinch arrives as a `wheel` event with `ctrlKey` set — that is how
+  // browsers have reported it since they mapped pinch onto page zoom, and it is
+  // the only way to read the gesture without a touch device. Plain two-finger
+  // scroll stays as PAN, which is the pairing every map and charting tool uses.
+  //
+  // Bound through `addEventListener` with `passive: false` rather than React's
+  // `onWheel`, because React attaches wheel listeners passively and a passive
+  // listener cannot `preventDefault()` — without which a pinch zooms the whole
+  // page instead of the chart.
+  const plotRef = useRef<HTMLDivElement>(null)
+  const lenRef = useRef(all.length)
+  lenRef.current = all.length
+
+  useEffect(() => {
+    const el = plotRef.current
+    if (!el || mode !== 'timeline') return
+
+    const onWheel = (e: WheelEvent) => {
+      const len = lenRef.current
+      if (len < 3) return
+      e.preventDefault()
+      const r = el.getBoundingClientRect()
+      const frac = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))
+
+      setWin(prev => {
+        const cur = prev ?? { a: Math.max(0, len - 37), b: len - 1 }
+        const width = cur.b - cur.a
+
+        if (e.ctrlKey) {
+          // PINCH. Exponential so each notch scales rather than adds — linear
+          // steps crawl when zoomed out and overshoot when zoomed in.
+          const next = Math.round(width * Math.exp(e.deltaY * 0.012))
+          // Floor of 2 months: below that the window is finer than the brush
+          // can express, since the brush indexes months.
+          const w = Math.max(2, Math.min(len - 1, next))
+          // Zoom about the cursor, so whatever is under the pointer stays put.
+          let a = Math.round(cur.a + width * frac - w * frac)
+          a = Math.max(0, Math.min(len - 1 - w, a))
+          return { a, b: a + w }
+        }
+
+        // PAN. Horizontal intent on a trackpad shows up as deltaX; a mouse
+        // wheel only has deltaY, so fall back to it and let a plain wheel scrub.
+        const raw = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+        if (raw === 0) return cur
+        const shift = Math.max(1, Math.round(width * 0.04)) * (raw > 0 ? 1 : -1)
+        const a = Math.max(0, Math.min(len - 1 - width, cur.a + shift))
+        return { a, b: a + width }
+      })
+    }
+
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [mode])
 
   // ── Brush ─────────────────────────────────────────────────────────────────
   const brushRef = useRef<HTMLDivElement>(null)
@@ -606,7 +671,7 @@ export function FinancialsView() {
       )}
 
       {/* CHART */}
-      <div className="c-panel c-inset2" style={{ padding: '8px 10px 2px' }}>
+      <div ref={plotRef} className="c-panel c-inset2" style={{ padding: '8px 10px 2px' }}>
         {loading ? (
           <div style={{ height: H, display: 'grid', placeItems: 'center', opacity: 0.5, fontSize: 12 }}>
             Loading revenue…
@@ -701,39 +766,27 @@ export function FinancialsView() {
                   · short ranges label months, with the year on each January
                 so a year marker is always present either way. */}
             {(() => {
-              // Label the BOUNDARY that matters at this grain — years on a long
-              // month view, months on a week or day view — rather than every
-              // Nth point, so there is always a fixed landmark to read position
-              // against. (The first version filtered by `i % every` and THEN
-              // tested for January, which discarded almost every January before
-              // it could be drawn and left the axis with no years on it at all.)
-              const isBoundary = (p: DrawPoint) =>
-                grain === 'month' ? p.key.slice(5, 7) === '01' : p.key.slice(8, 10) <= '07'
-              const boundaries = view.filter(isBoundary).length
-              const bStep = Math.max(1, Math.ceil(boundaries / 9))
-              const plainStep = Math.max(1, Math.ceil(n / 13))
-              let seen = -1
+              // EVENLY SPACED BY INDEX, always. Two earlier attempts picked
+              // labels by calendar boundary — first Januaries, then the first
+              // week of each month — and both produced overlapping text
+              // ("20202024" printed on top of "20182026"), because boundaries
+              // are not evenly spaced in index terms and a step across them
+              // clusters. Spacing by index cannot collide by construction; the
+              // YEAR is carried in the text instead of by position.
+              const target = Math.min(9, n)
+              const step = Math.max(1, Math.round(n / target))
               return view.map((p, i) => {
-                const b = isBoundary(p)
-                if (b) seen += 1
-                let label = ''
-                if (n > 26) {
-                  if (b && seen % bStep === 0) {
-                    label = grain === 'month'
-                      ? p.key.slice(0, 4)
-                      : monthLabel(p.key) + (p.key.slice(5, 7) === '01' ? ` ${p.key.slice(0, 4)}` : '')
-                  }
-                } else if (i % plainStep === 0) {
-                  label = grain === 'month'
-                    ? (p.key.slice(5, 7) === '01' ? `${p.label} ${p.key.slice(0, 4)}` : p.label)
-                    : p.label
-                }
-                if (!label) return null
+                if (i % step !== 0) return null
+                const isJan = p.key.slice(5, 7) === '01'
+                const first = i === 0
+                const label = grain === 'month'
+                  ? (isJan || first ? `${p.label} ${p.key.slice(0, 4)}` : p.label)
+                  : `${monthLabel(p.key)}${isJan || first ? ` ${p.key.slice(0, 4)}` : ''}`
                 return (
                   <text key={p.key} x={xOf(i)} y={H - 6} textAnchor="middle"
                     fontSize={9.5} fill="var(--c-fg)"
-                    fillOpacity={hover === i ? 0.85 : b ? 0.6 : 0.42}
-                    fontWeight={b && n > 26 ? 700 : 400}>
+                    fillOpacity={hover === i ? 0.85 : isJan ? 0.62 : 0.42}
+                    fontWeight={isJan ? 700 : 400}>
                     {label}
                   </text>
                 )
@@ -749,7 +802,7 @@ export function FinancialsView() {
       {!loading && mode === 'timeline' && all.length > 2 && (
         <>
           <div className="c-label" style={{ margin: '11px 0 5px' }}>
-            Drag the handles to zoom · drag the middle to pan
+            Pinch the graph to zoom · two-finger scroll to pan · or drag the handles below
           </div>
           <div
             ref={brushRef}
