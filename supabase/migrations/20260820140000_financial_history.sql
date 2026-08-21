@@ -15,10 +15,27 @@
 -- one file. When the historical window ages out, drop this table and nothing
 -- else changes.
 --
--- LONG FORMAT, NOT WIDE. The spreadsheet has four money columns per session
--- (room / assistant / engineering / rental). Those become four ROWS. Wide would
--- force the stacked chart, the room filter and the year-over-year compare to
--- each special-case four column names; long makes all three the same group-by.
+-- THE SOURCE'S ACTUAL SHAPE (verified against the real workbook, 2026-08-20).
+-- "PRS Daily Numbers", one tab per year 2017–2029, grain DAY × ROOM. Per room
+-- it carries Studio, Rental Profit and Engineer, plus two derived columns and
+-- four levels of roll-up that must never be imported. There is NO session, NO
+-- client, NO artist and NO assistant column anywhere in nine years of it —
+-- `client_name`/`artist_name` stay null for every historical row, and the
+-- 'assistant' category has no history at all and charts as zero until PRSFlo's
+-- own data takes over. Those columns exist for the live side, which does know.
+--
+-- LONG FORMAT, NOT WIDE. Each room's money columns become their own ROWS. Wide
+-- would force the stacked chart, the room filter and the year-over-year compare
+-- to each special-case a set of column names; long makes all three the same
+-- group-by.
+--
+-- 'rental' IS PRS'S SHARE, NOT THE GROSS (Eli, 2026-08-20). Own gear rents at
+-- full cost; contracted gear earns a 30% fee, and the sheet's "Rental Profit"
+-- is what Paramount actually made. `rental_rows.charge` on the live side is the
+-- GROSS figure and does not yet model that split, so live rentals will read
+-- high against history until the work order learns the difference. That is a WO
+-- change, not an import change — but it is why the rental line will step up at
+-- the cutover for a reason that is not growth.
 --
 -- `direction` is 'revenue' for everything imported today. It exists because Eli
 -- may later want what we PAY OUT charted against what we bill (assistant wages,
@@ -27,20 +44,26 @@
 -- rewrite of every consumer.
 --
 -- Idempotent. Run by hand in the Supabase SQL editor BEFORE the Financials tab
--- ships. Import is a separate step (scripts/import-financial-history.mjs).
+-- ships. Import is two separate steps: scripts/extract-financial-history.py
+-- (workbook → one CSV per year, reconciled against the sheet's own roll-ups)
+-- then scripts/import-financial-history.mjs (CSVs → this table).
 
 create table if not exists financial_history (
   id            uuid primary key default gen_random_uuid(),
 
   session_date  date not null,
 
-  -- Venue + room as PLAIN TEXT, matching lib/studios.ts vocabulary:
+  -- Venue + room as PLAIN TEXT, normalised by the extractor to lib/studios.ts
+  -- vocabulary so a historical room and a live one are the same string and land
+  -- in the same filter chip:
   --   venue: 'Paramount' | 'Ameraycan' | 'Encore' | 'Track'
   --   room:  'Studio A'..'Studio X', or 'North' | 'South' for Track
-  -- Deliberately not a FK. The spreadsheet's room names are whatever was typed
-  -- between 2023 and now; a FK would reject the import instead of letting the
-  -- mapping table below absorb the variants. Unmapped rows import with the raw
-  -- string so nothing is silently dropped.
+  -- Deliberately not a FK, for two reasons. The sheet's own headers drift
+  -- (Track was NTH/STH in 2020, N/S after, and one header lost its separator
+  -- entirely), and SEVEN of the nineteen rooms here — PRS D/F/H, ARS C,
+  -- ERS C/D/E, $2.5M of lifetime revenue — are not in STUDIO_LOCATIONS at all.
+  -- A FK would reject a third of the archive to enforce a list that is itself
+  -- incomplete.
   venue         text not null,
   room          text not null,
 
@@ -55,8 +78,11 @@ create table if not exists financial_history (
   client_name   text,
   artist_name   text,
 
-  -- Provenance. Which CSV/tab produced this row, and a stable hash of the
-  -- source line so a re-run of the importer updates instead of duplicating.
+  -- Provenance. `source_file` is a stable label ('PRS Daily Numbers.xlsx'),
+  -- `source_key` is '<tab>#<date>#<venue>#<room>' — deterministic and readable,
+  -- so a re-run of the importer upserts instead of doubling the books, and a
+  -- suspect figure can be traced back to one cell in one tab. A hash would do
+  -- the same job while telling nobody anything.
   source_file   text not null,
   source_key    text not null,
 

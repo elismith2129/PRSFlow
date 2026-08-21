@@ -2,74 +2,63 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Financials — revenue over time, inside the billing hub, owners only.
 //
-// Eli, 2026-08-20: "most important is YoY, month by month, room by room… costs
-// over the months plus a graph of how much we are bringing in." Those are not
-// four charts. They are one chart with three controls, so the ranking above is
-// the ranking of the controls: the year-over-year toggle sits first and is on
-// by default, grain second, rooms third.
+// ONE LINE. Eli, 2026-08-20, on the first build's stacked bars: "I don't really
+// need to see engineering against the room or rentals against the engineering.
+// It's really just to help me with historical sliding." So the chart draws a
+// single series and the metric pills change WHICH one — each on its own scale,
+// where its movement is actually legible. Room revenue is ~85% of the total; a
+// stack made engineering and rentals two flat smears at the bottom of the axis.
 //
-// (The four streams were described as "costs". They are what the client is
-// CHARGED — room, assistant, engineering, rental — so they are revenue, and
-// stacked they ARE "how much we are bringing in". Confirmed with Eli before
-// building. `financial_history.direction` leaves room for real outgoings later.)
+// THE COMPARISON IS ALWAYS ON, NEVER A MODE. "How does this July compare to
+// last July" is the question he asks first, so hovering any month prints that
+// month, its figure, the same month a year earlier, and the change from the
+// month before. Nothing to switch into. The dashed line is last year shadowing
+// this one; where they separate is where something changed.
 //
-// NO CHART LIBRARY, DELIBERATELY. Recharts is not installed, and this is a
-// stacked bar with a comparison line — perhaps eighty lines of SVG. A dependency
-// would arrive with its own colour, radius, font and tooltip opinions, every one
-// of which fights the carved system, and the fight would be won with override
-// CSS. Hand-drawn SVG reads the tokens directly.
+// THE PARTIAL MONTH IS COMPARED LIKE FOR LIKE. See lib/financials buildSeries —
+// an August that has run to the 18th is set against August 1–18 of last year,
+// not against all 31 days. The point renders hollow on a dashed segment so it
+// is visibly unfinished. No projection: a forecast drawn in the same ink as
+// measured data is worse than an obvious gap.
 //
-// Carved laws honoured: no borders anywhere (the chart's baseline reference is a
-// WASH BAND, not a hairline — Law 1 admits no exception for gridlines); the plot
-// area is carved IN (`c-inset2`), every control sticks OUT (`c-control`); the
-// compact scale of the density ruling, not the mock's ceiling.
+// NO CHART LIBRARY, DELIBERATELY. Recharts is not installed, and this is one
+// path, one dashed path and a brush. A dependency would arrive with its own
+// colour, radius, font and tooltip opinions, every one of which fights the
+// carved system, and the fight would be won with override CSS.
+//
+// NO <table> ANYWHERE. The first build put the figures in one, styled with
+// `.c-table-row` — which is `display: grid` in globals.css, so it destroyed the
+// table layout and stacked every cell into the first column. The readout is a
+// flex row now; there is no table to break.
+//
+// Carved laws honoured: no borders (the chart's levels come from WASH BANDS,
+// not hairlines — Law 1 admits no exception for gridlines); the plot is carved
+// IN (`c-inset2`), controls stick OUT (`c-control`); compact scale per the
+// density ruling.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/format'
 import { getLocalToday } from '@/lib/time'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import {
-  fetchFinancialLines, filterLines, bucketLines, roomsIn, sumLines,
-  sumByCategory, pctChange, priorYearKey, roomKey,
-  CATEGORIES, CATEGORY_LABEL, CATEGORY_VAR,
-  type FinLine, type FinCategory, type Grain, type FinBucket,
+  fetchFinancialLines, buildSeries, roomOptions, scopeMatches, scopeLabel,
+  pctChange, priorYearKey, monthLabel,
+  METRICS,
+  type FinLine, type Metric, type RoomScope, type SeriesPoint,
 } from '@/lib/financials'
 
-type Span = 12 | 24 | 36 | 60
-
-const SPANS: { key: Span; label: string }[] = [
-  { key: 12, label: '1y' },
-  { key: 24, label: '2y' },
-  { key: 36, label: '3y' },
-  { key: 60, label: '5y' },
-]
-
-const GRAINS: { key: Grain; label: string }[] = [
-  { key: 'month', label: 'Month' },
-  { key: 'quarter', label: 'Quarter' },
-  { key: 'year', label: 'Year' },
-]
-
-/** First of the month, `months` back from today. */
-function startOfSpan(todayISO: string, months: number): string {
-  const y = Number(todayISO.slice(0, 4))
-  const m = Number(todayISO.slice(5, 7))
-  const total = y * 12 + (m - 1) - (months - 1)
-  return `${String(Math.floor(total / 12)).padStart(4, '0')}-${String((total % 12) + 1).padStart(2, '0')}-01`
-}
-
 /**
- * `formatCurrency` is typed for DISPLAY STRINGS — it is the formatter for money
- * that arrives out of a form field. Everything here is a computed number, so it
- * goes through one adapter rather than nine casts. The shared signature is left
- * alone deliberately: other chats are open on this repo and a widened parameter
- * type on a helper this widely imported is not this change's business.
+ * `formatCurrency` is typed for DISPLAY STRINGS — the formatter for money that
+ * arrives out of a form field. Everything here is a computed number, so it goes
+ * through one adapter rather than a cast at every call. The shared signature is
+ * left alone: other chats are open on this repo, and widening a parameter type
+ * on a helper this widely imported is not this change's business.
  */
 const usd = (n: number) => formatCurrency(String(n))
 
-/** $12,400 → "$12.4k". Axis and bar labels only; tiles print the real figure. */
+/** $12,400 → "$12.4k". Axis labels only; the readout prints the real figure. */
 function compact(n: number): string {
   const abs = Math.abs(n)
   if (abs >= 1_000_000) return `$${(n / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1)}m`
@@ -77,39 +66,41 @@ function compact(n: number): string {
   return `$${Math.round(n)}`
 }
 
+/** ISO of the first of the month, `months` back from today. */
+function startOfSpan(todayISO: string, months: number): string {
+  const total = Number(todayISO.slice(0, 4)) * 12 + (Number(todayISO.slice(5, 7)) - 1) - (months - 1)
+  return `${String(Math.floor(total / 12)).padStart(4, '0')}-${String((total % 12) + 1).padStart(2, '0')}-01`
+}
+
+// Ten years back covers the whole archive. The window the user actually sees is
+// the brush, so this is fetched once and never re-fetched by a control.
+const SPAN_MONTHS = 132
+
 export function FinancialsView() {
   const isMobile = useIsMobile()
 
   const [lines, setLines] = useState<FinLine[]>([])
   const [loading, setLoading] = useState(true)
-
-  const [span, setSpan] = useState<Span>(24)
-  const [grain, setGrain] = useState<Grain>('month')
-  // YoY DEFAULTS ON. It is the question Eli said he asks first; a control that
-  // answers the main question but starts off is a control most people never find.
+  const [metric, setMetric] = useState<Metric>('total')
+  const [scope, setScope] = useState<RoomScope>('')
   const [yoy, setYoy] = useState(true)
-  const [rooms, setRooms] = useState<Set<string>>(new Set())
-  const [cats, setCats] = useState<Set<FinCategory>>(new Set())
   const [hover, setHover] = useState<number | null>(null)
+  const [win, setWin] = useState<{ a: number; b: number } | null>(null)
 
   const today = getLocalToday()
-  // Fetch a year MORE than is charted, always: the year-over-year overlay needs
-  // the prior period, and re-fetching when the toggle flips would make a
-  // display option cost a round trip.
-  const chartFrom = startOfSpan(today, span)
-  const fetchFrom = startOfSpan(today, span + 12)
+  const from = startOfSpan(today, SPAN_MONTHS)
 
   const load = useCallback(async () => {
-    const data = await fetchFinancialLines(fetchFrom, today)
+    const data = await fetchFinancialLines(from, today)
     setLines(data)
     setLoading(false)
-  }, [fetchFrom, today])
+  }, [from, today])
 
   useEffect(() => {
     load()
     // Standing rule: every fetch pairs with a channel. Three tables feed this
-    // screen, so all three are watched; the history table is included because a
-    // service-role import should light the chart up without a refresh.
+    // screen; the history table is included so a service-role import lights the
+    // chart up without a refresh.
     const ch = supabase
       .channel('billing-financials')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_time_rows' }, () => load())
@@ -119,200 +110,221 @@ export function FinancialsView() {
     return () => { supabase.removeChannel(ch) }
   }, [load])
 
-  const allRooms = useMemo(() => roomsIn(lines), [lines])
+  const venues = useMemo(() => roomOptions(lines), [lines])
 
-  const shown = useMemo(
-    () => filterLines(lines, { rooms, categories: cats }),
-    [lines, rooms, cats],
+  const scoped = useMemo(
+    () => (scope ? lines.filter(l => scopeMatches(scope, l)) : lines),
+    [lines, scope],
   )
 
-  const buckets = useMemo(
-    () => bucketLines(shown, grain, chartFrom, today),
-    [shown, grain, chartFrom, today],
+  // The full series is always built; the brush only chooses what is DRAWN. That
+  // keeps zooming instant and keeps the year-over-year lookup able to see
+  // outside the visible window.
+  const all = useMemo(
+    () => buildSeries(scoped, metric, from, today),
+    [scoped, metric, from, today],
   )
 
-  // Prior-year lookup, keyed by bucket. Built from the SAME filtered lines, so
-  // narrowing to one room narrows its comparison too — a compare that ignored
-  // the filter would silently answer a different question than the one on screen.
-  const priorByKey = useMemo(() => {
-    const all = bucketLines(shown, grain, fetchFrom, today)
-    const m = new Map<string, number>()
-    for (const b of all) m.set(b.key, b.total)
-    return m
-  }, [shown, grain, fetchFrom, today])
+  // Land on the last three years — enough to read the arc without the 2017 tail
+  // squeezing recent months into noise.
+  const bounds = win ?? { a: Math.max(0, all.length - 37), b: all.length - 1 }
+  const view = all.slice(bounds.a, bounds.b + 1)
 
-  const activeCats = cats.size === 0 ? CATEGORIES : CATEGORIES.filter(c => cats.has(c))
+  const totalShown = view.reduce((s, p) => s + p.value, 0)
+  const priorShown = view.reduce((s, p) => s + (p.prior ?? 0), 0)
 
-  // ── Tiles ─────────────────────────────────────────────────────────────────
-  const inRange = useMemo(
-    () => shown.filter(l => l.date >= chartFrom && l.date <= today),
-    [shown, chartFrom, today],
-  )
-  const total = sumLines(inRange)
-  const priorTotal = useMemo(
-    () => buckets.reduce((s, b) => s + (priorByKey.get(priorYearKey(b.key)) ?? 0), 0),
-    [buckets, priorByKey],
-  )
-  const delta = pctChange(total, priorTotal)
+  const active = hover !== null && view[hover] ? view[hover] : view[view.length - 1]
 
-  const topRoom = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const l of inRange) {
-      const k = roomKey(l.venue, l.room)
-      if (k) m.set(k, (m.get(k) ?? 0) + l.amount)
-    }
-    let best = ''; let bestV = -Infinity
-    for (const [k, v] of m) if (v > bestV) { best = k; bestV = v }
-    return best ? { key: best, value: bestV } : null
-  }, [inRange])
-
-  const catTotals = useMemo(() => sumByCategory(inRange), [inRange])
-  const topCat = useMemo(() => {
-    let best: FinCategory = 'room'; let bestV = -Infinity
-    for (const c of CATEGORIES) if (catTotals[c] > bestV) { best = c; bestV = catTotals[c] }
-    return bestV > 0 ? { key: best, value: bestV } : null
-  }, [catTotals])
-
-  // ── Chart geometry ────────────────────────────────────────────────────────
+  // ── Geometry ──────────────────────────────────────────────────────────────
   const W = 1000
-  const H = isMobile ? 210 : 260
-  const PAD_L = 4
-  const PAD_R = 4
-  const PAD_T = 14
-  const PAD_B = 22
-  const plotH = H - PAD_T - PAD_B
-  const plotW = W - PAD_L - PAD_R
+  const H = isMobile ? 210 : 300
+  const PL = 54, PR = 10, PT = 14, PB = 24
+  const pw = W - PL - PR
+  const ph = H - PT - PB
 
-  const maxVal = useMemo(() => {
+  const max = useMemo(() => {
     let m = 0
-    for (const b of buckets) {
-      const stack = activeCats.reduce((s, c) => s + b.byCategory[c], 0)
-      if (stack > m) m = stack
-      if (yoy) {
-        const p = priorByKey.get(priorYearKey(b.key)) ?? 0
-        if (p > m) m = p
-      }
+    for (const p of view) {
+      if (p.value > m) m = p.value
+      if (yoy && p.prior && p.prior > m) m = p.prior
     }
-    return m || 1
-  }, [buckets, activeCats, yoy, priorByKey])
+    return (m || 1) * 1.1
+  }, [view, yoy])
 
-  const n = Math.max(buckets.length, 1)
-  const slot = plotW / n
-  const barW = Math.max(2, Math.min(slot * 0.62, 54))
-  const yOf = (v: number) => PAD_T + plotH - (v / maxVal) * plotH
-  const xOf = (i: number) => PAD_L + slot * i + slot / 2
+  const n = Math.max(view.length, 1)
+  const step = n > 1 ? pw / (n - 1) : 0
+  const xOf = (i: number) => PL + step * i
+  const yOf = (v: number) => PT + ph - (v / max) * ph
 
-  const priorPath = useMemo(() => {
-    if (!yoy) return ''
-    return buckets
-      .map((b, i) => `${i === 0 ? 'M' : 'L'}${xOf(i).toFixed(1)},${yOf(priorByKey.get(priorYearKey(b.key)) ?? 0).toFixed(1)}`)
-      .join(' ')
-  }, [buckets, yoy, priorByKey, maxVal, slot])
+  const path = (pts: [number, number][]) =>
+    pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')
 
-  const toggle = <T,>(set: Set<T>, v: T): Set<T> =>
-    set.has(v) ? new Set([...set].filter(x => x !== v)) : new Set([...set, v])
+  // The partial month is split off so its segment can be dashed. It is the last
+  // point, so the solid line stops one short and a two-point dashed run closes
+  // the gap.
+  const lastPartial = view.length > 0 && view[view.length - 1].partial
+  const solidCount = lastPartial ? view.length - 1 : view.length
+  const solid = view.slice(0, solidCount).map((p, i) => [xOf(i), yOf(p.value)] as [number, number])
+  const tail: [number, number][] = lastPartial && view.length > 1
+    ? [[xOf(view.length - 2), yOf(view[view.length - 2].value)],
+       [xOf(view.length - 1), yOf(view[view.length - 1].value)]]
+    : []
 
-  function exportCsv() {
-    const head = ['Period', ...CATEGORIES.map(c => CATEGORY_LABEL[c]), 'Total', 'Prior year']
-    const rows = buckets.map(b => [
-      b.key,
-      ...CATEGORIES.map(c => b.byCategory[c].toFixed(2)),
-      b.total.toFixed(2),
-      (priorByKey.get(priorYearKey(b.key)) ?? 0).toFixed(2),
-    ])
-    const csv = [head, ...rows].map(r => r.join(',')).join('\n')
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `prsflo-revenue-${chartFrom}-to-${today}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+  const priorPts = view
+    .map((p, i) => (p.prior === null ? null : [xOf(i), yOf(p.prior)] as [number, number]))
+    .filter((p): p is [number, number] => p !== null)
+
+  // ── Brush ─────────────────────────────────────────────────────────────────
+  const brushRef = useRef<HTMLDivElement>(null)
+  const dragRef = useRef<{ mode: 'l' | 'r' | 'm'; from: number } | null>(null)
+
+  const brushMax = useMemo(() => all.reduce((m, p) => Math.max(m, p.value), 0) || 1, [all])
+  const brushPath = useMemo(
+    () => path(all.map((p, i) => [(i / Math.max(all.length - 1, 1)) * 1000, 42 - (p.value / brushMax) * 36 - 3])),
+    [all, brushMax],
+  )
+
+  function brushIndex(clientX: number): number {
+    const el = brushRef.current
+    if (!el) return 0
+    const r = el.getBoundingClientRect()
+    return ((clientX - r.left) / r.width) * (all.length - 1)
   }
 
-  const chipStyle: React.CSSProperties = { fontSize: 11, padding: '4px 10px', borderRadius: 99 }
+  function onBrushMove(e: React.PointerEvent) {
+    const d = dragRef.current
+    if (!d) return
+    const f = brushIndex(e.clientX)
+    const cur = win ?? bounds
+    if (d.mode === 'l') setWin({ a: Math.max(0, Math.min(cur.b - 2, Math.round(f))), b: cur.b })
+    else if (d.mode === 'r') setWin({ a: cur.a, b: Math.min(all.length - 1, Math.max(cur.a + 2, Math.round(f))) })
+    else {
+      const shift = Math.round(f - d.from)
+      const width = cur.b - cur.a
+      const a = Math.max(0, Math.min(all.length - 1 - width, cur.a + shift))
+      setWin({ a, b: a + width })
+      dragRef.current = { mode: 'm', from: f }
+    }
+  }
+
+  const chip: React.CSSProperties = { fontSize: 11.5, padding: '4px 11px', borderRadius: 99 }
+  const pctColor = (p: number | null) =>
+    p === null ? undefined : p >= 0 ? 'var(--c-st-booked)' : 'var(--c-st-hot)'
+  const pctText = (p: number | null, blank = '—') =>
+    p === null ? blank : `${p >= 0 ? '+' : ''}${p.toFixed(1)}%`
 
   return (
     <div>
-      {/* CONTROLS — ordered by Eli's stated priority, not by convention.
-          Year-over-year leads because it is the question he asks first. */}
+      {/* CONTROLS. Metric first — it decides what the whole chart is about. */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
-        <button
-          className={`c-control c-soft${yoy ? ' c-on' : ''}`}
-          style={chipStyle}
-          onClick={() => setYoy(v => !v)}
-          aria-pressed={yoy}
-          title="Overlay the same period one year earlier"
+        <span style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {METRICS.map(m => (
+            <button
+              key={m.key}
+              className={`c-control c-soft${metric === m.key ? ' c-on' : ''}`}
+              style={chip}
+              onClick={() => setMetric(m.key)}
+              aria-pressed={metric === m.key}
+            >
+              {m.label}
+            </button>
+          ))}
+        </span>
+
+        <select
+          className="c-input"
+          value={scope}
+          onChange={e => setScope(e.target.value)}
+          style={{ fontSize: 11.5, padding: '4px 8px', maxWidth: 210 }}
+          aria-label="Room"
         >
-          vs last year
-        </button>
-
-        <span style={{ display: 'flex', gap: 4 }}>
-          {GRAINS.map(g => (
-            <button
-              key={g.key}
-              className={`c-control c-soft${grain === g.key ? ' c-on' : ''}`}
-              style={chipStyle}
-              onClick={() => setGrain(g.key)}
-            >
-              {g.label}
-            </button>
+          <option value="">All rooms</option>
+          {venues.map(v => (
+            <optgroup key={v.venue} label={v.venue}>
+              <option value={`venue:${v.venue}`}>{v.venue} — all rooms</option>
+              {v.rooms.map(r => (
+                <option key={r} value={`${v.venue} · ${r}`}>{v.venue} {r}</option>
+              ))}
+            </optgroup>
           ))}
-        </span>
-
-        <span style={{ display: 'flex', gap: 4 }}>
-          {SPANS.map(s => (
-            <button
-              key={s.key}
-              className={`c-control c-soft${span === s.key ? ' c-on' : ''}`}
-              style={chipStyle}
-              onClick={() => setSpan(s.key)}
-            >
-              {s.label}
-            </button>
-          ))}
-        </span>
+        </select>
 
         <span style={{ flex: 1 }} />
 
-        <button className="c-control c-soft" style={chipStyle} onClick={exportCsv}>
-          Export CSV
+        <button
+          className={`c-control c-soft${yoy ? ' c-on' : ''}`}
+          style={chip}
+          onClick={() => setYoy(v => !v)}
+          aria-pressed={yoy}
+        >
+          vs last year
         </button>
       </div>
 
-      {/* TILES — the same numbers the chart draws, never a second computation. */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
-        gap: 8, marginBottom: 10,
-      }}>
-        <Tile label="Billed, this range" value={usd(total)} />
-        <Tile
-          label="vs same range last year"
-          value={delta === null ? '—' : `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%`}
-          tone={delta === null ? undefined : delta >= 0 ? 'var(--c-st-booked)' : 'var(--c-st-hot)'}
-        />
-        <Tile
-          label={topRoom ? `Top room · ${topRoom.key.replace(' · ', ' ')}` : 'Top room'}
-          value={topRoom ? usd(topRoom.value) : '—'}
-        />
-        <Tile
-          label={topCat ? `Top stream · ${CATEGORY_LABEL[topCat.key]}` : 'Top stream'}
-          value={topCat ? usd(topCat.value) : '—'}
-        />
+      {/* READOUT — always answering. Shows the newest month at rest, whatever is
+          under the cursor while hovering. An empty state here would mean the
+          comparison is a thing you have to go and get. */}
+      <div
+        className="c-panel c-inset2"
+        style={{
+          display: 'flex', gap: isMobile ? 16 : 26, flexWrap: 'wrap', alignItems: 'baseline',
+          padding: '9px 13px', marginBottom: 10, minHeight: 40,
+        }}
+      >
+        {active ? (
+          <>
+            <Field
+              k={hover !== null ? 'Hovering' : 'Latest'}
+              v={active.partial
+                ? `${monthLabel(active.key)} 1–${active.throughDay}`
+                : `${monthLabel(active.key)} ${active.year}`}
+              note={active.partial ? 'partial month' : undefined}
+            />
+            <Field k={METRICS.find(m => m.key === metric)?.label ?? ''} v={usd(active.value)} />
+            <Field
+              k={`vs ${priorYearKey(active.key).slice(0, 4)}${active.partial ? ' same days' : ''}`}
+              v={pctText(pctChange(active.value, active.prior), active.value > 0 ? 'new' : '—')}
+              tone={pctColor(pctChange(active.value, active.prior))}
+              note={active.prior !== null ? usd(active.prior) : undefined}
+              small
+            />
+            <Field
+              k="vs last month"
+              v={(() => {
+                const i = all.findIndex(p => p.key === active.key)
+                const prev = i > 0 ? all[i - 1] : null
+                // A partial month against a whole previous month would report a
+                // fall that is only the calendar. Compared like for like or not
+                // at all.
+                if (!prev || active.partial) return '—'
+                return pctText(pctChange(active.value, prev.value))
+              })()}
+              tone={(() => {
+                const i = all.findIndex(p => p.key === active.key)
+                const prev = i > 0 ? all[i - 1] : null
+                if (!prev || active.partial) return undefined
+                return pctColor(pctChange(active.value, prev.value))
+              })()}
+              small
+            />
+          </>
+        ) : (
+          <span style={{ fontSize: 12, opacity: 0.5 }}>No data in this range.</span>
+        )}
       </div>
 
       {/* CHART */}
-      <div className="c-panel c-inset2" style={{ padding: '10px 12px 6px', position: 'relative' }}>
+      <div className="c-panel c-inset2" style={{ padding: '8px 10px 2px' }}>
         {loading ? (
           <div style={{ height: H, display: 'grid', placeItems: 'center', opacity: 0.5, fontSize: 12 }}>
             Loading revenue…
           </div>
-        ) : total === 0 ? (
+        ) : totalShown === 0 ? (
           <div style={{ height: H, display: 'grid', placeItems: 'center', textAlign: 'center', padding: 20 }}>
             <div>
               <div style={{ fontSize: 13, opacity: 0.7 }}>No billed revenue in this range.</div>
               <div style={{ fontSize: 11.5, opacity: 0.45, marginTop: 4 }}>
-                Widen the range, clear the room filter, or import the spreadsheet years.
+                Widen the window, choose All rooms, or import the spreadsheet years.
               </div>
             </div>
           </div>
@@ -322,254 +334,176 @@ export function FinancialsView() {
             width="100%"
             height={H}
             preserveAspectRatio="none"
-            onMouseLeave={() => setHover(null)}
+            style={{ display: 'block', cursor: 'crosshair' }}
             role="img"
-            aria-label="Revenue by period and stream"
+            aria-label={`${METRICS.find(m => m.key === metric)?.label} by month, ${scopeLabel(scope)}`}
+            onMouseMove={e => {
+              const r = e.currentTarget.getBoundingClientRect()
+              const x = ((e.clientX - r.left) / r.width) * W
+              setHover(Math.max(0, Math.min(n - 1, Math.round((x - PL) / (step || 1)))))
+            }}
+            onMouseLeave={() => setHover(null)}
           >
-            {/* Reference bands, not gridlines. Law 1 admits no hairlines, so the
-                eye gets its levels from alternating wash fills instead. */}
+            {/* Levels from wash bands — Law 1 admits no hairlines. */}
             {[0, 1, 2, 3].map(i => (
-              <rect
-                key={i}
-                x={PAD_L} y={PAD_T + (plotH / 4) * i}
-                width={plotW} height={plotH / 4}
-                fill={i % 2 === 0 ? 'var(--c-wash)' : 'transparent'}
+              <g key={i}>
+                {i % 2 === 0 && (
+                  <rect x={PL} y={PT + (ph / 4) * i} width={pw} height={ph / 4}
+                    fill="var(--c-wash)" opacity={0.5} />
+                )}
+                <text x={PL - 8} y={PT + (ph / 4) * i + 3} textAnchor="end"
+                  fontSize={9.5} fill="var(--c-fg)" fillOpacity={0.42}>
+                  {compact(max * (1 - i / 4))}
+                </text>
+              </g>
+            ))}
+
+            {yoy && priorPts.length > 1 && (
+              <path d={path(priorPts)} fill="none" stroke="var(--c-fg)" strokeOpacity={0.42}
+                strokeWidth={1.5} strokeDasharray="5 4" />
+            )}
+
+            {solid.length > 1 && (
+              <>
+                <path
+                  d={`${path(solid)} L${solid[solid.length - 1][0].toFixed(1)},${PT + ph} L${solid[0][0].toFixed(1)},${PT + ph} Z`}
+                  fill="var(--c-fg)" fillOpacity={0.08}
+                />
+                <path d={path(solid)} fill="none" stroke="var(--c-fg)" strokeWidth={2.2} strokeLinejoin="round" />
+              </>
+            )}
+            {tail.length === 2 && (
+              <path d={path(tail)} fill="none" stroke="var(--c-fg)" strokeWidth={2.2} strokeDasharray="4 3" />
+            )}
+
+            {n <= 40 && view.map((p, i) => (
+              <circle
+                key={p.key}
+                cx={xOf(i)} cy={yOf(p.value)} r={hover === i ? 4 : 2.3}
+                fill={p.partial ? 'var(--c-bg)' : 'var(--c-fg)'}
+                stroke={p.partial ? 'var(--c-fg)' : 'none'} strokeWidth={p.partial ? 1.6 : 0}
               />
             ))}
 
-            {buckets.map((b, i) => {
-              let acc = 0
-              const stackTotal = activeCats.reduce((s, c) => s + b.byCategory[c], 0)
+            {hover !== null && view[hover] && (
+              <line x1={xOf(hover)} x2={xOf(hover)} y1={PT} y2={PT + ph}
+                stroke="var(--c-fg)" strokeOpacity={0.35} strokeWidth={1} />
+            )}
+
+            {view.map((p, i) => {
+              const every = Math.max(1, Math.ceil(n / 13))
+              if (i % every) return null
+              const label = n > 40 ? (p.key.slice(5) === '01' ? p.year : '') : p.label
+              if (!label) return null
               return (
-                <g key={b.key}>
-                  {/* Full-slot hit area — hovering between bars must still
-                      target the period, or thin bars become unhoverable. */}
-                  <rect
-                    x={PAD_L + slot * i} y={PAD_T} width={slot} height={plotH}
-                    fill="transparent"
-                    onMouseEnter={() => setHover(i)}
-                  />
-                  {activeCats.map(c => {
-                    const v = b.byCategory[c]
-                    if (v <= 0) return null
-                    const h = (v / maxVal) * plotH
-                    const y = PAD_T + plotH - acc - h
-                    acc += h
-                    return (
-                      <rect
-                        key={c}
-                        x={xOf(i) - barW / 2} y={y}
-                        width={barW} height={Math.max(h, 0.7)}
-                        fill={CATEGORY_VAR[c]}
-                        opacity={hover === null || hover === i ? 1 : 0.35}
-                        pointerEvents="none"
-                      />
-                    )
-                  })}
-                  {stackTotal > 0 && slot > 34 && (
-                    <text
-                      x={xOf(i)} y={PAD_T + plotH - acc - 4}
-                      textAnchor="middle" fontSize={9.5}
-                      fill="var(--c-fg)" opacity={0.5} pointerEvents="none"
-                    >
-                      {compact(stackTotal)}
-                    </text>
-                  )}
-                  <text
-                    x={xOf(i)} y={H - 7}
-                    textAnchor="middle" fontSize={9.5}
-                    fill="var(--c-fg)" opacity={hover === i ? 0.85 : 0.4}
-                    pointerEvents="none"
-                  >
-                    {/* Month labels thin out on long spans rather than
-                        overlapping into mush. */}
-                    {grain === 'month' && n > 26 && i % 3 !== 0 ? '' : b.label}
-                  </text>
-                </g>
+                <text key={p.key} x={xOf(i)} y={H - 6} textAnchor="middle"
+                  fontSize={9.5} fill="var(--c-fg)" fillOpacity={hover === i ? 0.85 : 0.42}>
+                  {label}
+                </text>
               )
             })}
-
-            {/* Prior year as a LINE over the stack, not a second set of bars.
-                Bars are this year's composition; the line is the benchmark it is
-                being read against. Two bar sets would make them look like peers. */}
-            {yoy && priorPath && (
-              <>
-                <path
-                  d={priorPath} fill="none"
-                  stroke="var(--c-fg)" strokeOpacity={0.55}
-                  strokeWidth={1.6} strokeDasharray="4 3"
-                  pointerEvents="none"
-                />
-                {buckets.map((b, i) => (
-                  <circle
-                    key={b.key}
-                    cx={xOf(i)} cy={yOf(priorByKey.get(priorYearKey(b.key)) ?? 0)}
-                    r={hover === i ? 3 : 1.8}
-                    fill="var(--c-fg)" opacity={0.6} pointerEvents="none"
-                  />
-                ))}
-              </>
-            )}
           </svg>
         )}
+      </div>
 
-        {/* Hover readout. A panel under the chart rather than a floating
-            tooltip: it never covers the bars it describes, and it holds still
-            long enough to read four figures off it. */}
-        {hover !== null && buckets[hover] && (
-          <div style={{
-            display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'baseline',
-            padding: '6px 2px 2px', fontSize: 11.5,
-          }}>
-            <strong className="c-mono" style={{ fontSize: 12 }}>{buckets[hover].key}</strong>
-            {activeCats.map(c => (
-              <span key={c} style={{ opacity: 0.8 }}>
-                <span style={{
-                  display: 'inline-block', width: 7, height: 7, borderRadius: 2,
-                  background: CATEGORY_VAR[c], marginRight: 5,
-                }} />
-                {CATEGORY_LABEL[c]} {usd(buckets[hover].byCategory[c])}
-              </span>
-            ))}
-            <span style={{ fontWeight: 700 }}>Total {usd(buckets[hover].total)}</span>
-            {yoy && (
-              <span style={{ opacity: 0.6 }}>
-                Last year {usd(priorByKey.get(priorYearKey(buckets[hover].key)) ?? 0)}
-              </span>
-            )}
+      {/* BRUSH — the whole archive, with the drawn window carved out of it. */}
+      {!loading && all.length > 2 && (
+        <>
+          <div className="c-label" style={{ margin: '11px 0 5px' }}>
+            Drag the handles to zoom · drag the middle to pan
           </div>
-        )}
-      </div>
-
-      {/* LEGEND — clickable, so the legend IS the category filter. A separate
-          filter control next to a legend that shows the same four words is two
-          controls for one job. */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '10px 0' }}>
-        {CATEGORIES.map(c => {
-          const on = cats.size === 0 || cats.has(c)
-          return (
-            <button
-              key={c}
-              className="c-control c-soft"
-              style={{ ...chipStyle, opacity: on ? 1 : 0.4 }}
-              onClick={() => setCats(prev => {
-                // Clicking one of "all on" ISOLATES it. Turning the last one off
-                // would chart nothing, so it resets to all instead.
-                if (prev.size === 0) return new Set(CATEGORIES.filter(x => x !== c))
-                const next = toggle(prev, c)
-                return next.size === 0 ? new Set() : next
-              })}
-              aria-pressed={on}
+          <div
+            ref={brushRef}
+            className="c-panel c-inset2"
+            style={{ position: 'relative', height: 42, padding: 0, overflow: 'hidden', touchAction: 'none' }}
+            onPointerMove={onBrushMove}
+            onPointerUp={() => { dragRef.current = null }}
+            onPointerLeave={() => { dragRef.current = null }}
+          >
+            <svg viewBox="0 0 1000 42" width="100%" height={42} preserveAspectRatio="none" style={{ display: 'block' }}>
+              <path d={`${brushPath} L1000,42 L0,42 Z`} fill="var(--c-fg)" fillOpacity={0.14} />
+              <path d={brushPath} fill="none" stroke="var(--c-fg)" strokeOpacity={0.5} strokeWidth={1.2} />
+            </svg>
+            {([['left', 0, bounds.a], ['right', bounds.b + 1, all.length - 1]] as const).map(([side, s, e]) => (
+              <div
+                key={side}
+                style={{
+                  position: 'absolute', top: 0, bottom: 0,
+                  [side]: 0,
+                  width: `${(Math.max(e - s, 0) / Math.max(all.length - 1, 1)) * 100}%`,
+                  background: 'rgba(0,0,0,0.55)', pointerEvents: 'none',
+                }}
+              />
+            ))}
+            <div
+              style={{
+                position: 'absolute', top: 0, bottom: 0, cursor: 'grab',
+                left: `${(bounds.a / Math.max(all.length - 1, 1)) * 100}%`,
+                width: `${((bounds.b - bounds.a) / Math.max(all.length - 1, 1)) * 100}%`,
+              }}
+              onPointerDown={e => {
+                e.currentTarget.setPointerCapture(e.pointerId)
+                dragRef.current = { mode: 'm', from: brushIndex(e.clientX) }
+              }}
             >
-              <span style={{
-                display: 'inline-block', width: 8, height: 8, borderRadius: 2,
-                background: CATEGORY_VAR[c], marginRight: 6,
-              }} />
-              {CATEGORY_LABEL[c]}
-              <span style={{ opacity: 0.5, marginLeft: 6 }}>{compact(catTotals[c])}</span>
-            </button>
-          )
-        })}
-      </div>
+              {(['l', 'r'] as const).map(h => (
+                <div
+                  key={h}
+                  onPointerDown={e => {
+                    e.stopPropagation()
+                    e.currentTarget.setPointerCapture(e.pointerId)
+                    dragRef.current = { mode: h, from: brushIndex(e.clientX) }
+                  }}
+                  style={{
+                    position: 'absolute', top: 0, bottom: 0, width: 14,
+                    [h === 'l' ? 'left' : 'right']: -7, cursor: 'ew-resize',
+                  }}
+                >
+                  <div style={{
+                    position: 'absolute', top: 8, bottom: 8, left: 5, width: 3,
+                    borderRadius: 2, background: 'var(--c-fg)', opacity: 0.8,
+                  }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
-      {/* ROOMS */}
-      {allRooms.length > 0 && (
-        <div style={{ marginBottom: 10 }}>
-          <span className="c-label" style={{ display: 'block', marginBottom: 5 }}>
-            Rooms {rooms.size > 0 && `· ${rooms.size} of ${allRooms.length}`}
+      {/* Range summary + the one approximation, stated where it can be acted on. */}
+      {!loading && view.length > 0 && (
+        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'baseline', margin: '10px 2px 0', fontSize: 11.5 }}>
+          <span style={{ opacity: 0.55 }}>
+            {view[0].key} → {view[view.length - 1].key} · {scopeLabel(scope)}
           </span>
-          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-            <button
-              className={`c-control c-soft${rooms.size === 0 ? ' c-on' : ''}`}
-              style={chipStyle}
-              onClick={() => setRooms(new Set())}
-            >
-              All rooms
-            </button>
-            {allRooms.map(k => (
-              <button
-                key={k}
-                className={`c-control c-soft${rooms.has(k) ? ' c-on' : ''}`}
-                style={chipStyle}
-                onClick={() => setRooms(prev => toggle(prev, k))}
-              >
-                {k.replace(' · ', ' ')}
-              </button>
-            ))}
-          </div>
+          <span><strong>{usd(totalShown)}</strong></span>
+          {yoy && priorShown > 0 && (
+            <span style={{ color: pctColor(pctChange(totalShown, priorShown)) }}>
+              {pctText(pctChange(totalShown, priorShown))} vs the year before
+            </span>
+          )}
         </div>
       )}
 
-      {/* TABLE — the chart's own numbers, readable. Not a second query. */}
-      {!loading && buckets.length > 0 && (
-        <div className="c-panel c-inset2" style={{ padding: '8px 10px', overflowX: 'auto' }}>
-          <table className="c-table" style={{ fontSize: 11.5, minWidth: 520 }}>
-            <thead>
-              <tr style={{ opacity: 0.55, textAlign: 'right' }}>
-                <th style={{ textAlign: 'left', padding: '4px 8px', fontWeight: 600 }}>Period</th>
-                {activeCats.map(c => (
-                  <th key={c} style={{ padding: '4px 8px', fontWeight: 600 }}>{CATEGORY_LABEL[c]}</th>
-                ))}
-                <th style={{ padding: '4px 8px', fontWeight: 600 }}>Total</th>
-                {yoy && <th style={{ padding: '4px 8px', fontWeight: 600 }}>Last yr</th>}
-                {yoy && <th style={{ padding: '4px 8px', fontWeight: 600 }}>Δ</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {[...buckets].reverse().map(b => {
-                const prior = priorByKey.get(priorYearKey(b.key)) ?? 0
-                const d = pctChange(b.total, prior)
-                return (
-                  <tr key={b.key} className="c-table-row" style={{ textAlign: 'right' }}>
-                    <td className="c-mono" style={{ textAlign: 'left', padding: '4px 8px' }}>{b.key}</td>
-                    {activeCats.map(c => (
-                      <td key={c} style={{ padding: '4px 8px', opacity: b.byCategory[c] ? 1 : 0.3 }}>
-                        {usd(b.byCategory[c])}
-                      </td>
-                    ))}
-                    <td style={{ padding: '4px 8px', fontWeight: 700 }}>{usd(b.total)}</td>
-                    {yoy && <td style={{ padding: '4px 8px', opacity: 0.6 }}>{usd(prior)}</td>}
-                    {yoy && (
-                      <td style={{
-                        padding: '4px 8px',
-                        color: d === null ? undefined
-                          : d >= 0 ? 'var(--c-st-booked)' : 'var(--c-st-hot)',
-                        opacity: d === null ? 0.4 : 1,
-                      }}>
-                        {d === null ? (b.total > 0 ? 'new' : '—') : `${d >= 0 ? '+' : ''}${d.toFixed(0)}%`}
-                      </td>
-                    )}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* The rental approximation, stated where it can be acted on rather than
-          buried in a source comment. */}
-      <p style={{ fontSize: 10.5, opacity: 0.45, margin: '8px 4px 0', lineHeight: 1.5 }}>
-        Billed amounts by session date — not payments received. Rentals attach to a work
-        order rather than to a room, so a rental is counted against the room its work order
-        started in; totals across all rooms are exact.
+      <p style={{ fontSize: 10.5, opacity: 0.45, margin: '8px 2px 0', lineHeight: 1.5 }}>
+        Billed by session date — not payments received. Rentals attach to a work order rather
+        than a room, so a rental counts against the room its work order started in; totals
+        across all rooms are exact.
       </p>
     </div>
   )
 }
 
-function Tile({ label, value, tone }: { label: string; value: string; tone?: string }) {
+function Field({ k, v, tone, note, small }: {
+  k: string; v: string; tone?: string; note?: string; small?: boolean
+}) {
   return (
-    <div className="c-bstat">
-      <div className="c-arch" style={{ fontSize: 19, letterSpacing: '-0.02em', color: tone }}>
-        {value}
-      </div>
-      <div style={{
-        fontSize: 10, opacity: 0.55, marginTop: 1,
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-      }}>
-        {label}
-      </div>
+    <div>
+      <span className="c-label" style={{ display: 'block', marginBottom: 2 }}>{k}</span>
+      <span style={{ fontSize: small ? 13 : 17, fontWeight: 700, letterSpacing: '-0.02em', color: tone }}>
+        {v}
+      </span>
+      {note && <span style={{ fontSize: 11, opacity: 0.45, marginLeft: 6 }}>{note}</span>}
     </div>
   )
 }
