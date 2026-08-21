@@ -43,6 +43,7 @@
 
 import { supabase } from '@/lib/supabase'
 import { dbResult } from '@/lib/db'
+import { logAppError } from '@/lib/errlog'
 import { engChargeForRow } from '@/lib/woTotals'
 import { combineLocation } from '@/lib/studios'
 
@@ -321,12 +322,23 @@ export async function fetchSeries(
     p_from: fromISO,
     p_to: toISO,
   })
-  // Absent on a database where the migration has not run yet — the live half is
-  // still true, so this degrades rather than blanking the page.
+  // NO `dbResult` HERE, DELIBERATELY (2026-08-20).
+  //
+  // Two reasons. Its toast says "your change was NOT saved" — this is a READ,
+  // nothing was being saved, and telling someone their work was lost when it
+  // was not is worse than saying nothing. And this fires on every zoom, so a
+  // transient failure would stack a wall of identical toasts over the chart,
+  // which is exactly what happened.
+  //
+  // The call site falls back to the monthly rollup when this returns empty, so
+  // a failure costs resolution, not the page. Logged for Admin → Errors, and
+  // the connection-pool timeout is skipped even there: it is self-inflicted
+  // back-pressure, not a fault worth recording once a second.
   if (res.error) {
     const code = res.error.code
-    if (code !== '42883' && code !== '42P01' && code !== 'PGRST202') {
-      dbResult('Loading revenue series', res.error)
+    const transient = /connection pool|timeout|fetch failed/i.test(res.error.message ?? '')
+    if (code !== '42883' && code !== '42P01' && code !== 'PGRST202' && !transient) {
+      logAppError(res.error.message ?? String(res.error), { source: 'financials/series' })
     }
     return []
   }

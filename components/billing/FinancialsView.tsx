@@ -206,21 +206,41 @@ export function FinancialsView() {
   // Refetch the drawn line whenever the window, grain, metric or room changes.
   // Each request is bounded by construction (see the migration header) so it
   // can never hit the 1,000-row cap regardless of how far the archive grows.
+  //
+  // DEBOUNCED, AND THAT IS NOT A POLISH DETAIL (bug, 2026-08-20).
+  //
+  // The first version fetched on every change of the window. A trackpad pinch
+  // or two-finger scroll emits dozens of wheel events per second, each moving
+  // the window, so each gesture opened dozens of concurrent RPC pairs and
+  // drained Supabase's connection pool — "Timed out acquiring connection from
+  // connection pool", over and over. The zoom looked broken because the
+  // requests were failing, not because the gesture was not registering.
+  //
+  // 220ms is long enough that a whole gesture collapses into one request and
+  // short enough to feel immediate on release. The chart keeps drawing the
+  // previous series meanwhile, so the gesture stays smooth — the resolution
+  // catches up a fifth of a second after your fingers stop.
   useEffect(() => {
     if (mode !== 'timeline') return
     let cancelled = false
-    const priorFrom = shiftBack(fromISO, grain)
-    const priorTo = shiftBack(toISO, grain)
-    Promise.all([
-      fetchSeries(scope, metric, grain, fromISO, toISO),
-      compare ? fetchSeries(scope, metric, grain, priorFrom, priorTo) : Promise.resolve([]),
-    ]).then(([cur, prev]) => {
-      if (cancelled) return
-      setSeries(buildDrawPoints(
-        cur, prev, scoped, metric, grain, fromISO, toISO, latest || today,
-      ))
-    })
-    return () => { cancelled = true }
+    const timer = setTimeout(() => {
+      const priorFrom = shiftBack(fromISO, grain)
+      const priorTo = shiftBack(toISO, grain)
+      Promise.all([
+        fetchSeries(scope, metric, grain, fromISO, toISO),
+        compare ? fetchSeries(scope, metric, grain, priorFrom, priorTo) : Promise.resolve([]),
+      ]).then(([cur, prev]) => {
+        if (cancelled) return
+        // An empty result means the RPC is missing or failed. Keep whatever is
+        // already drawn rather than dropping to the coarse fallback mid-gesture,
+        // which would make the chart flicker between resolutions.
+        if (cur.length === 0) return
+        setSeries(buildDrawPoints(
+          cur, prev, scoped, metric, grain, fromISO, toISO, latest || today,
+        ))
+      })
+    }, 220)
+    return () => { cancelled = true; clearTimeout(timer) }
   }, [mode, scope, metric, grain, fromISO, toISO, compare, scoped, latest, today])
 
   /** Years the data actually covers, newest first. */
@@ -342,10 +362,16 @@ export function FinancialsView() {
         if (e.ctrlKey) {
           // PINCH. Exponential so each notch scales rather than adds — linear
           // steps crawl when zoomed out and overshoot when zoomed in.
-          const next = Math.round(width * Math.exp(e.deltaY * 0.012))
+          const factor = Math.exp(e.deltaY * 0.012)
+          let next = width * factor
+          // A pinch arrives as many SMALL deltas. `exp(1 × 0.012)` is 1.012, so
+          // on a 37-month window that is 37.4 — which rounds straight back to 37
+          // and the gesture does nothing at all. Force at least one unit of
+          // movement per event so small deltas accumulate instead of vanishing.
+          if (Math.round(next) === width) next = width + (factor > 1 ? 1 : -1)
           // Floor of 2 months: below that the window is finer than the brush
           // can express, since the brush indexes months.
-          const w = Math.max(2, Math.min(len - 1, next))
+          const w = Math.max(2, Math.min(len - 1, Math.round(next)))
           // Zoom about the cursor, so whatever is under the pointer stays put.
           let a = Math.round(cur.a + width * frac - w * frac)
           a = Math.max(0, Math.min(len - 1 - w, a))
