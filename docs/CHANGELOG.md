@@ -19,6 +19,32 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.15.1 — Launch night: the PIN outage, and the WO staffing repair — Aug 20, 2026
+
+**Everything real use found in the hours after launch.** Nothing here is a
+feature; it is the list of things that only break when actual people use them.
+
+**Migrations: none.** Two one-off SQL fixes were run by hand (below).
+
+**THE PIN OUTAGE — three faults stacked, in the order they were found:**
+1. `staff_pins.pin_hash` was written by bcryptjs as `$2b$`; pgcrypto's `crypt()` **silently no-matches** `$2b$` — every correct PIN read as wrong, with no error. Fixed live: `update staff_pins set pin_hash = '$2a$' || substring(pin_hash from 5) where pin_hash like '$2b$%';` — for digit-only input the formats are byte-identical, so **the printed PINs stayed valid**. `scripts/set-pins.mjs` now forces the `$2a$` prefix on the salt.
+2. `app/api/auth/pin/route.ts` still validated `/^\d{4}$/` — it rejected every 6-digit PIN with a bare 400 **before the lookup**. **THREE PLACES MOVE TOGETHER when PIN length changes: this regex, `PIN_LENGTH` in `app/(auth)/login/page.tsx`, and the digit count in `scripts/set-pins.mjs`.**
+3. The pad rendered any non-401 failure as "something went wrong", which hid both of the above for an hour. It now prints the server's own code (`sign-in failed · bad_request`), the same "a message may only claim what it knows" rule applied to the email path earlier that day.
+
+**Watch-out:** `set-pins.mjs` rotates **every** auth password, so email/password login stops working for everyone until they use Forgot password. That is by design (the PIN becomes the key) but it removes the fallback door — don't run it without a way back in.
+
+**WO staffing, audited then repaired (the session-creation path).** An earlier fix that "added a staff line" created a **standalone** row (`studio: ''`), which broke everything downstream: a standalone row has no room times of its own, so the `eng_from_time || from_time` fallback resolved to empty and staff times never appeared; the times were also copied once at creation, so entering room times later did nothing; and the row saved even when untouched, littering `studio_time_rows`. Repaired:
+- **The first staffer is the room row's own slot** — `eng_visible` already defaults to **true**, so the slot exists on every room row. The card/sheet filters were demanding a name or a rate as well, which is what hid the legitimate "engineer, TBD" state; they now ask only `eng_visible !== false`. Nothing is auto-created or auto-revealed — an auto-reveal would have silently undone the × that means "no staff today".
+- **`staffTimes(row)`** resolves a staff line's times live: own times → same-row room times → **that date's room row**. Standalone staff now inherit and keep inheriting.
+- **Rates moved to where the work happens**: room rate (+ /HR · /DAY toggle) sits under the room's time wells, each staffer's rate under theirs, warm-tinted when a NAMED engineer has none. The Billing block keeps OT and the computed summary — same fields, same rows, either place.
+- **× on every staff block**: standalone staffers delete; the room's own slot hides (`eng_visible: false`). Writes immediately — NOT on the Cancel revert path.
+
+**Also:** equipment pills cycle **blank → OK → Not OK → blank** on both surfaces (an accidental tap before a session can be zeroed; clearing a Not OK leaves its note row intact); the day-sheet time-picker chevron left the tab order (`tabIndex={-1}`) so Start tabs straight to End; New Lead search dropdowns paint on `--c-bg` with a shadow instead of translucent `--c-wash` (the "see-through" bug); registration banner rebuilt as mock option D — names the people waiting, per-row Create profile, teal `regPulse` header, "+N more" opens the modal.
+
+**Files:** `app/api/auth/pin/route.ts`, `app/(auth)/login/page.tsx`, `scripts/set-pins.mjs`, `components/calendar/WorkOrderPopup.tsx`, `components/clients/RegistrationBanner.tsx`, `app/(main)/crm/page.tsx`, `styles/globals.css`, `docs/design-refs/reg-banner-options.html`.
+
+---
+
 ## v1.15.0 — LAUNCHED TO PRODUCTION (merged to `main`) — Aug 20, 2026
 
 **Launch day: the redesign went live, and the day-one wave of fixes real use

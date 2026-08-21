@@ -645,6 +645,31 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.15.1', date:'Aug 20, 2026',
+    headline:'Launch-night fixes — PIN login works, and building a session now has the rate and the engineer right where you need them.',
+    desc:'Everything here came from actually using the app on launch day. If you tried a PIN earlier and it would not let you in, that is fixed — use the same PIN you were given.',
+    changes:[
+      'PIN login works. If yours was rejected earlier tonight, nothing is wrong with it — the app was checking for a 4-digit PIN while yours is 6. Same PIN, try again.',
+      'If a login ever fails now, the screen tells you WHY instead of just saying "something went wrong".',
+      'Work order, building a session: the room rate (and the /HR · /DAY switch) now sits right under the room times, and the engineer or assistant line is always there under it with their own rate — no more hunting at the bottom of the page.',
+      'The engineer/assistant times fill themselves in from the room times, and keep following them if you set the room times afterwards.',
+      'Every staff line has a small × — use it if you added a second engineer by mistake. On the main line it means "no staff on this day", which is rare but there.',
+      'Each day card now shows the rates behind the total, and says "rate?" in orange where one is missing — so an under-billed session is visible at a glance.',
+      'Equipment pills go all the way around now: not checked → OK → Not OK → back to not checked. If you tapped one by accident before a session, you can clear it.',
+      'Typing times: Tab now jumps straight from Start to End instead of stopping on the little arrow.',
+      'When a client sends their registration back, the banner now shows their NAME with a Create profile button right there — you rarely need to open anything.',
+      'Fixed the New Lead search list showing the form through it.',
+    ],
+    affects:'If your PIN did not work earlier, try it again — it was the app, not your PIN. And when you build a session, everything you need is now on the day itself: times, room rate, who is on it, and their rate.',
+    dev:[
+      'PIN outage was three stacked faults: bcryptjs <code>$2b$</code> hashes that pgcrypto silently no-matches (fixed live by prefix rename; printed PINs stayed valid), a <code>/^\\d{4}$/</code> guard in the route rejecting 6-digit PINs before lookup, and a catch-all client message that hid both. PIN length now lives in three places that must move together — noted in CLAUDE.md.',
+      'WO staffing repaired after an audit: the first staff line is the room row\'s own slot (<code>eng_visible</code> defaults true; filters no longer demand a name/rate), <code>staffTimes()</code> resolves staff times live through the date\'s room row, standalone rows are only for extra staff, rates moved beside the times they price, × on every staff block.',
+      'Deliberate non-change: nothing auto-reveals a hidden staff slot — <code>eng_visible: false</code> is a decision ("no staff today"), not a gap.',
+      'Equipment cycle now includes null; clearing a Not OK leaves its note row intact. Time-picker chevron got <code>tabIndex={-1}</code>. New Lead dropdowns paint on <code>--c-bg</code> with a shadow instead of translucent <code>--c-wash</code>.',
+      'Registration banner rebuilt as mock option D (docs/design-refs/reg-banner-options.html): per-person rows with one-tap confirm, <code>regPulse</code> teal header, +N more opens the modal.',
+    ],
+  },
+  {
     ver:'v1.15.0', date:'Aug 20, 2026',
     headline:'Launch day — the new PRSFlo is live, you log in with a six-digit PIN, and the app knows who you are.',
     desc:'The redesign everyone has been previewing is now THE app. Along with it: a new way to log in, your name shown wherever your work is filed, editable shift notes, and a simpler billing page. Here is what changed for you.',
