@@ -168,28 +168,13 @@ type StRow = {
  * that survived it.
  */
 export async function fetchFinancialLines(fromISO: string, toISO: string): Promise<FinLine[]> {
-  const [stRes, histRes] = await Promise.all([
-    supabase
-      .from('studio_time_rows')
-      .select('work_order_id, studio, location, date, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate, eng_role')
-      .gte('date', fromISO)
-      .lte('date', toISO),
-    supabase
-      .from('financial_history')
-      .select('session_date, venue, room, category, amount')
-      .eq('direction', 'revenue')
-      .gte('session_date', fromISO)
-      .lte('session_date', toISO),
-  ])
+  const stRes = await supabase
+    .from('studio_time_rows')
+    .select('work_order_id, studio, location, date, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate, eng_role')
+    .gte('date', fromISO)
+    .lte('date', toISO)
 
-  // The history table is owner-only and may not exist yet on a database where
-  // the migration has not been run. Neither is a reason to show nothing — the
-  // live half is still true, so a history failure degrades to "PRSFlo years
-  // only" rather than an empty page.
   if (!dbResult('Loading studio time for financials', stRes.error)) return []
-  if (histRes.error && histRes.error.code !== '42P01') {
-    dbResult('Loading financial history', histRes.error)
-  }
 
   const stRows = (stRes.data ?? []) as StRow[]
   const lines: FinLine[] = []
@@ -241,20 +226,70 @@ export async function fetchFinancialLines(fromISO: string, toISO: string): Promi
     }
   }
 
-  for (const h of histRes.data ?? []) {
-    const amt = money(h.amount as number | string | null)
-    if (amt === 0) continue
-    lines.push({
-      date: String(h.session_date ?? '').slice(0, 10),
-      venue: String(h.venue ?? '').trim(),
-      room: String(h.room ?? '').trim(),
-      category: h.category as FinCategory,
-      amount: amt,
-      source: 'history',
-    })
+  return lines
+}
+
+// ─── History (pre-aggregated in Postgres) ────────────────────────────────────
+
+/** One month of archived revenue, already summed by the database. */
+export type HistMonth = {
+  month: string       // 'YYYY-MM'
+  category: FinCategory
+  amount: number      // whole month
+  amountToDay: number // same month, summed only to the day cap
+}
+
+export type HistoryFetch = {
+  months: HistMonth[]
+  /** Newest day the archive holds, or '' when there is none. */
+  latest: string
+  rooms: { venue: string; room: string }[]
+}
+
+/**
+ * The archive, rolled up by the database.
+ *
+ * NEVER SELECT RAW ROWS FROM `financial_history`. PostgREST caps a response at
+ * 1,000 rows and does not tell you it did — a straight select against 55,601
+ * rows returns 2017 and calls it success, which is precisely the bug this
+ * replaced (see migration 20260820150000). The rollup is bounded by months, not
+ * by row count, so it cannot silently truncate as the archive grows.
+ *
+ * `dayCap` narrows the second figure for partial-month comparison. It is passed
+ * in rather than derived here because the newest data may be LIVE, not archived
+ * — the caller knows about both halves and this function only knows one.
+ */
+export async function fetchHistory(scope: RoomScope, dayCap: number): Promise<HistoryFetch> {
+  const [monthsRes, roomsRes, latestRes] = await Promise.all([
+    supabase.rpc('financial_monthly', { p_scope: scope || '', p_day: dayCap }),
+    supabase.rpc('financial_rooms'),
+    supabase.rpc('financial_latest_date'),
+  ])
+
+  // The archive is optional. On a database where the migrations have not run,
+  // or for a signed-in user whose role cannot see it, the live half is still
+  // true — so a failure here degrades to "PRSFlo years only" rather than an
+  // empty page. Only real faults are reported.
+  const missing = (e: { code?: string } | null) =>
+    !!e && (e.code === '42883' || e.code === '42P01' || e.code === 'PGRST202')
+  if (monthsRes.error && !missing(monthsRes.error)) {
+    dbResult('Loading revenue history', monthsRes.error)
   }
 
-  return lines
+  const months: HistMonth[] = (monthsRes.data ?? []).map((r: {
+    month: string; category: string; amount: number | string; amount_to_day: number | string
+  }) => ({
+    month: String(r.month),
+    category: r.category as FinCategory,
+    amount: money(r.amount),
+    amountToDay: money(r.amount_to_day),
+  }))
+
+  return {
+    months,
+    latest: latestRes.data ? String(latestRes.data).slice(0, 10) : '',
+    rooms: (roomsRes.data ?? []) as { venue: string; room: string }[],
+  }
 }
 
 // ─── Filter ──────────────────────────────────────────────────────────────────
@@ -277,15 +312,26 @@ export function scopeLabel(scope: RoomScope): string {
   return scope.replace(' · ', ' ')
 }
 
-/** Every venue and room present in the data, for the dropdown. */
-export function roomOptions(lines: FinLine[]): { venue: string; rooms: string[] }[] {
+/**
+ * Every venue and room for the dropdown — from BOTH halves.
+ *
+ * The archive's room list and the live one differ: seven rooms carry history
+ * but are not in STUDIO_LOCATIONS, and a newly-added room has no history at
+ * all. Either list alone would hide rooms that have money against them.
+ */
+export function roomOptions(
+  lines: FinLine[],
+  histRooms: { venue: string; room: string }[] = [],
+): { venue: string; rooms: string[] }[] {
   const byVenue = new Map<string, Set<string>>()
-  for (const l of lines) {
-    if (!l.venue || !l.room) continue
-    const set = byVenue.get(l.venue) ?? new Set<string>()
-    set.add(l.room)
-    byVenue.set(l.venue, set)
+  const add = (venue: string, room: string) => {
+    if (!venue || !room) return
+    const set = byVenue.get(venue) ?? new Set<string>()
+    set.add(room)
+    byVenue.set(venue, set)
   }
+  for (const l of lines) add(l.venue, l.room)
+  for (const r of histRooms) add(String(r.venue ?? '').trim(), String(r.room ?? '').trim())
   return [...byVenue.entries()]
     .sort((a, b) => (a[0] < b[0] ? -1 : 1))
     .map(([venue, rooms]) => ({ venue, rooms: [...rooms].sort() }))
@@ -317,54 +363,57 @@ function inMetric(l: FinLine, metric: Metric): boolean {
  * seeing.
  */
 export function buildSeries(
-  lines: FinLine[],
+  liveLines: FinLine[],
+  hist: HistMonth[],
   metric: Metric,
   fromISO: string,
   toISO: string,
+  latestISO: string,
 ): SeriesPoint[] {
-  // month → day-of-month → amount. Bucketing once keeps the day-range lookups
-  // that the partial month needs from being a scan per month.
-  const byMonth = new Map<string, Map<number, number>>()
-  let latest = ''
-
-  for (const l of lines) {
-    if (!l.date || !inMetric(l, metric)) continue
-    if (l.date > latest) latest = l.date
-    const key = l.date.slice(0, 7)
-    const day = Number(l.date.slice(8, 10))
-    const days = byMonth.get(key) ?? new Map<number, number>()
-    days.set(day, (days.get(day) ?? 0) + l.amount)
-    byMonth.set(key, days)
+  // month → { whole month, month capped at `dayCap` }. The two halves arrive in
+  // different shapes — history pre-summed by Postgres, live as daily rows — and
+  // are folded into one map here so nothing downstream can tell them apart.
+  const byMonth = new Map<string, { full: number; toDay: number }>()
+  const slot = (key: string) => {
+    const s = byMonth.get(key) ?? { full: 0, toDay: 0 }
+    byMonth.set(key, s)
+    return s
   }
 
-  const sumMonth = (key: string, throughDay: number | null): number | null => {
-    const days = byMonth.get(key)
-    if (!days) return null
-    let total = 0
-    for (const [day, amt] of days) {
-      if (throughDay === null || day <= throughDay) total += amt
-    }
-    return total
+  const dayCap = latestISO ? Number(latestISO.slice(8, 10)) : 31
+
+  for (const h of hist) {
+    if (metric !== 'total' && h.category !== metric) continue
+    const s = slot(h.month)
+    s.full += h.amount
+    s.toDay += h.amountToDay
+  }
+
+  for (const l of liveLines) {
+    if (!l.date || !inMetric(l, metric)) continue
+    const s = slot(l.date.slice(0, 7))
+    s.full += l.amount
+    if (Number(l.date.slice(8, 10)) <= dayCap) s.toDay += l.amount
   }
 
   // The newest month is partial only if data actually stops before the month
   // ends. A completed December is not partial just because it is last.
-  const latestMonth = latest.slice(0, 7)
-  const latestDay = latest ? Number(latest.slice(8, 10)) : 0
+  const latestMonth = latestISO.slice(0, 7)
 
   return monthKeys(fromISO, toISO).map(key => {
-    const partial = key === latestMonth && latestDay > 0 && latestDay < daysInMonth(key)
-    const throughDay = partial ? latestDay : null
+    const partial = key === latestMonth && dayCap > 0 && dayCap < daysInMonth(key)
+    const here = byMonth.get(key)
+    const prev = byMonth.get(priorYearKey(key))
     return {
       key,
       label: monthLabel(key),
       year: key.slice(0, 4),
-      value: sumMonth(key, throughDay) ?? 0,
+      value: here ? (partial ? here.toDay : here.full) : 0,
       // The prior year is narrowed to the same day range ONLY when this month
       // is partial — that is what makes the percentage honest.
-      prior: sumMonth(priorYearKey(key), throughDay),
+      prior: prev ? (partial ? prev.toDay : prev.full) : null,
       partial,
-      throughDay,
+      throughDay: partial ? dayCap : null,
     }
   })
 }

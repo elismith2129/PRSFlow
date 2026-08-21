@@ -186,7 +186,7 @@ export default function DashboardPage() {
   // My Day, default task tab, staff-grid visibility). Only Eli sees the toggle;
   // everyone else gets their own view with no preview control.
   const [viewAs, setViewAs] = useState<ViewAs>('eli')
-  const isEli = profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com'
+  const isEli = profile?.email === 'eli@paramountrecording.com'
   function switchViewAs(v: ViewAs) {
     setViewAs(v)
     // (Task-tab follow removed with the name tabs — the panel is personal now.)

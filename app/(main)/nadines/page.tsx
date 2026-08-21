@@ -48,7 +48,7 @@ export default function NadinesPage() {
   // any authenticated read and owner/manager/billing/asst_manager write, so a
   // staff member with the anon key could still reach the rows directly. If the
   // venue data needs to be genuinely restricted, that's a separate RLS migration.
-  const isEli = profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com'
+  const isEli = profile?.email === 'eli@paramountrecording.com'
 
   // Render nothing at all until the profile resolves, so the page never flashes
   // its contents to a staff member before the gate closes.

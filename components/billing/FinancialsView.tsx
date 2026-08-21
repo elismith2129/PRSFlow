@@ -43,10 +43,10 @@ import { formatCurrency } from '@/lib/format'
 import { getLocalToday } from '@/lib/time'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import {
-  fetchFinancialLines, buildSeries, roomOptions, scopeMatches, scopeLabel,
+  fetchFinancialLines, fetchHistory, buildSeries, roomOptions, scopeMatches, scopeLabel,
   pctChange, priorYearKey, monthLabel,
   METRICS,
-  type FinLine, type Metric, type RoomScope, type SeriesPoint,
+  type FinLine, type HistMonth, type Metric, type RoomScope,
 } from '@/lib/financials'
 
 /**
@@ -80,6 +80,9 @@ export function FinancialsView() {
   const isMobile = useIsMobile()
 
   const [lines, setLines] = useState<FinLine[]>([])
+  const [hist, setHist] = useState<HistMonth[]>([])
+  const [histRooms, setHistRooms] = useState<{ venue: string; room: string }[]>([])
+  const [latest, setLatest] = useState('')
   const [loading, setLoading] = useState(true)
   const [metric, setMetric] = useState<Metric>('total')
   const [scope, setScope] = useState<RoomScope>('')
@@ -90,11 +93,28 @@ export function FinancialsView() {
   const today = getLocalToday()
   const from = startOfSpan(today, SPAN_MONTHS)
 
+  // The archive is scoped and summed by Postgres; the live half comes back as
+  // daily rows because it is small and the day detail is still needed. `scope`
+  // is a dependency of the fetch for that reason — changing the room re-asks
+  // the database rather than re-filtering 55,000 rows in the browser.
   const load = useCallback(async () => {
-    const data = await fetchFinancialLines(from, today)
-    setLines(data)
+    const live = await fetchFinancialLines(from, today)
+    // The day cap is the newest day ANY source holds — the archive may end
+    // mid-month while live work orders run past it, or the reverse.
+    const liveLatest = live.reduce((m, l) => (l.date > m ? l.date : m), '')
+    const firstPass = await fetchHistory(scope, 31)
+    const newest = firstPass.latest > liveLatest ? firstPass.latest : liveLatest
+    const cap = newest ? Number(newest.slice(8, 10)) : 31
+    // Re-ask only when the cap actually narrows anything. A month that ended on
+    // the 31st needs no second pass.
+    const h = cap < 31 ? await fetchHistory(scope, cap) : firstPass
+
+    setLines(live)
+    setHist(h.months)
+    setHistRooms(h.rooms)
+    setLatest(newest)
     setLoading(false)
-  }, [from, today])
+  }, [from, today, scope])
 
   useEffect(() => {
     load()
@@ -110,8 +130,10 @@ export function FinancialsView() {
     return () => { supabase.removeChannel(ch) }
   }, [load])
 
-  const venues = useMemo(() => roomOptions(lines), [lines])
+  const venues = useMemo(() => roomOptions(lines, histRooms), [lines, histRooms])
 
+  // Only the LIVE half is filtered here — the archive was already scoped by the
+  // database when it was fetched.
   const scoped = useMemo(
     () => (scope ? lines.filter(l => scopeMatches(scope, l)) : lines),
     [lines, scope],
@@ -121,8 +143,8 @@ export function FinancialsView() {
   // keeps zooming instant and keeps the year-over-year lookup able to see
   // outside the visible window.
   const all = useMemo(
-    () => buildSeries(scoped, metric, from, today),
-    [scoped, metric, from, today],
+    () => buildSeries(scoped, hist, metric, from, today, latest || today),
+    [scoped, hist, metric, from, today, latest],
   )
 
   // Land on the last three years — enough to read the arc without the 2017 tail
