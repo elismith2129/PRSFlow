@@ -120,6 +120,23 @@ export function FinancialsView() {
   const [grainOverride, setGrainOverride] = useState<Grain | null>(null)
   const [series, setSeries] = useState<DrawPoint[]>([])
 
+  // SHARED Y SCALE (Eli, 2026-08-20): "when that axis changes when selecting
+  // different rooms it's very confusing as the graph lines are similar sizes
+  // but represent very different amounts of money."
+  //
+  // Exactly right, and it is the standard autoscaling trap — an axis that fits
+  // whatever is selected makes every selection look the same size. Encore A at
+  // $40k a month and Track North at $4k drew identical shapes. So the ceiling is
+  // held at the ALL-ROOMS maximum by default: a room earning a tenth as much now
+  // draws a line a tenth as tall, which is the honest picture and the whole
+  // point of being able to switch rooms.
+  //
+  // `Fit` is still there for when the question is a small room's SHAPE rather
+  // than its size — at the shared scale a quiet room is a flat squiggle along
+  // the floor, and sometimes you do want to see its own peaks and troughs.
+  const [sameScale, setSameScale] = useState(true)
+  const [refMax, setRefMax] = useState(0)
+
   const today = getLocalToday()
   const from = startOfSpan(today, SPAN_MONTHS)
 
@@ -229,8 +246,14 @@ export function FinancialsView() {
       Promise.all([
         fetchSeries(scope, metric, grain, fromISO, toISO),
         compare ? fetchSeries(scope, metric, grain, priorFrom, priorTo) : Promise.resolve([]),
-      ]).then(([cur, prev]) => {
+        // The all-rooms ceiling for this same window and metric — only when a
+        // room is actually selected, since otherwise it is the same request.
+        scope && sameScale
+          ? fetchSeries('', metric, grain, fromISO, toISO)
+          : Promise.resolve([]),
+      ]).then(([cur, prev, refAll]) => {
         if (cancelled) return
+        setRefMax(refAll.reduce((m, r) => (r.amount > m ? r.amount : m), 0))
         // An empty result means the RPC is missing or failed. Keep whatever is
         // already drawn rather than dropping to the coarse fallback mid-gesture,
         // which would make the chart flicker between resolutions.
@@ -241,7 +264,7 @@ export function FinancialsView() {
       })
     }, 220)
     return () => { cancelled = true; clearTimeout(timer) }
-  }, [mode, scope, metric, grain, fromISO, toISO, compare, scoped, latest, today])
+  }, [mode, scope, metric, grain, fromISO, toISO, compare, scoped, latest, today, sameScale])
 
   /** Years the data actually covers, newest first. */
   const years = useMemo(() => {
@@ -289,7 +312,11 @@ export function FinancialsView() {
 
   // ── Geometry ──────────────────────────────────────────────────────────────
   const W = 1000
-  const H = isMobile ? 210 : 300
+  // Taller than the first build (300). Eli asked for height, and while height
+  // alone does not fix a rescaling axis, it does buy real room: at a shared
+  // scale a quiet room's line lives in the bottom fifth, and 380 gives that
+  // fifth enough pixels to still have a readable shape.
+  const H = isMobile ? 230 : 380
   const PL = 54, PR = 10, PT = 14, PB = 24
   const pw = W - PL - PR
   const ph = H - PT - PB
@@ -300,8 +327,12 @@ export function FinancialsView() {
       if (p.value > m) m = p.value
       if (compare && p.prior && p.prior > m) m = p.prior
     }
+    // Hold the ceiling at the all-rooms maximum so switching rooms changes the
+    // HEIGHT of the line rather than the meaning of the axis. Never scale DOWN
+    // below the selection's own peak — that would clip the line off the top.
+    if (sameScale && refMax > m) m = refMax
     return (m || 1) * 1.1
-  }, [view, compare])
+  }, [view, compare, sameScale, refMax])
 
   const n = Math.max(view.length, 1)
   const step = n > 1 ? pw / (n - 1) : 0
@@ -468,6 +499,22 @@ export function FinancialsView() {
             </button>
           ))}
         </span>
+
+        {/* Only meaningful once a room narrows the data — with All rooms
+            selected the two scales are the same number. */}
+        {mode === 'timeline' && scope !== '' && (
+          <button
+            className={`c-control c-soft${sameScale ? ' c-on' : ''}`}
+            style={chip}
+            onClick={() => setSameScale(v => !v)}
+            aria-pressed={sameScale}
+            title={sameScale
+              ? 'The axis is held at the all-rooms maximum, so this room\'s size is comparable'
+              : 'The axis fits this room alone — good for its shape, misleading about its size'}
+          >
+            {sameScale ? 'Same scale' : 'Fit to room'}
+          </button>
+        )}
 
         <select
           className="c-input"
