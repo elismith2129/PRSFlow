@@ -56,8 +56,13 @@ loadEnv()
 const NUMERIC = new Set(['amount'])
 
 function parseCsv(text) {
-  const [head, ...lines] = text.trim().split('\n')
-  const cols = head.split(',')
+  // SPLIT ON \r?\n, NOT \n. Python's csv.writer terminates lines with CRLF per
+  // RFC 4180, so splitting on \n alone leaves a stray \r welded to the last
+  // field of every row — including the header, which then asks Postgres for a
+  // column called "source_key\r" and gets a 400 with a genuinely baffling
+  // message. Costs nothing to handle both endings; costs an hour not to.
+  const [head, ...lines] = text.trim().split(/\r?\n/)
+  const cols = head.split(',').map(c => c.trim())
   return lines.filter(Boolean).map(line => {
     const cells = line.split(',')
     const row = {}
