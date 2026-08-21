@@ -3204,6 +3204,70 @@ signal it needs to become a real session — not before.
 
 ---
 
+### Aug 20, 2026 (launch night) — The PIN outage, and the staffing fix that had to be audited first
+
+#### Three faults, one symptom, an hour lost to guessing
+
+Nobody could log in with a PIN. The screen said "something went wrong" and I
+went hunting in the database — hash formats, email mismatches, missing rate-limit
+tables, RLS — while the actual cause sat in the first four lines of the route:
+`/^\d{4}$/`, still demanding four digits after we re-issued PINs at six, rejecting
+every correct PIN **before the lookup**. Underneath it were two more real faults:
+bcryptjs writes `$2b$` hashes and pgcrypto's `crypt()` silently no-matches them
+(fixed in place with a prefix rename — for digits the formats are identical, so
+the printed PINs survived), and the pad rendered every non-401 as one generic
+sentence.
+
+**The lesson is the error message, not the regex.** That morning we'd fixed the
+email login for exactly this — a catch-all that blamed the password for system
+failures — and left its twin on the PIN path untouched. The moment the pad
+started printing the server's own code, the answer took ten seconds. *A screen
+that hides what the server said converts a two-minute bug into an hour.* Same
+family as the ghost tables: the system was reporting confidently and wrongly.
+
+**Also recorded:** `set-pins.mjs` rotates every auth password, which removes the
+email fallback for everyone. That's correct — the PIN becomes the key — but it
+means the script must never be run without a proven way back in.
+
+#### The staffing "fix" that broke session creation, and the audit that caught it
+
+Eli asked for staff assignment on the day card; I added a **standalone** staff
+row and shipped it. Wrong model. Staffing normally lives as columns ON the room
+row, which is why staff times "follow the room" — same row. A standalone row has
+no room times of its own, so the fallback resolved to empty and staff times never
+appeared; the times were also copied once at creation, so filling in the room's
+times afterwards did nothing; and the row persisted even untouched, littering
+`studio_time_rows` with empty assistants on every day anyone opened.
+
+He then asked for an **audit, no code** — which is what found all four defects at
+once instead of one at a time, including the two he hadn't reported: the junk
+rows, and the filter (`name || rate` required) that hid the legitimate
+"engineer, TBD" state and was the reason I'd reached for a standalone row in the
+first place. **Auditing before touching was strictly cheaper than the three
+patches that preceded it.**
+
+The repair: `eng_visible` already defaults **true**, so every room row *already
+carries* a staff slot — the filters just had to stop demanding a name.
+`staffTimes()` resolves times live (own → same-row → that date's room row).
+Rates moved out of the bottom Billing block to sit under the times they price.
+And a deliberate non-change: **nothing auto-reveals a hidden slot**, because that
+would silently undo the × meaning "no staff today". `false` is a decision, not a
+gap.
+
+#### Small things real use found
+
+Equipment pills now cycle back to blank — staff were tapping every pill to see
+what they did, and "checked and fine" became the lie because there was no way
+back to unanswered. The day-sheet chevron sat in the tab order between Start and
+End (two tabs per field). New Lead's search dropdowns were painted in
+translucent `--c-wash` and showed the form through them — same see-through class
+as the WO overlay. And the returned-registration banner, which was grey-on-grey
+page furniture, became mock option D: it names the people waiting, with a
+one-tap Create profile each, because *a name is harder to ignore than a count*
+and the common case is one person.
+
+---
+
 ### Aug 19–20, 2026 — LAUNCH. And the day-one wave that followed it
 
 The merge to `main` happened Aug 20 — production now runs the redesign. The

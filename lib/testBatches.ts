@@ -55,6 +55,86 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'launch-night-2026-08-20b',
+    title: 'Launch night — PIN login, building a session, equipment, registrations',
+    version: 'v1.15.1 (production)',
+    date: 'Aug 20, 2026',
+    intro:
+      'Everything here was found by using the app on launch day and fixed the same night. Most of it is about BUILDING a session — the rate and the engineer are now on the day itself. Do this at a computer with one throwaway session you can delete afterwards. You will need your own 6-digit PIN.',
+    items: [
+      {
+        id: 'ln-pin', area: 'Login',
+        what: 'Your six-digit PIN logs you in',
+        how: 'Sign out. Tap your 6-digit PIN on the number pad. It should log you straight in. (If it was refusing earlier today, that was the app, not your PIN — same PIN.)',
+      },
+      {
+        id: 'ln-pin-error', area: 'Login',
+        what: 'A wrong PIN says "incorrect", not something vague',
+        how: 'On the login screen tap six WRONG digits. The pad should shake and say incorrect — not "something went wrong". Then log in properly with your real PIN.',
+      },
+      {
+        id: 'ln-room-rate', area: 'Work order',
+        what: 'The room rate is under the room times when you open a day',
+        how: 'Make a new booking for a throwaway session, open its work order, and click the day card. In the panel, under STUDIO and its Start/End times, there should be a /HR · /DAY switch and a rate box. Type a rate. You should NOT have to scroll to the bottom to find it.',
+      },
+      {
+        id: 'ln-staff-line', area: 'Work order',
+        what: 'A staff line is already there — no need to add one',
+        how: 'In that same day panel, below the studio block there should already be a staff block with a 2ND tag, a name box and a rate box. Tap 2ND — it should flip to 1ST. Type a name and a rate.',
+      },
+      {
+        id: 'ln-staff-times', area: 'Work order',
+        what: 'Staff times fill in from the room times, even if you set the room times afterwards',
+        how: 'On a day where the room has no times yet, look at the staff block — its Start/End should be empty. Now type the ROOM Start and End at the top. The staff line should show those same times without you typing them again.',
+      },
+      {
+        id: 'ln-rate-warn', area: 'Work order',
+        what: 'A named engineer with no rate is flagged in orange',
+        how: 'On a staff line, set it to 1ST, type a name, and leave the rate blank. The rate box should tint orange. Close the panel — the day card should show "rate?" in orange next to that person. Type a rate and both should go back to normal.',
+      },
+      {
+        id: 'ln-card-rates', area: 'Work order',
+        what: 'The day card shows the rates behind its total',
+        how: 'Close the day panel and look at the day card. Next to the times you should see the room rate ("Day $1,400" or "$150/hr"), and next to the staff member their rate. Check the day total looks right for those numbers.',
+      },
+      {
+        id: 'ln-staff-x', area: 'Work order',
+        what: 'An accidentally added second engineer can be removed',
+        how: 'In the day panel click "+ Add engineer" to add a second staff block. Now click the small × at the top right of that block — it should disappear. The original staff line should still be there.',
+      },
+      {
+        id: 'ln-tab', area: 'Work order',
+        what: 'Tab goes straight from Start to End',
+        how: 'Click into a Start time box and type a time, then press Tab ONCE. The cursor should land in the End box — not on the little arrow next to it.',
+      },
+      {
+        id: 'ln-equip-clear', area: 'Work order',
+        what: 'Equipment pills can be cleared back to not-checked',
+        how: 'On a day, tap an equipment pill once (goes green/OK), again (goes red/Not OK), and a third time. It should go back to plain grey — not checked. Tap it to red again and check any note you wrote is still there.',
+      },
+      {
+        id: 'ln-equip-runner', area: 'Runner (phone)',
+        what: 'Same clearing works on the runner side',
+        how: 'On the tablet, open tonight\'s work order and tap an equipment pill three times. It should end up grey/not-checked, same as on the computer.', device: 'phone',
+      },
+      {
+        id: 'ln-reg-banner', area: 'CRM',
+        what: 'A returned registration shows the person\'s name with a Create profile button',
+        how: 'When a client completes a registration, open the CRM. Above the tabs you should see a teal-edged block with a pulsing dot, "REGISTRATIONS BACK", and a row per person — initials, name, how long ago, and a Create profile button. Click Create profile: it should take you to that client\'s profile and the row should go.',
+      },
+      {
+        id: 'ln-newlead-dd', area: 'CRM',
+        what: 'The New Lead search list is solid, not see-through',
+        how: 'Click + New Lead and start typing a client name in the first box. The suggestions list that drops down should be solid — you should NOT be able to read the form fields through it.',
+      },
+      {
+        id: 'ln-cleanup', area: 'Work order',
+        what: 'Delete the throwaway session',
+        how: 'Open the throwaway session\'s work order and use Delete at the bottom left, or delete the booking from the calendar. Confirm it is gone from the calendar and from Billing.',
+      },
+    ],
+  },
+  {
     id: 'launch-day-2026-08-20',
     title: 'Launch day — PINs, names everywhere, shift notes, billing tabs',
     version: 'v1.15.0 (production)',
