@@ -550,21 +550,17 @@ export function WorkOrderPopup({
       sheetSnapRef.current = stRows
         .filter(r => (r.date || '') === daySheetDate)
         .map(r => ({ ...r }))
-      // A DAY ALWAYS HAS A STAFF LINE (Eli, 2026-08-20) — but it is the STUDIO
-      // ROW'S OWN staff slot, not a new row. The first version seeded a
-      // standalone row here, which broke staff-time inheritance (a standalone
-      // row has no room times of its own to fall back to) and left an empty
-      // row behind on every day anyone opened. Revealing the slot that already
-      // exists on the room row costs nothing, inherits times for free, and
-      // saves nothing until someone types. "+ Add" still creates standalone
-      // rows for the rare second staffer.
-      const already = stRows.some(r =>
-        (r.date || '') === daySheetDate && r.eng_visible !== false
-        && (r.eng_name || r.eng_rate || r.studio === ''))
-      if (!already && !readOnly && !runner) {
-        const roomRow = stRows.find(r => (r.date || '') === daySheetDate && r.studio !== '')
-        if (roomRow && roomRow.eng_visible === false) updateStRow(roomRow.id, { eng_visible: true })
-      }
+      // A DAY ALWAYS HAS A STAFF LINE (Eli, 2026-08-20) — and it needs NO code.
+      // `studio_time_rows.eng_visible` defaults to TRUE, so every room row
+      // already carries a visible staff slot; the old filters were hiding it
+      // by also demanding a name or a rate, which is what made a fresh session
+      // look unstaffed. The filters now ask only `eng_visible !== false`.
+      //
+      // Nothing is auto-created or auto-revealed here on purpose: an earlier
+      // version seeded a standalone row (broke time inheritance, left junk
+      // rows), and a later one flipped hidden slots back to visible — which
+      // would have silently undone the × that means "no staff on this day".
+      // false is a deliberate state and this code must never overturn it.
     }
     // Deliberately NOT depending on stRows: the baseline is the moment the
     // sheet opened, not every keystroke since.
@@ -5081,6 +5077,24 @@ export function WorkOrderPopup({
                             <input list="wo-eng-roster" value={r.eng_name || ''} onChange={e => updateStRow(r.id, { eng_name: e.target.value })} placeholder={r.eng_role === 'assistant' ? 'Assistant name…' : 'Engineer name…'} className="c-tin" style={{ fontWeight: 700, fontSize: 13, minHeight: 30 }} />
                           </span>
                           <span style={hrsChip}>{staffHrs != null ? `${staffHrs}h` : '—'}</span>
+                          {/* REMOVE A STAFF BLOCK (Eli, 2026-08-20: staff hit
+                              "+ Add engineer" to see what it did and there was
+                              no way back). A standalone extra staffer is
+                              deleted outright; the room row's OWN slot can't be
+                              deleted — it IS the day — so its × hides it
+                              (eng_visible false, the sanctioned "runs
+                              unstaffed" state) and clears whatever was typed.
+                              Office only, and never on an approved day. */}
+                          {!readOnly && !runner && !dayLocked && (
+                            <button
+                              type="button"
+                              className="c-x"
+                              aria-label="Remove this staff line"
+                              title={r.studio === '' ? 'Remove this staff line' : 'No staff on this day'}
+                              onClick={() => { r.studio === '' ? deleteStRow(r.id) : clearEngRow(r.id) }}
+                              style={{ fontSize: 14, boxShadow: 'none', flexShrink: 0 }}
+                            >×</button>
+                          )}
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
                           {timeWell(r, 'eng_from_time', 'Start', staffTimes(r).from)}
