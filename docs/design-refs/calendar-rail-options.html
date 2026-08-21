@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>PRSFlo — Calendar venue-band options</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  CALENDAR VENUE BAND — three treatments (2026-08-17). Mock-first, after two
+  blind attempts (plain radius: invisible; inset pill: striped gaps across the
+  grid — both reverted). The question: how does the PARAMOUNT / AMERAYCAN
+  band meet the left edge without square corners OR full-width stripes?
+
+  A · TEXT, NO BAR   §16c's own rule (headers are text, not bars) applied
+                     here: no fill at all. The name + arrow sit above the
+                     rooms; a subtle gap does the separating. Kills the corner
+                     problem by removing the object that had corners.
+  B · LABEL CHIP     the fill only spans the label column — a small rounded
+                     chip behind the venue name; the grid area gets no bar.
+                     Keeps a filled anchor without a 4,000px stripe.
+  C · CURRENT        full-bleed square bar (control — what ships today).
+-->
+<style>
+:root{ --bg:#1b1a17; --fg:#d9d6cd; --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --fg2:rgba(217,214,205,.72); --fg3:rgba(217,214,205,.45); --line:rgba(217,214,205,.09); }
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 14px/1.5 system-ui,sans-serif;padding:20px}
+h1{font-family:'Archivo Black',sans-serif;font-size:20px;margin-bottom:6px}
+.note{font-size:12.5px;opacity:.65;max-width:760px;margin-bottom:20px}
+.cap{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.5;margin:22px 0 8px}
+.cal{width:880px;background:#161512;border-radius:12px;overflow:hidden;padding:8px 0}
+.row{display:flex;height:56px}
+.lbl{width:112px;flex-shrink:0;display:flex;align-items:center;gap:5px;padding:0 12px;font-size:10px;color:var(--fg2)}
+.lbl .a{font-size:8px;color:var(--fg3)}
+.grid{flex:1;background:
+  repeating-linear-gradient(to right, var(--line) 0 1px, transparent 1px 110px);
+  border-bottom:1px solid var(--line)}
+.arch{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:10px;letter-spacing:.14em;text-transform:uppercase}
+
+/* A · text only */
+.hA{display:flex;align-items:center;gap:6px;padding:14px 12px 6px;color:var(--fg2)}
+.hA .a{font-size:8px;color:var(--fg3)}
+
+/* B · label chip */
+.hB{display:flex;align-items:center;padding:8px 0 6px}
+.hB .chip{display:flex;align-items:center;gap:6px;background:var(--wash2);border-radius:99px;padding:5px 14px;margin-left:6px;color:var(--fg)}
+.hB .a{font-size:8px;color:var(--fg3)}
+
+/* C · current full-bleed bar */
+.hC{display:flex;align-items:center;gap:6px;background:var(--wash2);padding:6px 12px;color:var(--fg)}
+.hC .a{font-size:8px;color:var(--fg3)}
+</style>
+</head>
+<body>
+<h1>Calendar — how the venue band meets the edge</h1>
+<p class="note">Same slice of the grid three times: venue header + two rooms. <b>A</b> removes the
+bar entirely — the design system's "headers are text, not bars" rule. <b>B</b> keeps a fill but
+only behind the name — a chip, not a stripe, so there's no corner running the width of the
+calendar. <b>C</b> is what ships today (square, full-bleed) for comparison.</p>
+
+<div class="cap">A · Text, no bar — quietest, zero corners</div>
+<div class="cal">
+  <div class="hA"><span class="a">▼</span><span class="arch">Paramount</span></div>
+  <div class="row"><div class="lbl"><span class="a">▼</span>Studio A</div><div class="grid"></div></div>
+  <div class="row"><div class="lbl"><span class="a">▼</span>Studio B</div><div class="grid"></div></div>
+  <div class="hA"><span class="a">▼</span><span class="arch">Ameraycan</span></div>
+  <div class="row"><div class="lbl"><span class="a">▼</span>Studio A</div><div class="grid"></div></div>
+</div>
+
+<div class="cap">B · Label chip — a fill that ends where the name does</div>
+<div class="cal">
+  <div class="hB"><span class="chip"><span class="a">▼</span><span class="arch">Paramount</span></span></div>
+  <div class="row"><div class="lbl"><span class="a">▼</span>Studio A</div><div class="grid"></div></div>
+  <div class="row"><div class="lbl"><span class="a">▼</span>Studio B</div><div class="grid"></div></div>
+  <div class="hB"><span class="chip"><span class="a">▼</span><span class="arch">Ameraycan</span></span></div>
+  <div class="row"><div class="lbl"><span class="a">▼</span>Studio A</div><div class="grid"></div></div>
+</div>
+
+<div class="cap">C · Current — full-bleed square bar (control)</div>
+<div class="cal">
+  <div class="hC"><span class="a">▼</span><span class="arch">Paramount</span></div>
+  <div class="row"><div class="lbl"><span class="a">▼</span>Studio A</div><div class="grid"></div></div>
+  <div class="row"><div class="lbl"><span class="a">▼</span>Studio B</div><div class="grid"></div></div>
+  <div class="hC"><span class="a">▼</span><span class="arch">Ameraycan</span></div>
+  <div class="row"><div class="lbl"><span class="a">▼</span>Studio A</div><div class="grid"></div></div>
+</div>
+</body>
+</html>
