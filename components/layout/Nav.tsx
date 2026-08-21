@@ -50,7 +50,7 @@ export function Nav({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean }
   // `venue_open_items` RLS policy still allows any authenticated read and
   // owner/manager/billing/asst_manager write. Lock the table down separately if
   // that matters.
-  const isEli = profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com'
+  const isEli = profile?.email === 'eli@paramountrecording.com'
   const visibleNavItems = roleNavItems.filter(item => item.href !== '/nadines' || isEli)
 
   useEffect(() => {

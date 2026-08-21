@@ -68,7 +68,7 @@ export default function BillingPage() {
   const { profile, loading: profileLoading } = useUserProfile()
   const isMobile = useIsMobile()
 
-  const isEli = profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com'
+  const isEli = profile?.email === 'eli@paramountrecording.com'
   const isOwner = isEli || profile?.role === 'owner'
 
   const [rows, setRows] = useState<InvoiceRow[]>([])
