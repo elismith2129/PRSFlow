@@ -12,10 +12,11 @@ import React from 'react'
  * Do NOT reintroduce inline PRS/Flo spans anywhere. If the wordmark needs to
  * change, change it here and it changes everywhere by construction.
  *
- * Carved treatment (docs/PRSFLO-DESIGN-SPEC.md §4, approved by Eli 2026-07-30):
- * Archivo Black, `PRS` at full strength and `FLO` at .45, tracking −.02em,
- * monochrome ink in BOTH themes. The lime/blue accent it used to carry is gone —
- * this system has no accent colour. Only `size` may vary per placement.
+ * Treatment (docs/PRSFLO-DESIGN-SPEC.md §4; casing amended by Eli 2026-08-22):
+ * Archivo Black, `PRS` at full strength and `Flo` at .45 (capital F, lowercase
+ * l-o — the original casing, restored), tracking −.02em, monochrome ink in BOTH
+ * themes. The wordmark carries no colour; the brand colour lives on the ribbon
+ * mark (`PRSFloIcon`) alone. Only `size` may vary per placement.
  */
 export function Wordmark({ size = 20, className }: { size?: number; className?: string }) {
   return (
@@ -23,7 +24,7 @@ export function Wordmark({ size = 20, className }: { size?: number; className?: 
       className={['c-wordmark', className].filter(Boolean).join(' ')}
       style={{ fontSize: size }}
     >
-      PRS<span className="c-wordmark-flo">FLO</span>
+      PRS<span className="c-wordmark-flo">Flo</span>
     </span>
   )
 }

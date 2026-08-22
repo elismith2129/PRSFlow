@@ -179,6 +179,12 @@ Syne wordmark in `CLAUDE.md` / `Nav.tsx` (also a shared file). Eli approved this
 direction in exploration, but before touching `Nav.tsx` or the locked rule: confirm with
 Eli explicitly, and coordinate because other chats may be mid-edit in that file.
 
+**CASING AMENDED (RULING 2026-08-22):** the second segment is `Flo` — capital F,
+lowercase l-o, the original casing restored — not `FLO`. Face and treatment unchanged
+(Archivo Black, .45 opacity, −.02em). Eli auditioned Archivo Black against Syne, Inter
+and DM Mono on `docs/design-refs/brand-mark-options.html` and re-confirmed Archivo.
+`components/layout/Wordmark.tsx` is the single source; it renders `PRS` + `Flo`.
+
 ---
 
 ## 5. Status system — the only colour
@@ -799,6 +805,35 @@ are already gone (§14b); Admin → Ops Log and `/daily-ops-log` are absorbed by
 this page over time; `/wo-hub` stays denav'd (Billing replaced it). The
 `/flags` page remains the standing categorized record — the queue is the
 morning door, Flags is the filing cabinet.
+
+## 20. THE RIBBON — the brand mark carries colour (RULING 2026-08-22)
+
+Eli, after living with the monochrome mark: *"when we ditched the colors it now
+looks a little bland"* → *"take the logo and just fill it in. one color."*
+Reference: `docs/design-refs/brand-mark-options.html` — colour direction **A ·
+Lagoon** narrowed to construction **G1 · Ribbon** in **sea green `#43dfae`**.
+(B Heritage, C one-live-line, D gradient, E paper icon rejected; G2 heavy line
+and G3 three-lines rejected.)
+
+- **The mark is ONE solid shape in ONE flat colour.** The fill is the space
+  between the old mark's tallest and flattest wave; the lines cross mid-mark, so
+  it reads as a twisted ribbon. Path lives in `components/PRSFloIcon.tsx` and
+  `scripts/generate-icons.js` — identical in both, always.
+- **Sea green `#43dfae` (`--c-st-booked`), fixed in BOTH themes.** This is the
+  second sanctioned exception to Law 3, the same shape of exception the Flo glow
+  is to §7's no-glow rule: the brand mark is the one place non-status colour
+  exists, and that only works if it stays the ONLY place. Nothing else inherits
+  this permission.
+- **Still flat.** No gradients, no glow, no drop shadows — the old icon's
+  radial-glow treatment does not return. Colour is the richness, not atmosphere.
+- **App icon** = the ribbon on the charcoal ground `#1b1a17`, rounded-rect
+  rx 44/200. Regenerate with `node scripts/generate-icons.js` (10 assets).
+  **Runner set** keeps its historical orange identity via warm amber `#ffa94d`
+  (`--c-st-warm`) — same ribbon, same ground.
+- The three-wave monochrome mark (currentColor at .35/.6/1, 2026-07-30) is
+  retired. Do not reintroduce it, and do not render the ribbon in currentColor.
+- The Flo box header (§14c) renders the same `PRSFloIcon` — one mark, brand and
+  AI; it now carries the sea green there too.
 
 ### 14d. Sequencing
 

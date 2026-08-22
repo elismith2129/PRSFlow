@@ -1,18 +1,22 @@
 import React from 'react'
 
-// Bare wave mark for the PRSFlo logo lockup (nav + login/reset/runner/SOP gate).
+// THE RIBBON — the PRSFlo brand mark (nav rail + login/reset/runner/SOP gate + Flo box).
 // No rounded-square container — that square is only for the home-screen app icon.
 // `size` controls both width and height (square viewBox 0 0 200 200).
 //
-// MONOCHROME as of 2026-07-30 (carved redesign, spec §4, approved by Eli). The
-// three waves are all `currentColor` — which resolves to --c-fg — separated only
-// by opacity steps. The teal/lime gradients and the light-mode blues are gone:
-// this system has no accent colour, and the mark now simply inverts with the
-// ground instead of switching palettes.
+// ONE SOLID SHAPE, ONE COLOUR, as of 2026-08-22 (Eli: "take the logo and just fill it
+// in, one colour" — picked option G1 · Ribbon from docs/design-refs/brand-mark-options.html).
+// The fill is the space between the old mark's tallest and flattest wave; the two lines
+// cross mid-mark, so the fill reads as a twisted ribbon still in motion.
 //
-// This also let the component drop 'use client': it no longer needs a
-// MutationObserver on data-theme to restyle itself, because CSS does that now.
-// The old duplicate-gradient-id problem disappears with the gradients.
+// Colour: SEA GREEN `#43dfae` (--c-st-booked) — fixed in BOTH themes. This is the
+// sanctioned brand exception to design-spec Law 3 ("colour is status, nothing else"),
+// recorded in PRSFLO-DESIGN-SPEC.md §20 the way the Flo glow is recorded against §7.
+// Do not swap it for currentColor, do not reintroduce the three-wave strokes, gradients,
+// or the old radial glow.
+//
+// This supersedes the monochrome three-wave mark of the 2026-07-30 carved redesign
+// (three currentColor strokes at .35/.6/1).
 export function PRSFloIcon({ size = 38 }: { size?: number }) {
   return (
     <div
@@ -24,10 +28,8 @@ export function PRSFloIcon({ size = 38 }: { size?: number }) {
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: 'var(--c-fg)',
       }}
     >
-      {/* The teal radial glow is gone — spec §7 permits no glows or outer halos. */}
       <svg
         width={size}
         height={size}
@@ -36,9 +38,10 @@ export function PRSFloIcon({ size = 38 }: { size?: number }) {
         aria-hidden="true"
         style={{ display: 'block', position: 'relative', flexShrink: 0 }}
       >
-        <path d="M 14 100 Q 70 -10, 113 100 T 186 100" stroke="currentColor" strokeWidth="11" fill="none" strokeLinecap="round" opacity={0.35} />
-        <path d="M 14 100 Q 70 30, 113 100 T 186 100" stroke="currentColor" strokeWidth="11" fill="none" strokeLinecap="round" opacity={0.6} />
-        <path d="M 14 100 Q 70 70, 113 100 T 186 100" stroke="currentColor" strokeWidth="11" fill="none" strokeLinecap="round" opacity={1} />
+        <path
+          d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z"
+          fill="#43dfae"
+        />
       </svg>
     </div>
   )

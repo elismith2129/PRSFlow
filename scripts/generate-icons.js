@@ -1,53 +1,27 @@
+// PRSFlo app-icon generator — run with `node scripts/generate-icons.js` after editing.
+// sharp is a devDependency (build-time only; never imported by the app).
+//
+// THE RIBBON (2026-08-22, Eli — option G1 of docs/design-refs/brand-mark-options.html):
+// one solid twisted-ribbon wave, ONE flat colour, on the charcoal ground `#1b1a17`
+// (the design system's dark register). No gradients, no glow, no drop shadows — the
+// old radial-glow/teal-lime icon is retired. Matches components/PRSFloIcon.tsx exactly
+// (same path, same colour); the rounded square lives only here, never in the app.
+//
+// Main app: sea green `#43dfae` (--c-st-booked) — the sanctioned brand colour.
+// Runner:   warm amber `#ffa94d` (--c-st-warm) — keeps the runner set's historical
+//           orange identity, now drawn from the system palette.
 const sharp = require('sharp');
 const fs = require('fs');
 
-const iconSVG = `<svg width="512" height="512" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="teal-fade" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#5DCAA5"/>
-      <stop offset="100%" stop-color="#0e5446"/>
-    </linearGradient>
-    <linearGradient id="lime-fade" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#e3f99c"/>
-      <stop offset="100%" stop-color="#8ab030"/>
-    </linearGradient>
-    <radialGradient id="bg-glow" cx="50%" cy="50%" r="65%">
-      <stop offset="0%" stop-color="#1a1d24"/>
-      <stop offset="100%" stop-color="#0a0b0e"/>
-    </radialGradient>
-    <filter id="ds" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.4"/>
-    </filter>
-  </defs>
-  <rect width="200" height="200" rx="44" fill="url(#bg-glow)"/>
-  <path d="M 14 100 Q 70 -10, 113 100 T 186 100" stroke="url(#teal-fade)" stroke-width="9" fill="none" stroke-linecap="round" opacity="0.6" filter="url(#ds)"/>
-  <path d="M 14 100 Q 70 30, 113 100 T 186 100" stroke="url(#lime-fade)" stroke-width="9" fill="none" stroke-linecap="round" opacity="0.9" filter="url(#ds)"/>
-  <path d="M 14 100 Q 70 70, 113 100 T 186 100" stroke="#e8eaf0" stroke-width="9" fill="none" stroke-linecap="round" filter="url(#ds)"/>
+const RIBBON = 'M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z';
+
+const makeSVG = (fill) => `<svg width="512" height="512" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" rx="44" fill="#1b1a17"/>
+  <path d="${RIBBON}" fill="${fill}"/>
 </svg>`;
 
-const runnerSVG = `<svg width="512" height="512" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <radialGradient id="runner-bg-glow" cx="50%" cy="50%" r="65%">
-      <stop offset="0%" stop-color="#1a1d24"/>
-      <stop offset="100%" stop-color="#0a0b0e"/>
-    </radialGradient>
-    <linearGradient id="orange-fade" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#fbb86c"/>
-      <stop offset="100%" stop-color="#c2540a"/>
-    </linearGradient>
-    <linearGradient id="lime-fade" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#e3f99c"/>
-      <stop offset="100%" stop-color="#8ab030"/>
-    </linearGradient>
-    <filter id="ds" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.4"/>
-    </filter>
-  </defs>
-  <rect width="200" height="200" rx="44" fill="url(#runner-bg-glow)"/>
-  <path d="M 14 100 Q 70 -10, 113 100 T 186 100" stroke="url(#orange-fade)" stroke-width="9" fill="none" stroke-linecap="round" opacity="0.6" filter="url(#ds)"/>
-  <path d="M 14 100 Q 70 30, 113 100 T 186 100" stroke="url(#lime-fade)" stroke-width="9" fill="none" stroke-linecap="round" opacity="0.9" filter="url(#ds)"/>
-  <path d="M 14 100 Q 70 70, 113 100 T 186 100" stroke="#e8eaf0" stroke-width="9" fill="none" stroke-linecap="round" filter="url(#ds)"/>
-</svg>`;
+const iconSVG = makeSVG('#43dfae');
+const runnerSVG = makeSVG('#ffa94d');
 
 const sizes = [
   { size: 16,  file: 'public/favicon-16x16.png' },
