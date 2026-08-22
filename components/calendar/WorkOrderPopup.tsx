@@ -4993,6 +4993,35 @@ export function WorkOrderPopup({
                     <button type="button" disabled={dayIdx <= 0} onClick={() => goDay(-1)} style={{ fontSize: 15, color: 'var(--c-fg-3)', background: 'none', cursor: dayIdx > 0 ? 'pointer' : 'default', opacity: dayIdx > 0 ? 1 : 0.25, padding: '4px 6px' }}>‹</button>
                     {weekdayDate(daySheetDate)}
                     <button type="button" disabled={dayIdx >= allDates.length - 1} onClick={() => goDay(1)} style={{ fontSize: 15, color: 'var(--c-fg-3)', background: 'none', cursor: dayIdx < allDates.length - 1 ? 'pointer' : 'default', opacity: dayIdx < allDates.length - 1 ? 1 : 0.25, padding: '4px 6px' }}>›</button>
+                    {/* THE DAY'S DATE IS EDITABLE AGAIN (Eli, 2026-08-20: "we
+                        made it so no way to change date on studio time card").
+                        The list view has always had a date cell; card view only
+                        had ‹ › — which MOVES between days rather than changing
+                        one, so a session booked on the wrong day could not be
+                        corrected without switching views. Same transparent
+                        native-picker overlay the list uses: click the date, get
+                        the calendar. Moves EVERY row of this day together
+                        (room + its staff), then follows the day so the sheet
+                        stays on what you were editing. Approved days are
+                        locked, like every other edit here. */}
+                    {!readOnly && !runner && !dayLocked && (
+                      <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                        <span style={{ ...fldK, fontSize: 8, cursor: 'pointer', opacity: 0.5 }}>✎ date</span>
+                        <input
+                          type="date"
+                          value={daySheetDate}
+                          onChange={e => {
+                            const nd = e.target.value
+                            if (!nd || nd === daySheetDate) return
+                            stRows
+                              .filter(r => (r.date || '') === daySheetDate)
+                              .forEach(r => updateStRow(r.id, { date: nd }))
+                            setDaySheetDate(nd)
+                          }}
+                          style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+                        />
+                      </span>
+                    )}
                     {sheetDot && <span style={{ width: 7, height: 7, borderRadius: 99, background: sheetDot, display: 'inline-block' }} />}
                   </span>
                   <span style={fldK}>
@@ -5032,6 +5061,14 @@ export function WorkOrderPopup({
                             so editing either place is identical. Office only —
                             runners see rates as read-only text down below. */}
                         {!runner && !readOnly && (
+                          /* A RATE WELL, SHAPED LIKE THE TIME WELLS beside it
+                             (Eli, 2026-08-20: "the rates for eng or room are so
+                             tiny and in very large boxes"). Same well, same 8px
+                             caps label, same 17px value — a number that decides
+                             the invoice should not read smaller than the times
+                             above it. Sized to its content rather than
+                             stretched: three or four digits never need half the
+                             sheet. */
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                             <div className="c-seg c-seg-tiny" style={{ flexShrink: 0 }}>
                               <button type="button" className={r.row_rate_type !== 'day' ? 'c-on' : ''}
@@ -5041,9 +5078,17 @@ export function WorkOrderPopup({
                                 onClick={() => r.row_rate_type !== 'day' && toggleRowRateType(r.id)}
                                 style={{ cursor: 'pointer' }}>/ DAY</button>
                             </div>
-                            {r.row_rate_type === 'day'
-                              ? <input value={r.rate_daily} onChange={e => updateStRow(r.id, { rate_daily: e.target.value })} placeholder="$0/day" className="c-tin c-tin-mono" style={{ flex: 1, minWidth: 0, minHeight: 34 }} />
-                              : <input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} placeholder="$0/hr" className="c-tin c-tin-mono" style={{ flex: 1, minWidth: 0, minHeight: 34 }} />}
+                            <div style={{ background: 'var(--c-wash2)', borderRadius: 12, padding: '7px 14px', width: 150, flexShrink: 0 }}>
+                              <div style={{ ...fldK, fontSize: 8, marginBottom: 1 }}>
+                                {r.row_rate_type === 'day' ? 'Room rate / day' : 'Room rate / hr'}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+                                <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 17, fontWeight: 600, opacity: 0.45 }}>$</span>
+                                {r.row_rate_type === 'day'
+                                  ? <input value={r.rate_daily} onChange={e => updateStRow(r.id, { rate_daily: e.target.value })} placeholder="0" className="c-tin c-tin-mono" style={{ fontSize: 17, fontWeight: 600, padding: 0, minHeight: 30, width: '100%' }} />
+                                  : <input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} placeholder="0" className="c-tin c-tin-mono" style={{ fontSize: 17, fontWeight: 600, padding: 0, minHeight: 30, width: '100%' }} />}
+                              </div>
+                            </div>
                           </div>
                         )}
                         {/* AM/PM tripwire (Eli, 2026-08-16): a wrong meridiem
@@ -5106,20 +5151,31 @@ export function WorkOrderPopup({
                             quietly under-bills. Assistants are excluded (often
                             unpaid seconds), matching the table and the banner. */}
                         {!runner && !readOnly && (
+                          /* Their rate, in the same well shape as the times
+                             above it (2026-08-20) — see the room rate for why. */
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                            <span style={{ ...fldK, flexShrink: 0 }}>Rate</span>
-                            <input
-                              value={r.eng_rate || ''}
-                              onChange={e => updateStRow(r.id, { eng_rate: e.target.value })}
-                              placeholder="$/hr"
-                              className="c-tin c-tin-mono"
+                            <div
                               style={{
-                                flex: 1, minWidth: 0, minHeight: 34,
-                                ...(r.eng_role !== 'assistant' && (r.eng_name || '').trim() && !r.eng_rate
-                                  ? { background: 'color-mix(in srgb, var(--c-st-warm) 20%, transparent)' }
-                                  : {}),
+                                borderRadius: 12, padding: '7px 14px', width: 150, flexShrink: 0,
+                                background: r.eng_role !== 'assistant' && (r.eng_name || '').trim() && !r.eng_rate
+                                  ? 'color-mix(in srgb, var(--c-st-warm) 20%, transparent)'
+                                  : 'var(--c-wash2)',
                               }}
-                            />
+                            >
+                              <div style={{ ...fldK, fontSize: 8, marginBottom: 1 }}>
+                                {r.eng_role === 'assistant' ? '2ND rate / hr' : '1ST rate / hr'}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+                                <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 17, fontWeight: 600, opacity: 0.45 }}>$</span>
+                                <input
+                                  value={r.eng_rate || ''}
+                                  onChange={e => updateStRow(r.id, { eng_rate: e.target.value })}
+                                  placeholder="0"
+                                  className="c-tin c-tin-mono"
+                                  style={{ fontSize: 17, fontWeight: 600, padding: 0, minHeight: 30, width: '100%' }}
+                                />
+                              </div>
+                            </div>
                           </div>
                         )}
                         {staffHrs != null && staffHrs > 14 && (
