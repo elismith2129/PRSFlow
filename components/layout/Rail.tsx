@@ -81,7 +81,7 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
   // Same role gating as the old Nav: tech loses CRM; a runner gets no internal
   // nav at all (AuthGuard bounces them to /runner — belt and braces here).
   // Nadine's is Eli-only (nav item only; the page body guards itself).
-  const isEli = profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com'
+  const isEli = profile?.email === 'eli@paramountrecording.com'
   const isRunner = profile?.role === 'runner'
   const filterItems = (items: RailItem[]) => items.filter(item => {
     if (profile?.role === 'tech' && item.href === '/crm') return false

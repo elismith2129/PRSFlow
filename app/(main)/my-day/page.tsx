@@ -47,7 +47,7 @@ export default function MyDayPage() {
   const isMobile = useIsMobile()
   const today = getLocalToday()
 
-  const isEli = profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com'
+  const isEli = profile?.email === 'eli@paramountrecording.com'
   const isOwner = isEli || profile?.role === 'owner'
 
   // Fernando and Aaron land on their own card and get no switch. Eli oversees

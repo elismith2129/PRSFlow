@@ -251,7 +251,7 @@ export default function DevPage() {
   // Eli only — matched on his accounts, the same gate the CRM Campaigns tab uses.
   // Deliberately narrower than the app_errors RLS policy (which allows
   // owner/manager); RLS stays as-is, this just hides the surface.
-  const isEli = profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com'
+  const isEli = profile?.email === 'eli@paramountrecording.com'
   const visibleNav = DEV_NAV.filter(n => n.key !== 'errors' || isEli)
 
   // Layout matches app/(main)/admin/page.tsx exactly — no negative margins, so the

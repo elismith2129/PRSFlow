@@ -52,6 +52,7 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 import { formatCurrency } from '@/lib/format'
 import { toast } from '@/components/ui/Toaster'
 import { Hint } from '@/components/ui/Hint'
+import { FinancialsView } from '@/components/billing/FinancialsView'
 import {
   fetchInvoices, searchRows, rowsInBucket, bucketCounts, paginate,
   pageCount, summarise, isPastDue, bucketLabel, tabsFor, hasCodAlert, nextAction,
@@ -67,12 +68,21 @@ export default function BillingPage() {
   const { profile, loading: profileLoading } = useUserProfile()
   const isMobile = useIsMobile()
 
-  const isEli = profile?.email === 'srv2129@gmail.com' || profile?.email === 'eli@paramountrecording.com'
+  const isEli = profile?.email === 'eli@paramountrecording.com'
   const isOwner = isEli || profile?.role === 'owner'
 
   const [rows, setRows] = useState<InvoiceRow[]>([])
   const [loading, setLoading] = useState(true)
   const [pipeline, setPipeline] = useState<Pipeline>('billing')
+  // FINANCIALS IS A THIRD TITLE, NOT A TAB (2026-08-20). The pipeline words ARE
+  // the page heading (ruling 2026-08-13), so the one control that changes what
+  // the whole screen is about already lives there — putting revenue anywhere
+  // else would mean two controls of that kind on one page. It is deliberately
+  // NOT a `Pipeline` value: `Pipeline` types the invoice buckets, and revenue
+  // history has no bucket, no row and no next action. Widening that union to
+  // carry a view mode would put a non-pipeline through every function in
+  // lib/billing that switches on it.
+  const [view, setView] = useState<'invoices' | 'financials'>('invoices')
   const [tab, setTab] = useState<BucketKey>('progress')
   // COD TABS ARE LATCHES (Eli, 2026-08-19: "make the latching buttons only on
   // COD… say COD in progress and balance due. that way we dont miss
@@ -282,6 +292,79 @@ export default function BillingPage() {
 
   if (profileLoading) return null
 
+  // The heading is shared by both views, so it is built once. Financials is an
+  // owner-only word in it — hidden for everyone else, and backed by an
+  // owner-only RLS policy on `financial_history`, because a hidden button is
+  // presentation and never a boundary.
+  const header = (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: '2px 4px 14px', flexWrap: 'wrap' }}>
+      <div>
+        <span className="c-label" style={{ display: 'block', marginBottom: 3 }}>
+          {view === 'financials'
+            ? 'Revenue'
+            : <>Work orders &amp; invoices<Hint tip="Two pipelines. COD: the money is already in — check the work order, attach the invoice, done. Billing: the full cycle — review, invoice, owner approval, send, chase, paid." /></>}
+        </span>
+        <div className="c-btitle" style={{ fontSize: isMobile ? 20 : 26 }}>
+          {(['billing', 'cod'] as Pipeline[]).map(p => (
+            <button
+              key={p}
+              className={`c-arch${view === 'invoices' && pipeline === p ? ' c-on' : ''}`}
+              onClick={() => { setView('invoices'); switchPipeline(p) }}
+              aria-current={view === 'invoices' && pipeline === p ? 'page' : undefined}
+            >
+              {p === 'billing' ? 'Billing' : 'COD'}
+              {/* Hot only on COD, only when a balance exists. Sanctioned under
+                  hot-as-needs-you-now (§5) — this is money nobody is chasing. */}
+              <span className={`c-btitlen${p === 'cod' && codAlert ? ' c-hot' : ''}`}>
+                {pipelineCount(rows, p)}
+              </span>
+            </button>
+          ))}
+          {isOwner && (
+            <button
+              className={`c-arch${view === 'financials' ? ' c-on' : ''}`}
+              onClick={() => setView('financials')}
+              aria-current={view === 'financials' ? 'page' : undefined}
+              title="Revenue over time — owners only"
+            >
+              Financials
+            </button>
+          )}
+        </div>
+      </div>
+      <div style={{ flex: 1 }} />
+      {view === 'invoices' && (
+        /* PAGE-LEVEL "⋯" (2026-08-13). Same control as the row's, one level up:
+           things that belong to the PAGE rather than to an invoice. It is not a
+           header button because a blank work order is rare — Eli: "these are
+           gonna be rare occasions" — and a permanent button next to the
+           pipeline toggle would give a once-a-month action the same weight as
+           the control that changes what the whole screen means. */
+        <button
+          className="c-bmore"
+          onClick={() => setPageMenu(true)}
+          title="More — generate a blank work order"
+          style={{ fontSize: 15, padding: '4px 6px' }}
+        >
+          ⋯
+        </button>
+      )}
+    </div>
+  )
+
+  // Revenue is a different page that happens to live behind the same heading —
+  // no search, no buckets, no rows, no modals. Rendering it as a branch rather
+  // than threading `view` through the invoice tree keeps the two from acquiring
+  // each other's conditionals.
+  if (view === 'financials' && isOwner) {
+    return (
+      <div className="c-root">
+        {header}
+        <FinancialsView />
+      </div>
+    )
+  }
+
   return (
     <div className="c-root">
       {/* HEADER — THE PIPELINE IS THE TITLE (RULING 2026-08-13, spec §17).
@@ -298,44 +381,11 @@ export default function BillingPage() {
           This replaces the top-right pill switch, which sat in the conventional
           home for a view control AND the least-read corner of the screen — a
           quiet place for the one control that changes what the whole page is
-          about. */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: '2px 4px 14px', flexWrap: 'wrap' }}>
-        <div>
-          <span className="c-label" style={{ display: 'block', marginBottom: 3 }}>Work orders &amp; invoices<Hint tip="Two pipelines. COD: the money is already in — check the work order, attach the invoice, done. Billing: the full cycle — review, invoice, owner approval, send, chase, paid." /></span>
-          <div className="c-btitle" style={{ fontSize: isMobile ? 20 : 26 }}>
-            {(['billing', 'cod'] as Pipeline[]).map(p => (
-              <button
-                key={p}
-                className={`c-arch${pipeline === p ? ' c-on' : ''}`}
-                onClick={() => switchPipeline(p)}
-                aria-current={pipeline === p ? 'page' : undefined}
-              >
-                {p === 'billing' ? 'Billing' : 'COD'}
-                {/* Hot only on COD, only when a balance exists. Sanctioned under
-                    hot-as-needs-you-now (§5) — this is money nobody is chasing. */}
-                <span className={`c-btitlen${p === 'cod' && codAlert ? ' c-hot' : ''}`}>
-                  {pipelineCount(rows, p)}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-        <div style={{ flex: 1 }} />
-        {/* PAGE-LEVEL "⋯" (2026-08-13). Same control as the row's, one level up:
-            things that belong to the PAGE rather than to an invoice. It is not a
-            header button because a blank work order is rare — Eli: "these are
-            gonna be rare occasions" — and a permanent button next to the
-            pipeline toggle would give a once-a-month action the same weight as
-            the control that changes what the whole screen means. */}
-        <button
-          className="c-bmore"
-          onClick={() => setPageMenu(true)}
-          title="More — generate a blank work order"
-          style={{ fontSize: 15, padding: '4px 6px' }}
-        >
-          ⋯
-        </button>
-      </div>
+          about.
+
+          Since 2026-08-20 the heading also carries FINANCIALS for owners; it is
+          built above as `header` because both views wear it. */}
+      {header}
 
       {/* SUMMARY — AR aging without leaving the page, computed from the same
           rows the tabs use, so a figure up here can never disagree with the

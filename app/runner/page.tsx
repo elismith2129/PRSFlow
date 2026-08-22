@@ -203,6 +203,10 @@ export default function RunnerPage() {
           router.replace('/login')
         }}
         style={{
+          // MERGE RESOLUTION (2026-08-20): both branches added this button —
+          // main via the standalone runner-sign-out commit, carved as part of
+          // the redesign. Kept the carved styling (design tokens, not legacy
+          // vars); behaviour was identical on both sides.
           marginTop: 30,
           background: 'transparent',
           border: 'none',

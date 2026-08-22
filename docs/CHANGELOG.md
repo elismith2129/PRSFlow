@@ -19,6 +19,69 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.16.0 — Financials: nine years of revenue in the billing hub — Aug 20, 2026
+
+**Owner-only revenue chart, plus the 2017–2026 archive imported out of the "PRS
+Daily Numbers" spreadsheet.** $51,744,630 across 55,601 rows.
+
+**Migrations (BOTH run by hand, both already applied):**
+- `20260820140000_financial_history.sql` — the archive table. Owner-only SELECT
+  via `get_my_role()`, **no write policy at all** (imports are service-role),
+  unique on `(source_key, category)` so a re-import upserts, explicit GRANT
+  (post-2026-05-30 table, not grandfathered).
+- `20260820150000_financial_history_rollups.sql` — `financial_monthly(scope, day)`,
+  `financial_rooms()`, `financial_latest_date()`. All **SECURITY INVOKER**, so the
+  owner-only policy still governs them.
+
+**WATCH-OUT #1 — never `select` raw rows from `financial_history`.** PostgREST
+caps a response at 1,000 rows **and does not tell you it did**. The first build
+selected 55,601 and silently got 2017, so the chart drew nine years as one bump
+in 2017 and nothing after — no error, which sent the diagnosis down an RLS
+rabbit hole. That is what the rollup functions exist for; they are bounded by
+months, not by row count, so they cannot truncate as the archive grows.
+
+**WATCH-OUT #2 — the archive is DAILY and that is load-bearing.** The partial
+current month is compared against the *same day range* a year earlier
+(`amount_to_day`), not against a whole month. Roll the storage up to months to
+save space and the comparison becomes a false 60% collapse every month.
+
+**WATCH-OUT #3 — three streams, not four, before Aug 2026.** The spreadsheet has
+no assistant column in nine years, and per Eli the assistant is not an itemized
+cost at all. See `docs/BILLING-MODEL-OPEN-QUESTIONS.md` — the Assistant metric
+is currently a modelling artefact, and rental history is PRS's *share* while
+live `rental_rows.charge` is *gross*.
+
+**WATCH-OUT #4 — the spreadsheet disagrees with itself on 124 days.** Room cells
+vs its own roll-up columns, net −$19,368 of $51.7M (0.04%). The import takes the
+room cells (typed source) over the roll-up (drifted formula). The
+`TOTAL <year>` rows in the 2024/2025/2026 tabs are stale or blank — do not
+reconcile against them, which cost an hour.
+
+**Bugs fixed in the same pass:**
+- `.c-table-row` is `display: grid` in `globals.css`; putting it on a `<tr>`
+  destroys table layout and stacks every cell into column one. **There is no
+  `<table>` in the Financials view now.**
+- Axis year labels were filtered by `i % every` and *then* tested for January,
+  so nearly every January was discarded before it could be drawn.
+- The brush read `win` from a stale closure, so fast drags computed each step
+  from an out-of-date window. Functional `setWin(prev => …)` now.
+- `scripts/import-financial-history.mjs` split on `\n`; Python's `csv.writer`
+  emits CRLF, so every last field kept a `\r` — Postgres was asked for a column
+  called `source_key\r` and 400'd with a genuinely baffling message.
+
+**`srv2129@gmail.com` removed from all nine `isEli` checks** (dashboard, Nav,
+Rail, billing, CRM campaigns, feedback, my-day, nadines). Eli confirms the
+address is used nowhere — not PRSFlo, GitHub, Vercel or Supabase. As written it
+granted owner-level UI across eight surfaces to an address nobody controls.
+
+**Files:** `lib/financials.ts` (new), `components/billing/FinancialsView.tsx`
+(new), `app/(main)/billing/page.tsx` (Financials is a third title beside
+Billing/COD, owner-gated), `scripts/extract-financial-history.py` (new),
+`scripts/import-financial-history.mjs` (new), both migrations,
+`docs/BILLING-MODEL-OPEN-QUESTIONS.md` (new).
+
+---
+
 ## v1.15.1 — Launch night: the PIN outage, and the WO staffing repair — Aug 20, 2026
 
 **Everything real use found in the hours after launch.** Nothing here is a
