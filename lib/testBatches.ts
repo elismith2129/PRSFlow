@@ -55,6 +55,50 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'ribbon-mark-2026-08-22',
+    title: 'The Ribbon — new logo and app icon',
+    version: 'v1.16.1 (production)',
+    date: 'Aug 22, 2026',
+    intro:
+      'The PRSFlo logo is now one solid sea-green ribbon (it used to be three faint grey lines), and the phone app icon matches it. This batch is all looking, no doing — anyone can run it.',
+    items: [
+      {
+        id: 'ribbon-login', area: 'Login',
+        what: 'The login screen shows the solid sea-green ribbon above the name',
+        how: 'Sign out, then look at the login screen. Above the PIN pad you should see ONE solid green wave-ribbon shape — not three separate grey lines, and no glow around it.',
+      },
+      {
+        id: 'ribbon-rail', area: 'Side rail',
+        what: 'The little logo at the top of the side rail is the same green ribbon',
+        how: 'Sign in at a computer and look at the top of the left rail. The small mark next to "PRSFlo" should be the same solid green ribbon, clearly readable even at that small size.',
+        device: 'desktop',
+      },
+      {
+        id: 'ribbon-wordmark', area: 'Wordmark',
+        what: 'The name reads "PRSFlo" — capital F, small l-o',
+        how: 'Anywhere the name appears (login, side rail), check the second half says "Flo", not "FLO". PRS stays all caps and solid; Flo sits next to it slightly faded.',
+      },
+      {
+        id: 'ribbon-both-themes', area: 'Themes',
+        what: 'The ribbon stays the SAME green in light and dark mode',
+        how: 'Toggle the theme in Settings. The ribbon must stay the same sea green in both — it should NOT turn grey, white or blue in either theme.',
+        device: 'desktop',
+      },
+      {
+        id: 'ribbon-app-icon', area: 'Phone icon',
+        what: 'A freshly added home-screen app shows the new icon',
+        how: 'On your phone, remove PRSFlo from your home screen if you have it, then re-add it from the browser (Share → Add to Home Screen). The icon should be the green ribbon on a dark rounded square. If you keep the OLD icon without re-adding, that is expected, not a fail.',
+        device: 'phone',
+      },
+      {
+        id: 'ribbon-runner-icon', area: 'Phone icon',
+        what: 'The Runner app icon is the same ribbon in orange',
+        how: 'On a phone, remove and re-add the Runner app (from /runner → Add to Home Screen). Its icon should be the same ribbon shape but ORANGE on the dark square, so the two apps are easy to tell apart.',
+        device: 'phone',
+      },
+    ],
+  },
+  {
     id: 'financials-2026-08-20',
     title: 'Financials — the revenue graph in the Billing hub',
     version: 'v1.16.0 (production)',

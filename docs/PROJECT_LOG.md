@@ -4231,3 +4231,52 @@ information, and a third tap must not be able to destroy it. This also keeps
   way a runner's Not OK submission does. Check before calling equipment done.
 - The studio-time scroll cap (420px) shows ~5 days now that blocks are ~86px.
   Eli wants ~8. Deliberately not changed yet.
+
+### Aug 22, 2026 — The Ribbon: the brand mark gets its colour back (v1.16.1)
+
+**Why.** Eli, on the carved monochrome mark: *"when we ditched the colors it now
+looks a little bland."* The 2026-07-30 redesign had made `PRSFloIcon` three
+`currentColor` strokes at .35/.6/1 — correct under Law 3, but the brand read as
+a ghost of itself. Separately, the home-screen app icon had NEVER been
+regenerated after that redesign, so phones still showed the old teal/lime/glow
+icon: the app and its icon hadn't matched for three weeks.
+
+**How it was decided.** One options page,
+`docs/design-refs/brand-mark-options.html`, grown across the conversation:
+- **Colour direction:** A · Lagoon (status-palette colours) picked over
+  B Heritage (teal+lime return), C one-live-line, D flow gradient, E paper
+  icon. Then Eli cut deeper: *"take the logo and just fill it in. one color."*
+- **Construction:** G1 · Ribbon — the fill between the old mark's tallest and
+  flattest wave, which cross mid-mark, so one solid shape still reads as a wave
+  in motion. G2 (single heavy line) and G3 (three lines, one colour) rejected.
+- **Colour:** sea green `#43dfae` over lagoon/lime/teal.
+- **Wordmark:** casing restored to `PRS`+`Flo` (the carved redesign had gone
+  `FLO`). Font auditioned against the new UI's own set — Syne (the old face),
+  Inter, DM Mono — and **Archivo Black kept**.
+
+**What shipped.** `PRSFloIcon.tsx` = one filled path, `#43dfae` in both themes
+(every placement inherits — login, splash, rail, SOP gate, inquiry, Flo box).
+`Wordmark.tsx` = `PRS`+`Flo`. `generate-icons.js` rewritten flat (no gradients,
+no glow, no drop shadows) and all 10 assets regenerated; runner set keeps its
+orange identity via warm amber `#ffa94d`. Spec: §4 casing amendment + new §20
+recording the ribbon as the SECOND sanctioned Law 3 exception (the Flo glow
+being the first — and the same logic applies: the exception only signals while
+it stays exclusive). CLAUDE.md locked conventions updated.
+
+**Rejected on principle:** bringing back the old radial glow / gradients along
+with the colour. Colour is the richness now; flatness is still law.
+
+**Watch-outs recorded in CHANGELOG:** ribbon path duplicated by design in
+`PRSFloIcon.tsx` + `generate-icons.js` (change both, regenerate); never
+`currentColor` on the mark; installed PWAs cache the old icon until re-added.
+
+**Session note (workflow):** this ran as a Cowork desktop session on a mounted
+folder. Git in the session's sandbox created `.git/HEAD.lock`/`index.lock` it
+could not delete ("Operation not permitted"), and one early commit
+(brand-mark-options.html) accidentally landed on `redesign/carved` because
+another open session had switched branches mid-flight. All later work is
+uncommitted working-tree changes; Eli was handed one terminal line that clears
+the locks, stages by name, commits and pushes. The known cloud-sandbox git
+limitation (working-conventions.md) evidently applies to the local Cowork
+sandbox too — treat "Claude commits from Cowork bash" as unreliable; Claude
+Code local remains the pushing workflow.

@@ -19,6 +19,45 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.16.1 — The Ribbon: brand mark gets its colour back — Aug 22, 2026
+
+**The monochrome wave mark is retired for THE RIBBON — one solid twisted-ribbon
+wave, sea green `#43dfae`, fixed in both themes.** Eli's read on the carved
+monochrome mark: "when we ditched the colors it now looks a little bland" →
+"take the logo and just fill it in, one color." Options round in
+`docs/design-refs/brand-mark-options.html` (colour directions A–E, fill
+constructions G1–G3, wordmark font audition F1–F4); picks: **G1 Ribbon · sea
+green · Archivo Black**. Recorded as **spec §20** — the second sanctioned
+exception to Law 3, alongside the Flo glow's exception to §7.
+
+**Migrations:** none.
+
+**WATCH-OUT #1 — the ribbon path lives in TWO files by design and they must
+stay identical:** `components/PRSFloIcon.tsx` (in-app mark) and
+`scripts/generate-icons.js` (app-icon assets). Change one, change both, re-run
+`node scripts/generate-icons.js` (10 assets).
+
+**WATCH-OUT #2 — never render the mark in `currentColor`, and never reintroduce
+the three-wave strokes, gradients, or the old radial glow.** The colour is the
+brand exception; the flatness is still law.
+
+**WATCH-OUT #3 — installed PWAs cache their icon.** Staff with the old
+teal/lime icon on their home screen may keep it until they remove and re-add
+the app. Not a bug.
+
+**Also:** `Wordmark.tsx` casing restored to `PRS` + `Flo` (capital F, lowercase
+l-o — was `FLO` since the carved redesign). Face unchanged (Archivo Black,
+.45 opacity, −.02em); Eli auditioned Syne/Inter/DM Mono and kept Archivo.
+Runner icon set keeps its orange identity via warm amber `#ffa94d`
+(`--c-st-warm`), replacing the old orange gradient.
+
+**Files:** `components/PRSFloIcon.tsx`, `components/layout/Wordmark.tsx`,
+`scripts/generate-icons.js`, `public/icon.svg` + 5 main PNGs,
+`public/runner-icon.svg` + 3 runner PNGs, `docs/PRSFLO-DESIGN-SPEC.md` (§4
+amendment + new §20), `CLAUDE.md`, `docs/design-refs/brand-mark-options.html`.
+
+---
+
 ## v1.16.0 — Financials: nine years of revenue in the billing hub — Aug 20, 2026
 
 **Owner-only revenue chart, plus the 2017–2026 archive imported out of the "PRS

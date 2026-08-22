@@ -645,6 +645,25 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.16.1', date:'Aug 22, 2026',
+    headline:'A new look for the PRSFlo mark — the ribbon.',
+    desc:'The wave logo is now one solid sea-green ribbon instead of three faint grey lines, and the app icon on your phone finally matches the app itself.',
+    changes:[
+      'The logo you see on the login screen, the side rail and the welcome splash is now a single solid wave ribbon in sea green — same shape family as before, just filled in and given its colour back.',
+      'The app icon on your phone\'s home screen is the same ribbon on a dark square. The Runner app\'s icon is the same ribbon in orange, so the two apps stay easy to tell apart.',
+      'The name reads "PRSFlo" again — capital F, small l-o — the way it used to.',
+    ],
+    affects:'Nothing changes in how anything works — this is purely the look. One thing to know: if the app is already on your home screen, your phone may keep showing the OLD icon. If it bothers you, remove the app from your home screen and add it again from the browser; it will pick up the new one.',
+    dev:[
+      'The monochrome three-wave mark is retired for THE RIBBON — one solid path, sea green <code>#43dfae</code>, fixed in both themes. Recorded as spec §20: the second sanctioned exception to Law 3, alongside the Flo glow\'s exception to the no-glow rule.',
+      'Picked from <code>docs/design-refs/brand-mark-options.html</code>: colour direction A · Lagoon → construction G1 · Ribbon; wordmark font audition kept Archivo Black over Syne/Inter/DM Mono.',
+      '<strong>The ribbon path lives in TWO files by design and must stay identical:</strong> <code>components/PRSFloIcon.tsx</code> and <code>scripts/generate-icons.js</code>. Change both, re-run <code>node scripts/generate-icons.js</code> (10 assets).',
+      'Never render the mark in <code>currentColor</code>, and never reintroduce the three-wave strokes, gradients, or the old radial glow — colour is the brand exception; flatness is still law.',
+      '<code>Wordmark.tsx</code> casing restored to <code>PRS</code>+<code>Flo</code> (was <code>FLO</code> since the carved redesign). Runner icon set keeps its orange identity via warm amber <code>#ffa94d</code>.',
+      'Installed PWAs cache their icon — staff may keep the old teal/lime icon until they remove and re-add the app. Not a bug.',
+    ],
+  },
+  {
     ver:'v1.16.0', date:'Aug 20, 2026',
     headline:'Financials — nine years of the studio\'s numbers, in one graph.',
     desc:'Everything Paramount has billed since 2017 now lives in the app, alongside what the app records today. It sits in the Billing hub next to Billing and COD, and only owners can see it.',
