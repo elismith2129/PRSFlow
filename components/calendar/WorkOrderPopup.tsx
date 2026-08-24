@@ -2006,6 +2006,13 @@ export function WorkOrderPopup({
 
     const reopening = wo.status === 'completed'
 
+    // REOPEN IS BACK (Eli, 2026-08-24 — reversing the 2026-08-11 removal).
+    // The removal reasoned that nothing read the reopened state and the button
+    // sat one slip from Save; then the office hit Complete by accident and the
+    // only undo was SQL. The slip risk is answered with a confirm instead of
+    // absence.
+    if (reopening && !window.confirm('Reopen this work order? It goes back to OPEN and comes out of the billing queue until it’s completed again.')) return
+
     // Gate COMPLETING only. Re-opening a WO must never be blocked — that would
     // strand a bad WO in the completed state with no way back to fix it.
     if (!reopening) {
@@ -2044,6 +2051,16 @@ export function WorkOrderPopup({
       status: newStatus,
       admin_approved_at: newStatus === 'completed' ? now : null,
     }).eq('id', woIdRef.current)
+
+    // Reopening also takes it back OUT of billing — but only from
+    // 'needs_invoice', the state Complete itself set. An invoice already in
+    // flight (sent/paid/approved) is never dragged back by a reopen.
+    if (!completeErr && reopening) {
+      await supabase.from('work_orders')
+        .update({ invoice_state: null })
+        .eq('id', woIdRef.current)
+        .eq('invoice_state', 'needs_invoice')
+    }
 
     // COMPLETING STARTS THE BILLING PROCESS (ruling 2026-08-11).
     //
@@ -2964,28 +2981,24 @@ export function WorkOrderPopup({
           {/* Blocks (Tour / Tech / Open Hours) have no work order to complete —
               they're calendar occupancy, not billable work. The mobile twin of
               this button is already inside the !isBlock branch above. */}
-          {/* COMPLETE WO IS THE "I'M UPDATING THIS" PATH (Eli, 2026-08-11).
-              Before completion it is the primary act. AFTER completion it stays
-              named Complete WO and greys out until you actually change
-              something — "then it just remains complete". It no longer offers
-              Re-open: with the billing hub owning the invoice lifecycle,
-              re-opening a completed work order was an undo for a state nothing
-              reads any more, and it sat one slip away from the button people
-              press to save an edit. */}
+          {/* COMPLETE ⇄ REOPEN (Eli 2026-08-24, reversing the 2026-08-11
+              removal of Re-open). Before completion this is Complete WO — the
+              primary act that starts billing. After completion the SAME button
+              becomes Reopen WO: the office hit Complete by accident and the
+              only undo was SQL, which is exactly the "stranded with no way
+              back" the reopen path always warned about. The 08-11 slip-risk
+              concern is answered by handleComplete's confirm, not by absence.
+              Saving an edit to a completed WO is what the Save button is for. */}
           {!isBlock && (
           <button
-            // SAVES AND CLOSES (fix, 2026-08-11). It used to save in place, so
-            // you then pressed Close and — because dirtyFields was still set —
-            // got asked whether to save the thing you had just saved. Complete
-            // WO is the "I'm done here" button; leaving you in the window
-            // afterwards made it a step rather than a decision.
-            onClick={() => (isCompleted ? handleClose() : handleComplete())}
-            disabled={completing || saving || (isCompleted && !isDirty())}
+            // Complete SAVES AND CLOSES (fix, 2026-08-11) — see handleComplete.
+            onClick={() => handleComplete()}
+            disabled={completing || saving}
             className={`c-control ${isCompleted ? 'c-soft' : 'c-pill c-fill-booked'}`}
-            style={{ padding: '12px 26px', fontSize: 12, cursor: (completing || (isCompleted && !isDirty())) ? 'default' : 'pointer', opacity: (completing || saving || (isCompleted && !isDirty())) ? 0.4 : 1, boxShadow: '1.5px 1.5px 4px rgba(0,0,0,.25)', ...(isMobile ? { display: 'none' } : {}) }}
-            title={isCompleted && !isDirty() ? 'Nothing has changed' : undefined}
+            style={{ padding: '12px 26px', fontSize: 12, cursor: (completing || saving) ? 'default' : 'pointer', opacity: (completing || saving) ? 0.4 : 1, boxShadow: '1.5px 1.5px 4px rgba(0,0,0,.25)', ...(isMobile ? { display: 'none' } : {}) }}
+            title={isCompleted ? 'Reopen this work order' : undefined}
           >
-            {completing ? 'Completing…' : 'Complete WO'}
+            {completing ? (isCompleted ? 'Reopening…' : 'Completing…') : isCompleted ? 'Reopen WO' : 'Complete WO'}
           </button>
           )}
           {/* SAVE (Eli, 2026-08-13; prompt removed 2026-08-18). It was "Close"
@@ -3139,17 +3152,17 @@ export function WorkOrderPopup({
                     {!readOnly && (
                       <button
                         type="button"
-                        onClick={() => (isCompleted ? handleClose() : handleComplete())}
-                        disabled={completing || saving || (isCompleted && !isDirty())}
+                        onClick={() => handleComplete()}
+                        disabled={completing || saving}
                         className={`c-pill c-control ${isCompleted ? 'c-fill-booked' : ''}`}
                         // c-pill has no background of its own — the fill classes
                         // supply it — so the un-completed state painted black on
                         // black (Eli, 2026-08-18: "complete is black and cant
                         // see"). Wash2 + fg, same recipe as the mock's pill.
-                        style={{ cursor: (completing || (isCompleted && !isDirty())) ? 'default' : 'pointer', opacity: (completing || saving || (isCompleted && !isDirty())) ? 0.4 : 1, ...(isCompleted ? {} : { background: 'var(--c-wash2)', color: 'var(--c-fg)' }) }}
-                        title={isCompleted && !isDirty() ? 'Nothing has changed' : 'Complete this work order'}
+                        style={{ cursor: (completing || saving) ? 'default' : 'pointer', opacity: (completing || saving) ? 0.4 : 1, ...(isCompleted ? {} : { background: 'var(--c-wash2)', color: 'var(--c-fg)' }) }}
+                        title={isCompleted ? 'Reopen this work order' : 'Complete this work order'}
                       >
-                        {completing ? 'Completing…' : '✓ Complete'}
+                        {completing ? (isCompleted ? 'Reopening…' : 'Completing…') : isCompleted ? '↺ Reopen' : '✓ Complete'}
                       </button>
                     )}
                   </div>
@@ -4849,13 +4862,13 @@ export function WorkOrderPopup({
               The runner's terminal act is the Submit footer below. */}
           {isMobile && !readOnly && !runner && (
             <button
-              onClick={() => (isCompleted ? handleClose() : handleComplete())}
-              disabled={completing || saving || (isCompleted && !isDirty())}
+              onClick={() => handleComplete()}
+              disabled={completing || saving}
               className={`c-control c-block ${isCompleted ? 'c-soft c-raised' : 'c-pill c-fill-booked c-raised-chip'}`}
-              style={{ order: ORD.mobileComplete, minHeight: 48, justifyContent: 'center', cursor: (completing || (isCompleted && !isDirty())) ? 'default' : 'pointer', opacity: (completing || saving || (isCompleted && !isDirty())) ? 0.4 : 1 }}
-              title={isCompleted && !isDirty() ? 'Nothing has changed' : undefined}
+              style={{ order: ORD.mobileComplete, minHeight: 48, justifyContent: 'center', cursor: (completing || saving) ? 'default' : 'pointer', opacity: (completing || saving) ? 0.4 : 1 }}
+              title={isCompleted ? 'Reopen this work order' : undefined}
             >
-              {completing ? 'Completing…' : 'Complete WO'}
+              {completing ? (isCompleted ? 'Reopening…' : 'Completing…') : isCompleted ? 'Reopen WO' : 'Complete WO'}
             </button>
           )}
           </div>
