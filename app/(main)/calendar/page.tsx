@@ -1816,21 +1816,10 @@ function CalendarPageInner() {
         </div>
         </div>{/* end mobile row 2 */}
 
-        {/* New booking — full-width lime button below the controls on mobile */}
-        <button
-          onClick={() => openNew()}
-          style={{
-            padding: isMobile ? '12px 16px' : '6px 16px',
-            borderRadius: isMobile ? 8 : 4,
-            fontSize: isMobile ? 13 : 11, fontFamily: 'Inter',
-            fontWeight: 700, cursor: 'pointer',
-            background: 'var(--c-fg)',
-            color: 'var(--c-bg)',
-            width: isMobile ? '100%' : undefined,
-            minHeight: isMobile ? 44 : undefined,
-            letterSpacing: isMobile ? '0.04em' : undefined,
-          }}
-        >+ New Booking</button>
+        {/* + New Booking button removed (Eli 2026-08-24, "not needed") — every
+            create path goes through the grid itself: click an empty cell, or
+            arrive via Start Booking / the dashboard's empty-room cards. openNew
+            stays; only this launcher died. */}
       </div>
 
       {/* Calendar content */}
