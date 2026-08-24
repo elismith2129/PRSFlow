@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Shift notes v2 (one post per shift)</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  SHIFT NOTES v2 — ONE POST PER SHIFT (Eli, 2026-08-24)
+
+  Supersedes the per-box entries shipped earlier today. Eli: "its one submit
+  per shift. not a log entry throughout a shift. session notes and studio
+  notes both submit to one big entry."
+
+  THE MODEL:
+    · A post = one submission containing BOTH session notes and studio notes,
+      exactly like one "manager notes" email. Author + time on the post, not
+      on each box.
+    · Two managers a day (opener + closer) → typically two posts per day.
+      Nothing shared, nothing to overwrite.
+    · Compose = two labeled boxes, ONE Submit. Boxes split the card equally.
+    · Today's already-submitted posts sit above the composer.
+    · The log below = one card per post, grouped by day, newest first.
+
+  Kept from v1: explicit submit (no autosave), × delete-own, all-admin
+  read/write, driftglass meta line. Dark polarity shown to match the app.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --st-booked:#43dfae; --chip-ink:#1c2626;
+  --ivory:#d5d0c2; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+  --ctlsh:0 1px 2px rgba(42,39,34,.10);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  --ctlsh:0 1px 3px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);
+  font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;
+  padding:26px;max-width:1060px;margin:0 auto}
+button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+
+.note{font-size:11.5px;opacity:.55;line-height:1.6;margin:6px 0 20px;max-width:640px}
+
+.pane{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:12px;margin-bottom:14px}
+.lozenge{display:flex;align-items:baseline;justify-content:space-between;border-radius:99px;
+  padding:7px 14px;margin-bottom:10px;font-size:10px;font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase;background:var(--wash2)}
+.lozenge .ct{font-family:ui-monospace,monospace;font-size:10px;opacity:.7;letter-spacing:0}
+
+/* ── A POST — one submission, both sections inside, one meta line ───────── */
+.post{background:var(--wash);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.post .sec{margin-bottom:8px}
+.post .sec:last-of-type{margin-bottom:5px}
+.post .sec .label{display:block;margin-bottom:2px}
+.post .sec p{font-size:12.5px;line-height:1.55;white-space:pre-wrap}
+.post .meta{display:flex;align-items:center;gap:6px;
+  font-family:ui-monospace,monospace;font-size:9.5px;opacity:.55;margin-top:6px}
+.post .meta .x{margin-left:auto;opacity:.6;font-size:13px;padding:0 2px}
+.post .meta .x:hover{opacity:1}
+/* A post can be session-only or studio-only — an empty box just isn't shown. */
+
+/* ── COMPOSER — two boxes, ONE submit ───────────────────────────────────── */
+.compose{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.compose .col .label{display:block;margin-bottom:5px}
+.compose textarea{width:100%;min-height:150px;border-radius:11px;background:var(--wash);
+  padding:9px 11px;font:inherit;font-size:12px;line-height:1.55;color:var(--fg);
+  resize:vertical;outline:none;border:none}
+.compose textarea:focus{background:var(--wash2)}
+.crow{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:10px}
+.crow .hint{font-size:10.5px;opacity:.45}
+.btn{display:inline-flex;align-items:center;border-radius:99px;padding:8px 18px;
+  font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--ivory);color:#1b1a17}
+:root:not([data-theme="dark"]) .btn{background:var(--fg);color:var(--bg)}
+
+.dayhead{display:block;padding:10px 6px 4px}
+</style>
+</head>
+<body>
+
+<h1 class="arch" style="font-size:22px;letter-spacing:-.03em">Shift notes — one post per shift</h1>
+<p class="note">A post is one submission: session notes + studio notes together, signed once —
+like one manager-notes email. The opener submits theirs, the closer submits theirs.
+Today's posts sit above the composer; the log below is one card per post.
+An empty box simply doesn't appear in the post.</p>
+
+<!-- ══ SHIFT NOTES PANEL (as it sits on /my-day, left column) ══ -->
+<div class="pane">
+  <div class="lozenge"><b>Shift notes</b><span class="ct">1 post today</span></div>
+
+  <!-- Already submitted today — the opener's post -->
+  <div class="post">
+    <div class="sec">
+      <span class="label">Session notes</span>
+      <p>* Noah gave a 1:00pm start time today.
+* Tour with Luz went fine, they're looking into booking E at some point this week for vocals only and then maybe an additional session in A for Mixing &amp; Mastering.</p>
+    </div>
+    <div class="sec">
+      <span class="label">Studio notes</span>
+      <p>* Logan called out tonight, Terren took over his shift at ARS instead of floating Paramount.
+* Tristan relieved Elie from ERS this morning.</p>
+    </div>
+    <div class="meta"><span>Fernando · Manager · Aug 24 · 01:04 PM</span><button class="x">×</button></div>
+  </div>
+
+  <!-- The composer — YOUR post. Two boxes, one Submit. -->
+  <div class="compose">
+    <div class="col">
+      <span class="label">Session notes</span>
+      <textarea placeholder="Anything the next shift needs to know…"></textarea>
+    </div>
+    <div class="col">
+      <span class="label">Studio notes</span>
+      <textarea placeholder="Rooms, gear, maintenance…"></textarea>
+    </div>
+  </div>
+  <div class="crow">
+    <span class="hint">Submits both boxes as one post, signed with your name.</span>
+    <button class="btn">Submit shift notes</button>
+  </div>
+</div>
+
+<!-- ══ NOTES LOG — one card per post, grouped by day ══ -->
+<div class="pane">
+  <div class="lozenge"><b>Notes log</b><span class="ct">last 30 days</span></div>
+
+  <span class="label dayhead">Fri 8/21</span>
+  <div class="post">
+    <div class="sec">
+      <span class="label">Session notes</span>
+      <p>* Noah gave a 2:00p start time for Mustard. TT is opening.</p>
+    </div>
+    <div class="sec">
+      <span class="label">Studio notes</span>
+      <p>* TT relieved Lori this morning.</p>
+    </div>
+    <div class="meta"><span>Fernando · Manager · Aug 21 · 03:35 PM</span></div>
+  </div>
+  <div class="post">
+    <div class="sec">
+      <span class="label">Session notes</span>
+      <p>* Invoices from last night entered in QB. Two COD balances chased.</p>
+    </div>
+    <div class="meta"><span>Aaron · Billing · Aug 21 · 03:11 PM</span></div>
+  </div>
+
+  <span class="label dayhead">Thu 8/20</span>
+  <div class="post">
+    <div class="sec">
+      <span class="label">Session notes</span>
+      <p>* B ran late to 2am — approved by Eli. UntilJapan back Friday.</p>
+    </div>
+    <div class="sec">
+      <span class="label">Studio notes</span>
+      <p>* SSL channel 12 intermittent at ARS — flagged, Tom aware.</p>
+    </div>
+    <div class="meta"><span>Fernando · Manager · Aug 20 · 11:48 PM</span></div>
+  </div>
+</div>
+
+</body>
+</html>
