@@ -20,19 +20,28 @@ const makeSVG = (fill) => `<svg width="512" height="512" viewBox="0 0 200 200" x
   <path d="${RIBBON}" fill="${fill}"/>
 </svg>`;
 
+// APPLE-TOUCH VARIANT — square and fully opaque, NO rounded corners. iOS applies
+// its own mask and is strict about this: transparent/rounded apple-touch-icons can
+// be rejected entirely, in which case Safari falls back to a letter tile ("P").
+// Discovered on iPhone 2026-08-22 — Android accepted the rounded PNGs, iOS did not.
+const makeAppleSVG = (fill) => `<svg width="512" height="512" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" fill="#1b1a17"/>
+  <path d="${RIBBON}" fill="${fill}"/>
+</svg>`;
+
 const iconSVG = makeSVG('#43dfae');
 const runnerSVG = makeSVG('#ffa94d');
+const appleSVG = makeAppleSVG('#43dfae');
+const runnerAppleSVG = makeAppleSVG('#ffa94d');
 
 const sizes = [
   { size: 16,  file: 'public/favicon-16x16.png' },
   { size: 32,  file: 'public/favicon-32x32.png' },
-  { size: 180, file: 'public/apple-touch-icon.png' },
   { size: 192, file: 'public/icon-192.png' },
   { size: 512, file: 'public/icon-512.png' },
 ];
 
 const runnerSizes = [
-  { size: 180, file: 'public/runner-apple-touch-icon.png' },
   { size: 192, file: 'public/runner-icon-192.png' },
   { size: 512, file: 'public/runner-icon-512.png' },
 ];
@@ -43,11 +52,15 @@ async function generate() {
     await sharp(Buffer.from(iconSVG)).resize(size, size).png().toFile(file);
     console.log(`✓ ${file}`);
   }
+  await sharp(Buffer.from(appleSVG)).resize(180, 180).flatten({ background: '#1b1a17' }).png().toFile('public/apple-touch-icon.png');
+  console.log('✓ public/apple-touch-icon.png (square/opaque)');
   fs.writeFileSync('public/runner-icon.svg', runnerSVG);
   for (const { size, file } of runnerSizes) {
     await sharp(Buffer.from(runnerSVG)).resize(size, size).png().toFile(file);
     console.log(`✓ ${file}`);
   }
+  await sharp(Buffer.from(runnerAppleSVG)).resize(180, 180).flatten({ background: '#1b1a17' }).png().toFile('public/runner-apple-touch-icon.png');
+  console.log('✓ public/runner-apple-touch-icon.png (square/opaque)');
   console.log('All icons generated.');
 }
 
