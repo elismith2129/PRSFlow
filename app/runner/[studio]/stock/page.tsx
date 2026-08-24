@@ -296,13 +296,17 @@ export default function StockPage() {
               onChange={e => edit(idx, { notes: e.target.value })}
               style={{ ...input, width: '100%', boxSizing: 'border-box' }}
             />
-            {past.length > 0 && (
+            {past.length > 0 ? (
               <div style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 10, opacity: 0.55, lineHeight: 1.7, padding: '0 2px' }}>
                 {past.map(c => (
                   <span key={c.date} style={{ marginRight: 12, whiteSpace: 'nowrap' }}>
                     {fmtCheckDate(c.date)}: {c.qty || '—'}{c.low ? ' · LOW' : ''}
                   </span>
                 ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: 10, opacity: 0.4, padding: '0 2px' }}>
+                No past checks yet — history starts with tonight&apos;s save.
               </div>
             )}
           </div>
