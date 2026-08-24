@@ -926,8 +926,9 @@ export async function setQueueStep(opts: {
 // two managers (opener + closer) work the same day, and the old shared-box
 // upsert meant the last debounce silently overwrote the other person's text.
 // An appended post has no clobber window at all. `role` is the card the post
-// was made from; `shift` tags whose post you're reading on the manager card
-// (opening/closing — null for billing, where the day is one person's).
+// was made from. `shift` (opening/closing) is UNWRITTEN as of the same day's
+// third ruling — "the time submitted really dictates what it is"; old posts
+// may still carry a value, which the UI no longer renders.
 
 export type NoteShift = 'opening' | 'closing'
 
@@ -959,16 +960,17 @@ export async function fetchNotePosts(date: string): Promise<MyDayNotePost[]> {
 }
 
 /**
- * The log: every post BEFORE `before` (exclusive), newest day first, posts
- * within a day in the order they were submitted. Caller groups by date.
- * `days` bounds the window so the page doesn't grow unbounded with history.
+ * The log: every post through `through` (INCLUSIVE — today's submitted posts
+ * live here and nowhere else, ruling 2026-08-24: a second copy above the
+ * composer read as duplication), newest day first, posts within a day in
+ * submit order. Caller groups by date. `days` bounds the window.
  */
-export async function fetchNoteLog(before: string, days = 30): Promise<MyDayNotePost[]> {
-  const from = shiftDate(before, -days)
+export async function fetchNoteLog(through: string, days = 30): Promise<MyDayNotePost[]> {
+  const from = shiftDate(through, -days)
   const { data, error } = await supabase
     .from('myday_note_posts')
     .select(NOTE_POST_SELECT)
-    .lt('date', before)
+    .lte('date', through)
     .gte('date', from)
     .order('date', { ascending: false })
     .order('created_at', { ascending: true })
@@ -976,11 +978,13 @@ export async function fetchNoteLog(before: string, days = 30): Promise<MyDayNote
   return (data ?? []) as unknown as MyDayNotePost[]
 }
 
-/** Both boxes empty = nothing to post (returns false, no write). */
+/** Both boxes empty = nothing to post (returns false, no write).
+    No opener/closer tag (Eli 2026-08-24, third ruling of the day: "the time
+    submitted really dictates what it is") — the `shift` column survives in
+    the table, unwritten, like `always_available` before it. */
 export async function addNotePost(args: {
   role: MyDayRole
   date: string
-  shift: NoteShift | null
   sessionNotes: string
   studioNotes: string
   createdBy: string
@@ -991,12 +995,32 @@ export async function addNotePost(args: {
   const { error } = await supabase.from('myday_note_posts').insert({
     role: args.role,
     date: args.date,
-    shift: args.shift,
     session_notes: session,
     studio_notes: studio,
     created_by: args.createdBy,
   })
   return dbResult('Saving shift notes', error)
+}
+
+/**
+ * Author-only edit (RLS enforces created_by = caller): a submitted post stays
+ * the author's to reopen and finish — "always make the notes editable by the
+ * person who submitted them" (Eli, 2026-08-24). Submitting is signing, not
+ * sealing — same ruling as the runner WO's "submitted is a signal, not a seal".
+ */
+export async function updateNotePost(args: {
+  id: string
+  sessionNotes: string
+  studioNotes: string
+}): Promise<boolean> {
+  const session = args.sessionNotes.trim()
+  const studio = args.studioNotes.trim()
+  if (!session && !studio) return false
+  const { error } = await supabase.from('myday_note_posts').update({
+    session_notes: session,
+    studio_notes: studio,
+  }).eq('id', args.id)
+  return dbResult('Updating shift notes', error)
 }
 
 /** RLS scopes this to the author's own posts (owner may delete any). */

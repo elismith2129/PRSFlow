@@ -36,11 +36,11 @@ import {
   completeDuty, uncompleteDuty, setDutyCaptured,
   fetchBalancesQueue, fetchHoldsQueue, fetchBookedQueue,
   fetchQueueSteps, setQueueStep, fetchStaffGrid,
-  fetchNotePosts, fetchNoteLog, addNotePost, deleteNotePost,
+  fetchNoteLog, addNotePost, updateNotePost, deleteNotePost,
   fetchBillingBrief, shortDayLabel, QUEUE_STEPS,
   type MyDayRole, type MyDayDuty, type MyDayEntry, type DutyView,
   type BalanceItem, type QueueBookingItem, type BillingBrief,
-  type MyDayNotePost, type NoteShift,
+  type MyDayNotePost,
 } from '@/lib/myday'
 
 type ViewAs = MyDayRole
@@ -73,14 +73,12 @@ export default function MyDayPage() {
   const [holds, setHolds] = useState<QueueBookingItem[]>([])
   const [booked, setBooked] = useState<QueueBookingItem[]>([])
   const [brief, setBrief] = useState<BillingBrief | null>(null)
-  const [todayPosts, setTodayPosts] = useState<MyDayNotePost[]>([])
   const [noteLog, setNoteLog] = useState<MyDayNotePost[]>([])
   const [drafts, setDrafts] = useState({ session: '', studio: '' })
   const [posting, setPosting] = useState(false)
-  // null = auto: first post of the day on this card is the opener's, so the
-  // toggle pre-selects Opening until a post exists, then Closing. The
-  // submitter can always override — derivation only picks the default.
-  const [shiftSel, setShiftSel] = useState<NoteShift | null>(null)
+  // A post being re-opened by its author — the composer becomes its editor
+  // and Submit updates instead of inserting.
+  const [editingPost, setEditingPost] = useState<MyDayNotePost | null>(null)
   const [names, setNames] = useState<Partial<Record<MyDayRole, string>>>({})
   const [busy, setBusy] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -88,10 +86,9 @@ export default function MyDayPage() {
   // ── Load ───────────────────────────────────────────────────────────────────
 
   const load = useCallback(async () => {
-    // Notes first — they're the whole page for an asst manager.
-    const [tp, lg] = await Promise.all([fetchNotePosts(today), fetchNoteLog(today)])
-    setTodayPosts(tp)
-    setNoteLog(lg)
+    // Notes first — they're the whole page for an asst manager. One fetch:
+    // the log INCLUDES today, and today's posts render only there.
+    setNoteLog(await fetchNoteLog(today))
     if (notesOnly) { setLoading(false); return }
 
     const roleDuties = await fetchDuties(role)
@@ -175,35 +172,39 @@ export default function MyDayPage() {
     await load()
   }
 
-  // ONE submit per shift (ruling 2026-08-24 v2): both boxes go out together as
-  // a single signed post, like sending the manager-notes email. No autosave —
-  // two managers work the same day (opener + closer) and the old shared-box
-  // upsert meant whoever's debounce fired last silently overwrote the other.
-  // An appended post has no clobber window at all.
-  const rolePostsToday = todayPosts.filter(p => p.role === role)
-  const effectiveShift: NoteShift =
-    shiftSel ?? (rolePostsToday.length > 0 ? 'closing' : 'opening')
-
+  // ONE submit per post (ruling 2026-08-24 v2, simplified v3 same day): both
+  // boxes go out together as a single signed post, like sending the
+  // manager-notes email. No autosave — two managers work the same day and the
+  // old shared-box upsert meant whoever's debounce fired last silently
+  // overwrote the other. No opener/closer tag either: "the time submitted
+  // really dictates what it is."
   async function postNotes() {
     if (!profile?.id || posting) return
     if (!drafts.session.trim() && !drafts.studio.trim()) return
     setPosting(true)
-    const ok = await addNotePost({
-      role,
-      date: today,
-      // Billing has no opener/closer — the day is one person's.
-      shift: role === 'manager' ? effectiveShift : null,
-      sessionNotes: drafts.session,
-      studioNotes: drafts.studio,
-      createdBy: profile.id,
-    })
-    if (ok) { setDrafts({ session: '', studio: '' }); setShiftSel(null) }
+    const ok = editingPost
+      ? await updateNotePost({ id: editingPost.id, sessionNotes: drafts.session, studioNotes: drafts.studio })
+      : await addNotePost({ role, date: today, sessionNotes: drafts.session, studioNotes: drafts.studio, createdBy: profile.id })
+    if (ok) { setDrafts({ session: '', studio: '' }); setEditingPost(null) }
     await load()
     setPosting(false)
   }
 
+  // Reopen your own post in the composer — submitting is signing, not sealing
+  // (Eli 2026-08-24: staff couldn't finish notes they'd submitted midday).
+  function startEditPost(post: MyDayNotePost) {
+    setEditingPost(post)
+    setDrafts({ session: post.session_notes, studio: post.studio_notes })
+  }
+
+  function cancelEditPost() {
+    setEditingPost(null)
+    setDrafts({ session: '', studio: '' })
+  }
+
   async function removePost(post: MyDayNotePost) {
     if (!window.confirm('Delete these shift notes?')) return
+    if (editingPost?.id === post.id) cancelEditPost()
     await deleteNotePost(post.id)
     await load()
   }
@@ -224,20 +225,31 @@ export default function MyDayPage() {
 
   const canDeletePost = (p: MyDayNotePost) =>
     !!profile?.id && (p.created_by === profile.id || isOwner)
+  // Edit is the AUTHOR's alone (RLS agrees) — an owner can delete a stray
+  // post but shouldn't be rewording someone else's signed notes.
+  const canEditPost = (p: MyDayNotePost) => !!profile?.id && p.created_by === profile.id
 
   const notesPanel = (
     <ShiftNotesPanel
-      todayPosts={todayPosts}
-      viewRole={role}
       drafts={drafts}
       setDraft={(k, v) => setDrafts(d => ({ ...d, [k]: v }))}
-      shift={effectiveShift}
-      setShift={setShiftSel}
       onPost={postNotes}
       posting={posting}
+      editing={editingPost}
+      onCancelEdit={cancelEditPost}
+      isMobile={isMobile}
+    />
+  )
+
+  const logPanel = (
+    <NotesLogPanel
+      log={noteLog}
+      today={today}
+      canEdit={canEditPost}
+      onEdit={startEditPost}
       canDelete={canDeletePost}
       onDelete={removePost}
-      isMobile={isMobile}
+      editingId={editingPost?.id ?? null}
     />
   )
 
@@ -257,7 +269,7 @@ export default function MyDayPage() {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {notesPanel}
-          <NotesLogPanel log={noteLog} />
+          {logPanel}
         </div>
       </div>
     )
@@ -417,9 +429,11 @@ export default function MyDayPage() {
 
       {/* NOTES LOG — full width, below everything. The referenceable history
           the "manager notes" email chain used to be (ruling 2026-08-24): every
-          submitted note from every role, grouped by day, newest first. */}
+          submitted note from every role, grouped by day, newest first —
+          INCLUDING today's (they render here and only here; a second copy
+          above the composer read as duplication and confused staff). */}
       <div style={{ marginTop: 12 }}>
-        <NotesLogPanel log={noteLog} />
+        {logPanel}
       </div>
     </div>
   )
@@ -430,25 +444,31 @@ export default function MyDayPage() {
 /** One shift-notes POST — header says whose it is (Opening/Closing shift ·
     author · time), then the sections it actually has. An empty box isn't
     rendered. */
-function NotePostBlock({ p, tagRole, onDelete }: {
+function NotePostBlock({ p, tagRole, onEdit, onDelete, isEditing }: {
   p: MyDayNotePost
   /** Show which card it was posted from (always on in the log). */
   tagRole?: boolean
+  onEdit?: () => void
   onDelete?: () => void
+  /** This post is open in the composer right now. */
+  isEditing?: boolean
 }) {
   const who = p.author?.display_name || p.author?.initials || 'Staff'
-  const shiftTag = p.shift === 'opening' ? 'Opening shift' : p.shift === 'closing' ? 'Closing shift' : null
+  // No opener/closer tag (v3 ruling) — the submit time is the story.
   return (
-    <div className="c-mdnote">
+    <div className="c-mdnote" style={isEditing ? { opacity: 0.45 } : undefined}>
       <div className="c-mdnote-meta" style={{ marginTop: 0, marginBottom: 6 }}>
         <span>
-          {shiftTag && <b className="c-mdnote-shift">{shiftTag}</b>}
-          {shiftTag ? ' · ' : ''}{who}
+          <b className="c-mdnote-shift">{who}</b>
           {tagRole ? ` · ${p.role === 'billing' ? 'Billing' : 'Manager'}` : ''}
           {' · '}{fmtTaskTime(p.created_at)}
+          {isEditing && <b className="c-mdnote-shift"> · Editing above</b>}
         </span>
+        {onEdit && !isEditing && (
+          <button className="c-x" onClick={onEdit} title="Edit your shift notes" style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Edit</button>
+        )}
         {onDelete && (
-          <button className="c-x" onClick={onDelete} title="Delete shift notes" style={{ marginLeft: 'auto', fontSize: 13 }}>×</button>
+          <button className="c-x" onClick={onDelete} title="Delete shift notes" style={{ marginLeft: onEdit && !isEditing ? 0 : 'auto', fontSize: 13 }}>×</button>
         )}
       </div>
       {p.session_notes.trim() !== '' && (
@@ -467,23 +487,20 @@ function NotePostBlock({ p, tagRole, onDelete }: {
   )
 }
 
-/** Today's posts stacked on top (opener first), then the composer: two boxes
-    splitting the card equally, ONE submit for both (ruling 2026-08-24 v2).
-    The Opening/Closing toggle signs the post so the reader knows whose it is;
-    it defaults to Opening until a post exists on this card, then Closing. */
+/** The composer alone: two boxes splitting the card equally, ONE submit for
+    both (ruling 2026-08-24 v2, simplified v3 the same day — type, submit,
+    done; no opener/closer toggle, the timestamp tells the story). Submitted
+    posts render ONLY in the log below — a copy up here read as duplication.
+    Editing a post from the log loads it into these boxes; Submit updates. */
 function ShiftNotesPanel({
-  todayPosts, viewRole, drafts, setDraft, shift, setShift, onPost, posting, canDelete, onDelete, isMobile,
+  drafts, setDraft, onPost, posting, editing, onCancelEdit, isMobile,
 }: {
-  todayPosts: MyDayNotePost[]
-  viewRole: MyDayRole
   drafts: { session: string; studio: string }
   setDraft: (k: 'session' | 'studio', v: string) => void
-  shift: NoteShift
-  setShift: (s: NoteShift) => void
   onPost: () => void
   posting: boolean
-  canDelete: (p: MyDayNotePost) => boolean
-  onDelete: (p: MyDayNotePost) => void
+  editing: MyDayNotePost | null
+  onCancelEdit: () => void
   isMobile: boolean
 }) {
   const empty = drafts.session.trim() === '' && drafts.studio.trim() === ''
@@ -491,21 +508,12 @@ function ShiftNotesPanel({
     <div className="c-panel">
       <div className="c-lozenge">
         <b>Shift notes</b>
-        <span className="c-ct">{todayPosts.length} post{todayPosts.length === 1 ? '' : 's'} today</span>
+        {editing
+          ? <span className="c-ct">editing your post</span>
+          : <span className="c-ct">posts appear in the log below</span>}
       </div>
 
-      {/* Already-submitted posts — opener's first, in submit order. */}
-      {todayPosts.map(p => (
-        <NotePostBlock
-          key={p.id}
-          p={p}
-          tagRole={p.role !== viewRole}
-          onDelete={canDelete(p) ? () => onDelete(p) : undefined}
-        />
-      ))}
-
-      {/* The composer — YOUR post. Both boxes go out together, signed once. */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: todayPosts.length > 0 ? 10 : 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
         <div style={{ minWidth: 0 }}>
           <span className="c-label" style={{ display: 'block', marginBottom: 5 }}>Session notes</span>
           <textarea
@@ -529,28 +537,36 @@ function ShiftNotesPanel({
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: isMobile ? 'wrap' : undefined }}>
-        {viewRole === 'manager' && (
-          <span className="c-seg" style={{ flexShrink: 0 }}>
-            <button className={shift === 'opening' ? 'c-on' : ''} onClick={() => setShift('opening')}>Opening shift</button>
-            <button className={shift === 'closing' ? 'c-on' : ''} onClick={() => setShift('closing')}>Closing shift</button>
-          </span>
-        )}
         <span style={{ flex: 1, fontSize: 10.5, opacity: 0.45, textAlign: 'right' }}>
-          Submits both boxes as one post, signed with your name.
+          {editing
+            ? 'Submit saves your changes to the posted notes.'
+            : 'Submits both boxes as one post, signed with your name.'}
         </span>
+        {editing && (
+          <button className="c-x" onClick={onCancelEdit} style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', flexShrink: 0 }}>Cancel</button>
+        )}
         <button
           className="c-btn"
           onClick={onPost}
           disabled={posting || empty}
           style={{ opacity: empty ? 0.45 : 1, cursor: empty ? 'default' : 'pointer', flexShrink: 0 }}
-        >{posting ? 'Submitting…' : 'Submit shift notes'}</button>
+        >{posting ? 'Saving…' : editing ? 'Update shift notes' : 'Submit shift notes'}</button>
       </div>
     </div>
   )
 }
 
-/** Past days' posts, both roles, newest day first — read-only reference. */
-function NotesLogPanel({ log }: { log: MyDayNotePost[] }) {
+/** Every post, newest day first, TODAY INCLUDED — the one place submitted
+    notes live. Authors can reopen their own (Edit → composer above). */
+function NotesLogPanel({ log, today, canEdit, onEdit, canDelete, onDelete, editingId }: {
+  log: MyDayNotePost[]
+  today: string
+  canEdit: (p: MyDayNotePost) => boolean
+  onEdit: (p: MyDayNotePost) => void
+  canDelete: (p: MyDayNotePost) => boolean
+  onDelete: (p: MyDayNotePost) => void
+  editingId: string | null
+}) {
   // Group by date, preserving the query's order (date desc, created_at asc).
   const days: { date: string; items: MyDayNotePost[] }[] = []
   for (const p of log) {
@@ -563,13 +579,24 @@ function NotesLogPanel({ log }: { log: MyDayNotePost[] }) {
       <div className="c-lozenge"><b>Notes log</b><span className="c-ct">last 30 days</span></div>
       {days.length === 0 && (
         <div className="c-qrow">
-          <span className="c-who" style={{ opacity: 0.5 }}>No notes yet — today&apos;s posts appear here tomorrow.</span>
+          <span className="c-who" style={{ opacity: 0.5 }}>No notes yet — submitted posts appear here.</span>
         </div>
       )}
       {days.map(d => (
         <div key={d.date} style={{ marginBottom: 4 }}>
-          <span className="c-label" style={{ display: 'block', padding: '8px 6px 3px' }}>{shortDayLabel(d.date)}</span>
-          {d.items.map(p => <NotePostBlock key={p.id} p={p} tagRole />)}
+          <span className="c-label" style={{ display: 'block', padding: '8px 6px 3px' }}>
+            {d.date === today ? 'Today' : shortDayLabel(d.date)}
+          </span>
+          {d.items.map(p => (
+            <NotePostBlock
+              key={p.id}
+              p={p}
+              tagRole
+              isEditing={editingId === p.id}
+              onEdit={canEdit(p) ? () => onEdit(p) : undefined}
+              onDelete={canDelete(p) ? () => onDelete(p) : undefined}
+            />
+          ))}
         </div>
       ))}
     </div>
