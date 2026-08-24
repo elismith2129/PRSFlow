@@ -3085,7 +3085,11 @@ export function WorkOrderPopup({
                   <div key={l} style={{ display: 'flex', gap: 8, marginBottom: 5, alignItems: 'center' }}>
                     <span style={{ fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter', minWidth: 60 }}>{l}</span>
                     <span style={{ fontSize: 11, color: 'var(--c-fg)', fontFamily: 'Inter' }}>{v}</span>
-                    {l === 'Billing' && balanceDue > 0 && (
+                    {/* COD ONLY (Eli 2026-08-24): hot means "collect at the
+                        desk". A label session with an open invoice is normal
+                        billing-hub business, not an alarm — painting it red
+                        teaches people to ignore red. */}
+                    {l === 'Billing' && balanceDue > 0 && wo.payment_status === 'COD' && (
                       <span style={{ fontSize: 8.5, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', background: 'var(--c-st-hot)', color: 'var(--c-hot-text, #fff4f2)', borderRadius: 99, padding: '2px 8px' }}>Balance due</span>
                     )}
                   </div>
@@ -4837,7 +4841,9 @@ export function WorkOrderPopup({
                   { label: 'Rentals Total', value: rentTotal, color: 'var(--c-fg)', bold: false },
                   { label: 'Grand Total', value: grandTotal, color: 'var(--c-fg)', bold: true },
                   { label: 'Total Paid', value: totalPaid, color: 'var(--c-st-booked)', bold: false },
-                  { label: 'Balance Due', value: balanceDue, color: balanceDue > 0 ? 'var(--c-st-hot)' : 'var(--c-st-booked)', bold: true },
+                  // Hot balance is COD-only (Eli 2026-08-24) — red = collect
+                  // at the desk. A billing session's open balance shows plain.
+                  { label: 'Balance Due', value: balanceDue, color: balanceDue > 0 ? (wo.payment_status === 'COD' ? 'var(--c-st-hot)' : 'var(--c-fg)') : 'var(--c-st-booked)', bold: true },
                 ].map(({ label, value, color, bold }) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px' }}>
                     <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>{label}</span>
