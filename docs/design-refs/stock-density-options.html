@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Stock list density options</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  STOCK LIST DENSITY — OPTIONS (Eli, 2026-08-24)
+
+  Problem: the PRS list is ~98 nightly items + 35 office. The current card
+  (name + par + Low pill + Qty input + Notes input) is ~110px tall — that's
+  30+ phone screens of scrolling. Same disease as the mic lockers.
+
+  All three options share the same moves:
+    · ONE LINE per item: name (+ par, dim) left, controls right.
+    · Notes DISAPPEAR from the row — tap the row to expand it when an item
+      actually needs a note. Most never do.
+    · Low is a thumb-sized toggle on the right edge (reach zone).
+  They differ in what the runner is asked to DO per item.
+
+  A · TIGHT ROWS      — same job as today (qty + low per item), one line each.
+  B · EXCEPTIONS ONLY — walk the list, tap only what's LOW. No typing at all
+                        unless an item needs attention. Fastest by far.
+  C · SECTIONS        — A's rows grouped into collapsible categories with
+                        counts, so you jump around instead of scrolling.
+
+  Each phone frame below scrolls independently — that's the real feel.
+-->
+<style>
+:root{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --warm:#ffa94d; --chip-ink:#1c2626; --booked:#43dfae;
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);
+  font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;
+  padding:26px}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.note{font-size:11.5px;opacity:.55;line-height:1.6;margin:6px 0 22px;max-width:660px}
+
+.row3{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.opt{width:340px;max-width:100%}
+.opt h2{font-family:'Archivo Black',sans-serif;font-size:14px;letter-spacing:-.01em;margin-bottom:2px}
+.opt .sub{font-size:11px;opacity:.55;line-height:1.55;margin-bottom:10px;min-height:50px}
+
+.phone{background:var(--srf);box-shadow:var(--softsh);border-radius:26px;padding:12px 10px;
+  height:560px;overflow-y:auto}
+.phone::-webkit-scrollbar{width:0}
+
+.sechead{display:flex;align-items:center;gap:7px;padding:8px 6px 6px}
+.sechead .t{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.6}
+.badge{font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--warm);color:var(--chip-ink);border-radius:99px;padding:2px 8px}
+
+/* ── shared row ── */
+.it{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:9px;margin-bottom:2px;
+  background:var(--wash)}
+.it .nm{flex:1;min-width:0;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.it .par{font-size:9.5px;opacity:.45;font-weight:400;margin-left:5px;white-space:nowrap}
+.qty{width:40px;text-align:center;background:var(--wash2);border:none;border-radius:7px;
+  padding:5px 0;color:var(--fg);font:inherit;font-size:12px;outline:none}
+.low{width:34px;height:26px;border:none;border-radius:99px;background:var(--wash2);
+  color:var(--fg);font-size:8.5px;font-weight:800;letter-spacing:.04em;cursor:pointer;opacity:.55}
+.low.on{background:var(--warm);color:var(--chip-ink);opacity:1}
+/* expanded row (tapped) */
+.it.open{flex-wrap:wrap;background:var(--wash2)}
+.it.open .xtr{width:100%;display:flex;gap:6px;margin-top:6px}
+.it.open .xtr input{flex:1;background:var(--wash);border:none;border-radius:7px;
+  padding:6px 9px;color:var(--fg);font:inherit;font-size:11.5px;outline:none}
+
+/* ── option B: exception rows ── */
+.ex{display:flex;align-items:center;gap:8px;padding:8px 8px;border-radius:9px;margin-bottom:1px}
+.ex:nth-child(odd){background:var(--wash)}
+.ex .nm{flex:1;min-width:0;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ex .par{font-size:9.5px;opacity:.45;margin-left:5px;white-space:nowrap}
+.ex .ok{font-size:9px;font-weight:800;letter-spacing:.05em;opacity:.25;text-transform:uppercase}
+.ex.flag{background:color-mix(in srgb,var(--warm) 14%,transparent)}
+.ex.flag .ok{opacity:1;color:var(--warm)}
+.ex.flag .nm{font-weight:700}
+
+/* ── option C: collapsible groups ── */
+.grp{border-radius:12px;background:var(--wash);margin-bottom:6px;overflow:hidden}
+.grp .gh{display:flex;align-items:center;gap:8px;padding:10px 11px;cursor:pointer}
+.grp .gh .t{flex:1;font-size:11.5px;font-weight:800;letter-spacing:.03em}
+.grp .gh .ct{font-family:ui-monospace,monospace;font-size:9.5px;opacity:.5}
+.grp .gh .chev{opacity:.4;font-size:10px}
+.grp .body{padding:0 6px 6px}
+.grp .body .it{background:var(--wash2)}
+.grp.closed .body{display:none}
+</style>
+</head>
+<body>
+
+<h1 class="arch" style="font-size:21px;letter-spacing:-.03em">Stock list — density options</h1>
+<p class="note">98 nightly items + 35 office at ~110px per card is 30 screens of scrolling on a phone.
+All three options put one item on one line and hide Notes behind a tap (expand only the item that
+needs one). They differ in what the runner does per item. Frames scroll — try them.</p>
+
+<div class="row3">
+
+<!-- ════ OPTION A — TIGHT ROWS ════ -->
+<div class="opt">
+  <h2>A · Tight rows</h2>
+  <div class="sub">Same job as today — a qty and a Low toggle per item — but one line each (~40px,
+  was ~110px). Tap a row to open Notes for just that item. Roughly 12 items per screen.</div>
+  <div class="phone">
+    <div class="sechead"><span class="t">PRS Stock</span><span style="font-size:9.5px;opacity:.4">Check PRS-X daily</span></div>
+    <div class="it"><span class="nm">Chobani Vanilla Creamer<span class="par">1 Bottle</span></span><input class="qty" value="1"><button class="low">OK</button></div>
+    <div class="it"><span class="nm">Quart Half n Half<span class="par">1 Carton</span></span><input class="qty" value="2"><button class="low">OK</button></div>
+    <div class="it open"><span class="nm">Gallon 2% Milk<span class="par">1 Jug</span></span><input class="qty" value="0"><button class="low on">LOW</button>
+      <span class="xtr"><input value="expires tomorrow — grabbing more in AM run"></span></div>
+    <div class="it"><span class="nm">Silk Almond Milk (Unsweetened)<span class="par">1 Carton</span></span><input class="qty" value="1"><button class="low">OK</button></div>
+    <div class="it"><span class="nm">Toll House Cookie Dough<span class="par">8 Sheets</span></span><input class="qty" value="6"><button class="low">OK</button></div>
+    <div class="it"><span class="nm">Ind. French Vanilla Creamer Packets (PRS-X)<span class="par">1 Box</span></span><input class="qty" value="1"><button class="low">OK</button></div>
+    <div class="it"><span class="nm">Mini Half n Half (PRS-X)<span class="par">1 Jug</span></span><input class="qty" value="1"><button class="low">OK</button></div>
+    <div class="it"><span class="nm">Hand Sanitizer<span class="par">3 Bottles</span></span><input class="qty" value="2"><button class="low">OK</button></div>
+    <div class="it"><span class="nm">Windex<span class="par">1 Refill Jug</span></span><input class="qty" value="1"><button class="low">OK</button></div>
+    <div class="it"><span class="nm">Lysol Wipes<span class="par">2 Cans</span></span><input class="qty" value="0"><button class="low on">LOW</button></div>
+    <div class="it"><span class="nm">Mop Head<span class="par">2 Heads</span></span><input class="qty" value="2"><button class="low">OK</button></div>
+    <div class="it"><span class="nm">Crystal Geyser Water (Small)<span class="par">4 Boxes</span></span><input class="qty" value="3"><button class="low">OK</button></div>
+    <div class="it"><span class="nm">Crystal Geyser Water (Big)<span class="par">4 Boxes</span></span><input class="qty" value="4"><button class="low">OK</button></div>
+    <div class="it"><span class="nm">Butter Popcorn<span class="par">1 Bag</span></span><input class="qty" value="1"><button class="low">OK</button></div>
+    <div class="it"><span class="nm">Kleenex Ultra Soft<span class="par">6 Boxes</span></span><input class="qty" value="5"><button class="low">OK</button></div>
+    <div class="it"><span class="nm">English Breakfast Black Tea<span class="par">2 Boxes</span></span><input class="qty" value="2"><button class="low">OK</button></div>
+    <div class="it"><span class="nm">Throat Coat<span class="par">2 Boxes</span></span><input class="qty" value="1"><button class="low">OK</button></div>
+  </div>
+</div>
+
+<!-- ════ OPTION B — EXCEPTIONS ONLY ════ -->
+<div class="opt">
+  <h2>B · Exceptions only</h2>
+  <div class="sub">No inputs at all. Everything is assumed stocked; the runner walks the list and
+  TAPS only what's low (tap again for a note/qty). ~34px per row — 16 on screen — and a full check
+  is 90 seconds of scrolling instead of typing 98 numbers.</div>
+  <div class="phone">
+    <div class="sechead"><span class="t">PRS Stock</span><span style="font-size:9.5px;opacity:.4">Tap what's LOW</span></div>
+    <div class="ex"><span class="nm">Chobani Vanilla Creamer<span class="par">1 Bottle</span></span><span class="ok">ok</span></div>
+    <div class="ex"><span class="nm">Chobani Random Flavor Creamer<span class="par">1 Bottle</span></span><span class="ok">ok</span></div>
+    <div class="ex"><span class="nm">Silk Caramel Creamer<span class="par">1 Bottle</span></span><span class="ok">ok</span></div>
+    <div class="ex flag"><span class="nm">Gallon 2% Milk<span class="par">1 Jug</span></span><span class="ok">LOW</span></div>
+    <div class="ex"><span class="nm">Silk Almond Milk (Unsweetened)<span class="par">1 Carton</span></span><span class="ok">ok</span></div>
+    <div class="ex"><span class="nm">Silk Oat Yeah Oatmilk<span class="par">1 Carton</span></span><span class="ok">ok</span></div>
+    <div class="ex"><span class="nm">Toll House Cookie Dough<span class="par">8 Sheets</span></span><span class="ok">ok</span></div>
+    <div class="ex"><span class="nm">Philadelphia Cream Cheese Packets<span class="par">1 Full Bag</span></span><span class="ok">ok</span></div>
+    <div class="ex"><span class="nm">Ind. French Vanilla Creamer (PRS-X)<span class="par">1 Box</span></span><span class="ok">ok</span></div>
+    <div class="ex"><span class="nm">Mini Half n Half (PRS-X)<span class="par">1 Jug</span></span><span class="ok">ok</span></div>
+    <div class="ex flag"><span class="nm">Lysol Wipes<span class="par">2 Cans</span></span><span class="ok">LOW</span></div>
+    <div class="ex"><span class="nm">Pledge<span class="par">2 Cans</span></span><span class="ok">ok</span></div>
+    <div class="ex"><span class="nm">Mop Head<span class="par">2 Heads</span></span><span class="ok">ok</span></div>
+    <div class="ex"><span class="nm">Sponges<span class="par">2 Individual</span></span><span class="ok">ok</span></div>
+    <div class="ex"><span class="nm">Formula 409<span class="par">1 Bottle</span></span><span class="ok">ok</span></div>
+    <div class="ex"><span class="nm">Dawn Dish Soap<span class="par">1 Bottle</span></span><span class="ok">ok</span></div>
+    <div class="ex"><span class="nm">Crystal Geyser Water (Small)<span class="par">4 Boxes</span></span><span class="ok">ok</span></div>
+    <div class="ex"><span class="nm">Crystal Geyser Water (Big)<span class="par">4 Boxes</span></span><span class="ok">ok</span></div>
+    <div class="ex"><span class="nm">Distilled Water<span class="par">1 Jug</span></span><span class="ok">ok</span></div>
+    <div class="ex"><span class="nm">Kleenex Ultra Soft<span class="par">6 Boxes</span></span><span class="ok">ok</span></div>
+  </div>
+</div>
+
+<!-- ════ OPTION C — SECTIONS ════ -->
+<div class="opt">
+  <h2>C · Collapsible sections</h2>
+  <div class="sub">Option A's rows, grouped into categories that collapse (header shows item count +
+  low count). You jump to Cleaning or Batteries instead of scrolling past dairy. Also the pattern
+  the mic lockers could adopt.</div>
+  <div class="phone">
+    <div class="sechead"><span class="t">PRS Stock</span></div>
+    <div class="grp">
+      <div class="gh"><span class="t">Dairy &amp; Creamers</span><span class="ct">14 · 1 low</span><span class="chev">▾</span></div>
+      <div class="body">
+        <div class="it"><span class="nm">Chobani Vanilla Creamer<span class="par">1 Bottle</span></span><input class="qty" value="1"><button class="low">OK</button></div>
+        <div class="it"><span class="nm">Gallon 2% Milk<span class="par">1 Jug</span></span><input class="qty" value="0"><button class="low on">LOW</button></div>
+        <div class="it"><span class="nm">Silk Almond Milk (Unsw.)<span class="par">1 Carton</span></span><input class="qty" value="1"><button class="low">OK</button></div>
+        <div class="it"><span class="nm">Mini Half n Half (PRS-X)<span class="par">1 Jug</span></span><input class="qty" value="1"><button class="low">OK</button></div>
+      </div>
+    </div>
+    <div class="grp closed">
+      <div class="gh"><span class="t">Cleaning</span><span class="ct">12 · 1 low</span><span class="chev">▸</span></div>
+      <div class="body"></div>
+    </div>
+    <div class="grp closed">
+      <div class="gh"><span class="t">Water &amp; Snacks</span><span class="ct">11</span><span class="chev">▸</span></div>
+      <div class="body"></div>
+    </div>
+    <div class="grp closed">
+      <div class="gh"><span class="t">Coffee &amp; Tea</span><span class="ct">13</span><span class="chev">▸</span></div>
+      <div class="body"></div>
+    </div>
+    <div class="grp closed">
+      <div class="gh"><span class="t">Condiments &amp; Kitchen</span><span class="ct">24</span><span class="chev">▸</span></div>
+      <div class="body"></div>
+    </div>
+    <div class="grp closed">
+      <div class="gh"><span class="t">Paper &amp; Restroom</span><span class="ct">12</span><span class="chev">▸</span></div>
+      <div class="body"></div>
+    </div>
+    <div class="grp closed">
+      <div class="gh"><span class="t">Batteries &amp; Misc</span><span class="ct">12</span><span class="chev">▸</span></div>
+      <div class="body"></div>
+    </div>
+    <div class="grp closed">
+      <div class="gh"><span class="t" style="opacity:.5">Office — Wednesdays only</span><span class="ct">35</span><span class="chev">▸</span></div>
+      <div class="body"></div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<p class="note" style="margin-top:22px">Mixable: B's tap-only rows inside C's sections is the densest
+of all (a full nightly check with zero typing, grouped). Qty entry can stay available behind the tap
+in every option, so nothing the current page records is lost.</p>
+
+</body>
+</html>
