@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   manifest: '/runner-manifest.json',
   icons: {
-    apple: '/runner-apple-touch-icon.png',
+    apple: '/runner-apple-touch-icon-v2.png',
   },
   appleWebApp: {
     capable: true,

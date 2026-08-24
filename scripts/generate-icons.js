@@ -73,6 +73,20 @@ async function generate() {
   await opaque(runnerSquareSVG, 512, 'public/runner-icon-512.png');
   await opaque(runnerMaskableSVG, 512, 'public/runner-icon-512-maskable.png');
   console.log('✓ runner home-screen set (square/opaque + maskable)');
+
+  // V2 URL ALIASES — cache-bust, added 2026-08-22. iOS keeps a home-screen icon
+  // cache keyed by ICON URL, separate from website data; a failed fetch (e.g. mid-
+  // deploy) is cached and every later Add-to-Home-Screen reuses the failure — the
+  // letter-tile "P" bug. Changing the URL forces a fresh fetch on every phone.
+  // The un-suffixed files stay: /apple-touch-icon.png is iOS's no-tag fallback,
+  // and already-installed apps still reference the old manifest URLs.
+  // If the icons ever change again AND phones show stale/broken tiles, bump v2→v3
+  // here and in app/layout.tsx, app/runner/layout.tsx, and both manifests.
+  for (const f of ['apple-touch-icon', 'icon-192', 'icon-512', 'icon-512-maskable',
+                   'runner-apple-touch-icon', 'runner-icon-192', 'runner-icon-512', 'runner-icon-512-maskable']) {
+    fs.copyFileSync(`public/${f}.png`, `public/${f}-v2.png`);
+  }
+  console.log('✓ v2 URL aliases');
   console.log('All icons generated.');
 }
 

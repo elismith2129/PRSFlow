@@ -7,8 +7,8 @@
   "background_color": "#1b1a17",
   "theme_color": "#1b1a17",
   "icons": [
-    { "src": "/runner-icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/runner-icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "/runner-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/runner-icon-192-v2.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/runner-icon-512-v2.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/runner-icon-512-maskable-v2.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
