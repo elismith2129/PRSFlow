@@ -1782,6 +1782,12 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 }
 .c-mdnote-shift { text-transform: uppercase; letter-spacing: .08em; font-weight: 800; }
 
+/* Runner stock — the PRS Office section is a Wednesday-only job (Eli
+   2026-08-24): greyed the rest of the week, and its DUE TODAY badge pulses on
+   Wednesday. Opacity pulse only — no glow (Law 3); warm is already the
+   attention colour on runner surfaces (the Low pill). */
+@keyframes stockWedPulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+
 /* ── BILLING HUB (docs/design-refs/billing-hub-final.html, ruling 2026-08-11)
    Ported from the approved mock. Sits BEFORE the soft-skin block so that
    block's cascade still governs surfaces (spec §7c). Reuses .c-fill-* for the
