@@ -4280,3 +4280,52 @@ the locks, stages by name, commits and pushes. The known cloud-sandbox git
 limitation (working-conventions.md) evidently applies to the local Cowork
 sandbox too — treat "Claude commits from Cowork bash" as unreliable; Claude
 Code local remains the pushing workflow.
+
+### Aug 22, 2026 — The letter-tile hunt: Vercel Bot Protection vs iOS's icon fetcher (v1.16.2)
+
+**Symptom.** After the ribbon shipped, Add-to-Home-Screen on Eli's iPhone gave
+a letter tile "P". Chrome on desktop and Samsung showed the new icon fine, and
+the same phone had A2HS'd this app successfully in June.
+
+**The elimination path (kept because the ORDER is the lesson):**
+1. Square/opaque apple-touch-icon (Apple spec) — no change.
+2. Square/opaque manifest icons + dedicated maskable variants — no change.
+3. `-v2` URL rename (iOS poisoned-cache theory) — no change. (One test here ran
+   against a stale deploy — ALWAYS verify the live asset before judging a fix.)
+4. Per-site website-data clear, phone restart, full A2HS to the real tile — no
+   change. Meanwhile the SHARE SHEET showed the ribbon, so Safari's own icon
+   store had it: only the A2HS fetch path was failing.
+5. Static test pages (`icon-test-a/b.html`) isolated it from the app: a bare
+   page with one icon link still letter-tiled. Not our HTML.
+6. Controls: daringfireball.net (never visited, non-Vercel) → icon works, so
+   the phone was fine. **nextjs.org — Vercel's own site — letter-tiled.** That
+   was the pivot: it fails for VERCEL-HOSTED sites generally on this phone.
+7. Web search closed it: Vercel Bot Protection (2026 rollout) challenges
+   "non-browser sources"; iOS fetches web-clip icons via a background system
+   service = non-browser source; iOS 26's fallback for a failed icon fetch is
+   now a letter tile (was a screenshot). No error surfaces anywhere in that
+   chain.
+
+**Fix.** Eli did NOT disable Bot Protection (right call — public forms stay
+protected). One custom Firewall rule, "Allow PWA icons": Bypass for paths
+starting `/apple-touch-icon`, `/icon-`, `/runner-`, `/manifest.json`,
+`/favicon`. Static public assets only. Ribbon landed on the home screen
+immediately.
+
+**Why "it worked in June" was true AND misleading:** the June icon iteration
+predated Vercel's Bot Protection rollout/enablement. The breakage was
+environmental and time-based, not caused by the logo change — the ribbon just
+made Eli re-add the app and DISCOVER it.
+
+**Rejected/disproved along the way:** iOS URL-keyed icon-cache poisoning (the
+`-v2` rename disproved it), rounded/transparent PNG rejection as the root cause
+(contributing factor at most; square/opaque is correct per Apple spec and kept),
+phone-level fault (daringfireball control), our HTML/manifest (static-page
+test), DNS/cert theories (never needed).
+
+**Debris kept deliberately:** `-v2` icon aliases (harmless; referenced by
+layouts/manifests), square/opaque + maskable icon pipeline in
+`generate-icons.js`. Debris removed: the two test pages.
+
+**Recorded:** ONBOARDING §5 landmine (the rule lives OUTSIDE the repo),
+CHANGELOG v1.16.2 watch-outs.

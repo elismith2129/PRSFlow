@@ -645,6 +645,21 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.16.2', date:'Aug 22, 2026',
+    headline:'The iPhone home-screen icon works now.',
+    desc:'If you added PRSFlo to an iPhone home screen and got a grey tile with a letter "P" instead of the logo, that is fixed.',
+    changes:[
+      'Adding PRSFlo (or the Runner app) to an iPhone home screen now shows the proper ribbon icon.',
+      'If you already have a letter-"P" tile on your phone: remove it, open the site in Safari, and Add to Home Screen again.',
+    ],
+    affects:'Nothing in the app itself changed — this was a security setting on our hosting quietly blocking the way iPhones fetch icons. Android and desktop were never affected.',
+    dev:[
+      'Root cause was OUTSIDE the repo: Vercel Bot Protection challenges "non-browser sources", and iOS fetches home-screen icons via a background system service — a non-browser source. The fetcher got challenge HTML instead of a PNG; iOS 26\'s fallback is a letter tile. No error logged anywhere. Proof: nextjs.org letter-tiled on the same phone.',
+      '<strong>Fix is a Vercel dashboard Firewall rule, "Allow PWA icons"</strong> — Bypass for paths starting <code>/apple-touch-icon</code>, <code>/icon-</code>, <code>/runner-</code>, <code>/manifest.json</code>, <code>/favicon</code>. Bot Protection stays ON for everything else. The rule lives in the dashboard, NOT the repo — a redeploy cannot restore it. Recorded as an ONBOARDING §5 landmine.',
+      'Debugging fallout kept deliberately: <code>-v2</code> icon URL aliases (cache-bust theory, disproved, harmless) and square/opaque home-screen PNGs per Apple spec. The two <code>icon-test-*.html</code> debug pages were removed.',
+    ],
+  },
+  {
     ver:'v1.16.1', date:'Aug 22, 2026',
     headline:'A new look for the PRSFlo mark — the ribbon.',
     desc:'The wave logo is now one solid sea-green ribbon instead of three faint grey lines, and the app icon on your phone finally matches the app itself.',

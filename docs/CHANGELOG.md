@@ -19,6 +19,39 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.16.2 — iPhone icon: Vercel Bot Protection was challenging iOS's icon fetcher — Aug 22, 2026
+
+**The new ribbon icon showed as a letter-tile "P" on iPhone Add-to-Home-Screen
+while working everywhere else.** Root cause was OUTSIDE the repo: Vercel's Bot
+Protection (rolled out platform-wide in 2026) serves a browser challenge to
+"non-browser sources" — and iOS fetches home-screen icons with a background
+system service, which is one. The fetcher got challenge HTML instead of a PNG;
+iOS 26's new fallback is a letter tile (it used to be a page screenshot). No
+error is logged anywhere. Proof: nextjs.org — Vercel's own site — letter-tiled
+on the same phone while non-Vercel sites worked.
+
+**The fix is a Vercel dashboard Firewall rule, "Allow PWA icons"** — Bypass for
+request paths starting `/apple-touch-icon`, `/icon-`, `/runner-`,
+`/manifest.json`, `/favicon` (static public assets; nothing sensitive). Bot
+Protection stays ON for everything else.
+
+**Migrations:** none.
+
+**WATCH-OUT #1 — the rule lives in the Vercel dashboard, not the repo.** A
+redeploy cannot restore it; `vercel.json` doesn't know it exists. Recorded as
+an ONBOARDING landmine. If iPhone icons ever letter-tile again, check the
+Firewall tab FIRST.
+
+**WATCH-OUT #2 — debugging fallout, kept deliberately:** the icon assets now
+have `-v2` URL aliases (a cache-bust theory that proved unnecessary but is
+harmless and left in place — layouts/manifests reference the `-v2` names), and
+all home-screen PNGs are square/opaque per Apple spec (correct regardless).
+Two temporary debug pages (`public/icon-test-{a,b}.html`) were removed.
+
+**Files:** `public/icon-test-a.html` + `public/icon-test-b.html` (deleted).
+
+---
+
 ## v1.16.1 — The Ribbon: brand mark gets its colour back — Aug 22, 2026
 
 **The monochrome wave mark is retired for THE RIBBON — one solid twisted-ribbon
