@@ -163,10 +163,19 @@ export function ClientPanel({
   const hasClient = isBilling ? !!(value.label || value.client_name) : !!value.client_name
 
   // Load label roster + contacts (A&Rs + Admins) for billing clients.
+  // COD clients skip the contacts but still get their artist roster —
+  // clients.artists exists on every client type, and the CRM/profile surfaces
+  // already edit it for COD; the WO just never showed it (fixed 2026-08-24).
   useEffect(() => {
     const id = value.client_db_id
-    if (!id || value.payment_type !== 'billing') {
+    if (!id) {
       setLabelContacts([]); setLabelAdminContacts([]); setClientArtists([]); return
+    }
+    if (value.payment_type !== 'billing') {
+      setLabelContacts([]); setLabelAdminContacts([])
+      supabase.from('clients').select('artists').eq('id', id).limit(1)
+        .then(({ data }) => setClientArtists(((data ?? [])[0]?.artists as string[]) || []))
+      return
     }
     Promise.all([
       supabase.from('client_contacts').select('*').eq('client_id', id),
@@ -462,14 +471,17 @@ export function ClientPanel({
 
           {/* Card fields */}
           <div style={{ padding: '10px 14px 12px' }}>
-            {isBilling ? (
-              <>
-                {/* Artist */}
-                {/* AN INPUT'S WIDTH IS A CLAIM ABOUT ITS CONTENT (mock ruling).
-                    Full-width here made a six-letter artist name sit at the left
-                    end of a runway. In the wide card the label goes inline and
-                    the well is sized from the value, with a floor so an empty
-                    one is still an obvious target. */}
+            {(() => {
+              /* Artist — rendered for BOTH branches (COD gained it 2026-08-24:
+                 "theres no place for the artist name on the WO for COD" — the
+                 field, roster dropdown and add-to-roster all already worked,
+                 only the COD card never showed them).
+                 AN INPUT'S WIDTH IS A CLAIM ABOUT ITS CONTENT (mock ruling).
+                 Full-width here made a six-letter artist name sit at the left
+                 end of a runway. In the wide card the label goes inline and
+                 the well is sized from the value, with a floor so an empty
+                 one is still an obvious target. */
+              const artistField = (
                 <div style={wide
                   ? { marginBottom: 9, position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }
                   : { marginBottom: 8, position: 'relative' }}>
@@ -501,6 +513,10 @@ export function ClientPanel({
                     </div>
                   )}
                 </div>
+              )
+              return isBilling ? (
+              <>
+                {artistField}
 
                 {/* A&R + ADMIN, SIDE BY SIDE in the wide card (mock ruling) —
                     the two people on a label job are one comparison, not two
@@ -657,10 +673,12 @@ export function ClientPanel({
               </>
             ) : (
               <>
+                {artistField}
                 <ClientCardField label="Email" value={value.email} fieldKey="email" onEdit={handleClientFieldEdit} />
                 <ClientCardField label="Phone" value={value.phone} fieldKey="phone" onEdit={handleClientFieldEdit} />
               </>
-            )}
+            )
+            })()}
 
             <button onClick={() => value.client_db_id && setShowProfile(true)} style={{ marginTop: 10, width: '100%', padding: '6px 10px', borderRadius: 4, background: 'transparent', color: value.client_db_id ? 'var(--c-fg-2)' : 'var(--c-fg-3)', fontFamily: 'Inter', fontSize: 10, cursor: value.client_db_id ? 'pointer' : 'default', textAlign: 'center' }}>
               {value.client_db_id ? 'View full profile →' : 'No profile linked'}
