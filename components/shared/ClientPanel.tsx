@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Client, ClientContact } from '@/lib/supabase'
+import { dbResult } from '@/lib/db'
 import { addArtistToLabel } from '@/lib/roster'
 import { ClientProfile } from '@/components/clients/ClientProfile'
 
@@ -288,7 +289,10 @@ export function ClientPanel({
       }
 
       setClientSuggestions(results)
-      setShowClientDD(results.length > 0)
+      // Open even with zero matches: the dropdown's last row is "+ New client",
+      // so an unknown name is one tap from a profile instead of a dead end
+      // (Eli 2026-08-24 — a walk-in's WO was stuck blank with no way around).
+      setShowClientDD(results.length > 0 || q.length >= 2)
     }, 200)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -328,6 +332,35 @@ export function ClientPanel({
         onChange({ client_name: nm, ordered_by: nm, anr_contact_id: matched.id, email: matched.email || value.email, phone: matched.phone || value.phone })
       }
     }
+  }
+
+  /**
+   * "+ New client" from the search dropdown (2026-08-24). A name that isn't in
+   * the system creates its profile right here and attaches it — same
+   * one-string split as the A&R/artist add rows. COD → individual (typed name
+   * is the person); Billing → label (typed name is the company; A&R gets
+   * added via the card's own "+ Don't see this A&R?" flow after).
+   */
+  async function createClientFromSearch() {
+    const q = searchQuery.trim()
+    if (!q) return
+    const parts = q.split(/\s+/)
+    const { data, error } = await supabase.from('clients').insert({
+      id: crypto.randomUUID(),
+      type: isBilling ? 'label' : 'individual',
+      name: q,
+      fname: isBilling ? null : (parts[0] || null),
+      lname: isBilling ? null : (parts.slice(1).join(' ') || null),
+      artists: [],
+      created_at: new Date().toISOString(),
+    }).select().single()
+    if (!dbResult('Creating client', error) || !data) return
+    onChange(isBilling
+      ? { client_db_id: data.id, label: q, client_name: '', ordered_by: '' }
+      : { client_db_id: data.id, client_name: q })
+    setSearchQuery('')
+    setShowClientDD(false)
+    setClientHighlight(-1)
   }
 
   function clearClient() {
@@ -435,7 +468,7 @@ export function ClientPanel({
             className="c-input c-inset2"
             autoComplete="off"
           />
-          {showClientDD && clientSuggestions.length > 0 && (
+          {showClientDD && (clientSuggestions.length > 0 || searchQuery.trim().length >= 2) && (
             <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--c-bg)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
               {clientSuggestions.map((s, i) => (
                 <div key={i} onMouseDown={() => applyClientAutofill(s)} style={{ padding: '8px 12px', cursor: 'pointer', background: i === clientHighlight ? 'var(--c-wash)' : 'transparent' }}>
@@ -443,6 +476,22 @@ export function ClientPanel({
                   {s.sub && <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-3)', marginTop: 1 }}>{s.sub}</div>}
                 </div>
               ))}
+              {/* The way out of the dead end: an unknown name becomes a client
+                  profile in one tap (skipped only when a suggestion already
+                  matches the typed name exactly). */}
+              {searchQuery.trim().length >= 2
+                && !clientSuggestions.some(s => s.label.toLowerCase() === searchQuery.trim().toLowerCase())
+                && (
+                <div
+                  onMouseDown={e => { e.preventDefault(); createClientFromSearch() }}
+                  style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 11, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', color: 'var(--c-fg)', display: 'flex', alignItems: 'center', gap: 6 }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--c-wash)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <span style={{ fontSize: 14, lineHeight: 1 }}>+</span>
+                  New {isBilling ? 'label' : 'client'}: &ldquo;{searchQuery.trim()}&rdquo;
+                </div>
+              )}
             </div>
           )}
         </div>

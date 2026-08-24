@@ -368,13 +368,12 @@ function NewClientModal({ onClose, onCreated }: {
               <input style={inp} value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="@handle" />
             </div>
 
-            {/* Artist — label only */}
-            {isLabel && (
-              <div>
-                <label style={fL}>Artist</label>
-                <input style={inp} value={artist} onChange={e => setArtist(e.target.value)} placeholder="Artist name" />
-              </div>
-            )}
+            {/* Artist — both types (COD gained it 2026-08-24; the insert always
+                wrote clients.artists, only this gate hid the field for COD). */}
+            <div>
+              <label style={fL}>Artist</label>
+              <input style={inp} value={artist} onChange={e => setArtist(e.target.value)} placeholder="Artist name" />
+            </div>
 
             {/* Address */}
             <div>
