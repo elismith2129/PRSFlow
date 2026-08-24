@@ -110,13 +110,17 @@ export function ClientsPageInner({ initialClientId, embedded }: { initialClientI
   return (
     <div style={{ display: 'flex', flexDirection: 'column', ...(embedded ? { flex: 1, minHeight: 0 } : { height: 'calc(100vh - 52px - 24px)' }) }}>
 
+      {/* Carved to match the leads tab (Eli 2026-08-24 — "update the client
+          page to match the UI of the lead tracker"). Same header anatomy and
+          the same primary button as + New Lead. */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexShrink: 0 }}>
-        <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)' }}>
+        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>
           Clients
         </div>
         <button
           onClick={() => setNewClientOpen(true)}
-          style={{ padding: '5px 12px', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 4, fontFamily: 'Syne', fontWeight: 700, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
+          className="c-btn c-control c-raised-primary"
+          style={{ flexShrink: 0 }}
         >
           + New Client
         </button>
@@ -287,10 +291,14 @@ function NewClientModal({ onClose, onCreated }: {
     onCreated(clientId)
   }
 
-  const overlay: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }
-  const modal: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, width: '100%', maxWidth: 500, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }
-  const fL: React.CSSProperties = { fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 3, display: 'block' }
-  const inp: React.CSSProperties = { width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'Inter', fontSize: 11, padding: '6px 9px', outline: 'none', boxSizing: 'border-box' }
+  // Carved shell + fields (2026-08-24) — same recipes as the New Lead modal
+  // (c-modal-backdrop + c-sheet, Archivo header, wash pill inputs, 10px/800
+  // uppercase labels). The old Syne/1px-border skin was the last pre-carved
+  // surface on the clients tab.
+  const overlay: React.CSSProperties = { zIndex: 3000, paddingTop: 64 }
+  const modal: React.CSSProperties = { width: 500, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }
+  const fL: React.CSSProperties = { fontSize: 10, fontWeight: 800, color: 'var(--c-fg-3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 5, display: 'block' }
+  const inp: React.CSSProperties = { width: '100%', background: 'var(--c-wash)', color: 'var(--c-fg)', padding: '10px 16px', borderRadius: 99, fontFamily: 'Inter', fontSize: 12, outline: 'none', boxSizing: 'border-box' }
   // A label can be created from the parent company name ALONE — the A&R contact
   // and its email/phone are optional, because labels are routinely opened before
   // anyone knows which A&R will run the project (contacts get added per-A&R on
@@ -301,29 +309,28 @@ function NewClientModal({ onClose, onCreated }: {
 
   return (
     <>
-      <div style={overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-        <div style={modal}>
+      <div className="c-modal-backdrop" style={overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+        <div className="c-sheet" style={modal}>
           {/* Header */}
-          <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-            <div style={{ fontFamily: 'DM Serif Display', fontSize: 18, color: 'var(--text)' }}>New Client</div>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
+          <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'var(--c-bg)' }}>
+            <span style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15 }}>New Client</span>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--c-fg-3)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
           </div>
 
           {/* Body */}
           <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {/* Type toggle */}
+            {/* Type toggle — one housing, selected segment presses in (§8). */}
             <div>
               <label style={fL}>Account Type</label>
-              <div style={{ display: 'flex', gap: 6 }}>
+              <div className="c-seg" style={{ display: 'flex', width: '100%' }}>
                 {(['individual', 'label'] as const).map(t => (
-                  <button key={t} type="button" onClick={() => setType(t)} style={{
-                    flex: 1, padding: '6px 0', borderRadius: 5, fontSize: 10,
-                    fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
-                    cursor: 'pointer',
-                    background: type === t ? 'rgba(139,144,168,0.12)' : 'var(--surface2)',
-                    color: type === t ? 'var(--text)' : 'var(--text3)',
-                    border: '1px solid var(--border)',
-                  }}>
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setType(t)}
+                    className={type === t ? 'c-on' : ''}
+                    style={{ flex: 1, padding: '7px 0', cursor: 'pointer' }}
+                  >
                     {t === 'label' ? 'Label / Billing' : 'COD'}
                   </button>
                 ))}
@@ -396,18 +403,18 @@ function NewClientModal({ onClose, onCreated }: {
 
             {/* Duplicate suggestions */}
             {matches.length > 0 && !forceCreate && (
-              <div style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 6, padding: '10px 12px' }}>
-                <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--warm)', marginBottom: 8 }}>
+              <div style={{ background: 'color-mix(in srgb, var(--c-st-warm) 9%, transparent)', borderRadius: 12, padding: '10px 12px' }}>
+                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-st-warm)', marginBottom: 8 }}>
                   Possible Duplicates
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {matches.map(m => (
-                    <div key={m.id} onClick={() => { setDupTarget(m); setShowDupModal(true) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 5, cursor: 'pointer' }}>
+                    <div key={m.id} onClick={() => { setDupTarget(m); setShowDupModal(true) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 11px', background: 'var(--c-wash)', borderRadius: 9, cursor: 'pointer' }}>
                       <div>
-                        <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text)' }}>{m.name || [m.fname, m.lname].filter(Boolean).join(' ')}</div>
-                        <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--text3)', marginTop: 1 }}>{[m.email, m.phone].filter(Boolean).join(' · ')}</div>
+                        <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)' }}>{m.name || [m.fname, m.lname].filter(Boolean).join(' ')}</div>
+                        <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-3)', marginTop: 1 }}>{[m.email, m.phone].filter(Boolean).join(' · ')}</div>
                       </div>
-                      <span style={{ fontSize: 9, color: 'var(--warm)', fontFamily: 'Inter' }}>view →</span>
+                      <span style={{ fontSize: 9, color: 'var(--c-st-warm)', fontFamily: 'Inter' }}>view →</span>
                     </div>
                   ))}
                 </div>
@@ -415,35 +422,37 @@ function NewClientModal({ onClose, onCreated }: {
             )}
 
             {saveError && (
-              <div style={{ fontSize: 10, color: 'var(--hot)', fontFamily: 'Inter', padding: '6px 10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 4 }}>
+              <div style={{ fontSize: 11, color: 'var(--c-st-hot)', fontFamily: 'Inter' }}>
                 {saveError}
               </div>
             )}
           </div>
 
-          {/* Footer */}
-          <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            {matches.length > 0 && !forceCreate ? (
-              <button onClick={() => setForceCreate(true)} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', textDecoration: 'underline' }}>
+          {/* Footer — the New Lead recipe: full-width primary + quiet Cancel. */}
+          <div style={{ padding: '12px 20px 20px', flexShrink: 0, background: 'var(--c-bg)' }}>
+            {matches.length > 0 && !forceCreate && (
+              <button onClick={() => setForceCreate(true)} style={{ marginBottom: 8, fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
                 Create anyway
               </button>
-            ) : <div />}
+            )}
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={onClose} style={{ padding: '7px 16px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 5, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>
-                Cancel
-              </button>
               <button
                 onClick={handleSave}
                 disabled={!valid || saving}
                 style={{
-                  padding: '7px 18px', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700,
-                  fontSize: 11, letterSpacing: '0.05em', border: 'none',
+                  flex: 1, padding: '9px 0', borderRadius: 6, border: 'none',
+                  fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11,
+                  letterSpacing: '0.05em', textTransform: 'uppercase',
                   cursor: (valid && !saving) ? 'pointer' : 'default',
-                  background: valid ? 'var(--accent)' : 'var(--surface2)',
-                  color: valid ? 'var(--bg)' : 'var(--text3)',
+                  background: valid ? 'var(--c-fg)' : 'var(--c-wash2)',
+                  color: valid ? 'var(--c-bg)' : 'var(--c-fg-3)',
+                  opacity: saving ? 0.6 : 1,
                 }}
               >
                 {saving ? 'Creating…' : 'Create Client'}
+              </button>
+              <button onClick={onClose} style={{ padding: '9px 20px', background: 'transparent', border: 'none', color: 'var(--c-fg-2)', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}>
+                Cancel
               </button>
             </div>
           </div>
@@ -452,19 +461,19 @@ function NewClientModal({ onClose, onCreated }: {
 
       {/* Duplicate exists modal */}
       {showDupModal && dupTarget && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 4000, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, width: '100%', maxWidth: 380, padding: '20px' }}>
-            <div style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 12, color: 'var(--warm)', marginBottom: 6 }}>Client Already Exists</div>
-            <div style={{ fontFamily: 'Inter', fontSize: 11, color: 'var(--text)', marginBottom: 4 }}>{dupTarget.name || [dupTarget.fname, dupTarget.lname].filter(Boolean).join(' ')}</div>
-            <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--text3)', marginBottom: 16 }}>{[dupTarget.email, dupTarget.phone].filter(Boolean).join(' · ')}</div>
+        <div className="c-modal-backdrop" style={{ zIndex: 4000 }}>
+          <div style={{ background: 'var(--c-wash)', borderRadius: 10, padding: '24px 28px', width: 380, maxWidth: '90vw', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
+            <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 13, color: 'var(--c-st-warm)', marginBottom: 8 }}>Client Already Exists</div>
+            <div style={{ fontFamily: 'Inter', fontSize: 12, color: 'var(--c-fg)', marginBottom: 3 }}>{dupTarget.name || [dupTarget.fname, dupTarget.lname].filter(Boolean).join(' ')}</div>
+            <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--c-fg-3)', marginBottom: 18 }}>{[dupTarget.email, dupTarget.phone].filter(Boolean).join(' · ')}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <button onClick={() => onCreated(dupTarget.id)} style={{ padding: '8px 0', background: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: 5, fontFamily: 'Syne', fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', cursor: 'pointer' }}>
+              <button onClick={() => onCreated(dupTarget.id)} style={{ padding: '9px 0', background: 'var(--c-fg)', color: 'var(--c-bg)', border: 'none', borderRadius: 6, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer' }}>
                 Open Existing Profile
               </button>
-              <button onClick={() => { setShowDupModal(false); setForceCreate(true) }} style={{ padding: '8px 0', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 5, fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
+              <button onClick={() => { setShowDupModal(false); setForceCreate(true) }} style={{ padding: '8px 0', background: 'var(--c-wash2)', border: 'none', color: 'var(--c-fg-2)', borderRadius: 6, fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
                 Create Duplicate Anyway
               </button>
-              <button onClick={() => setShowDupModal(false)} style={{ padding: '6px 0', background: 'none', border: 'none', color: 'var(--text3)', fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
+              <button onClick={() => setShowDupModal(false)} style={{ padding: '6px 0', background: 'none', border: 'none', color: 'var(--c-fg-3)', fontFamily: 'Inter', fontSize: 10, cursor: 'pointer' }}>
                 Go Back
               </button>
             </div>
