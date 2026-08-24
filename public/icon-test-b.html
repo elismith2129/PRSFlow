@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BBB</title>
+<!-- TEST B: apple-touch-icon + the app's manifest, same combination the real app
+     serves. Compare against test A: if A passes and B fails, the manifest is
+     what iOS is choking on. -->
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+</head>
+<body style="font-family:sans-serif;background:#1b1a17;color:#d9d6cd;padding:40px">
+<h1>Icon test B</h1>
+<p>Share → Add to Home Screen from THIS page.</p>
+<p>Ribbon icon = pass. Letter "B" tile = fail.</p>
+</body>
+</html>
