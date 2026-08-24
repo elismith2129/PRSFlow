@@ -87,12 +87,14 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
     if (profile?.role === 'tech' && item.href === '/crm') return false
     if (item.href === '/nadines' && !isEli) return false
     // My Day exists for the two role cards it was built around (MYDAY-BUILD §0)
-    // plus Eli, who oversees both. Nobody else has duties, so the page would be
-    // an empty room.
+    // plus Eli, who oversees both. Asst managers joined 2026-08-24 for the
+    // shift notes ("all admin has access to read and write and submit") — the
+    // page gives them a notes-only view. tech/runner still get nothing.
     if (item.href === '/my-day'
       && !isEli
       && profile?.role !== 'manager'
       && profile?.role !== 'billing'
+      && profile?.role !== 'asst_manager'
       && profile?.role !== 'owner') return false
     return true
   })

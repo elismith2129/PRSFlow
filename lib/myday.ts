@@ -7,7 +7,12 @@
 //                one row per duty per day in myday_entries.
 //   QUEUES     — COMPUTED from bookings/work_orders at read time. Nothing about a
 //                queue is stored except the per-row step ticks (myday_queue_steps).
-//   SCRATCHPAD — free text per role per day (myday_notes).
+//   SCRATCHPAD — per-person note ENTRIES (myday_note_entries) — one row per
+//                submitted note, author + time first-class. Replaces the shared
+//                per-role myday_notes scratchpad (ruling 2026-08-24): the notes
+//                stand in for the "manager notes" email chain, where an opener
+//                and a closer each submit notes everybody can reference later.
+//                myday_notes is legacy read-only history.
 //
 // Plus the briefing composer (§5) that fills the Flo box — template sentences
 // over real numbers, NO AI. The dashboard's FLO_STATIC / MYDAY_STATIC /
@@ -913,37 +918,84 @@ export async function setQueueStep(opts: {
   return dbResult('Saving queue step', error)
 }
 
-// ─── Scratchpad ──────────────────────────────────────────────────────────────
+// ─── Shift notes (per-person entries, 2026-08-24) ────────────────────────────
+//
+// One row per SUBMITTED note (myday_note_entries) — the email-chain model.
+// Explicit submit, no debounced autosave: two managers (opener + closer) work
+// the same day, and the old shared-box upsert meant the last debounce silently
+// overwrote the other person's text. An append of a finished note has no
+// clobber window at all. `role` is the card the note was posted from; `kind`
+// keeps the two categories (session | studio).
 
-export type MyDayNotes = { session_notes: string; studio_notes: string }
+export type NoteKind = 'session' | 'studio'
 
-export async function fetchNotes(role: MyDayRole, date: string): Promise<MyDayNotes> {
-  // limit(1) + [0], never .maybeSingle() — see the header note.
-  const { data, error } = await supabase
-    .from('myday_notes')
-    .select('session_notes, studio_notes')
-    .eq('role', role)
-    .eq('date', date)
-    .limit(1)
-  if (!dbResult('Loading shift notes', error)) return { session_notes: '', studio_notes: '' }
-  const row = (data ?? [])[0]
-  return {
-    session_notes: row?.session_notes ?? '',
-    studio_notes: row?.studio_notes ?? '',
-  }
+export type MyDayNoteEntry = {
+  id: string
+  role: MyDayRole
+  date: string
+  kind: NoteKind
+  body: string
+  created_by: string | null
+  created_at: string
+  /** Embedded author row (PostgREST join on the created_by FK). */
+  author: { display_name: string | null; initials: string | null } | null
 }
 
-/** Debounce this at the call site (800ms — the checklist pattern). */
-export async function saveNotes(
-  role: MyDayRole,
-  date: string,
-  notes: Partial<MyDayNotes>,
-  updatedBy: string | null,
-): Promise<boolean> {
-  const { error } = await supabase
-    .from('myday_notes')
-    .upsert({ role, date, ...notes, updated_by: updatedBy }, { onConflict: 'role,date' })
-  return dbResult('Saving shift notes', error)
+const NOTE_ENTRY_SELECT =
+  'id, role, date, kind, body, created_by, created_at, author:user_profiles(display_name, initials)'
+
+/** All entries for one date, BOTH roles — the day everybody references. */
+export async function fetchNoteEntries(date: string): Promise<MyDayNoteEntry[]> {
+  const { data, error } = await supabase
+    .from('myday_note_entries')
+    .select(NOTE_ENTRY_SELECT)
+    .eq('date', date)
+    .order('created_at', { ascending: true })
+  if (!dbResult('Loading shift notes', error)) return []
+  return (data ?? []) as unknown as MyDayNoteEntry[]
+}
+
+/**
+ * The log: every entry BEFORE `before` (exclusive), newest day first, entries
+ * within a day in the order they were written. Caller groups by date.
+ * `days` bounds the window so the page doesn't grow unbounded with history.
+ */
+export async function fetchNoteLog(before: string, days = 30): Promise<MyDayNoteEntry[]> {
+  const from = shiftDate(before, -days)
+  const { data, error } = await supabase
+    .from('myday_note_entries')
+    .select(NOTE_ENTRY_SELECT)
+    .lt('date', before)
+    .gte('date', from)
+    .order('date', { ascending: false })
+    .order('created_at', { ascending: true })
+  if (!dbResult('Loading notes log', error)) return []
+  return (data ?? []) as unknown as MyDayNoteEntry[]
+}
+
+export async function addNoteEntry(args: {
+  role: MyDayRole
+  date: string
+  kind: NoteKind
+  body: string
+  createdBy: string
+}): Promise<boolean> {
+  const body = args.body.trim()
+  if (!body) return false
+  const { error } = await supabase.from('myday_note_entries').insert({
+    role: args.role,
+    date: args.date,
+    kind: args.kind,
+    body,
+    created_by: args.createdBy,
+  })
+  return dbResult('Saving shift note', error)
+}
+
+/** RLS scopes this to the author's own entries (owner may delete any). */
+export async function deleteNoteEntry(id: string): Promise<boolean> {
+  const { error } = await supabase.from('myday_note_entries').delete().eq('id', id)
+  return dbResult('Deleting shift note', error)
 }
 
 // ─── 14-day staff grid (§6.2) ────────────────────────────────────────────────
