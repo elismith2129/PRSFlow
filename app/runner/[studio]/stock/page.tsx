@@ -1,16 +1,17 @@
 'use client'
-// SOFT SKIN PORT, 2026-08-14 (one-pass runner redesign). Queries, save flow and
-// the daily_ops_submissions upsert are UNTOUCHED — this is surface only.
-// Old skin retired: legacy --bg/--surface/--border tokens, 1px borders (Law 1),
-// Syne (§4), dashed borders. Low is status colour (--c-st-warm), the only
-// colour on the page (§5).
-//
-// SECTIONS, 2026-08-24 (Eli): the list is split into PRS STOCK (nightly — the
-// sheet's own rule: check PRS-X items daily) and OFFICE (WEDNESDAYS ONLY).
-// The office section is greyed every other day and gets a pulsing DUE TODAY
-// badge on Wednesday — visible, never blocking (warn-don't-block, house rule).
-// Real item lists + par levels seeded by migration 20260824140000; the page
-// renders in sheet order (sort_order), no longer alphabetically.
+// SOFT SKIN PORT, 2026-08-14. SECTIONS 2026-08-24. OPTION C + HISTORY,
+// 2026-08-24 (Eli picked C from docs/design-refs/stock-density-options.html):
+//   · Collapsible category groups (header = name · count · low badge) so 98
+//     items are a set of jumps, not 30 screens of scroll.
+//   · ONE LINE per item: name + par level left, qty + Low right (~40px, was
+//     ~110px). Tap the name to expand: notes + the item's past checks.
+//   · qty is TEXT — the paper sheet says "0.5", "1.25", "IFAK", "✓", and the
+//     app must not be dumber than the clipboard it replaces.
+//   · History lives in stock_checks (one row per item per date — the sheet's
+//     date columns). stock_items keeps mirroring CURRENT qty/low/notes for
+//     lib/dailyOps + DailyOpsModal, which read it.
+//   · OFFICE group renders last: greyed off-day, pulsing DUE TODAY badge on
+//     Wednesday, auto-expanded on Wednesday. Warn-don't-block.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
@@ -38,8 +39,12 @@ const DEFAULT_ITEMS = [
 type StockSection = 'stock' | 'office'
 type StockItem = {
   id?: string; item: string; qty: string; notes: string; low: boolean
-  section: StockSection; target: string; sort_order: number
+  section: StockSection; target: string; sort_order: number; category: string | null
 }
+type CheckRow = { date: string; qty: string; low: boolean }
+
+const OFFICE_KEY = '__office__'
+const FLAT_KEY = '__flat__'
 
 export default function StockPage() {
   const router = useRouter()
@@ -50,6 +55,9 @@ export default function StockPage() {
   const isWednesday = new Date(today + 'T12:00:00').getDay() === 3
 
   const [items, setItems] = useState<StockItem[]>([])
+  const [history, setHistory] = useState<Record<string, CheckRow[]>>({})
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
+  const [openItems, setOpenItems] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   // Edits are batched locally until Save — a realtime reload mid-typing would
@@ -60,27 +68,68 @@ export default function StockPage() {
     const { data } = await supabase
       .from('stock_items').select('*').eq('studio', studio)
       .order('sort_order').order('item')
-    if (data && data.length > 0) {
-      setItems(data.map((r: any) => ({
-        id: r.id, item: r.item ?? '', qty: r.qty != null ? String(r.qty) : '',
-        notes: r.notes ?? '', low: r.low ?? false,
-        section: (r.section === 'office' ? 'office' : 'stock') as StockSection,
-        target: r.target ?? '', sort_order: r.sort_order ?? 0,
-      })))
+    const rows = data ?? []
+    const ids = rows.map((r: any) => r.id)
+
+    // The sheet's date columns: this item's past checks, newest first.
+    // Today's row (if any) hydrates the inputs; the rest render as history.
+    let checks: any[] = []
+    if (ids.length > 0) {
+      const { data: cd } = await supabase
+        .from('stock_checks').select('stock_item_id, date, qty, low, notes')
+        .in('stock_item_id', ids)
+        .order('date', { ascending: false })
+        .limit(1500)
+      checks = cd ?? []
+    }
+    const todayByItem: Record<string, any> = {}
+    const past: Record<string, CheckRow[]> = {}
+    for (const c of checks) {
+      if (c.date === today) { todayByItem[c.stock_item_id] = c; continue }
+      const arr = past[c.stock_item_id] ?? (past[c.stock_item_id] = [])
+      if (arr.length < 5) arr.push({ date: c.date, qty: c.qty ?? '', low: !!c.low })
+    }
+    setHistory(past)
+
+    if (rows.length > 0) {
+      setItems(rows.map((r: any) => {
+        const t = todayByItem[r.id]
+        return {
+          id: r.id, item: r.item ?? '',
+          // A fresh day starts a fresh column, like the paper — qty is blank
+          // until tonight's count; Low carries over (an item stays low until
+          // someone restocks it).
+          qty: t ? (t.qty ?? '') : '',
+          notes: t ? (t.notes ?? '') : '',
+          low: t ? !!t.low : (r.low ?? false),
+          section: (r.section === 'office' ? 'office' : 'stock') as StockSection,
+          target: r.target ?? '', sort_order: r.sort_order ?? 0,
+          category: r.category ?? null,
+        }
+      }))
     } else {
-      setItems(DEFAULT_ITEMS.map((item, i) => ({
-        item, qty: '', notes: '', low: false, section: 'stock' as StockSection, target: '', sort_order: i + 1,
+      setItems(DEFAULT_ITEMS.map((item, i): StockItem => ({
+        item, qty: '', notes: '', low: false, section: 'stock',
+        target: '', sort_order: i + 1, category: null,
       })))
     }
     setLoading(false)
-  }, [studio])
+  }, [studio, today])
 
   useEffect(() => { load() }, [load])
+
+  // Office opens itself on its day.
+  useEffect(() => {
+    if (isWednesday) setOpenGroups(prev => new Set(prev).add(OFFICE_KEY))
+  }, [isWednesday])
 
   useEffect(() => {
     const ch = supabase
       .channel(`runner-stock-${studio}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_items', filter: `studio=eq.${studio}` }, () => {
+        if (!dirtyRef.current) load()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_checks' }, () => {
         if (!dirtyRef.current) load()
       })
       .subscribe()
@@ -92,30 +141,42 @@ export default function StockPage() {
     setItems(prev => prev.map((x, j) => j === idx ? { ...x, ...patch } : x))
   }
 
-  function addItem(section: StockSection) {
+  function addItem(section: StockSection, category: string | null) {
     dirtyRef.current = true
     setItems(prev => {
       const maxSort = Math.max(0, ...prev.filter(x => x.section === section).map(x => x.sort_order))
-      return [...prev, { item: '', qty: '', notes: '', low: false, section, target: '', sort_order: maxSort + 1 }]
+      return [...prev, { item: '', qty: '', notes: '', low: false, section, target: '', sort_order: maxSort + 1, category }]
     })
   }
 
   async function save() {
     setSaving(true)
     const updated = items.map(it => ({ ...it }))
+
+    // New items first (need ids for their check rows).
     for (let i = 0; i < updated.length; i++) {
       const it = updated[i]
-      const payload = {
+      if (it.id || it.item.trim() === '') continue
+      const { data } = await supabase.from('stock_items').insert({
         studio, item: it.item, qty: parseInt(it.qty) || 0, notes: it.notes, low: it.low,
-        section: it.section, target: it.target, sort_order: it.sort_order,
-      }
-      if (it.id) {
-        await supabase.from('stock_items').update(payload).eq('id', it.id)
-      } else {
-        const { data } = await supabase.from('stock_items').insert(payload).select().single()
-        if (data) updated[i] = { ...it, id: data.id }
-      }
+        section: it.section, target: it.target, sort_order: it.sort_order, category: it.category,
+      }).select().single()
+      if (data) updated[i] = { ...it, id: data.id }
     }
+
+    // Current-state mirror on stock_items (lib/dailyOps + DailyOpsModal read
+    // it) + one check row per touched item — the sheet's date column.
+    const mirror = updated.filter(it => it.id).map(it => ({
+      id: it.id, studio, item: it.item, qty: parseInt(it.qty) || 0, notes: it.notes, low: it.low,
+      section: it.section, target: it.target, sort_order: it.sort_order, category: it.category,
+    }))
+    if (mirror.length > 0) await supabase.from('stock_items').upsert(mirror, { onConflict: 'id' })
+
+    const checks = updated
+      .filter(it => it.id && (it.qty.trim() !== '' || it.low || it.notes.trim() !== ''))
+      .map(it => ({ stock_item_id: it.id, date: today, qty: it.qty.trim(), low: it.low, notes: it.notes.trim() }))
+    if (checks.length > 0) await supabase.from('stock_checks').upsert(checks, { onConflict: 'stock_item_id,date' })
+
     setItems(updated)
     await supabase.from('daily_ops_submissions').upsert({
       studio, date: today, category: 'stock',
@@ -126,16 +187,10 @@ export default function StockPage() {
     router.push(`/runner/${studio}`)
   }
 
-  const surface: React.CSSProperties = {
-    background: 'var(--c-srf, var(--c-bg))',
-    boxShadow: 'var(--c-softsh)',
-    borderRadius: 16,
-    padding: '11px 13px',
-  }
   const input: React.CSSProperties = {
-    background: 'var(--c-wash)', border: 'none', borderRadius: 10,
-    padding: '9px 11px', color: 'var(--c-fg)', fontSize: 13,
-    font: 'inherit', outline: 'none', minHeight: 40,
+    background: 'var(--c-wash2)', border: 'none', borderRadius: 8,
+    padding: '6px 9px', color: 'var(--c-fg)', fontSize: 12.5,
+    font: 'inherit', outline: 'none',
   }
 
   if (loading) {
@@ -147,65 +202,106 @@ export default function StockPage() {
   }
 
   const lowCount = items.filter(i => i.low).length
-  const hasOffice = items.some(i => i.section === 'office')
 
-  // Section order: nightly stock first, office last. A studio with no office
-  // rows (everyone but paramount today) renders one untitled list, unchanged.
-  const sections: { key: StockSection; rows: { it: StockItem; idx: number }[] }[] = (
-    hasOffice ? (['stock', 'office'] as StockSection[]) : (['stock'] as StockSection[])
-  ).map(key => ({
-    key,
-    rows: items.map((it, idx) => ({ it, idx })).filter(r => r.it.section === key),
-  }))
+  // Groups: nightly categories in seed order, then Office last. NULL category
+  // (non-paramount studios) collapses to one flat, always-open list.
+  type Group = { key: string; title: string; rows: { it: StockItem; idx: number }[]; office: boolean }
+  const indexed = items.map((it, idx) => ({ it, idx }))
+  const stockRows = indexed.filter(r => r.it.section === 'stock')
+  const officeRows = indexed.filter(r => r.it.section === 'office')
+  const groups: Group[] = []
+  const seen = new Map<string, Group>()
+  for (const r of stockRows) {
+    const key = r.it.category ?? FLAT_KEY
+    let g = seen.get(key)
+    if (!g) { g = { key, title: r.it.category ?? '', rows: [], office: false }; seen.set(key, g); groups.push(g) }
+    g.rows.push(r)
+  }
+  if (officeRows.length > 0) groups.push({ key: OFFICE_KEY, title: 'Office', rows: officeRows, office: true })
+  const flatOnly = groups.length === 1 && groups[0].key === FLAT_KEY
 
-  const renderCard = ({ it, idx }: { it: StockItem; idx: number }) => (
-    <div key={it.id ?? `new-${idx}`} style={surface}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-        {it.id || it.item ? (
-          <span style={{ minWidth: 0, overflow: 'hidden' }}>
-            <span style={{ display: 'block', fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.item}</span>
-            {it.target !== '' && (
-              <span style={{ display: 'block', fontSize: 10.5, opacity: 0.5, marginTop: 1 }}>Stock: {it.target}</span>
-            )}
-          </span>
-        ) : (
+  const toggleGroup = (key: string) => setOpenGroups(prev => {
+    const next = new Set(prev)
+    if (next.has(key)) next.delete(key); else next.add(key)
+    return next
+  })
+  const toggleItem = (id: string) => setOpenItems(prev => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  })
+
+  const fmtCheckDate = (iso: string) => {
+    const d = new Date(iso + 'T12:00:00')
+    return `${d.getMonth() + 1}/${d.getDate()}`
+  }
+
+  const renderRow = ({ it, idx }: { it: StockItem; idx: number }) => {
+    const rowKey = it.id ?? `new-${idx}`
+    const open = openItems.has(rowKey) || (!it.id && it.item === '')
+    const past = it.id ? (history[it.id] ?? []) : []
+    return (
+      <div key={rowKey} style={{ background: 'var(--c-wash)', borderRadius: 9, marginBottom: 2, padding: '6px 8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {it.id || it.item ? (
+            <span
+              onClick={() => toggleItem(rowKey)}
+              style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
+            >
+              {it.item}
+              {it.target !== '' && <span style={{ fontSize: 9.5, opacity: 0.45, fontWeight: 400, marginLeft: 6 }}>{it.target}</span>}
+              {it.notes.trim() !== '' && !open && <span style={{ fontSize: 9.5, opacity: 0.5, marginLeft: 6 }}>✎</span>}
+            </span>
+          ) : (
+            <input
+              placeholder="Item name"
+              value={it.item}
+              onChange={e => edit(idx, { item: e.target.value })}
+              style={{ ...input, flex: 1, fontWeight: 700, background: 'var(--c-wash2)' }}
+            />
+          )}
           <input
-            placeholder="Item name"
-            value={it.item}
-            onChange={e => edit(idx, { item: e.target.value })}
-            style={{ ...input, flex: 1, fontWeight: 700 }}
+            placeholder="Qty"
+            value={it.qty}
+            onChange={e => edit(idx, { qty: e.target.value })}
+            style={{ ...input, width: 46, textAlign: 'center', flexShrink: 0, padding: '6px 4px' }}
           />
+          <button
+            onClick={() => edit(idx, { low: !it.low })}
+            style={{
+              border: 'none', font: 'inherit', cursor: 'pointer', flexShrink: 0,
+              minWidth: 42, minHeight: 28, borderRadius: 99,
+              fontSize: 9, fontWeight: 800, letterSpacing: '0.04em',
+              background: it.low ? 'var(--c-st-warm)' : 'var(--c-wash2)',
+              color: it.low ? 'var(--c-chip-ink)' : 'var(--c-fg)',
+              opacity: it.low ? 1 : 0.6,
+            }}
+          >
+            {it.low ? 'LOW' : 'OK'}
+          </button>
+        </div>
+        {open && (
+          <div style={{ marginTop: 7, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <input
+              placeholder="Notes"
+              value={it.notes}
+              onChange={e => edit(idx, { notes: e.target.value })}
+              style={{ ...input, width: '100%', boxSizing: 'border-box' }}
+            />
+            {past.length > 0 && (
+              <div style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 10, opacity: 0.55, lineHeight: 1.7, padding: '0 2px' }}>
+                {past.map(c => (
+                  <span key={c.date} style={{ marginRight: 12, whiteSpace: 'nowrap' }}>
+                    {fmtCheckDate(c.date)}: {c.qty || '—'}{c.low ? ' · LOW' : ''}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         )}
-        <button
-          onClick={() => edit(idx, { low: !it.low })}
-          className="c-pill"
-          style={{
-            border: 'none', font: 'inherit', cursor: 'pointer', flexShrink: 0, minHeight: 30,
-            background: it.low ? 'var(--c-st-warm)' : 'var(--c-wash2)',
-            color: it.low ? 'var(--c-chip-ink)' : 'var(--c-fg)',
-            opacity: it.low ? 1 : 0.7,
-          }}
-        >
-          {it.low ? 'Low' : 'OK'}
-        </button>
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <input
-          type="number"
-          placeholder="Qty"
-          value={it.qty}
-          onChange={e => edit(idx, { qty: e.target.value })}
-          style={{ ...input, width: 72 }}
-        />
-        <input
-          placeholder="Notes"
-          value={it.notes}
-          onChange={e => edit(idx, { notes: e.target.value })}
-          style={{ ...input, flex: 1 }}
-        />
-      </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <div style={{
@@ -237,52 +333,52 @@ export default function StockPage() {
         </div>
       </div>
 
-      <div style={{ padding: '4px 14px' }}>
-        {sections.map(({ key, rows }) => {
-          const isOffice = key === 'office'
-          // Office is a Wednesday job: greyed the rest of the week, pulsing on
-          // the day. Still editable — visibility is the guard, not a lock.
-          const dimmed = isOffice && !isWednesday
+      <div style={{ padding: '4px 12px' }}>
+        {groups.map(g => {
+          const open = flatOnly || openGroups.has(g.key)
+          const gLow = g.rows.filter(r => r.it.low).length
+          const dimmed = g.office && !isWednesday
           return (
-            <div key={key} style={{ opacity: dimmed ? 0.42 : 1, marginTop: hasOffice && isOffice ? 22 : 0 }}>
-              {hasOffice && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 3px 9px' }}>
-                  <span style={{
-                    fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em',
-                    textTransform: 'uppercase', opacity: 0.6,
-                  }}>
-                    {isOffice ? 'Office' : 'PRS Stock'}
+            <div key={g.key} style={{ opacity: dimmed ? 0.42 : 1, marginBottom: 6, background: 'var(--c-srf, var(--c-bg))', boxShadow: 'var(--c-softsh)', borderRadius: 14, overflow: 'hidden' }}>
+              {!flatOnly && (
+                <div
+                  onClick={() => toggleGroup(g.key)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 12px', cursor: 'pointer' }}
+                >
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800, letterSpacing: '0.03em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {g.title}
                   </span>
-                  {!isOffice && (
-                    <span style={{ fontSize: 10, opacity: 0.45 }}>Check PRS-X items daily</span>
-                  )}
-                  {isOffice && (isWednesday ? (
+                  {g.office && (isWednesday ? (
                     <span className="c-pill" style={{
                       background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)',
-                      fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
-                      padding: '3px 10px', animation: 'stockWedPulse 1.6s ease-in-out infinite',
+                      fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
+                      padding: '3px 9px', animation: 'stockWedPulse 1.6s ease-in-out infinite', flexShrink: 0,
                     }}>Due today</span>
                   ) : (
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.7 }}>
-                      Wednesdays only
-                    </span>
+                    <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.7, flexShrink: 0 }}>Wednesdays only</span>
                   ))}
+                  <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 10, opacity: 0.5, flexShrink: 0 }}>
+                    {g.rows.length}{gLow > 0 ? ` · ${gLow} low` : ''}
+                  </span>
+                  <span style={{ opacity: 0.4, fontSize: 10, flexShrink: 0 }}>{open ? '▾' : '▸'}</span>
                 </div>
               )}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-                {rows.map(renderCard)}
-              </div>
-              <button
-                onClick={() => addItem(key)}
-                style={{
-                  marginTop: 12, width: '100%', minHeight: 48,
-                  background: 'var(--c-wash)', border: 'none', borderRadius: 14,
-                  color: 'var(--c-fg)', opacity: 0.75, fontSize: 13, fontWeight: 700,
-                  cursor: 'pointer', font: 'inherit',
-                }}
-              >
-                + Add item
-              </button>
+              {open && (
+                <div style={{ padding: flatOnly ? '8px 6px' : '0 6px 8px' }}>
+                  {g.rows.map(renderRow)}
+                  <button
+                    onClick={() => addItem(g.office ? 'office' : 'stock', g.office ? null : (g.key === FLAT_KEY ? null : g.title))}
+                    style={{
+                      marginTop: 6, width: '100%', minHeight: 38,
+                      background: 'var(--c-wash)', border: 'none', borderRadius: 10,
+                      color: 'var(--c-fg)', opacity: 0.6, fontSize: 12, fontWeight: 700,
+                      cursor: 'pointer', font: 'inherit',
+                    }}
+                  >
+                    + Add item
+                  </button>
+                </div>
+              )}
             </div>
           )
         })}
