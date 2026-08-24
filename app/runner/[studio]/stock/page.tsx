@@ -56,6 +56,10 @@ export default function StockPage() {
 
   const [items, setItems] = useState<StockItem[]>([])
   const [history, setHistory] = useState<Record<string, CheckRow[]>>({})
+  // Two-level flow (Eli 2026-08-24: "just make it two big buttons"): the page
+  // lands on PRS STOCK / OFFICE buttons; tapping one opens that list. Studios
+  // with no office rows skip the landing entirely.
+  const [view, setView] = useState<StockSection | null>(null)
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
   const [openItems, setOpenItems] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
@@ -117,11 +121,6 @@ export default function StockPage() {
   }, [studio, today])
 
   useEffect(() => { load() }, [load])
-
-  // Office opens itself on its day.
-  useEffect(() => {
-    if (isWednesday) setOpenGroups(prev => new Set(prev).add(OFFICE_KEY))
-  }, [isWednesday])
 
   useEffect(() => {
     const ch = supabase
@@ -203,22 +202,31 @@ export default function StockPage() {
 
   const lowCount = items.filter(i => i.low).length
 
-  // Groups: nightly categories in seed order, then Office last. NULL category
-  // (non-paramount studios) collapses to one flat, always-open list.
-  type Group = { key: string; title: string; rows: { it: StockItem; idx: number }[]; office: boolean }
   const indexed = items.map((it, idx) => ({ it, idx }))
   const stockRows = indexed.filter(r => r.it.section === 'stock')
   const officeRows = indexed.filter(r => r.it.section === 'office')
+  const hasOffice = officeRows.length > 0
+  // No office rows (every studio but paramount today) → no landing, straight
+  // into the one list.
+  const activeView: StockSection | null = hasOffice ? view : 'stock'
+
+  // Groups WITHIN the active view: nightly categories in seed order. NULL
+  // category (migration not yet run / other studios) renders one flat list
+  // with no header. Office is always flat — 35 items doesn't need groups.
+  type Group = { key: string; title: string; rows: { it: StockItem; idx: number }[] }
   const groups: Group[] = []
-  const seen = new Map<string, Group>()
-  for (const r of stockRows) {
-    const key = r.it.category ?? FLAT_KEY
-    let g = seen.get(key)
-    if (!g) { g = { key, title: r.it.category ?? '', rows: [], office: false }; seen.set(key, g); groups.push(g) }
-    g.rows.push(r)
+  if (activeView === 'stock') {
+    const seen = new Map<string, Group>()
+    for (const r of stockRows) {
+      const key = r.it.category ?? FLAT_KEY
+      let g = seen.get(key)
+      if (!g) { g = { key, title: r.it.category ?? '', rows: [] }; seen.set(key, g); groups.push(g) }
+      g.rows.push(r)
+    }
+  } else if (activeView === 'office') {
+    groups.push({ key: OFFICE_KEY, title: '', rows: officeRows })
   }
-  if (officeRows.length > 0) groups.push({ key: OFFICE_KEY, title: 'Office', rows: officeRows, office: true })
-  const flatOnly = groups.length === 1 && groups[0].key === FLAT_KEY
+  const flatOnly = groups.length === 1 && (groups[0].key === FLAT_KEY || groups[0].key === OFFICE_KEY)
 
   const toggleGroup = (key: string) => setOpenGroups(prev => {
     const next = new Set(prev)
@@ -314,7 +322,11 @@ export default function StockPage() {
         background: 'var(--c-bg)',
       }}>
         <button
-          onClick={() => router.push(`/runner/${studio}`)}
+          onClick={() => {
+            // In a list with a landing behind it: back = the landing.
+            if (hasOffice && activeView !== null) setView(null)
+            else router.push(`/runner/${studio}`)
+          }}
           aria-label="Back"
           className="c-control c-raised"
           style={{
@@ -325,21 +337,69 @@ export default function StockPage() {
           }}
         >←</button>
         <div>
-          <div className="c-arch" style={{ fontSize: 18, letterSpacing: '-0.02em', lineHeight: 1.15 }}>Stock</div>
+          <div className="c-arch" style={{ fontSize: 18, letterSpacing: '-0.02em', lineHeight: 1.15 }}>
+            {activeView === 'office' ? 'Office Stock' : activeView === 'stock' && hasOffice ? 'PRS Stock' : 'Stock'}
+          </div>
           <div style={{ fontSize: 11.5, opacity: 0.5 }}>
             {meta.label}
             {lowCount > 0 && <span style={{ color: 'var(--c-st-warm)', opacity: 1, fontWeight: 700 }}> · {lowCount} low</span>}
+            {activeView === 'office' && !isWednesday && <span style={{ fontWeight: 700 }}> · Wednesdays only</span>}
           </div>
         </div>
       </div>
 
+      {/* ── LANDING: two big buttons (Eli 2026-08-24) ──────────────────────── */}
+      {activeView === null && (
+        <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {([
+            { key: 'stock' as StockSection, title: 'PRS Stock', sub: 'Nightly · check PRS-X items daily', rows: stockRows },
+            { key: 'office' as StockSection, title: 'Office', sub: 'Wednesdays only', rows: officeRows },
+          ]).map(b => {
+            const bLow = b.rows.filter(r => r.it.low).length
+            const office = b.key === 'office'
+            const dimmed = office && !isWednesday
+            return (
+              <button
+                key={b.key}
+                onClick={() => setView(b.key)}
+                className="c-control c-raised"
+                style={{
+                  width: '100%', minHeight: 96, borderRadius: 18, border: 'none',
+                  font: 'inherit', textAlign: 'left', cursor: 'pointer',
+                  padding: '18px 20px', color: 'var(--c-fg)',
+                  background: 'var(--c-srf, var(--c-wash2))', boxShadow: 'var(--c-softsh)',
+                  opacity: dimmed ? 0.5 : 1,
+                  display: 'flex', alignItems: 'center', gap: 14,
+                }}
+              >
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span className="c-arch" style={{ display: 'block', fontSize: 20, letterSpacing: '-0.02em', lineHeight: 1.2 }}>{b.title}</span>
+                  <span style={{ display: 'block', fontSize: 11, opacity: 0.55, marginTop: 3 }}>
+                    {b.sub} · {b.rows.length} items{bLow > 0 ? ` · ${bLow} low` : ''}
+                  </span>
+                </span>
+                {office && isWednesday && (
+                  <span className="c-pill" style={{
+                    background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)',
+                    fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
+                    padding: '4px 11px', animation: 'stockWedPulse 1.6s ease-in-out infinite', flexShrink: 0,
+                  }}>Due today</span>
+                )}
+                <span style={{ opacity: 0.35, fontSize: 16, flexShrink: 0 }}>›</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── LIST VIEW: category groups (stock) or flat (office/no categories) ── */}
+      {activeView !== null && (
       <div style={{ padding: '4px 12px' }}>
         {groups.map(g => {
           const open = flatOnly || openGroups.has(g.key)
           const gLow = g.rows.filter(r => r.it.low).length
-          const dimmed = g.office && !isWednesday
           return (
-            <div key={g.key} style={{ opacity: dimmed ? 0.42 : 1, marginBottom: 6, background: 'var(--c-srf, var(--c-bg))', boxShadow: 'var(--c-softsh)', borderRadius: 14, overflow: 'hidden' }}>
+            <div key={g.key} style={{ marginBottom: 6, background: 'var(--c-srf, var(--c-bg))', boxShadow: 'var(--c-softsh)', borderRadius: 14, overflow: 'hidden' }}>
               {!flatOnly && (
                 <div
                   onClick={() => toggleGroup(g.key)}
@@ -348,15 +408,6 @@ export default function StockPage() {
                   <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800, letterSpacing: '0.03em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {g.title}
                   </span>
-                  {g.office && (isWednesday ? (
-                    <span className="c-pill" style={{
-                      background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)',
-                      fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
-                      padding: '3px 9px', animation: 'stockWedPulse 1.6s ease-in-out infinite', flexShrink: 0,
-                    }}>Due today</span>
-                  ) : (
-                    <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.7, flexShrink: 0 }}>Wednesdays only</span>
-                  ))}
                   <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 10, opacity: 0.5, flexShrink: 0 }}>
                     {g.rows.length}{gLow > 0 ? ` · ${gLow} low` : ''}
                   </span>
@@ -367,7 +418,7 @@ export default function StockPage() {
                 <div style={{ padding: flatOnly ? '8px 6px' : '0 6px 8px' }}>
                   {g.rows.map(renderRow)}
                   <button
-                    onClick={() => addItem(g.office ? 'office' : 'stock', g.office ? null : (g.key === FLAT_KEY ? null : g.title))}
+                    onClick={() => addItem(activeView, g.key === FLAT_KEY || g.key === OFFICE_KEY ? null : g.title)}
                     style={{
                       marginTop: 6, width: '100%', minHeight: 38,
                       background: 'var(--c-wash)', border: 'none', borderRadius: 10,
@@ -383,7 +434,9 @@ export default function StockPage() {
           )
         })}
       </div>
+      )}
 
+      {activeView !== null && (
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         padding: '12px 14px calc(16px + env(safe-area-inset-bottom))',
@@ -404,6 +457,7 @@ export default function StockPage() {
           {saving ? 'Saving…' : 'Save stock list'}
         </button>
       </div>
+      )}
     </div>
   )
 }
