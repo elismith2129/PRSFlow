@@ -90,10 +90,15 @@ export default function ChecklistPage() {
 
   // ── Attention content sync — fires after runner edits notes or photos ────────
   // Auto-derives needs_attention from content; no manual toggle needed.
+  // pendingAttentionRef holds the not-yet-fired write so leaving the page
+  // inside the 600ms debounce window flushes it instead of dropping it
+  // (Eli 2026-08-24: "I don't want their input to get wiped").
+  const pendingAttentionRef = useRef<(() => void) | null>(null)
   useEffect(() => {
     if (!attentionChangedRef.current) return
     const hasAttention = notes.trim().length > 0 || photos.length > 0
-    const timer = setTimeout(async () => {
+    const write = async () => {
+      pendingAttentionRef.current = null
       if (clIdRef.current) {
         await supabase.from('checklists').update({
           notes: notes.trim() || null,
@@ -108,9 +113,15 @@ export default function ChecklistPage() {
         attention_notes: notes.trim() || null,
         photo_urls: photos.length > 0 ? photos : null,
       }, { onConflict: 'studio,date,category' })
-    }, 600)
+    }
+    pendingAttentionRef.current = write
+    const timer = setTimeout(write, 600)
     return () => clearTimeout(timer)
   }, [notes, photos]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Unmount flush: fire whatever the debounce hadn't written yet. Fire-and-
+  // forget — the component is gone, but the supabase call still completes.
+  useEffect(() => () => { pendingAttentionRef.current?.() }, [])
 
   // ── Toggle item — saves immediately ─────────────────────────────────────────
   async function toggle(item: string) {

@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { getLocalToday } from '@/lib/time'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
+import { draftKey, readDraft, writeDraft, clearDraft } from '@/lib/draft'
 
 
 const STUDIO_META: Record<string, { label: string }> = {
@@ -72,24 +73,38 @@ export default function MicsPage() {
       supabase.from('mic_checkins').select('*').eq('studio', studio).eq('date', today),
       supabase.from('mic_inventory_quantities').select('*').eq('studio', studio).eq('date', today),
     ])
-    if (savedCheckins?.length) {
-      const restored: Record<string, CheckinState> = {}
-      for (const c of savedCheckins) {
-        restored[c.mic_id] = { status: c.status, room: c.room ?? '' }
-      }
-      setCheckins(restored)
+    const restoredCheckins: Record<string, CheckinState> = {}
+    for (const c of savedCheckins ?? []) {
+      restoredCheckins[c.mic_id] = { status: c.status, room: c.room ?? '' }
     }
-    if (savedQtys?.length) {
-      const restored: Record<string, number> = {}
-      for (const q of savedQtys) {
-        restored[q.mic_id] = q.quantity
-      }
-      setQuantities(restored)
+    const restoredQtys: Record<string, number> = {}
+    for (const q of savedQtys ?? []) {
+      restoredQtys[q.mic_id] = q.quantity
+    }
+    dirtyRef.current = false
+
+    // Unsaved draft from a previous visit (lib/draft): the runner's un-saved
+    // taps win over what the server has, and the page counts as dirty so
+    // realtime doesn't clobber them. Cleared on successful save/submit.
+    const draft = readDraft<{ checkins: Record<string, CheckinState>; quantities: Record<string, number>; initials: string }>(
+      draftKey('mics', studio, today))
+    if (draft && (Object.keys(draft.checkins).length > 0 || Object.keys(draft.quantities).length > 0 || draft.initials)) {
+      Object.assign(restoredCheckins, draft.checkins)
+      Object.assign(restoredQtys, draft.quantities)
+      if (draft.initials) setInitials(draft.initials)
+      dirtyRef.current = true
     }
 
+    setCheckins(restoredCheckins)
+    setQuantities(restoredQtys)
     setLoading(false)
-    dirtyRef.current = false
   }, [studio, today])
+
+  // Mirror un-saved taps to the draft as they happen.
+  useEffect(() => {
+    if (loading || !dirtyRef.current) return
+    writeDraft(draftKey('mics', studio, today), { checkins, quantities, initials })
+  }, [checkins, quantities, initials, loading, studio, today])
 
   useEffect(() => { load() }, [load])
   // Same dirty-guard as the realtime channel: never clobber an in-progress check-in.
@@ -141,6 +156,8 @@ export default function MicsPage() {
       checkinRows.length ? supabase.from('mic_checkins').upsert(checkinRows, { onConflict: 'mic_id,studio,date' }) : Promise.resolve(),
       qtyRows.length ? supabase.from('mic_inventory_quantities').upsert(qtyRows, { onConflict: 'mic_id,studio,date' }) : Promise.resolve(),
     ])
+    clearDraft(draftKey('mics', studio, today))
+    dirtyRef.current = false
     router.push(`/runner/${studio}`)
   }
 
@@ -177,6 +194,8 @@ export default function MicsPage() {
       { onConflict: 'studio,date,category' }
     )
 
+    clearDraft(draftKey('mics', studio, today))
+    dirtyRef.current = false
     setSubmitting(false)
     router.push(`/runner/${studio}`)
   }
@@ -377,7 +396,7 @@ export default function MicsPage() {
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <input
             value={initials}
-            onChange={e => { setInitials(e.target.value.toUpperCase()); if (e.target.value.trim()) setShowInitialsHint(false) }}
+            onChange={e => { dirtyRef.current = true; setInitials(e.target.value.toUpperCase()); if (e.target.value.trim()) setShowInitialsHint(false) }}
             placeholder="Initials"
             maxLength={4}
             className="c-mono"

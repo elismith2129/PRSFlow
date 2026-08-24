@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
+import { draftKey, readDraft, writeDraft, clearDraft } from '@/lib/draft'
 
 const STUDIO_META: Record<string, { label: string }> = {
   paramount: { label: 'Paramount' },
@@ -39,15 +40,37 @@ export default function PettyCashPage() {
       .eq('studio', studio)
       .order('date')
       .order('created_at')
-    setEntries((data ?? []).map((e: any) => ({
+    let loaded: Entry[] = (data ?? []).map((e: any) => ({
       id: e.id, description: e.description ?? '', amount: e.amount != null ? String(e.amount) : '', type: e.type ?? 'out',
-    })))
+    }))
     // Check opening balance
     const { data: ob } = await supabase.from('petty_cash_balances').select('amount').eq('studio', studio).order('date', { ascending: false }).limit(1).maybeSingle()
-    setOpeningBalance(ob?.amount != null ? String(ob.amount) : '')
-    setLoading(false)
+    let balance = ob?.amount != null ? String(ob.amount) : ''
     dirtyRef.current = false
-  }, [studio])
+
+    // Unsaved draft from a previous visit (lib/draft): unsaved entries come
+    // back, a typed balance wins, and the page counts as dirty so realtime
+    // doesn't clobber it. Cleared on successful save.
+    const draft = readDraft<{ newEntries: Entry[]; openingBalance: string | null }>(draftKey('petty', studio, today))
+    if (draft && (draft.newEntries.length > 0 || draft.openingBalance != null)) {
+      loaded = [...loaded, ...draft.newEntries]
+      if (draft.openingBalance != null) balance = draft.openingBalance
+      dirtyRef.current = true
+    }
+
+    setEntries(loaded)
+    setOpeningBalance(balance)
+    setLoading(false)
+  }, [studio, today])
+
+  // Mirror unsaved input to the draft as it changes.
+  useEffect(() => {
+    if (loading || !dirtyRef.current) return
+    writeDraft(draftKey('petty', studio, today), {
+      newEntries: entries.filter(e => !e.id && (e.description || e.amount)),
+      openingBalance,
+    })
+  }, [entries, openingBalance, loading, studio, today])
 
   useEffect(() => { load() }, [load])
   // Same dirty-guard as the realtime channel: never clobber a half-typed entry.
@@ -107,6 +130,10 @@ export default function PettyCashPage() {
     )
     if (subErr) { setSaveError(`Submission record failed: ${subErr.message}`); setSaving(false); return }
 
+    // Every write succeeded — only now does the draft die. A failed save above
+    // returns early and the draft keeps their typing.
+    clearDraft(draftKey('petty', studio, today))
+    dirtyRef.current = false
     setSaving(false)
     router.push(`/runner/${studio}`)
   }

@@ -14,6 +14,7 @@
 //     Wednesday, auto-expanded on Wednesday. Warn-don't-block.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { draftKey, readDraft, writeDraft, clearDraft } from '@/lib/draft'
 import { useRouter, useParams } from 'next/navigation'
 
 const STUDIO_META: Record<string, { label: string }> = {
@@ -95,8 +96,9 @@ export default function StockPage() {
     }
     setHistory(past)
 
+    let next: StockItem[]
     if (rows.length > 0) {
-      setItems(rows.map((r: any) => {
+      next = rows.map((r: any) => {
         const t = todayByItem[r.id]
         return {
           id: r.id, item: r.item ?? '',
@@ -110,15 +112,36 @@ export default function StockPage() {
           target: r.target ?? '', sort_order: r.sort_order ?? 0,
           category: r.category ?? null,
         }
-      }))
+      })
     } else {
-      setItems(DEFAULT_ITEMS.map((item, i): StockItem => ({
+      next = DEFAULT_ITEMS.map((item, i): StockItem => ({
         item, qty: '', notes: '', low: false, section: 'stock',
         target: '', sort_order: i + 1, category: null,
-      })))
+      }))
     }
+
+    // Unsaved draft from a previous visit (lib/draft — back-tap / failed save
+    // insurance): typed fields win over the fetch, unsaved custom items come
+    // back, and the page counts as dirty so realtime doesn't clobber it.
+    const draft = readDraft<StockItem[]>(draftKey('stock', studio, today))
+    if (draft?.length) {
+      next = next.map(it => {
+        const d = draft.find(x => x.id && x.id === it.id)
+        return d ? { ...it, qty: d.qty, notes: d.notes, low: d.low } : it
+      })
+      for (const d of draft.filter(x => !x.id && x.item.trim() !== '')) next.push(d)
+      dirtyRef.current = true
+    }
+
+    setItems(next)
     setLoading(false)
   }, [studio, today])
+
+  // Mirror typed input to the draft as it changes; cleared on successful save.
+  useEffect(() => {
+    if (loading || !dirtyRef.current) return
+    writeDraft(draftKey('stock', studio, today), items)
+  }, [items, loading, studio, today])
 
   useEffect(() => { load() }, [load])
 
@@ -181,6 +204,7 @@ export default function StockPage() {
       studio, date: today, category: 'stock',
       submitted_at: new Date().toISOString(),
     }, { onConflict: 'studio,date,category' })
+    clearDraft(draftKey('stock', studio, today))
     dirtyRef.current = false
     setSaving(false)
     router.push(`/runner/${studio}`)
