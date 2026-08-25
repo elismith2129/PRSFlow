@@ -24,7 +24,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { computeWoTotals } from '@/lib/woTotals'
-import { renderWorkOrderPdf, renderBlankWorkOrderPdf, mergePackage } from '@/lib/woPdf'
+import { renderWorkOrderPdf, renderBlankWorkOrderPdf, renderExpenseReportPdf, mergePackage } from '@/lib/woPdf'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -139,7 +139,40 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const merged = await mergePackage(woPdf, attachment)
+  // ── Food-budget expense report (2026-08-24) ───────────────────────────────
+  // When the session carried a food budget, the paper sheet the label used to
+  // get is stapled to the END of the full package: the B&W expense table plus
+  // every receipt PHOTO as its own captioned page. This is what retired the
+  // splay-the-receipts-on-the-scanner ritual — the runner photographs each
+  // receipt at the desk and the package assembles itself here.
+  // Full package only (`wo=1` is the convenience export). A failed receipt
+  // download skips that photo rather than failing the file.
+  let expenseReport: Uint8Array | null = null
+  if (!woOnly && wo.food_budget) {
+    const { data: expRows } = await supabaseAdmin
+      .from('wo_expenses').select('*').eq('work_order_id', id).order('sort_order')
+    if (expRows && expRows.length > 0) {
+      const receipts: { bytes: Uint8Array; contentType: string; caption: string }[] = []
+      for (const e of expRows) {
+        if (!e.receipt_path) continue
+        const dl = await supabaseAdmin.storage.from('checklist-photos').download(e.receipt_path)
+        if (dl.data) {
+          receipts.push({
+            bytes: new Uint8Array(await dl.data.arrayBuffer()),
+            contentType: dl.data.type || (e.receipt_path.endsWith('.png') ? 'image/png' : 'image/jpeg'),
+            caption: [e.place, e.amount].filter(Boolean).join(' · ') || e.date || '',
+          })
+        }
+      }
+      expenseReport = await renderExpenseReportPdf({
+        wo,
+        expenses: expRows.map((e: any) => ({ date: e.date ?? '', place: e.place ?? '', amount: e.amount ?? '' })),
+        receipts,
+      })
+    }
+  }
+
+  const merged = await mergePackage(woPdf, attachment, expenseReport)
 
   // KEEP WHAT WENT OUT (ruling 2026-08-11). The exact bytes being handed over
   // are stored, so the package window can later show the ARTIFACT rather than

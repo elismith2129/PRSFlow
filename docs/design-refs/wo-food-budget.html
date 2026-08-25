@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — WO Food Budget + Expense Report (mock)</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  FOOD BUDGET EXPENSE REPORT — MOCK (Eli, 2026-08-24). No code behind this.
+
+  The flow Eli described:
+    1. On the WO: Food budget YES/NO + amount.
+    2. When YES, a small button appears → the EXPENSE REPORT.
+    3. The report is the paper sheet, live: Date · Place of Business ·
+       Amount (including tip), one row per receipt, with the budget math the
+       paper never did (spent, remaining, over-budget warning).
+
+  Modeled on the actual sheet (PRS-A RedBull/Morgan & Rance, 10/14/25):
+  same three columns, same "(including tip)" wording. Added on top of paper:
+    · running SPENT and REMAINING against the budget, live
+    · REMAINING flips hot when the budget is blown — hot is sanctioned for
+      "needs collecting/attention", and an over-spend is exactly that
+    · optional receipt-photo chip per row (camera on the phone)
+    · rows are typeable by admin OR runner — same both sides, like the WO
+
+  Two frames below: the WO-side control, then the report sheet it opens.
+-->
+<style>
+:root{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --warm:#ffa94d; --hot:#ff5a4d; --booked:#43dfae; --chip-ink:#1c2626;
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);
+  font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;
+  padding:26px;max-width:980px;margin:0 auto}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.note{font-size:11.5px;opacity:.55;line-height:1.6;margin:6px 0 20px;max-width:640px}
+
+.pane{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:14px;margin-bottom:22px}
+.lozenge{display:flex;align-items:baseline;justify-content:space-between;border-radius:99px;
+  padding:7px 14px;margin-bottom:12px;font-size:10px;font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase;background:var(--wash2)}
+.lozenge .ct{font-family:ui-monospace,monospace;font-size:10px;opacity:.7;letter-spacing:0}
+
+/* WO-side control */
+.seg{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash)}
+.seg button{padding:5px 14px;border-radius:99px;font-size:10.5px;font-weight:700;opacity:.55;
+  border:none;background:none;color:var(--fg);cursor:pointer}
+.seg button.on{opacity:1;background:var(--fg);color:var(--bg)}
+.well{display:flex;align-items:center;gap:10px;background:var(--wash);border-radius:99px;
+  padding:8px 14px;font-size:12px}
+.well .pfx{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.45}
+.repbtn{display:inline-flex;align-items:center;gap:8px;border:none;cursor:pointer;
+  background:var(--wash2);color:var(--fg);border-radius:99px;padding:8px 16px;
+  font:inherit;font-size:11px;font-weight:700}
+.repbtn .st{font-family:ui-monospace,monospace;font-size:10px;opacity:.6}
+
+/* Report sheet */
+.rephead{text-align:center;margin-bottom:14px}
+.rephead .who{font-family:'Archivo Black',sans-serif;font-size:16px;letter-spacing:-.01em}
+.rephead .sub{font-size:10.5px;opacity:.5;margin-top:2px}
+.budgetbar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.bstat{background:var(--wash);border-radius:12px;padding:9px 12px;text-align:center}
+.bstat .n{font-family:'Archivo Black',sans-serif;font-size:17px;letter-spacing:-.02em}
+.bstat .k{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.45;margin-top:1px}
+.bstat.over .n{color:var(--hot)}
+.bstat.ok .n{color:var(--booked)}
+
+.exp-h,.exp-r{display:grid;grid-template-columns:74px 1fr 110px 44px;gap:8px;align-items:center}
+.exp-h{padding:0 10px 6px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.45}
+.exp-r{background:var(--wash);border-radius:10px;padding:7px 10px;margin-bottom:4px;font-size:12px}
+.exp-r input{background:var(--wash2);border:none;border-radius:7px;padding:6px 9px;color:var(--fg);
+  font:inherit;font-size:12px;outline:none;width:100%}
+.exp-r .amt{text-align:right;font-family:ui-monospace,monospace}
+.rcpt{width:34px;height:28px;border:none;border-radius:8px;background:var(--wash2);cursor:pointer;
+  font-size:12px;opacity:.6}
+.rcpt.has{opacity:1;background:color-mix(in srgb,var(--booked) 22%,transparent)}
+.addrow{margin-top:8px;width:100%;min-height:40px;background:var(--wash);border:none;border-radius:10px;
+  color:var(--fg);opacity:.6;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.foot{display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:14px}
+.btn{border:none;cursor:pointer;border-radius:99px;padding:9px 20px;font:inherit;
+  font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  background:#d5d0c2;color:#1b1a17}
+.ghost{background:none;color:var(--fg);opacity:.6;border:none;cursor:pointer;font:inherit;font-size:11px}
+</style>
+</head>
+<body>
+
+<h1 class="arch" style="font-size:21px;letter-spacing:-.03em">Food budget → expense report</h1>
+<p class="note">Frame 1 is what changes ON the work order. Frame 2 is what the little button opens —
+the paper sheet, live, with the budget math the clipboard never did. Same sheet for admin and runner.</p>
+
+<!-- ══ FRAME 1 — on the WO, near Session Info ══ -->
+<div class="pane" style="max-width:640px">
+  <div class="lozenge"><b>On the work order</b><span class="ct">sits with the session meta</span></div>
+
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span class="label" style="opacity:.6">Food budget</span>
+    <span class="seg">
+      <button>No</button>
+      <button class="on">Yes</button>
+    </span>
+    <span class="well" style="width:130px"><span class="pfx">$</span>500.00</span>
+    <button class="repbtn">Expense report <span class="st">$146.03 · 3 receipts</span> <span style="opacity:.5">›</span></button>
+  </div>
+  <div style="font-size:10.5px;opacity:.4;margin-top:10px">
+    No = just the toggle, nothing else renders. Yes = amount well + the button, which always shows
+    spent + receipt count so nobody opens it just to check.
+  </div>
+</div>
+
+<!-- ══ FRAME 2 — the expense report sheet ══ -->
+<div class="pane" style="max-width:720px">
+  <div class="lozenge"><b>Expense report</b><span class="ct">opens from the button · full sheet on phone</span></div>
+
+  <div class="rephead">
+    <div class="who">PRS-A · RedBull / Morgan &amp; Rance</div>
+    <div class="sub">Food Budget · Oct 14, 2025 · INV 10233</div>
+  </div>
+
+  <div class="budgetbar">
+    <div class="bstat"><div class="n">$500.00</div><div class="k">Budget</div></div>
+    <div class="bstat"><div class="n">$146.03</div><div class="k">Spent</div></div>
+    <div class="bstat ok"><div class="n">$353.97</div><div class="k">Remaining</div></div>
+  </div>
+
+  <div class="exp-h"><span>Date</span><span>Place of business</span><span style="text-align:right">Amount (incl. tip)</span><span>Rcpt</span></div>
+
+  <div class="exp-r">
+    <input value="10/14">
+    <input value="Bossa Nova">
+    <input class="amt" value="$30.68">
+    <button class="rcpt has" title="Receipt photo attached">🧾</button>
+  </div>
+  <div class="exp-r">
+    <input value="10/14">
+    <input value="La Bettiola di Terroni">
+    <input class="amt" value="$50.50">
+    <button class="rcpt has" title="Receipt photo attached">🧾</button>
+  </div>
+  <div class="exp-r">
+    <input value="10/14">
+    <input value="Marathon Burger">
+    <input class="amt" value="$65.85">
+    <button class="rcpt" title="Attach receipt photo">📷</button>
+  </div>
+
+  <button class="addrow">+ Add expense</button>
+
+  <div class="foot">
+    <span class="ghost">Print / PDF</span>
+    <button class="btn">Save &amp; close</button>
+  </div>
+</div>
+
+<!-- Over-budget state, for reference -->
+<div class="pane" style="max-width:720px">
+  <div class="lozenge"><b>Over budget</b><span class="ct">remaining flips hot — a warning, never a block</span></div>
+  <div class="budgetbar" style="margin-bottom:0">
+    <div class="bstat"><div class="n">$300.00</div><div class="k">Budget</div></div>
+    <div class="bstat"><div class="n">$412.40</div><div class="k">Spent</div></div>
+    <div class="bstat over"><div class="n">−$112.40</div><div class="k">Over budget</div></div>
+  </div>
+</div>
+
+<p class="note" style="margin-top:4px">Open questions for Eli, answered by taste not code:
+① does the SPENT total ride onto the WO as a rentals-style line item, or stay its own report that
+prints alongside the invoice? ② who types receipts — runner during the session, office after, or
+both? ③ does the receipt photo matter enough to keep, or is the paper habit just date/place/amount?</p>
+
+</body>
+</html>

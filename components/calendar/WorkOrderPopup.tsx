@@ -22,6 +22,7 @@ import {
 } from '@/lib/woValidation'
 import { enterInvoicePipeline, downloadPackage } from '@/lib/billing'
 import { dbResult } from '@/lib/db'
+import { signedPhotoUrl } from '@/lib/photos'
 import { STUDIO_LOCATIONS, STUDIO_SHORT, roomCode } from '@/lib/studios'
 
 // Convert a studio_time_rows studio value (bare letter 'X', or 'North'/'South')
@@ -185,6 +186,18 @@ type PayRow = {
   amount: string
   memo: string
   last_four: string
+}
+
+/** Food-budget expense report row (wo_expenses, 2026-08-24) — the paper
+    sheet's Date · Place of Business · Amount (incl. tip) + receipt photo. */
+type WoExpense = {
+  id: string
+  work_order_id: string
+  date: string
+  place: string
+  amount: string
+  receipt_path: string | null
+  sort_order: number
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -467,6 +480,16 @@ export function WorkOrderPopup({
   const [payRows, setPayRows] = useState<PayRow[]>([
     { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '' },
   ])
+  // Food-budget expense report (2026-08-24 — the paper sheet, live). Rows write
+  // IMMEDIATELY (equip-note pattern), not through the WO's batched save: the
+  // runner logs receipts mid-session and a failed batched save must never take
+  // the receipt log down with it.
+  const [expenses, setExpenses] = useState<WoExpense[]>([])
+  const [showExpenses, setShowExpenses] = useState(false)
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null)
+  const [rcptUploading, setRcptUploading] = useState<string | null>(null)
+  const expenseFileRef = useRef<HTMLInputElement | null>(null)
+  const pendingExpenseId = useRef<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -905,13 +928,15 @@ export function WorkOrderPopup({
       const seededExisting = applyLiveForm(base)
       adminInitialSigRef.current = seededExisting.signature_data ?? ''
       setWo(seededExisting)
-      const [{ data: st }, { data: eq }, { data: rent }, { data: pay }, { data: eqNotes }] = await Promise.all([
+      const [{ data: st }, { data: eq }, { data: rent }, { data: pay }, { data: eqNotes }, { data: exp }] = await Promise.all([
         supabase.from('studio_time_rows').select('*').eq('work_order_id', existing.id).order('sort_order'),
         supabase.from('equipment_condition_rows').select('*').eq('work_order_id', existing.id),
         supabase.from('rental_rows').select('*').eq('work_order_id', existing.id).order('sort_order'),
         supabase.from('payment_rows').select('*').eq('work_order_id', existing.id).order('recorded_at'),
         supabase.from('equipment_condition_notes').select('*').eq('work_order_id', existing.id),
+        supabase.from('wo_expenses').select('*').eq('work_order_id', existing.id).order('sort_order'),
       ])
+      setExpenses((exp ?? []) as WoExpense[])
       if (st?.length) {
         const isSingleDay = booking.start_date === booking.end_date || !booking.end_date
         const rows = st.map(normalizeStRow)
@@ -1058,14 +1083,16 @@ export function WorkOrderPopup({
   async function refreshFromDb() {
     const id = woIdRef.current
     if (!id || loadingRef.current) return
-    const [{ data: woRow }, { data: st }, { data: eq }, { data: eqNotes }, { data: rent }, { data: pay }] = await Promise.all([
+    const [{ data: woRow }, { data: st }, { data: eq }, { data: eqNotes }, { data: rent }, { data: pay }, { data: exp }] = await Promise.all([
       supabase.from('work_orders').select('*').eq('id', id).maybeSingle(),
       supabase.from('studio_time_rows').select('*').eq('work_order_id', id).order('sort_order'),
       supabase.from('equipment_condition_rows').select('*').eq('work_order_id', id),
       supabase.from('equipment_condition_notes').select('*').eq('work_order_id', id),
       supabase.from('rental_rows').select('*').eq('work_order_id', id).order('sort_order'),
       supabase.from('payment_rows').select('*').eq('work_order_id', id).order('recorded_at'),
+      supabase.from('wo_expenses').select('*').eq('work_order_id', id).order('sort_order'),
     ])
+    setExpenses((exp ?? []) as WoExpense[])
 
     // WO header fields — adopt remote except the keys the user has dirtied.
     if (woRow) {
@@ -1547,6 +1574,66 @@ export function WorkOrderPopup({
     setNoteUploading(false)
     if (equipNoteFileRef.current) equipNoteFileRef.current.value = ''
     pendingNoteKey.current = null
+  }
+
+  // ── Food-budget expenses (immediate writes — equip-note pattern) ──────────
+
+  async function addExpense() {
+    if (!woIdRef.current) return
+    const maxSort = expenses.reduce((m, e) => Math.max(m, e.sort_order), 0)
+    const today = getLocalToday()
+    const { data, error } = await supabase.from('wo_expenses').insert({
+      work_order_id: woIdRef.current,
+      // Prefill the sheet's short date (10/14) — the paper's habit.
+      date: `${parseInt(today.slice(5, 7))}/${parseInt(today.slice(8, 10))}`,
+      place: '', amount: '', sort_order: maxSort + 1,
+    }).select().single()
+    if (!dbResult('Adding expense', error) || !data) return
+    setExpenses(prev => [...prev, data as WoExpense])
+  }
+
+  /** Local-state edit; the DB write happens on blur via saveExpense. */
+  function editExpense(id: string, patch: Partial<WoExpense>) {
+    setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...patch } : e))
+  }
+
+  async function saveExpense(id: string) {
+    const e = expenses.find(x => x.id === id)
+    if (!e) return
+    const { error } = await supabase.from('wo_expenses')
+      .update({ date: e.date, place: e.place, amount: e.amount })
+      .eq('id', id)
+    dbResult('Saving expense', error)
+  }
+
+  async function deleteExpense(id: string) {
+    if (!window.confirm('Delete this expense?')) return
+    const { error } = await supabase.from('wo_expenses').delete().eq('id', id)
+    if (!dbResult('Deleting expense', error)) return
+    setExpenses(prev => prev.filter(e => e.id !== id))
+  }
+
+  async function uploadReceipt(file: File) {
+    const id = pendingExpenseId.current
+    if (!id || !woIdRef.current) return
+    setRcptUploading(id)
+    const ext = file.name.split('.').pop() ?? 'jpg'
+    const path = `wo-receipts/${woIdRef.current}/${id}_${Date.now()}.${ext}`
+    const { data, error } = await supabase.storage.from('checklist-photos').upload(path, file, { upsert: true })
+    if (dbResult('Uploading receipt', error) && data) {
+      const { error: updErr } = await supabase.from('wo_expenses').update({ receipt_path: data.path }).eq('id', id)
+      if (dbResult('Saving receipt', updErr)) {
+        setExpenses(prev => prev.map(e => e.id === id ? { ...e, receipt_path: data.path } : e))
+      }
+    }
+    setRcptUploading(null)
+    if (expenseFileRef.current) expenseFileRef.current.value = ''
+    pendingExpenseId.current = null
+  }
+
+  async function viewReceipt(path: string) {
+    const url = await signedPhotoUrl(path)
+    if (url) setReceiptPreview(url)
   }
 
   // ── Add studio time row ────────────────────────────────────────────────────
@@ -2405,6 +2492,12 @@ export function WorkOrderPopup({
   const totalPaid = woTotals.paid
   const balanceDue = woTotals.balance
 
+  // Food budget math — spent is the expense rows' sum; remaining against
+  // wo.food_amount. Text money fields, parsed the same way everywhere.
+  const foodSpent = expenses.reduce((s, e) => s + (parseFloat((e.amount || '').replace(/[^0-9.-]/g, '')) || 0), 0)
+  const foodBudgetNum = wo ? (parseFloat((wo.food_amount || '').replace(/[^0-9.-]/g, '')) || 0) : 0
+  const foodRemaining = foodBudgetNum - foodSpent
+
   // ── Styles ────────────────────────────────────────────────────────────────
 
   // (`inp` deleted. Table cells now use `c-tin` — bare, per the §8 TABLE
@@ -3031,6 +3124,153 @@ export function WorkOrderPopup({
               </div>
             </div>
           )}
+
+          {/* ── FOOD BUDGET EXPENSE REPORT (2026-08-24, mock wo-food-budget.html)
+              The paper sheet, live: Date · Place of Business · Amount (incl.
+              tip), one row per receipt + a photo per row. Rows write
+              IMMEDIATELY (never through the WO's batched save) so a runner's
+              receipts survive anything. The budget amount is set HERE, not on
+              the WO row. Rendered into the invoice PDF package with the
+              receipt photos as pages. */}
+          {showExpenses && wo && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 10006, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? 0 : 20 }}
+                 onClick={e => { if (e.target === e.currentTarget) setShowExpenses(false) }}>
+              <div className="c-panel" style={{
+                width: 580, maxWidth: '100%', maxHeight: isMobile ? '100dvh' : '88vh',
+                overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12,
+                ...(isMobile ? { height: '100dvh', borderRadius: 0 } : {}),
+              }}>
+                {/* Header — the paper sheet's title block */}
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 15, letterSpacing: '-0.01em' }}>
+                    {[wo.label || wo.client, wo.artist].filter(Boolean).join(' / ') || 'Session'}
+                  </div>
+                  <div style={{ fontSize: 10.5, opacity: 0.5, marginTop: 2 }}>
+                    Food Budget{wo.invoice_number ? ` · INV ${wo.invoice_number}` : ''}
+                  </div>
+                </div>
+
+                {/* Budget bar — Budget is EDITABLE here (and only here) */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                  <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '9px 12px', textAlign: 'center' }}>
+                    <input
+                      className="c-mono"
+                      value={wo.food_amount}
+                      disabled={readOnly}
+                      inputMode="decimal"
+                      placeholder="$0.00"
+                      onChange={e => {
+                        setDirtyFields(prev => new Set(prev).add('food_amount'))
+                        setWo(w => w ? { ...w, food_amount: e.target.value } : w)
+                      }}
+                      onBlur={e => {
+                        const n = parseFloat(e.target.value.replace(/[^0-9.-]/g, ''))
+                        if (!isNaN(n)) setWo(w => w ? { ...w, food_amount: n.toFixed(2) } : w)
+                      }}
+                      style={{ width: '100%', textAlign: 'center', background: 'transparent', border: 'none', outline: 'none', color: 'var(--c-fg)', fontFamily: "'Archivo Black', sans-serif", fontSize: 16, letterSpacing: '-0.02em' }}
+                    />
+                    <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.45, marginTop: 1 }}>Budget</div>
+                  </div>
+                  <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '9px 12px', textAlign: 'center' }}>
+                    <div style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 16, letterSpacing: '-0.02em' }}>${foodSpent.toFixed(2)}</div>
+                    <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.45, marginTop: 1 }}>Spent</div>
+                  </div>
+                  <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '9px 12px', textAlign: 'center' }}>
+                    <div style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 16, letterSpacing: '-0.02em', color: foodRemaining < 0 ? 'var(--c-st-hot)' : 'var(--c-st-booked)' }}>
+                      {foodRemaining < 0 ? `−$${Math.abs(foodRemaining).toFixed(2)}` : `$${foodRemaining.toFixed(2)}`}
+                    </div>
+                    <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.45, marginTop: 1 }}>
+                      {foodRemaining < 0 ? 'Over budget' : 'Remaining'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rows — the sheet's columns */}
+                <div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr 96px 40px 26px', gap: 8, padding: '0 8px 5px', fontSize: 9, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.45 }}>
+                    <span>Date</span><span>Place of business</span><span style={{ textAlign: 'right' }}>Amt incl. tip</span><span>Rcpt</span><span />
+                  </div>
+                  {expenses.length === 0 && (
+                    <div style={{ fontSize: 11, opacity: 0.45, padding: '6px 8px' }}>No expenses yet.</div>
+                  )}
+                  {expenses.map(e => (
+                    <div key={e.id} style={{ display: 'grid', gridTemplateColumns: '64px 1fr 96px 40px 26px', gap: 8, alignItems: 'center', background: 'var(--c-wash)', borderRadius: 10, padding: '6px 8px', marginBottom: 4 }}>
+                      <input value={e.date} disabled={readOnly}
+                        onChange={ev => editExpense(e.id, { date: ev.target.value })}
+                        onBlur={() => saveExpense(e.id)}
+                        className="c-mono"
+                        style={{ background: 'var(--c-wash2)', border: 'none', borderRadius: 7, padding: '6px 7px', color: 'var(--c-fg)', fontSize: 11, outline: 'none', width: '100%', textAlign: 'center' }} />
+                      <input value={e.place} disabled={readOnly} placeholder="Place"
+                        onChange={ev => editExpense(e.id, { place: ev.target.value })}
+                        onBlur={() => saveExpense(e.id)}
+                        style={{ background: 'var(--c-wash2)', border: 'none', borderRadius: 7, padding: '6px 9px', color: 'var(--c-fg)', font: 'inherit', fontSize: 12, outline: 'none', width: '100%' }} />
+                      <input value={e.amount} disabled={readOnly} placeholder="$0.00" inputMode="decimal"
+                        onChange={ev => editExpense(e.id, { amount: ev.target.value })}
+                        onBlur={ev => {
+                          const n = parseFloat(ev.target.value.replace(/[^0-9.-]/g, ''))
+                          if (!isNaN(n)) editExpense(e.id, { amount: `$${n.toFixed(2)}` })
+                          // saveExpense reads state on the next tick's value; write directly.
+                          supabase.from('wo_expenses').update({
+                            date: e.date, place: e.place,
+                            amount: !isNaN(n) ? `$${n.toFixed(2)}` : ev.target.value,
+                          }).eq('id', e.id).then(({ error }) => { dbResult('Saving expense', error) })
+                        }}
+                        className="c-mono"
+                        style={{ background: 'var(--c-wash2)', border: 'none', borderRadius: 7, padding: '6px 7px', color: 'var(--c-fg)', fontSize: 11, outline: 'none', width: '100%', textAlign: 'right' }} />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (e.receipt_path) { viewReceipt(e.receipt_path); return }
+                          if (readOnly) return
+                          pendingExpenseId.current = e.id
+                          expenseFileRef.current?.click()
+                        }}
+                        title={e.receipt_path ? 'View receipt' : 'Attach receipt photo'}
+                        style={{
+                          width: 34, height: 28, border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12,
+                          background: e.receipt_path ? 'color-mix(in srgb, var(--c-st-booked) 22%, transparent)' : 'var(--c-wash2)',
+                          opacity: rcptUploading === e.id ? 0.4 : e.receipt_path ? 1 : 0.6,
+                        }}
+                      >
+                        {rcptUploading === e.id ? '…' : e.receipt_path ? '🧾' : '📷'}
+                      </button>
+                      {!readOnly ? (
+                        <button type="button" className="c-x" onClick={() => deleteExpense(e.id)} title="Delete expense" style={{ fontSize: 13 }}>×</button>
+                      ) : <span />}
+                    </div>
+                  ))}
+                  {!readOnly && (
+                    <button type="button" onClick={addExpense} style={{ marginTop: 6, width: '100%', minHeight: 38, background: 'var(--c-wash)', border: 'none', borderRadius: 10, color: 'var(--c-fg)', opacity: 0.65, font: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      + Add expense
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button type="button" className="c-btn c-control" onClick={() => setShowExpenses(false)} style={{ cursor: 'pointer' }}>Done</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Receipt lightbox */}
+          {receiptPreview && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 10008, background: 'rgba(0,0,0,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+                 onClick={() => setReceiptPreview(null)}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={receiptPreview} alt="Receipt" style={{ maxWidth: '94vw', maxHeight: '88vh', borderRadius: 8 }} />
+            </div>
+          )}
+
+          {/* Hidden receipt file input — camera-first on phones */}
+          <input
+            ref={expenseFileRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) uploadReceipt(f) }}
+          />
           {readOnly && (
             <button onClick={onClose} className="c-soft c-control c-raised" style={{ ...(isMobile ? { flex: '1 1 0', minHeight: 48, fontSize: 12 } : {}) }}>
               Close
@@ -3094,6 +3334,27 @@ export function WorkOrderPopup({
                     )}
                   </div>
                 ))}
+                {/* FOOD BUDGET on the phone/runner card (2026-08-24) — the
+                    runner FILLS the expense report, so the way in lives here.
+                    The on/off is the office's; runners get the amount + the
+                    balance bubble that opens the report. */}
+                {wo.food_budget && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)', borderRadius: 99, padding: '6px 14px' }}>
+                      Food budget{foodBudgetNum > 0 && <span className="c-mono" style={{ fontWeight: 400, marginLeft: 7 }}>${foodBudgetNum.toFixed(2)}</span>}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowExpenses(true)}
+                      style={{ border: 'none', font: 'inherit', cursor: 'pointer', fontSize: 10.5, padding: '6px 14px', borderRadius: 99, background: 'var(--c-wash2)', color: 'var(--c-fg)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    >
+                      <span className="c-mono" style={{ color: foodRemaining < 0 ? 'var(--c-st-hot)' : 'var(--c-st-booked)', fontWeight: foodRemaining < 0 ? 700 : 400 }}>
+                        {foodRemaining < 0 ? `$${Math.abs(foodRemaining).toFixed(2)} over` : `$${foodRemaining.toFixed(2)} left`}
+                      </span>
+                      <span style={{ opacity: 0.5 }}>›</span>
+                    </button>
+                  </div>
+                )}
                 {/* A&R / client contact number — calling is always allowed even
                     when the block is locked (Eli, 2026-08-15). */}
                 {contactPhone && (
@@ -3196,19 +3457,14 @@ export function WorkOrderPopup({
             {/* Status — ONE housing (§8). This was six separate raised pills; the
                 selected one now presses IN and fills with its own status colour,
                 which is sanctioned here because the field IS status (§5). */}
-            {/* STATUS + SESSION TYPE SIT UNDER THE CONTACT CARD (Eli,
-                2026-08-18). They were the first thing on the work order, above
-                everything — but what a session IS (confirmed/tentative,
-                recording/filming) is a fact about the job you read AFTER you
-                know whose job it is. Under the client card and above the
-                Invoice/PO row is where it belongs.
-                The ordering below is what does it: on `wide` the whole session
-                top collapses to one flex column and these two take orders 3 and
-                4, between the client card (2) and the Invoice row (5). */}
+            {/* STATUS + SESSION TYPE BACK ABOVE THE CONTACT CARD (Eli,
+                2026-08-24 — reversing his own 2026-08-18 ruling that put them
+                under it). Wide order is now: status (1) → type (2) → client
+                card (3) → Invoice/PO (4) → Food budget (5) → notes (6). */}
             {/* c-seg-tiny on wide (Eli, 2026-08-18: "sesstoin status is two
                 rows") — six pills at the tiny size fit the words column on one
                 line. Non-wide keeps the full-size seg. */}
-            <div className={wide ? 'c-seg c-seg-wrap c-seg-tiny' : 'c-seg c-seg-wrap'} style={{ order: wide ? 3 : undefined, alignSelf: 'flex-start', maxWidth: '100%' }}>
+            <div className={wide ? 'c-seg c-seg-wrap c-seg-tiny' : 'c-seg c-seg-wrap'} style={{ order: wide ? 1 : undefined, alignSelf: 'flex-start', maxWidth: '100%' }}>
               {SESSION_STATUSES.map(([val, lbl]) => {
                 const on = wo.session_status === val
                 return (
@@ -3280,7 +3536,7 @@ export function WorkOrderPopup({
                   panel and control for no reason (§8: panel → control, nothing
                   between). */}
               <div style={wide ? { display: 'contents' } : { display: 'flex', flexDirection: 'column', gap: 18 }}>
-                <div style={{ order: 4 }}>
+                <div style={{ order: wide ? 2 : 4 }}>
                   <div style={{ ...metaLabel, marginBottom: 8 }}>Session Type</div>
                   {/* ONE housing (§8) — was three loose pills. Tiny on wide,
                       same reason as the status seg above. */}
@@ -3307,7 +3563,7 @@ export function WorkOrderPopup({
                     field to make the row arithmetically equal would cost the
                     thing the row is for. */}
                 <div style={wide
-                  ? { order: 5, display: 'grid', gridTemplateColumns: '1fr 1.35fr 1fr', gap: 8, alignItems: 'center', background: 'var(--c-wash)', borderRadius: 12, padding: '10px 12px' }
+                  ? { order: 4, display: 'grid', gridTemplateColumns: '1fr 1.35fr', gap: 8, alignItems: 'center', background: 'var(--c-wash)', borderRadius: 12, padding: '10px 12px' }
                   : { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                   {/* MOCK VALUES, NOT HOUSE COMPONENTS (2026-08-18). These were
                       three loose wells with inline `Inv #` / `PO #` / `Food $`
@@ -3369,33 +3625,62 @@ export function WorkOrderPopup({
                     </button>
                   </div>
                   </div>
-                  {/* FOOD IS JUST AN AMOUNT (RULING 2026-08-13, option A of
-                      docs/design-refs/wo-po-food-options.html). It was a Yes/No
-                      segment that REVEALED an amount well — two controls for one
-                      number, and the question "is there a food budget?" is
-                      already answered by whether there is a figure in the box.
-                      `food_budget` is still written, derived from the amount, so
-                      nothing downstream changes. */}
-                  {/* Same basis as Inv # (Eli, 2026-08-18 — cleaner line). */}
-                  <div style={wide ? { minWidth: 0 } : { display: 'contents' }}>
-                  {wide && <div style={{ ...kLabel, marginBottom: 3 }}>Food budget</div>}
-                  <div className="c-well" style={wide ? { minWidth: 0 } : { flex: '0 1 132px', minWidth: 118 }}>
-                    {!wide && <span className="c-pfx">Food $</span>}
-                    <input
-                      className="c-mono"
-                      value={wo.food_amount}
-                      disabled={readOnly}
-                      inputMode="decimal"
-                      placeholder="—"
-                      onChange={e => {
-                        const v = e.target.value
-                        setDirtyFields(prev => new Set(prev).add('food_amount'))
-                        setDirtyFields(prev => new Set(prev).add('food_budget'))
-                        setWo(w => w ? { ...w, food_amount: v, food_budget: v.trim() !== '' } : w)
+                </div>
+
+                {/* FOOD BUDGET — TWO BUBBLES (Eli 2026-08-24, mock
+                    wo-top-rework.html; supersedes the 08-13 "just an amount"
+                    ruling now that the expense report exists). Bubble 1 IS the
+                    on/off and carries the amount when on; bubble 2 is the live
+                    balance and opens the expense report, where the amount is
+                    actually set. */}
+                <div style={wide
+                  ? { order: 5, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }
+                  : { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    disabled={readOnly}
+                    onClick={() => {
+                      setDirtyFields(prev => new Set(prev).add('food_budget'))
+                      setWo(w => w ? { ...w, food_budget: !w.food_budget } : w)
+                    }}
+                    className="c-pill c-control"
+                    style={{
+                      cursor: readOnly ? 'default' : 'pointer', border: 'none', font: 'inherit',
+                      fontSize: 10.5, fontWeight: 800, letterSpacing: '0.04em', padding: '7px 16px', borderRadius: 99,
+                      background: wo.food_budget ? 'var(--c-st-booked)' : 'var(--c-wash)',
+                      color: wo.food_budget ? 'var(--c-chip-ink)' : 'var(--c-fg)',
+                      opacity: wo.food_budget ? 1 : 0.55,
+                    }}
+                    title={wo.food_budget ? 'Turn the food budget off' : 'Turn a food budget on for this session'}
+                  >
+                    Food budget
+                    {wo.food_budget && foodBudgetNum > 0 && (
+                      <span className="c-mono" style={{ fontWeight: 400, marginLeft: 8 }}>${foodBudgetNum.toFixed(2)}</span>
+                    )}
+                  </button>
+                  {wo.food_budget && (
+                    <button
+                      type="button"
+                      onClick={() => setShowExpenses(true)}
+                      className="c-pill c-control"
+                      style={{
+                        cursor: 'pointer', border: 'none', font: 'inherit', fontSize: 10.5,
+                        padding: '7px 16px', borderRadius: 99, background: 'var(--c-wash2)', color: 'var(--c-fg)',
+                        display: 'inline-flex', alignItems: 'center', gap: 7,
                       }}
-                    />
-                  </div>
-                  </div>
+                      title="Open the expense report"
+                    >
+                      <span className="c-mono" style={{
+                        color: foodRemaining < 0 ? 'var(--c-st-hot)' : 'var(--c-st-booked)',
+                        fontWeight: foodRemaining < 0 ? 700 : 400,
+                      }}>
+                        {foodRemaining < 0
+                          ? `$${Math.abs(foodRemaining).toFixed(2)} over`
+                          : `$${foodRemaining.toFixed(2)} left`}
+                      </span>
+                      <span style={{ opacity: 0.5 }}>›</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Booking notes — internal/ops notes about the booking; never printed */}
@@ -3432,7 +3717,7 @@ export function WorkOrderPopup({
                   for COD), the artist well sized to its content, and A&R beside
                   Admin with ellipsizing emails and icon actions. Same component,
                   same state, same saves — only its arrangement differs. */}
-              <div style={wide ? { order: 2, minWidth: 0, display: 'flex', flexDirection: 'column' } : { minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+              <div style={wide ? { order: 3, minWidth: 0, display: 'flex', flexDirection: 'column' } : { minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                 <ClientPanel value={clientValue} onChange={handleClientChange} readOnly={readOnly} layout={wide ? 'wide' : 'stack'} />
               </div>
             </div>

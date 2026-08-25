@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — WO food budget row options</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  FOOD BUDGET ROW ON THE WO — OPTIONS (Eli, 2026-08-24). No code.
+
+  Ruling so far: ONE button labeled "Food budget" that is itself the on/off.
+  There's room, so the row can carry the amount + remaining inline (Eli liked
+  that) — NO receipt count. 🧾 opens the expense report.
+  Each option shows OFF / ON / OVER-BUDGET states.
+-->
+<style>
+:root{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --warm:#ffa94d; --hot:#ff5a4d; --booked:#43dfae; --chip-ink:#1c2626;
+  --srf:#242320; --fg2:rgba(217,214,205,.72); --fg3:rgba(217,214,205,.45);
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);
+  font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;
+  padding:26px;max-width:760px}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.label{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3)}
+.note{font-size:11.5px;opacity:.55;line-height:1.6;margin:6px 0 20px;max-width:620px}
+.opt{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:16px 18px;margin-bottom:18px}
+.opt h2{font-family:'Archivo Black',sans-serif;font-size:13px;margin-bottom:2px}
+.opt .sub{font-size:11px;opacity:.55;margin-bottom:12px;line-height:1.5}
+.state{margin-bottom:11px}
+.state .k{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.35;margin-bottom:4px}
+
+.row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.fb{border:none;cursor:pointer;border-radius:99px;padding:7px 16px;font:inherit;
+  font-size:10.5px;font-weight:800;letter-spacing:.04em;background:var(--wash);color:var(--fg);opacity:.55}
+.fb.on{background:var(--booked);color:var(--chip-ink);opacity:1}
+.ic{width:30px;height:30px;border:none;border-radius:99px;background:var(--wash2);cursor:pointer;
+  font-size:12px;display:inline-flex;align-items:center;justify-content:center;color:var(--fg)}
+.st{font-family:ui-monospace,monospace;font-size:10.5px;color:var(--fg2)}
+.st b{font-weight:700;color:var(--fg)}
+.st .left{color:var(--booked)}
+.st .over{color:var(--hot);font-weight:700}
+.well{display:inline-flex;align-items:center;gap:6px;background:var(--wash);border-radius:99px;padding:6px 13px;font-size:11px}
+.well .k2{font-size:8.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.4}
+.well .mono{font-size:11px}
+.well .left{color:var(--booked)}
+.well .over{color:var(--hot);font-weight:700}
+</style>
+</head>
+<body>
+
+<h1 class="arch" style="font-size:20px;letter-spacing:-.03em">Food budget row — options</h1>
+<p class="note">One "Food budget" button that is the on/off. Amount + remaining ride inline
+(no receipt count). 🧾 opens the expense report. Three arrangements, each shown off / on / over.</p>
+
+<!-- A -->
+<div class="opt">
+  <h2>A · One line of type</h2>
+  <div class="sub">Button + icon + a single mono readout: <b>$500.00 · $353.97 left</b>.
+  Quietest. Remaining flips hot when over.</div>
+  <div class="state"><div class="k">Off</div>
+    <div class="row"><button class="fb">Food budget</button></div>
+  </div>
+  <div class="state"><div class="k">On</div>
+    <div class="row">
+      <button class="fb on">Food budget</button>
+      <button class="ic" title="Open expense report">🧾</button>
+      <span class="st"><b>$500.00</b> · <span class="left">$353.97 left</span></span>
+    </div>
+  </div>
+  <div class="state" style="margin-bottom:0"><div class="k">Over</div>
+    <div class="row">
+      <button class="fb on">Food budget</button>
+      <button class="ic">🧾</button>
+      <span class="st"><b>$300.00</b> · <span class="over">$112.40 over</span></span>
+    </div>
+  </div>
+</div>
+
+<!-- B -->
+<div class="opt">
+  <h2>B · Two labeled wells</h2>
+  <div class="sub">Button + icon + BUDGET and LEFT as their own little wells — reads like the
+  Invoice/PO fields above it, scannable at a glance.</div>
+  <div class="state"><div class="k">Off</div>
+    <div class="row"><button class="fb">Food budget</button></div>
+  </div>
+  <div class="state"><div class="k">On</div>
+    <div class="row">
+      <button class="fb on">Food budget</button>
+      <button class="ic">🧾</button>
+      <span class="well"><span class="k2">Budget</span><span class="mono">$500.00</span></span>
+      <span class="well"><span class="k2">Left</span><span class="mono left">$353.97</span></span>
+    </div>
+  </div>
+  <div class="state" style="margin-bottom:0"><div class="k">Over</div>
+    <div class="row">
+      <button class="fb on">Food budget</button>
+      <button class="ic">🧾</button>
+      <span class="well"><span class="k2">Budget</span><span class="mono">$300.00</span></span>
+      <span class="well"><span class="k2">Over</span><span class="mono over">$112.40</span></span>
+    </div>
+  </div>
+</div>
+
+<!-- C -->
+<div class="opt">
+  <h2>C · Everything in the button</h2>
+  <div class="sub">The button carries the numbers itself — one control, nothing beside it but
+  the icon. Densest; the row is two elements total.</div>
+  <div class="state"><div class="k">Off</div>
+    <div class="row"><button class="fb">Food budget</button></div>
+  </div>
+  <div class="state"><div class="k">On</div>
+    <div class="row">
+      <button class="fb on">Food budget&nbsp;&nbsp;<span class="mono" style="font-weight:400">$500.00 · $353.97 left</span></button>
+      <button class="ic">🧾</button>
+    </div>
+  </div>
+  <div class="state" style="margin-bottom:0"><div class="k">Over</div>
+    <div class="row">
+      <button class="fb on" style="background:var(--hot);color:#fff4f2">Food budget&nbsp;&nbsp;<span class="mono" style="font-weight:400">$300.00 · $112.40 over</span></button>
+      <button class="ic">🧾</button>
+    </div>
+  </div>
+</div>
+
+<p class="note">All three: off = just the dim button; the amount itself is set inside the
+expense report. Numbers update live as receipts are logged.</p>
+
+</body>
+</html>

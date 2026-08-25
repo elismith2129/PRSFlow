@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — WO top rework (status up, food budget row)</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  WO TOP REWORK — MOCK (Eli, 2026-08-24). No code behind this.
+
+  Eli: "move the status row and the session type to ABOVE the client box,
+  and then the invoice/po and food budget below."
+  (Reverses the 2026-08-18 ruling that put status+type under the client card —
+  the food budget row needs the width the old shared Inv/PO/Food line didn't
+  have, once it carries the Expense report button.)
+
+  NEW WORDS-COLUMN ORDER:
+    1. Status seg          (tiny pills, selected fills with its status colour)
+    2. Session Type seg
+    3. ★ Client card       (unchanged — label hero, artist, A&R | Admin)
+    4. Invoice # · PO #    (one slim row, same as today minus Food)
+    5. Food budget row     (No/Yes · amount · Expense report button w/ live
+                            spent + receipt count — from wo-food-budget.html)
+    6. Booking notes       (unchanged, keeps all reclaimed height)
+
+  Numbers column (Studio Time etc.) untouched — this is the words side only.
+-->
+<style>
+:root{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --warm:#ffa94d; --hot:#ff5a4d; --booked:#43dfae; --chip-ink:#1c2626;
+  --srf:#242320; --fg2:rgba(217,214,205,.72); --fg3:rgba(217,214,205,.45);
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);
+  font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;
+  padding:26px}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.label{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3)}
+.note{font-size:11.5px;opacity:.55;line-height:1.6;margin:6px 0 20px;max-width:640px}
+
+.sheet{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:18px;
+  max-width:430px}
+.stack{display:flex;flex-direction:column;gap:13px}
+
+.seg{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);
+  align-self:flex-start;flex-wrap:wrap}
+.seg button{padding:4px 11px;border-radius:99px;font-size:9.5px;font-weight:700;opacity:.55;
+  border:none;background:none;color:var(--fg);cursor:pointer;white-space:nowrap}
+.seg button.on{opacity:1}
+.seg .on.booked{background:var(--booked);color:var(--chip-ink)}
+.seg .on.plain{background:var(--fg);color:var(--bg)}
+
+/* client card (abridged — unchanged from the live WO) */
+.card{background:var(--wash);border-radius:10px;padding:12px 14px}
+.card .hero{font-family:'Archivo Black',sans-serif;font-size:15px;line-height:1.2}
+.card .row{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px}
+.card .k{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3)}
+.card .well{background:var(--wash2);border-radius:8px;padding:4px 9px;font-size:12px}
+.card .pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+.card .pair .nm{font-size:12px;font-weight:600}
+.card .pair .em{font-size:10px;color:var(--fg2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.badge{font-size:8px;font-family:'Archivo Black',sans-serif;letter-spacing:.12em;
+  padding:3px 7px;border-radius:3px;background:rgba(139,144,168,.12);color:var(--fg2);float:right}
+
+/* slim field rows */
+.frow{display:flex;gap:10px;align-items:flex-end}
+.fld{flex:1;min-width:0}
+.fld.po{flex:1.35}
+.fld input{width:100%;background:var(--wash);border:none;border-radius:99px;
+  padding:7px 13px;color:var(--fg);font:inherit;font-size:11.5px;outline:none}
+.fld .label{display:block;margin-bottom:3px}
+
+/* food budget row */
+.foodrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.amt{width:96px;background:var(--wash);border:none;border-radius:99px;
+  padding:7px 13px;color:var(--fg);font:inherit;font-size:11.5px;outline:none}
+.repbtn{display:inline-flex;align-items:center;gap:7px;border:none;cursor:pointer;
+  background:var(--wash2);color:var(--fg);border-radius:99px;padding:7px 14px;
+  font:inherit;font-size:10.5px;font-weight:700;white-space:nowrap}
+.repbtn .st{font-family:ui-monospace,monospace;font-size:9.5px;opacity:.6}
+
+.notes{background:var(--wash);border-radius:11px;min-height:96px;padding:9px 12px;
+  font-size:11px;color:var(--fg3)}
+.tag{font-size:8px;font-weight:700;letter-spacing:.06em;color:var(--warm);text-transform:uppercase;
+  border-radius:3px;padding:1px 5px;background:color-mix(in srgb,var(--warm) 12%,transparent)}
+.ordn{position:absolute;margin-left:-34px;font-family:ui-monospace,monospace;font-size:10px;opacity:.3}
+</style>
+</head>
+<body>
+
+<h1 class="arch" style="font-size:21px;letter-spacing:-.03em">WO top — status up, food budget gets its row</h1>
+<p class="note">The words column only — Studio Time and the numbers side don't move.
+New order: status + type first (what kind of session is this), client card, then the paper
+trail (Invoice/PO, Food budget + Expense report), then notes. Food budget leaves the old
+shared Inv/PO/Food line so its button has room to say what's in the report without opening it.</p>
+
+<div class="sheet">
+  <div class="stack">
+
+    <div style="position:relative"><span class="ordn">1</span>
+      <span class="seg">
+        <button>Tentative</button>
+        <button class="on booked">Confirmed</button>
+        <button>Completed</button>
+        <button>Cancelled</button>
+        <button>Tour</button>
+        <button>Tech</button>
+      </span>
+    </div>
+
+    <div style="position:relative"><span class="ordn">2</span>
+      <span class="label" style="display:block;margin-bottom:5px">Session Type</span>
+      <span class="seg">
+        <button class="on plain">Recording</button>
+        <button>Filming</button>
+        <button>Event / Playback</button>
+      </span>
+    </div>
+
+    <div style="position:relative"><span class="ordn">3</span>
+      <div class="card">
+        <span class="badge">LABEL/BILLING</span>
+        <div class="hero">RedBull Records</div>
+        <div class="row"><span class="k">Artist</span><span class="well">Morgan &amp; Rance</span></div>
+        <div class="pair">
+          <div><div class="k" style="margin-bottom:2px">A&amp;R</div><div class="nm">Dana Cortez</div><div class="em">dana@redbullrecords.com</div></div>
+          <div><div class="k" style="margin-bottom:2px">Admin</div><div class="nm">P. Okafor</div><div class="em">ap@redbullrecords.com</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frow" style="position:relative"><span class="ordn">4</span>
+      <div class="fld"><span class="label">Invoice #</span><input value="10233"></div>
+      <div class="fld po"><span class="label">PO #</span><input value="RB-2025-04471-A"></div>
+    </div>
+
+    <div style="position:relative"><span class="ordn">5</span>
+      <!-- TWO BUBBLES, final (Eli 2026-08-24). Bubble 1 = the Food budget
+           button, the on/off itself; ON carries the amount inside it.
+           Bubble 2 = the balance, and tapping it opens the expense report.
+           OFF = bubble 1 alone, dim, no amount; bubble 2 gone. -->
+      <div class="foodrow">
+        <button class="repbtn" style="background:var(--booked);color:var(--chip-ink);font-weight:800;padding:7px 16px">
+          Food budget&nbsp;&nbsp;<span style="font-family:ui-monospace,monospace;font-weight:400">$500.00</span>
+        </button>
+        <button class="repbtn" title="Open expense report" style="padding:7px 16px">
+          <span style="font-family:ui-monospace,monospace;color:var(--booked)">$353.97 left</span>
+          <span style="opacity:.5">›</span>
+        </button>
+      </div>
+      <div class="foodrow" style="margin-top:8px;opacity:.55">
+        <button class="repbtn" style="padding:7px 16px;opacity:.55">Food budget</button>
+        <span style="font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.4">← off state</span>
+      </div>
+      <div class="foodrow" style="margin-top:8px">
+        <button class="repbtn" style="background:var(--booked);color:var(--chip-ink);font-weight:800;padding:7px 16px">
+          Food budget&nbsp;&nbsp;<span style="font-family:ui-monospace,monospace;font-weight:400">$300.00</span>
+        </button>
+        <button class="repbtn" style="padding:7px 16px">
+          <span style="font-family:ui-monospace,monospace;color:var(--hot);font-weight:700">$112.40 over</span>
+          <span style="opacity:.5">›</span>
+        </button>
+        <span style="font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.4">← over budget</span>
+      </div>
+    </div>
+
+    <div style="position:relative"><span class="ordn">6</span>
+      <span class="label" style="display:block;margin-bottom:5px">Booking Notes <span class="tag">Internal</span></span>
+      <div class="notes">Ops notes about the booking — arrival, payment, past experience… never on the invoice.</div>
+    </div>
+
+  </div>
+</div>
+
+<p class="note" style="margin-top:18px">Notes: ① food budget is one On/Off pill; On reveals the 🧾
+icon which opens the expense report — the budget amount, spent, remaining and receipts all live
+inside the report (see wo-food-budget.html), keeping the WO row to a label, a pill and an icon.
+② this reverses the 08-18 "status under the client card" ruling — logged as Eli's call once built.
+Faded numbers are order markers, not UI.</p>
+
+</body>
+</html>

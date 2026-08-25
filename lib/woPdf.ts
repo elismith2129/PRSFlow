@@ -824,39 +824,143 @@ export async function renderBlankWorkOrderPdf(): Promise<Uint8Array> {
  * rejected, which is the difference between the feature working on a Tuesday
  * and someone going back to email.
  */
+// ─── Food-budget expense report (2026-08-24) ─────────────────────────────────
+//
+// The paper "Food Budget" sheet, rendered flat B&W for the package: title
+// block (client / artist · Food Budget · invoice #), then Date · Place of
+// Business · Amount (including tip) rows, then the budget math the paper
+// never carried. Each receipt PHOTO follows as its own captioned page — which
+// retires the splay-receipts-on-the-scanner ritual entirely.
+
+export type ExpensePdfRow = { date: string; place: string; amount: string }
+
+export async function renderExpenseReportPdf(input: {
+  wo: Record<string, any>
+  expenses: ExpensePdfRow[]
+  receipts: { bytes: Uint8Array; contentType: string; caption: string }[]
+}): Promise<Uint8Array> {
+  const doc = await PDFDocument.create()
+  const font = await doc.embedFont(StandardFonts.Helvetica)
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold)
+  const s = new Sheet(doc, font, bold)
+
+  const who = [input.wo.label || input.wo.client, input.wo.artist].filter(Boolean).join(' / ')
+  const mid = PAGE[0] / 2
+
+  s.text('PARAMOUNT RECORDING GROUP', mid, { size: 9, bold: true, align: 'center', tracking: 1.5 })
+  s.y -= 20
+  s.text(who || 'Session', mid, { size: 13, bold: true, align: 'center' })
+  s.y -= 17
+  s.text('Food Budget', mid, { size: 11, bold: true, align: 'center' })
+  s.y -= 14
+  if (input.wo.invoice_number) {
+    s.text(`Invoice #${input.wo.invoice_number}`, mid, { size: 9, align: 'center' })
+    s.y -= 12
+  }
+  s.rule(8)
+
+  const colDate = M
+  const colPlace = M + 84
+  const drawHeader = (sh: Sheet) => {
+    sh.text('Date', colDate, { size: 9, bold: true })
+    sh.text('Place of Business', colPlace, { size: 9, bold: true })
+    sh.text('Amount (including tip)', RIGHT, { size: 9, bold: true, align: 'right' })
+    sh.y -= 6
+    sh.line(M, RIGHT, RULE, 0.5)
+    sh.y -= 12
+  }
+  drawHeader(s)
+  s.onNewPage = drawHeader
+
+  for (const e of input.expenses) {
+    s.need(18)
+    s.text(e.date || '', colDate, { size: 9, width: colPlace - colDate - 10 })
+    s.text(e.place || '', colPlace, { size: 9, width: RIGHT - colPlace - 130 })
+    s.text(cash(e.amount), RIGHT, { size: 9, align: 'right' })
+    s.y -= 6
+    s.line(M, RIGHT, HAIR, 0.5)
+    s.y -= 12
+  }
+
+  const total = input.expenses.reduce((sum, e) => sum + num(e.amount), 0)
+  const budget = num(input.wo.food_amount)
+  const remaining = budget - total
+
+  s.need(64)
+  s.y -= 4
+  const totalLine = (label: string, value: string, isBold: boolean) => {
+    s.need(16)
+    s.text(label, RIGHT - 110, { size: 9, bold: isBold, align: 'right' })
+    s.text(value, RIGHT, { size: 9, bold: isBold, align: 'right' })
+    s.y -= 14
+  }
+  if (budget > 0) totalLine('Budget', money(budget), false)
+  totalLine('Total spent', money(total), true)
+  if (budget > 0) totalLine(remaining < 0 ? 'Over budget' : 'Remaining', money(Math.abs(remaining)), true)
+
+  // Receipt photos — one captioned page each. A bad image is skipped rather
+  // than fatal: a package missing one receipt photo still beats no package.
+  for (const r of input.receipts) {
+    try {
+      const type = (r.contentType || '').toLowerCase()
+      const img = type.includes('png') ? await doc.embedPng(r.bytes) : await doc.embedJpg(r.bytes)
+      const page = doc.addPage(PAGE)
+      page.drawText(`Receipt — ${r.caption}`.slice(0, 90), { x: M, y: PAGE[1] - M, size: 9, font: bold, color: BLACK })
+      const availH = PAGE[1] - M * 2 - 24
+      const scale = Math.min(W / img.width, availH / img.height, 1)
+      const w = img.width * scale
+      const h = img.height * scale
+      page.drawImage(img, { x: (PAGE[0] - w) / 2, y: M, width: w, height: h })
+    } catch { /* skip */ }
+  }
+
+  return doc.save()
+}
+
 export async function mergePackage(
   workOrderPdf: Uint8Array,
   attachment: { bytes: Uint8Array; contentType: string } | null,
+  /** Food-budget expense report + receipt pages — stapled LAST (2026-08-24):
+      the bill leads, the work order justifies it, the receipts appendix it. */
+  expenseReport?: Uint8Array | null,
 ): Promise<Uint8Array> {
-  if (!attachment) return workOrderPdf
+  if (!attachment && !expenseReport) return workOrderPdf
 
   // INVOICE FIRST, WORK ORDER BEHIND IT (Eli, 2026-08-13). The client's accounts
   // payable department opens this to pay a bill, so page 1 must be the bill. The
   // work order is the backup that justifies it. This was the other way round.
   const out = await PDFDocument.create()
-  const type = (attachment.contentType || '').toLowerCase()
 
-  if (type.includes('pdf')) {
-    const src = await PDFDocument.load(attachment.bytes, { ignoreEncryption: true })
-    const copied = await out.copyPages(src, src.getPageIndices())
-    copied.forEach(p => out.addPage(p))
-  } else if (type.includes('png') || type.includes('jpg') || type.includes('jpeg')) {
-    const img = type.includes('png')
-      ? await out.embedPng(attachment.bytes)
-      : await out.embedJpg(attachment.bytes)
-    const page = out.addPage(PAGE)
-    // Fit inside the margins without distorting it.
-    const scale = Math.min((PAGE[0] - M * 2) / img.width, (PAGE[1] - M * 2) / img.height, 1)
-    const w = img.width * scale
-    const h = img.height * scale
-    page.drawImage(img, { x: (PAGE[0] - w) / 2, y: (PAGE[1] - h) / 2, width: w, height: h })
+  if (attachment) {
+    const type = (attachment.contentType || '').toLowerCase()
+    if (type.includes('pdf')) {
+      const src = await PDFDocument.load(attachment.bytes, { ignoreEncryption: true })
+      const copied = await out.copyPages(src, src.getPageIndices())
+      copied.forEach(p => out.addPage(p))
+    } else if (type.includes('png') || type.includes('jpg') || type.includes('jpeg')) {
+      const img = type.includes('png')
+        ? await out.embedPng(attachment.bytes)
+        : await out.embedJpg(attachment.bytes)
+      const page = out.addPage(PAGE)
+      // Fit inside the margins without distorting it.
+      const scale = Math.min((PAGE[0] - M * 2) / img.width, (PAGE[1] - M * 2) / img.height, 1)
+      const w = img.width * scale
+      const h = img.height * scale
+      page.drawImage(img, { x: (PAGE[0] - w) / 2, y: (PAGE[1] - h) / 2, width: w, height: h })
+    }
+    // Anything else (a .docx someone dragged in) is skipped rather than fatal:
+    // a work order with no invoice attached still beats no file at all.
   }
-  // Anything else (a .docx someone dragged in) is skipped rather than fatal:
-  // a work order with no invoice attached still beats no file at all.
 
   const wo = await PDFDocument.load(workOrderPdf)
   const woPages = await out.copyPages(wo, wo.getPageIndices())
   woPages.forEach(p => out.addPage(p))
+
+  if (expenseReport) {
+    const exp = await PDFDocument.load(expenseReport)
+    const expPages = await out.copyPages(exp, exp.getPageIndices())
+    expPages.forEach(p => out.addPage(p))
+  }
 
   return out.save()
 }
