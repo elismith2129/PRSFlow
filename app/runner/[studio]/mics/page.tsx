@@ -10,6 +10,8 @@ import { useRouter, useParams } from 'next/navigation'
 import { getLocalToday } from '@/lib/time'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { draftKey, readDraft, writeDraft, clearDraft } from '@/lib/draft'
+import { useUserProfile } from '@/hooks/useUserProfile'
+import { profileInitials } from '@/lib/format'
 
 
 const STUDIO_META: Record<string, { label: string }> = {
@@ -60,6 +62,17 @@ export default function MicsPage() {
   // True once the runner edits anything; blocks the realtime refetch so a live update
   // never clobbers unsaved status/room/qty. Reset to false whenever we load fresh data.
   const dirtyRef = useRef(false)
+  const { profile } = useUserProfile()
+
+  // Runners have their own logins now (Eli, 2026-08-25) — initials come from
+  // the profile, nobody types them. The input stays as a fallback for the
+  // shared runner account, and a draft-restored value is never overwritten.
+  useEffect(() => {
+    if (!initials && profile && profile.email !== 'runner@paramountrecording.com') {
+      const derived = profile.initials || profileInitials(profile.display_name)
+      if (derived) setInitials(derived)
+    }
+  }, [profile]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const load = useCallback(async () => {
     const { data } = await supabase

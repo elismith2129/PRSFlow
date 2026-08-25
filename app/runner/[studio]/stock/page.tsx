@@ -171,6 +171,13 @@ export default function StockPage() {
     })
   }
 
+  // Discard an UNSAVED row only — saved items are managed by the office, and
+  // a mis-tap here must never delete real history.
+  function removeItem(idx: number) {
+    dirtyRef.current = true
+    setItems(prev => prev.filter((x, j) => !(j === idx && !x.id)))
+  }
+
   async function save() {
     setSaving(true)
     const updated = items.map(it => ({ ...it }))
@@ -270,12 +277,15 @@ export default function StockPage() {
 
   const renderRow = ({ it, idx }: { it: StockItem; idx: number }) => {
     const rowKey = it.id ?? `new-${idx}`
-    const open = openItems.has(rowKey) || (!it.id && it.item === '')
+    // An unsaved row stays fully editable (name input + notes open) until
+    // Save gives it an id. The old `it.item ?` check flipped the name to a
+    // read-only span on the FIRST KEYSTROKE — the Aug 24 tester's bug.
+    const open = openItems.has(rowKey) || !it.id
     const past = it.id ? (history[it.id] ?? []) : []
     return (
       <div key={rowKey} style={{ background: 'var(--c-wash)', borderRadius: 9, marginBottom: 2, padding: '6px 8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {it.id || it.item ? (
+          {it.id ? (
             <span
               onClick={() => toggleItem(rowKey)}
               style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
@@ -311,6 +321,18 @@ export default function StockPage() {
           >
             {it.low ? 'LOW' : 'OK'}
           </button>
+          {!it.id && (
+            <button
+              onClick={() => removeItem(idx)}
+              aria-label="Remove item"
+              style={{
+                border: 'none', font: 'inherit', cursor: 'pointer', flexShrink: 0,
+                width: 28, minHeight: 28, borderRadius: 99,
+                background: 'var(--c-wash2)', color: 'var(--c-fg)',
+                fontSize: 13, fontWeight: 700, opacity: 0.6, lineHeight: 1,
+              }}
+            >×</button>
+          )}
         </div>
         {open && (
           <div style={{ marginTop: 7, display: 'flex', flexDirection: 'column', gap: 6 }}>

@@ -9,6 +9,8 @@ import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { CHECKLISTS, flattenSections, type ChecklistSection } from '@/lib/checklist-items'
 import { SignedImage } from '@/components/shared/SignedImage'
+import { useUserProfile } from '@/hooks/useUserProfile'
+import { profileInitials } from '@/lib/format'
 
 const STUDIO_META: Record<string, { label: string }> = {
   paramount: { label: 'Paramount' },
@@ -43,6 +45,18 @@ export default function ChecklistPage() {
   const [pageLoading, setPageLoading]       = useState(true)
   const [showInitialsHint, setShowInitialsHint] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const { profile } = useUserProfile()
+
+  // Runners have their own logins now (Eli, 2026-08-25) — initials come from
+  // the profile, nobody types them. The input stays as a fallback for the
+  // shared runner account (no person behind it) and never blocks a loaded
+  // value: an existing row's staff_name always wins.
+  useEffect(() => {
+    if (!staffName && profile && profile.email !== 'runner@paramountrecording.com') {
+      const derived = profile.initials || profileInitials(profile.display_name)
+      if (derived) setStaffName(derived)
+    }
+  }, [profile]) // eslint-disable-line react-hooks/exhaustive-deps
   // True once the runner interacts; blocks the realtime refetch so a live update never
   // clobbers an in-progress note/photo/toggle. Reset to false whenever we load fresh data.
   const dirtyRef = useRef(false)

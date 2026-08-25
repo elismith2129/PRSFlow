@@ -15,7 +15,15 @@
 // session cards) never triggers the row.
 //
 // Styles: .c-hint / .c-hint-tip in styles/globals.css.
-import { useEffect, useState } from 'react'
+//
+// The tip renders through a PORTAL to <body> (2026-08-25): CSS `opacity` dims
+// an element's ENTIRE subtree — absolutely-positioned children included — so a
+// tip opened from inside a dimmed label (.c-label is opacity 0.45) rendered
+// translucent. No background value can fix inherited opacity; escaping the
+// subtree is the fix. Position is measured from the marker at open and the tip
+// closes on any scroll, so it never drifts away from its "?".
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 const KEY = 'prsflo-hints'
 const EVT = 'prsflo-hints-change'
@@ -51,21 +59,34 @@ export function useHints(): boolean {
   return on
 }
 
+const TIP_W = 230
+
 export function Hint({ tip }: { tip: string }) {
   const on = useHints()
-  const [open, setOpen] = useState(false)
+  const markerRef = useRef<HTMLSpanElement>(null)
+  // Tip position, measured from the marker at open. null = closed.
+  const [pos, setPos] = useState<{ left: number; bottom: number } | null>(null)
+  const open = pos !== null
 
-  // Tap-anywhere-else closes the tip (phones have no hover).
+  // Tap-anywhere-else closes the tip (phones have no hover); so does any
+  // scroll, since a fixed-position tip would otherwise detach from its "?".
   useEffect(() => {
     if (!open) return
-    const close = () => setOpen(false)
+    const close = () => setPos(null)
     document.addEventListener('click', close)
-    return () => document.removeEventListener('click', close)
+    window.addEventListener('scroll', close, true) // capture: inner scrollers too
+    window.addEventListener('resize', close)
+    return () => {
+      document.removeEventListener('click', close)
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
+    }
   }, [open])
 
   if (!on) return null
   return (
     <span
+      ref={markerRef}
       className="c-hint"
       role="button"
       aria-label="Hint"
@@ -73,11 +94,24 @@ export function Hint({ tip }: { tip: string }) {
         // Never let a hint tap activate the row/card it sits on.
         e.stopPropagation()
         e.preventDefault()
-        setOpen(o => !o)
+        if (open) { setPos(null); return }
+        const r = markerRef.current?.getBoundingClientRect()
+        if (!r) return
+        setPos({
+          left: Math.min(Math.max(8, r.left - 12), window.innerWidth - TIP_W - 8),
+          bottom: window.innerHeight - r.top + 7,
+        })
       }}
     >
       ?
-      {open && <span className="c-hint-tip" onClick={e => e.stopPropagation()}>{tip}</span>}
+      {open && createPortal(
+        <span
+          className="c-hint-tip"
+          style={{ position: 'fixed', left: pos.left, bottom: pos.bottom, width: TIP_W }}
+          onClick={e => e.stopPropagation()}
+        >{tip}</span>,
+        document.body,
+      )}
     </span>
   )
 }

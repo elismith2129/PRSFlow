@@ -41,7 +41,7 @@ export const CHECKLISTS: Record<string, StudioChecklist> = {
         section: 'Runs',
         items: [
           'Complete store run (and Rider if applicable)',
-          'Complete office run (Thursdays)',
+          'Complete office run (Wednesdays)',
           'Upload all run receipts to Ramp and file accordingly',
         ],
       },
@@ -175,7 +175,7 @@ export const CHECKLISTS: Record<string, StudioChecklist> = {
         section: 'Runs',
         items: [
           'Complete store run (and Rider if applicable)',
-          'Complete office run (Thursdays)',
+          'Complete office run (Wednesdays)',
           'Upload all run receipts to Ramp and file accordingly (including expense sheets)',
         ],
       },
@@ -439,7 +439,7 @@ export const CHECKLISTS: Record<string, StudioChecklist> = {
         section: 'Runs',
         items: [
           'Complete store run (and Rider if applicable)',
-          'Complete office run (Thursdays)',
+          'Complete office run (Wednesdays)',
           'Upload all run receipts to Ramp and file accordingly (including expense sheets)',
         ],
       },

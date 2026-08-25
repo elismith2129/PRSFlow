@@ -47,3 +47,17 @@ export function longDate(d: string): string {
     : day % 10 === 3 && day !== 13 ? 'rd' : 'th'
   return `${dt.toLocaleDateString('en-US', { month: 'long' })} ${day}${suffix}, ${dt.getFullYear()}`
 }
+
+// display_name → "ES"-style initials (first word + last word). The canonical
+// copy — MicInventorySection/OpenItemsSection carry older local duplicates;
+// new call sites import THIS one. Read as
+// `profile?.initials || profileInitials(profile?.display_name)`: the stored
+// user_profiles.initials always wins.
+export function profileInitials(displayName: string | null | undefined): string {
+  if (!displayName) return ''
+  const words = displayName.trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return ''
+  const first = words[0][0] || ''
+  const last = words.length > 1 ? words[words.length - 1][0] || '' : ''
+  return (first + last).toUpperCase()
+}
