@@ -17,25 +17,12 @@ import { supabase } from '@/lib/supabase'
 import { draftKey, readDraft, writeDraft, clearDraft } from '@/lib/draft'
 import { useRouter, useParams } from 'next/navigation'
 
-const STUDIO_META: Record<string, { label: string }> = {
-  paramount: { label: 'Paramount' },
-  ameraycan: { label: 'Ameraycan' },
-  encore: { label: 'Encore' },
-  track: { label: 'Track' },
+const STUDIO_META: Record<string, { label: string; short: string }> = {
+  paramount: { label: 'Paramount', short: 'PRS' },
+  ameraycan: { label: 'Ameraycan', short: 'ARS' },
+  encore: { label: 'Encore', short: 'ERS' },
+  track: { label: 'Track', short: 'TRK' },
 }
-
-const DEFAULT_ITEMS = [
-  'Water bottles (24-pack)',
-  'Coffee pods',
-  'Paper towels',
-  'Toilet paper',
-  'Trash bags',
-  'Cleaning spray',
-  'Hand soap',
-  'CD-Rs / blank media',
-  'Printer paper',
-  'Pens / markers',
-]
 
 type StockSection = 'stock' | 'office'
 type StockItem = {
@@ -50,7 +37,7 @@ const FLAT_KEY = '__flat__'
 export default function StockPage() {
   const router = useRouter()
   const { studio } = useParams<{ studio: string }>()
-  const meta = STUDIO_META[studio] ?? { label: studio }
+  const meta = STUDIO_META[studio] ?? { label: studio, short: studio }
   const today = (() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10) })()
   // Noon-anchored so the day-of-week can't drift across a TZ boundary.
   const isWednesday = new Date(today + 'T12:00:00').getDay() === 3
@@ -114,10 +101,9 @@ export default function StockPage() {
         }
       })
     } else {
-      next = DEFAULT_ITEMS.map((item, i): StockItem => ({
-        item, qty: '', notes: '', low: false, section: 'stock',
-        target: '', sort_order: i + 1, category: null,
-      }))
+      // No seeded list for this studio (Track today). An honest empty state —
+      // the old 10-item generic placeholder pretended to be a real list.
+      next = []
     }
 
     // Unsaved draft from a previous visit (lib/draft — back-tap / failed save
@@ -388,7 +374,7 @@ export default function StockPage() {
         >←</button>
         <div>
           <div className="c-arch" style={{ fontSize: 18, letterSpacing: '-0.02em', lineHeight: 1.15 }}>
-            {activeView === 'office' ? 'Office Stock' : activeView === 'stock' && hasOffice ? 'PRS Stock' : 'Stock'}
+            {activeView === 'office' ? 'Office Stock' : activeView === 'stock' && hasOffice ? `${meta.short} Stock` : 'Stock'}
           </div>
           <div style={{ fontSize: 11.5, opacity: 0.5 }}>
             {meta.label}
@@ -402,7 +388,8 @@ export default function StockPage() {
       {activeView === null && (
         <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           {([
-            { key: 'stock' as StockSection, title: 'PRS Stock', sub: 'Nightly · check PRS-X items daily', rows: stockRows },
+            // The check-daily marker set only exists on Paramount's sheet.
+            { key: 'stock' as StockSection, title: `${meta.short} Stock`, sub: studio === 'paramount' ? 'Nightly · check PRS-X items daily' : 'Nightly', rows: stockRows },
             { key: 'office' as StockSection, title: 'Office', sub: 'Wednesdays only', rows: officeRows },
           ]).map(b => {
             const bLow = b.rows.filter(r => r.it.low).length
@@ -443,6 +430,11 @@ export default function StockPage() {
       )}
 
       {/* ── LIST VIEW: category groups (stock) or flat (office/no categories) ── */}
+      {activeView !== null && items.length === 0 && (
+        <div style={{ padding: '28px 20px', fontSize: 12.5, opacity: 0.5, textAlign: 'center', lineHeight: 1.6 }}>
+          No stock list is set up for {meta.label} yet.<br />The office adds one — nothing for you to do here.
+        </div>
+      )}
       {activeView !== null && (
       <div style={{ padding: '4px 12px' }}>
         {groups.map(g => {
@@ -486,7 +478,7 @@ export default function StockPage() {
       </div>
       )}
 
-      {activeView !== null && (
+      {activeView !== null && items.length > 0 && (
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         padding: '12px 14px calc(16px + env(safe-area-inset-bottom))',

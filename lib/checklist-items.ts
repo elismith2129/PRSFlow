@@ -307,7 +307,7 @@ export const CHECKLISTS: Record<string, StudioChecklist> = {
         section: 'Runs',
         items: [
           'Complete store run',
-          'Complete office run',
+          'Complete office run (Wednesdays)',
           'Upload all run receipts to Ramp and file accordingly (including expense sheets)',
         ],
       },
