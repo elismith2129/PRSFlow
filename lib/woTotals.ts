@@ -43,8 +43,16 @@ export type TotalsStudioRow = {
 /** A rental row, reduced to the charge. */
 export type TotalsRentalRow = { charge?: number | string | null }
 
-/** A payment row, reduced to the amount. */
-export type TotalsPaymentRow = { amount?: number | string | null }
+/** A payment row, reduced to the amount + card surcharge.
+ *  fee_amount (2026-08-26): the 3% card surcharge portion of a Credit/Debit
+ *  payment on a COD work order. The AMOUNT is what actually hit the card
+ *  (base + fee); fee_amount is the fee slice of it. The fee is also a CHARGE
+ *  (it joins grand), so recording a card payment moves the balance by exactly
+ *  the base: +fee to grand, +amount (which contains the fee) to paid. */
+export type TotalsPaymentRow = {
+  amount?: number | string | null
+  fee_amount?: number | string | null
+}
 
 export type WoTotalsInput = {
   studioRows: TotalsStudioRow[]
@@ -67,11 +75,32 @@ export type WoTotals = {
   studio: number
   engineer: number
   rentals: number
-  /** studio + engineer + rentals */
+  /** Σ payment fee_amount — the 3% card surcharges, which are charges. */
+  cardFees: number
+  /** studio + engineer + rentals + cardFees */
   grand: number
   paid: number
   /** grand − paid. Positive means the client still owes. */
   balance: number
+}
+
+/** The card surcharge rate (3%). Single source — UI helpers and fee
+ *  derivation must import this, never restate 0.03/1.03 locally. */
+export const CARD_FEE_RATE = 0.03
+
+/** The fee slice of a card-charged total: charged − charged/1.03, in cents.
+ *  Derives the fee FROM the charged amount so a runner can type exactly what
+ *  the terminal charged and the base+fee split is always internally exact. */
+export function cardFeeOfCharged(charged: number): number {
+  if (!(charged > 0)) return 0
+  return parseFloat((charged - charged / (1 + CARD_FEE_RATE)).toFixed(2))
+}
+
+/** What to charge on a card so the client's BASE obligation is `base`:
+ *  base × 1.03, in cents. This is the number staff reads to the terminal. */
+export function cardTotalForBase(base: number): number {
+  if (!(base > 0)) return 0
+  return parseFloat((base * (1 + CARD_FEE_RATE)).toFixed(2))
 }
 
 /** Money coercion: accepts 1450, "1450", "$1,450.00", null. Non-numeric → 0. */
@@ -121,8 +150,9 @@ export function computeWoTotals(input: WoTotalsInput): WoTotals {
   )
   const rentals = rentalRows.reduce((s, r) => s + money(r.charge), 0)
   const paid = paymentRows.reduce((s, p) => s + money(p.amount), 0)
+  const cardFees = paymentRows.reduce((s, p) => s + money(p.fee_amount), 0)
 
-  const grand = studio + engineer + rentals
+  const grand = studio + engineer + rentals + cardFees
 
-  return { studio, engineer, rentals, grand, paid, balance: grand - paid }
+  return { studio, engineer, rentals, cardFees, grand, paid, balance: grand - paid }
 }

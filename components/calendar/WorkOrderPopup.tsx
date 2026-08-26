@@ -14,7 +14,7 @@ import { ClientPanel, type ClientPanelValue } from '@/components/shared/ClientPa
 import { seedStudioTimeRows } from '@/lib/seedStudioTimeRows'
 import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter, getLocalToday } from '@/lib/time'
 import { formatCurrency, stripCurrency, longDate } from '@/lib/format'
-import { computeWoTotals, engChargeForRow } from '@/lib/woTotals'
+import { computeWoTotals, engChargeForRow, cardFeeOfCharged, cardTotalForBase } from '@/lib/woTotals'
 import {
   findMissingTimes, missingTimesMessage,
   findMissingEngRates, missingEngRatesMessage,
@@ -186,7 +186,14 @@ type PayRow = {
   amount: string
   memo: string
   last_four: string
+  /** 3% card surcharge slice of `amount` (COD + Credit/Debit only; migration
+   *  20260826160000). Auto-derived from the charged amount — amount is what
+   *  hit the card, fee_amount is the fee inside it. Cleared = waived. */
+  fee_amount: string
 }
+
+/** Payment types that carry the 3% COD card surcharge. */
+const CARD_PAY_TYPES = ['Credit Card', 'Debit Card']
 
 /** Food-budget expense report row (wo_expenses, 2026-08-24) — the paper
     sheet's Date · Place of Business · Amount (incl. tip) + receipt photo. */
@@ -491,7 +498,7 @@ export function WorkOrderPopup({
     { id: crypto.randomUUID(), qty: '', item: '', supplier: '', dates_used: '', rate: '', charge: '' },
   ])
   const [payRows, setPayRows] = useState<PayRow[]>([
-    { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '' },
+    { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '', fee_amount: '' },
   ])
   // Food-budget expense report (2026-08-24 — the paper sheet, live). Rows write
   // IMMEDIATELY (equip-note pattern), not through the WO's batched save: the
@@ -531,6 +538,38 @@ export function WorkOrderPopup({
   // The runner has no equivalent — a runner records their own shift.
   type BatchField = 'room' | 'from' | 'to' | 'rate' | 'ot_hours' | 'ot_rate' | 'staff' | 'notes'
   const [batchOpen, setBatchOpen] = useState(false)
+  // ── Monthly split (Eli, 2026-08-26) ────────────────────────────────────────
+  // Monthly lockouts ($19.5k / $29.5k deals) are ONE flat number for the month
+  // — no clean day rate exists (19,500 ÷ 31 repeats). The office types the
+  // monthly amount here and it is allocated across the dated studio rows to
+  // the cent (largest-remainder: some days get one cent more) so the rows sum
+  // to EXACTLY the monthly figure and daily financial numbers stay real. Rows
+  // become ordinary day-rate rows — 12h agreed window, OT beyond it, runner
+  // flow, PDF and projections all unchanged. OT rate stays typed per deal
+  // (deliberately NOT the 10%-of-day-rate autofill). Re-run after adding or
+  // removing days; it re-splits idempotently.
+  const [monthlyOpen, setMonthlyOpen] = useState(false)
+  const [monthlyAmt, setMonthlyAmt] = useState('')
+
+  function applyMonthlySplit() {
+    const total = stripCurrency(monthlyAmt) ?? 0
+    const targets = stRows
+      .filter(r => (r.studio || '').trim() !== '' && r.date)
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+    if (!(total > 0) || targets.length === 0) return
+    const totalCents = Math.round(total * 100)
+    const base = Math.floor(totalCents / targets.length)
+    const rem = totalCents - base * targets.length
+    const shareById = new Map<string, number>()
+    targets.forEach((r, i) => shareById.set(r.id, (base + (i < rem ? 1 : 0)) / 100))
+    setStRows(prev => prev.map(r => {
+      const share = shareById.get(r.id)
+      if (share === undefined) return r
+      return { ...r, row_rate_type: 'day' as const, rate_daily: formatCurrency(share.toFixed(2)), charge: share }
+    }))
+    setMonthlyOpen(false)
+    setMonthlyAmt('')
+  }
   const [batchScope, setBatchScope] = useState<'all' | 'range'>('all')
   const [batchFrom, setBatchFrom] = useState('')
   const [batchTo, setBatchTo] = useState('')
@@ -1096,7 +1135,7 @@ export function WorkOrderPopup({
         rentSnapRef.current = JSON.stringify(arr)
       }
       if (pay?.length) {
-        const arr = pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: p.amount != null ? formatCurrency(String(p.amount)) : '', memo: p.memo ?? '', last_four: p.last_four ?? '' }))
+        const arr = pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: p.amount != null ? formatCurrency(String(p.amount)) : '', memo: p.memo ?? '', last_four: p.last_four ?? '', fee_amount: p.fee_amount != null ? formatCurrency(String(p.fee_amount)) : '' }))
         setPayRows(arr)
         paySnapRef.current = JSON.stringify(arr)
       }
@@ -1198,7 +1237,7 @@ export function WorkOrderPopup({
       })
     }
     if (pay) {
-      const arr = pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: p.amount != null ? formatCurrency(String(p.amount)) : '', memo: p.memo ?? '', last_four: p.last_four ?? '' }))
+      const arr = pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: p.amount != null ? formatCurrency(String(p.amount)) : '', memo: p.memo ?? '', last_four: p.last_four ?? '', fee_amount: p.fee_amount != null ? formatCurrency(String(p.fee_amount)) : '' }))
       setPayRows(prev => {
         const untouched = paySnapRef.current
           ? JSON.stringify(prev) === paySnapRef.current
@@ -2368,6 +2407,7 @@ export function WorkOrderPopup({
     }))
     const payPayloads = payRows.filter(p => p.payment_type || p.amount).map(p => ({
       id: p.id, payment_type: p.payment_type || null, amount: stripCurrency(p.amount), memo: p.memo || null, last_four: p.last_four || null,
+      fee_amount: stripCurrency(p.fee_amount),
     }))
 
     // Projection (Step 5b): one WO → one booking card per room-run. Only when a
@@ -2521,9 +2561,28 @@ export function WorkOrderPopup({
   const stTotal = woTotals.studio
   const engTotal = woTotals.engineer
   const rentTotal = woTotals.rentals
+  const cardFeesTotal = woTotals.cardFees
   const grandTotal = woTotals.grand
   const totalPaid = woTotals.paid
   const balanceDue = woTotals.balance
+
+  // ── 3% COD card surcharge (Eli, 2026-08-26) ────────────────────────────────
+  // COD only — billing/label sessions never carry the fee. The AMOUNT field is
+  // what actually hit the card; the fee is the 3% slice inside it, derived by
+  // cardFeeOfCharged so the runner types exactly what the terminal charged and
+  // the split is exact. "Card Total" under Balance Due is the number staff
+  // reads to the terminal — balance × 1.03 — so nobody does math at the desk.
+  const isCodWo = wo.payment_status === 'COD'
+  const cardTotalDue = isCodWo && balanceDue > 0 ? cardTotalForBase(balanceDue) : 0
+
+  /** Re-derive a payment row's fee from its type + amount. Card + COD → 3%
+   *  slice of the charged amount; anything else → no fee. */
+  function withCardFee(row: PayRow): PayRow {
+    if (!isCodWo || !CARD_PAY_TYPES.includes(row.payment_type)) return { ...row, fee_amount: '' }
+    const charged = stripCurrency(row.amount) ?? 0
+    const fee = cardFeeOfCharged(charged)
+    return { ...row, fee_amount: fee > 0 ? formatCurrency(String(fee)) : '' }
+  }
 
   // Food budget math — spent is the expense rows' sum; remaining against
   // wo.food_amount. Text money fields, parsed the same way everywhere.
@@ -4046,6 +4105,26 @@ export function WorkOrderPopup({
                     : undefined}
                 />
               </div>
+              {/* Monthly split control — admin only, needs dated studio rows. */}
+              {!readOnly && !runner && stRows.some(r => r.date && (r.studio || '').trim()) && (
+                monthlyOpen ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginBottom: 12 }}>
+                    <input
+                      autoFocus
+                      value={monthlyAmt}
+                      onChange={e => setMonthlyAmt(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') applyMonthlySplit(); if (e.key === 'Escape') { setMonthlyOpen(false); setMonthlyAmt('') } }}
+                      placeholder="monthly $"
+                      className="c-tin c-tin-mono c-tin-show"
+                      style={{ width: 92 }}
+                    />
+                    <button type="button" onClick={applyMonthlySplit} title="Split this amount across the day rows to the cent" style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg)', background: 'none', cursor: 'pointer', padding: 0 }}>Split</button>
+                    <button type="button" onClick={() => { setMonthlyOpen(false); setMonthlyAmt('') }} style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: 0 }}>×</button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => setMonthlyOpen(true)} title="Monthly lockout: split a flat monthly amount across the day rows to the cent" style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, marginBottom: 12 }}>Monthly</button>
+                )
+              )}
               <div className="c-seg c-seg-tiny" style={{ flexShrink: 0, marginBottom: 12 }}>
                 {(['list', 'cards'] as const).map(v => (
                   <button
@@ -5174,12 +5253,12 @@ export function WorkOrderPopup({
                     return (
                       <div key={p.id} style={{ display: 'grid', gridTemplateColumns: needsLast4 ? '130px 80px 1fr 70px 24px' : '130px 80px 1fr 24px', alignItems: 'center', background: 'var(--c-wash)', borderRadius: 12, marginBottom: 6 }}>
                         <div style={cellS}>
-                          <select value={p.payment_type} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, payment_type: e.target.value, last_four: '' } : x))} className="c-tin c-tin-show" style={{ cursor: 'pointer' }}>
+                          <select value={p.payment_type} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? withCardFee({ ...x, payment_type: e.target.value, last_four: '' }) : x))} className="c-tin c-tin-show" style={{ cursor: 'pointer' }}>
                             <option value="">— type —</option>
                             {['Cash', 'Zelle', 'Credit Card', 'Debit Card', 'Check', 'Other'].map(t => <option key={t} value={t}>{t}</option>)}
                           </select>
                         </div>
-                        <div style={cellIn}><input value={p.amount} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x))} onBlur={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: formatCurrency(e.target.value) } : x))} placeholder="0.00" className="c-tin c-tin-mono c-tin-show" /></div>
+                        <div style={cellIn}><input value={p.amount} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x))} onBlur={e => setPayRows(prev => prev.map(x => x.id === p.id ? withCardFee({ ...x, amount: formatCurrency(e.target.value) }) : x))} placeholder="0.00" className="c-tin c-tin-mono c-tin-show" /></div>
                         <div style={cellIn}><input value={p.memo} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))} placeholder="memo" className="c-tin c-tin-show" /></div>
                         {needsLast4 && (
                           <div style={cellIn}><input value={p.last_four} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) } : x))} placeholder="last 4" maxLength={4} className="c-tin c-tin-mono c-tin-show" /></div>
@@ -5187,11 +5266,24 @@ export function WorkOrderPopup({
                         <div style={{ ...cellS, paddingTop: 6, paddingBottom: 6, justifyContent: 'center' }}>
                           {!readOnly && <button type="button" onClick={() => setPayRows(p2 => p2.filter(x => x.id !== p.id))} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>}
                         </div>
+                        {/* 3% card fee chip — full-width sub-line under the row.
+                            Shows the fee slice of the charged amount; the ×
+                            waives it (whole amount then credits the balance). */}
+                        {p.fee_amount && (
+                          <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px 7px' }}>
+                            <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>
+                              includes {p.fee_amount} card fee (3%)
+                            </span>
+                            {!readOnly && (
+                              <button type="button" title="Waive the card fee on this payment" onClick={() => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, fee_amount: '' } : x))} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 10, fontFamily: 'Inter', padding: 0, textDecoration: 'underline' }}>waive</button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )
                   })}
                   <div style={{ padding: '9px 4px 0' }}>
-                    {!readOnly && <button type="button" onClick={() => setPayRows(p => [...p, { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '' }])} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0 }}>+ Add payment</button>}
+                    {!readOnly && <button type="button" onClick={() => setPayRows(p => [...p, { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '', fee_amount: '' }])} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0 }}>+ Add payment</button>}
                   </div>
                 </div>
               </div>
@@ -5201,11 +5293,18 @@ export function WorkOrderPopup({
                   { label: 'Studio Total', value: stTotal, color: 'var(--c-fg)', bold: false },
                   ...(engTotal > 0 ? [{ label: 'Eng Total', value: engTotal, color: 'var(--c-fg)', bold: false }] : []),
                   { label: 'Rentals Total', value: rentTotal, color: 'var(--c-fg)', bold: false },
+                  // 3% surcharge on Credit/Debit payments (COD only) — a real
+                  // charge, so it joins Grand Total.
+                  ...(cardFeesTotal > 0 ? [{ label: 'Card Fees (3%)', value: cardFeesTotal, color: 'var(--c-fg)', bold: false }] : []),
                   { label: 'Grand Total', value: grandTotal, color: 'var(--c-fg)', bold: true },
                   { label: 'Total Paid', value: totalPaid, color: 'var(--c-st-booked)', bold: false },
                   // Hot balance is COD-only (Eli 2026-08-24) — red = collect
                   // at the desk. A billing session's open balance shows plain.
                   { label: 'Balance Due', value: balanceDue, color: balanceDue > 0 ? (wo.payment_status === 'COD' ? 'var(--c-st-hot)' : 'var(--c-fg)') : 'var(--c-st-booked)', bold: true },
+                  // THE number a runner reads to the card terminal: balance
+                  // × 1.03. PRSFlo is the source of truth — no desk math, no
+                  // calling a manager. COD with an open balance only.
+                  ...(cardTotalDue > 0 ? [{ label: 'If paying by card (incl. 3%)', value: cardTotalDue, color: 'var(--c-st-hot)', bold: false }] : []),
                 ].map(({ label, value, color, bold }) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px' }}>
                     <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>{label}</span>

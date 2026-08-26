@@ -307,6 +307,9 @@ export interface PaymentRow {
   work_order_id: string
   payment_type: string | null
   amount: number | null
+  // 3% card surcharge slice of `amount` (COD + Credit/Debit only; migration
+  // 20260826160000). Null/0 = no fee (non-card, billing WO, or waived).
+  fee_amount: number | null
   recorded_at: string
 }
 

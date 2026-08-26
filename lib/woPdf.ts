@@ -53,7 +53,7 @@ export type WoPdfInput = {
   studioRows: WoPdfRow[]
   rentalRows: WoPdfRow[]
   paymentRows: WoPdfRow[]
-  totals: { studio: number; engineer: number; rentals: number; grand: number; paid: number; balance: number }
+  totals: { studio: number; engineer: number; rentals: number; cardFees: number; grand: number; paid: number; balance: number }
   /**
    * BLANK FORM MODE (ruling 2026-08-12). Draws the same document with every
    * value empty and a writable baseline under each cell — the paper work order,
@@ -734,6 +734,9 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
   totalLine('Studio total', money(totals.studio))
   if (blank || totals.engineer > 0) totalLine('Eng total', money(totals.engineer))
   totalLine('Rentals total', money(totals.rentals))
+  // 3% Credit/Debit surcharge (COD only, 2026-08-26) — a real charge, printed
+  // whenever present so the client's paper matches the screen.
+  if (totals.cardFees > 0) totalLine('Card fees (3%)', money(totals.cardFees))
   totalLine('Grand total', money(totals.grand), true)
   totalLine('Total paid', money(totals.paid))
   totalLine('Balance due', money(totals.balance), true)
@@ -810,7 +813,7 @@ export async function renderBlankWorkOrderPdf(): Promise<Uint8Array> {
     studioRows: [],
     rentalRows: [],
     paymentRows: [],
-    totals: { studio: 0, engineer: 0, rentals: 0, grand: 0, paid: 0, balance: 0 },
+    totals: { studio: 0, engineer: 0, rentals: 0, cardFees: 0, grand: 0, paid: 0, balance: 0 },
     blank: true,
   })
 }
