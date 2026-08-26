@@ -48,7 +48,9 @@ function roomLabelForVenue(venue: string, rawStudio: string): string {
 // the WO top. Order/labels mirror the old booking form.
 const SESSION_STATUSES: [string, string][] = [
   ['confirmed', 'Confirmed'], ['tentative', 'Tentative'], ['cancelled', 'Cancelled'],
-  ['tour', 'Tour'], ['tech', 'Tech'], ['open_hours', 'Open Hours'],
+  // 'Open Hrs' not 'Open Hours' (2026-08-26): seven pills have to share one
+  // line — Lockout's arrival wrapped the seg to a second row.
+  ['tour', 'Tour'], ['tech', 'Tech'], ['open_hours', 'Open Hrs'],
   // Rent-only monthly lockout — full WO (rent is invoiced) but invisible to
   // every daily-ops surface because they all select status='confirmed'.
   ['lockout', 'Lockout'],
@@ -564,25 +566,80 @@ export function WorkOrderPopup({
   const [monthlyFrom, setMonthlyFrom] = useState('')
   const [monthlyTo, setMonthlyTo] = useState('')
   const [monthlyNA, setMonthlyNA] = useState(false)
+  // The month's date range. A lockout booked from one calendar click has ONE
+  // day row — the modal takes start/end dates and CREATES the missing day rows
+  // for the whole range before splitting, so "monthly" never silently means
+  // "one day" (Eli, 2026-08-26).
+  const [monthlyStart, setMonthlyStart] = useState('')
+  const [monthlyEnd, setMonthlyEnd] = useState('')
+
+  function openMonthly() {
+    // Seed the range from what exists: dated rows first, booking dates second.
+    const dated = stRows.filter(r => (r.studio || '').trim() && r.date).map(r => r.date).sort()
+    setMonthlyStart(dated[0] || booking.start_date || '')
+    setMonthlyEnd(dated[dated.length - 1] || booking.end_date || booking.start_date || '')
+    setMonthlyOpen(true)
+  }
 
   function closeMonthly() {
     setMonthlyOpen(false)
     setMonthlyAmt(''); setMonthlyOt(''); setMonthlyFrom(''); setMonthlyTo(''); setMonthlyNA(false)
+    setMonthlyStart(''); setMonthlyEnd('')
   }
 
   function applyMonthlySplit() {
     const total = stripCurrency(monthlyAmt) ?? 0
     const otRate = stripCurrency(monthlyOt) ?? 0
-    const targets = stRows
-      .filter(r => (r.studio || '').trim() !== '' && r.date)
+    const start = monthlyStart
+    const end = monthlyEnd || monthlyStart
+    if (!(total > 0) || !start) return
+    const dates = dateRange(start, end)
+    if (dates.length === 0) return
+    const dateSet = new Set(dates)
+
+    // Create any missing day rows for the range (same shape addStRow builds).
+    const lastStudioRow = [...stRows].reverse().find(r => !!r.studio)
+    const rowStudio = lastStudioRow?.studio || (booking.studio ? toStudioLetter(booking.studio) : 'A')
+    const rowLocation = lastStudioRow?.location || booking.location || ''
+    let maxOrder = stRows.reduce((m, r) => Math.max(m, r.sort_order ?? -1), -1)
+    const haveDate = new Set(stRows.filter(r => (r.studio || '').trim()).map(r => r.date))
+    const from = monthlyNA ? '' : monthlyFrom
+    const to = monthlyNA ? '' : monthlyTo
+    const created: StRow[] = dates.filter(d => !haveDate.has(d)).map((d): StRow => {
+      maxOrder += 1
+      return {
+        id: crypto.randomUUID(),
+        studio: rowStudio, location: rowLocation,
+        eng_name: '', date: d, session_info: '',
+        from_time: from, to_time: to,
+        total_hours: monthlyNA ? null : calcHours(from, to),
+        rate: '', rate_daily: '', row_rate_type: 'day' as const,
+        ot_rate: otRate > 0 ? String(otRate) : '',
+        ot_hours: '0', ot_charge: null, charge: null,
+        sort_order: maxOrder, day_count: null,
+        eng_hours: null, eng_rate: '', eng_charge: null,
+        eng_from_time: from, eng_to_time: to,
+        admin_checked: false, admin_locked: false,
+        // A 24hr rent-only lockout has no staff — don't render staff slots on
+        // rows the modal itself created. Staffed monthlies keep the slot.
+        eng_visible: !monthlyNA,
+        eng_role: 'assistant' as const,
+        status: 'in_progress' as const,
+      }
+    })
+
+    const all = [...stRows, ...created]
+    const targets = all
+      .filter(r => (r.studio || '').trim() !== '' && r.date && dateSet.has(r.date))
       .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
-    if (!(total > 0) || targets.length === 0) return
+    if (targets.length === 0) return
     const totalCents = Math.round(total * 100)
     const base = Math.floor(totalCents / targets.length)
     const rem = totalCents - base * targets.length
     const shareById = new Map<string, number>()
     targets.forEach((r, i) => shareById.set(r.id, (base + (i < rem ? 1 : 0)) / 100))
-    setStRows(prev => prev.map(r => {
+
+    setStRows(all.map(r => {
       const share = shareById.get(r.id)
       if (share === undefined) return r
       const u = { ...r, row_rate_type: 'day' as const, rate_daily: formatCurrency(share.toFixed(2)), charge: share }
@@ -3639,7 +3696,10 @@ export function WorkOrderPopup({
             {/* c-seg-tiny on wide (Eli, 2026-08-18: "sesstoin status is two
                 rows") — six pills at the tiny size fit the words column on one
                 line. Non-wide keeps the full-size seg. */}
-            <div className={wide ? 'c-seg c-seg-wrap c-seg-tiny' : 'c-seg c-seg-wrap'} style={{ order: wide ? 1 : undefined, alignSelf: 'flex-start', maxWidth: '100%' }}>
+            {/* nowrap + overflowX (2026-08-26): Lockout made it seven pills and
+                the wrap put one alone on a second row, skewing the column.
+                One line always; it scrolls sideways in the worst case. */}
+            <div className={wide ? 'c-seg c-seg-tiny' : 'c-seg'} style={{ order: wide ? 1 : undefined, alignSelf: 'flex-start', maxWidth: '100%', flexWrap: 'nowrap', overflowX: 'auto', whiteSpace: 'nowrap' }}>
               {SESSION_STATUSES.map(([val, lbl]) => {
                 const on = wo.session_status === val
                 return (
@@ -4149,54 +4209,69 @@ export function WorkOrderPopup({
                   together (monthlies include 12h/day; beyond = OT). */}
               {!readOnly && !runner && stRows.some(r => r.date && (r.studio || '').trim()) && (
                 <div style={{ position: 'relative', flexShrink: 0, marginBottom: 12 }}>
-                  <button type="button" onClick={() => setMonthlyOpen(v => !v)} title="Monthly lockout: split a flat monthly amount across the day rows to the cent, with the deal's OT rate" style={{ fontSize: 10, fontFamily: 'Inter', color: monthlyOpen ? 'var(--c-fg)' : 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0 }}>Monthly</button>
+                  <button type="button" onClick={() => monthlyOpen ? closeMonthly() : openMonthly()} title="Monthly lockout: split a flat monthly amount across the month's day rows to the cent" style={{ fontSize: 10, fontFamily: 'Inter', color: monthlyOpen ? 'var(--c-fg)' : 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0 }}>Monthly</button>
                   {monthlyOpen && (
-                    <div className="c-sheet" style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 40, width: 200, padding: 14, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <div>
-                        <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Monthly total</div>
-                        <input
-                          autoFocus
-                          value={monthlyAmt}
-                          onChange={e => setMonthlyAmt(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') applyMonthlySplit(); if (e.key === 'Escape') closeMonthly() }}
-                          placeholder="19,500"
-                          className="c-tin c-tin-mono c-tin-show"
-                          style={{ width: '100%' }}
-                        />
+                    <div className="c-sheet" style={{ position: 'absolute', top: 'calc(100% + 10px)', right: 0, zIndex: 40, width: 300, padding: 20, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 14, background: 'var(--c-bg)', borderRadius: 16 }}>
+                      <div className="c-arch" style={{ fontSize: 14 }}>Monthly lockout</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div>
+                          <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Start date</div>
+                          <input type="date" value={monthlyStart} onChange={e => setMonthlyStart(e.target.value)} className="c-input c-inset2" style={{ width: '100%', boxSizing: 'border-box' }} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>End date</div>
+                          <input type="date" value={monthlyEnd} onChange={e => setMonthlyEnd(e.target.value)} className="c-input c-inset2" style={{ width: '100%', boxSizing: 'border-box' }} />
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div>
+                          <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Monthly total</div>
+                          <input
+                            autoFocus
+                            value={monthlyAmt}
+                            onChange={e => setMonthlyAmt(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') applyMonthlySplit(); if (e.key === 'Escape') closeMonthly() }}
+                            placeholder="19,500"
+                            className="c-input c-inset2"
+                            style={{ width: '100%', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>OT rate / hr</div>
+                          <input
+                            value={monthlyOt}
+                            onChange={e => setMonthlyOt(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') applyMonthlySplit(); if (e.key === 'Escape') closeMonthly() }}
+                            placeholder="per deal"
+                            className="c-input c-inset2"
+                            style={{ width: '100%', boxSizing: 'border-box' }}
+                          />
+                        </div>
                       </div>
                       <div>
-                        <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>OT rate / hr</div>
-                        <input
-                          value={monthlyOt}
-                          onChange={e => setMonthlyOt(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') applyMonthlySplit(); if (e.key === 'Escape') closeMonthly() }}
-                          placeholder="per deal"
-                          className="c-tin c-tin-mono c-tin-show"
-                          style={{ width: '100%' }}
-                        />
-                      </div>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <span style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Daily times</span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                          <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Daily times</span>
                           {/* 24hr lockout: no clocks on the rows, no OT ever. */}
                           <button
                             type="button"
                             onClick={() => setMonthlyNA(v => !v)}
                             title="24-hour lockout — no daily times, no OT"
                             className={monthlyNA ? 'c-pill c-fill-dead' : ''}
-                            style={{ fontSize: 9, fontFamily: 'Inter', color: monthlyNA ? undefined : 'var(--c-fg-3)', background: monthlyNA ? undefined : 'none', cursor: 'pointer', padding: monthlyNA ? '2px 8px' : 0, letterSpacing: '0.04em' }}
+                            style={{ fontSize: 10, fontFamily: 'Inter', color: monthlyNA ? undefined : 'var(--c-fg-3)', background: monthlyNA ? undefined : 'none', cursor: 'pointer', padding: monthlyNA ? '3px 10px' : 0, letterSpacing: '0.04em' }}
                           >N/A</button>
                         </div>
-                        {!monthlyNA && (
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <TimeInput value={monthlyFrom} onChange={setMonthlyFrom} placeholder="from" className="c-tin c-tin-mono c-tin-show" style={{ width: '100%' }} />
-                            <TimeInput value={monthlyTo} onChange={setMonthlyTo} placeholder="to" className="c-tin c-tin-mono c-tin-show" style={{ width: '100%' }} />
+                        {monthlyNA ? (
+                          <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>24-hour lockout — no daily times, no OT.</div>
+                        ) : (
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                            <TimeInput value={monthlyFrom} onChange={setMonthlyFrom} placeholder="from" className="c-input c-inset2" style={{ width: '100%', boxSizing: 'border-box' }} />
+                            <TimeInput value={monthlyTo} onChange={setMonthlyTo} placeholder="to" className="c-input c-inset2" style={{ width: '100%', boxSizing: 'border-box' }} />
                           </div>
                         )}
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, alignItems: 'center' }}>
-                        <button type="button" onClick={closeMonthly} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: 0 }}>Cancel</button>
-                        <button type="button" onClick={applyMonthlySplit} className="c-soft c-control c-raised" style={{ cursor: 'pointer' }}>Apply</button>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 14, alignItems: 'center', marginTop: 2 }}>
+                        <button type="button" onClick={closeMonthly} style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: 0 }}>Cancel</button>
+                        <button type="button" onClick={applyMonthlySplit} className="c-soft c-control c-raised" style={{ cursor: 'pointer', fontSize: 12, padding: '8px 18px' }}>Apply</button>
                       </div>
                     </div>
                   )}
