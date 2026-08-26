@@ -36,3 +36,6 @@ memory/
 # Service account keys — never commit credentials
 Google Service Account Key/
 supabase/seed/*.local.sql
+
+# Calendar-import scratch area — real client data, never commit
+imports-scratch/

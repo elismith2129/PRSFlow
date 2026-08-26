@@ -7,19 +7,17 @@
 -- targets kept per each studio's own sheet where they differ (White Out,
 -- Post-Its, First Aid Kit, Highlighters).
 --
--- ELI'S CUT (2026-08-26): on the ERS sheet, nothing below Printer Paper is
--- included EXCEPT Bandaids — so Sisscors, Post-It Flags, Coughdrops, Expo
--- Markers, Allergy Medicine, Tums and Neosporin are all deliberately absent.
--- Highlighters IS included (it sits below Printer Paper on the sheet, but
--- it's part of the shared template and on ARS's list — read as intended;
--- flag if wrong). Spelling note: the dropped "Sisscors" would have been
--- normalized to Scissors, same as the Paramount seed.
+-- ELI'S CUT (2026-08-26, confirmed twice): on the ERS sheet, NOTHING below
+-- Printer Paper is included EXCEPT Bandaids — so Highlighters, Sisscors,
+-- Post-It Flags, Coughdrops, Expo Markers, Allergy Medicine, Tums and
+-- Neosporin are all deliberately absent from ERS. ARS keeps Highlighters
+-- (the cut was scoped to ERS; ARS's own sheet lists it). Spelling note: the
+-- dropped "Sisscors" would have been normalized to Scissors.
 --
--- ALSO: ARS drops Individual Oranges from the nightly list — "we just do
--- the cuties" (the sheet's crossed-out annotation, confirmed by Eli).
--- Idempotent delete, so this file works whether or not the 120000 seed ran
--- first or is re-run later. (ERS oranges left in place — Eli scoped the
--- correction to ARS.)
+-- ALSO: BOTH studios drop Individual Oranges from the nightly list — "we
+-- just do the cuties" (the sheets' crossed-out annotation, confirmed by
+-- Eli for ARS then extended to ERS). Idempotent deletes, so this file works
+-- whether or not the 120000 seed ran first or is re-run later.
 --
 -- Office rows are flat (category NULL), same as Paramount's office list.
 -- The stock page's two-button landing (ARS Stock / Office, Wednesdays-only
@@ -30,9 +28,9 @@
 
 begin;
 
--- ── ARS nightly correction: no Individual Oranges, Cuties only ──────────────
+-- ── Nightly correction, both studios: no Individual Oranges, Cuties only ────
 delete from stock_items
-where studio = 'ameraycan' and section = 'stock' and item = 'Individual Oranges';
+where studio in ('ameraycan', 'encore') and section = 'stock' and item = 'Individual Oranges';
 
 -- ── Office lists: wipe-and-reseed office rows for these two studios only ────
 delete from stock_items where studio in ('ameraycan', 'encore') and section = 'office';
@@ -93,8 +91,8 @@ values
   ('encore','office',23,'Advil/Ibuprofen','1 Bottle'),
   ('encore','office',24,'First Aid Kit','1 Kit'),
   ('encore','office',25,'Printer Paper','2 Packs'),
-  ('encore','office',26,'Highlighters','1 Box'),
-  -- ERS keeps ONE item from below Printer Paper: Bandaids (Eli's cut).
-  ('encore','office',27,'Bandaids','1 Box');
+  -- ERS keeps ONE item from below Printer Paper: Bandaids (Eli's cut —
+  -- Highlighters and the rest of the tail are out).
+  ('encore','office',26,'Bandaids','1 Box');
 
 commit;

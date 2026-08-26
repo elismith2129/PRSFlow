@@ -215,6 +215,11 @@ export interface Booking {
   anr_admin_contact_id: string | null
   work_order_id: string | null
   wo_number: string | null
+  // Non-null = imported from the legacy WordPress calendar (migration
+  // 20260826150000; value = import run timestamp). Past imported rows are
+  // read-only history — no editing, no WO, no invoice, no daily ops. Future
+  // imported rows promote into real sessions via the normal open→save path.
+  imported_at: string | null
   created_at: string
   updated_at: string | null
 }

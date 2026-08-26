@@ -137,10 +137,10 @@ values
   ('ameraycan','stock','Coffee & Tea', 87,'Keurig Starbucks Breakfast Blend','2 Boxes'),
   ('ameraycan','stock','Coffee & Tea', 88,'Keurig Starbucks House Blend Decaf','2 Boxes');
 
--- ARS does not do Individual Oranges — Cuties only (Eli, 2026-08-26; the
--- sheet's crossed-out annotation). Deleted here too so a re-run of this
--- seed can't resurrect it regardless of order with 20260826130000.
+-- Neither studio does Individual Oranges — Cuties only (Eli, 2026-08-26;
+-- the sheets' crossed-out annotation). Deleted here too so a re-run of this
+-- seed can't resurrect them regardless of order with 20260826130000.
 delete from stock_items
-where studio = 'ameraycan' and section = 'stock' and item = 'Individual Oranges';
+where studio in ('ameraycan', 'encore') and section = 'stock' and item = 'Individual Oranges';
 
 commit;

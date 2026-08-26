@@ -469,7 +469,17 @@ export function WorkOrderPopup({
   const { profile } = useUserProfile()
   // Tech is read-only on WOs everywhere (calendar, wo-hub, LocationStrip): hide
   // all write controls. RLS also blocks tech writes, so this is a UX guard.
-  const readOnly = profile?.role === 'tech'
+  //
+  // Imported WordPress history (migration 20260826150000): a booking stamped
+  // imported_at whose start date is past is read-only history for EVERY role —
+  // viewable, never editable, and it must never grow a work order or invoice
+  // number. Imported rows dated today or later stay writable so the existing
+  // promote-on-touch path (open → WO created → real session) keeps working.
+  const importedPast =
+    !!(booking as any).imported_at &&
+    !!booking.start_date &&
+    booking.start_date < getLocalToday()
+  const readOnly = profile?.role === 'tech' || importedPast
   const [wo, setWo] = useState<WO | null>(null)
   const [stRows, setStRows] = useState<StRow[]>([])
   const [equipRows, setEquipRows] = useState<EquipRow[]>([])
@@ -860,6 +870,26 @@ export function WorkOrderPopup({
       }
       if (!booking.id) {
         setWoMissing('No booking selected — save the booking first.')
+        setLoading(false)
+        return
+      }
+      if (importedPast) {
+        // Imported WordPress history: no WO exists and none may ever be
+        // created. Open a read-only view seeded from the booking row alone —
+        // readOnly (set above) hides every write control, and handleClose's
+        // !readOnly guard means nothing here can reach the database.
+        primaryBookingIdRef.current = booking.id
+        const base = normalizeWO({})
+        base.session_status = (booking as any).status || 'confirmed'
+        base.session_type = (booking as any).session_type || 'recording'
+        base.client = booking.client_name ?? ''
+        base.artist = (booking as any).artist ?? ''
+        base.label = (booking as any).label ?? ''
+        base.session_date = booking.start_date ?? ''
+        base.from_time = booking.from_time ?? ''
+        base.to_time = booking.to_time ?? ''
+        base.session_notes = (booking as any).notes ?? ''
+        setWo(base)
         setLoading(false)
         return
       }
