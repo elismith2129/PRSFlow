@@ -2754,6 +2754,50 @@ export function WorkOrderPopup({
 
   if (!wo) return null
 
+  // ── IMPORTED HISTORY (Eli, 2026-08-26): a past session imported from the
+  // old WordPress calendar never shows the work order at all — there is no WO
+  // and never will be. Just the session facts and a read-only notice.
+  if (importedPast) {
+    const b = booking as any
+    const idTitle = b.label
+      ? `${b.label}${b.artist ? ' — ' + b.artist : ''}`
+      : (b.client_name || wo.client || '—')
+    const times = [b.from_time, b.to_time].filter(Boolean).join(' – ')
+    const dates = b.end_date && b.end_date !== b.start_date
+      ? `${longDate(b.start_date)} – ${longDate(b.end_date)}`
+      : longDate(b.start_date || '')
+    const staff = [
+      b.engineer_name ? `1ST-${b.engineer_name}` : null,
+      b.assistant_name ? `2ND-${b.assistant_name}` : null,
+    ].filter(Boolean).join(' · ')
+    return (
+      <div style={inline
+        ? { position: 'static', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }
+        : { position: 'fixed', top: isMobile ? 0 : 52, left: 0, right: 0, bottom: 0, zIndex: 10010, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+        onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      >
+        <div className="c-sheet" style={{ width: '100%', maxWidth: 400, padding: 24, boxSizing: 'border-box' }} onClick={e => e.stopPropagation()}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+            <StatusBadge status={wo.session_status} />
+            <span className="c-sub" style={{ textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 10 }}>
+              Read only · imported from old calendar
+            </span>
+          </div>
+          <div className="c-arch" style={{ fontSize: 20, marginBottom: 10 }}>{idTitle}</div>
+          <div style={{ color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13, lineHeight: 1.7 }}>
+            <div>{[b.location, b.studio].filter(Boolean).join(' · ')}</div>
+            <div>{dates}{times ? ` · ${times}` : ''}</div>
+            {staff && <div className="c-sub" style={{ fontSize: 11 }}>{staff}</div>}
+            {b.notes && <div className="c-sub" style={{ fontSize: 11, marginTop: 8 }}>{b.notes}</div>}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18 }}>
+            <button onClick={onClose} className="c-soft c-control c-raised">Close</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const woId = woIdRef.current
   const isCompleted = wo.status === 'completed'
   // Tour/Tech/Open-Hours → render the simplified "block" view (title + times only).
