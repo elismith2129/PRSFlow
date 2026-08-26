@@ -49,12 +49,16 @@ function roomLabelForVenue(venue: string, rawStudio: string): string {
 const SESSION_STATUSES: [string, string][] = [
   ['confirmed', 'Confirmed'], ['tentative', 'Tentative'], ['cancelled', 'Cancelled'],
   ['tour', 'Tour'], ['tech', 'Tech'], ['open_hours', 'Open Hours'],
+  // Rent-only monthly lockout — full WO (rent is invoiced) but invisible to
+  // every daily-ops surface because they all select status='confirmed'.
+  ['lockout', 'Lockout'],
 ]
 // Mirror the booking-form status colors (STATUS_TOP_COLORS). Active pill fills
 // with its status color; inactive stays neutral.
 const SESSION_STATUS_COLORS: Record<string, string> = {
   confirmed: 'var(--c-st-booked)', tentative: 'var(--c-st-warm)', cancelled: 'var(--c-st-hot)',
   tour: 'var(--c-st-uncon)', tech: 'var(--c-fg-3)', open_hours: 'var(--c-fg-2)',
+  lockout: 'var(--c-st-booked)',
 }
 const SESSION_TYPES: [string, string][] = [
   ['recording', 'Recording'], ['filming', 'Filming'], ['event_playback', 'Event / Playback'],
@@ -554,6 +558,17 @@ export function WorkOrderPopup({
   // and everything beyond is OT at this rate). Applied to every dated studio
   // row alongside the split so OT has a home the moment the month is set up.
   const [monthlyOt, setMonthlyOt] = useState('')
+  // Default daily session window, stamped onto every day row (runners edit
+  // each day as it's worked). N/A is for 24-hour rent-only lockouts where
+  // clocks are meaningless — it blanks the times and zeroes OT instead.
+  const [monthlyFrom, setMonthlyFrom] = useState('')
+  const [monthlyTo, setMonthlyTo] = useState('')
+  const [monthlyNA, setMonthlyNA] = useState(false)
+
+  function closeMonthly() {
+    setMonthlyOpen(false)
+    setMonthlyAmt(''); setMonthlyOt(''); setMonthlyFrom(''); setMonthlyTo(''); setMonthlyNA(false)
+  }
 
   function applyMonthlySplit() {
     const total = stripCurrency(monthlyAmt) ?? 0
@@ -571,16 +586,26 @@ export function WorkOrderPopup({
       const share = shareById.get(r.id)
       if (share === undefined) return r
       const u = { ...r, row_rate_type: 'day' as const, rate_daily: formatCurrency(share.toFixed(2)), charge: share }
-      if (otRate > 0) {
-        u.ot_rate = String(otRate)
-        const h = parseFloat(u.ot_hours ?? '0') || 0
-        u.ot_charge = h > 0 ? parseFloat((h * otRate).toFixed(2)) : null
+      if (monthlyNA) {
+        // 24-hour lockout: no clocks, no OT. The flat share is the whole story.
+        u.from_time = ''; u.to_time = ''
+        u.total_hours = null
+        u.ot_hours = '0'; u.ot_charge = null
+      } else if (monthlyFrom || monthlyTo) {
+        u.from_time = monthlyFrom
+        u.to_time = monthlyTo
+        const hrs = calcHours(monthlyFrom, monthlyTo)
+        u.total_hours = hrs
+        // Same OT derivation as the day-rate updateRow path: beyond 12h = OT.
+        u.ot_hours = String(Math.max(0, parseFloat(((hrs ?? 0)).toFixed(2)) - 12))
       }
+      if (otRate > 0) u.ot_rate = String(otRate)
+      const rn = parseFloat((u.ot_rate ?? '').replace(/[^0-9.]/g, '')) || 0
+      const h = parseFloat(u.ot_hours ?? '0') || 0
+      u.ot_charge = h > 0 && rn > 0 ? parseFloat((h * rn).toFixed(2)) : null
       return u
     }))
-    setMonthlyOpen(false)
-    setMonthlyAmt('')
-    setMonthlyOt('')
+    closeMonthly()
   }
   const [batchScope, setBatchScope] = useState<'all' | 'range'>('all')
   const [batchFrom, setBatchFrom] = useState('')
@@ -4133,7 +4158,7 @@ export function WorkOrderPopup({
                           autoFocus
                           value={monthlyAmt}
                           onChange={e => setMonthlyAmt(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') applyMonthlySplit(); if (e.key === 'Escape') { setMonthlyOpen(false); setMonthlyAmt(''); setMonthlyOt('') } }}
+                          onKeyDown={e => { if (e.key === 'Enter') applyMonthlySplit(); if (e.key === 'Escape') closeMonthly() }}
                           placeholder="19,500"
                           className="c-tin c-tin-mono c-tin-show"
                           style={{ width: '100%' }}
@@ -4144,15 +4169,34 @@ export function WorkOrderPopup({
                         <input
                           value={monthlyOt}
                           onChange={e => setMonthlyOt(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') applyMonthlySplit(); if (e.key === 'Escape') { setMonthlyOpen(false); setMonthlyAmt(''); setMonthlyOt('') } }}
+                          onKeyDown={e => { if (e.key === 'Enter') applyMonthlySplit(); if (e.key === 'Escape') closeMonthly() }}
                           placeholder="per deal"
                           className="c-tin c-tin-mono c-tin-show"
                           style={{ width: '100%' }}
                         />
                       </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Daily times</span>
+                          {/* 24hr lockout: no clocks on the rows, no OT ever. */}
+                          <button
+                            type="button"
+                            onClick={() => setMonthlyNA(v => !v)}
+                            title="24-hour lockout — no daily times, no OT"
+                            className={monthlyNA ? 'c-pill c-fill-dead' : ''}
+                            style={{ fontSize: 9, fontFamily: 'Inter', color: monthlyNA ? undefined : 'var(--c-fg-3)', background: monthlyNA ? undefined : 'none', cursor: 'pointer', padding: monthlyNA ? '2px 8px' : 0, letterSpacing: '0.04em' }}
+                          >N/A</button>
+                        </div>
+                        {!monthlyNA && (
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <TimeInput value={monthlyFrom} onChange={setMonthlyFrom} placeholder="from" className="c-tin c-tin-mono c-tin-show" style={{ width: '100%' }} />
+                            <TimeInput value={monthlyTo} onChange={setMonthlyTo} placeholder="to" className="c-tin c-tin-mono c-tin-show" style={{ width: '100%' }} />
+                          </div>
+                        )}
+                      </div>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, alignItems: 'center' }}>
-                        <button type="button" onClick={() => { setMonthlyOpen(false); setMonthlyAmt(''); setMonthlyOt('') }} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: 0 }}>Cancel</button>
-                        <button type="button" onClick={applyMonthlySplit} className="c-soft c-control c-raised" style={{ cursor: 'pointer' }}>Split</button>
+                        <button type="button" onClick={closeMonthly} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: 0 }}>Cancel</button>
+                        <button type="button" onClick={applyMonthlySplit} className="c-soft c-control c-raised" style={{ cursor: 'pointer' }}>Apply</button>
                       </div>
                     </div>
                   )}

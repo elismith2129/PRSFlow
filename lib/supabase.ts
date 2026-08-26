@@ -164,7 +164,15 @@ export interface Engineer {
   created_at: string
 }
 
-export type BookingStatus = 'confirmed' | 'tentative' | 'cancelled' | 'tour' | 'tech' | 'open_hours'
+// 'lockout' (2026-08-26): a rent-only monthly lockout ("Hiker" on Track North)
+// — the room is occupied and a real, payable WO exists (charged monthly via the
+// Monthly split), but NOTHING daily happens: no staff, OT, expenses, runner
+// visits or approvals. Every operational surface selects status='confirmed',
+// so a lockout is invisible to daily ops BY STATUS — never add a lockout
+// exclusion flag elsewhere; the status IS the exclusion. Deliberately NOT in
+// NON_SESSION_STATUSES (lib/createWorkOrder.ts): unlike Tour/Tech/Open-Hours
+// blocks it DOES get a work order, because rent gets invoiced.
+export type BookingStatus = 'confirmed' | 'tentative' | 'cancelled' | 'tour' | 'tech' | 'open_hours' | 'lockout'
 export type SessionType = 'recording' | 'filming' | 'event_playback'
 export type EngineerStatus = 'hold' | 'confirmed' | 'not_needed'
 

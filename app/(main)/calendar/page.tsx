@@ -39,6 +39,7 @@ const STATUS_SLOT: Record<string, string> = {
   tour:       'tour',
   tech:       'tech',
   open_hours: 'open_hours',
+  lockout: 'lockout',
 }
 
 // ─── LAYOUT CONSTANTS ────────────────────────────────────────────────────────

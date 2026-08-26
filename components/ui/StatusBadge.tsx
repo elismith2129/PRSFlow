@@ -27,6 +27,8 @@ const STATUS_COLORS: Record<string, string> = {
   in_progress: 'var(--accent)',
   // red
   cancelled: 'var(--hot)',
+  // teal — rent-only monthly lockout reads as a booked room
+  lockout: 'var(--booked)',
 }
 
 const DEFAULT_COLOR = 'var(--cold)'

@@ -44,6 +44,10 @@ const STATUS_ALIASES: Record<string, CarvedStatus> = {
   dnb: 'dead',
   open: 'dead',
   open_hours: 'dead',
+  // Rent-only monthly lockout — operationally silent, but Eli wants it to READ
+  // as a booked room (2026-08-26): green like confirmed. The ops exclusion is
+  // the status value itself, never the colour.
+  lockout: 'booked',
 }
 
 function normalize(status: string): string {
