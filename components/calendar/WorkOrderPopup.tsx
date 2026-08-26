@@ -550,9 +550,14 @@ export function WorkOrderPopup({
   // removing days; it re-splits idempotently.
   const [monthlyOpen, setMonthlyOpen] = useState(false)
   const [monthlyAmt, setMonthlyAmt] = useState('')
+  // The deal's OT rate (per hour, typed per deal — monthlies include 12h/day
+  // and everything beyond is OT at this rate). Applied to every dated studio
+  // row alongside the split so OT has a home the moment the month is set up.
+  const [monthlyOt, setMonthlyOt] = useState('')
 
   function applyMonthlySplit() {
     const total = stripCurrency(monthlyAmt) ?? 0
+    const otRate = stripCurrency(monthlyOt) ?? 0
     const targets = stRows
       .filter(r => (r.studio || '').trim() !== '' && r.date)
       .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
@@ -565,10 +570,17 @@ export function WorkOrderPopup({
     setStRows(prev => prev.map(r => {
       const share = shareById.get(r.id)
       if (share === undefined) return r
-      return { ...r, row_rate_type: 'day' as const, rate_daily: formatCurrency(share.toFixed(2)), charge: share }
+      const u = { ...r, row_rate_type: 'day' as const, rate_daily: formatCurrency(share.toFixed(2)), charge: share }
+      if (otRate > 0) {
+        u.ot_rate = String(otRate)
+        const h = parseFloat(u.ot_hours ?? '0') || 0
+        u.ot_charge = h > 0 ? parseFloat((h * otRate).toFixed(2)) : null
+      }
+      return u
     }))
     setMonthlyOpen(false)
     setMonthlyAmt('')
+    setMonthlyOt('')
   }
   const [batchScope, setBatchScope] = useState<'all' | 'range'>('all')
   const [batchFrom, setBatchFrom] = useState('')
@@ -4107,25 +4119,44 @@ export function WorkOrderPopup({
                     : undefined}
                 />
               </div>
-              {/* Monthly split control — admin only, needs dated studio rows. */}
+              {/* Monthly split control — admin only, needs dated studio rows.
+                  Small popover: monthly total + the deal's OT rate, applied
+                  together (monthlies include 12h/day; beyond = OT). */}
               {!readOnly && !runner && stRows.some(r => r.date && (r.studio || '').trim()) && (
-                monthlyOpen ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginBottom: 12 }}>
-                    <input
-                      autoFocus
-                      value={monthlyAmt}
-                      onChange={e => setMonthlyAmt(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') applyMonthlySplit(); if (e.key === 'Escape') { setMonthlyOpen(false); setMonthlyAmt('') } }}
-                      placeholder="monthly $"
-                      className="c-tin c-tin-mono c-tin-show"
-                      style={{ width: 92 }}
-                    />
-                    <button type="button" onClick={applyMonthlySplit} title="Split this amount across the day rows to the cent" style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg)', background: 'none', cursor: 'pointer', padding: 0 }}>Split</button>
-                    <button type="button" onClick={() => { setMonthlyOpen(false); setMonthlyAmt('') }} style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: 0 }}>×</button>
-                  </div>
-                ) : (
-                  <button type="button" onClick={() => setMonthlyOpen(true)} title="Monthly lockout: split a flat monthly amount across the day rows to the cent" style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, marginBottom: 12 }}>Monthly</button>
-                )
+                <div style={{ position: 'relative', flexShrink: 0, marginBottom: 12 }}>
+                  <button type="button" onClick={() => setMonthlyOpen(v => !v)} title="Monthly lockout: split a flat monthly amount across the day rows to the cent, with the deal's OT rate" style={{ fontSize: 10, fontFamily: 'Inter', color: monthlyOpen ? 'var(--c-fg)' : 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0 }}>Monthly</button>
+                  {monthlyOpen && (
+                    <div className="c-sheet" style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 40, width: 200, padding: 14, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Monthly total</div>
+                        <input
+                          autoFocus
+                          value={monthlyAmt}
+                          onChange={e => setMonthlyAmt(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') applyMonthlySplit(); if (e.key === 'Escape') { setMonthlyOpen(false); setMonthlyAmt(''); setMonthlyOt('') } }}
+                          placeholder="19,500"
+                          className="c-tin c-tin-mono c-tin-show"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>OT rate / hr</div>
+                        <input
+                          value={monthlyOt}
+                          onChange={e => setMonthlyOt(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') applyMonthlySplit(); if (e.key === 'Escape') { setMonthlyOpen(false); setMonthlyAmt(''); setMonthlyOt('') } }}
+                          placeholder="per deal"
+                          className="c-tin c-tin-mono c-tin-show"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, alignItems: 'center' }}>
+                        <button type="button" onClick={() => { setMonthlyOpen(false); setMonthlyAmt(''); setMonthlyOt('') }} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: 0 }}>Cancel</button>
+                        <button type="button" onClick={applyMonthlySplit} className="c-soft c-control c-raised" style={{ cursor: 'pointer' }}>Split</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
               <div className="c-seg c-seg-tiny" style={{ flexShrink: 0, marginBottom: 12 }}>
                 {(['list', 'cards'] as const).map(v => (
