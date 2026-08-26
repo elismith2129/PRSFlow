@@ -88,6 +88,13 @@ export type WoTotals = {
  *  derivation must import this, never restate 0.03/1.03 locally. */
 export const CARD_FEE_RATE = 0.03
 
+/** House rate law (Eli, 2026-08-26): the day rate is ALWAYS 10× the hourly
+ *  rate ($750/day ⇄ $75/hr), and the day-row OT rate is the hourly equivalent
+ *  (day ÷ 10). Single source — every conversion imports this; never restate
+ *  10 or 0.10 locally. Special deals are typed AFTER converting, not encoded
+ *  as exceptions here. */
+export const DAY_HOUR_RATIO = 10
+
 /** The fee slice of a card-charged total: charged − charged/1.03, in cents.
  *  Derives the fee FROM the charged amount so a runner can type exactly what
  *  the terminal charged and the base+fee split is always internally exact. */

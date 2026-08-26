@@ -14,7 +14,7 @@ import { ClientPanel, type ClientPanelValue } from '@/components/shared/ClientPa
 import { seedStudioTimeRows } from '@/lib/seedStudioTimeRows'
 import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter, getLocalToday } from '@/lib/time'
 import { formatCurrency, stripCurrency, longDate } from '@/lib/format'
-import { computeWoTotals, engChargeForRow, cardFeeOfCharged, cardTotalForBase } from '@/lib/woTotals'
+import { computeWoTotals, engChargeForRow, cardFeeOfCharged, cardTotalForBase, DAY_HOUR_RATIO } from '@/lib/woTotals'
 import {
   findMissingTimes, missingTimesMessage,
   findMissingEngRates, missingEngRatesMessage,
@@ -1469,9 +1469,15 @@ export function WorkOrderPopup({
         if ('rate_daily' in updates || 'row_rate_type' in updates) {
           const rn = parseFloat((u.rate_daily ?? '').replace(/[^0-9.]/g, ''))
           u.charge = !isNaN(rn) && rn > 0 ? rn : null
-          // OT rate auto-calc: 10% of day rate
+          // Twin-field sync (house law, DAY_HOUR_RATIO): editing the day rate
+          // rewrites the hidden hourly to day ÷ 10, so no stale hourly can
+          // survive to poison a later Day→Hr toggle.
+          if ('rate_daily' in updates && !isNaN(rn) && rn > 0) {
+            u.rate = String(parseFloat((rn / DAY_HOUR_RATIO).toFixed(2)))
+          }
+          // OT rate auto-calc: the hourly equivalent (day ÷ DAY_HOUR_RATIO)
           if (!('ot_rate' in updates)) {
-            u.ot_rate = rn > 0 ? String(parseFloat((rn * 0.10).toFixed(2))) : u.ot_rate
+            u.ot_rate = rn > 0 ? String(parseFloat((rn / DAY_HOUR_RATIO).toFixed(2))) : u.ot_rate
           }
         }
         // OT hours auto-derived from times (Total Hrs - 12 when > 12)
@@ -1483,6 +1489,13 @@ export function WorkOrderPopup({
         // Hourly: charge = total_hours × rate
         if ('total_hours' in updates || 'rate' in updates || 'from_time' in updates || 'to_time' in updates || 'row_rate_type' in updates) {
           u.charge = calcCharge(u.total_hours, u.rate)
+        }
+        // Twin-field sync (house law, DAY_HOUR_RATIO): editing the hourly rate
+        // rewrites the hidden day rate to hourly × 10 — same anti-stale rule
+        // as the day branch, other direction.
+        if ('rate' in updates) {
+          const rn = parseFloat((u.rate ?? '').replace(/[^0-9.]/g, ''))
+          if (!isNaN(rn) && rn > 0) u.rate_daily = String(parseFloat((rn * DAY_HOUR_RATIO).toFixed(2)))
         }
         // OT rate auto-calc: same as rate
         if ('rate' in updates || 'row_rate_type' in updates) {
@@ -1574,8 +1587,16 @@ export function WorkOrderPopup({
     if (batchOn.to) patch.to_time = batchVals.to_time
     if (batchOn.rate) {
       patch.row_rate_type = batchVals.rateType
-      if (batchVals.rateType === 'day') patch.rate_daily = batchVals.rate
-      else patch.rate = batchVals.rate
+      // Both twins, always (house law DAY_HOUR_RATIO) — a batch that wrote one
+      // side left the other stale, which is exactly the toggle glitch.
+      const rn = parseFloat((batchVals.rate || '').replace(/[^0-9.]/g, '')) || 0
+      if (batchVals.rateType === 'day') {
+        patch.rate_daily = batchVals.rate
+        if (rn > 0) patch.rate = String(parseFloat((rn / DAY_HOUR_RATIO).toFixed(2)))
+      } else {
+        patch.rate = batchVals.rate
+        if (rn > 0) patch.rate_daily = String(parseFloat((rn * DAY_HOUR_RATIO).toFixed(2)))
+      }
     }
     if (batchOn.ot_hours) patch.ot_hours = batchVals.ot_hours
     if (batchOn.ot_rate) patch.ot_rate = batchVals.ot_rate
@@ -1599,15 +1620,18 @@ export function WorkOrderPopup({
     setStRows(prev => prev.map(r => {
       if (r.id !== id) return r
       if (r.row_rate_type === 'hour') {
-        // Hour → Day: set rate_daily = rate × 10 unless rate_daily was manually overridden
+        // Hour → Day: rate_daily = rate × DAY_HOUR_RATIO, ALWAYS (Eli,
+        // 2026-08-26: "day rate is always 10× hr, across the board"). The old
+        // keep-if-manually-overridden heuristic is gone — it couldn't tell a
+        // deliberate special rate from a stale leftover, and stale leftovers
+        // are how $750/day became $750/hr on a toggle. A special deal is typed
+        // AFTER toggling; the toggle itself is always the pure conversion.
         const rateNum = parseFloat(r.rate.replace(/[^0-9.]/g, '')) || 0
-        const existingDailyNum = parseFloat(r.rate_daily.replace(/[^0-9.]/g, '')) || 0
-        const autoDaily = rateNum > 0 ? parseFloat((rateNum * 10).toFixed(2)) : 0
-        const finalDaily = (!existingDailyNum || Math.abs(existingDailyNum - autoDaily) < 0.01)
-          ? (autoDaily > 0 ? String(autoDaily) : r.rate_daily)
-          : r.rate_daily
+        const finalDaily = rateNum > 0 ? String(parseFloat((rateNum * DAY_HOUR_RATIO).toFixed(2))) : r.rate_daily
         const dailyNum = parseFloat(finalDaily.replace(/[^0-9.]/g, '')) || 0
-        const otRate = r.ot_rate || (dailyNum > 0 ? String(parseFloat((dailyNum / 10).toFixed(2))) : '')
+        // Day-row OT rate is the hourly equivalent — which IS the rate we came
+        // from, so carry it (or derive from the new daily when rate was blank).
+        const otRate = rateNum > 0 ? String(rateNum) : (dailyNum > 0 ? String(parseFloat((dailyNum / DAY_HOUR_RATIO).toFixed(2))) : '')
         const otRateNum = parseFloat(otRate.replace(/[^0-9.]/g, '')) || 0
         const actual = calcHours(r.from_time, r.to_time) ?? 0
         const otHrs = Math.max(0, parseFloat(actual.toFixed(2)) - 12)
@@ -1621,13 +1645,10 @@ export function WorkOrderPopup({
           ot_charge: otHrs > 0 && otRateNum > 0 ? parseFloat((otHrs * otRateNum).toFixed(2)) : null,
         }
       } else {
-        // Day → Hour: set rate = rate_daily ÷ 10 unless rate was manually overridden
+        // Day → Hour: rate = rate_daily ÷ DAY_HOUR_RATIO, ALWAYS — same law,
+        // same reason. No heuristic.
         const dailyNum = parseFloat(r.rate_daily.replace(/[^0-9.]/g, '')) || 0
-        const autoRate = dailyNum > 0 ? parseFloat((dailyNum / 10).toFixed(2)) : 0
-        const existingRateNum = parseFloat(r.rate.replace(/[^0-9.]/g, '')) || 0
-        const finalRate = (!existingRateNum || Math.abs(existingRateNum - autoRate) < 0.01)
-          ? (autoRate > 0 ? String(autoRate) : r.rate)
-          : r.rate
+        const finalRate = dailyNum > 0 ? String(parseFloat((dailyNum / DAY_HOUR_RATIO).toFixed(2))) : r.rate
         const finalRateNum = parseFloat(finalRate.replace(/[^0-9.]/g, '')) || 0
         const hrs = r.total_hours ?? calcHours(r.from_time, r.to_time) ?? null
         return {
