@@ -645,6 +645,53 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.18.0', date:'Aug 25, 2026',
+    headline:'Mic inventory is a sheet now — and your test-pass fixes landed.',
+    desc:'Everything from the runner test pass on Aug 24 is in, and the mic inventory page was rebuilt to work like the paper sheet: a zoomed-out grid where one tap marks a mic HERE.',
+    changes:[
+      'Mic inventory: each studio has its own tab (your studio first, then ARS / ERS / TRK / Floating / Odds), with a counter showing how many you\'ve checked. Tap a mic once to mark it HERE; tap it again to say which room it\'s in, mark it missing, or clear it.',
+      'Mic inventory: the search bar stays at the top while you scroll, the list no longer jumps back to the top when you tap, and every mic shows a small note of where it was last seen. A red strip warns about anything that\'s been missing.',
+      'Stock: adding a new item works properly now — you can type the full name and remove a row you added by mistake before saving.',
+      'Stock: the list corrections you asked for are in — cleaning items grouped under Cleaning, the X (check-daily) items are Chobani Sweet Cream Creamer / Mini Half n Half / 2% Milk, Pike Place K-Cups replace French Vanilla, and the bagels read Plain, Everything, Cinnamon.',
+      'You don\'t need to type your initials anymore — the app fills them in from your login on the checklist and mic pages.',
+      'The little "?" help tips are solid and readable now instead of see-through.',
+      'The opening checklist now says the office run is Wednesdays (it said Thursdays; the office stock list has always been a Wednesday job).',
+    ],
+    affects:'Runners most of all. The mic page will look very different — that\'s the point: it\'s built to feel like the paper sheet. Nothing changed about what you\'re checking or how it\'s saved, and your in-progress counts still survive if you leave the page mid-way. One habit to unlearn: there\'s no "Other studio mics" section anymore — find a stray mic under its own studio\'s tab.',
+    dev:[
+      'Two pushes: the feedback pass went to <code>main</code>; <strong>the mic Sheet is on branch <code>mic-sheet</code></strong> pending the iPad check.',
+      'Stock data corrections via migration: six items → Cleaning; PRS-X list corrected (Chobani Vanilla RENAMED to Sweet Cream so its history survives); Pike Place K-Cups; bagels Plain/Everything/Cinnamon (rows ≥68 shifted +2); the junk "C" item from the add-item bug deleted; <code>mics</code> AKG 300B → 3000B.',
+      '<strong>Stock add-item root cause:</strong> the name cell rendered an input only while <code>item === \'\'</code> — the first keystroke flipped it to a read-only span. Unsaved rows now keep the input until Save assigns an id, plus an × to discard.',
+      '<strong>Initials auto-fill from the login profile</strong> on checklist + mics (shift-notes already did) — guarded so a loaded/draft value wins and the shared runner account still types. Canonical <code>profileInitials()</code> added to <code>lib/format.ts</code>.',
+      '<strong>Hint tips were translucent because CSS opacity dims the whole subtree</strong> — absolutely-positioned children included — and hints sit inside <code>.c-label</code> (opacity .45). The tip now portals to <code>&lt;body&gt;</code>.',
+      '<strong>The mic Sheet:</strong> per-studio tabs w/ progress, birdseye tap=HERE grid, fixed-position Room/Missing/Clear popover, pinned search, missing-streak alert, display-only last-night refs (4-day window + 21-day missing query — both under PostgREST\'s silent 1,000-row cap). Data model and all four save/submit upserts unchanged; no migration.',
+      '<strong>Jump-to-top root cause:</strong> row components were defined INSIDE the page component — new component types every render, full DOM remount. Never define components in a component body.',
+      'Last-night refs are reference, never state — pre-filling tonight from last night masks theft and stays banned.',
+    ],
+  },
+  {
+    ver:'v1.17.0', date:'Aug 24, 2026',
+    headline:'Stock works like the clipboard, your typing never disappears, and food receipts live on the work order.',
+    desc:'The stock page was rebuilt around the real Paramount lists, anything you type on runner pages now survives leaving the page, and session food spending gets its own section on the work order.',
+    changes:[
+      'Stock: two big buttons — PRS Stock (nightly) and Office (Wednesdays only; it greys out on other days and pulses DUE TODAY on Wednesday). Items sit in collapsible groups, one line each; tap a name for notes and that item\'s past checks, so you can compare tonight against previous nights.',
+      'Stock: quantities can be written the way the paper allowed — "0.5", "✓", whatever the count actually is. The bagels are separate lines per flavor now.',
+      'If you type something on stock, petty cash or mics and leave the page or lose signal, your typing is still there when you come back. It only clears once a save goes through.',
+      'Work order: a food/expense section — fill in date, place and amount for each run and photograph the receipts right from the session card. They save instantly and print into the invoice package for billing.',
+      'Work order: Complete now flips to Reopen, so an accidental Complete can be undone (it asks first). And the red "Balance due" only shows on COD sessions — red means collect at the desk.',
+      'Shift notes are dead simple now: type, submit, done. The log keeps everything in order and you can edit your own posts.',
+    ],
+    affects:'Runners: the stock page is a different shape but the job is identical — count what\'s there, mark what\'s low, save. The office list only unlocks on Wednesdays. Your typing surviving a mis-tap is automatic; nothing for you to do.',
+    dev:[
+      'Stock v3 (Option C + landing): collapsible category groups, one-line rows, per-date history in new <code>stock_checks</code> (one row per item per date; <strong>qty is TEXT</strong> — the paper\'s vocabulary is richer than an integer). <code>stock_items</code> stays the current-state mirror read by <code>lib/dailyOps</code> + <code>DailyOpsModal</code> — deliberate duplication, don\'t normalize it away.',
+      'Paramount stock rows were WIPED and reseeded from the real transcribed sheets (98 nightly + 35 office) — quantities against the old placeholder list are gone on purpose.',
+      '<code>lib/draft.ts</code>: stock/petty-cash/mics mirror typed input to localStorage, restore on return, clear ONLY on successful save; checklist attention-notes flush on unmount. <strong>Keep this pattern on any runner batch surface.</strong>',
+      'Food-budget expense report (<code>wo_expenses</code>): runner-fillable rows + receipt photos from the Session Info card; <strong>writes are IMMEDIATE, never routed through the WO\'s batched save</strong>; receipts land in <code>checklist-photos/wo-receipts/</code> and print into the invoice PDF package (B&amp;W expense page + captioned receipt pages).',
+      'WO Complete flips to Reopen once completed (confirm-guarded; restores OPEN, pulls back out of needs_invoice, never a sent invoice) — reverses the Aug 11 Re-open removal.',
+      'Red Balance due is COD-only; WO client search gained a "+ New client" row (creates + attaches a COD person / Billing label profile); Add Client + WO client card gained an Artist field for COD; shift notes v3 (no opener/closer toggle); Clients tab carved; calendar "+ New Booking" button removed.',
+    ],
+  },
+  {
     ver:'v1.16.2', date:'Aug 22, 2026',
     headline:'The iPhone home-screen icon works now.',
     desc:'If you added PRSFlo to an iPhone home screen and got a grey tile with a letter "P" instead of the logo, that is fixed.',

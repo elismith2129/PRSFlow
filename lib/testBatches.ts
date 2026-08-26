@@ -55,6 +55,93 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'runner-feedback-mic-sheet-2026-08-25',
+    title: 'Runner feedback fixes + the new mic Sheet',
+    version: 'v1.18.0 (mic items are on the preview link until merged)',
+    date: 'Aug 25, 2026',
+    intro:
+      'Two things at once: the fixes from the Aug 24 runner test pass (stock list corrections, add-item bug, initials, help tips), and the mic inventory page rebuilt as a tap-grid "sheet". The mic items run on the PREVIEW link until Eli merges — everything else is live. This batch also stands in for Aug 24\'s unwritten batch: the expense report, Reopen and shift-notes items at the bottom cover that session\'s settled work.',
+    items: [
+      {
+        id: 'stock-categories', area: 'Runner stock',
+        what: 'Cleaning supplies are grouped under Cleaning',
+        how: 'Runner → Stock → PRS Stock. Open the Cleaning group: Finish "Powerball", Hand Soap Refill, Gain detergent, dryer sheets, RAID Bug Spray and Distilled Water should all be in there — not under Kitchen, Batteries or Water.',
+      },
+      {
+        id: 'stock-x-items', area: 'Runner stock',
+        what: 'The X (check-daily) items are the three dairy ones',
+        how: 'In PRS Stock, find the items marked (PRS-X). They should be exactly: Chobani Sweet Cream Creamer, Mini Half n Half, 1/2 Gallon 2% Milk. The two individual creamer-packet items should NOT carry the marker anymore.',
+      },
+      {
+        id: 'stock-bagels-kcups', area: 'Runner stock',
+        what: 'Bagels read Plain, Everything, Cinnamon — and Pike Place replaced French Vanilla K-Cups',
+        how: 'In the Food group, the three bagel lines should appear in that order top to bottom. In Coffee & Tea, there should be a Keurig Starbucks Pike Place line and no French Vanilla K-Cups.',
+      },
+      {
+        id: 'stock-add-item', area: 'Runner stock',
+        what: 'Adding a new stock item lets you type the whole name — and back out',
+        how: 'In any group tap + Add item. Type a full made-up name (every letter should land in the box — this used to lock after one letter). Then tap the × on that row to remove it WITHOUT saving. Reload: the item should not exist.',
+      },
+      {
+        id: 'initials-autofill', area: 'Runner checklist',
+        what: 'Your initials fill themselves in from your login',
+        how: 'Sign in as yourself (not the shared runner login) and open a checklist. The Initials box at the bottom should already show your initials without typing. Same on the mic page.',
+      },
+      {
+        id: 'checklist-wednesday', area: 'Runner checklist',
+        what: 'The opening checklist says the office run is Wednesdays',
+        how: 'Open the PRS opening checklist and find the office-run line under Runs. It should say "(Wednesdays)" — it used to say Thursdays.',
+      },
+      {
+        id: 'hint-solid', area: 'Help tips',
+        what: 'The "?" help tips are solid, not see-through',
+        how: 'With hints on, tap any small "?" bubble (the runner hub has them next to the section titles). The tip that pops up must be fully solid and readable — not faded or transparent.',
+      },
+      {
+        id: 'mic-tabs', area: 'Runner mics',
+        what: 'Every studio has its own mic tab with a progress counter',
+        how: 'PREVIEW LINK. Runner → Mic Inventory. Across the top: your studio first, then the other three, Floating, Odds — each with a count like 0/86. Tap through them; each shows that studio\'s own list.',
+      },
+      {
+        id: 'mic-tap-here', area: 'Runner mics',
+        what: 'One tap marks a mic HERE; a second tap offers Room / Missing / Clear',
+        how: 'PREVIEW LINK. Tap any mic square once — it turns green and says HERE, and the tab counter goes up. Tap the same square again — a small menu appears with the rooms, MISSING and Clear. Pick a room; the square turns blue with the room name.',
+      },
+      {
+        id: 'mic-no-jump', area: 'Runner mics',
+        what: 'The list stays where you are when you tap',
+        how: 'PREVIEW LINK. Scroll halfway down a long tab (PRS) and tap a few squares. The page must stay exactly where you are — it used to jump back to the top on every tap.',
+      },
+      {
+        id: 'mic-search-refs', area: 'Runner mics',
+        what: 'Search stays pinned while you scroll, and each mic shows where it was last seen',
+        how: 'PREVIEW LINK. Scroll deep into a tab — the search box should still be visible at the top. Type "C800" — the grid filters as you type. Each square\'s small grey line should read like "last: HERE · 8/24" once a night or two of checks exist.',
+      },
+      {
+        id: 'mic-draft', area: 'Runner mics',
+        what: 'Half-finished mic checks survive leaving the page',
+        how: 'PREVIEW LINK. Mark a few mics, then go back to the hub WITHOUT saving and reopen Mic Inventory. Your marks should still be there. Save, reopen — still there, now from the server.',
+      },
+      {
+        id: 'wo-expenses', area: 'Runner work order',
+        what: 'Food expenses and receipt photos save instantly on the work order',
+        how: 'Open a session\'s work order from the runner hub. In the expense section add a row (date / place / amount) and attach a receipt photo. Leave the page WITHOUT tapping Save and come back — the row and photo must still be there.',
+      },
+      {
+        id: 'wo-reopen', area: 'Work orders',
+        what: 'A completed work order can be reopened',
+        how: 'On a completed WO, the Complete button should now read Reopen. Tap it — it asks first, then the WO is OPEN again and editable.',
+        device: 'desktop',
+      },
+      {
+        id: 'wo-cod-balance', area: 'Work orders',
+        what: 'The red "Balance due" only shows on COD sessions',
+        how: 'Open one COD work order with money owed (balance shows red) and one Billing/label work order (the balance line shows plain, no red). Red = collect at the desk.',
+        device: 'desktop',
+      },
+    ],
+  },
+  {
     id: 'ribbon-mark-2026-08-22',
     title: 'The Ribbon — new logo and app icon',
     version: 'v1.16.1 (production)',

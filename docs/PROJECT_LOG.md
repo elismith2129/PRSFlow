@@ -4329,3 +4329,105 @@ layouts/manifests), square/opaque + maskable icon pipeline in
 
 **Recorded:** ONBOARDING §5 landmine (the rule lives OUTSIDE the repo),
 CHANGELOG v1.16.2 watch-outs.
+
+### Aug 24, 2026 — Stock becomes the clipboard; input stops dying; the WO learns food money (v1.17.0)
+
+*(Reconstructed Aug 25 — this session ended without its wrap-up. Detail level
+is what the commits + Eli's summary preserve; the CHANGELOG v1.17.0 entry is
+the authoritative list.)*
+
+**Stock v3.** Eli picked Option C from `docs/design-refs/stock-density-options.html`
+(sections + one-line rows) over A (tight rows only) and B (exceptions-only —
+rejected because the sheet's culture is *counting*, not exception-flagging).
+Then two rulings mid-build: "just make it two big buttons" (the PRS Stock /
+Office landing — office is Wednesdays-only, greyed off-day, DUE TODAY pulse),
+and per-date history — the paper sheet's date columns ARE its history, so
+`stock_checks` was added rather than letting `stock_items.qty` overwrite.
+**qty became TEXT** because the real clipboard says "0.5", "IFAK", "✓".
+The seeded placeholder list was wiped for the real transcribed sheets
+(98 nightly + 35 office), bagels split per flavor, categories regrouped.
+
+**`lib/draft.ts`.** A runner's typed-but-unsaved count died on any back-tap or
+failed save. Now stock / petty cash / mics mirror input to localStorage,
+restore on return, clear only on successful save; checklist attention-notes
+flush on unmount instead of dying inside the 800ms debounce. This is a
+standing runner-surface pattern, not a page feature.
+
+**WO food budget** (`wo_expenses`): runner-fillable date/place/amount rows +
+receipt photos from the Session Info card, writes IMMEDIATE (deliberately not
+part of the WO's batched save — a runner mid-session must never lose a
+receipt to a later Cancel), receipts print into the invoice PDF package.
+**Complete↔Reopen** returned (confirm-guarded) — reversing the Aug 11
+Re-open removal, because an accidental Complete had no in-app undo. **Red
+balance-due became COD-only** — red means collect at the desk, not "a label
+hasn't paid yet". Plus: WO client search "+ New client" (ends the blank-WO
+dead end), COD artist field, shift notes v3 (no opener/closer toggle — the
+timestamp tells the story), Clients tab carved, calendar "+ New Booking"
+button removed.
+
+### Aug 25, 2026 — The runner's test pass lands; the mic list becomes the Sheet (v1.18.0)
+
+**Session shape.** Aug 24's runner test produced a long punch list. Everything
+except mic inventory was triaged into one pass (SQL corrections + small
+fixes, pushed to `main`); mic inventory got the full mock-first treatment and
+shipped as **Option A, "The Sheet"**, on branch `mic-sheet` for an iPad check
+before merge.
+
+**Two real bugs root-caused, both with a generalizable lesson:**
+- **Stock add-item:** the name cell was `{it.id || it.item ? span : input}` —
+  the first keystroke made `item` truthy and swapped the input for a
+  read-only span. The runner's "it created the item without being able to
+  edit name or delete it" was exactly that, and the mid-typing row saved as
+  an item literally named "C". Fix: unsaved rows keep the input until Save
+  assigns an id, plus an × to discard. (Saved rows still have no delete —
+  the office manages the list.)
+- **Mic list jumping to top on every tap:** `MicRow`/`OddsRow`/`SectionHeader`
+  were declared INSIDE the page component, so each render created new
+  component types and React rebuilt the whole DOM subtree. Never define
+  components in a component body.
+
+**A third root cause, cosmetic but app-wide:** the "?" hint tips rendered
+translucent because CSS `opacity` dims the entire subtree — absolutely-
+positioned children included — and hints sit inside `.c-label`
+(opacity 0.45). No background can beat inherited opacity; the tip now
+portals to `<body>` (fixed-position, measured from the marker, closes on
+scroll).
+
+**Initials are over as a typed thing.** Runners have their own logins now
+(Eli's ruling), so checklist + mics auto-fill from the profile the way
+shift-notes already did — stored `user_profiles.initials` first, computed
+fallback via the new canonical `profileInitials()` in `lib/format.ts`. The
+input survives only as a fallback for the shared runner account, and a
+loaded/draft value always wins over the prefill.
+
+**The mic Sheet.** The runner's paper-beats-app verdict was about *geometry*:
+paper is a zoomed-out birdseye; the app was a tunnel. Options page
+(`docs/design-refs/mic-inventory-options.html`) offered A sheet-grid /
+B rail+two-columns / C tight-rows; **Eli picked A**. Tap = HERE (the 95%
+case), tap-again → Room/Missing/Clear popover; per-studio tabs with progress
+counts (home studio first — the old "Other studio mics" lump is gone, tabs
+are navigation only and checkins still write under the current studio's
+key); pinned search (Isaac's ask); missing-streak alert; display-only
+last-night reference per cell. **Rejected on principle:** pre-filling
+tonight from last night (masks theft — the reference is a footnote, not a
+default), and a bulk "rest are HERE" action (same reason). A bottom action
+sheet instead of the popover was considered and dropped — the mock showed a
+popover and mock-first means build what was picked.
+
+**Session mechanics worth keeping:**
+- **Options pages must be STATIC markup.** v1 of the mic mock built rows with
+  JS; the Cowork file preview runs no JS, so Eli saw one mic. v2 generates
+  all 272 rows into the HTML (throwaway node script), with JS only wiring
+  taps. The real catalog was unreachable from the sandbox (proxy 403s
+  supabase.co, web_fetch times out) — Eli ran a `json_agg` SELECT in the SQL
+  editor and pasted the result; the snapshot is committed as
+  `docs/design-refs/mic-catalog-2026-08-25.json` so no future session has to
+  ask again.
+- The stock corrections migration chose **rename over new row** for Chobani
+  Vanilla → Sweet Cream (keeps its `stock_checks` history), and the bagel
+  reorder is guarded so a re-run no-ops.
+- One test batch covers this session; Aug 24's settled work (expenses,
+  Complete↔Reopen, drafts) is folded into it rather than getting a
+  retroactive batch of its own — the stock items it would have tested were
+  already superseded by today's corrections, which is exactly why batches
+  wait for work to settle.

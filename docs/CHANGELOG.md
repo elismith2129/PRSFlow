@@ -19,6 +19,160 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.18.0 — Runner feedback pass + the mic Sheet — Aug 25, 2026
+
+**Everything from the runner's Aug 24 test pass, plus the mic inventory
+rebuilt as Option A ("The Sheet") from
+`docs/design-refs/mic-inventory-options.html`.** Two pushes: the feedback pass
+went to `main`; **the mic Sheet is on branch `mic-sheet` pending Eli's iPad
+check** — merge it before trusting this entry's mic notes in production.
+
+**Feedback pass (main):**
+- Stock data corrections (migration below): six items → Cleaning; the PRS-X
+  check-daily list is now Chobani Sweet Cream Creamer (renamed from Vanilla,
+  history kept) + Mini Half n Half + 1/2 Gallon 2% Milk (the two individual
+  creamer-packet items lost the marker); French Vanilla K-Cups → Pike Place;
+  bagels ordered Plain/Everything/Cinnamon (rows ≥68 shifted +2); the junk
+  "C" item from the add-item bug deleted; `mics` AKG 300B → 3000B typo fixed.
+- **Stock add-item bug fixed** — the name cell rendered an editable input only
+  while `item === ''`, so the FIRST KEYSTROKE flipped it to a read-only span.
+  Unsaved rows now keep the input until Save assigns an id, and get an × to
+  discard (saved rows deliberately have no delete — office manages those).
+- Checklist "Complete office run (Thursdays)" → **(Wednesdays)** (3
+  occurrences in `lib/checklist-items.ts`), matching the office-stock day.
+- **Initials auto-fill from the login profile** on the runner checklist and
+  mics pages (shift-notes already did this) — runners have their own logins
+  now. Guarded: never overwrites a loaded/draft value; the shared
+  `runner@paramountrecording.com` account still types manually. Canonical
+  `profileInitials()` added to `lib/format.ts` (older local copies in
+  MicInventorySection/OpenItemsSection left as-is).
+- **"?" hint tips were translucent — fixed by PORTALING the tip to `<body>`.**
+  Root cause: CSS `opacity` dims an element's entire subtree including
+  absolutely-positioned children, and hints often sit inside `.c-label`
+  (opacity 0.45). No background value can fix inherited opacity.
+
+**The mic Sheet (branch `mic-sheet`):** full rebuild of
+`app/runner/[studio]/mics/page.tsx`. Per-studio tabs (home studio first —
+PRS · ARS · ERS · TRK · Floating · Odds) with live progress counts; a
+birdseye grid (`auto-fill minmax(150px,1fr)` — ~2 cols phone, 4+ iPad) where
+**tap = HERE** and tapping a marked cell opens a fixed-position Room /
+Missing / Clear popover; pinned search; missing-streak alert strip; a dim
+**last-night reference** per cell (display only). Odds tab keeps qty
+steppers. Data model, the four save/submit upserts, `lib/draft` persistence,
+the dirty-guarded realtime channel and the footer are all unchanged — no
+migration.
+
+**Migrations:** `20260825120000_stock_runner_feedback.sql` (run by Eli,
+Aug 25 — verified: the AKG rename shows in the live catalog).
+
+**WATCH-OUT #1 — never define components inside a page component's body.**
+The mic page's jump-to-top-on-every-tap bug was `MicRow`/`OddsRow`/
+`SectionHeader` declared inside `MicsPage()`: every render created new
+component types, so React unmounted and rebuilt the whole DOM subtree. The
+rebuild renders inline JSX only. If a list resets scroll on tap, look for
+this first.
+
+**WATCH-OUT #2 — inherited opacity vs floating UI.** Any tooltip/popover
+rendered inside a dimmed container is dimmed with it. `Hint` now portals;
+the mic popover is `position: fixed` measured from the tapped cell. Don't
+move either back inline.
+
+**WATCH-OUT #3 — last-night refs are reference, never state.** The mic page
+fetches a 4-day window (latest prior checkin per mic) plus a 21-day
+`status='missing'` query for streaks — both under PostgREST's silent
+1,000-row cap because ~270 checkin rows land per night. Widen the windows and
+you WILL hit the cap. And never pre-fill tonight's status from them: eyes on
+every mic every night is a business rule (pre-filling masks theft).
+
+**WATCH-OUT #4 — the "Other studio mics" section is gone by design.** A stray
+ARS mic seen at Paramount is marked from the ARS tab; the checkin still
+writes under the CURRENT studio's key (`mic_checkins.studio`), so tabs are
+navigation only and the admin's home-studio resolution is unaffected.
+
+**WATCH-OUT #5 — design-ref options pages must be STATIC markup.** v1 of the
+mic options page built its rows with JS and the file preview (no JS) showed
+one mic. The rebuilt page's rows are generated into the HTML; the catalog
+snapshot lives beside it (`mic-catalog-2026-08-25.json`, 272 items pulled
+live Aug 25).
+
+**Files:** `app/runner/[studio]/mics/page.tsx` (rebuilt),
+`app/runner/[studio]/stock/page.tsx`, `app/runner/[studio]/checklist/[type]/page.tsx`,
+`lib/checklist-items.ts`, `lib/format.ts`, `components/ui/Hint.tsx`,
+`docs/design-refs/mic-inventory-options.html` + `mic-catalog-2026-08-25.json`,
+`supabase/migrations/20260825120000_stock_runner_feedback.sql`.
+
+---
+
+## v1.17.0 — Stock v3, runner draft persistence, WO food-budget expenses, Complete↔Reopen — Aug 24, 2026
+
+*(Written Aug 25 — the Aug 24 session ended without its wrap-up; reconstructed
+from the commits and Eli's summary.)*
+
+- **Stock page rebuilt (v3, Option C from
+  `docs/design-refs/stock-density-options.html`):** landing with two big
+  buttons — **PRS Stock / Office** (office greyed off-day, pulsing DUE TODAY
+  badge + auto-expand on Wednesday; warn-don't-block); collapsible category
+  groups; ONE-line rows (~40px); tap a name to expand notes + that item's
+  past checks. **History lives in the new `stock_checks` table** (one row per
+  item per date — the paper sheet's date columns); `stock_items` keeps
+  mirroring CURRENT qty/low/notes because `lib/dailyOps` + `DailyOpsModal`
+  read it. **qty is TEXT** — the sheet says "0.5", "IFAK", "✓"; the app must
+  not be dumber than the clipboard it replaces. The real Paramount lists were
+  seeded (98 nightly + 35 office; **placeholder rows wiped**), bagels split
+  into three flavors, and the categories regrouped (one Food, one Water,
+  plain Condiments).
+- **`lib/draft.ts` — runner input never dies.** Stock, petty cash and mics
+  mirror typed-but-unsaved input to localStorage and restore it on return;
+  cleared ONLY on successful save. Checklist attention-notes flush on unmount
+  instead of dying in the debounce window. **Keep this pattern on any runner
+  surface** — a batch page without it wipes a runner's count on a mis-tap.
+- **Food-budget expense report on the WO** (`wo_expenses` table): runners fill
+  date/place/amount rows and photograph receipts from the Session Info card.
+  **Writes are IMMEDIATE — never routed through the WO's batched save.**
+  Receipts land in `checklist-photos/wo-receipts/`; the invoice PDF package
+  gains a B&W expense page + captioned receipt pages. WO top reordered
+  (status + type above client), two-bubble food row.
+- **WO Complete flips to Reopen once completed** (confirm-guarded; restores
+  OPEN and pulls the WO back out of needs_invoice — never a sent invoice).
+  Reverses the Aug 11 Re-open removal after an accidental Complete had no
+  in-app undo.
+- **Red "Balance due" is COD-only** — the chip and totals line render plain
+  for Billing sessions; red means collect at the desk.
+- **WO client search "+ New client" row** creates + attaches a profile for
+  unknown names (COD person / Billing label) — no more blank-WO dead end.
+  The Add Client modal and the WO client card gained an Artist field for COD
+  too (save path already carried artist).
+- **Shift notes v3:** type, submit, done — no opener/closer toggle (the
+  timestamp tells the story); posts live only in the chronological log,
+  always editable by their author.
+- Clients tab carved to match the lead tracker; Calendar's "+ New Booking"
+  button removed (empty grid cells and Start Booking are the create paths).
+
+**Migrations (all run by Eli, Aug 24):** `20260824120000_myday_note_entries`,
+`20260824130000_myday_note_posts`, `20260824140000_stock_sections`,
+`20260824150000_stock_checks`, `20260824160000_bagel_flavors`,
+`20260824170000_stock_regroup`, `20260824180000_wo_expenses`.
+
+**WATCH-OUT #1 — `stock_checks` vs `stock_items` is deliberate duplication.**
+Checks are history; `stock_items.qty/low/notes` is the current-state mirror
+that dailyOps surfaces read. Don't "normalize" it away.
+
+**WATCH-OUT #2 — Paramount stock rows were WIPED and reseeded** by
+`20260824140000` — quantities typed against the old placeholder list are
+gone on purpose (they never matched the paper).
+
+**WATCH-OUT #3 — stock qty (and `stock_checks.qty`) is TEXT.** Don't parse it
+back to a number for display or comparisons; `parseInt` is only used for the
+legacy `stock_items.qty` integer mirror.
+
+**Files:** `app/runner/[studio]/stock/page.tsx` (rebuilt), `lib/draft.ts`
+(new), `app/runner/[studio]/petty-cash/page.tsx`,
+`app/runner/[studio]/mics/page.tsx`, `app/runner/[studio]/checklist/[type]/page.tsx`,
+`components/calendar/WorkOrderPopup.tsx`, `lib/woPdf.ts`,
+`app/runner/[studio]/wo/[id]/page.tsx`, `app/(main)/crm` (Clients tab carve).
+
+---
+
 ## v1.16.2 — iPhone icon: Vercel Bot Protection was challenging iOS's icon fetcher — Aug 22, 2026
 
 **The new ribbon icon showed as a letter-tile "P" on iPhone Add-to-Home-Screen
