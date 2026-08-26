@@ -547,14 +547,24 @@ export async function setDutyCaptured(
 
 // ─── Queues (computed — §3) ──────────────────────────────────────────────────
 
-// "Sessions missing work orders" (fetchNeedsWoQueue / NeedsWoItem) was REMOVED
-// 2026-08-26 (Eli: "we should never have a missing-WO flag anywhere since it's
-// impossible"). A native session cannot lack a WO — creation is atomic with
-// booking-save — so the queue could only ever show noise: imported WordPress
-// history (131 rows on import day) or a transient auto-create failure, which
-// already surfaces as the save-time red banner and in Admin → Errors. Do not
-// rebuild this queue; if auto-create reliability ever needs monitoring, do it
-// in the error system, not as a staff-facing count.
+// "Sessions missing work orders" is a FAILURE ALARM, not a work queue
+// (re-scoped 2026-08-26). A native session cannot lack a WO — creation is
+// atomic with booking-save — so on a healthy day this reads zero and renders
+// nothing. Non-zero means an auto-create actually failed (the save-time red
+// banner was dismissed or missed) and someone should open that session to
+// retry. Imported WordPress history is excluded entirely, past AND future:
+// past imported rows never get a WO by design, upcoming ones get theirs on
+// first open (promote-on-touch), and neither is an anomaly. (The 30-day
+// lookback pulled 131 history rows into this count on import day.)
+
+export type NeedsWoItem = {
+  bookingId: string
+  date: string
+  location: string
+  studio: string
+  client: string
+  artist: string | null
+}
 
 export type BalanceItem = {
   workOrderId: string
@@ -684,6 +694,58 @@ function stripCurrencyish(v: unknown): number {
   if (v === null || v === undefined) return 0
   const n = parseFloat(String(v).replace(/[$,]/g, ''))
   return isNaN(n) ? 0 : n
+}
+
+/**
+ * The missing-WO failure alarm (see the Queues section note above). Uses the
+ * SAME gate as WO creation (bookingShouldHaveWorkOrder) rather than a
+ * hand-written status filter, so it can never disagree with what the app
+ * actually creates — that filtering happens client-side for exactly that
+ * reason: the gate is a TS function, and duplicating its status list into a
+ * .in() here is how the two would drift.
+ */
+export async function fetchNeedsWoQueue(opts?: {
+  fromDate?: string
+  toDate?: string
+}): Promise<NeedsWoItem[]> {
+  const today = getLocalToday()
+  const from = opts?.fromDate ?? shiftDate(today, -30)
+  const to = opts?.toDate ?? shiftDate(today, 14)
+
+  const { data: bookings, error } = await supabase
+    .from('bookings')
+    .select('id, status, start_date, location, studio, client_name, label, artist, work_order_id, imported_at')
+    .gte('start_date', from)
+    .lte('start_date', to)
+    .order('start_date')
+  if (!dbResult('Loading sessions needing work orders', error)) return []
+
+  const candidates = (bookings ?? [])
+    .filter(b => !(b as any).imported_at)
+    .filter(b => bookingShouldHaveWorkOrder(b as any))
+  if (candidates.length === 0) return []
+
+  // bookings.work_order_id is the fast path, but it is written by the WO on save
+  // and can lag a WO created by another route — so confirm against work_orders
+  // rather than trusting the denormalised column alone.
+  const { data: wos, error: woErr } = await supabase
+    .from('work_orders')
+    .select('booking_id')
+    .in('booking_id', candidates.map(b => b.id))
+  if (!dbResult('Checking existing work orders', woErr)) return []
+
+  const haveWo = new Set((wos ?? []).map(w => w.booking_id))
+
+  return candidates
+    .filter(b => !haveWo.has(b.id))
+    .map(b => ({
+      bookingId: b.id,
+      date: b.start_date,
+      location: b.location ?? '',
+      studio: b.studio ?? '',
+      client: b.label || b.client_name || 'Unknown',
+      artist: b.artist ?? null,
+    }))
 }
 
 /**
@@ -1144,13 +1206,19 @@ export function composeBriefing(input: BriefingInput): Briefing {
     }
   }
 
-  // ── AMBER — queue pressure ──
+  // ── RED — missing WO is a failure alarm, not queue pressure (2026-08-26).
+  // A native session cannot lack a WO, so any count here means an auto-create
+  // failed and the session needs opening to retry. Imported history is
+  // already excluded at the fetch.
   if (needsWo.length > 0) {
     bullets.push({
-      color: C_WARM,
-      text: `${needsWo.length} session${needsWo.length === 1 ? '' : 's'} missing work orders`,
+      color: C_HOT,
+      alert: true,
+      text: `${needsWo.length} session${needsWo.length === 1 ? '' : 's'} missing a work order — auto-create failed, open ${needsWo.length === 1 ? 'it' : 'each one'} to retry`,
     })
   }
+
+  // ── AMBER — queue pressure ──
   if (balances.length > 0) {
     const sum = balances.reduce((s, b) => s + b.balance, 0)
     bullets.push({
