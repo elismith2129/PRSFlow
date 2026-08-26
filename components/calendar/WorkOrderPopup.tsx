@@ -2572,7 +2572,9 @@ export function WorkOrderPopup({
   // cardFeeOfCharged so the runner types exactly what the terminal charged and
   // the split is exact. "Card Total" under Balance Due is the number staff
   // reads to the terminal — balance × 1.03 — so nobody does math at the desk.
-  const isCodWo = wo.payment_status === 'COD'
+  // wo is still null on the first render (before initWO resolves) — this block
+  // sits ABOVE the loading/early returns, so it must never dereference wo bare.
+  const isCodWo = wo?.payment_status === 'COD'
   const cardTotalDue = isCodWo && balanceDue > 0 ? cardTotalForBase(balanceDue) : 0
 
   /** Re-derive a payment row's fee from its type + amount. Card + COD → 3%
