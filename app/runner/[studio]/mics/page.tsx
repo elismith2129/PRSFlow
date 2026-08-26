@@ -1,9 +1,23 @@
 'use client'
-// SOFT SKIN PORT, 2026-08-14 (one-pass runner redesign). All logic — loads,
-// dirtyRef realtime guard, status/room/qty state, both save paths, the four
-// submit upserts — is UNTOUCHED. Old skin retired (legacy tokens, 1px borders,
-// Syne). Status colour only (§5): Here = booked green, Room = cold blue,
-// Missing = hot red; active state is a FILLED pill, not a tinted border.
+// THE SHEET, 2026-08-25 (Option A from docs/design-refs/mic-inventory-options.html,
+// Eli's pick after the Aug 24 runner test pass). The paper form's advantage —
+// a zoomed-out birdseye — digitized:
+//   · Per-studio tabs (home studio first, then ARS/ERS/TRK/Floating/Odds) —
+//     the old home/"other studio mics" lump is gone; check-ins still write
+//     under THIS studio's key, tabs are navigation only.
+//   · Birdseye GRID of compact cells (auto-fill columns — ~2 on a phone, 4+
+//     on the iPad the runners actually use). TAP = HERE (the 95% case);
+//     tapping a marked cell opens a Room / Missing / Clear popover.
+//   · Pinned chrome: tabs + search + missing-streak alert live in the sticky
+//     header (Isaac's always-visible search).
+//   · Per-tab progress counts ("62/86") so "did I miss one?" is a glance.
+//   · LAST-NIGHT REFERENCE per cell — display only, NEVER pre-filled: eyes on
+//     every mic every night is a business rule (pre-filling masks theft).
+//   · Jump-to-top bug fixed: v1 defined row components INSIDE the page
+//     component, so every tap made new component types and React rebuilt the
+//     whole subtree. All rendering is now inline JSX / hoisted constants.
+// Unchanged from the previous page: the four save/submit upserts, lib/draft
+// persistence, the dirtyRef realtime guard, profile-derived initials.
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
@@ -12,7 +26,6 @@ import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { draftKey, readDraft, writeDraft, clearDraft } from '@/lib/draft'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { profileInitials } from '@/lib/format'
-
 
 const STUDIO_META: Record<string, { label: string }> = {
   paramount: { label: 'Paramount' },
@@ -28,6 +41,11 @@ const STUDIO_ROOMS: Record<string, string[]> = {
   track:     ['Studio North', 'Studio South'],
 }
 
+const STUDIO_SHORT: Record<string, string> = {
+  paramount: 'PRS', ameraycan: 'ARS', encore: 'ERS', track: 'TRK',
+}
+const STUDIO_KEYS = ['paramount', 'ameraycan', 'encore', 'track']
+
 type Mic = {
   id: string
   name: string
@@ -41,6 +59,12 @@ type CheckinState = {
   room: string
 }
 
+// Latest PRIOR checkin (any studio, before today) — the display-only reference.
+type Prior = { status: 'here' | 'room' | 'missing'; room: string | null; date: string; missingSince?: string }
+
+// "2026-08-24" → "8/24"
+const fmtD = (iso: string) => `${parseInt(iso.slice(5, 7))}/${parseInt(iso.slice(8, 10))}`
+
 export default function MicsPage() {
   const router = useRouter()
   const { studio } = useParams<{ studio: string }>()
@@ -52,13 +76,15 @@ export default function MicsPage() {
   const [loading, setLoading]       = useState(true)
   const [checkins, setCheckins]     = useState<Record<string, CheckinState>>({})
   const [quantities, setQuantities] = useState<Record<string, number>>({})
+  const [prior, setPrior]           = useState<Record<string, Prior>>({})
   const [initials, setInitials]     = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showInitialsHint, setShowInitialsHint] = useState(false)
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    home: true, other: false, floating: false, odds: false,
-  })
-  const [roomPickerOpen, setRoomPickerOpen] = useState<Record<string, boolean>>({})
+  const [tab, setTab]               = useState<string>(studio)
+  const [query, setQuery]           = useState('')
+  // The one open Room/Missing popover: which mic + fixed-position coords
+  // (measured from the tapped cell so it can never be clipped by the grid).
+  const [pop, setPop]               = useState<{ micId: string; left: number; top: number } | null>(null)
   // True once the runner edits anything; blocks the realtime refetch so a live update
   // never clobbers unsaved status/room/qty. Reset to false whenever we load fresh data.
   const dirtyRef = useRef(false)
@@ -82,10 +108,25 @@ export default function MicsPage() {
       .order('sort_order')
     setMics(data ?? [])
 
-    const [{ data: savedCheckins }, { data: savedQtys }] = await Promise.all([
+    const dAgo = (n: number) => {
+      const d = new Date(today + 'T12:00:00'); d.setDate(d.getDate() - n)
+      return d.toISOString().slice(0, 10)
+    }
+    const [{ data: savedCheckins }, { data: savedQtys }, { data: recent }, { data: missRows }] = await Promise.all([
       supabase.from('mic_checkins').select('*').eq('studio', studio).eq('date', today),
       supabase.from('mic_inventory_quantities').select('*').eq('studio', studio).eq('date', today),
+      // Last-night reference: latest prior checkin per mic, ANY studio. A
+      // 4-day window keeps this well under PostgREST's 1,000-row cap
+      // (~270 checkin rows land per night across all studios).
+      supabase.from('mic_checkins').select('mic_id, date, status, room')
+        .lt('date', today).gte('date', dAgo(4))
+        .order('date', { ascending: false }).limit(1000),
+      // Missing streaks reach further back — missing rows are few.
+      supabase.from('mic_checkins').select('mic_id, date, status')
+        .eq('status', 'missing').lt('date', today).gte('date', dAgo(21))
+        .order('date', { ascending: false }).limit(1000),
     ])
+
     const restoredCheckins: Record<string, CheckinState> = {}
     for (const c of savedCheckins ?? []) {
       restoredCheckins[c.mic_id] = { status: c.status, room: c.room ?? '' }
@@ -94,6 +135,24 @@ export default function MicsPage() {
     for (const q of savedQtys ?? []) {
       restoredQtys[q.mic_id] = q.quantity
     }
+
+    // Reduce the reference window to latest-per-mic; a mic whose latest prior
+    // status is missing gets its streak start from the missing-rows query.
+    const pr: Record<string, Prior> = {}
+    for (const c of recent ?? []) {
+      if (pr[c.mic_id]) continue
+      pr[c.mic_id] = { status: c.status, room: c.room ?? null, date: c.date }
+    }
+    for (const [id, p] of Object.entries(pr)) {
+      if (p.status !== 'missing') continue
+      let since = p.date
+      for (const m of (missRows ?? []).filter(r => r.mic_id === id)) {
+        if (m.date <= since) since = m.date
+        else break
+      }
+      p.missingSince = since
+    }
+    setPrior(pr)
     dirtyRef.current = false
 
     // Unsaved draft from a previous visit (lib/draft): the runner's un-saved
@@ -134,23 +193,35 @@ export default function MicsPage() {
     return () => { supabase.removeChannel(channel) }
   }, [studio, load])
 
-  function toggleSection(key: string) {
-    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }))
+  // Popover closes on any scroll or outside tap — it's fixed-position, so it
+  // would otherwise detach from its cell.
+  useEffect(() => {
+    if (!pop) return
+    const close = () => setPop(null)
+    document.addEventListener('click', close)
+    window.addEventListener('scroll', close, true)
+    return () => {
+      document.removeEventListener('click', close)
+      window.removeEventListener('scroll', close, true)
+    }
+  }, [pop])
+
+  function mark(micId: string, status: CheckinState['status'], room = '') {
+    dirtyRef.current = true
+    setCheckins(prev => ({ ...prev, [micId]: { status, room } }))
   }
 
-  function setStatus(micId: string, status: CheckinState['status']) {
-    dirtyRef.current = true
-    setCheckins(prev => {
-      const cur = prev[micId]
-      if (cur?.status === status) return { ...prev, [micId]: { status: 'not_checked', room: '' } }
-      return { ...prev, [micId]: { status, room: cur?.room ?? '' } }
+  function onCellTap(mic: Mic, e: React.MouseEvent<HTMLButtonElement>) {
+    e.stopPropagation()
+    if (pop?.micId === mic.id) { setPop(null); return }
+    const st = checkins[mic.id]?.status ?? 'not_checked'
+    if (st === 'not_checked') { mark(mic.id, 'here'); setPop(null); return }
+    const r = e.currentTarget.getBoundingClientRect()
+    setPop({
+      micId: mic.id,
+      left: Math.min(Math.max(8, r.left), window.innerWidth - 244),
+      top: r.bottom + 4,
     })
-  }
-
-  function setRoom(micId: string, room: string) {
-    dirtyRef.current = true
-    setCheckins(prev => ({ ...prev, [micId]: { status: 'room', room } }))
-    setRoomPickerOpen(prev => ({ ...prev, [micId]: false }))
   }
 
   function adjustQty(micId: string, delta: number) {
@@ -221,138 +292,44 @@ export default function MicsPage() {
     )
   }
 
-  const homeMics  = mics.filter(m => m.home_studio === studio && m.category === 'mic')
-  const otherMics = mics.filter(m => m.home_studio !== studio && m.home_studio !== 'floating' && m.category === 'mic')
-  const floatGear = mics.filter(m => m.category === 'floating_gear')
-  const oddsEnds  = mics.filter(m => m.category === 'odds_ends')
-
-  // A section: soft card, header always visible, rows revealed when open.
-  const sectionCard: React.CSSProperties = {
-    background: 'var(--c-srf, var(--c-bg))',
-    boxShadow: 'var(--c-softsh)',
-    borderRadius: 16,
-    overflow: 'hidden',
-  }
-
-  function SectionHeader({ sectionKey, label, count }: { sectionKey: string; label: string; count: number }) {
-    const open = openSections[sectionKey]
-    return (
-      <button
-        onClick={() => toggleSection(sectionKey)}
-        style={{
-          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: 'transparent', border: 'none', font: 'inherit', color: 'var(--c-fg)',
-          padding: '13px 14px', cursor: 'pointer', minHeight: 48,
-          WebkitTapHighlightColor: 'transparent',
-        }}
-      >
-        <span style={{ fontSize: 13, fontWeight: 800 }}>{label}</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, opacity: 0.45 }}>{count}</span>
-          <span style={{ fontSize: 11, opacity: 0.45, display: 'inline-block', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
-        </div>
-      </button>
-    )
-  }
-
-  // Status pill: filled with its status colour when active, quiet wash when not.
-  function statusPill(on: boolean, color: string, ink: string): React.CSSProperties {
-    return {
-      padding: '6px 10px', minHeight: 32, borderRadius: 99, border: 'none', font: 'inherit',
-      background: on ? color : 'var(--c-wash)',
-      color: on ? ink : 'var(--c-fg)',
-      opacity: on ? 1 : 0.6,
-      fontSize: 10, fontWeight: 800, letterSpacing: '0.03em',
-      cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-    }
-  }
-
-  function MicRow({ mic, first }: { mic: Mic; first: boolean }) {
-    const state     = checkins[mic.id] ?? { status: 'not_checked', room: '' }
-    const isHere    = state.status === 'here'
-    const isRoom    = state.status === 'room'
-    const isMissing = state.status === 'missing'
-    const pickerOpen = isRoom && !!roomPickerOpen[mic.id]
-
-    return (
-      <div style={{ boxShadow: first ? undefined : '0 -1px 0 var(--c-wash)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', gap: 8 }}>
-          <span style={{ fontSize: 12.5, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {mic.name}
-          </span>
-          <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-            <button onClick={() => setStatus(mic.id, 'here')} style={statusPill(isHere, 'var(--c-st-booked)', 'var(--c-chip-ink)')}>
-              HERE
-            </button>
-            <button onClick={() => {
-              if (!isRoom) {
-                setStatus(mic.id, 'room')
-                setRoomPickerOpen(prev => ({ ...prev, [mic.id]: true }))
-              } else {
-                setRoomPickerOpen(prev => ({ ...prev, [mic.id]: !prev[mic.id] }))
-              }
-            }} style={statusPill(isRoom, 'var(--c-st-cold)', 'var(--c-chip-ink)')}>
-              {isRoom && state.room ? state.room.replace('Studio ', '') + ' ▾' : 'ROOM ▾'}
-            </button>
-            <button onClick={() => setStatus(mic.id, 'missing')} style={statusPill(isMissing, 'var(--c-st-hot)', 'var(--c-hot-text)')}>
-              MISS
-            </button>
-          </div>
-        </div>
-        {pickerOpen && (
-          <div style={{ padding: '0 14px 10px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 10, opacity: 0.45 }}>Room:</span>
-            {rooms.map(r => (
-              <button key={r} onClick={() => setRoom(mic.id, r)}
-                style={{
-                  padding: '5px 10px', minHeight: 30, borderRadius: 99, border: 'none', font: 'inherit',
-                  background: state.room === r ? 'var(--c-st-cold)' : 'var(--c-wash)',
-                  color: state.room === r ? 'var(--c-chip-ink)' : 'var(--c-fg)',
-                  opacity: state.room === r ? 1 : 0.65,
-                  fontSize: 10.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
-                  WebkitTapHighlightColor: 'transparent',
-                }}>
-                {r}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  function OddsRow({ mic, first }: { mic: Mic; first: boolean }) {
-    const qty = quantities[mic.id] ?? 0
-    return (
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '8px 14px', gap: 8,
-        boxShadow: first ? undefined : '0 -1px 0 var(--c-wash)',
-      }}>
-        <span style={{ fontSize: 12.5, flex: 1 }}>{mic.name}</span>
-        <div style={{ display: 'flex', alignItems: 'center', background: 'var(--c-wash)', borderRadius: 99, overflow: 'hidden', flexShrink: 0 }}>
-          <button onClick={() => adjustQty(mic.id, -1)}
-            style={{ width: 36, height: 34, background: 'transparent', border: 'none', font: 'inherit', color: 'var(--c-fg)', opacity: qty === 0 ? 0.25 : 0.8, fontSize: 17, cursor: qty === 0 ? 'default' : 'pointer', lineHeight: 1 }}>
-            −
-          </button>
-          <span className="c-mono" style={{ minWidth: 26, textAlign: 'center', fontSize: 13, fontWeight: 700, opacity: qty > 0 ? 1 : 0.45 }}>
-            {qty}
-          </span>
-          <button onClick={() => adjustQty(mic.id, 1)}
-            style={{ width: 36, height: 34, background: 'transparent', border: 'none', font: 'inherit', color: 'var(--c-fg)', opacity: 0.8, fontSize: 17, cursor: 'pointer', lineHeight: 1 }}>
-            +
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  const SECTIONS: { key: string; label: string; mics: Mic[]; odds?: boolean; empty?: string }[] = [
-    { key: 'home', label: `${meta.label} mics`, mics: homeMics },
-    { key: 'other', label: 'Other studio mics', mics: otherMics, empty: 'No stray mics to report.' },
-    { key: 'floating', label: 'Floating gear', mics: floatGear },
-    { key: 'odds', label: 'Odds & ends', mics: oddsEnds, odds: true },
+  // ── Tabs: home studio first, then the rest, then Floating / Odds ──────────
+  const tabDefs: { key: string; label: string; kind: 'mic' | 'qty' }[] = [
+    ...[studio, ...STUDIO_KEYS.filter(s => s !== studio)].map(s => ({
+      key: s, label: STUDIO_SHORT[s] ?? s, kind: 'mic' as const,
+    })),
+    { key: 'floating', label: 'Floating', kind: 'mic' },
+    { key: 'odds', label: 'Odds', kind: 'qty' },
   ]
+  const listFor = (key: string): Mic[] =>
+    key === 'floating' ? mics.filter(m => m.category === 'floating_gear')
+    : key === 'odds'   ? mics.filter(m => m.category === 'odds_ends')
+    : mics.filter(m => m.home_studio === key && m.category === 'mic')
+  const doneCount = (key: string) => key === 'odds'
+    ? listFor(key).filter(m => (quantities[m.id] ?? 0) > 0).length
+    : listFor(key).filter(m => (checkins[m.id]?.status ?? 'not_checked') !== 'not_checked').length
+
+  const activeDef = tabDefs.find(t => t.key === tab) ?? tabDefs[0]
+  const q = query.trim().toLowerCase()
+  const activeList = listFor(activeDef.key).filter(m => !q || m.name.toLowerCase().includes(q))
+
+  // Missing-streak alert: every mic whose latest prior checkin is missing.
+  const missingMics = mics.filter(m => prior[m.id]?.status === 'missing')
+
+  const refLine = (m: Mic): { text: string; bad: boolean } | null => {
+    const p = prior[m.id]
+    if (!p) return null
+    if (p.status === 'missing') return { text: `missing since ${fmtD(p.missingSince ?? p.date)}`, bad: true }
+    if (p.status === 'room') return { text: `last: ${(p.room ?? '').replace('Studio ', 'Rm ')} · ${fmtD(p.date)}`, bad: false }
+    return { text: `last: HERE · ${fmtD(p.date)}`, bad: false }
+  }
+
+  const cellColors = (st: CheckinState['status']): React.CSSProperties =>
+    st === 'here'    ? { background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)' }
+    : st === 'room'    ? { background: 'var(--c-st-cold)', color: 'var(--c-chip-ink)' }
+    : st === 'missing' ? { background: 'var(--c-st-hot)', color: 'var(--c-hot-text)' }
+    : { background: 'var(--c-wash)', color: 'var(--c-fg)' }
+
+  const popMic = pop ? mics.find(m => m.id === pop.micId) : null
 
   return (
     <div style={{
@@ -360,46 +337,202 @@ export default function MicsPage() {
       background: 'var(--c-bg)', color: 'var(--c-fg)', paddingBottom: 130,
     }}>
 
-      {/* Header */}
+      {/* ── Sticky chrome: title + tabs + search + alert ──────────────────── */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 11,
         padding: '14px 16px 10px', position: 'sticky', top: 0, zIndex: 10,
         background: 'var(--c-bg)',
       }}>
-        <button
-          onClick={() => router.push(`/runner/${studio}`)}
-          aria-label="Back"
-          className="c-control c-raised"
-          style={{
-            width: 38, height: 38, borderRadius: 99, flexShrink: 0,
-            background: 'var(--c-wash)', color: 'var(--c-fg)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 16, cursor: 'pointer',
-          }}
-        >←</button>
-        <div>
-          <div className="c-arch" style={{ fontSize: 18, letterSpacing: '-0.02em', lineHeight: 1.15 }}>Mic inventory</div>
-          <div style={{ fontSize: 11.5, opacity: 0.5 }}>{meta.label} · {today}</div>
-        </div>
-      </div>
-
-      {/* Sections */}
-      <div style={{ padding: '4px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {SECTIONS.map(sec => (
-          <div key={sec.key} style={sectionCard}>
-            <SectionHeader sectionKey={sec.key} label={sec.label} count={sec.mics.length} />
-            {openSections[sec.key] && (
-              sec.mics.length === 0
-                ? <div style={{ padding: '4px 14px 16px', fontSize: 12.5, opacity: 0.5 }}>{sec.empty ?? 'Nothing here.'}</div>
-                : sec.mics.map((m, i) => sec.odds
-                    ? <OddsRow key={m.id} mic={m} first={i === 0} />
-                    : <MicRow key={m.id} mic={m} first={i === 0} />)
-            )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 10 }}>
+          <button
+            onClick={() => router.push(`/runner/${studio}`)}
+            aria-label="Back"
+            className="c-control c-raised"
+            style={{
+              width: 38, height: 38, borderRadius: 99, flexShrink: 0,
+              background: 'var(--c-wash)', color: 'var(--c-fg)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 16, cursor: 'pointer',
+            }}
+          >←</button>
+          <div>
+            <div className="c-arch" style={{ fontSize: 18, letterSpacing: '-0.02em', lineHeight: 1.15 }}>Mic inventory</div>
+            <div style={{ fontSize: 11.5, opacity: 0.5 }}>{meta.label} · {today}</div>
           </div>
-        ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
+          {tabDefs.map(t => {
+            const on = t.key === tab
+            return (
+              <button
+                key={t.key}
+                onClick={() => { setTab(t.key); setPop(null) }}
+                style={{
+                  border: 'none', font: 'inherit', cursor: 'pointer',
+                  background: on ? 'var(--c-wash2)' : 'var(--c-wash)', color: 'var(--c-fg)',
+                  borderRadius: 99, padding: '7px 12px', minHeight: 32,
+                  fontSize: 10.5, fontWeight: 800, letterSpacing: '0.03em',
+                  opacity: on ? 1 : 0.6,
+                  boxShadow: on ? 'inset 0 0 0 1.5px rgba(217,214,205,0.25)' : undefined,
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                {t.label}
+                <span className="c-mono" style={{ fontWeight: 400, opacity: 0.6, marginLeft: 5, fontSize: 9.5 }}>
+                  {doneCount(t.key)}/{listFor(t.key).length}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        <input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search mics…"
+          style={{
+            width: '100%', boxSizing: 'border-box', background: 'var(--c-wash)',
+            border: 'none', borderRadius: 10, padding: '9px 12px',
+            color: 'var(--c-fg)', font: 'inherit', fontSize: 12.5, outline: 'none',
+          }}
+        />
+
+        {missingMics.length > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, marginTop: 8,
+            background: 'color-mix(in srgb, var(--c-st-hot) 13%, transparent)',
+            borderRadius: 10, padding: '7px 11px', fontSize: 10.5, fontWeight: 600,
+            color: 'var(--c-st-hot)',
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: 99, background: 'var(--c-st-hot)', flexShrink: 0 }} />
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {missingMics.slice(0, 2).map(m => `${m.name} — since ${fmtD(prior[m.id].missingSince ?? prior[m.id].date)}`).join(' · ')}
+              {missingMics.length > 2 ? ` · +${missingMics.length - 2} more` : ''}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Fixed footer */}
+      {/* ── The sheet ─────────────────────────────────────────────────────── */}
+      <div style={{ padding: '2px 14px' }}>
+        {activeDef.kind === 'qty' ? (
+          activeList.map(m => {
+            const qty = quantities[m.id] ?? 0
+            return (
+              <div key={m.id} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '8px 12px', gap: 8, background: 'var(--c-wash)', borderRadius: 9, marginBottom: 3,
+              }}>
+                <span style={{ fontSize: 12.5, fontWeight: 600, flex: 1, minWidth: 0 }}>{m.name}</span>
+                <div style={{ display: 'flex', alignItems: 'center', background: 'var(--c-wash2)', borderRadius: 99, overflow: 'hidden', flexShrink: 0 }}>
+                  <button onClick={() => adjustQty(m.id, -1)}
+                    style={{ width: 36, height: 34, background: 'transparent', border: 'none', font: 'inherit', color: 'var(--c-fg)', opacity: qty === 0 ? 0.25 : 0.8, fontSize: 17, cursor: qty === 0 ? 'default' : 'pointer', lineHeight: 1 }}>
+                    −
+                  </button>
+                  <span className="c-mono" style={{ minWidth: 26, textAlign: 'center', fontSize: 13, fontWeight: 700, opacity: qty > 0 ? 1 : 0.45 }}>
+                    {qty}
+                  </span>
+                  <button onClick={() => adjustQty(m.id, 1)}
+                    style={{ width: 36, height: 34, background: 'transparent', border: 'none', font: 'inherit', color: 'var(--c-fg)', opacity: 0.8, fontSize: 17, cursor: 'pointer', lineHeight: 1 }}>
+                    +
+                  </button>
+                </div>
+              </div>
+            )
+          })
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 5 }}>
+            {activeList.map(m => {
+              const st = checkins[m.id]?.status ?? 'not_checked'
+              const room = checkins[m.id]?.room ?? ''
+              const ref = refLine(m)
+              return (
+                <button
+                  key={m.id}
+                  onClick={e => onCellTap(m, e)}
+                  style={{
+                    position: 'relative', border: 'none', font: 'inherit', textAlign: 'left',
+                    cursor: 'pointer', borderRadius: 9, padding: '7px 9px 6px', minHeight: 46,
+                    WebkitTapHighlightColor: 'transparent',
+                    ...cellColors(st),
+                  }}
+                >
+                  <span style={{ display: 'block', fontSize: 11, fontWeight: 600, lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: st !== 'not_checked' ? 34 : 0 }}>
+                    {m.name}
+                  </span>
+                  {st !== 'not_checked' && (
+                    <span style={{ position: 'absolute', top: 6, right: 8, fontSize: 8, fontWeight: 800, letterSpacing: '0.05em' }}>
+                      {st === 'here' ? 'HERE' : st === 'room' ? room.replace('Studio ', 'RM ').toUpperCase() : 'MISS'}
+                    </span>
+                  )}
+                  <span style={{
+                    display: 'block', fontSize: 8.5, marginTop: 2,
+                    opacity: st !== 'not_checked' ? 0.55 : ref?.bad ? 1 : 0.4,
+                    color: st === 'not_checked' && ref?.bad ? 'var(--c-st-hot)' : undefined,
+                    fontWeight: st === 'not_checked' && ref?.bad ? 700 : 400,
+                  }}>
+                    {ref?.text ?? ' '}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+        {activeList.length === 0 && (
+          <div style={{ padding: '18px 4px', fontSize: 12.5, opacity: 0.5 }}>
+            {q ? 'No mics match.' : 'Nothing here.'}
+          </div>
+        )}
+      </div>
+
+      {/* ── Room / Missing popover (fixed — measured from the tapped cell) ── */}
+      {pop && popMic && (
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            position: 'fixed', left: pop.left, top: pop.top, zIndex: 50, width: 236,
+            background: 'var(--c-srf, var(--c-bg))', borderRadius: 12,
+            boxShadow: 'var(--c-softsh), 0 10px 30px rgba(0,0,0,0.35)',
+            padding: 8, display: 'flex', gap: 5, flexWrap: 'wrap',
+          }}
+        >
+          {rooms.map(r => (
+            <button
+              key={r}
+              onClick={() => { mark(pop.micId, 'room', r); setPop(null) }}
+              style={{
+                border: 'none', font: 'inherit', cursor: 'pointer', borderRadius: 99,
+                padding: '7px 11px', minHeight: 32, fontSize: 10.5, fontWeight: 800,
+                background: 'var(--c-st-cold)', color: 'var(--c-chip-ink)',
+              }}
+            >
+              {r.replace('Studio ', 'Rm ')}
+            </button>
+          ))}
+          <button
+            onClick={() => { mark(pop.micId, 'missing'); setPop(null) }}
+            style={{
+              border: 'none', font: 'inherit', cursor: 'pointer', borderRadius: 99,
+              padding: '7px 11px', minHeight: 32, fontSize: 10.5, fontWeight: 800,
+              background: 'var(--c-st-hot)', color: 'var(--c-hot-text)',
+            }}
+          >
+            MISSING
+          </button>
+          <button
+            onClick={() => { mark(pop.micId, 'not_checked'); setPop(null) }}
+            style={{
+              border: 'none', font: 'inherit', cursor: 'pointer', borderRadius: 99,
+              padding: '7px 11px', minHeight: 32, fontSize: 10.5, fontWeight: 700,
+              background: 'var(--c-wash2)', color: 'var(--c-fg)',
+            }}
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
+      {/* ── Fixed footer ──────────────────────────────────────────────────── */}
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         padding: '12px 14px calc(16px + env(safe-area-inset-bottom))',
