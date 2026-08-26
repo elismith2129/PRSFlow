@@ -475,10 +475,13 @@ export function WorkOrderPopup({
   // viewable, never editable, and it must never grow a work order or invoice
   // number. Imported rows dated today or later stay writable so the existing
   // promote-on-touch path (open → WO created → real session) keeps working.
+  // "Past" means FULLY past: a multi-day import still running today (started
+  // yesterday, ends tomorrow) is a live session that needs promoting, not
+  // history — so the lock keys on end_date, falling back to start_date.
   const importedPast =
     !!(booking as any).imported_at &&
     !!booking.start_date &&
-    booking.start_date < getLocalToday()
+    ((booking.end_date || booking.start_date) < getLocalToday())
   const readOnly = profile?.role === 'tech' || importedPast
   const [wo, setWo] = useState<WO | null>(null)
   const [stRows, setStRows] = useState<StRow[]>([])
