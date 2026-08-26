@@ -154,7 +154,10 @@ export function DailyOpsLogSection() {
     const loc = activeStudio
     const abbr = meta.abbr.toLowerCase()
     const [{ data: bData }, { data: opsData }, { data: clData }] = await Promise.all([
-      supabase.from('bookings').select('*').lte('start_date', date).gte('end_date', date).eq('status', 'confirmed'),
+      // .is('imported_at', null): imported WordPress history never had daily
+      // ops run against it — showing those sessions here would render WO-less
+      // anomalies on every pre-launch date (migration 20260826150000).
+      supabase.from('bookings').select('*').lte('start_date', date).gte('end_date', date).eq('status', 'confirmed').is('imported_at', null),
       supabase.from('daily_ops_submissions').select('*').eq('studio', activeStudio).eq('date', date),
       supabase.from('checklists').select('*').eq('studio', activeStudio).eq('date', date),
     ])

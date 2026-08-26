@@ -547,14 +547,14 @@ export async function setDutyCaptured(
 
 // ─── Queues (computed — §3) ──────────────────────────────────────────────────
 
-export type NeedsWoItem = {
-  bookingId: string
-  date: string
-  location: string
-  studio: string
-  client: string
-  artist: string | null
-}
+// "Sessions missing work orders" (fetchNeedsWoQueue / NeedsWoItem) was REMOVED
+// 2026-08-26 (Eli: "we should never have a missing-WO flag anywhere since it's
+// impossible"). A native session cannot lack a WO — creation is atomic with
+// booking-save — so the queue could only ever show noise: imported WordPress
+// history (131 rows on import day) or a transient auto-create failure, which
+// already surfaces as the save-time red banner and in Admin → Errors. Do not
+// rebuild this queue; if auto-create reliability ever needs monitoring, do it
+// in the error system, not as a staff-facing count.
 
 export type BalanceItem = {
   workOrderId: string
@@ -687,57 +687,6 @@ function stripCurrencyish(v: unknown): number {
 }
 
 /**
- * Sessions that should have a work order and don't (§3).
- *
- * Uses the SAME gate as WO creation (bookingShouldHaveWorkOrder) rather than a
- * hand-written status filter, so this queue can never disagree with what the app
- * actually creates. Filtering happens client-side for exactly that reason —
- * the gate is a TS function, and duplicating its status list into a .in() here
- * is how the two would drift.
- */
-export async function fetchNeedsWoQueue(opts?: {
-  fromDate?: string
-  toDate?: string
-}): Promise<NeedsWoItem[]> {
-  const today = getLocalToday()
-  const from = opts?.fromDate ?? shiftDate(today, -30)
-  const to = opts?.toDate ?? shiftDate(today, 14)
-
-  const { data: bookings, error } = await supabase
-    .from('bookings')
-    .select('id, status, start_date, location, studio, client_name, label, artist, work_order_id')
-    .gte('start_date', from)
-    .lte('start_date', to)
-    .order('start_date')
-  if (!dbResult('Loading sessions needing work orders', error)) return []
-
-  const candidates = (bookings ?? []).filter(b => bookingShouldHaveWorkOrder(b as any))
-  if (candidates.length === 0) return []
-
-  // bookings.work_order_id is the fast path, but it is written by the WO on save
-  // and can lag a WO created by another route — so confirm against work_orders
-  // rather than trusting the denormalised column alone.
-  const { data: wos, error: woErr } = await supabase
-    .from('work_orders')
-    .select('booking_id')
-    .in('booking_id', candidates.map(b => b.id))
-  if (!dbResult('Checking existing work orders', woErr)) return []
-
-  const haveWo = new Set((wos ?? []).map(w => w.booking_id))
-
-  return candidates
-    .filter(b => !haveWo.has(b.id))
-    .map(b => ({
-      bookingId: b.id,
-      date: b.start_date,
-      location: b.location ?? '',
-      studio: b.studio ?? '',
-      client: b.label || b.client_name || 'Unknown',
-      artist: b.artist ?? null,
-    }))
-}
-
-/**
  * Work orders where the money owed exceeds the money taken (§3).
  *
  * Totals come from lib/woTotals — the same function the WO screen displays — so
@@ -817,14 +766,19 @@ async function fetchBookingQueue(
   statuses: string[],
   window: { from: string; to: string },
 ): Promise<QueueBookingItem[]> {
-  const { data: bookings, error } = await supabase
+  const { data: bookingsRaw, error } = await supabase
     .from('bookings')
-    .select('id, status, start_date, location, studio, client_name, label, artist')
+    .select('id, status, start_date, location, studio, client_name, label, artist, imported_at')
     .in('status', statuses)
     .gte('start_date', window.from)
     .lte('start_date', window.to)
     .order('start_date')
   if (!dbResult('Loading My Day queue', error)) return []
+  // Imported WordPress history is excluded entirely (Eli, 2026-08-26): these
+  // sessions were fully handled in the old system — Email/Calendar/QB/Staff
+  // already happened there — so they have no pipeline steps to run, past or
+  // upcoming. They surface on the calendar and promote on first open instead.
+  const bookings = (bookingsRaw ?? []).filter(b => !(b as any).imported_at)
   if (!bookings || bookings.length === 0) return []
 
   const ids = bookings.map(b => b.id)

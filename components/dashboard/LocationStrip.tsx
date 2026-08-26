@@ -172,7 +172,10 @@ export function LocationStrip() {
   async function fetchDrawerData(loc: typeof LOCATIONS[0]) {
     const [{ data: todayBkgsData }, { data: yestBkgsData }] = await Promise.all([
       supabase.from('bookings').select('*').lte('start_date', today).gte('end_date', today).eq('status', 'confirmed').order('from_time'),
-      supabase.from('bookings').select('*').lte('start_date', yesterday).gte('end_date', yesterday).eq('status', 'confirmed').order('from_time'),
+      // .is('imported_at', null): imported WordPress history (migration
+      // 20260826150000) never enters daily ops — a Yesterday drawer full of
+      // WO-less history rows would read as unapproved work that isn't.
+      supabase.from('bookings').select('*').lte('start_date', yesterday).gte('end_date', yesterday).eq('status', 'confirmed').is('imported_at', null).order('from_time'),
     ])
 
     const locTodayBkgs = (todayBkgsData ?? []).filter(b => matchesLoc(b.location, loc.key, loc.abbr))
