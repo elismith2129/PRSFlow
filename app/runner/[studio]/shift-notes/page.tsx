@@ -31,6 +31,7 @@ import { shiftLogDate } from '@/lib/time'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { draftKey, readDraft, writeDraft, clearDraft } from '@/lib/draft'
+import { RichNoteEditor, RichNoteView, noteIsEmpty } from '@/components/shared/RichNote'
 
 const STUDIO_META: Record<string, { label: string }> = {
   paramount: { label: 'Paramount' },
@@ -71,7 +72,6 @@ export default function ShiftNotesPage() {
   const [others, setOthers] = useState<Doc[]>([])
   const [saveState, setSaveState] = useState<'idle' | 'dirty' | 'saving' | 'saved' | 'error'>('idle')
   const [savedAt, setSavedAt] = useState<string | null>(null)
-  const taRef = useRef<HTMLTextAreaElement>(null)
   // True once the runner types; blocks realtime/server refreshes from
   // clobbering the field mid-edit. Cleared when a save confirms.
   const dirtyRef = useRef(false)
@@ -80,13 +80,6 @@ export default function ShiftNotesPage() {
   const loadedRef = useRef(false)
 
   const authorName = profile ? (profile.initials || profile.display_name || 'Runner') : ''
-
-  const grow = useCallback(() => {
-    const ta = taRef.current
-    if (!ta) return
-    ta.style.height = 'auto'
-    ta.style.height = Math.max(280, ta.scrollHeight) + 'px'
-  }, [])
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -109,8 +102,7 @@ export default function ShiftNotesPage() {
       }
     }
     loadedRef.current = true
-    setTimeout(grow, 0)
-  }, [studio, today, profile?.id, grow])
+  }, [studio, today, profile?.id])
 
   // Profile resolves async — the doc is keyed by author_id, so wait for it.
   useEffect(() => { if (profile) load() }, [profile, load])
@@ -135,7 +127,9 @@ export default function ShiftNotesPage() {
       author_id: profile.id,
       author_name: profile.initials || profile.display_name || 'Runner',
       role: roleRef.current,
-      text: textRef.current,
+      // A focused-but-never-typed note (empty bullet scaffold) stores as ''
+      // so counts and the office view never see phantom empty notes.
+      text: noteIsEmpty(textRef.current) ? '' : textRef.current,
     }
     setSaveState('saving')
     const { error } = await supabase
@@ -178,23 +172,6 @@ export default function ShiftNotesPage() {
   function typed(next: string) {
     dirtyRef.current = true
     setText(next)
-    grow()
-  }
-
-  // Every return key starts a fresh bullet (Eli's ask).
-  function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key !== 'Enter') return
-    e.preventDefault()
-    const ta = e.currentTarget
-    const { selectionStart: s, selectionEnd: eIdx, value } = ta
-    const insert = '\n• '
-    const next = value.slice(0, s) + insert + value.slice(eIdx)
-    typed(next)
-    requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = s + insert.length })
-  }
-
-  function onFocus() {
-    if (text.trim() === '') typed('• ')
   }
 
   function pickRole(r: Role) {
@@ -284,21 +261,14 @@ export default function ShiftNotesPage() {
               )
             })}
           </div>
-          <textarea
-            ref={taRef}
+          <RichNoteEditor
             value={text}
-            onChange={e => typed(e.target.value)}
-            onKeyDown={onKeyDown}
-            onFocus={onFocus}
-            placeholder={'• Everything from your shift goes here — sessions, runs, anything the office should know.\n\nIt saves as you type. Return starts a new bullet.'}
-            style={{
-              width: '100%', boxSizing: 'border-box', minHeight: 280, resize: 'none',
-              background: 'var(--c-wash)', border: 'none', borderRadius: 12,
-              padding: '12px 13px', color: 'var(--c-fg)', font: 'inherit',
-              fontSize: 13.5, lineHeight: 1.65, outline: 'none',
-            }}
+            onChange={typed}
+            minHeight={280}
+            startWithBullets
+            placeholder={'Everything from your shift goes here — sessions, runs, anything the office should know.\n\nIt saves as you type. B for bold, tab to indent a bullet.'}
           />
-          {!role && text.trim() !== '' && (
+          {!role && !noteIsEmpty(text) && (
             <div style={{ fontSize: 10, opacity: 0.5, marginTop: 6 }}>
               Tap Opener / Floater / Closer so the office knows which shift this was.
             </div>
@@ -317,9 +287,7 @@ export default function ShiftNotesPage() {
                   <span style={{ flex: 1 }} />
                   <span style={{ fontSize: 9.5, opacity: 0.4 }}>{fmtClockTime(d.updated_at)}</span>
                 </div>
-                <div style={{ fontSize: 13, lineHeight: 1.65, whiteSpace: 'pre-wrap', overflowWrap: 'break-word' }}>
-                  {d.text}
-                </div>
+                <RichNoteView html={d.text} style={{ fontSize: 13, lineHeight: 1.65 }} />
               </div>
             ))}
           </div>

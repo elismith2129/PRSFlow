@@ -21,6 +21,7 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { dbResult } from '@/lib/db'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { Hint } from '@/components/ui/Hint'
+import { RichNoteView, noteText } from '@/components/shared/RichNote'
 import {
   OPS_STUDIOS, QueueItem, StudioNight, loadNight, markReviewed,
   opsDate, prettyDate, unmarkReviewed,
@@ -322,7 +323,7 @@ export default function DailyOpsPage() {
                       fontSize: 11.5, lineHeight: 1.5, opacity: 0.8,
                       display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                     }}>
-                      {s.entries[0].author_name}: {s.entries[0].text}
+                      {s.entries[0].author_name}: {noteText(s.entries[0].text)}
                     </div>
                   </div>
                 ) : (
@@ -359,7 +360,7 @@ export default function DailyOpsPage() {
                 <div className="c-mono" style={{ fontSize: 10.5, fontWeight: 800, opacity: 0.5, marginBottom: 4 }}>
                   {e.author_name.toUpperCase()}{e.role ? ` · ${e.role.toUpperCase()}` : ''} · {new Date(e.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                 </div>
-                <div style={{ fontSize: 12.5, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{e.text}</div>
+                <RichNoteView html={e.text} style={{ fontSize: 12.5, lineHeight: 1.6 }} />
               </div>
             ))}
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>

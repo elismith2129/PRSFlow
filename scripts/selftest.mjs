@@ -125,7 +125,7 @@ if (lime.n) warns.push(`hardcoded #c8f04e ×${lime.n} (retired accent) in: ${lim
 else oks.push('No retired-accent literals outside the error fallback')
 
 const dsi = countAcross(/dangerouslySetInnerHTML/g)
-if (dsi.n > 2) warns.push(`dangerouslySetInnerHTML ×${dsi.n} (baseline 2: theme pre-paint + login) — review the new one(s): ${dsi.where.join(', ')}`)
+if (dsi.n > 3) warns.push(`dangerouslySetInnerHTML ×${dsi.n} (baseline 3: theme pre-paint, login, RichNote's whitelist-sanitized viewer) — review the new one(s): ${dsi.where.join(', ')}`)
 else oks.push('dangerouslySetInnerHTML at known baseline')
 
 const silentWriters = sources.filter(s =>

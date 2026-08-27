@@ -2314,3 +2314,11 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-st-booked) 55%, transparent); }
   50%      { box-shadow: 0 0 0 7px color-mix(in srgb, var(--c-st-booked) 0%, transparent); }
 }
+
+/* ── RichNote (components/shared/RichNote.tsx, 2026-08-26) — the only rich-
+   text surface: bold, bullets, tab-indent. Tight list spacing so notes read
+   like Apple Notes, not a web page. */
+.c-richnote ul, .c-richnote ol { margin: 3px 0; padding-left: 22px; }
+.c-richnote li { margin: 2px 0; }
+.c-richnote p, .c-richnote div { margin: 0; }
+.c-richnote:focus { outline: none; }

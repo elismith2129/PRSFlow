@@ -31,6 +31,7 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 import { getLocalToday } from '@/lib/time'
 import { formatCurrency } from '@/lib/format'
 import { fmtTaskTime } from '@/lib/tasks'
+import { RichNoteEditor, RichNoteView, noteIsEmpty } from '@/components/shared/RichNote'
 import {
   fetchDuties, fetchEntries, buildDutyViews, progressLabel, backlogScopeLabel,
   completeDuty, uncompleteDuty, setDutyCaptured,
@@ -180,7 +181,7 @@ export default function MyDayPage() {
   // really dictates what it is."
   async function postNotes() {
     if (!profile?.id || posting) return
-    if (!drafts.session.trim() && !drafts.studio.trim()) return
+    if (noteIsEmpty(drafts.session) && noteIsEmpty(drafts.studio)) return
     setPosting(true)
     const ok = editingPost
       ? await updateNotePost({ id: editingPost.id, sessionNotes: drafts.session, studioNotes: drafts.studio })
@@ -471,16 +472,16 @@ function NotePostBlock({ p, tagRole, onEdit, onDelete, isEditing }: {
           <button className="c-x" onClick={onDelete} title="Delete shift notes" style={{ marginLeft: onEdit && !isEditing ? 0 : 'auto', fontSize: 13 }}>×</button>
         )}
       </div>
-      {p.session_notes.trim() !== '' && (
-        <div style={{ marginBottom: p.studio_notes.trim() !== '' ? 8 : 0 }}>
+      {!noteIsEmpty(p.session_notes) && (
+        <div style={{ marginBottom: !noteIsEmpty(p.studio_notes) ? 8 : 0 }}>
           <span className="c-label" style={{ display: 'block', marginBottom: 2 }}>Session notes</span>
-          <div className="c-mdnote-body">{p.session_notes}</div>
+          <RichNoteView className="c-mdnote-body" html={p.session_notes} />
         </div>
       )}
-      {p.studio_notes.trim() !== '' && (
+      {!noteIsEmpty(p.studio_notes) && (
         <div>
           <span className="c-label" style={{ display: 'block', marginBottom: 2 }}>Studio notes</span>
-          <div className="c-mdnote-body">{p.studio_notes}</div>
+          <RichNoteView className="c-mdnote-body" html={p.studio_notes} />
         </div>
       )}
     </div>
@@ -503,7 +504,7 @@ function ShiftNotesPanel({
   onCancelEdit: () => void
   isMobile: boolean
 }) {
-  const empty = drafts.session.trim() === '' && drafts.studio.trim() === ''
+  const empty = noteIsEmpty(drafts.session) && noteIsEmpty(drafts.studio)
   return (
     <div className="c-panel">
       <div className="c-lozenge">
@@ -516,22 +517,20 @@ function ShiftNotesPanel({
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
         <div style={{ minWidth: 0 }}>
           <span className="c-label" style={{ display: 'block', marginBottom: 5 }}>Session notes</span>
-          <textarea
+          <RichNoteEditor
             value={drafts.session}
-            onChange={ev => setDraft('session', ev.target.value)}
+            onChange={html => setDraft('session', html)}
             placeholder="Anything the next shift needs to know…"
-            className="c-mdnotes"
-            style={{ minHeight: 150 }}
+            minHeight={150}
           />
         </div>
         <div style={{ minWidth: 0 }}>
           <span className="c-label" style={{ display: 'block', marginBottom: 5 }}>Studio notes</span>
-          <textarea
+          <RichNoteEditor
             value={drafts.studio}
-            onChange={ev => setDraft('studio', ev.target.value)}
+            onChange={html => setDraft('studio', html)}
             placeholder="Rooms, gear, maintenance…"
-            className="c-mdnotes"
-            style={{ minHeight: 150 }}
+            minHeight={150}
           />
         </div>
       </div>
