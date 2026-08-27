@@ -79,9 +79,13 @@ const COL_ZOOM_MAX = 320
 const COL_ZOOM_DEFAULT = 120  // ≈ the old 2-week feel, which was the default view
 const COL_ZOOM_STEP = 24      // one press of the +/- buttons or [ / ]
 const clampColZoom = (w: number) => Math.min(COL_ZOOM_MAX, Math.max(COL_ZOOM_MIN, Math.round(w)))
-// Mobile has no pinch (the whole page zooms instead), so it keeps fit-to-width
-// with a floor.
-const COL_FLOOR_MOBILE = 76
+// Mobile has no pinch (the whole page zooms instead). The grid used to squeeze
+// a whole week into the phone's width (7 columns ≈ 44px each — unreadable) with
+// discrete ‹›-only navigation. Eli, 2026-08-26: the phone grid should feel like
+// the desktop — readable columns, all rooms, endless sideways scroll — so
+// mobile now uses a FIXED readable column width and the same buffered
+// infinite-scroll window as desktop. ~3.5 day-columns visible on an iPhone.
+const COL_MOBILE_GRID = 104
 // Height of the month rail. The day header sticks BELOW it, so this has to be a
 // constant both can read — a mismatch overlaps the two sticky rows.
 const MONTH_RAIL_H = 22
@@ -770,25 +774,21 @@ function CalendarPageInner() {
   // the viewport at the current column width. WHOLE weeks matters — startDate
   // stays a Sunday, which is what keeps the heavy week ticks landing on real week
   // boundaries and the infinite-scroll shift (±7 days) aligned.
+  // Mobile: fixed readable column width, no zoom control. Desktop: the zoom IS
+  // the column width. Both now share the buffered endless-scroll window — the
+  // old mobile special case (7 squeezed columns, ‹›-only weeks) is gone
+  // (Eli, 2026-08-26).
   const zoomColW = isMobile
-    ? 0 // computed below from viewport; mobile doesn't zoom
+    ? COL_MOBILE_GRID
     : Math.min(COL_ZOOM_MAX, Math.max(COL_ZOOM_MIN, colZoom))
-  const totalDays = isMobile
-    ? 7
-    : Math.max(7, Math.ceil(Math.ceil(Math.max(1, gridW - labelW) / zoomColW) / 7) * 7)
-  // No horizontal-scroll buffer on mobile: the week fits the viewport exactly, so
-  // there's no native horizontal scroll or infinite-scroll shifting to fight with
-  // the touch swipe handler (which is then the sole, discrete week navigator).
-  const bufDays = isMobile ? 0 : BUFFER_WEEKS * 7
+  const totalDays = Math.max(7, Math.ceil(Math.ceil(Math.max(1, gridW - labelW) / zoomColW) / 7) * 7)
+  const bufDays = BUFFER_WEEKS * 7
   const totalRenderDays = totalDays + bufDays * 2
   const gridRenderStart = addDays(startDate, -bufDays)
   const days = Array.from({ length: totalRenderDays }, (_, i) => addDays(gridRenderStart, i))
 
   const usableW = Math.max(gridW - labelW, isMobile ? 200 : 400)
-  // Desktop: the zoom IS the column width. Mobile: fit a week to the viewport.
-  const colW = isMobile
-    ? Math.max(COL_FLOOR_MOBILE, Math.floor(usableW / 7))
-    : zoomColW
+  const colW = zoomColW
   // How many days are actually on screen — used for the header label, so it
   // describes what you're looking at rather than the rendered window.
   const visibleDays = Math.max(1, Math.round(usableW / colW))
