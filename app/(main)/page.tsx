@@ -1049,11 +1049,7 @@ export default function DashboardPage() {
                     className={`c-ev c-control c-raised-chip ${sessionFillClass(booking.status)}`}
                     style={{
                       height: isMobile ? undefined : ROOM_CARD_H,
-                      // 84 → 100 on the phone (Eli, 2026-08-26): at 84 the body
-                      // height fell below CARD_FULL_H, so mobile cards dropped
-                      // the footer (staff initials + invoice) — a big block
-                      // showing less. 100 clears the full-card tier.
-                      minHeight: isMobile ? 100 : undefined,
+                      minHeight: isMobile ? 84 : undefined,
                       cursor: 'pointer', overflow: 'hidden', padding: 0,
                       display: 'flex', flexDirection: 'column',
                     }}
@@ -1062,15 +1058,16 @@ export default function DashboardPage() {
                     <div style={{ flex: 1, minHeight: 0 }}>
                       <SessionCardBody
                         booking={booking}
-                        height={(isMobile ? 100 : ROOM_CARD_H) - ROOM_NAME_H}
+                        height={(isMobile ? 84 : ROOM_CARD_H) - ROOM_NAME_H}
                         eng={initials(booking.engineer_name)}
                         asst={initials(booking.assistant_name)}
                         isMobile={isMobile}
-                        // `large` on the phone (Eli, 2026-08-26: "info in the cal
-                        // blocks is very small compared to the size of the
-                        // blocks"). Sanctioned legibility bump — same mechanism
-                        // as the runner hub; desktop stays byte-identical.
-                        large={isMobile}
+                        // Text-only legibility bump (Eli, 2026-08-26: "just make
+                        // the info inside each square bigger, like the text").
+                        // `large` was tried first and rejected — it grew the
+                        // cards and broke the grid. boostText changes FONT SIZES
+                        // ONLY; card geometry identical.
+                        boostText={isMobile}
                       />
                     </div>
                   </div>
@@ -1086,9 +1083,7 @@ export default function DashboardPage() {
                       // anything was on the books. A room card is the same
                       // object whether or not it holds a session.
                       height: isMobile ? undefined : ROOM_CARD_H,
-                      // Follows the booked card's mobile 84 → 100 (2026-08-26) —
-                      // empty and booked stay the same object, same height.
-                      minHeight: isMobile ? 100 : undefined,
+                      minHeight: isMobile ? 84 : undefined,
                       cursor: room.bookable === false ? 'default' : 'pointer', overflow: 'hidden',
                     }}
                   >

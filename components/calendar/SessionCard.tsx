@@ -102,7 +102,7 @@ export function cardTiers(height: number) {
 }
 
 export function SessionCardBody({
-  booking, height, eng = '', asst = '', isMobile = false, large = false, children,
+  booking, height, eng = '', asst = '', isMobile = false, large = false, boostText = false, children,
 }: {
   booking: Sessionish
   /** Usable height of the card in px — drives the ladder above. */
@@ -117,6 +117,12 @@ export function SessionCardBody({
    *  ruling 2026-08-14): same anatomy, same colours, bigger type. Opt-in only —
    *  calendar and dashboard output stays byte-identical when omitted. */
   large?: boolean
+  /** FONT SIZES ONLY bump (Eli, 2026-08-26 — dashboard room grid on the phone:
+   *  "just make the info inside each square bigger, like the text"). Unlike
+   *  `large` it changes no padding and no footer geometry, so the card's box
+   *  stays byte-identical — `large` was tried there and grew the grid until it
+   *  clipped. Opt-in only. */
+  boostText?: boolean
   /** Extra absolutely-positioned content inside the payload — the calendar's
    *  repeated payload copies on long multi-day bars. */
   children?: React.ReactNode
@@ -158,7 +164,7 @@ export function SessionCardBody({
       }}>
         {children}
         <div style={{
-          fontSize: large ? 16 : isMobile ? 11 : (showTimes ? 12.5 : 11),
+          fontSize: large ? 16 : boostText ? 14 : isMobile ? 11 : (showTimes ? 12.5 : 11),
           fontFamily: "'Archivo Black', sans-serif", lineHeight: 1.3,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
@@ -166,7 +172,7 @@ export function SessionCardBody({
         </div>
         {labelLine && showClient && (
           <div className="c-ev-meta" style={{
-            fontSize: large ? 12 : 10, lineHeight: 1.2,
+            fontSize: large ? 12 : boostText ? 11.5 : 10, lineHeight: 1.2,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
             {labelLine}
@@ -174,7 +180,7 @@ export function SessionCardBody({
         )}
         {timeStr && showTimes && (
           <div className="c-ev-2 c-mono" style={{
-            fontSize: large ? 11.5 : 9.5, lineHeight: 1.25,
+            fontSize: large ? 11.5 : boostText ? 11 : 9.5, lineHeight: 1.25,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
             {timeStr}{typeTag ? `  ${typeTag}` : ''}
