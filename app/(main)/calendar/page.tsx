@@ -1499,13 +1499,25 @@ function CalendarPageInner() {
                 b.start_date <= winEnd && b.end_date >= winStart
               )
               const laneMap = assignLanes(roomBookings)
-              // ROW HEIGHT IS FIXED. Growing the row to fit stacked sessions was
-              // tried and rejected: a doubled row is permanent visual damage to
-              // the grid's rhythm, paid every day of the year, to solve something
-              // that happens occasionally and never exceeds three. Stacked cards
-              // share the normal cell and shed content instead — see the tier
-              // ladder in BookingBlock.
-              const roomRowH = isRoomCollapsed ? COLLAPSED_ROOM_H : rowH
+              // ROW HEIGHT IS FIXED — ON DESKTOP. Growing the row to fit stacked
+              // sessions was tried and rejected there: a doubled row is permanent
+              // visual damage to the grid's rhythm, paid every day of the year.
+              // Desktop stacked cards share the normal cell and shed content
+              // instead — see the tier ladder in BookingBlock.
+              //
+              // MOBILE IS THE EXCEPTION (Eli, 2026-08-26 — the overspill bug):
+              // phone chips carry minHeight 44 for tap targets, so they CANNOT
+              // shrink to share a cell; three stacked sessions rendered 44px
+              // chips into 26px slots and painted them over each other. On the
+              // phone the row grows by lane count — every chip gets a full slot.
+              // assignLanes gives every booking in the room the same numLanes,
+              // so any booking's value is the room's.
+              const roomLanes = roomBookings.length
+                ? (laneMap.get(roomBookings[0].id)?.numLanes ?? 1)
+                : 1
+              const roomRowH = isRoomCollapsed
+                ? COLLAPSED_ROOM_H
+                : (isMobile ? rowH * roomLanes : rowH)
               return (
                 <div key={room} className={roomIdx % 2 === 0 ? 'c-calrow c-calrow-alt' : 'c-calrow'} style={{
                   display: 'flex',

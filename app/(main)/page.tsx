@@ -996,7 +996,12 @@ export default function DashboardPage() {
 
       {/* BELOW: two columns — the console (Flo → My Day | My Tasks) with the
           staff grid + Flags indicator under it, and Today's Sessions right. */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.35fr 1fr', gap: 12, alignItems: 'start' }}>
+      {/* minmax(0,1fr) on mobile (2026-08-26): a bare 1fr track's automatic
+          minimum is min-content, so the console's side-by-side lists + staff
+          grid stretched the track past the viewport and dragged Today's
+          Sessions off the right edge of the phone with it. minmax(0,…) pins
+          the track to the screen; wide console content scrolls inside itself. */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : '1.35fr 1fr', gap: 12, alignItems: 'start' }}>
 
         {/* (The Needs Action list is retired — the Pipeline indicator in the
             command row replaced it, ruling 2026-08-07. Leads are worked in the
@@ -1009,7 +1014,7 @@ export default function DashboardPage() {
         {/* Explicit placement: this pane precedes the console in the JSX, and
             auto-placement was seating it in the WIDE left column — console
             belongs left (1.35fr), sessions right. */}
-        <div className="c-panel" style={isMobile ? { order: 1 } : { gridColumn: '2', gridRow: '1' }}>
+        <div className="c-panel" style={isMobile ? { order: 1, minWidth: 0 } : { gridColumn: '2', gridRow: '1' }}>
           {/* Day nav sits ON the title row (Eli 2026-08-14) — it had its own
               full-width row underneath, which cost ~34px of vertical padding
               at the top of the pane for three small controls. */}
@@ -1100,7 +1105,10 @@ export default function DashboardPage() {
             2026-08-07). Flo, My Day and the staff grid went LIVE on 2026-08-10
             (lib/myday.ts); Tasks is live (dashboard_tasks). Staff grid + Flags
             indicator sit under the console in this column. */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, ...(isMobile ? { order: 2 } : { gridColumn: '1', gridRow: '1' }) }}>
+        {/* minWidth 0 + own sideways scroll on mobile (2026-08-26): the My Day /
+            My Tasks pair and the staff grid are wider than a phone; they scroll
+            within this column instead of widening the page. Desktop untouched. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, ...(isMobile ? { order: 2, minWidth: 0, overflowX: 'auto' as const } : { gridColumn: '1', gridRow: '1' }) }}>
         <div className="c-panel">
 
           {/* THE FLO BOX — the app's single AI mouthpiece. Flat, ringed, and the
