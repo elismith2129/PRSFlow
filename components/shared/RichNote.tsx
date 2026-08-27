@@ -125,11 +125,16 @@ export function RichNoteEditor({ value, onChange, placeholder, minHeight = 150, 
 
   return (
     <div style={{ position: 'relative' }}>
+      {/* Toolbar = B + indent, nothing else (Eli, 2026-08-26). Bullets need
+          no button — notes start as a list; the indent button nests the
+          current bullet (the iPad keyboard has no tab key). Outdent:
+          shift-tab on a hardware keyboard, or backspace at the bullet's
+          start. */}
       <div style={{ display: 'flex', gap: 5, marginBottom: 6 }}>
         <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => cmd('bold')}
           aria-label="Bold" style={{ ...btn, fontWeight: 800 }}>B</button>
-        <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => cmd('insertUnorderedList')}
-          aria-label="Bullet list" style={btn}>•≡</button>
+        <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => cmd('indent')}
+          aria-label="Indent" style={btn}>⇥</button>
       </div>
       <div
         ref={ref}

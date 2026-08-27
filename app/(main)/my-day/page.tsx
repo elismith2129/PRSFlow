@@ -522,6 +522,7 @@ function ShiftNotesPanel({
             onChange={html => setDraft('session', html)}
             placeholder="Anything the next shift needs to know…"
             minHeight={150}
+            startWithBullets
           />
         </div>
         <div style={{ minWidth: 0 }}>
@@ -531,6 +532,7 @@ function ShiftNotesPanel({
             onChange={html => setDraft('studio', html)}
             placeholder="Rooms, gear, maintenance…"
             minHeight={150}
+            startWithBullets
           />
         </div>
       </div>
