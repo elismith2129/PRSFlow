@@ -117,24 +117,21 @@ export function RichNoteEditor({ value, onChange, placeholder, minHeight = 150, 
 
   const empty = noteIsEmpty(value)
 
+  // Tiny plain-text controls, like every text editor's toolbar — no pills
+  // (Eli, 2026-08-26). Just B and a bullet dot; indent is the tab key.
   const btn: React.CSSProperties = {
-    border: 'none', font: 'inherit', cursor: 'pointer', borderRadius: 8,
-    minWidth: 34, minHeight: 30, background: 'var(--c-wash2)', color: 'var(--c-fg)',
-    fontSize: 12.5, opacity: 0.75, WebkitTapHighlightColor: 'transparent',
+    border: 'none', background: 'transparent', font: 'inherit', cursor: 'pointer',
+    color: 'var(--c-fg)', fontSize: 13, lineHeight: 1, padding: '4px 7px',
+    opacity: 0.55, WebkitTapHighlightColor: 'transparent',
   }
 
   return (
     <div style={{ position: 'relative' }}>
-      {/* Toolbar = B + indent, nothing else (Eli, 2026-08-26). Bullets need
-          no button — notes start as a list; the indent button nests the
-          current bullet (the iPad keyboard has no tab key). Outdent:
-          shift-tab on a hardware keyboard, or backspace at the bullet's
-          start. */}
-      <div style={{ display: 'flex', gap: 5, marginBottom: 6 }}>
+      <div style={{ display: 'flex', gap: 2, marginBottom: 3 }}>
         <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => cmd('bold')}
           aria-label="Bold" style={{ ...btn, fontWeight: 800 }}>B</button>
-        <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => cmd('indent')}
-          aria-label="Indent" style={btn}>⇥</button>
+        <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => cmd('insertUnorderedList')}
+          aria-label="Bullet list" style={{ ...btn, fontSize: 16 }}>•</button>
       </div>
       <div
         ref={ref}
@@ -144,8 +141,21 @@ export function RichNoteEditor({ value, onChange, placeholder, minHeight = 150, 
         onInput={emit}
         onFocus={() => {
           setFocused(true)
-          if (startWithBullets && ref.current && (ref.current.textContent ?? '').trim() === '') {
-            document.execCommand('insertUnorderedList')
+          // Deterministic bullet scaffold — execCommand on an empty div is
+          // flaky across browsers (the "no bullet" bug). Write the list
+          // directly and put the caret inside it.
+          const el = ref.current
+          if (startWithBullets && el && (el.textContent ?? '').trim() === '') {
+            el.innerHTML = '<ul><li><br></li></ul>'
+            const li = el.querySelector('li')
+            const sel = window.getSelection()
+            if (li && sel) {
+              const range = document.createRange()
+              range.setStart(li, 0)
+              range.collapse(true)
+              sel.removeAllRanges()
+              sel.addRange(range)
+            }
             emit()
           }
         }}
