@@ -30,9 +30,13 @@ export type DutyState = {
   detail: string
 }
 
+// One per author-shift since 2026-08-26 (shift_note_docs — the big-field
+// notes replaced the timestamped shift_log_entries log, which was never
+// adopted). `created_at` carries the doc's updated_at for display.
 export type ShiftEntry = {
   id: string
   author_name: string
+  role: string | null
   text: string
   created_at: string
 }
@@ -100,7 +104,7 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
     supabase.from('mics').select('id, name').eq('is_active', true),
     supabase.from('mic_inventory_submissions').select('studio, submitted_by, submitted_at').eq('date', date),
     supabase.from('flags').select('*').eq('status', 'pending').is('deleted_at', null),
-    supabase.from('shift_log_entries').select('*').eq('date', date).order('created_at'),
+    supabase.from('shift_note_docs').select('*').eq('date', date).neq('text', '').order('created_at'),
     supabase.from('daily_ops_reviews').select('item_key').eq('date', date),
   ])
 
@@ -128,7 +132,9 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
     const submitted = (cat: string) => sSubs.find((r: any) => r.category === cat && r.submitted_at)
     const sChecklists = (checklists ?? []).filter((r: any) => r.studio === s.key)
     const sMicSub = (micSubs ?? []).find((r: any) => r.studio === s.key)
-    const sEntries = ((logs ?? []) as any[]).filter(r => r.studio === s.key)
+    const sEntries = ((logs ?? []) as any[])
+      .filter(r => r.studio === s.key && (r.text ?? '').trim() !== '')
+      .map(r => ({ id: r.id, author_name: r.author_name, role: r.role ?? null, text: r.text, created_at: r.updated_at ?? r.created_at }))
 
     const duties: DutyState[] = DUTIES.map(d => {
       // Checklists are recorded under two category spellings historically
@@ -214,9 +220,7 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
         sMicSub?.submitted_by,
       ].filter(Boolean))).join(', ') || '—',
       duties,
-      entries: sEntries.map(r => ({
-        id: r.id, author_name: r.author_name, text: r.text, created_at: r.created_at,
-      })),
+      entries: sEntries,
     })
   }
 

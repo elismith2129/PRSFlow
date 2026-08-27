@@ -86,7 +86,7 @@ export default function DailyOpsPage() {
       .channel('daily-ops-page')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_ops_reviews' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'flags' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_log_entries' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_note_docs' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_tasks' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_ops_submissions' }, () => load())
       .subscribe()
@@ -315,7 +315,7 @@ export default function DailyOpsPage() {
                     style={{ marginTop: 8, background: 'var(--c-wash)', borderRadius: 12, padding: '9px 11px', cursor: 'pointer' }}
                   >
                     <div className="c-label" style={{ marginBottom: 3, display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Shift log · {s.entries.length} {s.entries.length === 1 ? 'entry' : 'entries'}</span>
+                      <span>Shift notes · {s.entries.length} {s.entries.length === 1 ? 'runner' : 'runners'}</span>
                       <span style={{ opacity: 0.8, fontWeight: 800, textTransform: 'none', letterSpacing: 0 }}>View →</span>
                     </div>
                     <div style={{
@@ -327,7 +327,7 @@ export default function DailyOpsPage() {
                   </div>
                 ) : (
                   <div style={{ marginTop: 8, background: 'var(--c-wash)', borderRadius: 12, padding: '9px 11px', fontSize: 11.5, opacity: 0.45, fontStyle: 'italic' }}>
-                    No shift log.
+                    No shift notes.
                   </div>
                 )}
               </div>
@@ -351,13 +351,13 @@ export default function DailyOpsPage() {
             borderRadius: 20, boxShadow: 'var(--c-softsh)', padding: '18px 20px',
           }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span className="c-arch" style={{ fontSize: 17 }}>{logOpen.label} · shift log</span>
+              <span className="c-arch" style={{ fontSize: 17 }}>{logOpen.label} · shift notes</span>
               <span style={{ fontSize: 11.5, opacity: 0.5 }}>{prettyDate(date)}</span>
             </div>
             {logOpen.entries.map((e, i) => (
               <div key={e.id} style={{ padding: '10px 0', boxShadow: i > 0 ? '0 -1px 0 var(--c-wash)' : undefined }}>
                 <div className="c-mono" style={{ fontSize: 10.5, fontWeight: 800, opacity: 0.5, marginBottom: 4 }}>
-                  {e.author_name.toUpperCase()} · {new Date(e.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                  {e.author_name.toUpperCase()}{e.role ? ` · ${e.role.toUpperCase()}` : ''} · {new Date(e.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                 </div>
                 <div style={{ fontSize: 12.5, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{e.text}</div>
               </div>

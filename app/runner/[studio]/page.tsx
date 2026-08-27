@@ -189,14 +189,16 @@ export default function StudioDailyOpsPage() {
     visibleTasks.sort((a, b) => Number(!!a.done_at) - Number(!!b.done_at))
     setTasks(visibleTasks)
 
-    // Shift-log entry count for tonight — the shift-notes tile's status line.
-    // shiftLogDate, not today: the log's day rolls at 8:50 AM, so an
-    // after-midnight count still belongs to the night in progress.
+    // Shift-note count for tonight (one doc per runner since 2026-08-26) —
+    // the shift-notes tile's status line. shiftLogDate, not today: the
+    // night's day rolls at 8:50 AM, so an after-midnight count still belongs
+    // to the night in progress.
     const { count } = await supabase
-      .from('shift_log_entries')
+      .from('shift_note_docs')
       .select('id', { count: 'exact', head: true })
       .eq('studio', studio)
       .eq('date', shiftLogDate())
+      .neq('text', '')
     setShiftEntryCount(count ?? 0)
   }, [studio, today, meta.abbr]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -229,11 +231,13 @@ export default function StudioDailyOpsPage() {
     if (!dbResult('Saving task', error)) load()
   }
 
-  // Real-time: re-run load on any booking change
+  // Real-time: re-run load on any booking change; shift_note_docs keeps the
+  // shift-notes tile's count live (its fetch's required realtime pair).
   useEffect(() => {
     const channel = supabase
       .channel(`runner-bookings-${studio}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => { load() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_note_docs' }, () => { load() })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [studio, load])
@@ -515,8 +519,8 @@ export default function StudioDailyOpsPage() {
               const done = isLog ? shiftEntryCount > 0 : submittedCategories.has(t.category)
               const statusText = isLog
                 ? (shiftEntryCount > 0
-                    ? `${shiftEntryCount} ${shiftEntryCount === 1 ? 'entry' : 'entries'}`
-                    : 'Nothing logged')
+                    ? `${shiftEntryCount} ${shiftEntryCount === 1 ? 'note' : 'notes'} tonight`
+                    : 'Nothing yet')
                 : (done ? 'Submitted' : 'Not started')
               return (
                 <button

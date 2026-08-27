@@ -1,29 +1,36 @@
 'use client'
 // ─────────────────────────────────────────────────────────────────────────────
-// /runner/[studio]/shift-notes — the shift LOG (spec §19, 2026-08-14).
+// /runner/[studio]/shift-notes — ONE BIG FIELD PER SHIFT (Eli, 2026-08-26).
 //
-// Replaces the Slack shift-notes post. Deliberately a log, not a text box:
-// real notes run 15+ bullets and a night often has two authors (a runner is
-// relieved mid-shift). So: append an entry any time, stamped with who and
-// when; the night's entries stack newest-last like the Slack thread did.
+// Supersedes the timestamped shift LOG (spec §19, shift_log_entries) — built
+// Aug 14, sealed-edit added Aug 20, never adopted. Eli's ruling: this
+// replaces the runners' Slack notes with the MANAGER-NOTES feel — "not logs
+// with timestamps but a large text field they add to and it always saves so
+// they never lose anything even if they close the app."
 //
-// EDITABLE WHILE LIVE, SEALED AT 8:50 AM (Eli, 2026-08-20 — replaced the
-// original append-only rule, whose "write another entry to correct a typo"
-// bred confusing correction-chains). The log's day runs 8:50 AM → 8:49 AM
-// (lib/time shiftLogDate — which also fixed the old midnight split, where a
-// 1 AM note filed under tomorrow's page). While the log is live, any entry
-// can be tapped and fixed and wears an "edited" marker; at 8:50 AM it seals —
-// enforced server-side by the shift_log_entries UPDATE policy (migration
-// 20260820130000), not just hidden in the UI. No submit button exists:
-// entries are live the moment they're added, and 8:50 AM is the submission.
+//   · One doc per (studio, shift-day, author) in shift_note_docs. A night
+//     has at most an opener, a floater and a closer — the note is attached
+//     to the person's shift via the role chips (warn-never-block: unset is
+//     allowed, the office just sees no role).
+//   · NO SAVE BUTTON. The field autosaves ~1s after typing stops, plus a
+//     flush when the app is backgrounded/closed, plus the lib/draft
+//     localStorage net underneath (applied on return, cleared only after a
+//     confirmed server save). A quiet "Saved · 10:42 PM" line shows state.
+//   · Every return key auto-inserts a bullet (Eli's ask) — the field starts
+//     with one too.
+//   · Same 8:50 AM shift-day + seal as the old log (lib/time shiftLogDate;
+//     enforced server-side by shift_note_docs' INSERT/UPDATE policies,
+//     migration 20260826140000). After 8:50 the page is simply a fresh day.
+//   · Other runners' notes for the night render read-only below, live.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { dbResult } from '@/lib/db'
-import { shiftLogDate, dayPartLabel, dayPartPossessive } from '@/lib/time'
+import { shiftLogDate } from '@/lib/time'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
+import { draftKey, readDraft, writeDraft, clearDraft } from '@/lib/draft'
 
 const STUDIO_META: Record<string, { label: string }> = {
   paramount: { label: 'Paramount' },
@@ -32,94 +39,171 @@ const STUDIO_META: Record<string, { label: string }> = {
   track:     { label: 'Track' },
 }
 
-type Entry = {
+type Role = 'opener' | 'floater' | 'closer'
+const ROLES: { key: Role; label: string }[] = [
+  { key: 'opener', label: 'Opener' },
+  { key: 'floater', label: 'Floater' },
+  { key: 'closer', label: 'Closer' },
+]
+
+type Doc = {
   id: string
   studio: string
   date: string
+  author_id: string | null
   author_name: string
+  role: Role | null
   text: string
-  created_at: string
-  edited_at: string | null
+  updated_at: string
 }
 
 export default function ShiftNotesPage() {
   const router = useRouter()
   const { studio } = useParams<{ studio: string }>()
   const meta = STUDIO_META[studio] ?? { label: studio }
-  // The log's day, NOT the calendar's — before 8:50 AM this is yesterday's
-  // date, so an after-midnight entry stays on the night it belongs to.
+  // The note's day, NOT the calendar's — before 8:50 AM this is yesterday's
+  // date, so after-midnight typing stays on the night it belongs to.
   const today = shiftLogDate()
   const { profile } = useUserProfile()
 
-  const [entries, setEntries] = useState<Entry[]>([])
-  const [draft, setDraft] = useState('')
-  const [author, setAuthor] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [hint, setHint] = useState<string | null>(null)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editDraft, setEditDraft] = useState('')
+  const [text, setText] = useState('')
+  const [role, setRole] = useState<Role | null>(null)
+  const [others, setOthers] = useState<Doc[]>([])
+  const [saveState, setSaveState] = useState<'idle' | 'dirty' | 'saving' | 'saved' | 'error'>('idle')
+  const [savedAt, setSavedAt] = useState<string | null>(null)
+  const taRef = useRef<HTMLTextAreaElement>(null)
+  // True once the runner types; blocks realtime/server refreshes from
+  // clobbering the field mid-edit. Cleared when a save confirms.
+  const dirtyRef = useRef(false)
+  const textRef = useRef(text); textRef.current = text
+  const roleRef = useRef(role); roleRef.current = role
+  const loadedRef = useRef(false)
 
-  // Prefill the author from the profile when there is a real person behind the
-  // session; the shared runner login has none, so it stays typed. Individual
-  // runner logins (spec §15b) make this automatic for everyone.
-  useEffect(() => {
-    if (!author && profile && profile.email !== 'runner@paramountrecording.com') {
-      setAuthor(profile.initials || profile.display_name || '')
-    }
-  }, [profile]) // eslint-disable-line react-hooks/exhaustive-deps
+  const authorName = profile ? (profile.initials || profile.display_name || 'Runner') : ''
+
+  const grow = useCallback(() => {
+    const ta = taRef.current
+    if (!ta) return
+    ta.style.height = 'auto'
+    ta.style.height = Math.max(280, ta.scrollHeight) + 'px'
+  }, [])
 
   const load = useCallback(async () => {
     const { data } = await supabase
-      .from('shift_log_entries')
+      .from('shift_note_docs')
       .select('*')
       .eq('studio', studio)
       .eq('date', today)
-      .order('created_at', { ascending: true })
-    setEntries((data ?? []) as Entry[])
-  }, [studio, today])
+    const docs = (data ?? []) as Doc[]
+    setOthers(docs.filter(d => d.author_id !== profile?.id))
+    const mine = docs.find(d => d.author_id === profile?.id)
+    if (!dirtyRef.current) {
+      if (mine) { setText(mine.text); setRole(mine.role); setSaveState('saved'); setSavedAt(mine.updated_at) }
+      // The localStorage net: unsaved typing from a previous visit wins over
+      // the server (it is strictly newer — it never got saved).
+      const draft = readDraft<{ text: string; role: Role | null }>(draftKey('shift-note', studio, today))
+      if (draft && draft.text !== (mine?.text ?? '')) {
+        setText(draft.text); setRole(draft.role ?? mine?.role ?? null)
+        dirtyRef.current = true
+        setSaveState('dirty')
+      }
+    }
+    loadedRef.current = true
+    setTimeout(grow, 0)
+  }, [studio, today, profile?.id, grow])
 
-  useEffect(() => { load() }, [load])
-  useReloadOnReturn(load)
+  // Profile resolves async — the doc is keyed by author_id, so wait for it.
+  useEffect(() => { if (profile) load() }, [profile, load])
+  useReloadOnReturn(useCallback(() => { if (profile && !dirtyRef.current) load() }, [profile, load]))
 
   useEffect(() => {
     const channel = supabase
-      .channel(`runner-shiftlog-${studio}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_log_entries' }, () => { load() })
+      .channel(`runner-shiftnotes-${studio}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_note_docs' }, () => {
+        // Others' notes refresh freely; own field is dirty-guarded inside load.
+        if (profile) load()
+      })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [studio, load])
+  }, [studio, profile, load])
 
-  async function addEntry() {
-    setHint(null)
-    if (!draft.trim()) { setHint('Write something first.'); return }
-    if (!author.trim()) { setHint('Add your name or initials.'); return }
-    setSaving(true)
-    const { error } = await supabase.from('shift_log_entries').insert({
+  // ── The always-save engine ────────────────────────────────────────────────
+  const save = useCallback(async () => {
+    if (!profile) return
+    const body = {
       studio, date: today,
-      author_name: author.trim(),
-      text: draft.trim(),
-    })
-    setSaving(false)
-    if (!dbResult('Saving shift note', error)) return
-    setDraft('')
-    load()
+      author_id: profile.id,
+      author_name: profile.initials || profile.display_name || 'Runner',
+      role: roleRef.current,
+      text: textRef.current,
+    }
+    setSaveState('saving')
+    const { error } = await supabase
+      .from('shift_note_docs')
+      .upsert(body, { onConflict: 'studio,date,author_id' })
+    if (!dbResult('Saving shift note', error)) { setSaveState('error'); return }
+    // Only clear the net if nothing new was typed while the save flew.
+    if (textRef.current === body.text && roleRef.current === body.role) {
+      dirtyRef.current = false
+      clearDraft(draftKey('shift-note', studio, today))
+      setSaveState('saved')
+      setSavedAt(new Date().toISOString())
+    }
+  }, [profile, studio, today])
+  const saveRef = useRef(save); saveRef.current = save
+
+  // Debounced autosave + draft mirror on every keystroke.
+  useEffect(() => {
+    if (!loadedRef.current || !dirtyRef.current) return
+    writeDraft(draftKey('shift-note', studio, today), { text, role })
+    setSaveState('dirty')
+    const t = setTimeout(() => { saveRef.current() }, 1000)
+    return () => clearTimeout(t)
+  }, [text, role, studio, today])
+
+  // Flush when the app is backgrounded or the page unmounts — iOS killing
+  // the PWA mid-shift must not cost a word (the draft net catches the rest).
+  useEffect(() => {
+    const flush = () => { if (dirtyRef.current) saveRef.current() }
+    const onVis = () => { if (document.visibilityState === 'hidden') flush() }
+    document.addEventListener('visibilitychange', onVis)
+    window.addEventListener('pagehide', flush)
+    return () => {
+      document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener('pagehide', flush)
+      flush()
+    }
+  }, [])
+
+  function typed(next: string) {
+    dirtyRef.current = true
+    setText(next)
+    grow()
   }
 
-  // Fix a typo while the log is live. The 8:50 AM seal is enforced by the
-  // UPDATE policy — after it, this write returns zero rows and the log stays
-  // as the office will review it.
-  async function saveEdit(id: string) {
-    const text = editDraft.trim()
-    if (!text) return
-    const { error } = await supabase
-      .from('shift_log_entries')
-      .update({ text, edited_at: new Date().toISOString() })
-      .eq('id', id)
-    if (!dbResult('Editing shift note', error)) return
-    setEditingId(null)
-    setEditDraft('')
-    load()
+  // Every return key starts a fresh bullet (Eli's ask).
+  function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    const ta = e.currentTarget
+    const { selectionStart: s, selectionEnd: eIdx, value } = ta
+    const insert = '\n• '
+    const next = value.slice(0, s) + insert + value.slice(eIdx)
+    typed(next)
+    requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = s + insert.length })
   }
+
+  function onFocus() {
+    if (text.trim() === '') typed('• ')
+  }
+
+  function pickRole(r: Role) {
+    dirtyRef.current = true
+    setRole(prev => (prev === r ? null : r))
+  }
+
+  const fmtClockTime = (iso: string) =>
+    new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 
   const surface: React.CSSProperties = {
     background: 'var(--c-srf, var(--c-bg))',
@@ -127,6 +211,13 @@ export default function ShiftNotesPage() {
     borderRadius: 16,
     padding: '13px 14px',
   }
+
+  const statusLine =
+    saveState === 'saving' ? 'Saving…'
+    : saveState === 'dirty' ? 'Typing…'
+    : saveState === 'error' ? 'NOT saved — check connection'
+    : saveState === 'saved' && savedAt ? `Saved · ${fmtClockTime(savedAt)}`
+    : 'Everything you type saves by itself'
 
   return (
     <div style={{
@@ -150,124 +241,89 @@ export default function ShiftNotesPage() {
             fontSize: 16, cursor: 'pointer',
           }}
         >←</button>
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div className="c-arch" style={{ fontSize: 18, letterSpacing: '-0.02em', lineHeight: 1.15 }}>Shift notes</div>
           <div style={{ fontSize: 11.5, opacity: 0.5 }}>
             {meta.label} · {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
           </div>
         </div>
+        <div style={{
+          fontSize: 10, fontWeight: 700, flexShrink: 0,
+          opacity: saveState === 'error' ? 1 : 0.45,
+          color: saveState === 'error' ? 'var(--c-st-hot)' : 'var(--c-fg)',
+        }}>
+          {statusLine}
+        </div>
       </div>
 
       <div style={{ padding: '4px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-        {/* Write */}
+        {/* ── My note ─────────────────────────────────────────────────────── */}
         <div style={surface}>
-          <div className="c-label" style={{ marginBottom: 8 }}>Add to {dayPartPossessive()} log</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12.5, fontWeight: 800 }}>{authorName || '…'}</span>
+            <span style={{ flex: 1 }} />
+            {ROLES.map(r => {
+              const on = role === r.key
+              return (
+                <button
+                  key={r.key}
+                  onClick={() => pickRole(r.key)}
+                  style={{
+                    border: 'none', font: 'inherit', cursor: 'pointer',
+                    borderRadius: 99, padding: '6px 12px', minHeight: 30,
+                    fontSize: 10, fontWeight: 800, letterSpacing: '0.04em',
+                    background: on ? 'var(--c-wash2)' : 'var(--c-wash)',
+                    color: 'var(--c-fg)', opacity: on ? 1 : 0.55,
+                    boxShadow: on ? 'inset 0 0 0 1.5px rgba(217,214,205,0.3)' : undefined,
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
+                  {r.label}
+                </button>
+              )
+            })}
+          </div>
           <textarea
-            value={draft}
-            onChange={e => setDraft(e.target.value)}
-            rows={7}
-            placeholder={'Opened building, bathrooms good\nDid all opening tasks\nLight by the stairs is out — needs a bulb\nOpened A for G Herbo, crew in at 8'}
+            ref={taRef}
+            value={text}
+            onChange={e => typed(e.target.value)}
+            onKeyDown={onKeyDown}
+            onFocus={onFocus}
+            placeholder={'• Everything from your shift goes here — sessions, runs, anything the office should know.\n\nIt saves as you type. Return starts a new bullet.'}
             style={{
-              width: '100%', boxSizing: 'border-box',
+              width: '100%', boxSizing: 'border-box', minHeight: 280, resize: 'none',
               background: 'var(--c-wash)', border: 'none', borderRadius: 12,
-              padding: '11px 13px', color: 'var(--c-fg)', fontSize: 13,
-              font: 'inherit', outline: 'none', resize: 'vertical',
-              lineHeight: 1.6, marginBottom: 10,
+              padding: '12px 13px', color: 'var(--c-fg)', font: 'inherit',
+              fontSize: 13.5, lineHeight: 1.65, outline: 'none',
             }}
           />
-          <div style={{ display: 'flex', gap: 9, alignItems: 'center' }}>
-            <input
-              value={author}
-              onChange={e => setAuthor(e.target.value)}
-              placeholder="You"
-              className="c-mono"
-              style={{
-                width: 92, minHeight: 46, padding: '10px 10px',
-                background: 'var(--c-wash)', border: 'none', borderRadius: 12,
-                color: 'var(--c-fg)', fontSize: 13, textAlign: 'center', outline: 'none',
-              }}
-            />
-            <button
-              onClick={addEntry}
-              disabled={saving}
-              className="c-control c-raised"
-              style={{
-                flex: 1, minHeight: 46, borderRadius: 14,
-                background: 'var(--c-wash2)', color: 'var(--c-fg)',
-                border: 'none', font: 'inherit', fontSize: 13.5, fontWeight: 800,
-                cursor: 'pointer', opacity: saving ? 0.6 : 1,
-                boxShadow: 'var(--c-softsh)',
-              }}
-            >
-              {saving ? 'Adding…' : 'Add to log'}
-            </button>
-          </div>
-          {hint && <div style={{ fontSize: 11.5, color: 'var(--c-st-hot)', fontWeight: 700, marginTop: 8 }}>{hint}</div>}
-          <div style={{ fontSize: 10.5, opacity: 0.45, marginTop: 8, lineHeight: 1.5 }}>
-            Add as many entries as you like through the night — handing off to
-            someone else just means they add their own. Tap any entry to fix a
-            typo. The log submits itself at 8:50 AM — after that it&apos;s sealed
-            for the office&apos;s review and a fresh log starts.
-          </div>
+          {!role && text.trim() !== '' && (
+            <div style={{ fontSize: 10, opacity: 0.5, marginTop: 6 }}>
+              Tap Opener / Floater / Closer so the office knows which shift this was.
+            </div>
+          )}
         </div>
 
-        {/* The day's log (label tracks the clock — 24/7 operation) */}
-        <div style={surface}>
-          <div className="c-label" style={{ marginBottom: 8 }}>
-            {dayPartLabel()} · {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
-          </div>
-          {entries.length === 0 ? (
-            <div style={{ fontSize: 12.5, opacity: 0.5 }}>Nothing logged yet.</div>
-          ) : entries.map((e, i) => (
-            <div key={e.id} style={{
-              padding: '10px 0',
-              boxShadow: i > 0 ? '0 -1px 0 var(--c-wash)' : undefined,
-            }}>
-              <div className="c-mono" style={{ fontSize: 10.5, fontWeight: 800, opacity: 0.5, marginBottom: 4 }}>
-                {e.author_name.toUpperCase()} · {new Date(e.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                {e.edited_at && <span style={{ fontWeight: 400, opacity: 0.8 }}> · edited</span>}
-              </div>
-              {editingId === e.id ? (
-                <div>
-                  <textarea
-                    value={editDraft}
-                    onChange={ev => setEditDraft(ev.target.value)}
-                    rows={4}
-                    autoFocus
-                    style={{
-                      width: '100%', boxSizing: 'border-box',
-                      background: 'var(--c-wash)', border: 'none', borderRadius: 10,
-                      padding: '9px 11px', color: 'var(--c-fg)', fontSize: 13,
-                      font: 'inherit', outline: 'none', resize: 'vertical',
-                      lineHeight: 1.6, marginBottom: 8,
-                    }}
-                  />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      onClick={() => saveEdit(e.id)}
-                      className="c-control"
-                      style={{ minHeight: 40, padding: '0 20px', borderRadius: 12, background: 'var(--c-wash2)', color: 'var(--c-fg)', border: 'none', font: 'inherit', fontSize: 12.5, fontWeight: 800, cursor: 'pointer' }}
-                    >Save fix</button>
-                    <button
-                      onClick={() => { setEditingId(null); setEditDraft('') }}
-                      className="c-control"
-                      style={{ minHeight: 40, padding: '0 16px', borderRadius: 12, background: 'transparent', color: 'var(--c-fg)', opacity: 0.6, border: 'none', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}
-                    >Cancel</button>
-                  </div>
+        {/* ── The rest of the night ───────────────────────────────────────── */}
+        {others.filter(d => d.text.trim() !== '').length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="c-label">Also on tonight</div>
+            {others.filter(d => d.text.trim() !== '').map(d => (
+              <div key={d.id} style={surface}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 7 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 800 }}>{d.author_name}</span>
+                  {d.role && <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.5 }}>{d.role}</span>}
+                  <span style={{ flex: 1 }} />
+                  <span style={{ fontSize: 9.5, opacity: 0.4 }}>{fmtClockTime(d.updated_at)}</span>
                 </div>
-              ) : (
-                /* Tap to fix a typo — live-log only; the 8:50 AM seal is
-                   enforced by the DB policy, so this is convenience, not the
-                   boundary. */
-                <div
-                  onClick={() => { setEditingId(e.id); setEditDraft(e.text) }}
-                  style={{ fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', cursor: 'pointer' }}
-                >{e.text}</div>
-              )}
-            </div>
-          ))}
-        </div>
+                <div style={{ fontSize: 13, lineHeight: 1.65, whiteSpace: 'pre-wrap', overflowWrap: 'break-word' }}>
+                  {d.text}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
       </div>
     </div>
