@@ -15,6 +15,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { draftKey, readDraft, writeDraft, clearDraft } from '@/lib/draft'
+import { opsToday } from '@/lib/time'
+import { SectionNotes } from '@/components/runner/SectionNotes'
 import { useRouter, useParams } from 'next/navigation'
 
 const STUDIO_META: Record<string, { label: string; short: string }> = {
@@ -38,7 +40,10 @@ export default function StockPage() {
   const router = useRouter()
   const { studio } = useParams<{ studio: string }>()
   const meta = STUDIO_META[studio] ?? { label: studio, short: studio }
-  const today = (() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10) })()
+  // Operational day (8:50 AM roll, 2026-08-28) — counts typed after midnight
+  // file under the night in progress, and the office list stays open for
+  // Wednesday's closer until 8:50 Thursday morning.
+  const today = opsToday()
   // Noon-anchored so the day-of-week can't drift across a TZ boundary.
   const isWednesday = new Date(today + 'T12:00:00').getDay() === 3
 
@@ -426,6 +431,14 @@ export default function StockPage() {
               </button>
             )
           })}
+        </div>
+      )}
+
+      {/* General notes for THIS list — "entered from Ezra's account, office
+          run already done" had nowhere to live (ARS tester, Aug 28). */}
+      {activeView !== null && items.length > 0 && (
+        <div style={{ padding: '2px 12px 8px' }}>
+          <SectionNotes studio={studio} date={today} section={activeView} />
         </div>
       )}
 

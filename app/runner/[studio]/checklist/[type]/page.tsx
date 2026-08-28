@@ -11,6 +11,7 @@ import { CHECKLISTS, flattenSections, type ChecklistSection } from '@/lib/checkl
 import { SignedImage } from '@/components/shared/SignedImage'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { profileInitials } from '@/lib/format'
+import { opsToday } from '@/lib/time'
 
 const STUDIO_META: Record<string, { label: string }> = {
   paramount: { label: 'Paramount' },
@@ -24,7 +25,10 @@ export default function ChecklistPage() {
   const { studio, type } = useParams<{ studio: string; type: string }>()
   const meta       = STUDIO_META[studio] ?? { label: studio }
   const isOpening  = type === 'opening'
-  const today      = (() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10) })()
+  // Operational day (8:50 AM roll, 2026-08-28) — a closing checklist finished
+  // at 1 AM files under the night it closes, and doesn't block the NEXT
+  // night's checklist as "already submitted".
+  const today      = opsToday()
 
   const sections: ChecklistSection[] = CHECKLISTS[studio]?.[type as 'opening' | 'closing'] ?? CHECKLISTS.paramount[type as 'opening' | 'closing']
   const allItems = flattenSections(sections)

@@ -88,6 +88,7 @@ export default function DailyOpsPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_ops_reviews' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'flags' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_note_docs' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'runner_section_notes' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_tasks' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_ops_submissions' }, () => load())
       .subscribe()

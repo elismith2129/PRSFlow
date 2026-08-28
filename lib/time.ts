@@ -101,6 +101,21 @@ export function shiftLogDate(): string {
   return now.toISOString().slice(0, 10)
 }
 
+/**
+ * THE OPERATIONAL DAY (Eli, 2026-08-28 — ARS test pass). The studio's day
+ * rolls at 8:50 AM, not midnight: shifts overlap 12a constantly, so a 2 AM
+ * checklist, stock save, mic check-in or WO edit belongs to the NIGHT IN
+ * PROGRESS, and the office stock's Wednesday gate holds until Wednesday's
+ * closer is done. Every runner surface keys its day on this — never
+ * getLocalToday, which is for calendar semantics only (booking dates on
+ * admin surfaces). Same boundary as the shift-note seal on purpose; if the
+ * roll time ever changes, change shiftLogDate and the shift_note_docs /
+ * shift_log_entries policies with it.
+ */
+export function opsToday(): string {
+  return shiftLogDate()
+}
+
 // ─── Time-of-day copy (Eli, 2026-08-15) ──────────────────────────────────────
 // The studios run 24/7 — a runner clocking in at 7am was being greeted with
 // "Where are you tonight?". Any runner-facing copy that names the shift uses

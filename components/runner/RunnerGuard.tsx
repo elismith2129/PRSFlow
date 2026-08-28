@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -67,10 +67,31 @@ export function RunnerGuard({ children }: { children: React.ReactNode }) {
   // the worst case is finishing a form and being asked for your PIN on the
   // next screen. Admin/staff sessions visiting runner pages are exempt: their
   // whole login (rail app included) must not be killed by a runner rule.
+  // NEVER MID-KEYSTROKE, for real this time (ARS tester, Aug 28: "app
+  // randomly logged me out in the middle of me inputting stock"). The
+  // 10-minute expiry timer had no idea the runner was typing. Any touch or
+  // keypress stamps this ref; expiry is DEFERRED while the last interaction
+  // is under 5 minutes old — the tablet still expires once idle, so the
+  // shared-device rule holds, but a runner mid-count is never yanked.
+  // Starts at 0 so the MOUNT check still expires a stale overnight session
+  // immediately — deferral only ever protects a person actually working.
+  const lastActivityRef = useRef(0)
+  useEffect(() => {
+    const stamp = () => { lastActivityRef.current = Date.now() }
+    window.addEventListener('pointerdown', stamp, { capture: true, passive: true })
+    window.addEventListener('keydown', stamp, { capture: true, passive: true })
+    return () => {
+      window.removeEventListener('pointerdown', stamp, true)
+      window.removeEventListener('keydown', stamp, true)
+    }
+  }, [])
+
   useEffect(() => {
     let active = true
 
     async function expireIfStale() {
+      // Actively working → defer; the next tick or tablet-wake rechecks.
+      if (Date.now() - lastActivityRef.current < 5 * 60_000) return
       const { data } = await supabase.auth.getSession()
       const session = data.session
       if (!active || !session) return

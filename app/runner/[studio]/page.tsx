@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import type { Booking } from '@/lib/supabase'
-import { getLocalToday, shiftLogDate, dayPartLabel } from '@/lib/time'
+import { opsToday, shiftLogDate, dayPartLabel } from '@/lib/time'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { dbResult } from '@/lib/db'
@@ -49,8 +49,10 @@ export default function StudioDailyOpsPage() {
   const [tasks, setTasks] = useState<StudioTask[]>([])
   const [shiftEntryCount, setShiftEntryCount] = useState(0)
 
-  // Stable today string — local calendar date matching how bookings are stored
-  const today = getLocalToday()
+  // THE OPERATIONAL DAY, not the calendar's (2026-08-28): rolls at 8:50 AM,
+  // so after midnight the night's sessions/WOs stay on the hub for money
+  // math and hour edits, and submissions file under the night they belong to.
+  const today = opsToday()
   const { profile: hubProfile } = useUserProfile()
 
   // One-landing merge (2026-08-14): remember this studio so the next launch of

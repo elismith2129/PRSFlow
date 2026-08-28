@@ -94,6 +94,7 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
     { data: micSubs },
     { data: flags },
     { data: logs },
+    { data: secNotes },
     { data: reviews },
   ] = await Promise.all([
     supabase.from('daily_ops_submissions').select('*').eq('date', date),
@@ -105,6 +106,7 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
     supabase.from('mic_inventory_submissions').select('studio, submitted_by, submitted_at').eq('date', date),
     supabase.from('flags').select('*').eq('status', 'pending').is('deleted_at', null),
     supabase.from('shift_note_docs').select('*').eq('date', date).neq('text', '').order('created_at'),
+    supabase.from('runner_section_notes').select('*').eq('date', date).neq('text', '').order('created_at'),
     supabase.from('daily_ops_reviews').select('item_key').eq('date', date),
   ])
 
@@ -135,6 +137,15 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
     const sEntries = ((logs ?? []) as any[])
       .filter(r => r.studio === s.key && (r.text ?? '').trim() !== '')
       .map(r => ({ id: r.id, author_name: r.author_name, role: r.role ?? null, text: r.text, created_at: r.updated_at ?? r.created_at }))
+    // The stock/office/mics general-notes boxes ride along as pseudo-entries
+    // so the office reads them in the same notes popup (2026-08-28).
+    const SEC_LABEL: Record<string, string> = { stock: 'Stock list', office: 'Office list', mics: 'Mic inventory' }
+    for (const n of ((secNotes ?? []) as any[]).filter(r => r.studio === s.key && (r.text ?? '').trim() !== '')) {
+      sEntries.push({
+        id: n.id, author_name: SEC_LABEL[n.section] ?? n.section, role: null,
+        text: n.text, created_at: n.updated_at ?? n.created_at,
+      })
+    }
 
     const duties: DutyState[] = DUTIES.map(d => {
       // Checklists are recorded under two category spellings historically

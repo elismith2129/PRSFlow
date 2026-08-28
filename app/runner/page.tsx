@@ -16,7 +16,7 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
 import { Wordmark } from '@/components/layout/Wordmark'
-import { getLocalToday, dayPartLabel } from '@/lib/time'
+import { opsToday, dayPartLabel } from '@/lib/time'
 import { useUserProfile } from '@/hooks/useUserProfile'
 
 // Shared with the hub page by literal value — both use 'prsflo-runner-studio'.
@@ -42,7 +42,9 @@ export default function RunnerPage() {
   // never flashes before a redirect.
   const [showPicker, setShowPicker] = useState(false)
 
-  const today = getLocalToday()
+  // Operational day (8:50 AM roll, 2026-08-28) — matches the per-studio hub
+  // so the landing's session counts don't zero out at midnight mid-shift.
+  const today = opsToday()
 
   // ── One-landing redirect ───────────────────────────────────────────────────
   // window.location.search, not useSearchParams — matches the CRM's ?lead=

@@ -21,11 +21,12 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
-import { getLocalToday } from '@/lib/time'
+import { opsToday } from '@/lib/time'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { draftKey, readDraft, writeDraft, clearDraft } from '@/lib/draft'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { profileInitials } from '@/lib/format'
+import { SectionNotes } from '@/components/runner/SectionNotes'
 
 const STUDIO_META: Record<string, { label: string }> = {
   paramount: { label: 'Paramount' },
@@ -52,6 +53,9 @@ type Mic = {
   home_studio: string
   category: string
   sort_order: number
+  // Per-item counted quantity (Genelecs: "we usually write (2)") — the cell
+  // gains a qty box while staying in its section. Migration 20260828120000.
+  has_qty?: boolean
 }
 
 type CheckinState = {
@@ -69,7 +73,9 @@ export default function MicsPage() {
   const router = useRouter()
   const { studio } = useParams<{ studio: string }>()
   const meta  = STUDIO_META[studio] ?? { label: studio }
-  const today = getLocalToday()
+  // Operational day (8:50 AM roll, 2026-08-28) — a 1 AM mic check belongs to
+  // the night in progress, and the last-seen refs read prior NIGHTS.
+  const today = opsToday()
   const rooms = STUDIO_ROOMS[studio] ?? []
 
   const [mics, setMics]             = useState<Mic[]>([])
@@ -211,7 +217,7 @@ export default function MicsPage() {
     setCheckins(prev => ({ ...prev, [micId]: { status, room } }))
   }
 
-  function onCellTap(mic: Mic, e: React.MouseEvent<HTMLButtonElement>) {
+  function onCellTap(mic: Mic, e: React.MouseEvent<HTMLDivElement>) {
     e.stopPropagation()
     if (pop?.micId === mic.id) { setPop(null); return }
     const st = checkins[mic.id]?.status ?? 'not_checked'
@@ -224,9 +230,12 @@ export default function MicsPage() {
     })
   }
 
-  function adjustQty(micId: string, delta: number) {
+  // Typed quantity (ARS tester, Aug 28: "Other DI" and phones run high —
+  // tapping + fourteen times is silly). Digits only; column is an integer.
+  function setQty(micId: string, raw: string) {
     dirtyRef.current = true
-    setQuantities(prev => ({ ...prev, [micId]: Math.max(0, (prev[micId] ?? 0) + delta) }))
+    const n = parseInt(raw.replace(/\D/g, ''), 10)
+    setQuantities(prev => ({ ...prev, [micId]: Number.isFinite(n) ? Math.max(0, n) : 0 }))
   }
 
   async function handleSave() {
@@ -424,19 +433,18 @@ export default function MicsPage() {
                 padding: '8px 12px', gap: 8, background: 'var(--c-wash)', borderRadius: 9, marginBottom: 3,
               }}>
                 <span style={{ fontSize: 12.5, fontWeight: 600, flex: 1, minWidth: 0 }}>{m.name}</span>
-                <div style={{ display: 'flex', alignItems: 'center', background: 'var(--c-wash2)', borderRadius: 99, overflow: 'hidden', flexShrink: 0 }}>
-                  <button onClick={() => adjustQty(m.id, -1)}
-                    style={{ width: 36, height: 34, background: 'transparent', border: 'none', font: 'inherit', color: 'var(--c-fg)', opacity: qty === 0 ? 0.25 : 0.8, fontSize: 17, cursor: qty === 0 ? 'default' : 'pointer', lineHeight: 1 }}>
-                    −
-                  </button>
-                  <span className="c-mono" style={{ minWidth: 26, textAlign: 'center', fontSize: 13, fontWeight: 700, opacity: qty > 0 ? 1 : 0.45 }}>
-                    {qty}
-                  </span>
-                  <button onClick={() => adjustQty(m.id, 1)}
-                    style={{ width: 36, height: 34, background: 'transparent', border: 'none', font: 'inherit', color: 'var(--c-fg)', opacity: 0.8, fontSize: 17, cursor: 'pointer', lineHeight: 1 }}>
-                    +
-                  </button>
-                </div>
+                <input
+                  value={qty === 0 ? '' : String(qty)}
+                  onChange={e => setQty(m.id, e.target.value)}
+                  placeholder="0"
+                  inputMode="numeric"
+                  className="c-mono"
+                  style={{
+                    width: 56, minHeight: 34, textAlign: 'center', flexShrink: 0,
+                    background: 'var(--c-wash2)', border: 'none', borderRadius: 9,
+                    color: 'var(--c-fg)', font: 'inherit', fontSize: 13, fontWeight: 700, outline: 'none',
+                  }}
+                />
               </div>
             )
           })
@@ -447,13 +455,16 @@ export default function MicsPage() {
               const room = checkins[m.id]?.room ?? ''
               const ref = refLine(m)
               return (
-                <button
+                // A div, not a <button>: has_qty cells carry an <input>, and
+                // interactive content inside a button is invalid HTML.
+                <div
                   key={m.id}
+                  role="button"
                   onClick={e => onCellTap(m, e)}
                   style={{
-                    position: 'relative', border: 'none', font: 'inherit', textAlign: 'left',
+                    position: 'relative', font: 'inherit', textAlign: 'left',
                     cursor: 'pointer', borderRadius: 9, padding: '7px 9px 6px', minHeight: 46,
-                    WebkitTapHighlightColor: 'transparent',
+                    WebkitTapHighlightColor: 'transparent', userSelect: 'none',
                     ...cellColors(st),
                   }}
                 >
@@ -465,15 +476,35 @@ export default function MicsPage() {
                       {st === 'here' ? 'HERE' : st === 'room' ? room.replace('Studio ', 'RM ').toUpperCase() : 'MISS'}
                     </span>
                   )}
-                  <span style={{
-                    display: 'block', fontSize: 8.5, marginTop: 2,
-                    opacity: st !== 'not_checked' ? 0.55 : ref?.bad ? 1 : 0.4,
-                    color: st === 'not_checked' && ref?.bad ? 'var(--c-st-hot)' : undefined,
-                    fontWeight: st === 'not_checked' && ref?.bad ? 700 : 400,
-                  }}>
-                    {ref?.text ?? ' '}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                    <span style={{
+                      flex: 1, minWidth: 0, fontSize: 8.5,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      opacity: st !== 'not_checked' ? 0.55 : ref?.bad ? 1 : 0.4,
+                      color: st === 'not_checked' && ref?.bad ? 'var(--c-st-hot)' : undefined,
+                      fontWeight: st === 'not_checked' && ref?.bad ? 700 : 400,
+                    }}>
+                      {ref?.text ?? ' '}
+                    </span>
+                    {m.has_qty && (
+                      // Counted item (Genelecs): qty box in the cell; the cell
+                      // around it still taps for HERE/ROOM/MISS.
+                      <input
+                        value={(quantities[m.id] ?? 0) === 0 ? '' : String(quantities[m.id])}
+                        onChange={e => setQty(m.id, e.target.value)}
+                        onClick={e => e.stopPropagation()}
+                        placeholder="qty"
+                        inputMode="numeric"
+                        className="c-mono"
+                        style={{
+                          width: 38, minHeight: 24, textAlign: 'center', flexShrink: 0,
+                          background: 'rgba(0,0,0,0.14)', border: 'none', borderRadius: 7,
+                          color: 'inherit', font: 'inherit', fontSize: 11, fontWeight: 700, outline: 'none',
+                        }}
+                      />
+                    )}
                   </span>
-                </button>
+                </div>
               )
             })}
           </div>
@@ -483,6 +514,11 @@ export default function MicsPage() {
             {q ? 'No mics match.' : 'Nothing here.'}
           </div>
         )}
+
+        {/* General notes for the whole inventory (ARS tester, Aug 28). */}
+        <div style={{ marginTop: 10 }}>
+          <SectionNotes studio={studio} date={today} section="mics" label="Inventory notes" />
+        </div>
       </div>
 
       {/* ── Room / Missing popover (fixed — measured from the tapped cell) ── */}

@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { draftKey, readDraft, writeDraft, clearDraft } from '@/lib/draft'
+import { opsToday } from '@/lib/time'
 
 const STUDIO_META: Record<string, { label: string }> = {
   paramount: { label: 'Paramount' },
@@ -22,7 +23,9 @@ export default function PettyCashPage() {
   const router = useRouter()
   const { studio } = useParams<{ studio: string }>()
   const meta = STUDIO_META[studio] ?? { label: studio }
-  const today = (() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10) })()
+  // Operational day (8:50 AM roll, 2026-08-28) — after-midnight entries
+  // belong to the night in progress.
+  const today = opsToday()
 
   const [entries, setEntries] = useState<Entry[]>([])
   const [openingBalance, setOpeningBalance] = useState('')
