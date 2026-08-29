@@ -16,6 +16,9 @@ const STATUS_COLORS: Record<string, string> = {
   tentative: 'var(--warm)',
   // blue
   cold: '#60A5FA',
+  // orchid — leasing lead. Hex, not a var(), because this legacy badge derives
+  // its tint via hexToRgba below. Same value as --c-st-lease.
+  leasing: '#b5a3ef',
   // teal
   booked: 'var(--booked)',
   completed: 'var(--booked)',

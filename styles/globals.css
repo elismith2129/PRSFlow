@@ -94,6 +94,13 @@
   --c-st-booked: #43dfae;             /* sea green    — booked / confirmed / live room */
   --c-st-uncon:  #7fb2e5;             /* harbor       — uncontacted / tour */
   --c-st-tech:   #b5a3ef;             /* orchid       — tech work ONLY */
+  /* Leasing lead (2026-08-28). Deliberately an ALIAS of orchid, not a new hex:
+     §5 Law 3 gives the app one purple and adding a second would be a second
+     palette. Tech never appears in the CRM and leasing never appears on the
+     calendar, so the two meanings never share a surface — the same shape of
+     dual purpose --c-st-hot already carries (RULING 2026-07-31). Named
+     separately so call sites read as what they are. */
+  --c-st-lease:  var(--c-st-tech);
   --c-st-dead:   #cfd6d4;             /* driftglass   — DNB / open hours */
 
   /* Muted ink steps. The spec works in opacity, which is right for whole elements
@@ -1272,6 +1279,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-fill-booked { background: var(--c-st-booked); }
 .c-fill-uncon  { background: var(--c-st-uncon); }
 .c-fill-tech   { background: var(--c-st-tech); }
+.c-fill-lease  { background: var(--c-st-lease); }
 .c-fill-dead   { background: var(--c-st-dead); }
 
 /* Dark register — calendar chips become alpha fills so they sit in the room. */
@@ -1640,6 +1648,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-seg > button.c-on.c-fill-cold:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)   { background: var(--c-st-cold);   color: var(--c-chip-ink); }
 .c-seg > button.c-on.c-fill-uncon:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)  { background: var(--c-st-uncon);  color: var(--c-chip-ink); }
 .c-seg > button.c-on.c-fill-tech:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)   { background: var(--c-st-tech);   color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-lease:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)  { background: var(--c-st-lease);  color: var(--c-chip-ink); }
 .c-seg > button.c-on.c-fill-dead:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)   { background: var(--c-st-dead);   color: var(--c-chip-ink); }
 .c-seg > button.c-on.c-fill-hot:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)    { background: var(--c-st-hot);    color: var(--c-hot-text); }
 /* TINY — the housing variant for segments that sit inside an already-raised

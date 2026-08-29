@@ -5,7 +5,11 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseKey)
 
-export type LeadStatus = 'hot' | 'warm' | 'cold' | 'uncontacted' | 'booked' | 'dead'
+// `leasing` (2026-08-28) is a pipeline stage, not a temperature: a lead in
+// conversation about a room lease rather than session time. It sits alongside
+// the temps in every status control but is deliberately excluded from the
+// needs-contact sweep — see the uncontacted predicates in app/(main)/crm.
+export type LeadStatus = 'hot' | 'warm' | 'cold' | 'uncontacted' | 'leasing' | 'booked' | 'dead'
 export type BillingType = 'COD' | 'Billing'
 export type BookingType = 'Recording Session' | 'Filming' | 'Event/Playback'
 export type ClientType = 'label' | 'individual'

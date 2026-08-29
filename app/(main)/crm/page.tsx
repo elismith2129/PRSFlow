@@ -25,7 +25,8 @@ import { dbResult } from '@/lib/db'
 
 const STATUS_COLORS: Record<string, string> = {
   hot: 'var(--c-st-hot)', warm: 'var(--c-st-warm)', cold: 'var(--c-fg-3)',
-  uncontacted: 'var(--c-st-uncon)', booked: 'var(--c-st-booked)', dead: 'var(--c-fg-3)'
+  uncontacted: 'var(--c-st-uncon)', leasing: 'var(--c-st-lease)',
+  booked: 'var(--c-st-booked)', dead: 'var(--c-fg-3)'
 }
 
 // Temperature color per status — used for both the avatar ring and its text.
@@ -33,6 +34,7 @@ const LEAD_AVATAR_COLORS: Record<string, string> = {
   hot: 'var(--c-st-hot)',
   warm: 'var(--c-st-warm)',
   uncontacted: 'var(--c-st-uncon)',
+  leasing: 'var(--c-st-lease)',
   booked: 'var(--c-st-booked)',
   cold: 'var(--c-st-cold)',
   dead: 'var(--c-fg-3)',
@@ -518,7 +520,7 @@ export default function CRMPage() {
     // On mobile the detail panel replaces the list entirely, so a lead must only
     // open by explicit tap (or the ?lead= deep-link above) — never auto-selected.
     if (isMobile || loading || hasAutoSelected.current || leads.length === 0) return
-    const uncontacted = leads.filter(l => l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead'].includes(l.status)))
+    const uncontacted = leads.filter(l => l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead', 'leasing'].includes(l.status)))
     const hotDue = leads.filter(l => l.status === 'hot' && isKhuDue(l) && !isParked(l))
     const warmDue = leads.filter(l => l.status === 'warm' && isKhuDue(l) && !isParked(l))
     // Matches the Needs Action buckets exactly. The old "incomplete" fallback was
@@ -627,7 +629,7 @@ export default function CRMPage() {
   // buckets exactly. The old "incomplete" term was dropped along with that tab:
   // its leads were already counted in the three below, so the badge overstated
   // the real queue.
-  const naUncontacted = leads.filter(l => (l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead'].includes(l.status))) && l.needs_contact !== false)
+  const naUncontacted = leads.filter(l => (l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead', 'leasing'].includes(l.status))) && l.needs_contact !== false)
   const naHot = leads.filter(l => l.status === 'hot' && isKhuDue(l) && !isParked(l) && l.needs_contact !== false)
   const naWarm = leads.filter(l => l.status === 'warm' && isKhuDue(l) && !isParked(l) && l.needs_contact !== false)
   const needsActionCount = naUncontacted.length + naHot.length + naWarm.length
@@ -892,6 +894,7 @@ function CampaignsPanel({ leads, allTags, profile }: {
     { value: 'warm', label: 'Warm' },
     { value: 'cold', label: 'Cold' },
     { value: 'uncontacted', label: 'Uncontacted' },
+    { value: 'leasing', label: 'Leasing' },
     { value: 'booked', label: 'Booked' },
     { value: 'dead', label: 'DNB' },
   ]
@@ -1274,7 +1277,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
   const [touchPromptId, setTouchPromptId] = useState<number | null>(null)
   const [keepHotPromptId, setKeepHotPromptId] = useState<number | null>(null)
 
-  const uncontacted = leads.filter(l => (l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead'].includes(l.status))) && l.needs_contact !== false)
+  const uncontacted = leads.filter(l => (l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead', 'leasing'].includes(l.status))) && l.needs_contact !== false)
   const hotDue = leads.filter(l => l.status === 'hot' && isKhuDue(l) && !isParked(l) && l.needs_contact !== false)
   const warmDue = leads.filter(l => l.status === 'warm' && isKhuDue(l) && !isParked(l) && l.needs_contact !== false)
   const totalCount = uncontacted.length + hotDue.length + warmDue.length
@@ -1405,7 +1408,7 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
 
 const PAGE_SIZE = 25
 
-type StatusFilter = 'uncontacted' | 'hot' | 'warm' | 'cold' | 'dnb' | 'booked'
+type StatusFilter = 'uncontacted' | 'hot' | 'warm' | 'cold' | 'leasing' | 'dnb' | 'booked'
 
 // Maps a lead to its tab-filter key (cold + dead collapse into one bucket).
 function leadStatusKey(l: Lead): StatusFilter {
@@ -1413,7 +1416,7 @@ function leadStatusKey(l: Lead): StatusFilter {
   return l.status as StatusFilter
 }
 
-const ALL_STATUS_FILTERS: StatusFilter[] = ['uncontacted', 'hot', 'warm', 'cold', 'dnb', 'booked']
+const ALL_STATUS_FILTERS: StatusFilter[] = ['uncontacted', 'hot', 'warm', 'cold', 'leasing', 'dnb', 'booked']
 const DEFAULT_STATUS_FILTERS: StatusFilter[] = ['uncontacted', 'hot', 'warm']
 
 function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouched, onKeepHot, onUpdateStatus, loading }: {
@@ -1489,12 +1492,14 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   const hotLeads = leads.filter(l => l.status !== 'uncontacted' && l.status === 'hot')
   const warmLeads = leads.filter(l => l.status !== 'uncontacted' && l.status === 'warm')
   const coldLeads = leads.filter(l => l.status === 'cold')
+  const leasingLeads = leads.filter(l => l.status === 'leasing')
   const dnbLeads = leads.filter(l => l.status === 'dead')
   const bookedLeads = leads.filter(l => l.status === 'booked')
 
   // Per-status counts for the tab badges — independent of which tabs are active.
   const filterMap: Record<StatusFilter, Lead[]> = {
-    uncontacted: uncontactedLeads, hot: hotLeads, warm: warmLeads, cold: coldLeads, dnb: dnbLeads, booked: bookedLeads,
+    uncontacted: uncontactedLeads, hot: hotLeads, warm: warmLeads, cold: coldLeads,
+    leasing: leasingLeads, dnb: dnbLeads, booked: bookedLeads,
   }
 
   const filterDefs: { key: StatusFilter; label: string; color: string }[] = [
@@ -1502,6 +1507,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
     { key: 'hot', label: 'Hot', color: 'var(--c-st-hot)' },
     { key: 'warm', label: 'Warm', color: 'var(--c-st-warm)' },
     { key: 'cold', label: 'Cold', color: 'var(--c-st-cold)' },
+    { key: 'leasing', label: 'Leasing', color: 'var(--c-st-lease)' },
     { key: 'dnb', label: 'DNB', color: 'var(--c-fg-3)' },
     { key: 'booked', label: 'Booked', color: 'var(--c-st-booked)' },
   ]
@@ -2127,7 +2133,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
           </button>
           {statusDDOpen && (
             <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'var(--c-bg)', borderRadius: 8, zIndex: 60, overflow: 'hidden', boxShadow: '0 6px 20px rgba(0,0,0,0.45)', minWidth: 150 }}>
-              {['uncontacted', 'hot', 'warm', 'cold', 'booked', 'dead'].map(s => {
+              {['uncontacted', 'hot', 'warm', 'cold', 'leasing', 'booked', 'dead'].map(s => {
                 const c = LEAD_AVATAR_COLORS[s] || LEAD_AVATAR_COLORS.uncontacted
                 const active = (local.status || lead.status) === s
                 return (
