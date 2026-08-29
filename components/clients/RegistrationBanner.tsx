@@ -12,6 +12,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { dbResult } from '@/lib/db'
+import { logAppError } from '@/lib/errlog'
 import { useClientsVersion } from '@/hooks/useClientsVersion'
 
 export interface PendingReg {
@@ -75,17 +76,49 @@ export function RegistrationBanner({ onNavigate }: {
 
   useEffect(() => { load() }, [load, clientsVersion])
 
+  // Confirming a registration is ONE write that matters: `clients
+  // .profile_confirmed_at`. Every surface that counts pending registrations —
+  // this banner, the Nav badge and the Rail badge — queries
+  // `registered_at IS NOT NULL AND profile_confirmed_at IS NULL`. Nothing reads
+  // `registration_tokens.registration_reviewed`; it was added "for future
+  // granular tracking" (CHUNK_4_BRIEFING) and never wired up.
+  //
+  // BUG FIXED 2026-08-28: the banner row's own "Create profile" button called
+  // this function directly, and this function only ever wrote the token flag.
+  // So the row vanished optimistically, the DB was never told the profile was
+  // confirmed, and the next fetch — on remount, or on the shared clients
+  // channel firing — brought the badge straight back. Only the modal's path
+  // worked, because the modal did the clients write itself first.
+  //
+  // Order matters now: write, verify, and only then drop it locally. Same
+  // reasoning the modal already carried — never clear the row on an unverified
+  // write, or the banner disagrees with the database.
   async function handleNavigate(id: string) {
-    // Drop it from the local list immediately so the banner count reflects the
-    // action before the realtime round-trip lands.
+    const { error } = await supabase
+      .from('clients')
+      .update({ profile_confirmed_at: new Date().toISOString() })
+      .eq('id', id)
+    if (!dbResult('Confirming registration', error)) return
+
     setPendingRegs(prev => prev.filter(r => r.id !== id))
     setOpen(false)
-    const { error } = await supabase
+
+    // Best-effort bookkeeping on a column nothing reads yet. It is deliberately
+    // NOT dbResult'd: a failure here would fire a red "your change was NOT
+    // saved" toast over a confirm that did in fact save, which is worse than
+    // silence. Still reported to Admin → Errors so it stays visible.
+    const { error: tokenError } = await supabase
       .from('registration_tokens')
       .update({ registration_reviewed: true })
       .eq('client_id', id)
       .eq('registration_reviewed', false)
-    dbResult('Marking registration reviewed', error)
+    if (tokenError) {
+      logAppError(
+        new Error(`[db] Marking registration reviewed: ${tokenError.message || 'unknown error'}`),
+        { source: 'db', code: tokenError.code },
+      )
+    }
+
     onNavigate(id)
   }
 
@@ -192,7 +225,7 @@ export function RegistrationBanner({ onNavigate }: {
 function RegistrationReviewModal({ regs, onClose, onNavigate }: {
   regs: PendingReg[]
   onClose: () => void
-  onNavigate: (id: string) => void
+  onNavigate: (id: string) => Promise<void>
 }) {
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
@@ -212,14 +245,18 @@ function RegistrationReviewModal({ regs, onClose, onNavigate }: {
     fetchSignedUrls()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The confirm write itself now lives in the parent's handleNavigate, so this
+  // path and the banner row's button are literally the same code — the split
+  // between them is what let the banner button ship without a confirm write at
+  // all. This is only the spinner. handleNavigate does not navigate on a failed
+  // write, so a failure correctly leaves the card sitting here.
   async function confirm(id: string) {
     setConfirmingId(id)
-    const { error } = await supabase.from('clients').update({ profile_confirmed_at: new Date().toISOString() }).eq('id', id)
-    setConfirmingId(null)
-    // Don't navigate away on a failed confirm — the registration would vanish
-    // from the banner while still unconfirmed in the database.
-    if (!dbResult('Confirming registration', error)) return
-    onNavigate(id)
+    try {
+      await onNavigate(id)
+    } finally {
+      setConfirmingId(null)
+    }
   }
 
   const ghostBtn: React.CSSProperties = {
