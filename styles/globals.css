@@ -337,7 +337,19 @@ body {
    to beat the inline style on the <main> element. */
 @media (max-width: 768px) {
   html, body { overflow-x: hidden; max-width: 100vw; }
-  .page-main { padding: 16px 12px !important; }
+  /* The padding is symmetric, but a single child wider than the screen still
+     lets the page scroll sideways — and a page scrolled 20px right LOOKS like
+     a layout pinned left with dead space on the right (Eli, 2026-08-31: "look
+     at the edges of everything, it's not centered"). `overflow-x: hidden` on
+     html/body alone doesn't stop it, because the overflow happens inside this
+     element. Same guard the runner pages have carried since June. Wide content
+     that genuinely needs to scroll (tables, the studio-time grid) does it in
+     its OWN container and is unaffected. */
+  .page-main {
+    padding: 16px 12px !important;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
 }
 
 select {

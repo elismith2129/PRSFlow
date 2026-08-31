@@ -507,10 +507,13 @@ function DayView({
       {/* ── RIGHT: date header + studio cards ─────────────────────────── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
 
-        {/* Header */}
+        {/* Header. Wraps on a phone: a long date plus three buttons is wider
+            than 375px, and an unwrapped row is the kind of overflow that lets
+            the whole page scroll sideways and read as "off centre". */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '10px 16px', flexShrink: 0,
+          gap: 8, flexWrap: isMobile ? 'wrap' : 'nowrap',
+          padding: isMobile ? '10px 0' : '10px 16px', flexShrink: 0, minWidth: 0,
           }}>
           <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15, color: 'var(--c-fg)' }}>
             {dayViewDate.toLocaleDateString('en-US', isMobile
@@ -532,7 +535,7 @@ function DayView({
             days carrying at least one session, so you can see where the work is
             before tapping. */}
         {isMobile && (
-          <div style={{ padding: '0 16px 12px', flexShrink: 0 }}>
+          <div style={{ padding: '0 0 12px', flexShrink: 0 }}>
             <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '8px 10px 9px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <button
@@ -595,7 +598,7 @@ function DayView({
         )}
 
         {/* Studio cards grid — single column (rooms as rows) on mobile */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '0 0 12px' : '12px 16px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 10 }}>
             {allStudios.map(({ loc, room }) => {
               const cards = dayBookings
