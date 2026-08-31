@@ -24,11 +24,20 @@ import {
 } from '@/lib/myday'
 
 /**
- * Dashboard view-as (§14b + RULING 2026-08-10). 'eli' is OVERSIGHT, not a
- * person's duty card — the briefing goes cross-role and the staff grid appears.
- * 'fernando' and 'aaron' map to the manager and billing duty cards.
+ * Dashboard view-as (§14b + RULING 2026-08-10). 'oversight' is not a duty card —
+ * the briefing goes cross-role and the staff grid appears. 'manager' and
+ * 'billing' are the two real duty cards.
  */
-type ViewAs = 'eli' | 'fernando' | 'aaron'
+// The view-as options are ROLES, not people (Eli, 2026-08-31 — was
+// 'eli' | 'fernando' | 'aaron'). Person-named values meant a roster change was a
+// code change, and the billing card is deliberately a function rather than a
+// person: it is labelled BILLING_CARD_LABEL everywhere, so Aaron's successor
+// inherits the card without anyone touching this file. 'oversight' is Eli's
+// no-duty-card view (MYDAY-BUILD §0).
+type ViewAs = 'oversight' | 'manager' | 'billing'
+
+/** The billing duty card is named for the function, never the person. */
+const BILLING_CARD_LABEL = 'Billing Ops'
 
 // Needs Action predicates — mirror the CRM (app/(main)/crm/page.tsx) bucket logic
 // so the dashboard surfaces the same leads as the CRM Needs Action tab.
@@ -182,11 +191,47 @@ export default function DashboardPage() {
   const router = useRouter()
   const [calDate, setCalDate] = useState(new Date())
   const [hoverRoom, setHoverRoom] = useState<string | null>(null)
-  // §14b view-as toggle — Eli previews Fernando's console (greeting, briefing,
-  // My Day, default task tab, staff-grid visibility). Only Eli sees the toggle;
-  // everyone else gets their own view with no preview control.
-  const [viewAs, setViewAs] = useState<ViewAs>('eli')
+  // §14b view-as toggle — which duty card the console is showing.
+  //
+  // **This used to default to 'eli' for EVERYONE and only Eli could change it**,
+  // which meant Fernando and Aaron opened the dashboard with `myDayRole = null`
+  // and got no duty card at all — their own duties were reachable only from
+  // /my-day. Fixed 2026-08-31 (Eli: "I want Fernando to have access to his my day
+  // in the toggle, the way I do"): everyone starts on their OWN card, and anyone
+  // who can work more than one card gets the switch.
+  //
+  // Who sees what: the owner gets oversight + both cards; the manager gets his
+  // own card + Billing Ops (HR-SPEC §5.6 — any manager can work another's card
+  // when someone is out, and `completed_by` records who actually ticked it).
+  // Billing gets one card, so no toggle: a segmented control with a single
+  // option is furniture.
+  const [viewAs, setViewAs] = useState<ViewAs>('oversight')
   const isEli = profile?.email === 'eli@paramountrecording.com'
+  const isOwner = isEli || profile?.role === 'owner'
+
+  /** The card this viewer owns — where they land, and the one that shows their name. */
+  const ownCard: ViewAs =
+    isOwner ? 'oversight'
+    : profile?.role === 'billing' ? 'billing'
+    : profile?.role === 'manager' ? 'manager'
+    : 'oversight'
+
+  /** The cards this viewer may switch between. One option = no toggle. */
+  const viewAsOptions: ViewAs[] =
+    isOwner ? ['oversight', 'manager', 'billing']
+    : profile?.role === 'manager' ? ['manager', 'billing']
+    : [ownCard]
+
+  // The profile arrives async, so the landing card is set once it does. Guarded
+  // on `profileLanded` rather than firing on every profile change — otherwise a
+  // realtime profile update would yank someone back to their own card mid-look.
+  const profileLanded = useRef(false)
+  useEffect(() => {
+    if (!profile || profileLanded.current) return
+    profileLanded.current = true
+    setViewAs(ownCard)
+  }, [profile, ownCard])
+
   function switchViewAs(v: ViewAs) {
     setViewAs(v)
     // (Task-tab follow removed with the name tabs — the panel is personal now.)
@@ -195,17 +240,25 @@ export default function DashboardPage() {
   // ── MY DAY (docs/MYDAY-BUILD.md) ───────────────────────────────────────────
   // Replaces the FLO_STATIC / MYDAY_STATIC / DGRID_STATIC placeholders.
   //
-  // The view-as toggle now carries three options (RULING 2026-08-10): Fernando
-  // and Aaron each show their real duty card; 'eli' is OVERSIGHT — the briefing
+  // The view-as toggle carries three options (RULING 2026-08-10): the manager
+  // and billing cards are real duty cards; 'oversight' is Eli's — the briefing
   // spans both roles and the staff grid shows, but there is no duty card,
   // because duties are scoped to manager + billing (MYDAY-BUILD §0) and Eli has
   // nothing of his own to tick.
-  const myDayRole: MyDayRole | null =
-    viewAs === 'fernando' ? 'manager' : viewAs === 'aaron' ? 'billing' : null
+  const myDayRole: MyDayRole | null = viewAs === 'oversight' ? null : viewAs
 
   const [myDay, setMyDay] = useState<MyDayDashboard | null>(null)
   const [gridRows, setGridRows] = useState<GridRow[]>([])
   const [savingDuty, setSavingDuty] = useState<string | null>(null)
+
+  /** What to call a card: billing is its FUNCTION, manager is its person. */
+  const cardLabel = useCallback(
+    (r: MyDayRole): string =>
+      r === 'billing'
+        ? BILLING_CARD_LABEL
+        : (gridRows.find(g => g.role === 'manager')?.who ?? 'Manager'),
+    [gridRows],
+  )
 
   const loadMyDay = useCallback(async () => {
     // Grid first: it resolves the display names, and the briefing needs them to
@@ -922,9 +975,12 @@ export default function DashboardPage() {
           retired — location counts moved into the sessions pane header. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '2px 4px 14px', flexWrap: isMobile ? 'wrap' : undefined }}>
         <div>
+          {/* On your OWN card the app addresses you by name; on someone else's it
+              names the card you are looking at (so Aaron reads "Good afternoon
+              Aaron", while Fernando switched to billing reads "Billing Ops"). */}
           <span className="c-label" style={{ display: 'block', marginBottom: 3 }}>
-            {greeting}{myDayRole
-              ? ` ${gridRows.find(g => g.role === myDayRole)?.who ?? ''}`
+            {greeting}{myDayRole && viewAs !== ownCard
+              ? ` ${cardLabel(myDayRole)}`
               : greetingName}
           </span>
           <h1 className="c-arch" style={{ fontSize: isMobile ? 20 : 26, letterSpacing: '-0.03em', lineHeight: 1.05 }}>
@@ -932,17 +988,21 @@ export default function DashboardPage() {
           </h1>
         </div>
         <div style={{ flex: 1 }} />
-        {isEli && !isMobile && (
+        {/* Shown to anyone who can work more than one card — the owner (oversight
+            + both) and the manager (his own + Billing Ops). Labels come from the
+            roster for the manager and from the constant for billing, so a roster
+            change is never a code change. */}
+        {viewAsOptions.length > 1 && !isMobile && (
           <span className="c-seg" style={{ flexShrink: 0 }}>
-            <button className={viewAs === 'eli' ? 'c-on' : ''} onClick={() => switchViewAs('eli')}>Eli</button>
-            {/* Labels follow the roster, so Aaron's successor inherits the
-                button without a code change — billing is a ROLE (MYDAY-BUILD §0). */}
-            <button className={viewAs === 'fernando' ? 'c-on' : ''} onClick={() => switchViewAs('fernando')}>
-              {gridRows.find(g => g.role === 'manager')?.who ?? 'Manager'}
-            </button>
-            <button className={viewAs === 'aaron' ? 'c-on' : ''} onClick={() => switchViewAs('aaron')}>
-              {gridRows.find(g => g.role === 'billing')?.who ?? 'Billing'}
-            </button>
+            {viewAsOptions.map(opt => (
+              <button
+                key={opt}
+                className={viewAs === opt ? 'c-on' : ''}
+                onClick={() => switchViewAs(opt)}
+              >
+                {opt === 'oversight' ? (profile?.display_name ?? 'Oversight') : cardLabel(opt)}
+              </button>
+            ))}
           </span>
         )}
         {!isMobile && (
@@ -1281,8 +1341,8 @@ export default function DashboardPage() {
         {/* Under the console: staff 14-day grid (live, Eli view only)
             + the Flags indicator (count + latest; "+ add" keeps quick
             reporting; the card grid moved to /flags). */}
-        <div style={{ display: 'grid', gridTemplateColumns: (isEli && viewAs === 'eli' && !isMobile) ? '1.3fr 1fr' : '1fr', gap: 12, alignItems: 'end' }}>
-          {isEli && viewAs === 'eli' && !isMobile && (
+        <div style={{ display: 'grid', gridTemplateColumns: (isEli && viewAs === 'oversight' && !isMobile) ? '1.3fr 1fr' : '1fr', gap: 12, alignItems: 'end' }}>
+          {isEli && viewAs === 'oversight' && !isMobile && (
             <div className="c-panel">
               <SectionHeader carved title="Staff — 14 days" action={{ label: 'HR →', onClick: () => router.push('/punches') }} />
               <div className="c-dgrid">
