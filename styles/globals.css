@@ -2341,5 +2341,19 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    like Apple Notes, not a web page. */
 .c-richnote ul, .c-richnote ol { margin: 3px 0; padding-left: 22px; }
 .c-richnote li { margin: 2px 0; }
+/* The DOT IS DRAWN BY US, not by list-style (Eli, 2026-08-31: "it looks like
+   it is supposed to be there but it's just blank" — a list with no visible
+   marker reads as a mystery indent). WebKit inside contentEditable is
+   unreliable about painting native markers once the global reset has zeroed
+   list padding, and a bullet you cannot see is worse than no bullet at all.
+   A ::before is deterministic in every browser. Ordered lists keep their real
+   numbers — only UL is hand-drawn. */
+.c-richnote ul { list-style: none; padding-left: 6px; }
+.c-richnote ul > li { position: relative; padding-left: 16px; }
+.c-richnote ul > li::before {
+  content: '•';
+  position: absolute; left: 2px; top: 0;
+  opacity: 0.75; pointer-events: none;
+}
 .c-richnote p, .c-richnote div { margin: 0; }
 .c-richnote:focus { outline: none; }

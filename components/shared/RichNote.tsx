@@ -98,6 +98,29 @@ export function RichNoteEditor({ value, onChange, placeholder, minHeight = 150, 
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const [focused, setFocused] = useState(false)
+  // Toolbar on/off state (Eli, 2026-08-31: "there's no indication if it's on or
+  // off"). Read from the browser rather than tracked by us, so it stays true
+  // when the caret MOVES into or out of bold text or a list — a button that
+  // only updated when pressed would lie the moment you tapped elsewhere.
+  const [active, setActive] = useState({ bold: false, list: false })
+  const syncActive = () => {
+    const el = ref.current
+    if (!el || document.activeElement !== el) return
+    try {
+      setActive({
+        bold: document.queryCommandState('bold'),
+        list: document.queryCommandState('insertUnorderedList'),
+      })
+    } catch { /* queryCommandState throws in some engines — no state, no crash */ }
+  }
+
+  // The caret can move without an input event (taps, arrow keys), and
+  // selectionchange is the only signal for that.
+  useEffect(() => {
+    const onSel = () => syncActive()
+    document.addEventListener('selectionchange', onSel)
+    return () => { document.removeEventListener('selectionchange', onSel) }
+  }, [])
 
   // Sync external value in — but NEVER while the runner is typing here
   // (rewriting innerHTML mid-edit throws the caret to the start).
@@ -113,6 +136,7 @@ export function RichNoteEditor({ value, onChange, placeholder, minHeight = 150, 
     ref.current?.focus()
     document.execCommand(name)
     emit()
+    syncActive()
   }
 
   const empty = noteIsEmpty(value)
@@ -122,23 +146,32 @@ export function RichNoteEditor({ value, onChange, placeholder, minHeight = 150, 
   const btn: React.CSSProperties = {
     border: 'none', background: 'transparent', font: 'inherit', cursor: 'pointer',
     color: 'var(--c-fg)', fontSize: 13, lineHeight: 1, padding: '4px 7px',
-    opacity: 0.55, WebkitTapHighlightColor: 'transparent',
+    opacity: 0.55, WebkitTapHighlightColor: 'transparent', borderRadius: 6,
+  }
+  // ON is a filled chip, not a slightly-less-faded glyph: at 13px on a phone,
+  // an opacity change is not a state anyone can read.
+  const btnOn: React.CSSProperties = {
+    ...btn, opacity: 1, background: 'var(--c-fg)', color: 'var(--c-bg)',
   }
 
   return (
     <div style={{ position: 'relative' }}>
       <div style={{ display: 'flex', gap: 2, marginBottom: 3 }}>
         <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => cmd('bold')}
-          aria-label="Bold" style={{ ...btn, fontWeight: 800 }}>B</button>
+          aria-label="Bold" aria-pressed={active.bold}
+          style={{ ...(active.bold ? btnOn : btn), fontWeight: 800 }}>B</button>
         <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => cmd('insertUnorderedList')}
-          aria-label="Bullet list" style={{ ...btn, fontSize: 16 }}>•</button>
+          aria-label="Bullet list" aria-pressed={active.list}
+          style={{ ...(active.list ? btnOn : btn), fontSize: 16 }}>•</button>
       </div>
       <div
         ref={ref}
         className="c-richnote"
         contentEditable
         suppressContentEditableWarning
-        onInput={emit}
+        onInput={() => { emit(); syncActive() }}
+        onKeyUp={syncActive}
+        onMouseUp={syncActive}
         onFocus={() => {
           setFocused(true)
           // Deterministic bullet scaffold — execCommand on an empty div is
@@ -159,7 +192,7 @@ export function RichNoteEditor({ value, onChange, placeholder, minHeight = 150, 
             emit()
           }
         }}
-        onBlur={() => { setFocused(false); emit() }}
+        onBlur={() => { setFocused(false); emit(); setActive({ bold: false, list: false }) }}
         onKeyDown={e => {
           // Tab indents, shift-tab outdents — Apple Notes muscle memory.
           if (e.key === 'Tab') {
