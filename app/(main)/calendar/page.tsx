@@ -375,11 +375,11 @@ function DayView({
   const [miniMonthStart, setMiniMonthStart] = useState(
     () => new Date(dayViewDate.getFullYear(), dayViewDate.getMonth(), 1)
   )
-  // Mobile month picker (Eli, 2026-08-31). The mini calendar on the left is
-  // desktop-only because a permanent month grid would eat a third of a phone
-  // screen; on mobile the same grid drops out of the date header on tap and
-  // closes as soon as a day is chosen.
-  const [pickerOpen, setPickerOpen] = useState(false)
+  // Mobile month picker (Eli, 2026-08-31). PINNED, not a drop-down — the
+  // second ruling the same day: "easier to scan across multiple dates without
+  // having to deal with opening and closing." It sits above the scroller, so
+  // the rooms scroll under a month that never moves. The desktop equivalent is
+  // the mini calendar in the left column.
   // Days in the visible month that have at least one session — the dots.
   const [bookedDays, setBookedDays] = useState<Set<string>>(new Set())
 
@@ -404,7 +404,7 @@ function DayView({
   // is the one that matters for paint speed. A multi-day booking marks every
   // day it spans, clamped to the month being shown.
   useEffect(() => {
-    if (!pickerOpen) return
+    if (!isMobile) return
     const first = fmt(miniMonthStart)
     const last = fmt(new Date(miniMonthStart.getFullYear(), miniMonthStart.getMonth() + 1, 0))
     let cancelled = false
@@ -429,7 +429,7 @@ function DayView({
         setBookedDays(days)
       })
     return () => { cancelled = true }
-  }, [pickerOpen, miniMonthStart, reloadKey])
+  }, [isMobile, miniMonthStart, reloadKey])
 
   // Build mini calendar grid
   const miniCells: (Date | null)[] = []
@@ -512,27 +512,10 @@ function DayView({
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '10px 16px', flexShrink: 0,
           }}>
-          {/* On mobile the date IS the picker button (the ▾ says so). Desktop
-              keeps plain text — it already has the month grid beside it. */}
-          <div
-            onClick={isMobile ? () => setPickerOpen(o => !o) : undefined}
-            style={{
-              fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15,
-              color: 'var(--c-fg)', display: 'flex', alignItems: 'center', gap: 6,
-              cursor: isMobile ? 'pointer' : 'default',
-              WebkitTapHighlightColor: 'transparent',
-            }}
-          >
+          <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15, color: 'var(--c-fg)' }}>
             {dayViewDate.toLocaleDateString('en-US', isMobile
               ? { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }
               : { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-            {isMobile && (
-              <span style={{
-                fontSize: 11, opacity: 0.5,
-                transform: pickerOpen ? 'rotate(180deg)' : 'none',
-                transition: 'transform 0.15s',
-              }}>▾</span>
-            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <button onClick={() => setDayViewDate(addDays(dayViewDate, -1))}
@@ -544,13 +527,13 @@ function DayView({
           </div>
         </div>
 
-        {/* ── Mobile month picker — the desktop mini calendar, dropped out of
-            the header on demand. Tapping a day jumps and closes: on a phone the
-            grid is a destination, not furniture. Dots mark days carrying at
-            least one session, so you can see where the work is before tapping. */}
-        {isMobile && pickerOpen && (
+        {/* ── Mobile month picker — PINNED above the scrolling room list, so
+            scanning across dates costs one tap and never a close. Dots mark
+            days carrying at least one session, so you can see where the work is
+            before tapping. */}
+        {isMobile && (
           <div style={{ padding: '0 16px 12px', flexShrink: 0 }}>
-            <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '10px 12px 12px' }}>
+            <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '8px 10px 9px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <button
                   onClick={() => setMiniMonthStart(new Date(miniMonthStart.getFullYear(), miniMonthStart.getMonth() - 1, 1))}
@@ -573,7 +556,7 @@ function DayView({
                 ))}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px 0' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px 0' }}>
                 {miniCells.map((cell, i) => {
                   if (!cell) return <div key={`me-${i}`} />
                   const cellStr = fmt(cell)
@@ -583,13 +566,13 @@ function DayView({
                   return (
                     <div
                       key={cellStr}
-                      onClick={() => { setDayViewDate(cell); setPickerOpen(false) }}
-                      style={{ textAlign: 'center', cursor: 'pointer', padding: '3px 0', WebkitTapHighlightColor: 'transparent' }}
+                      onClick={() => setDayViewDate(cell)}
+                      style={{ textAlign: 'center', cursor: 'pointer', padding: '1px 0', WebkitTapHighlightColor: 'transparent' }}
                     >
                       <div style={{
-                        width: 34, height: 34, borderRadius: '50%', margin: '0 auto',
+                        width: 30, height: 30, borderRadius: '50%', margin: '0 auto',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 13.5, fontFamily: 'Inter',
+                        fontSize: 12.5, fontFamily: 'Inter',
                         background: isSelected ? 'var(--c-fg)' : isTodayCell ? 'rgba(255,255,255,0.1)' : 'transparent',
                         color: isSelected ? 'var(--c-bg)' : 'var(--c-fg)',
                         fontWeight: isSelected || isTodayCell ? 700 : 400,
@@ -600,7 +583,7 @@ function DayView({
                       {/* Booked marker. Reserved space either way, so the rows
                           don't jump by 5px as the month's dots load in. */}
                       <div style={{
-                        width: 4, height: 4, borderRadius: '50%', margin: '3px auto 0',
+                        width: 4, height: 4, borderRadius: '50%', margin: '2px auto 0',
                         background: hasWork && !isSelected ? 'var(--c-st-booked)' : 'transparent',
                       }} />
                     </div>
