@@ -55,9 +55,109 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'week-of-aug-26-2026',
+    title: 'Notes that survive, the 8:50 night, monthly money, the 2026 import',
+    version: 'v1.19.0',
+    date: 'Aug 31, 2026',
+    intro:
+      'Six days of work in one batch (Aug 26–31 ran without wrap-ups). Four areas: notes that no longer disappear, the runner day rolling at 8:50 AM instead of midnight, the money rules on work orders (monthly split, day-rate law, 3% card fee), and the imported 2026 calendar. The 8:50 item needs someone working past midnight — leave it until a real night shift rather than faking it.',
+    items: [
+      {
+        id: 'myday-notes-survive', area: 'My Day notes', device: 'desktop',
+        what: 'Typed notes are still there after leaving the page',
+        how: 'My Day → Shift notes. Type a few lines into Session notes WITHOUT submitting. The line above the boxes should change to "kept — safe to leave this page". Now go to the Calendar, then come back to My Day. Your text must still be in the box, exactly as you left it.',
+      },
+      {
+        id: 'myday-notes-reload', area: 'My Day notes', device: 'desktop',
+        what: 'They survive a full reload and a second device',
+        how: 'With unsubmitted text in the boxes, reload the page (⌘R). The text should come back. Then open My Day on your phone or iPad signed in as yourself — the same unfinished text should be waiting there too.',
+      },
+      {
+        id: 'myday-notes-submit-clears', area: 'My Day notes', device: 'desktop',
+        what: 'Submit posts the note and leaves the boxes empty — and it stays empty',
+        how: 'Type something, hit Submit shift notes. The boxes should clear and the post should appear in the log below. Now go to the Calendar and come back: the boxes must STILL be empty. (If your submitted text reappears in the box, that is the bug this item exists to catch — report it.)',
+      },
+      {
+        id: 'myday-notes-edit-resume', area: 'My Day notes', device: 'desktop',
+        what: 'Editing your own post and wandering off does not create a duplicate',
+        how: 'In the log below, hit Edit on one of your own posts — it loads into the boxes and the header says "editing your post". Change a word, do NOT submit, go to the Calendar and come back. It should still say you are editing that post. Now Submit: the original post should be UPDATED. Check the log has no second copy.',
+      },
+      {
+        id: 'runner-shift-note-autosave', area: 'Runner shift notes',
+        what: 'The shift note saves itself while you type',
+        how: 'Runner → Shift notes. Type a couple of lines, wait two seconds, then close the app entirely and reopen it. Your text should be there. Nothing to submit.',
+      },
+      {
+        id: 'richnote-formatting', area: 'Runner shift notes',
+        what: 'Bold and bullets work in notes',
+        how: 'In a shift note, tap the B and type — the text should be bold. Tap the • button (or just start typing, which auto-bullets) and press return: you should get a second bullet, not a new paragraph. On a keyboard, Tab should indent a bullet.',
+      },
+      {
+        id: 'ops-day-midnight', area: 'Runner hub',
+        what: 'A night does not reset at midnight',
+        how: 'DO THIS ON A REAL NIGHT SHIFT, past 12am. Around 11:50pm note which sessions and work orders your hub shows. After midnight, refresh. The same sessions and WOs should still be listed, and any checklist you started should still be the same one — nothing should have rolled over to a new day. (The day rolls at 8:50 AM instead.)',
+      },
+      {
+        id: 'section-notes', area: 'Runner stock',
+        what: 'The stock list has a notes box for the whole list',
+        how: 'Runner → Stock → PRS Stock. Find the general notes box (not the per-item notes). Type something like "office run already done". Leave the page and come back — it should still be there. Ask the office to confirm they can see it in the Daily Ops notes popup.',
+      },
+      {
+        id: 'runner-no-logout-typing', area: 'Runner stock',
+        what: 'You do not get logged out mid-count',
+        how: 'Start a long stock count and keep typing on and off for a while without leaving the page. You should stay signed in the whole time. (Previously a long count could hit the session expiry and dump you at the login screen.)',
+      },
+      {
+        id: 'wo-day-hourly-twin', area: 'Work order', device: 'desktop',
+        what: 'Day rate and hourly rate move together, 10 to 1',
+        how: 'Open any work order with a studio row. Set the hourly rate to 75 — the day rate should become 750. Now type 900 into the day rate — hourly should become 90, and that row\'s OT rate should follow to 90 as well.',
+      },
+      {
+        id: 'wo-monthly-split', area: 'Work order', device: 'desktop',
+        what: 'A monthly amount splits across the days exactly',
+        how: 'Open a lockout/monthly WO with a full month of dated rows. Open the Monthly popup, type the monthly figure (e.g. 19500) and apply. Add up the day rows: they must total EXACTLY 19,500 — some days will be a cent higher than others, which is correct. Add a day and re-run it; it should re-split, not double up.',
+      },
+      {
+        id: 'wo-card-fee', area: 'Work order', device: 'desktop',
+        what: 'The 3% card figure is calculated for you',
+        how: 'Open a COD work order with a balance. Under Balance Due there should be a line "If paying by card (incl. 3%)" showing the balance × 1.03. Add a Credit Card payment for that exact charged amount: the balance should drop by the BASE amount (the pre-fee figure), not by the full charged amount, and it should land at zero.',
+      },
+      {
+        id: 'lockout-status', area: 'Calendar', device: 'desktop',
+        what: 'A lockout room shows as occupied but stays out of daily ops',
+        how: 'Find a monthly lockout booking on the calendar (e.g. Track North). It should read green like a booked room and have a real work order. Then check the runner hub and daily ops for that studio on the same date — the lockout must NOT appear as a session to run, with no checklist or approval attached to it.',
+      },
+      {
+        id: 'imported-history-readonly', area: 'Calendar', device: 'desktop',
+        what: 'Imported past bookings are look-only',
+        how: 'Scroll the calendar back to an earlier month of 2026 and open an imported session. It should open as a compact read-only card — not the editable work order — and it should have no invoice number. Confirm it is not in daily ops or the WO hub.',
+      },
+      {
+        id: 'imported-future-promotes', area: 'Calendar', device: 'desktop',
+        what: 'An imported booking in the future still becomes a real session',
+        how: 'Find an imported booking dated today or later. Open it: it should open the work order editor, and saving should create a proper WO with an invoice number. It should then behave like any other session everywhere.',
+      },
+      {
+        id: 'registration-confirm-sticks', area: 'Registration', device: 'desktop',
+        what: 'Create profile stays done after a refresh',
+        how: 'On the registration banner, hit Create profile for a pending registration. The row should clear. Now reload the page: it must NOT come back. (It used to reappear every refresh as if you had never confirmed it.)',
+      },
+      {
+        id: 'leasing-status', area: 'CRM', device: 'desktop',
+        what: 'Leasing is a lead status and stays out of Needs Action',
+        how: 'CRM → open a lead → set its status to Leasing (purple). It should show under the Leasing tab in All Leads. Then check the dashboard Needs Action panel and CRM Needs Action: that lead must NOT be listed there.',
+      },
+      {
+        id: 'iphone-calendar-rows', area: 'Calendar', device: 'phone',
+        what: 'Stacked sessions on the phone calendar each get their own slot',
+        how: 'On your phone, open the calendar on a day where one room has two or three sessions. Each session chip should be fully visible in its own slot — the room row should be taller to fit them, not overlapping them on top of each other.',
+      },
+    ],
+  },
+  {
     id: 'runner-feedback-mic-sheet-2026-08-25',
     title: 'Runner feedback fixes + the new mic Sheet',
-    version: 'v1.18.0 (mic items are on the preview link until merged)',
+    version: 'v1.18.0 (mic Sheet merged to main Aug 26 — the "PREVIEW LINK" items below are now live)',
     date: 'Aug 25, 2026',
     intro:
       'Two things at once: the fixes from the Aug 24 runner test pass (stock list corrections, add-item bug, initials, help tips), and the mic inventory page rebuilt as a tap-grid "sheet". The mic items run on the PREVIEW link until Eli merges — everything else is live. This batch also stands in for Aug 24\'s unwritten batch: the expense report, Reopen and shift-notes items at the bottom cover that session\'s settled work.',
