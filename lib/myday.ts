@@ -450,13 +450,7 @@ export function buildDutyViews(
 export function backlogScopeLabel(duty: MyDayDuty, entries: MyDayEntry[], asOf: string): string | null {
   const bl = computeBacklog(duty, entries, asOf)
   if (bl.days === 0) return null
-  // "since Thu 8/27", not the full date list. The count INCLUDES today (days + 1)
-  // while `dates` holds only the missed days behind it, so listing them read as a
-  // contradiction — "covering 5 days (Thu 8/27, Fri 8/28, Sat 8/29, Sun 8/30)"
-  // names four. The start date says the same thing in a quarter of the width,
-  // which is what let this label squeeze a duty title down to one word per line
-  // on the dashboard card.
-  return `covering ${bl.days + 1} days (since ${shortDayLabel(bl.dates[0])})`
+  return `covering ${bl.days + 1} days (${bl.dates.map(shortDayLabel).join(', ')})`
 }
 
 /**

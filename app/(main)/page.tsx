@@ -1166,17 +1166,7 @@ export default function DashboardPage() {
                       style={{ cursor: savingDuty ? 'default' : 'pointer', opacity: savingDuty === v.duty.id ? 0.5 : 1 }}
                     >
                       <span className="c-myday-bx" />
-                      {/* The backlog scope rides INSIDE the title, as quiet mono
-                          text — the same treatment /my-day uses. It used to be a
-                          sibling `c-myday-due` pill: alarm red, `flex-shrink: 0`,
-                          and long enough to crush the title beside it to one word
-                          per line (Aaron's card, Aug 31). The alarm belongs to the
-                          callout strip below, which says it once instead of once
-                          per row. */}
-                      <span className="c-myday-tx">
-                        {v.duty.label}
-                        {scope && <span className="c-mdscope"> · {scope}</span>}
-                      </span>
+                      <span className="c-myday-tx">{v.duty.label}</span>
 
                       {/* Captured numbers appear once the duty is ticked — asking
                           for a count before the work is done is asking for a guess. */}
@@ -1196,6 +1186,7 @@ export default function DashboardPage() {
 
                       {/* Not due today, but on the card anyway (always_available). */}
                       {!v.isDue && !v.done && <span className="c-myday-due">Not due today</span>}
+                      {scope && <span className="c-myday-due">{scope}</span>}
                     </div>
                   )
                 })}

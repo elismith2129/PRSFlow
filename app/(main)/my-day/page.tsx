@@ -47,10 +47,6 @@ import {
 
 type ViewAs = MyDayRole
 
-/** The billing duty card is named for the function, never the person
-    (Eli, 2026-08-31). Mirrors the dashboard's constant of the same name. */
-const BILLING_CARD_LABEL = 'Billing Ops'
-
 export default function MyDayPage() {
   const { profile, loading: profileLoading } = useUserProfile()
   const isMobile = useIsMobile()
@@ -66,26 +62,12 @@ export default function MyDayPage() {
   // manager card.
   const notesOnly = profile?.role === 'asst_manager'
 
-  // Everyone lands on their own card. The switch appears for anyone who can work
-  // more than one: the owner (oversees both) and the MANAGER, added 2026-08-31
-  // (Eli: Fernando gets the same toggle "the way I do"). HR-SPEC §5.6 is why that
-  // is safe — any manager can work another's card when someone is out, and
-  // `completed_by` records who actually did it. Billing sees one card and
-  // therefore no toggle: a segmented control with one option is furniture.
+  // Fernando and Aaron land on their own card and get no switch. Eli oversees
+  // both, so he gets one — same control the dashboard has.
   const ownRole: ViewAs =
     profile?.role === 'billing' ? 'billing' : 'manager'
-  const canSwitchCards = isOwner || profile?.role === 'manager'
   const [viewAs, setViewAs] = useState<ViewAs>('manager')
-  const role: ViewAs = canSwitchCards ? viewAs : ownRole
-
-  // The profile lands async; billing users must not sit on the manager card for
-  // a frame. Once only — a later profile refresh shouldn't yank the view back.
-  const landed = useRef(false)
-  useEffect(() => {
-    if (!profile || landed.current) return
-    landed.current = true
-    setViewAs(ownRole)
-  }, [profile, ownRole])
+  const role: ViewAs = isOwner ? viewAs : ownRole
 
   const [duties, setDuties] = useState<MyDayDuty[]>([])
   const [entries, setEntries] = useState<MyDayEntry[]>([])
@@ -388,18 +370,12 @@ export default function MyDayPage() {
 
   if (profileLoading) return null
 
-  // The BILLING card is named for its function, not its holder (Eli,
-  // 2026-08-31) — "Billing Ops" everywhere the card is named, so the card
-  // survives whoever holds it. The manager card keeps the person's name.
-  // On your own card the header still addresses you by name.
   const whoLabel = notesOnly
     ? (profile?.display_name ?? 'Assistant Manager')
-    : role === 'billing'
-      ? (role === ownRole ? (profile?.display_name ?? BILLING_CARD_LABEL) : BILLING_CARD_LABEL)
-      : (names[role] ?? 'Studio Manager')
+    : (names[role] ?? (role === 'manager' ? 'Studio Manager' : 'Billing'))
   const roleTitle = notesOnly
     ? 'Assistant Manager'
-    : (role === 'manager' ? 'Studio Manager' : BILLING_CARD_LABEL)
+    : (role === 'manager' ? 'Studio Manager' : 'Billing Coordinator')
 
   const canDeletePost = (p: MyDayNotePost) =>
     !!profile?.id && (p.created_by === profile.id || isOwner)
@@ -461,20 +437,20 @@ export default function MyDayPage() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '2px 4px 14px', flexWrap: isMobile ? 'wrap' : undefined }}>
         <div>
           <span className="c-label" style={{ display: 'block', marginBottom: 3 }}>
-            {whoLabel === roleTitle ? whoLabel : `${whoLabel} · ${roleTitle}`}
+            {whoLabel} · {role === 'manager' ? 'Studio Manager' : 'Billing Coordinator'}
           </span>
           <h1 className="c-arch" style={{ fontSize: isMobile ? 20 : 26, letterSpacing: '-0.03em', lineHeight: 1.05 }}>
             My Day
           </h1>
         </div>
         <div style={{ flex: 1 }} />
-        {canSwitchCards && !isMobile && (
+        {isOwner && !isMobile && (
           <span className="c-seg" style={{ flexShrink: 0 }}>
             <button className={role === 'manager' ? 'c-on' : ''} onClick={() => setViewAs('manager')}>
               {names.manager ?? 'Manager'}
             </button>
             <button className={role === 'billing' ? 'c-on' : ''} onClick={() => setViewAs('billing')}>
-              {BILLING_CARD_LABEL}
+              {names.billing ?? 'Billing'}
             </button>
           </span>
         )}
@@ -639,7 +615,7 @@ function NotePostBlock({ p, tagRole, onEdit, onDelete, isEditing }: {
       <div className="c-mdnote-meta" style={{ marginTop: 0, marginBottom: 6 }}>
         <span>
           <b className="c-mdnote-shift">{who}</b>
-          {tagRole ? ` · ${p.role === 'billing' ? BILLING_CARD_LABEL : 'Manager'}` : ''}
+          {tagRole ? ` · ${p.role === 'billing' ? 'Billing' : 'Manager'}` : ''}
           {' · '}{fmtTaskTime(p.created_at)}
           {isEditing && <b className="c-mdnote-shift"> · Editing above</b>}
         </span>

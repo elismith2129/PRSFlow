@@ -96,6 +96,45 @@ clears them — but a session should never be creating them.
 
 ---
 
+## 3b. Incident: a sandbox commit silently deleted a day's work (2026-08-31)
+
+**Same broken rule as §3, worse consequence.** §3 says a sandbox git write wedges
+the repo. It can also destroy content, quietly, and that is the version worth
+fearing.
+
+**What happened.** A session again followed a stale description of the workflow
+(see the warning below), committed from the sandbox, and hit the undeletable
+`.git/index.lock` from §3. It worked around the lock with
+`GIT_INDEX_FILE=/tmp/copy git commit` — a copy of `.git/index`. But the real
+index was itself stale (git could never finish writing it), so **every commit
+made from a copy restored pre-session content for every file it did not touch.**
+
+A commit whose message was about duty-row styling deleted an entire wrap-up:
+the CHANGELOG v1.19.0 entry, four PROJECT_LOG sessions, Tech-Stack rows, the SOP
+release note, the week's test batch and three CLAUDE.md rules. It reached `main`
+under a push line identical to every other push line, and nothing in the terminal
+output said a word about it.
+
+**Recovery** (the working tree was still correct — only the commits were wrong):
+```
+rm -f /tmp/fix.idx && GIT_INDEX_FILE=/tmp/fix.idx git read-tree HEAD && GIT_INDEX_FILE=/tmp/fix.idx git add -A .
+```
+then commit from Eli's terminal. Building the temp index from `read-tree HEAD`
+is what makes it safe; copying `.git/index` is what caused the loss.
+
+**Two things generalize:**
+1. The §1 hand-off line — locks cleared, files named, commit and push on Eli's
+   machine — is immune to this by construction. The index is real, and the file
+   list is visible to the person pasting it. That naming requirement is not
+   bureaucracy; it is the only view Eli gets of what he is about to push.
+2. **The copy of this document in the chat's attached project knowledge is a
+   SEPARATE, OLDER FILE.** It described the retired Claude Code era and is what
+   the session read instead of this one. If a session's behaviour matches §6
+   rather than §1, that is where it came from — the repo copy is canonical, and
+   a cold session should open it directly rather than trusting an attachment.
+
+---
+
 ## 4. Canonical logs — read these first, every session
 
 Ground your work in these. Don't infer from memory when the log has the answer.
