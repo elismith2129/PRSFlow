@@ -4431,3 +4431,241 @@ popover and mock-first means build what was picked.
   retroactive batch of its own — the stock items it would have tested were
   already superseded by today's corrections, which is exactly why batches
   wait for work to settle.
+
+### Aug 26, 2026 — Forty years of calendar arrives; money gets its house laws (v1.19.0, part 1)
+
+*(Written Aug 31 — Aug 26–28 ran without wrap-ups. Reconstructed from the
+commits and the migration headers, which were unusually complete.)*
+
+**The biggest single day since launch, and it was really four projects.**
+
+**1. The 2026 WordPress calendar came across.**
+`scripts/importCalendar2026.mjs` reads the WordPress export and rebuilds the
+year. The script **snapshots and then DELETES every existing `bookings` row**
+before inserting — approved explicitly, because everything in the table at
+that point was test data. The new column is `bookings.imported_at`
+(migration `20260826150000`): NULL means born in PRSFlo, non-NULL means
+imported, stamped with the run's timestamp.
+
+**The rule that flag encodes, and why it is UI-enforced rather than RLS:**
+an imported booking in the PAST is read-only history — visible on the
+calendar, never editable, never generating a work order or invoice number,
+never in daily ops or the runner hub. An imported booking TODAY OR LATER
+behaves like a legacy WO-less block: the existing promotion path turns it
+into a real session the first time staff opens it. RLS can't express that
+split without blocking the promotion path, so the flag is read in the UI.
+**Promotion deliberately does NOT clear `imported_at`** — the stamp is
+provenance, not state, and a future session that "cleans it up" on promote
+will destroy the only record of where forty years of history came from.
+
+Two follow-ons the same day, both about the missing-WO alarm: imported rows
+are **fully excluded from My Day's queues**, because that alarm exists to
+scream about an anomaly (a session that failed to create its WO), and 2026's
+imported history is not an anomaly — leaving them in turned a red failure
+signal into wallpaper. Imported history opens as a **compact read-only card**
+instead of the WO view, and the lock keys on `end_date` so an in-progress
+import stays editable.
+
+**2. Lockout: a status for rent-only monthlies.**
+"Hiker" on Track North is a room rented by the month. It is occupied, it is
+payable, a real work order exists — and *nothing daily happens*: no staff, no
+OT, no expenses, no runner visit, no approval. The new `'lockout'`
+`BookingStatus` says exactly that. **It is invisible to daily ops BY STATUS**
+— every operational surface selects `status='confirmed'`, so a lockout simply
+never matches. Never add a lockout exclusion flag somewhere else; the status
+IS the exclusion. It is deliberately NOT in `NON_SESSION_STATUSES`, because
+unlike Tour/Tech/Open-Hours it *does* get a work order — rent gets invoiced.
+On the calendar it reads booked-green: the room is genuinely occupied.
+
+**3. The Monthly split — a flat number allocated to the cent.**
+A $19,500 or $29,500 monthly has no clean day rate ($19,500 ÷ 31 repeats
+forever). The office types the monthly figure into the Monthly popup and it
+is allocated across the dated studio rows by **largest-remainder** — some days
+carry one cent more — so the rows sum to *exactly* the monthly figure and the
+daily financial numbers stay real rather than rounded fiction. The rows then
+behave as ordinary day-rate rows: 12-hour agreed window, OT beyond it, runner
+flow, PDF and projections all unchanged. **The OT rate stays typed per deal**
+and is deliberately excluded from the 10%-of-day-rate autofill — monthlies
+negotiate their own OT. Re-running after adding or removing days re-splits
+idempotently. The popup also grew a date range that creates the month's rows
+outright.
+
+**4. Day rate = 10× hourly, as house law.** `DAY_HOUR_RATIO = 10` in
+`lib/woTotals.ts`, single source. $750/day ⇄ $75/hr, and a day row's OT rate
+is the hourly equivalent (day ÷ 10). Editing either rate syncs its twin, on
+single edits and on batches. **Special deals are typed AFTER converting, not
+encoded as exceptions in the constant** — the moment the ratio grows an
+exception list it stops being a law and becomes a lookup table nobody trusts.
+
+**Also shipped Aug 26:**
+- **Shift notes v4 → `shift_note_docs`** (migration `20260826140000`). The
+  timestamped shift log (`shift_log_entries`, spec §19) was never adopted, so
+  it was replaced rather than polished: **one large autosaving field per
+  runner per shift**, opener/floater/closer chips, auto-bullet on return,
+  saving ~1s after typing with a flush on close and a draft net. The 8:50 AM
+  seal is kept, and `shift_log_entries` stays in the DB untouched (it holds
+  nothing of value) with all reads/writes moved. Daily Ops and the hub tile
+  read the new table.
+- **`components/shared/RichNote.tsx` — the app's ONLY rich-text surface.**
+  Bold, bullets, tab/shift-tab indent; nothing else, on purpose ("think Apple
+  Notes"). **No editor dependency** — contentEditable + `execCommand`, which
+  is deprecated-but-immortal and correctly sized for two buttons and a tab
+  key. Everything renders through `sanitizeNote()`, a strict whitelist
+  (b/strong/ul/ol/li/div/p/br, zero attributes) at both edit-sync and display;
+  paste is forced to plain text; legacy plain-text notes render unchanged with
+  **no data migration**. Two real bugs fell out: bullets wouldn't start
+  because `execCommand` on an empty div is flaky across browsers (the fix
+  writes the `<ul><li>` scaffold directly and places the caret), and the
+  toolbar lost its indent button because the iPad has no tab key — the
+  bullets auto-start instead.
+- **3% card surcharge on COD work orders** (`payment_rows.fee_amount`,
+  migration `20260826160000`). `amount` is what hit the card; `fee_amount` is
+  the 3% slice inside it, derived FROM the charged amount
+  (`cardFeeOfCharged`) so a runner can type exactly what the terminal charged
+  and the split is always internally exact. The fee is a CHARGE — it is added
+  to the grand total, so a card payment moves the balance by exactly its base.
+  The WO shows "If paying by card (incl. 3%)" under Balance Due, which is the
+  number the runner reads to the terminal: no desk math. This also finally
+  covers à-la-carte OT, which the old manual +3% habit routinely missed
+  because the balance already contains OT.
+- **ARS + ERS office stock lists** (migrations `20260826120000`/`130000`) from
+  a shared 26-item template; ERS keeps only Bandaids from below Printer Paper,
+  ARS drops Individual Oranges (Cuties only) with the nightly seed guarding
+  that deletion, K-Cups are ARS-only, Track gets an honest empty state, and
+  the landing is de-hardcoded.
+- **A WO popup crash**: `wo` was dereferenced above its own null guard in the
+  card-fee block, so opening the popup threw. Found and fixed the same day the
+  fee block was added — a reminder that a new block pasted above a guard
+  inherits none of its protection.
+
+### Aug 27, 2026 — The iPhone pass (v1.19.0, part 2)
+
+Three commits, one lesson each, all against the desktop-unchanged rule.
+
+- **Dashboard room cards** got large type and a full footer on the phone.
+  The first attempt raised the card height as well and **clipped the grid** —
+  reverted to a text-only boost (`boostText`), which is the right shape: the
+  grid geometry is load-bearing on a small screen and type size is not.
+- **Calendar on mobile** gained the desktop column set and endless scroll,
+  rather than the reduced mobile view, because a phone user scrolling is
+  cheaper than a phone user missing rooms.
+- **The dashboard column was clamped** — it had been free to grow past the
+  viewport.
+
+The lane-height half of that last commit turned out to be wrong and was fixed
+Aug 31 (below).
+
+### Aug 28, 2026 — The ARS test pass, and the day the app learned what "today" means (v1.19.0, part 3)
+
+**The operational day is 8:50 AM.** `opsToday()` in `lib/time.ts` (an alias of
+`shiftLogDate()`) is now the day key for **every runner surface**. Before this,
+runner pages used `getLocalToday()`, so at midnight a runner mid-shift watched
+their sessions, work orders and checklists change out from under them. After:
+sessions and WOs survive midnight, checklists file under the night they belong
+to, the Wednesday office-stock gate holds across the boundary — and **punches
+deliberately stay on the calendar day**, because a timecard is a payroll
+document and payroll counts midnights, not shifts.
+
+**`getLocalToday()` is now for calendar semantics only** (booking dates on
+admin surfaces). If the 8:50 boundary ever moves, `shiftLogDate()`, the
+`shift_note_docs` policy and the `shift_log_entries` policy all move with it —
+the SQL hard-codes the same interval.
+
+**Pass 1 (SQL, migration `20260828120000`):** Soundstar relocated to Ameraycan
+where it actually lives; the leftover TEST MIC deactivated; bagel flavor order
+written into the par text so "2/1/1" means the same thing to everyone; **Dairy
+& Creamers renamed Fridge** with butter, cream cheese, cookie dough and ice
+moved in — because the runner walks to *one fridge*, and the list should be
+shaped like the walk, not like a taxonomy. Also a **mic check-in test-data
+wipe**: everything before the run date, because the Sheet's "last seen"
+footnote was quoting tap-testing as history. And a COD/billing card repair —
+"Nine Vicious" showed COD on a billing WO from a stale projection.
+
+**Pass 3 (code + migration `20260828130000`):** `runner_section_notes` — a
+general notes box on the stock lists and the mic inventory. Per-item notes
+already existed; there was nowhere to say "this whole list was entered from
+Ezra's account and the office run is already done." **One shared note per
+(studio, operational day, section)** — shared rather than per-author on
+purpose: it annotates the LIST, and both shifts should read and extend the
+same note. Surfaced to the office inside Daily Ops' existing notes popup.
+Plus typed quantities on the Odds tab, a qty box for the Genelecs via the new
+`mics.has_qty` flag, and **`RunnerGuard` now defers session expiry while
+someone is actively typing** — the mid-stock-count logout was real, and
+logging a runner out mid-count is how a count gets abandoned.
+
+**Two more, unrelated:**
+- **Registration "Create profile" never wrote `clients.profile_confirmed_at`.**
+  The badge cleared optimistically and came back on every refetch, so staff
+  confirmed the same client repeatedly. Both entry points now share one
+  confirm write, **verified before the row is dropped locally**.
+  `registration_tokens.registration_reviewed` stays best-effort (nothing reads
+  it) and no longer toasts a false "NOT saved" over a successful confirm.
+- **`leasing` lead status** — a pipeline stage, not a temperature. Orchid via
+  `--c-st-lease`, deliberately an **alias of `--c-st-tech`** so the palette
+  keeps exactly one purple (spec §5 Law 3). Wired into the All Leads tabs,
+  heat dropdown, campaign segments, avatar ring and both badge sets, and
+  **excluded from the uncontacted/needs-contact predicates** so a leasing lead
+  never surfaces in Needs Action — it isn't waiting on a phone call.
+
+### Aug 31, 2026 — Manager notes stop clearing (v1.19.0, part 4)
+
+**Eli:** *"they need to be able to compile through the day. meaning they need
+to never clear out. so they can switch screens and tabs and their notes never
+clear."*
+
+The `/my-day` composer held its text in React state alone: going to the
+calendar, switching tabs on a phone, or any reload threw away everything
+unsubmitted. The runners got this fixed on Aug 26 (`shift_note_docs`,
+"continuously saved so nothing is ever lost even if the app closes"); the
+manager side never did.
+
+**The shape, and the two decisions inside it.** New table
+`myday_note_drafts` (migration `20260831120000`), **one row per AUTHOR — not
+per (author, date)**. A draft is unfinished writing; the date belongs to the
+POST that Submit stamps ("the time submitted really dictates what it is",
+Aug 24). Date-keying would silently strand an unsubmitted note the moment the
+clock rolled over, which is the exact complaint being fixed. It is also
+**private to its author — an owner cannot read an unsubmitted note**, unlike
+`myday_note_posts` which the whole admin circle reads. Nothing is shared until
+Submit. `editing_post_id` is persisted too, so resuming an interrupted edit
+updates the original post instead of turning the same text into a duplicate.
+
+**Rejected: localStorage** (the `lib/draft.ts` pattern the runner pages use).
+Offered and declined — managers move between a desk and an iPad, and a draft
+that can't follow them fails the ask on the second device. The SQL is the
+price of that; on the runner side, where the phone *is* the device, the
+localStorage pattern remains correct.
+
+**Rejected: dropping Submit** and making the manager note one live document
+per day like the runners'. Kept as the sign-off: submitting is how a note
+becomes the referenceable record other people read, and the log's shape
+depends on it.
+
+**Autosave mechanics worth keeping:** 800ms debounce (the app's note
+convention) plus a flush on unmount, `visibilitychange` and `pagehide` — the
+timer alone loses the last seconds of typing, which is precisely the "switch
+screens" half of the ask. On submit, the pending debounce is **cancelled
+before** the draft row is deleted, or its timer fires after the delete and
+resurrects the text that was just posted. The realtime channel applies a
+remote row only when nothing local is pending, so a second device can never
+overwrite live typing.
+
+**`dbResult` gained `{ silent }`** — toast suppressed, `app_errors` report and
+false return unchanged. A red "NOT saved" toast every 800ms would bury someone
+mid-sentence. **This is a change of channel, not a mute**: the composer now
+states its own status ("kept — safe to leave this page" / "saving…" / "not
+saved — check your connection"). A silent caller that shows nothing would be
+the exact defect class `dbResult` exists to kill.
+
+**Also folded in:** the calendar's mobile room-row height reads the **MAX**
+`numLanes` across the room's bookings. `numLanes` is per-booking — its own
+collision count — so reading it off `roomBookings[0]` let one solo session in
+the window report 1 and kept the row from growing, which is why stacked chips
+still painted over each other after the Aug 27 fix.
+
+**Environment note for future sandbox sessions:** git in the Cowork sandbox
+can commit against the mounted repo but **cannot unlink `.git/index.lock` or
+`.git/HEAD.lock`** (FUSE returns EPERM), so every commit leaves two empty lock
+files that must be `rm -f`'d from a real terminal before the next git command.
+`next build` fails the same way against the mounted `.next` (`.fuse_hidden`
+artifacts) — build from a copy outside the mount. Neither is a code problem.
