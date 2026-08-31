@@ -1510,11 +1510,12 @@ function CalendarPageInner() {
               // shrink to share a cell; three stacked sessions rendered 44px
               // chips into 26px slots and painted them over each other. On the
               // phone the row grows by lane count — every chip gets a full slot.
-              // assignLanes gives every booking in the room the same numLanes,
-              // so any booking's value is the room's.
-              const roomLanes = roomBookings.length
-                ? (laneMap.get(roomBookings[0].id)?.numLanes ?? 1)
-                : 1
+              // numLanes is PER-BOOKING (its own collision count) — reading it
+              // off roomBookings[0] was the bug that kept rows from growing: a
+              // random solo session in the window reports numLanes 1. The
+              // room's height needs the MAX across its bookings.
+              const roomLanes = roomBookings.reduce(
+                (m, b) => Math.max(m, laneMap.get(b.id)?.numLanes ?? 1), 1)
               const roomRowH = isRoomCollapsed
                 ? COLLAPSED_ROOM_H
                 : (isMobile ? rowH * roomLanes : rowH)

@@ -1045,6 +1045,66 @@ export async function deleteNotePost(id: string): Promise<boolean> {
   return dbResult('Deleting shift notes', error)
 }
 
+// ─── The DRAFT (myday_note_drafts, 2026-08-31) ───────────────────────────────
+// "They need to be able to compile through the day. Meaning they need to never
+// clear out." The composer used to live in React state alone, so leaving the
+// page threw away anything unsubmitted. One row per AUTHOR (not per day — see
+// the migration header), autosaved as they type, private to them, deleted on
+// submit. The post is still the signed, dated record; this is only the paper
+// it gets written on.
+
+export type MyDayNoteDraft = {
+  author_id: string
+  session_notes: string
+  studio_notes: string
+  editing_post_id: string | null
+  updated_at: string
+}
+
+/** The author's in-progress note, or null when they have none. */
+export async function fetchNoteDraft(authorId: string): Promise<MyDayNoteDraft | null> {
+  const { data, error } = await supabase
+    .from('myday_note_drafts')
+    .select('author_id, session_notes, studio_notes, editing_post_id, updated_at')
+    .eq('author_id', authorId)
+    .limit(1)
+  // Never .maybeSingle() (project landmine: it returns null on multiple rows
+  // instead of erroring). One row is the primary key here, but the pattern
+  // stays consistent.
+  if (!dbResult('Loading your notes', error)) return null
+  return (data?.[0] ?? null) as MyDayNoteDraft | null
+}
+
+/**
+ * Upsert the author's draft. Called on a debounce while typing, so it is
+ * deliberately quiet: a failed autosave must NOT throw a red "NOT saved" toast
+ * over someone mid-sentence — `silent` suppresses the toast and the caller
+ * surfaces trouble in the composer instead.
+ */
+export async function saveNoteDraft(args: {
+  authorId: string
+  sessionNotes: string
+  studioNotes: string
+  editingPostId: string | null
+}): Promise<boolean> {
+  const { error } = await supabase.from('myday_note_drafts').upsert({
+    author_id: args.authorId,
+    session_notes: args.sessionNotes,
+    studio_notes: args.studioNotes,
+    editing_post_id: args.editingPostId,
+  }, { onConflict: 'author_id' })
+  return dbResult('Saving your notes', error, { silent: true })
+}
+
+/** Submit succeeded — the draft has become a post, so the paper goes blank. */
+export async function clearNoteDraft(authorId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('myday_note_drafts')
+    .delete()
+    .eq('author_id', authorId)
+  return dbResult('Clearing your notes', error, { silent: true })
+}
+
 // ─── 14-day staff grid (§6.2) ────────────────────────────────────────────────
 
 /** One row of the grid. `days` is oldest→newest, 'g' | 'r' | 'n'. */

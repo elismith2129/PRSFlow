@@ -24,7 +24,7 @@
 //     what it can't know is a pill. See QUEUE_STEPS in lib/myday.ts.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
@@ -38,6 +38,7 @@ import {
   fetchBalancesQueue, fetchHoldsQueue, fetchBookedQueue,
   fetchQueueSteps, setQueueStep, fetchStaffGrid,
   fetchNoteLog, addNotePost, updateNotePost, deleteNotePost,
+  fetchNoteDraft, saveNoteDraft, clearNoteDraft,
   fetchBillingBrief, shortDayLabel, QUEUE_STEPS,
   type MyDayRole, type MyDayDuty, type MyDayEntry, type DutyView,
   type BalanceItem, type QueueBookingItem, type BillingBrief,
@@ -83,6 +84,29 @@ export default function MyDayPage() {
   const [names, setNames] = useState<Partial<Record<MyDayRole, string>>>({})
   const [busy, setBusy] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // ── The draft that never clears (Eli, 2026-08-31) ─────────────────────────
+  // "They need to be able to compile through the day. Meaning they need to
+  // never clear out." What's typed here is autosaved to myday_note_drafts
+  // (one row per author), so leaving for the calendar, switching tabs on a
+  // phone, or picking the iPad up later all find the same text waiting.
+  // Submit still posts; only a successful post empties the boxes.
+  const [draftReady, setDraftReady] = useState(false)
+  const [draftState, setDraftState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  // A post id restored from the draft, waiting for the log to arrive so it can
+  // become `editingPost` again — otherwise a resumed edit would post a second
+  // copy instead of updating the original.
+  const [pendingEditId, setPendingEditId] = useState<string | null>(null)
+
+  // Refs so the debounced save reads what is on screen NOW, not what was on
+  // screen when the timer was set.
+  const draftsRef = useRef(drafts)
+  const editingRef = useRef<MyDayNotePost | null>(editingPost)
+  const savedRef = useRef({ session: '', studio: '', editingId: null as string | null })
+  const dirtyRef = useRef(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => { draftsRef.current = drafts }, [drafts])
+  useEffect(() => { editingRef.current = editingPost }, [editingPost])
 
   // ── Load ───────────────────────────────────────────────────────────────────
 
@@ -143,6 +167,119 @@ export default function MyDayPage() {
     return () => { supabase.removeChannel(ch) }
   }, [load])
 
+  // ── Draft: hydrate ─────────────────────────────────────────────────────────
+  // Runs once per author. Until it finishes, `draftReady` keeps the autosave
+  // effect quiet — otherwise the empty initial state would race the fetch and
+  // overwrite a real draft with nothing.
+  useEffect(() => {
+    let cancelled = false
+    if (!profile?.id) return
+    ;(async () => {
+      const d = await fetchNoteDraft(profile.id)
+      if (cancelled) return
+      if (d) {
+        setDrafts({ session: d.session_notes, studio: d.studio_notes })
+        savedRef.current = {
+          session: d.session_notes, studio: d.studio_notes, editingId: d.editing_post_id,
+        }
+        if (d.editing_post_id) setPendingEditId(d.editing_post_id)
+        if (d.session_notes || d.studio_notes) setDraftState('saved')
+      }
+      setDraftReady(true)
+    })()
+    return () => { cancelled = true }
+  }, [profile?.id])
+
+  // Resume an interrupted edit once the log is in hand. A post that has since
+  // been deleted just drops the flag — the text stays, and Submit makes it a
+  // new post rather than failing against a row that is gone.
+  useEffect(() => {
+    if (!pendingEditId || editingPost) return
+    const post = noteLog.find(p => p.id === pendingEditId)
+    if (post) setEditingPost(post)
+    else if (noteLog.length) setPendingEditId(null)
+  }, [pendingEditId, noteLog, editingPost])
+
+  // ── Draft: autosave ────────────────────────────────────────────────────────
+  const flushDraft = useCallback(async () => {
+    if (!profile?.id) return
+    const next = {
+      session: draftsRef.current.session,
+      studio: draftsRef.current.studio,
+      editingId: editingRef.current?.id ?? null,
+    }
+    const prev = savedRef.current
+    if (next.session === prev.session && next.studio === prev.studio && next.editingId === prev.editingId) {
+      dirtyRef.current = false
+      return
+    }
+    setDraftState('saving')
+    const ok = await saveNoteDraft({
+      authorId: profile.id,
+      sessionNotes: next.session,
+      studioNotes: next.studio,
+      editingPostId: next.editingId,
+    })
+    // The toast is suppressed for autosave (it would fire mid-sentence), so the
+    // composer says it instead — a surface may only claim what it knows.
+    if (ok) { savedRef.current = next; dirtyRef.current = false; setDraftState('saved') }
+    else setDraftState('error')
+  }, [profile?.id])
+
+  useEffect(() => {
+    if (!draftReady || !profile?.id) return
+    const editingId = editingPost?.id ?? null
+    const prev = savedRef.current
+    if (drafts.session === prev.session && drafts.studio === prev.studio && editingId === prev.editingId) return
+    dirtyRef.current = true
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => { flushDraft() }, 800)
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  }, [drafts, editingPost, draftReady, profile?.id, flushDraft])
+
+  // Leaving the page, backgrounding the app, or closing the tab flushes
+  // whatever the debounce still owes. This is the "switch screens and tabs"
+  // half of the ask — the timer alone loses the last few seconds of typing.
+  useEffect(() => {
+    const flushIfDirty = () => { if (dirtyRef.current) flushDraft() }
+    const onVisibility = () => { if (document.visibilityState === 'hidden') flushIfDirty() }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', flushIfDirty)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', flushIfDirty)
+      if (timerRef.current) clearTimeout(timerRef.current)
+      flushIfDirty()
+    }
+  }, [flushDraft])
+
+  // Realtime on the author's own row — this is what carries the note between
+  // their desk and their iPad. Remote text is applied ONLY when nothing local
+  // is waiting to save, so the other device can never overwrite live typing.
+  useEffect(() => {
+    if (!profile?.id) return
+    const ch = supabase
+      .channel(`myday-note-draft-${profile.id}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'myday_note_drafts',
+        filter: `author_id=eq.${profile.id}`,
+      }, payload => {
+        if (dirtyRef.current) return
+        const row = payload.new as { session_notes?: string; studio_notes?: string; editing_post_id?: string | null } | null
+        if (!row || payload.eventType === 'DELETE') return
+        const session = row.session_notes ?? ''
+        const studio = row.studio_notes ?? ''
+        const editingId = row.editing_post_id ?? null
+        const prev = savedRef.current
+        if (session === prev.session && studio === prev.studio && editingId === prev.editingId) return
+        savedRef.current = { session, studio, editingId }
+        setDrafts({ session, studio })
+        setPendingEditId(editingId)
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [profile?.id])
+
   // ── Actions ────────────────────────────────────────────────────────────────
 
   async function toggleDuty(v: DutyView) {
@@ -186,7 +323,19 @@ export default function MyDayPage() {
     const ok = editingPost
       ? await updateNotePost({ id: editingPost.id, sessionNotes: drafts.session, studioNotes: drafts.studio })
       : await addNotePost({ role, date: today, sessionNotes: drafts.session, studioNotes: drafts.studio, createdBy: profile.id })
-    if (ok) { setDrafts({ session: '', studio: '' }); setEditingPost(null) }
+    if (ok) {
+      // The draft has become a post — the paper goes blank, on every device.
+      // Order matters: cancel the pending autosave first, or its debounce
+      // fires after the delete and resurrects the text we just posted.
+      if (timerRef.current) clearTimeout(timerRef.current)
+      dirtyRef.current = false
+      savedRef.current = { session: '', studio: '', editingId: null }
+      setDrafts({ session: '', studio: '' })
+      setEditingPost(null)
+      setPendingEditId(null)
+      setDraftState('idle')
+      await clearNoteDraft(profile.id)
+    }
     await load()
     setPosting(false)
   }
@@ -200,7 +349,11 @@ export default function MyDayPage() {
 
   function cancelEditPost() {
     setEditingPost(null)
+    setPendingEditId(null)
     setDrafts({ session: '', studio: '' })
+    // The autosave effect picks this up and empties the stored draft too —
+    // cancelling an edit must not leave the post's text sitting in the
+    // composer on the next screen.
   }
 
   async function removePost(post: MyDayNotePost) {
@@ -239,6 +392,7 @@ export default function MyDayPage() {
       editing={editingPost}
       onCancelEdit={cancelEditPost}
       isMobile={isMobile}
+      draftState={draftState}
     />
   )
 
@@ -494,7 +648,7 @@ function NotePostBlock({ p, tagRole, onEdit, onDelete, isEditing }: {
     posts render ONLY in the log below — a copy up here read as duplication.
     Editing a post from the log loads it into these boxes; Submit updates. */
 function ShiftNotesPanel({
-  drafts, setDraft, onPost, posting, editing, onCancelEdit, isMobile,
+  drafts, setDraft, onPost, posting, editing, onCancelEdit, isMobile, draftState,
 }: {
   drafts: { session: string; studio: string }
   setDraft: (k: 'session' | 'studio', v: string) => void
@@ -503,15 +657,28 @@ function ShiftNotesPanel({
   editing: MyDayNotePost | null
   onCancelEdit: () => void
   isMobile: boolean
+  /** Autosave status of the unsubmitted draft — see the draft block on the page. */
+  draftState: 'idle' | 'saving' | 'saved' | 'error'
 }) {
   const empty = noteIsEmpty(drafts.session) && noteIsEmpty(drafts.studio)
+  // The lozenge tells the truth about the draft, because the autosave toast is
+  // suppressed (dbResult `silent`) — if this said nothing, a failed save would
+  // be invisible, which is the whole defect class the project bans.
+  const draftNote =
+    draftState === 'error' ? 'not saved — check your connection'
+    : draftState === 'saving' ? 'saving…'
+    : draftState === 'saved' ? 'kept — safe to leave this page'
+    : null
   return (
     <div className="c-panel">
       <div className="c-lozenge">
         <b>Shift notes</b>
-        {editing
-          ? <span className="c-ct">editing your post</span>
-          : <span className="c-ct">posts appear in the log below</span>}
+        {/* One span — the lozenge is a two-item flex (space-between), so a
+            third child would strand the middle one. */}
+        <span className="c-ct" style={draftState === 'error' ? { color: 'var(--c-st-hot)', opacity: 1 } : undefined}>
+          {editing ? 'editing your post' : 'posts appear in the log below'}
+          {draftNote ? ` · ${draftNote}` : ''}
+        </span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
