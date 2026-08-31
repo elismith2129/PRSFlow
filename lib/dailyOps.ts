@@ -13,6 +13,21 @@ export const OPS_STUDIOS = [
   { key: 'track',     label: 'Track',     abbr: 'TRK' },
 ] as const
 
+/**
+ * Studios that exist but are NOT being staffed right now (Eli, 2026-08-31:
+ * Track is on a long-term lease).
+ *
+ * This is a DISPLAY state, not a deletion. Every code path still runs for a
+ * dormant studio — if someone does submit a checklist there it records and
+ * shows normally. What changes is that its duties read 'dormant' instead of
+ * 'missing', and it raises no absence rows, because a room nobody is rostered
+ * to work cannot fail to do its checklist. Take Track out of this array the day
+ * it is staffed again and everything returns to normal with no other edit.
+ */
+export const DORMANT_STUDIOS: string[] = ['track']
+
+export const isDormantStudio = (key: string) => DORMANT_STUDIOS.includes(key)
+
 /** The five things a studio owes every night, in the order the sweep shows them. */
 export const DUTIES = [
   { key: 'opening_checklist', label: 'Opening' },
@@ -29,7 +44,8 @@ export type DutyState = {
   // 'pending' is TODAY ONLY (2026-08-31): the day is still running, so a duty
   // that hasn't come in yet is not an absence. Red is reserved for a day that
   // is OVER and still has a hole in it — the whole point of the queue.
-  state: 'done' | 'missing' | 'flagged' | 'pending'
+  // 'dormant' is a studio nobody is rostered to (DORMANT_STUDIOS).
+  state: 'done' | 'missing' | 'flagged' | 'pending' | 'dormant'
   detail: string
 }
 
@@ -142,6 +158,10 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
   }
 
   for (const s of OPS_STUDIOS) {
+    // A dormant studio behaves exactly like today: nothing is late, because
+    // nobody is scheduled. Real submissions still render if they arrive.
+    const dormant = isDormantStudio(s.key)
+    const unfinished = isToday || dormant
     const sSubs = (subs ?? []).filter((r: any) => r.studio === s.key)
     const submitted = (cat: string) => sSubs.find((r: any) => r.category === cat && r.submitted_at)
     const sChecklists = (checklists ?? []).filter((r: any) => r.studio === s.key)
@@ -167,7 +187,7 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
         const cl = sChecklists.find((r: any) => r.type === type && r.completed_at)
         const sub = submitted(`${type}_checklist`) ?? submitted(type)
         const at = cl?.completed_at ?? sub?.submitted_at
-        if (!at) return { key: d.key, label: d.label, state: isToday ? 'pending' : 'missing', detail: isToday ? 'not yet' : 'never submitted' }
+        if (!at) return { key: d.key, label: d.label, state: dormant ? 'dormant' : isToday ? 'pending' : 'missing', detail: dormant ? 'not staffed' : isToday ? 'not yet' : 'never submitted' }
         const attention = cl?.needs_attention
         return {
           key: d.key, label: d.label,
@@ -177,19 +197,19 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
       }
       if (d.key === 'mic_inventory') {
         const missing = (micRows ?? []).filter((r: any) => r.studio === s.key && r.status === 'missing')
-        if (!sMicSub?.submitted_at) return { key: d.key, label: d.label, state: isToday ? 'pending' : 'missing', detail: isToday ? 'not yet' : 'not done' }
+        if (!sMicSub?.submitted_at) return { key: d.key, label: d.label, state: dormant ? 'dormant' : isToday ? 'pending' : 'missing', detail: dormant ? 'not staffed' : isToday ? 'not yet' : 'not done' }
         if (missing.length) return { key: d.key, label: d.label, state: 'flagged', detail: `${missing.length} missing` }
         const counted = (micRows ?? []).filter((r: any) => r.studio === s.key).length
         return { key: d.key, label: d.label, state: 'done', detail: `${counted} checked` }
       }
       if (d.key === 'petty_cash') {
-        if (!submitted('petty_cash')) return { key: d.key, label: d.label, state: isToday ? 'pending' : 'missing', detail: isToday ? 'not yet' : 'not done' }
+        if (!submitted('petty_cash')) return { key: d.key, label: d.label, state: dormant ? 'dormant' : isToday ? 'pending' : 'missing', detail: dormant ? 'not staffed' : isToday ? 'not yet' : 'not done' }
         const rows = (cash ?? []).filter((r: any) => r.studio === s.key)
         const net = rows.reduce((t: number, r: any) => t + (r.type === 'in' ? 1 : -1) * (Number(r.amount) || 0), 0)
         return { key: d.key, label: d.label, state: 'done', detail: `${rows.length} entries · ${net >= 0 ? '+' : '-'}$${Math.abs(net).toFixed(0)}` }
       }
       // stock
-      if (!submitted('stock')) return { key: d.key, label: d.label, state: isToday ? 'pending' : 'missing', detail: isToday ? 'not yet' : 'not done' }
+      if (!submitted('stock')) return { key: d.key, label: d.label, state: dormant ? 'dormant' : isToday ? 'pending' : 'missing', detail: dormant ? 'not staffed' : isToday ? 'not yet' : 'not done' }
       const low = (stock ?? []).filter((r: any) => r.studio === s.key && r.low).length
       return low
         ? { key: d.key, label: d.label, state: 'flagged', detail: `${low} low` }
@@ -197,7 +217,7 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
     })
 
     // Absences → the queue, hot. This is the signal that had no home before.
-    for (const d of isToday ? [] : duties.filter(x => x.state === 'missing')) {
+    for (const d of unfinished ? [] : duties.filter(x => x.state === 'missing')) {
       const key = `missing:${s.key}:${d.key}`
       queue.push({
         key, severity: 'hot',

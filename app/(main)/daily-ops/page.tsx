@@ -23,7 +23,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader'
 import { Hint } from '@/components/ui/Hint'
 import { RichNoteView, noteText } from '@/components/shared/RichNote'
 import {
-  OPS_STUDIOS, QueueItem, StudioNight, loadNight, markReviewed,
+  OPS_STUDIOS, isDormantStudio, QueueItem, StudioNight, loadNight, markReviewed,
   opsDate, prettyDate, unmarkReviewed,
 } from '@/lib/dailyOps'
 
@@ -43,6 +43,8 @@ const DUTY_COLOR: Record<string, string> = {
   // Today only — the day is still running, so "hasn't come in yet" is neutral,
   // not a failure. Red belongs to a day that is over and still has a hole.
   pending: 'var(--c-wash2, var(--c-wash))',
+  // Not staffed at all — same neutral dot, different reason.
+  dormant: 'var(--c-wash2, var(--c-wash))',
 }
 
 /** Queue page size — keeps the studio-tasks card in view under a long queue. */
@@ -305,11 +307,21 @@ export default function DailyOpsPage() {
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'start' }}>
-            {studios.map(s => (
-              <div key={s.studio} style={card}>
+            {studios.map(s => {
+              // A studio nobody is rostered to (Track — long-term lease, Eli
+              // 2026-08-31). The card stays, because the room still exists and
+              // anything submitted there still shows; it just recedes so four
+              // grey duty lines don't read as four problems. Nothing about the
+              // data is hidden — remove it from DORMANT_STUDIOS and it is a
+              // normal studio again.
+              const dormant = isDormantStudio(s.studio)
+              return (
+              <div key={s.studio} style={dormant ? { ...card, opacity: 0.45 } : card}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                   <span className="c-arch" style={{ fontSize: 15, letterSpacing: '-0.02em' }}>{s.label}</span>
-                  <span style={{ fontSize: 10.5, opacity: 0.5, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.who}</span>
+                  <span style={{ fontSize: 10.5, opacity: 0.5, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {dormant ? 'Long-term lease · not staffed' : s.who}
+                  </span>
                 </div>
                 {s.duties.map(d => (
                   <div key={d.key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12 }}>
@@ -340,7 +352,8 @@ export default function DailyOpsPage() {
                   </div>
                 )}
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>
