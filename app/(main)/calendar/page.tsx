@@ -375,6 +375,13 @@ function DayView({
   const [miniMonthStart, setMiniMonthStart] = useState(
     () => new Date(dayViewDate.getFullYear(), dayViewDate.getMonth(), 1)
   )
+  // Mobile month picker (Eli, 2026-08-31). The mini calendar on the left is
+  // desktop-only because a permanent month grid would eat a third of a phone
+  // screen; on mobile the same grid drops out of the date header on tap and
+  // closes as soon as a day is chosen.
+  const [pickerOpen, setPickerOpen] = useState(false)
+  // Days in the visible month that have at least one session — the dots.
+  const [bookedDays, setBookedDays] = useState<Set<string>>(new Set())
 
   const dateStr = fmt(dayViewDate)
   const todayStr = fmt(new Date())
@@ -391,6 +398,38 @@ function DayView({
   useEffect(() => {
     setMiniMonthStart(new Date(dayViewDate.getFullYear(), dayViewDate.getMonth(), 1))
   }, [monthKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Dots for the picker: every day in the visible month carrying a session.
+  // Only fetched while the picker is actually open — the day view's own query
+  // is the one that matters for paint speed. A multi-day booking marks every
+  // day it spans, clamped to the month being shown.
+  useEffect(() => {
+    if (!pickerOpen) return
+    const first = fmt(miniMonthStart)
+    const last = fmt(new Date(miniMonthStart.getFullYear(), miniMonthStart.getMonth() + 1, 0))
+    let cancelled = false
+    supabase.from('bookings').select('start_date, end_date, status')
+      .lte('start_date', last)
+      .gte('end_date', first)
+      .then(({ data }) => {
+        if (cancelled) return
+        const days = new Set<string>()
+        for (const b of (data ?? []) as { start_date: string; end_date: string | null; status: string }[]) {
+          if (b.status === 'cancelled') continue
+          let cur = b.start_date < first ? first : b.start_date
+          const stop = !b.end_date || b.end_date > last ? last : b.end_date
+          // Text dates compare lexically, which is why ISO is the stored form.
+          while (cur <= stop) {
+            days.add(cur)
+            const d = new Date(`${cur}T12:00:00`)
+            d.setDate(d.getDate() + 1)
+            cur = fmt(d)
+          }
+        }
+        setBookedDays(days)
+      })
+    return () => { cancelled = true }
+  }, [pickerOpen, miniMonthStart, reloadKey])
 
   // Build mini calendar grid
   const miniCells: (Date | null)[] = []
@@ -473,10 +512,27 @@ function DayView({
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '10px 16px', flexShrink: 0,
           }}>
-          <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15, color: 'var(--c-fg)' }}>
+          {/* On mobile the date IS the picker button (the ▾ says so). Desktop
+              keeps plain text — it already has the month grid beside it. */}
+          <div
+            onClick={isMobile ? () => setPickerOpen(o => !o) : undefined}
+            style={{
+              fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15,
+              color: 'var(--c-fg)', display: 'flex', alignItems: 'center', gap: 6,
+              cursor: isMobile ? 'pointer' : 'default',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
             {dayViewDate.toLocaleDateString('en-US', isMobile
               ? { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }
               : { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+            {isMobile && (
+              <span style={{
+                fontSize: 11, opacity: 0.5,
+                transform: pickerOpen ? 'rotate(180deg)' : 'none',
+                transition: 'transform 0.15s',
+              }}>▾</span>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <button onClick={() => setDayViewDate(addDays(dayViewDate, -1))}
@@ -487,6 +543,73 @@ function DayView({
               style={{ background: 'var(--c-wash)', color: 'var(--c-fg)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}>›</button>
           </div>
         </div>
+
+        {/* ── Mobile month picker — the desktop mini calendar, dropped out of
+            the header on demand. Tapping a day jumps and closes: on a phone the
+            grid is a destination, not furniture. Dots mark days carrying at
+            least one session, so you can see where the work is before tapping. */}
+        {isMobile && pickerOpen && (
+          <div style={{ padding: '0 16px 12px', flexShrink: 0 }}>
+            <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '10px 12px 12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <button
+                  onClick={() => setMiniMonthStart(new Date(miniMonthStart.getFullYear(), miniMonthStart.getMonth() - 1, 1))}
+                  style={{ background: 'none', color: 'var(--c-fg)', cursor: 'pointer', fontSize: 18, padding: '4px 12px', lineHeight: 1 }}
+                >‹</button>
+                <span style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 13, color: 'var(--c-fg)', letterSpacing: '0.03em' }}>
+                  {miniMonthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </span>
+                <button
+                  onClick={() => setMiniMonthStart(new Date(miniMonthStart.getFullYear(), miniMonthStart.getMonth() + 1, 1))}
+                  style={{ background: 'none', color: 'var(--c-fg)', cursor: 'pointer', fontSize: 18, padding: '4px 12px', lineHeight: 1 }}
+                >›</button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
+                {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
+                  <div key={d} style={{ textAlign: 'center', fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)', padding: '2px 0' }}>
+                    {d}
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px 0' }}>
+                {miniCells.map((cell, i) => {
+                  if (!cell) return <div key={`me-${i}`} />
+                  const cellStr = fmt(cell)
+                  const isSelected = cellStr === dateStr
+                  const isTodayCell = cellStr === todayStr
+                  const hasWork = bookedDays.has(cellStr)
+                  return (
+                    <div
+                      key={cellStr}
+                      onClick={() => { setDayViewDate(cell); setPickerOpen(false) }}
+                      style={{ textAlign: 'center', cursor: 'pointer', padding: '3px 0', WebkitTapHighlightColor: 'transparent' }}
+                    >
+                      <div style={{
+                        width: 34, height: 34, borderRadius: '50%', margin: '0 auto',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 13.5, fontFamily: 'Inter',
+                        background: isSelected ? 'var(--c-fg)' : isTodayCell ? 'rgba(255,255,255,0.1)' : 'transparent',
+                        color: isSelected ? 'var(--c-bg)' : 'var(--c-fg)',
+                        fontWeight: isSelected || isTodayCell ? 700 : 400,
+                        outline: isTodayCell && !isSelected ? '1px solid rgba(255,255,255,0.2)' : 'none',
+                      }}>
+                        {cell.getDate()}
+                      </div>
+                      {/* Booked marker. Reserved space either way, so the rows
+                          don't jump by 5px as the month's dots load in. */}
+                      <div style={{
+                        width: 4, height: 4, borderRadius: '50%', margin: '3px auto 0',
+                        background: hasWork && !isSelected ? 'var(--c-st-booked)' : 'transparent',
+                      }} />
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Studio cards grid — single column (rooms as rows) on mobile */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
@@ -501,10 +624,12 @@ function DayView({
                   background: 'var(--c-bg)',
                   borderRadius: 6, overflow: 'hidden',
                   }}>
-                  {cards.length > 0 && (
-                    /* 2px teal top bar */
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'var(--c-st-booked)', zIndex: 3 }} />
-                  )}
+                  {/* The 2px teal "occupied" top bar is GONE (Eli, 2026-08-31,
+                      both breakpoints). It dated from a dimmer card treatment;
+                      now the session card directly beneath it is already solid
+                      green, so the line read as a divider or a rendering glitch
+                      rather than a signal — worst on the phone, where the two
+                      sit a few pixels apart. Occupancy is carried by the cards. */}
                   {/* Card header */}
                   <div style={{ padding: '6px 10px', background: 'var(--c-wash)' }}>
                     <span style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, color: 'var(--c-fg-2)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
