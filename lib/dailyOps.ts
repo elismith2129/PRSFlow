@@ -26,7 +26,10 @@ export type DutyState = {
   key: string
   label: string
   /** done = submitted · missing = never came in · flagged = came in with a problem */
-  state: 'done' | 'missing' | 'flagged'
+  // 'pending' is TODAY ONLY (2026-08-31): the day is still running, so a duty
+  // that hasn't come in yet is not an absence. Red is reserved for a day that
+  // is OVER and still has a hole in it — the whole point of the queue.
+  state: 'done' | 'missing' | 'flagged' | 'pending'
   detail: string
 }
 
@@ -84,6 +87,15 @@ export function prettyDate(date: string): string {
  * then missing mics, then attention notes.
  */
 export async function loadNight(date: string): Promise<{ queue: QueueItem[]; studios: StudioNight[] }> {
+  // Today is a day IN PROGRESS, not a day that failed (Eli, 2026-08-31 — the
+  // page can now page forward to today). Nothing has come in yet at 2pm, so
+  // every unsubmitted duty reads 'pending' instead of 'missing', and the
+  // absence rows are kept OUT of the queue entirely: "never submitted · find
+  // out why before the next shift" is a lie about a shift that hasn't happened,
+  // and twenty of them would train everyone to ignore the queue. Real signals —
+  // flags, missing mics, attention notes — still surface today, because those
+  // are true the moment they are raised.
+  const isToday = date === opsDate(0)
   const [
     { data: subs },
     { data: checklists },
@@ -155,7 +167,7 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
         const cl = sChecklists.find((r: any) => r.type === type && r.completed_at)
         const sub = submitted(`${type}_checklist`) ?? submitted(type)
         const at = cl?.completed_at ?? sub?.submitted_at
-        if (!at) return { key: d.key, label: d.label, state: 'missing', detail: 'never submitted' }
+        if (!at) return { key: d.key, label: d.label, state: isToday ? 'pending' : 'missing', detail: isToday ? 'not yet' : 'never submitted' }
         const attention = cl?.needs_attention
         return {
           key: d.key, label: d.label,
@@ -165,19 +177,19 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
       }
       if (d.key === 'mic_inventory') {
         const missing = (micRows ?? []).filter((r: any) => r.studio === s.key && r.status === 'missing')
-        if (!sMicSub?.submitted_at) return { key: d.key, label: d.label, state: 'missing', detail: 'not done' }
+        if (!sMicSub?.submitted_at) return { key: d.key, label: d.label, state: isToday ? 'pending' : 'missing', detail: isToday ? 'not yet' : 'not done' }
         if (missing.length) return { key: d.key, label: d.label, state: 'flagged', detail: `${missing.length} missing` }
         const counted = (micRows ?? []).filter((r: any) => r.studio === s.key).length
         return { key: d.key, label: d.label, state: 'done', detail: `${counted} checked` }
       }
       if (d.key === 'petty_cash') {
-        if (!submitted('petty_cash')) return { key: d.key, label: d.label, state: 'missing', detail: 'not done' }
+        if (!submitted('petty_cash')) return { key: d.key, label: d.label, state: isToday ? 'pending' : 'missing', detail: isToday ? 'not yet' : 'not done' }
         const rows = (cash ?? []).filter((r: any) => r.studio === s.key)
         const net = rows.reduce((t: number, r: any) => t + (r.type === 'in' ? 1 : -1) * (Number(r.amount) || 0), 0)
         return { key: d.key, label: d.label, state: 'done', detail: `${rows.length} entries · ${net >= 0 ? '+' : '-'}$${Math.abs(net).toFixed(0)}` }
       }
       // stock
-      if (!submitted('stock')) return { key: d.key, label: d.label, state: 'missing', detail: 'not done' }
+      if (!submitted('stock')) return { key: d.key, label: d.label, state: isToday ? 'pending' : 'missing', detail: isToday ? 'not yet' : 'not done' }
       const low = (stock ?? []).filter((r: any) => r.studio === s.key && r.low).length
       return low
         ? { key: d.key, label: d.label, state: 'flagged', detail: `${low} low` }
@@ -185,7 +197,7 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
     })
 
     // Absences → the queue, hot. This is the signal that had no home before.
-    for (const d of duties.filter(x => x.state === 'missing')) {
+    for (const d of isToday ? [] : duties.filter(x => x.state === 'missing')) {
       const key = `missing:${s.key}:${d.key}`
       queue.push({
         key, severity: 'hot',

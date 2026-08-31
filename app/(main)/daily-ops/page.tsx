@@ -40,6 +40,9 @@ const DUTY_COLOR: Record<string, string> = {
   done: 'var(--c-st-booked)',
   flagged: 'var(--c-st-warm)',
   missing: 'var(--c-st-hot)',
+  // Today only — the day is still running, so "hasn't come in yet" is neutral,
+  // not a failure. Red belongs to a day that is over and still has a hole.
+  pending: 'var(--c-wash2, var(--c-wash))',
 }
 
 /** Queue page size — keeps the studio-tasks card in view under a long queue. */
@@ -142,9 +145,11 @@ export default function DailyOpsPage() {
   const qPageSafe = Math.min(qPage, qPages - 1)
   const queuePage = queue.slice(qPageSafe * QUEUE_PAGE, (qPageSafe + 1) * QUEUE_PAGE)
 
-  // Sweep day paging — buttons and swipe share these.
+  // Sweep day paging — buttons and swipe share these. Forward stops at TODAY
+  // (offset 0), not at yesterday: the page defaults to the finished day, but
+  // the office also wants to watch the current one come in (Eli, 2026-08-31).
   const goEarlier = () => setOffset(o => o + 1)
-  const goLater = () => setOffset(o => Math.max(1, o - 1))
+  const goLater = () => setOffset(o => Math.max(0, o - 1))
   const card: React.CSSProperties = {
     background: 'var(--c-srf, var(--c-bg))', boxShadow: 'var(--c-softsh)',
     borderRadius: 18, padding: '14px 16px',
@@ -164,7 +169,7 @@ export default function DailyOpsPage() {
           <div style={card}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
               <SectionHeader title="Needs you" count={open.length || undefined} countColor="orange" />
-              <Hint tip="Yesterday's exceptions, worst first: flags, then anything that never came in, then missing mics, then notes. Tap an item's circle once you've dealt with it — clearing is shared with every manager." />
+              <Hint tip="The day's exceptions, worst first: flags, then anything that never came in, then missing mics, then notes. Tap an item's circle once you've dealt with it — clearing is shared with every manager. On today, a duty that simply hasn't come in yet is not listed — the day isn't over." />
             </div>
             {loading ? (
               <div style={{ opacity: 0.5, fontSize: 13 }}>Loading…</div>
@@ -286,15 +291,17 @@ export default function DailyOpsPage() {
               <span className="c-arch" style={{ fontSize: 24, letterSpacing: '-0.02em', lineHeight: 1.05 }}>
                 {/* "Yesterday", not "Last night" — the studios run 24/7
                     (terminology ruling, Eli 2026-08-17: day, never night). */}
-                {offset === 1 ? 'Yesterday' : prettyDate(date)}
+                {offset === 0 ? 'Today' : offset === 1 ? 'Yesterday' : prettyDate(date)}
               </span>
-              <span style={{ fontSize: 12, opacity: 0.5, marginLeft: 10 }}>{prettyDate(date)}</span>
+              <span style={{ fontSize: 12, opacity: 0.5, marginLeft: 10 }}>
+                {prettyDate(date)}{offset === 0 ? ' · still coming in' : ''}
+              </span>
             </div>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-              <button onClick={goEarlier} aria-label="Earlier night"
+              <button onClick={goEarlier} aria-label="Earlier day"
                 style={{ ...wash, cursor: 'pointer', fontWeight: 700, padding: '7px 14px' }}>‹</button>
-              <button onClick={goLater} disabled={offset === 1} aria-label="Later night"
-                style={{ ...wash, cursor: offset === 1 ? 'default' : 'pointer', fontWeight: 700, opacity: offset === 1 ? 0.4 : 1, padding: '7px 14px' }}>›</button>
+              <button onClick={goLater} disabled={offset === 0} aria-label="Later day"
+                style={{ ...wash, cursor: offset === 0 ? 'default' : 'pointer', fontWeight: 700, opacity: offset === 0 ? 0.4 : 1, padding: '7px 14px' }}>›</button>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'start' }}>
