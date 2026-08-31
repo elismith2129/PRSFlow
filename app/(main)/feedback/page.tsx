@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { TestingSection } from '@/components/dev/TestingSection'
+import { RunnerSubmissionsSection } from '@/components/dev/RunnerSubmissionsSection'
 import { ErrorsSection } from '@/components/admin/ErrorsSection'
 
 // TEMPORARY: remove when rollout period ends
@@ -53,6 +54,9 @@ function FeedbackBoard() {
     const { data } = await supabase
       .from('app_feedback')
       .select('*')
+      // Runner submissions share this table (source='runner', 2026-08-31) and
+      // have their own tab — this board is the OFFICE's.
+      .eq('source', 'office')
       .order('created_at', { ascending: false })
     setItems((data as AppFeedback[]) || [])
     setLoading(false)
@@ -237,10 +241,11 @@ function FeedbackBoard() {
 //   Errors   — the app_errors sink, moved here from Admin. ELI ONLY: staff seeing
 //              raw stack traces invites alarm about things that are already handled,
 //              and it's a developer tool, not an operations one.
-type DevSection = 'feedback' | 'testing' | 'errors'
+type DevSection = 'feedback' | 'runner' | 'testing' | 'errors'
 
 const DEV_NAV: { key: DevSection; label: string }[] = [
   { key: 'feedback', label: 'Feedback' },
+  { key: 'runner', label: 'Runner' },
   { key: 'testing', label: 'Testing' },
   { key: 'errors', label: 'Errors' },
 ]
@@ -293,6 +298,7 @@ export default function DevPage() {
             it became a tab. Errors is a dense table and takes the full width. */}
         {section === 'feedback' && <div style={{ maxWidth: 720, margin: '0 auto' }}><FeedbackBoard /></div>}
         {/* Wider than the feedback board: Testing is two columns, not reading-width prose. */}
+        {section === 'runner' && <RunnerSubmissionsSection />}
         {section === 'testing' && <div style={{ maxWidth: 1100, margin: '0 auto' }}><TestingSection /></div>}
         {section === 'errors' && isEli && <ErrorsSection />}
       </div>
