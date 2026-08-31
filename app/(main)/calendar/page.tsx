@@ -513,7 +513,7 @@ function DayView({
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           gap: 8, flexWrap: isMobile ? 'wrap' : 'nowrap',
-          padding: isMobile ? '10px 0' : '10px 16px', flexShrink: 0, minWidth: 0,
+          padding: '10px 16px', flexShrink: 0, minWidth: 0,
           }}>
           <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15, color: 'var(--c-fg)' }}>
             {dayViewDate.toLocaleDateString('en-US', isMobile
@@ -535,7 +535,7 @@ function DayView({
             days carrying at least one session, so you can see where the work is
             before tapping. */}
         {isMobile && (
-          <div style={{ padding: '0 0 12px', flexShrink: 0 }}>
+          <div style={{ padding: '0 16px 12px', flexShrink: 0 }}>
             <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '8px 10px 9px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <button
@@ -598,7 +598,7 @@ function DayView({
         )}
 
         {/* Studio cards grid — single column (rooms as rows) on mobile */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '0 0 12px' : '12px 16px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 10 }}>
             {allStudios.map(({ loc, room }) => {
               const cards = dayBookings
@@ -1729,11 +1729,17 @@ function CalendarPageInner() {
   // ground below TRACK. Cap = fills tall content, hugs short content.
   // (44px ≈ the rail-era page-main padding.)
   return (
-    // marginLeft -12: the frame gives every page a 20px gutter off the nav
-    // rail; the calendar's label column adds its own insets on top, which read
-    // as dead space (Eli, 2026-08-17). The calendar alone pulls itself closer —
-    // the shared frame padding stays untouched for every other page.
-    <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 44px)', overflow: 'hidden', marginLeft: -12 }}>
+    // marginLeft -12 is a DESKTOP tweak: the frame gives every page a 20px
+    // gutter off the nav rail, and the calendar's label column adds its own
+    // insets on top, which read as dead space (Eli, 2026-08-17). The calendar
+    // alone pulls itself closer.
+    //
+    // It must NOT run on mobile (2026-08-31). There is no rail on a phone —
+    // just .page-main's symmetric 12px — so a negative left margin cancelled
+    // the LEFT padding only and left the right intact. Every card on the page
+    // then sat hard against the left edge with a gap down the right, which is
+    // what "it's not centered" was: not a centring bug, a one-sided margin.
+    <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 44px)', overflow: 'hidden', marginLeft: isMobile ? 0 : -12 }}>
 
       {/* Work-order creation warning — booking saved, but its WO failed to create (non-blocking) */}
       {woWarning && (
