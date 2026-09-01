@@ -531,7 +531,7 @@ export default function BillingPage() {
             ? 'Searching every bucket and both pipelines, closed included — each result shows where it lives. Clear the search to go back.'
             : pipeline === 'cod'
               ? 'COD is paid at the top of the session. Check the work order is accurate, drop the QuickBooks invoice on it, done. A balance means collection was missed — the only way COD goes wrong.'
-              : 'Reviewed → Invoiced → Approved. Each light is derived; the button is whatever comes next. Drop a QuickBooks PDF straight onto a row to attach it. A package waits on a PO unless the work order has a PO number or is marked No PO needed.'}
+              : 'Reviewed → Invoiced → Approved. Each light is derived; the button is whatever comes next. Drop a QuickBooks PDF straight onto a row to attach it. Approval only needs a completed, reviewed work order — a missing PO blocks SENDING, not approving, and clears when the work order gets a PO number or is marked Not req’d.'}
         </div>
       </div>
 
@@ -682,8 +682,19 @@ function Row({
   const showLights = ['progress', 'review', 'balance'].includes(row.bucket)
   // The overflow only exists when there is something in it: an invoice to open,
   // or an invoice real enough to be written off.
-  // Approved but with no PO: the button shows, disabled, rather than vanishing.
-  const blocked = row.awaitingPo
+  // THE PO BLOCKS SENDING, NOT APPROVING (Eli, 2026-08-31 — reversing the
+  // Aug 11 ruling). Owner approval says one thing: this work order is complete
+  // and reviewed and the invoice is correct. That judgement does not depend on
+  // a purchase order, and POs take weeks to arrive from a label — parking the
+  // internal sign-off behind one meant approval couldn't happen while the
+  // session was still fresh in anyone's mind.
+  //
+  // The gate itself is unchanged, just moved one rung later: Download and Mark
+  // sent stay disabled until there's a PO number or the work order is marked
+  // Not req'd, so nothing can still LEAVE the building without one. The
+  // Awaiting PO chip appears from step 2 as before, which is now a heads-up
+  // during approval rather than a wall.
+  const blocked = row.awaitingPo && label !== 'Approve'
   const canClose = row.step >= 2 && row.bucket !== 'closed' && row.bucket !== 'paid'
   const hasMore = row.hasInvoiceDoc || canClose
 
@@ -792,7 +803,7 @@ function Row({
             // A disabled button in the SAME PLACE as the live one teaches where
             // the control lives and says why it isn't available. Hiding it
             // taught nothing and read as a broken row.
-            title={blocked ? 'Add the PO number on the work order — or set PO req’d to No there' : undefined}
+            title={blocked ? 'Approved, but this package needs a PO before it can be sent — add the PO number on the work order, or press Not req’d there' : undefined}
             style={blocked ? { cursor: 'default' } : undefined}
           >
             {/* THE LABEL DOES NOT CHANGE WHEN BLOCKED (fix, 2026-08-11). It used

@@ -546,9 +546,14 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       // PO IS A PRECONDITION OF APPROVAL, not of sending (ruling 2026-08-11).
       // Eli: "I want no-PO added to block approval so we get in the habit of
       // noting PO or none needed on the WO." Right — approval is the moment
-      // someone asserts the package is complete, and a package that cannot
-      // legally be sent is not complete. Blocking at the send step meant you
-      // discovered the gap after an owner had already signed it off.
+      // someone asserts the package is complete, so the chip is visible from
+      // step 2 — an owner should SEE the gap while approving.
+      //
+      // But it only DISABLES from step 3 (2026-08-31). The Aug 11 version
+      // blocked approval itself, on the reasoning that a package which cannot
+      // legally be sent is not complete. True of the package; not true of the
+      // approval, which is an internal statement about the numbers. The hub
+      // decides what the flag disables — see `blocked` in app/(main)/billing.
       awaitingPo: !isCod && step >= 2 && !poNumber && !noPoNeeded,
       hasInvoiceDoc: hasDoc,
       approvedAt: w.invoice_approved_at ?? null,
@@ -795,10 +800,12 @@ export function nextAction(row: InvoiceRow): string | null {
   if (row.step === 0) return null
   if (row.step === 1) return 'Attach invoice'
   if (row.isCod) return null
-  // Approve is the gate everything queues behind: reviewed, invoiced and PO
-  // sorted. When the PO is missing the page renders this DISABLED rather than
-  // hiding it — hiding the only button on a row communicates a broken screen,
-  // not a blocker.
+  // Approve is the gate everything queues behind: reviewed and invoiced.
+  // NOT the PO (Eli, 2026-08-31 — reversing Aug 11): owner approval asserts
+  // that the work order is complete and the invoice is right, which is knowable
+  // the day the session ends. A label's PO can take weeks, and holding the
+  // internal sign-off for it meant approving from memory a month later. The PO
+  // now blocks DOWNLOAD/SEND instead, so nothing leaves without one.
   if (row.step === 2) return 'Approve'
   // TWO ACTS, NOT ONE (ruling 2026-08-11). PRSFlo builds the file; a person
   // emails it. So the button asks for what only they know, in order:
